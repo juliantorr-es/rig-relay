@@ -1,0 +1,97 @@
+{% extends "base.html.j2" %}
+{% block content %}
+{% for section in sections %}
+  {% if section.kind == "hero_status" %}
+  <section class="hero-status status-{{ section.status_class }}">
+    <h2>{{ section.title }}</h2>
+    <div class="status-badge status-{{ section.status_class }}">{{ section.status_label }}</div>
+    <p class="summary">{{ section.summary }}</p>
+    {% if section.blocker_count is not none %}<div class="metrics"><span>{{ section.blocker_count }} blockers</span><span>{{ section.ready_count }} ready</span></div>{% endif %}
+  </section>
+  {% elif section.kind == "card_grid" %}
+  <section>
+    {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
+    <div class="card-grid">
+      {% for card in section.cards %}
+      <div class="card status-{{ card.status | default('info') }}">
+        <h3>{{ card.title }}</h3>
+        <div class="card-body">{{ card.body_html | safe }}</div>
+        {% if card.source_ref %}<div class="card-source">Source: {{ card.source_ref }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% elif section.kind == "table" %}
+  <section>
+    {% if section.caption %}<h2>{{ section.caption }}</h2>{% endif %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr>{% for h in section.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in section.rows %}
+          <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% elif section.kind == "timeline" %}
+  <section>
+    {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+    <div class="timeline">
+      {% for entry in section.entries %}
+      <div class="timeline-entry status-{{ entry.status | default('info') }}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <strong>{{ entry.title }}</strong>
+          {% if entry.timestamp %}<time>{{ entry.timestamp }}</time>{% endif %}
+          <p>{{ entry.description }}</p>
+          {% if entry.status %}<span class="status-chip status-{{ entry.status }}">{{ entry.status }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% elif section.kind == "definition_list" %}
+  <section>
+    {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+    <dl class="definition-list">
+      {% for item in section["items"] %}
+      <dt>{{ item.term }}</dt><dd>{{ item.definition }}</dd>
+      {% endfor %}
+    </dl>
+  </section>
+  {% elif section.kind == "artifact_nav" %}
+  <section>
+    {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+    <nav class="artifact-nav">
+      {% for link in section.links %}
+      <a class="nav-card" href="{{ link.href }}">
+        <strong>{{ link.label }}</strong>
+        {% if link.description %}<span>{{ link.description }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+  </section>
+  {% elif section.kind == "callout" %}
+  <section class="callout callout-{{ section.callout_class | default('info') }}">
+    {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+    <div class="callout-body">{{ section.body_html | safe }}</div>
+  </section>
+  {% elif section.kind == "schema_index" %}
+  <section>
+    {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Schema ID</th><th>File</th><th>Description</th></tr></thead>
+        <tbody>
+          {% for entry in section.entries %}
+          <tr><td>{{ entry.schema_id }}</td><td><code>{{ entry.file_path }}</code></td><td>{{ entry.description }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+{% endfor %}
+{% endblock %}

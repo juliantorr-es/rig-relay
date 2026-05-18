@@ -71,7 +71,7 @@ def test_guard_blocks_transition():
     source = _read("runtime/stateMachine.js")
     assert "guard" in source
     assert "blocked: true" in source
-    assert "matching.guard" in source
+    assert "t.guard" in source or "matching.guard" in source
 
 
 def test_global_guards_are_checked():

@@ -22,7 +22,11 @@ export function renderWidget(id, fn) {
   const container = el('widget-' + id);
   if (!container) return;
   const level = getDisclosure(id);
-  fn(container, level);
+  try {
+    fn(container, level);
+  } catch (_) {
+    _renderErrorCard(container, id);
+  }
 }
 
 export function cycleDisclosure(id) {
@@ -54,7 +58,11 @@ export function showExpanded(id) {
   overlay.classList.add('active');
   const card = el('widget-' + id);
   if (card) card.setAttribute('aria-expanded', 'true');
-  fn(content, 'expanded');
+  try {
+    fn(content, 'expanded');
+  } catch (_) {
+    _renderErrorCard(content, id);
+  }
   // Focus trap: move focus into the overlay
   const closeBtn = el('expanded-close-btn');
   if (closeBtn) closeBtn.focus();
@@ -441,6 +449,31 @@ registerWidget('reviewDataset', (container, level) => {
 });
 
 // ── Helpers ──
+
+function _renderErrorCard(container, widgetId) {
+  while (container.firstChild) container.removeChild(container.firstChild);
+  container.className = 'widget-card widget-failed';
+  var header = document.createElement('div');
+  header.className = 'widget-header';
+  header.textContent = widgetId;
+  var body = document.createElement('div');
+  body.className = 'widget-body';
+  var icon = document.createElement('span');
+  icon.textContent = '\u26A0 ';
+  body.appendChild(icon);
+  body.appendChild(document.createTextNode('Render failed'));
+  container.appendChild(header);
+  container.appendChild(body);
+  if (window.RigRelay && window.RigRelay.notifications) {
+    try {
+      window.RigRelay.notifications.emit({
+        kind: 'error',
+        message: 'Widget render failed',
+        dedupKey: 'widget-' + widgetId + '-render-failed',
+      });
+    } catch (_) { /* notifications unavailable */ }
+  }
+}
 
 function renderCompactChip(container, label, valueFn) {
   const v = valueFn();
@@ -1876,6 +1909,77 @@ registerWidget('releaseGate', (container, level) => {
 
   renderStandardCard(container, 'RC Gate: ' + overallStatus, html, 'releaseGate', statusCls);
 });
+
+// ── Bridge Protocol widget ──────────────────────────────────────────
+
+registerWidget('bridgeProtocol', function(container, level) {
+  if (level !== 'standard') return;
+  renderBridgeProtocol(container);
+});
+
+function renderBridgeProtocol(container) {
+  var client = window.__RIG_RELAY_PROTOCOL_CLIENT__
+  if (!client) {
+    renderStandardCard(container, 'Bridge Protocol', '<span class="widget-missing">Protocol client not initialized</span>', 'bridgeProtocol', 'warn')
+    return
+  }
+
+  var stats = client.getStats()
+  var html = '<div class="widget-content protocol-widget">'
+
+  var hbAge = stats.heartbeatAgeMs
+  var hbStatus = hbAge < 0 ? 'No heartbeat yet'
+    : hbAge > 30000 ? 'Degraded (no heartbeat ' + Math.round(hbAge / 1000) + 's)'
+    : hbAge > 15000 ? 'Slow (' + Math.round(hbAge / 1000) + 's)'
+    : 'OK'
+  var hbCls = hbAge < 0 ? 'warn' : hbAge > 30000 ? 'error' : hbAge > 15000 ? 'warn' : 'ok'
+
+  html += '<div class="proto-row"><span class="proto-label">Heartbeat</span>'
+  html += '<span class="proto-value ' + hbCls + '">' + escapeHtml(hbStatus) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Outbound Seq</span>'
+  html += '<span class="proto-value">' + (stats.outboundSeq || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Inbound Seq</span>'
+  html += '<span class="proto-value">' + (stats.inboundSeq || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Projection Seq</span>'
+  html += '<span class="proto-value">' + (stats.lastProjectionSeq || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Duplicates</span>'
+  html += '<span class="proto-value">' + (stats.duplicateCount || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Stale Projections</span>'
+  html += '<span class="proto-value">' + (stats.staleProjectionCount || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Protocol Errors</span>'
+  var errCls = (stats.protocolErrorCount || 0) > 0 ? 'error' : ''
+  html += '<span class="proto-value ' + errCls + '">' + (stats.protocolErrorCount || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Dropped</span>'
+  html += '<span class="proto-value">' + (stats.droppedCount || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Coalesced</span>'
+  html += '<span class="proto-value">' + (stats.coalescedCount || 0) + '</span></div>'
+
+  html += '<div class="proto-row"><span class="proto-label">Max Queue Depth</span>'
+  html += '<span class="proto-value">' + (stats.maxQueueDepth || 0) + '</span></div>'
+
+  var kinds = Object.keys(stats.messageCountByKind || {})
+  if (kinds.length > 0) {
+    html += '<div class="proto-section"><span class="proto-section-label">Messages by Kind</span>'
+    kinds.forEach(function(k) {
+      html += '<div class="proto-row proto-sub"><span class="proto-label">' + escapeHtml(k) + '</span>'
+      html += '<span class="proto-value">' + (stats.messageCountByKind[k] || 0) + '</span></div>'
+    })
+    html += '</div>'
+  }
+
+  html += '</div>'
+
+  var cardStatus = (stats.duplicateCount || 0) > 10 || (stats.protocolErrorCount || 0) > 0 ? 'warn' : 'ok'
+  renderStandardCard(container, 'Bridge Protocol', html, 'bridgeProtocol', cardStatus)
+}
 
 function renderRoleModelExpanded(container, rm) {
   var html = '<div style="max-width:700px;margin:0 auto">';

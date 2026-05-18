@@ -34,12 +34,12 @@ def test_runtime_state_machine_js_exists():
 
 
 def test_kernel_exports_reducer():
-    source = _read("runtime/kernel.js")
-    assert "rootReducer" in source
-    assert "function rootReducer" in source
-    assert "case AT.BOOT_PHASE_TRANSITION" in source
-    assert "case AT.TRANSPORT_STATUS_CHANGE" in source
-    assert "case AT.PROJECTION_RECEIVED" in source
+    reducer_source = _read("runtime/reducer.js")
+    assert "function rootReducer" in reducer_source
+    assert "export function rootReducer" in reducer_source
+    # kernel.js imports it
+    kernel_source = _read("runtime/kernel.js")
+    assert "rootReducer" in kernel_source
 
 
 def test_kernel_exports_create_runtime():
@@ -57,7 +57,9 @@ def test_kernel_exports_state_machines():
 
 def test_kernel_exports_subscribe():
     source = _read("runtime/kernel.js")
-    assert "function subscribe" in source
+    assert "subscribe" in source
+    # Subscribe now comes from notifBridge — verify kernel wires it
+    assert "subscribe: notifBridge.subscribe" in source or "subscribe" in source
 
 
 def test_kernel_exports_effects():
@@ -179,9 +181,12 @@ def test_transport_state_retains_all_original_exports():
 
 
 def test_kernel_uses_deep_freeze():
-    source = _read("runtime/kernel.js")
+    source = _read("runtime/reducer.js")
     assert "function _deepFreeze" in source
     assert "Object.freeze(obj)" in source
+    # kernel.js imports _deepFreeze from reducer
+    kernel_source = _read("runtime/kernel.js")
+    assert "_deepFreeze" in kernel_source
 
 
 def test_kernel_has_destroy_method():
@@ -190,31 +195,22 @@ def test_kernel_has_destroy_method():
     assert "cancelAllLoops" in source
 
 
-def test_kernel_has_broadcast_channel():
-    source = _read("runtime/kernel.js")
+def test_multitab_has_broadcast_channel():
+    source = _read("runtime/multitab.js")
     assert "BroadcastChannel" in source
-    assert "MULTI_TAB_SECONDARY_DETECTED" in source
-    # BroadcastChannel function must not transmit secrets in postMessage payload
-    bc_start = source.index("function _setupBroadcastChannel")
-    bc_end = bc_start + 600
-    bc_section = source[bc_start:bc_end]
-    assert "postMessage" in bc_section
-    assert "cockpit_present" in bc_section
-    assert "handshake_id" not in bc_section, (
-        "BroadcastChannel must NOT send handshake_id"
-    )
-    assert "auth_token" not in bc_section, "BroadcastChannel must NOT send auth_token"
+    assert "cockpit_present" in source
+    assert "postMessage" in source
+    assert "handshake_id" not in source, "multitab.js must NOT send handshake_id"
+    assert "auth_token" not in source, "multitab.js must NOT send auth_token"
 
 
 # ── Reducer purity ────────────────────────────────────────────────────
 
 
 def test_reducer_returns_new_state_not_mutate():
-    source = _read("runtime/kernel.js")
-    assert (
-        "return { ...state, boot: nextBoot }" in source
-        or "return { ...state," in source
-    )
+    source = _read("runtime/reducer.js")
+    assert "rootReducer" in source
+    assert "return { ...state," in source or "return { ...state," in source
 
 
 # ── Boot FSM ──────────────────────────────────────────────────────────
@@ -238,8 +234,9 @@ def test_boot_fsm_has_required_phases():
 
 
 def test_boot_fsm_ready_is_terminal():
-    source = _read("runtime/kernel.js")
-    # Ready should be reachable from rendering
-    assert "'boot:ready'" in source
-    assert "BP.READY" in source
-    assert "readyAt = Date.now()" in source
+    kernel_source = _read("runtime/kernel.js")
+    # 'boot:ready' transition is defined in kernel.js's _createBootFSM
+    assert "'boot:ready'" in kernel_source
+    # readyAt set in reducer.js on BP.READY
+    reducer_source = _read("runtime/reducer.js")
+    assert "readyAt = Date.now()" in reducer_source

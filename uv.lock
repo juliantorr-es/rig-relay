@@ -14,7 +14,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-09T21:12:59.769172Z"
+exclude-newer = "2026-05-11T18:28:25.203003Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
@@ -2594,6 +2594,7 @@ dependencies = [
     { name = "google-auth-httplib2" },
     { name = "google-auth-oauthlib" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "jsonpatch" },
     { name = "jsonschema" },
     { name = "keyring" },
@@ -2678,6 +2679,7 @@ requires-dist = [
     { name = "google-auth-httplib2", specifier = ">=0.2.0" },
     { name = "google-auth-oauthlib", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jinja2", specifier = ">=3.1.0" },
     { name = "jsonpatch", specifier = ">=1.33" },
     { name = "jsonschema", specifier = ">=4.23.0" },
     { name = "keyring", specifier = ">=25.6.0" },

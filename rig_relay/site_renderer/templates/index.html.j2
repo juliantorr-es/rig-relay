@@ -1,0 +1,29 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<section class="hero">
+  <h2>{{ tagline | default('Structured evidence generated from canonical artifacts.') }}</h2>
+  <p>This site is a deterministic read-only projection of Rig Relay's structured truth. Every page is generated from JSON page models validated against JSON Schemas. No backend, no database, no tracking.</p>
+</section>
+<section class="page-grid">
+  <h2>Evidence Pages</h2>
+  <div class="card-grid">
+    {% for page in pages %}
+    <a class="nav-card" href="{{ page.route }}">
+      <strong>{{ page.title }}</strong>
+      <span>{{ page.description | default('') }}</span>
+      {% if page.safety_status %}<span class="safety-chip safety-{{ page.safety_status }}">{{ page.safety_status }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+<section class="meta">
+  <h2>Site Metadata</h2>
+  <dl class="definition-list">
+    <dt>Generated</dt><dd>{{ generated_at }}</dd>
+    <dt>Branch</dt><dd>{{ branch }}</dd>
+    <dt>HEAD</dt><dd>{{ head_sha }}</dd>
+    <dt>Pages</dt><dd>{{ pages | length }}</dd>
+    <dt>Public Safety</dt><dd>{{ 'Passed' if safety_passed else 'Warning — review required' }}</dd>
+  </dl>
+</section>
+{% endblock %}

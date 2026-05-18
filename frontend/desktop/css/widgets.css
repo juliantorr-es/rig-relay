@@ -308,3 +308,14 @@
   background: var(--bg-card-hover);
   color: var(--text-primary);
 }
+
+/* ── Protocol Widget ── */
+.proto-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: var(--font-size-xs); }
+.proto-label { color: var(--text-secondary); }
+.proto-value { font-family: var(--font-mono); }
+.proto-value.ok { color: var(--ok); }
+.proto-value.warn { color: var(--warn); }
+.proto-value.error { color: var(--error); }
+.proto-section { margin-top: 6px; }
+.proto-section-label { font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: var(--font-weight-semibold); }
+.proto-sub { padding-left: 8px; }

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://json-schema.org/rig.relay.bridge_message.v1",
+  "title": "Rig Relay Bridge Message v1",
+  "description": "Canonical bidirectional bridge protocol envelope for Rig Relay WebSocket. No tokens, API keys, OAuth codes, raw prompts, or private file contents.",
+  "type": "object",
+  "required": ["schema_version", "message_id", "handshake_id", "direction", "kind", "sequence", "created_at", "payload"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.bridge_message.v1"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "Unique per-message identifier. Format: msg_<12hex>. Server and client each maintain their own namespace.",
+      "pattern": "^msg_[a-f0-9]{12,}$"
+    },
+    "handshake_id": {
+      "type": "string",
+      "description": "Session-scoped correlation ID. Format: corr_<12hex> (backend) or hs_<12hex> (frontend fallback)."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["frontend_to_backend", "backend_to_frontend"]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "projection",
+        "intent_request",
+        "intent_ack",
+        "intent_result",
+        "lifecycle_event",
+        "notification",
+        "error",
+        "heartbeat",
+        "flow_control"
+      ]
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic per-sender-per-connection sequence number. Gaps indicate dropped messages."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of message creation."
+    },
+    "requires_ack": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, receiver must respond with an ack (kind=lifecycle_event with ack_for=message_id)."
+    },
+    "ack_for": {
+      "type": "string",
+      "description": "When present, this message acknowledges the message with this message_id."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "When present, duplicate messages with the same idempotency_key must not execute twice. Format: idem_<intent_id_or_hash>."
+    },
+    "projection_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic projection sequence number. Frontend ignores messages with sequence <= last_rendered."
+    },
+    "payload_schema": {
+      "type": "string",
+      "description": "Optional schema identifier for the payload field (e.g., 'rig.relay.desktop_projection.v1')."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Kind-specific data. Must be content-light: no tokens, keys, codes, prompts, or file contents."
+    },
+    "safe_summary": {
+      "type": "object",
+      "description": "Content-light summary for evidence/telemetry. Never contains raw content. Example: {intent_name: 'refresh_projection', status: 'succeeded'}."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: every envelope is content_light."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "critical"],
+      "default": "normal"
+    }
+  },
+  "additionalProperties": false
+}

@@ -114,3 +114,20 @@ function _renderTimestamp(updatedAt) {
     el.classList.add('stale');
   }
 }
+
+export function renderStalenessIndicator(isStale) {
+  var span = document.getElementById('projection-staleness');
+  if (isStale) {
+    if (!span) {
+      span = document.createElement('span');
+      span.id = 'projection-staleness';
+      span.className = 'header-chip warn phase-stale';
+      var header = el('top-header');
+      if (header) header.appendChild(span);
+    }
+    span.textContent = 'Stale';
+    span.style.display = '';
+  } else if (span) {
+    span.style.display = 'none';
+  }
+}

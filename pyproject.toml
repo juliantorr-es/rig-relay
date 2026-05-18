@@ -33,8 +33,9 @@ dependencies = [
   "google-auth-httplib2>=0.2.0",
   "google-auth-oauthlib>=1.0.0",
   "httpx>=0.28.1",
-  "jsonpatch>=1.33",
-  "keyring>=25.6.0",
+    "jinja2>=3.1.0",
+    "jsonpatch>=1.33",
+    "keyring>=25.6.0",
   "markdownify>=1.2.2",
   "mcp>=1.14.0",
   "mistralai==2.4.4",
@@ -191,6 +192,9 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/cli/ide_sidecar.py" = ["PLR"]
 "rig_relay/core/tools/builtins/report.py" = ["PLR", "ANN"]
 "scripts/rig_relay_generate_ide_capability_map.py" = ["PLR"]
+"rig_relay/docs_renderer/cli.py" = ["PLR"]
+"rig_relay/site_renderer/normalizers.py" = ["PLR"]
+"scripts/rig_site_render.py" = ["PLR"]
 "rig_relay/governance/findings_lifecycle.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]

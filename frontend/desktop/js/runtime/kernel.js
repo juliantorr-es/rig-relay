@@ -12,7 +12,6 @@ import {
   WidgetStatus,
   ModeType,
   LoopType,
-  INITIAL_STATE,
   bootPhaseTransition,
   transportStatusChange,
   projectionReceived,
@@ -23,6 +22,7 @@ import {
   intentAcknowledged,
   intentResult,
 } from './actions.js';
+import { rootReducer, _freshState, _deepFreeze } from './reducer.js';
 import {
   getBootPhase,
   isBootReady,
@@ -36,280 +36,9 @@ import {
 } from './selectors.js';
 import { createEvidenceRecorder, EvidenceEventType } from './evidence.js';
 import { createEffectRunner } from './effects.js';
-
-// ── Deep-freeze utility (fail-safe — frozen objects pass through) ────
-
-function _deepFreeze(obj) {
-  if (obj == null || typeof obj !== 'object') return obj;
-  if (Object.isFrozen(obj)) return obj;
-  Object.freeze(obj);
-  for (const key of Object.keys(obj)) {
-    _deepFreeze(obj[key]);
-  }
-  return obj;
-}
-
-function _uid() {
-  return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-}
-
-// ── Root reducer (pure — no side effects, no DOM, no network) ───────
-// Every case creates a new state object. Never mutates previous state.
-// Each case is owned by a specific state machine.
-
-function rootReducer(state, action) {
-  switch (action.type) {
-
-    // BootFSM owns this transition
-    // Precondition: payload.phase must be a valid BootPhase value
-    // Evidence: emitted by post-reducer effects
-    case AT.BOOT_PHASE_TRANSITION: {
-      const nextBoot = { ...state.boot, phase: action.payload.phase };
-      if (action.payload.error) {
-        nextBoot.error = action.payload.error;
-      }
-      if (action.payload.phase === BP.READY) {
-        nextBoot.readyAt = Date.now();
-      }
-      return { ...state, boot: nextBoot };
-    }
-
-    // Transport authority owns this transition
-    // Precondition: payload contains transport status fields
-    case AT.TRANSPORT_STATUS_CHANGE: {
-      const { status, detail } = action.payload;
-      return {
-        ...state,
-        transport: {
-          ...state.transport,
-          status: status || state.transport.status,
-          lastError: detail?.reason || detail?.message || state.transport.lastError,
-          handshakeId: detail?.handshake_id || state.transport.handshakeId,
-          wsConnected: status === 'authenticated' || status === 'projection_waiting' || status === 'ready',
-          updatedAt: Date.now(),
-          lastEvent: action.type,
-        },
-      };
-    }
-
-    // Projection pipeline owns this transition
-    // Precondition: payload must contain projection data + digest
-    case AT.PROJECTION_RECEIVED: {
-      return {
-        ...state,
-        projection: {
-          data: action.payload.data,
-          digest: action.payload.digest || '',
-          lastReceivedAt: action.payload.receivedAt || Date.now(),
-          stale: false,
-        },
-      };
-    }
-
-    // ProjectionFreshnessLoop owns this transition
-    // Effect: widgets may show stale badge
-    case AT.PROJECTION_STALE: {
-      return {
-        ...state,
-        projection: { ...state.projection, stale: true },
-      };
-    }
-
-    // Widget manager owns this transition
-    case AT.WIDGET_STATUS_CHANGE: {
-      return {
-        ...state,
-        widgets: {
-          ...state.widgets,
-          [action.payload.widgetId]: {
-            ...(state.widgets[action.payload.widgetId] || {}),
-            status: action.payload.status,
-            error: action.payload.error || null,
-            mountedAt: action.payload.mountedAt || null,
-          },
-        },
-      };
-    }
-
-    // IntentFSM owns these transitions
-    // Effect: if not ready, intentId is pushed to intentQueue via reducer
-    case AT.INTENT_QUEUED: {
-      return {
-        ...state,
-        intents: {
-          ...state.intents,
-          [action.payload.intentId]: {
-            status: IntentStatus.QUEUED,
-            name: action.payload.name || '',
-            params: action.payload.params || {},
-            dispatchedAt: Date.now(),
-            result: null,
-            resolvedAt: null,
-            error: null,
-          },
-        },
-        intentQueue: [...state.intentQueue, action.payload.intentId],
-      };
-    }
-
-    case AT.INTENT_DISPATCHED: {
-      const id = action.payload.intentId;
-      const existing = state.intents[id];
-      if (!existing) return state;
-      return {
-        ...state,
-        intents: {
-          ...state.intents,
-          [id]: { ...existing, status: IntentStatus.SENDING, dispatchedAt: Date.now() },
-        },
-      };
-    }
-
-    case AT.INTENT_ACKNOWLEDGED: {
-      const id = action.payload.intentId;
-      const existing = state.intents[id];
-      if (!existing) return state;
-      return {
-        ...state,
-        intents: {
-          ...state.intents,
-          [id]: { ...existing, status: IntentStatus.ACKNOWLEDGED },
-        },
-      };
-    }
-
-    // IntentFSM terminal transition
-    // Precondition: intent must exist in state.intents
-    // Evidence: emitted by post-effect
-    case AT.INTENT_RESULT: {
-      const id = action.payload.intentId;
-      const existing = state.intents[id];
-      if (!existing) return state;
-      return {
-        ...state,
-        intents: {
-          ...state.intents,
-          [id]: {
-            ...existing,
-            status: action.payload.status,
-            result: action.payload.result || null,
-            error: action.payload.error || null,
-            resolvedAt: action.payload.resolvedAt || Date.now(),
-          },
-        },
-        intentQueue: state.intentQueue.filter((qid) => qid !== id),
-      };
-    }
-
-    case AT.INTENT_CLEAR: {
-      const id = action.payload.intentId;
-      const nextIntents = { ...state.intents };
-      delete nextIntents[id];
-      return {
-        ...state,
-        intents: nextIntents,
-        intentQueue: state.intentQueue.filter((qid) => qid !== id),
-      };
-    }
-
-    // ModeFSM owns this transition
-    // Effect: rebuild widget panel
-    case AT.MODE_CHANGE: {
-      return { ...state, mode: action.payload.mode };
-    }
-
-    // Notification domain
-    case AT.NOTIFICATION_ADD: {
-      return {
-        ...state,
-        notifications: [
-          ...state.notifications,
-          { id: action.payload.id || _uid(), text: action.payload.text || '', at: Date.now() },
-        ],
-      };
-    }
-
-    // NotificationDrainLoop owns this transition
-    case AT.NOTIFICATION_DRAIN: {
-      return { ...state, notifications: [] };
-    }
-
-    case AT.NOTIFICATION_LOCK: {
-      return { ...state, notificationsLocked: true };
-    }
-
-    case AT.NOTIFICATION_UNLOCK: {
-      return { ...state, notificationsLocked: false };
-    }
-
-    // LoopSupervisor owns these transitions
-    // Evidence: loop lifecycle changes emitted by loop helpers
-    case AT.LOOP_STARTED: {
-      return {
-        ...state,
-        loops: {
-          ...state.loops,
-          [action.payload.loopId]: { status: 'running', startedAt: Date.now() },
-        },
-      };
-    }
-    case AT.LOOP_CANCELLED: {
-      return {
-        ...state,
-        loops: {
-          ...state.loops,
-          [action.payload.loopId]: { status: 'cancelled', cancelledAt: Date.now() },
-        },
-      };
-    }
-
-    // BroadcastChannel detection — NEVER transmits tokens
-    case AT.MULTI_TAB_SECONDARY_DETECTED: {
-      return {
-        ...state,
-        multiTab: { ...state.multiTab, isSecondary: true },
-      };
-    }
-
-    case AT.DEGRADATION_SET: {
-      const reason = typeof action.payload === 'string'
-        ? action.payload
-        : action.payload?.reason || action.payload?.message || '';
-      return {
-        ...state,
-        degraded: true,
-        degradationReasons: [...state.degradationReasons, reason],
-      };
-    }
-
-    case AT.DEGRADATION_CLEARED: {
-      return { ...state, degraded: false, degradationReasons: [] };
-    }
-
-    case AT.PREFERENCE_CHANGE: {
-      const { animationEnabled, soundEnabled } = action.payload;
-      return {
-        ...state,
-        ...(animationEnabled !== undefined ? { animationEnabled } : {}),
-        ...(soundEnabled !== undefined ? { soundEnabled } : {}),
-      };
-    }
-
-    case AT.EVIDENCE_FLUSH:
-      return state;
-
-    case AT.RESET: {
-      return _freshState();
-    }
-
-    default:
-      return state;
-  }
-}
-
-function _freshState() {
-  return JSON.parse(JSON.stringify(INITIAL_STATE));
-}
+import { createLoopSupervisor, startFreshnessLoop, startIntentFlushLoop, startNotificationDrainLoop, startEvidenceFlushLoop } from './loops.js';
+import { setupBroadcastChannel } from './multitab.js';
+import { createNotificationBridge } from './notifBridge.js';
 
 // ── Boot FSM factory ─────────────────────────────────────────────────
 // Owned by: BootFSM. Precondition: static shell loaded.
@@ -504,141 +233,6 @@ function _createModeFSM(dispatch, evidence) {
   });
 }
 
-// ── Loop supervisor ──────────────────────────────────────────────────
-// Owned by: LoopSupervisor. Manages loop lifecycle via AbortController.
-// Evidence: LOOP_STARTED / LOOP_CANCELLED dispatched on lifecycle changes.
-
-function _createLoopSupervisor(dispatch) {
-  const controllers = {};
-  const intervals = {};
-
-  function startLoop(loopId, fn, intervalMs) {
-    if (controllers[loopId]) return;
-    const controller = new AbortController();
-    controllers[loopId] = controller;
-    intervals[loopId] = setInterval(() => {
-      if (controller.signal.aborted) return;
-      try { fn(); } catch (_) { /* swallow */ }
-    }, intervalMs);
-    dispatch({ type: AT.LOOP_STARTED, payload: { loopId } });
-  }
-
-  function cancelLoop(loopId) {
-    const controller = controllers[loopId];
-    if (controller) {
-      controller.abort();
-      delete controllers[loopId];
-    }
-    const intervalId = intervals[loopId];
-    if (intervalId != null) {
-      clearInterval(intervalId);
-      delete intervals[loopId];
-    }
-    dispatch({ type: AT.LOOP_CANCELLED, payload: { loopId } });
-  }
-
-  function cancelAllLoops() {
-    for (const loopId of Object.keys(controllers)) {
-      cancelLoop(loopId);
-    }
-  }
-
-  function isLoopRunning(loopId) {
-    return controllers[loopId] != null && !controllers[loopId].signal.aborted;
-  }
-
-  return Object.freeze({ startLoop, cancelLoop, cancelAllLoops, isLoopRunning });
-}
-
-// ── Loop helpers ─────────────────────────────────────────────────────
-
-function _startFreshnessLoop(getState, dispatch, loopSupervisor) {
-  loopSupervisor.startLoop(
-    LoopType.PROJECTION_FRESHNESS,
-    () => {
-      const st = getState();
-      const lastReceived = st.projection.lastReceivedAt;
-      if (lastReceived && Date.now() - lastReceived > 30000) {
-        dispatch(projectionStale());
-      }
-    },
-    15000,
-  );
-}
-
-function _startIntentFlushLoop(getState, dispatch, loopSupervisor, intentSendFn) {
-  loopSupervisor.startLoop(
-    'intentFlush',
-    () => {
-      const st = getState();
-      if (!isBootReady(st) || !isTransportConnected(st)) return;
-      if (st.intentQueue.length === 0) return;
-
-      for (const intentId of st.intentQueue) {
-        const intent = st.intents[intentId];
-        if (intent && intent.status === IntentStatus.QUEUED && intentSendFn) {
-          intentSendFn(intentId, intent);
-        }
-      }
-    },
-    1000,
-  );
-}
-
-function _startNotificationDrainLoop(getState, dispatch, loopSupervisor) {
-  loopSupervisor.startLoop(
-    LoopType.NOTIFICATION_DRAIN,
-    () => {
-      const st = getState();
-      if (st.notificationsLocked) return;
-      if (st.notifications.length === 0) return;
-      dispatch({ type: AT.NOTIFICATION_DRAIN });
-    },
-    2000,
-  );
-}
-
-function _startEvidenceFlushLoop(getState, evidence, loopSupervisor) {
-  loopSupervisor.startLoop(
-    LoopType.EVIDENCE_FLUSH,
-    () => {
-      const st = getState();
-      evidence.record(EvidenceEventType.KERNEL_SNAPSHOT, buildStateSummary(st));
-    },
-    30000,
-  );
-}
-
-// ── BroadcastChannel setup ────────────────────────────────────────────
-// Multi-tab detection. NEVER transmits tokens, secrets, or handshake IDs.
-// Only transmits { type: 'cockpit_present', timestamp }.
-
-function _setupBroadcastChannel(dispatch) {
-  let channel = null;
-
-  try {
-    if (typeof BroadcastChannel !== 'undefined') {
-      channel = new BroadcastChannel('rig-relay-cockpit');
-      channel.onmessage = () => {
-        dispatch({ type: AT.MULTI_TAB_SECONDARY_DETECTED });
-      };
-      channel.postMessage({ type: 'cockpit_present', timestamp: Date.now() });
-    }
-  } catch (_) {
-    // BroadcastChannel unavailable.
-  }
-
-  return {
-    channel,
-    close() {
-      if (channel) {
-        try { channel.close(); } catch (_) { /* ignore */ }
-        channel = null;
-      }
-    },
-  };
-}
-
 // ── Post-reducer effects registration ────────────────────────────────
 
 function _registerEffects(effectRunner, getState, dispatch, loopSupervisor) {
@@ -661,7 +255,7 @@ function _registerEffects(effectRunner, getState, dispatch, loopSupervisor) {
   // On TRANSPORT_STATUS_CHANGE: manage freshness loop
   effectRunner.register(AT.TRANSPORT_STATUS_CHANGE, (state) => {
     if (isTransportConnected(state)) {
-      _startFreshnessLoop(getState, dispatch, loopSupervisor);
+      startFreshnessLoop(getState, dispatch, loopSupervisor);
     } else {
       loopSupervisor.cancelLoop(LoopType.PROJECTION_FRESHNESS);
     }
@@ -678,6 +272,7 @@ export function createRuntime(config) {
   let _isDispatching = false;
   const _pendingActions = [];
   let _intentSendFn = null;
+  var _typedSubscribers = Object.create(null);
 
   // ── Evidence recorder (from evidence.js — pywebview + HTTP + ring buffer) ─
   const evidence = createEvidenceRecorder({
@@ -713,7 +308,7 @@ export function createRuntime(config) {
   );
 
   // ── Loop supervisor ──────────────────────────────────────────────────
-  const loopSupervisor = _createLoopSupervisor(
+  const loopSupervisor = createLoopSupervisor(
     (action) => { if (_dispatch) _dispatch(action); },
   );
 
@@ -815,13 +410,6 @@ export function createRuntime(config) {
     }
   }
 
-  // ── Subscribe ────────────────────────────────────────────────────────
-  function subscribe(listener) {
-    if (typeof listener !== 'function') return () => {};
-    _subscribers.add(listener);
-    return () => { _subscribers.delete(listener); };
-  }
-
   // ── Get frozen state copy ────────────────────────────────────────────
   function getState() {
     return _deepFreeze({ ..._state });
@@ -838,16 +426,16 @@ export function createRuntime(config) {
     });
 
     // BroadcastChannel for multi-tab detection
-    _bc = _setupBroadcastChannel(_dispatch);
+    _bc = setupBroadcastChannel(_dispatch);
 
     // Transition boot FSM to config_loading
     bootFSM.transition('boot:config_loading', {});
 
     // Start all loop supervisors
-    _startFreshnessLoop(() => _state, _dispatch, loopSupervisor);
-    _startIntentFlushLoop(() => _state, _dispatch, loopSupervisor, _intentSendFn);
-    _startNotificationDrainLoop(() => _state, _dispatch, loopSupervisor);
-    _startEvidenceFlushLoop(() => _state, evidence, loopSupervisor);
+    startFreshnessLoop(() => _state, _dispatch, loopSupervisor);
+    startIntentFlushLoop(() => _state, _dispatch, loopSupervisor, _intentSendFn);
+    startNotificationDrainLoop(() => _state, _dispatch, loopSupervisor);
+    startEvidenceFlushLoop(() => _state, evidence, loopSupervisor);
 
     return runtime;
   }
@@ -862,97 +450,16 @@ export function createRuntime(config) {
     loopSupervisor.cancelAllLoops();
     _bc.close();
     effectRunner.clear();
+    notifBridge.destroy();
     _subscribers.clear();
     _pendingActions.length = 0;
   }
 
-  // ── Compatibility: notification system bridge ────────────────────────
-  // Provides the API expected by notifications.js setup().
-  // Uses the kernel's own FSM factory for machine registration.
-
-  const _compatMachines = Object.create(null);
-  const _readyCallbacks = [];
-  const _notReadyCallbacks = [];
-
-  function registerMachine(id, machineConfig) {
-    if (_compatMachines[id]) return _compatMachines[id];
-    var sm = createStateMachine({
-      id,
-      initial: machineConfig.initialState,
-      states: Object.fromEntries(
-        (machineConfig.states || []).map(function (s) { return [s, {}]; })
-      ),
-      transitions: Object.entries(machineConfig.transitions || {}).flatMap(
-        function ([from, eventMap]) {
-          return Object.entries(eventMap).map(function ([event, to]) {
-            return { from, to, event };
-          });
-        }
-      ),
-    });
-    if (typeof machineConfig.onTransition === 'function') {
-      sm.subscribe(function (to) {
-        machineConfig.onTransition({ nextState: to });
-      });
-    }
-    _compatMachines[id] = sm;
-    return sm;
-  }
-
-  function onReady(fn) {
-    if (typeof fn !== 'function') return;
-    _readyCallbacks.push(fn);
-    if (isBootReady(_state)) fn();
-  }
-
-  function onNotReady(fn) {
-    if (typeof fn !== 'function') return;
-    _notReadyCallbacks.push(fn);
-    if (!isBootReady(_state) && _state.boot.phase !== 'static_shell_loaded') fn();
-  }
-
-  // Polymorphic subscribe: supports both generic and action-type filtering.
-  // subscribe(fn) → called on every dispatch with (newState, oldState, action)
-  // subscribe(actionType, fn) → called only for matching type with (action)
-  const _baseSubscribe = subscribe;
-  const _typedSubscribers = Object.create(null);
-  subscribe = function subscribeCompat() {
-    var listener, actionType;
-    if (arguments.length === 2) {
-      actionType = arguments[0];
-      listener = arguments[1];
-    } else {
-      listener = arguments[0];
-    }
-    if (typeof listener !== 'function') return function () {};
-
-    if (actionType) {
-      if (!_typedSubscribers[actionType]) _typedSubscribers[actionType] = new Set();
-      _typedSubscribers[actionType].add(listener);
-      return function () {
-        if (_typedSubscribers[actionType]) _typedSubscribers[actionType].delete(listener);
-      };
-    }
-
-    _subscribers.add(listener);
-    return function () { _subscribers.delete(listener); };
-  };
-
-  // Fire ready/not-ready callbacks after each dispatch
-  var _wasReady = false;
-  _subscribers.add(function () {
-    var nowReady = isBootReady(_state);
-    if (nowReady && !_wasReady) {
-      _wasReady = true;
-      for (var i = 0; i < _readyCallbacks.length; i++) {
-        _readyCallbacks[i]();
-      }
-    } else if (!nowReady && _wasReady) {
-      _wasReady = false;
-      for (var j = 0; j < _notReadyCallbacks.length; j++) {
-        _notReadyCallbacks[j]();
-      }
-    }
+  // ── Notification system bridge ───────────────────────────────────────
+  const notifBridge = createNotificationBridge({
+    getState: () => _state,
+    get subscribers() { return _subscribers; },
+    get typedSubscribers() { return _typedSubscribers; },
   });
 
   // ── Runtime API ──────────────────────────────────────────────────────
@@ -960,10 +467,10 @@ export function createRuntime(config) {
     init,
     dispatch: _dispatch,
     getState,
-    subscribe,
-    registerMachine,
-    onReady,
-    onNotReady,
+    subscribe: notifBridge.subscribe,
+    registerMachine: notifBridge.registerMachine,
+    onReady: notifBridge.onReady,
+    onNotReady: notifBridge.onNotReady,
     bootFSM,
     intentFSM,
     modeFSM,

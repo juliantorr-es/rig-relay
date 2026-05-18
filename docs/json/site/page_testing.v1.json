@@ -1,0 +1,75 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "testing",
+  "title": "Testing Status",
+  "route": "/testing/index.html",
+  "layout": "dashboard",
+  "source_artifact_paths": [
+    "docs/json/testing/test_inventory.v1.json",
+    "docs/json/testing/test_classification.v1.jsonl"
+  ],
+  "generated_from_schema_versions": [
+    "rig.relay.test_inventory.v1",
+    "rig.relay.test_classification.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [
+    {
+      "kind": "hero_status",
+      "title": "Test Suite Status",
+      "status_label": "Operational",
+      "status_class": "info",
+      "summary": "Test suite is operational with 17 classification types. Full parallel suite runs via uv run pytest. Some marker subsets have deferred coverage gaps.",
+      "blocker_count": 0,
+      "ready_count": 17,
+      "failed_count": 0
+    },
+    {
+      "kind": "table",
+      "caption": "Test Classifications",
+      "headers": ["Marker", "Classification", "Definition", "Run Command"],
+      "rows": [
+        ["smoke", "Fast Confidence", "Fastest confidence checks; must pass before demo/share", "uv run pytest -m smoke"],
+        ["contract", "Domain Contract", "Domain contract and unit tests", "uv run pytest -m contract"],
+        ["integration", "Integration", "Crosses multiple components, processes, or filesystems", "uv run pytest -m integration"],
+        ["e2e", "End-to-End", "Broad-stack or full flow tests", "uv run pytest -m e2e"],
+        ["adversarial", "Adversarial", "Adversarial or injection-focused coverage", "uv run pytest -m adversarial"],
+        ["packaging", "Packaging", "Packaged app, installer, or bundle checks", "uv run pytest -m packaging"],
+        ["slow", "Slow", "Intentionally slow tests", "uv run pytest -m slow"],
+        ["legacy", "Legacy", "Retained but not part of default suite", "uv run pytest -m legacy"],
+        ["flaky", "Flaky", "Known nondeterministic; must not run in default suite", "uv run pytest -m flaky"],
+        ["network", "Network", "Requires external network access", "uv run pytest -m network"],
+        ["provider", "Provider", "Requires external model, provider, or API", "uv run pytest -m provider"],
+        ["destructive", "Destructive", "Mutates worktrees, branches, or files beyond temp dirs", "uv run pytest -m destructive"],
+        ["migration", "Migration", "Test being relocated during test layout canonicalization", "uv run pytest -m migration"],
+        ["quarantine", "Quarantine", "Runs only in dedicated quarantine job", "uv run pytest -m quarantine"],
+        ["sabotage", "Sabotage", "Corruption or sabotage injection tests for runtime hardening", "uv run pytest -m sabotage"],
+        ["real_artifact", "Real Artifact", "Tests using real file artifacts (no mocking)", "uv run pytest -m real_artifact"],
+        ["substrate", "Substrate", "Storage, cache, or infrastructure substrate coverage", "uv run pytest -m substrate"]
+      ]
+    },
+    {
+      "kind": "table",
+      "caption": "Known Test Seams",
+      "headers": ["Seam", "Description", "Status"],
+      "rows": [
+        ["adversarial_coverage", "Adversarial and injection test coverage incomplete", "deferred"],
+        ["provider_integration", "Provider integration tests require API keys", "deferred — needs CI secrets"],
+        ["packaging_ci", "Packaged app tests not yet in CI pipeline", "deferred"],
+        ["quarantine_automation", "Quarantined test runner job pending", "deferred"],
+        ["migration_cleanup", "Stale migration-marker tests need reclassification", "deferred"]
+      ]
+    },
+    {
+      "kind": "artifact_nav",
+      "heading": "Testing Artifacts",
+      "links": [
+        {"label": "Test Inventory", "href": "docs/json/testing/test_inventory.v1.json", "description": "Full test suite inventory"},
+        {"label": "Test Classification", "href": "docs/json/testing/test_classification.v1.jsonl", "description": "Per-test classification records"},
+        {"label": "Schema: Test Inventory", "href": "docs/schemas/rig.relay.test_inventory.v1.schema.json", "description": "Schema for test inventory"},
+        {"label": "Schema: Test Classification", "href": "docs/schemas/rig.relay.test_classification.v1.schema.json", "description": "Schema for test classification"}
+      ]
+    }
+  ],
+  "generated_at": "2026-05-18T00:00:00Z"
+}

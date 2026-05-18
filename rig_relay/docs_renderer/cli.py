@@ -16,14 +16,19 @@ def _emit_render_trace(event_type: str, *, payload: dict | None = None) -> None:
         pass
 
 
+import json
 from pathlib import Path
 import subprocess
+from typing import cast
 
 from rig_relay.docs_renderer.archive import render_collection_page, render_index
 from rig_relay.docs_renderer.css import CSS
+from rig_relay.docs_renderer.guard import check_input_manifest
 from rig_relay.docs_renderer.homepage import render_homepage
 from rig_relay.docs_renderer.loader import load_json, validate_page
 from rig_relay.docs_renderer.manifest import load_site_manifest
+from rig_relay.docs_renderer.metadata import extract_site_meta
+from rig_relay.docs_renderer.models import SiteMeta
 from rig_relay.docs_renderer.pages import (
     render_code_schema,
     render_document_page,
@@ -38,7 +43,33 @@ from rig_relay.docs_renderer.paths import (
     NOJEKYLL,
     PAGES_OUT,
     RENDER_MANIFEST,
+    REPO_ROOT,
     SEARCH_INDEX,
+)
+from rig_relay.docs_renderer.release_gate import (
+    load_release_artifacts,
+    render_golden_path_page,
+    render_rc_verdict_page,
+    render_release_gate_page,
+)
+from rig_relay.docs_renderer.safety import SafetyReport, is_public_safe, scan_content
+from rig_relay.docs_renderer.security import (
+    load_security_artifacts,
+    render_schemas_page,
+    render_security_hygiene_page,
+    render_security_policy_page,
+)
+from rig_relay.docs_renderer.telemetry_bridge import (
+    load_telemetry_bridge_artifacts,
+    render_bridge_lifecycle_page,
+    render_frontend_maturity_page,
+    render_telemetry_policy_page,
+)
+from rig_relay.docs_renderer.testing import (
+    load_test_artifacts,
+    render_known_seams_page,
+    render_test_classifications_page,
+    render_test_inventory_page,
 )
 from rig_relay.docs_renderer.writer import render_manifest, render_search_index
 
@@ -135,6 +166,156 @@ def _process_json_files(
     return pages, errors
 
 
+def _render_domain_pages(site_meta: SiteMeta) -> tuple[list[dict], SafetyReport]:
+    manifest = load_site_manifest()
+    new_pages: list[dict] = []
+    aggregated = SafetyReport(passed=True)
+
+    def _write_and_check(html: str, page_name: str, title: str, summary: str) -> dict:
+        (PAGES_OUT / f"{page_name}.html").write_text(html, encoding="utf-8")
+        sr = scan_content(html, f"pages/{page_name}.html")
+        if not is_public_safe(sr):
+            print(
+                f"  ⚠ Safety warning in {page_name}.html: "
+                f"{len(sr.blocked)} potential leaks"
+            )
+        aggregated.blocked.extend(sr.blocked)
+        aggregated.warnings.extend(sr.warnings)
+        aggregated.total_matches += sr.total_matches
+        if not sr.passed:
+            aggregated.passed = False
+        return {
+            "document_id": page_name,
+            "title": title,
+            "path": f"pages/{page_name}.html",
+            "summary": summary,
+            "tags": [],
+        }
+
+    release = load_release_artifacts()
+    new_pages.append(
+        _write_and_check(
+            render_release_gate_page(
+                manifest, cast(dict, release.get("gate")), site_meta
+            ),
+            "release-candidate",
+            "Release Gate Readiness",
+            "Phase-by-phase release gate readiness assessment with blocker and seam tracking.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_rc_verdict_page(cast(dict, release.get("verdict")), site_meta),
+            "rc-verdict",
+            "RC Candidate Verdict",
+            "Current release candidate verdict with promote blockers, phase status, and evidence references.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_golden_path_page(cast(dict, release.get("golden_path")), site_meta),
+            "golden-path",
+            "Golden Path — Dogfood Operational Readiness",
+            "Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.",
+        )
+    )
+
+    test_artifacts = load_test_artifacts()
+    new_pages.append(
+        _write_and_check(
+            render_test_inventory_page(test_artifacts.get("inventory"), site_meta),
+            "testing",
+            "Test Inventory",
+            "Structured evidence of test coverage across all stress surfaces.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_test_classifications_page(
+                test_artifacts.get("classifications"), site_meta
+            ),
+            "test-classifications",
+            "Test Classifications",
+            "Taxonomy of test classification markers used across the project.",
+        )
+    )
+    seams = None
+    seams_path = REPO_ROOT / "docs" / "json" / "testing" / "known_test_seams.v1.jsonl"
+    if seams_path.is_file():
+        try:
+            seams = [
+                json.loads(line)
+                for line in seams_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        except (json.JSONDecodeError, OSError):
+            pass
+    new_pages.append(
+        _write_and_check(
+            render_known_seams_page(seams, site_meta),
+            "known-seams",
+            "Known Test Seams",
+            "Known gaps in test coverage that have been intentionally deferred.",
+        )
+    )
+
+    telemetry_artifacts = load_telemetry_bridge_artifacts()
+    new_pages.append(
+        _write_and_check(
+            render_telemetry_policy_page(telemetry_artifacts, site_meta),
+            "telemetry",
+            "Telemetry & Privacy Policy",
+            "Telemetry consent enforcement, tracing policy, degradation behavior, and redaction rules.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_bridge_lifecycle_page(
+                telemetry_artifacts.get("projection_contract"), site_meta
+            ),
+            "bridge-lifecycle",
+            "Desktop Bridge Lifecycle",
+            "Desktop bridge lifecycle projection contract and state machine.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_frontend_maturity_page(telemetry_artifacts, site_meta),
+            "frontend",
+            "Frontend Maturity Evidence",
+            "Frontend maturity evidence from desktop golden path exercises.",
+        )
+    )
+
+    security_artifacts = load_security_artifacts()
+    new_pages.append(
+        _write_and_check(
+            render_security_policy_page(security_artifacts.get("policy"), site_meta),
+            "security",
+            "Security Policy",
+            "Security policy, posture, reporting procedures, and code schema trust rules.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_security_hygiene_page(security_artifacts.get("hygiene"), site_meta),
+            "security-hygiene",
+            "Repository Security Hygiene",
+            "Security repository hygiene checks, release gate alignment, and tally.",
+        )
+    )
+    new_pages.append(
+        _write_and_check(
+            render_schemas_page(site_meta),
+            "schemas",
+            "Schema Index",
+            "Index of all JSON schemas in the project with validation status.",
+        )
+    )
+
+    return new_pages, aggregated
+
+
 def main() -> int:
     _emit_render_trace("docs.render.started", payload={"phase": "start"})
     git_sha = _git_sha()
@@ -150,6 +331,17 @@ def main() -> int:
         return 1
 
     manifest = load_site_manifest()
+
+    # Check for Markdown evidence leaks
+    md_report = check_input_manifest(load_site_manifest())
+    if not md_report.passed:
+        print(
+            f"  ⚠ Markdown leak guard: "
+            f"{len(md_report.blocked_paths)} forbidden .md evidence inputs detected"
+        )
+        for p in md_report.blocked_paths:
+            print(f"    - {p}")
+
     pages, errors = _process_json_files(json_files, manifest)
 
     if errors:
@@ -158,6 +350,10 @@ def main() -> int:
             print(f"  - {e}")
         _emit_render_trace("docs.render.failed", payload={"status": "error"})
         return 1
+
+    site_meta = extract_site_meta(manifest)
+    domain_pages, safety_report = _render_domain_pages(site_meta)
+    pages.extend(domain_pages)
 
     (DOCS_OUT / "index.html").write_text(render_homepage(manifest), encoding="utf-8")
     (ASSETS_OUT / "site.css").write_text(CSS, encoding="utf-8")
@@ -193,6 +389,14 @@ def main() -> int:
         render_manifest(pages, collection_ids, git_sha), encoding="utf-8"
     )
     (NOJEKYLL).write_text("")
+
+    if not is_public_safe(safety_report):
+        print(
+            f"  ⚠ Safety: {len(safety_report.blocked)} potential leaks, "
+            f"{len(safety_report.warnings)} warnings"
+        )
+    else:
+        print("  ✓ Safety: public safe — no token/secret leaks detected")
 
     print(f"Rendered {len(pages)} pages to {DOCS_OUT}/")
     print(f"  index: {DOCS_OUT}/index.html")

@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.site.input_manifest.v1.schema.json",
+  "title": "Rig Site Input Manifest v1",
+  "description": "Schema for the input manifest that catalogues renderable artifacts for the Rig Relay static site renderer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "generated_at",
+    "head_sha",
+    "branch",
+    "inputs"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.site.input_manifest.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "head_sha": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_path",
+          "source_type",
+          "page_id",
+          "renderer_kind",
+          "public_safe",
+          "redaction_required"
+        ],
+        "properties": {
+          "source_path": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "json",
+              "jsonl",
+              "csv",
+              "schema",
+              "mermaid",
+              "static_asset"
+            ]
+          },
+          "page_id": {
+            "type": "string"
+          },
+          "renderer_kind": {
+            "type": "string",
+            "enum": [
+              "release_gate",
+              "rc_verdict",
+              "golden_path",
+              "test_inventory",
+              "integration_manifest",
+              "mcp_manifest",
+              "telemetry_policy",
+              "frontend_maturity",
+              "security_hygiene",
+              "generic_page",
+              "code_schema",
+              "threat_model",
+              "readme"
+            ]
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "redaction_required": {
+            "type": "boolean"
+          },
+          "schema_path": {
+            "type": "string"
+          },
+          "freshness_policy": {
+            "type": "string",
+            "enum": ["always", "if_schema_valid", "optional"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -62,6 +62,12 @@ import ssl
 from typing import Any
 
 from rig_relay.core.logger import logger
+from rig_relay.desktop.bridge_protocol import (
+    BridgeMessage,
+    BridgeMessageDirection,
+    BridgeMessageKind,
+    ProtocolTracker,
+)
 from rig_relay.desktop.correlation import (
     DesktopCorrelation,
     hash_dict_payload,
@@ -253,6 +259,8 @@ class ProjectionWebSocketServer:
         self._missing_origin_allowed = missing_origin_allowed
         self._allow_null_origin = allow_null_origin
         self._pywebview_loopback_mode = pywebview_loopback_mode
+        self._protocol_trackers: dict[str, ProtocolTracker] = {}
+        self._ws_handshake_id: dict[int, str] = {}
         self._first_projection_sent = False
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
@@ -357,6 +365,101 @@ class ProjectionWebSocketServer:
             return "projection"
         return "unknown"
 
+    def _get_tracker(self, websocket: Any) -> ProtocolTracker | None:
+        ws_id = id(websocket)
+        handshake_id = self._ws_handshake_id.get(ws_id)
+        if handshake_id:
+            return self._protocol_trackers.get(handshake_id)
+        return None
+
+    def _wrap_envelope(
+        self,
+        kind: str,
+        payload: dict,
+        tracker: ProtocolTracker,
+        requires_ack: bool = False,
+        ack_for: str = "",
+        idempotency_key: str = "",
+        projection_sequence: int | None = None,
+        safe_summary: dict | None = None,
+    ) -> dict:
+        msg = BridgeMessage(
+            message_id=f"msg_{secrets.token_hex(12)}",
+            handshake_id=tracker.handshake_id,
+            direction=BridgeMessageDirection.BACKEND_TO_FRONTEND,
+            kind=BridgeMessageKind(kind),
+            sequence=tracker.next_outbound_seq(),
+            requires_ack=requires_ack,
+            ack_for=ack_for,
+            idempotency_key=idempotency_key,
+            projection_sequence=projection_sequence,
+            payload=payload,
+            safe_summary=safe_summary or {},
+        )
+        tracker.record_kind(kind)
+        return msg.model_dump()
+
+    @staticmethod
+    def _is_v1_envelope(message: dict[str, Any]) -> bool:
+        return message.get("schema_version") == "rig.relay.bridge_message.v1" and bool(
+            message.get("message_id")
+        )
+
+    async def _handle_envelope_message(self, websocket: Any, envelope: dict) -> None:
+        try:
+            msg = BridgeMessage.model_validate(envelope)
+        except Exception:
+            await _send_json(
+                websocket, {"type": "protocol_error", "message": "Invalid envelope"}
+            )
+            return
+
+        tracker = self._protocol_trackers.get(msg.handshake_id)
+        if not tracker:
+            tracker = ProtocolTracker(msg.handshake_id)
+            self._protocol_trackers[msg.handshake_id] = tracker
+            self._ws_handshake_id[id(websocket)] = msg.handshake_id
+
+        if tracker.is_duplicate_message(msg.message_id):
+            return
+
+        tracker.check_inbound_seq(msg.sequence)
+        tracker.record_kind(msg.kind.value)
+
+        match msg.kind:
+            case BridgeMessageKind.HEARTBEAT:
+                tracker.record_heartbeat()
+                ack = self._wrap_envelope(
+                    "heartbeat", {}, tracker, ack_for=msg.message_id
+                )
+                await _send_json(websocket, ack)
+
+            case BridgeMessageKind.INTENT_REQUEST:
+                idem_key = msg.idempotency_key or msg.payload.get("intent_id", "")
+                if tracker.is_duplicate_idempotency(idem_key):
+                    result = self._wrap_envelope(
+                        "intent_result",
+                        {"status": "duplicate", "message": "Intent already processed"},
+                        tracker,
+                        ack_for=msg.message_id,
+                    )
+                    await _send_json(websocket, result)
+                    return
+
+                ack = self._wrap_envelope(
+                    "intent_ack", {}, tracker, ack_for=msg.message_id
+                )
+                tracker.record_ack_sent(idem_key)
+                await _send_json(websocket, ack)
+
+                await self._handle_desktop_intent(websocket, msg.payload, None, tracker)
+
+            case BridgeMessageKind.LIFECYCLE_EVENT:
+                pass
+
+            case _:
+                pass
+
     @property
     def port(self) -> int:
         return self._port
@@ -421,7 +524,7 @@ class ProjectionWebSocketServer:
                     if self._pywebview_loopback_mode:
                         self._emit_golden_event(
                             "desktop.websocket.pywebview_origin_exception_allowed",
-                            payload={"origin": "(missing)"}
+                            payload={"origin": "(missing)"},
                         )
                     return None
                 return await self._reject_origin(
@@ -434,7 +537,7 @@ class ProjectionWebSocketServer:
                     if self._pywebview_loopback_mode:
                         self._emit_golden_event(
                             "desktop.websocket.pywebview_origin_exception_allowed",
-                            payload={"origin": "null"}
+                            payload={"origin": "null"},
                         )
                     return None
                 return await self._reject_origin(
@@ -632,6 +735,11 @@ class ProjectionWebSocketServer:
                         )
                     continue
 
+                # Check for v1 bridge protocol envelope
+                if self._is_v1_envelope(message):
+                    await self._handle_envelope_message(websocket, message)
+                    continue
+
                 # Validate message shape before dispatch
                 msg_type = message.get("type", "")
                 shape_errors = _validate_message_shape(msg_type, message)
@@ -736,6 +844,10 @@ class ProjectionWebSocketServer:
             timeout_task.cancel()
             if subscribe_task is not None:
                 subscribe_task.cancel()
+            ws_id = id(websocket)
+            handshake_id = self._ws_handshake_id.pop(ws_id, None)
+            if handshake_id:
+                self._protocol_trackers.pop(handshake_id, None)
             async with self._lock:
                 self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
@@ -915,6 +1027,12 @@ class ProjectionWebSocketServer:
         msg_type = message.get("type")
 
         match msg_type:
+            case "heartbeat":
+                tracker = self._get_tracker(websocket)
+                if tracker:
+                    tracker.record_heartbeat()
+                await _send_json(websocket, {"type": "heartbeat_ack"})
+
             case "get_projection":
                 self._emit_golden_event("desktop.projection.build_started")
                 loop = asyncio.get_running_loop()
@@ -952,10 +1070,24 @@ class ProjectionWebSocketServer:
                         "size_bytes": len(json.dumps(projection)),
                     },
                 )
-                await _send_json(
-                    websocket,
-                    {"type": "projection", "data": projection, "seq": self._next_seq()},
-                )
+                tracker = self._get_tracker(websocket)
+                if tracker:
+                    envelope = self._wrap_envelope(
+                        "projection",
+                        {"data": projection, "digest": digest},
+                        tracker,
+                        projection_sequence=tracker._projection_seq + 1,
+                    )
+                    await _send_json(websocket, envelope)
+                else:
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "projection",
+                            "data": projection,
+                            "seq": self._next_seq(),
+                        },
+                    )
                 if not self._first_projection_sent:
                     self._first_projection_sent = True
                     self._emit_probe(
@@ -1049,7 +1181,10 @@ class ProjectionWebSocketServer:
 
             case "desktop_intent" | "desktop_intent_request":
                 subscribe_task = await self._handle_desktop_intent(
-                    websocket, message, subscribe_task
+                    websocket,
+                    message,
+                    subscribe_task,
+                    tracker=self._get_tracker(websocket),
                 )
 
             case _:
@@ -1153,35 +1288,43 @@ class ProjectionWebSocketServer:
         self,
         websocket: Any,
         message: dict[str, Any],
-        subscribe_task: asyncio.Task[None] | None,
+        subscribe_task: asyncio.Task[None] | None = None,
+        tracker: ProtocolTracker | None = None,
     ) -> asyncio.Task[None] | None:
         intent_msg = {k: v for k, v in message.items() if k != "type"}
         validation_errors = validate_intent_request(intent_msg)
         if validation_errors:
-            await _send_json(
-                websocket,
-                {
-                    "type": "desktop_intent_result",
-                    "data": {
-                        "schema_version": "rig.relay.desktop_intent_result.v1",
-                        "intent_id": intent_msg.get("intent_id", "unknown"),
-                        "created_at": __import__("datetime")
-                        .datetime.now(__import__("datetime").timezone.utc)
-                        .isoformat(),
-                        "intent_name": intent_msg.get("intent_name", "unknown"),
-                        "status": "refused",
-                        "dry_run": True,
-                        "result_kind": "validation_error",
-                        "summary": f"Intent request validation failed: {'; '.join(validation_errors)}",
-                        "output_refs": [],
-                        "projection_refresh_recommended": False,
-                        "authorization_required": False,
-                        "warnings": [],
-                        "error_code": "validation_failed",
+            result_data = {
+                "schema_version": "rig.relay.desktop_intent_result.v1",
+                "intent_id": intent_msg.get("intent_id", "unknown"),
+                "created_at": __import__("datetime")
+                .datetime.now(__import__("datetime").timezone.utc)
+                .isoformat(),
+                "intent_name": intent_msg.get("intent_name", "unknown"),
+                "status": "refused",
+                "dry_run": True,
+                "result_kind": "validation_error",
+                "summary": f"Intent request validation failed: {'; '.join(validation_errors)}",
+                "output_refs": [],
+                "projection_refresh_recommended": False,
+                "authorization_required": False,
+                "warnings": [],
+                "error_code": "validation_failed",
+            }
+            if tracker:
+                envelope = self._wrap_envelope(
+                    "intent_result", result_data, tracker, ack_for=tracker.handshake_id
+                )
+                await _send_json(websocket, envelope)
+            else:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "desktop_intent_result",
+                        "data": result_data,
+                        "seq": self._next_seq(),
                     },
-                    "seq": self._next_seq(),
-                },
-            )
+                )
         else:
             # Gate sensitive intent capabilities by service state
             from rig_relay.governance.service_state import get_capability_gate
@@ -1190,30 +1333,40 @@ class ProjectionWebSocketServer:
             intent_name = intent_msg.get("intent_name", "")
             allowed, reason = gate.is_allowed(intent_name)
             if not allowed:
-                await _send_json(
-                    websocket,
-                    {
-                        "type": "desktop_intent_result",
-                        "data": {
-                            "schema_version": "rig.relay.desktop_intent_result.v1",
-                            "intent_id": intent_msg.get("intent_id", "unknown"),
-                            "created_at": __import__("datetime")
-                            .datetime.now(__import__("datetime").timezone.utc)
-                            .isoformat(),
-                            "intent_name": intent_name,
-                            "status": "refused",
-                            "dry_run": True,
-                            "result_kind": "service_gated",
-                            "summary": f"Intent '{intent_name}' is gated: {reason}",
-                            "output_refs": [],
-                            "projection_refresh_recommended": False,
-                            "authorization_required": False,
-                            "warnings": [],
-                            "error_code": "service_gated",
+                gated_data = {
+                    "schema_version": "rig.relay.desktop_intent_result.v1",
+                    "intent_id": intent_msg.get("intent_id", "unknown"),
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                    "intent_name": intent_name,
+                    "status": "refused",
+                    "dry_run": True,
+                    "result_kind": "service_gated",
+                    "summary": f"Intent '{intent_name}' is gated: {reason}",
+                    "output_refs": [],
+                    "projection_refresh_recommended": False,
+                    "authorization_required": False,
+                    "warnings": [],
+                    "error_code": "service_gated",
+                }
+                if tracker:
+                    envelope = self._wrap_envelope(
+                        "intent_result",
+                        gated_data,
+                        tracker,
+                        ack_for=tracker.handshake_id,
+                    )
+                    await _send_json(websocket, envelope)
+                else:
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "desktop_intent_result",
+                            "data": gated_data,
+                            "seq": self._next_seq(),
                         },
-                        "seq": self._next_seq(),
-                    },
-                )
+                    )
                 return subscribe_task
 
             async def _progress_emitter(event_data: dict[str, Any]) -> None:
@@ -1224,14 +1377,20 @@ class ProjectionWebSocketServer:
                 chat_state_provider=self._chat_state_provider,
                 progress_emitter=_progress_emitter,
             )
-            await _send_json(
-                websocket,
-                {
-                    "type": "desktop_intent_result",
-                    "data": result,
-                    "seq": self._next_seq(),
-                },
-            )
+            if tracker:
+                envelope = self._wrap_envelope(
+                    "intent_result", result, tracker, ack_for=tracker.handshake_id
+                )
+                await _send_json(websocket, envelope)
+            else:
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "desktop_intent_result",
+                        "data": result,
+                        "seq": self._next_seq(),
+                    },
+                )
         return subscribe_task
 
     async def broadcast_chat_state_updated(self) -> None:
@@ -1308,13 +1467,31 @@ class ProjectionWebSocketServer:
                 last_digest = digest
                 projection["digest"] = digest
 
-                await _send_json(
-                    websocket,
-                    {"type": "projection", "data": projection, "seq": self._next_seq()},
-                )
+                tracker = self._get_tracker(websocket)
+                if tracker:
+                    envelope = self._wrap_envelope(
+                        "projection",
+                        {"data": projection, "digest": digest},
+                        tracker,
+                        projection_sequence=tracker._projection_seq + 1,
+                    )
+                    await _send_json(websocket, envelope)
+                else:
+                    await _send_json(
+                        websocket,
+                        {
+                            "type": "projection",
+                            "data": projection,
+                            "seq": self._next_seq(),
+                        },
+                    )
         except (asyncio.CancelledError, ConnectionError, BrokenPipeError):
             pass
         finally:
+            ws_id = id(websocket)
+            handshake_id = self._ws_handshake_id.pop(ws_id, None)
+            if handshake_id:
+                self._protocol_trackers.pop(handshake_id, None)
             async with self._lock:
                 if self._active_subscriptions > 0:
                     self._active_subscriptions -= 1

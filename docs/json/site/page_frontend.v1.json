@@ -1,0 +1,92 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "frontend",
+  "title": "Frontend Maturity",
+  "route": "/frontend/index.html",
+  "layout": "dashboard",
+  "source_artifact_paths": [
+    "docs/json/governance/telemetry-consent-enforcement.v1.json",
+    "docs/json/demo/desktop-golden-path.v1.json"
+  ],
+  "generated_from_schema_versions": [
+    "rig.relay.telemetry_consent.v1",
+    "rig.relay.desktop_projection.v1"
+  ],
+  "public_safety_status": "content_light",
+  "sections": [
+    {
+      "kind": "hero_status",
+      "title": "Frontend Maturity",
+      "status_label": "Alpha",
+      "status_class": "info",
+      "summary": "Desktop cockpit is in alpha with chat-first console, 4 layout modes, and 3 widget disclosure levels. WebSocket projection stream is live. Backend owns all policy transitions.",
+      "blocker_count": 0,
+      "ready_count": 3,
+      "failed_count": 0
+    },
+    {
+      "kind": "card_grid",
+      "title": "Runtime State Machines",
+      "cards": [
+        {
+          "title": "Boot Sequence",
+          "body_html": "Provider onboarding, consent check, auth resolution, WebSocket bind, window launch. Dry-run and server-only modes supported.",
+          "status": "operational",
+          "source_ref": "rig_relay/cli/desktop_cockpit.py"
+        },
+        {
+          "title": "Intent Handling",
+          "body_html": "User intents (worktree_list, review, provider_status, etc.) dispatch through backend intents module. Results stream to frontend via projection.",
+          "status": "operational",
+          "source_ref": "rig_relay/desktop/intents.py"
+        },
+        {
+          "title": "Layout Modes",
+          "body_html": "Operator, Review, System, and Technical layouts. Each mode renders a different widget grid configuration with adaptive sizing.",
+          "status": "operational",
+          "source_ref": "rig_relay/desktop/websocket_server.py"
+        },
+        {
+          "title": "Widget Disclosure",
+          "body_html": "Three disclosure levels: compact chips (summary), standard cards (detail), full-page expanded views. CSS transitions between levels.",
+          "status": "operational",
+          "source_ref": ""
+        }
+      ]
+    },
+    {
+      "kind": "timeline",
+      "heading": "Boot Sequence",
+      "entries": [
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "Provider Onboarding", "description": "Interactive provider selection and API key setup on first launch", "status": "complete"},
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "Consent Check", "description": "Telemetry and usage data consent gates evaluated", "status": "complete"},
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "Auth Resolution", "description": "OAuth and token store initialization", "status": "complete"},
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "WebSocket Bind", "description": "Localhost WebSocket server binds and begins streaming projections", "status": "complete"},
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "Window Launch", "description": "pywebview window launches with pre-built HTML frontend", "status": "complete"},
+        {"timestamp": "2026-05-18T00:00:00Z", "title": "Chat Ready", "description": "Chat-first console is interactive, ready for operator input", "status": "complete"}
+      ]
+    },
+    {
+      "kind": "definition_list",
+      "heading": "Frontend Architecture",
+      "items": [
+        {"term": "Render Engine", "definition": "pywebview with pre-built HTML/CSS/JS frontend. No Node.js toolchain — static assets are compiled at build time."},
+        {"term": "Projection Backend", "definition": "WebSocket server (localhost-only, token-gated) pushes state projections as JSON. Frontend subscribes and renders reactively."},
+        {"term": "Policy Ownership", "definition": "Frontend is a dumb renderer. Backend owns all policy transitions. Frontend displays projection fields as human labels; never infers or overrides policy."},
+        {"term": "Safety Surface", "definition": "Content-light projection stream. No raw file contents, secrets, or private code transmitted over WebSocket. SHA256 hashes for content-derived data."},
+        {"term": "Layout System", "definition": "Four layout modes with adaptive widget grids at three disclosure levels. CSS-only transitions between compact chips, standard cards, and full-page expanded views."}
+      ]
+    },
+    {
+      "kind": "artifact_nav",
+      "heading": "Frontend Artifacts",
+      "links": [
+        {"label": "Desktop Golden Path", "href": "docs/json/demo/desktop-golden-path.v1.json", "description": "Golden path exercise for desktop cockpit"},
+        {"label": "Telemetry Consent Enforcement", "href": "docs/json/governance/telemetry-consent-enforcement.v1.json", "description": "Consent gate enforcement summary"},
+        {"label": "Schema: Desktop Projection", "href": "docs/schemas/rig.relay.desktop_projection.v1.schema.json", "description": "Schema for desktop projection state"},
+        {"label": "Schema: Telemetry Consent", "href": "docs/schemas/rig.relay.telemetry_consent.v1.schema.json", "description": "Schema for telemetry consent"}
+      ]
+    }
+  ],
+  "generated_at": "2026-05-18T00:00:00Z"
+}

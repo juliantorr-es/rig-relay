@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.site.render_report.v1.schema.json",
+  "title": "Rig Site Render Report v1",
+  "description": "Schema for the render report produced after a static site renderer run.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "generated_at",
+    "head_sha",
+    "branch",
+    "render_duration_ms",
+    "pages_rendered",
+    "pages_failed",
+    "safety_passed",
+    "pages"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.site.render_report.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "head_sha": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "render_duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "pages_rendered": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "pages_failed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "safety_passed": {
+      "type": "boolean"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "page_id",
+          "title",
+          "route",
+          "status",
+          "source_artifact_paths",
+          "safety_notes"
+        ],
+        "properties": {
+          "page_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["rendered", "failed", "skipped_redacted", "skipped_internal"]
+          },
+          "source_artifact_paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "safety_notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { fetchRuntimeConfig } from './runtimeConfig.js';
 import { createDebugPanel, updateDebugPanel } from './debugPanel.js';
 import { createTransportStateAuthority } from '../transportState.js';
 import { ProjectionWebSocketClient, setWsClient, onProjectionReceived } from '../transport.js';
-import { renderStatusFromState } from '../status.js';
+import { renderStatusFromState, renderStalenessIndicator } from '../status.js';
 import { handleProjection, handleChatState, handleIntentResult,
          handleProgressEvent, handleProgressEvents } from '../projection.js';
 import { wireUI } from '../main.js';
@@ -19,6 +19,7 @@ import { startReactiveLoops, stopReactiveLoops } from '../reactiveLoops.js';
 import { isSystemNotificationsSupported, getSystemNotificationPermission } from '../systemNotifications.js';
 import { setNotificationRailOpen } from '../state.js';
 import { initDelight } from '../delight.js';
+import { createProtocolClient } from '../protocol/client.js';
 
 const LIFECYCLE = {
   BOOT_STARTED: 'frontend_boot_started',
@@ -59,6 +60,7 @@ async function boot() {
   const runtime = createRuntime({
     handshakeId: canonicalHandshakeId,
     onStateChange(_newState, _oldState, action) {
+      renderStalenessIndicator(!!_newState.projection?.stale);
       if (isDebug) {
         updateDebugPanel(debugPanel, {
           kernelPhase: _newState.boot?.phase,
@@ -70,6 +72,86 @@ async function boot() {
     },
   });
   runtime.init();
+
+  // ── Bridge Protocol Client ──────────────────────────────────────────
+  const protocolClient = createProtocolClient({
+    handshakeId: canonicalHandshakeId,
+    onProjection(parsed) {
+      if (parsed.payload && parsed.payload.data) {
+        handleProjection(parsed.payload.data)
+        onProjectionReceived()
+        recordFrontendEvent(LIFECYCLE.PROJECTION_RECEIVED, {
+          projection_sequence: parsed.projectionSequence || 0,
+        })
+        recordFrontendEvent(LIFECYCLE.PROJECTION_RENDER_OK, {
+          projection_sequence: parsed.projectionSequence || 0,
+        })
+        runtime.dispatch({
+          type: 'PROJECTION_RECEIVED',
+          payload: {
+            data: parsed.payload.data,
+            digest: parsed.payload.digest || '',
+            receivedAt: new Date().toISOString(),
+          },
+        })
+        runtime.bootFSM.transition('boot:projection_waiting', {})
+        protocolClient.sendProjectionRenderedAck(parsed.projectionSequence || 0)
+      }
+    },
+    onIntentAck(parsed) {
+      const intentId = parsed.payload?.intent_id || parsed.ackFor || ''
+      if (intentId) {
+        runtime.intentFSM.transition('intent:ack', { intentId })
+        runtime.dispatch({
+          type: 'INTENT_ACKNOWLEDGED',
+          payload: { intentId: intentId },
+        })
+      }
+    },
+    onIntentResult(parsed) {
+      if (parsed.payload) {
+        handleIntentResult(parsed.payload)
+        const intentId = parsed.payload.intent_id || ''
+        const status = parsed.payload.status || 'unknown'
+        if (intentId) {
+          runtime.intentFSM.transition(
+            status === 'succeeded' ? 'intent:resolve' :
+            status === 'refused' ? 'intent:refuse' :
+            'intent:fail',
+            { intentId, result: parsed.payload }
+          )
+          runtime.dispatch({
+            type: 'INTENT_RESULT',
+            payload: {
+              intentId: intentId,
+              status: status,
+              result: parsed.payload,
+              error: parsed.payload.error || null,
+              resolvedAt: new Date().toISOString(),
+            },
+          })
+        }
+      }
+    },
+    onError(parsed) {
+      recordFrontendEvent('protocol_error', {
+        message: parsed.payload?.message || '',
+        error_type: parsed.payload?.error_type || 'unknown',
+      })
+    },
+    onHeartbeat(parsed) {
+      // Heartbeat tracked internally in protocol client stats
+    },
+    onFlowControl(parsed) {
+      recordFrontendEvent('protocol_flow_control', {
+        reason: parsed.payload?.reason || '',
+        dropped: parsed.payload?.dropped_count || 0,
+      })
+    },
+  })
+
+  window.__RIG_RELAY_PROTOCOL_CLIENT__ = protocolClient
+  runtime._protocolClient = protocolClient
 
   // ── Delight: motion + sound system ──────────────────────────────────
   const delight = initDelight(runtime);
@@ -157,8 +239,18 @@ async function boot() {
         onProjectionReceived();
         recordFrontendEvent('frontend_projection_received');
         recordFrontendEvent('frontend_projection_rendered');
+        renderStalenessIndicator(false);
         // ── Boot FSM: projection received ──────────────────────────
         runtime.bootFSM.transition('boot:projection_waiting', {});
+        // Route projection through kernel dispatch
+        runtime.dispatch({
+          type: 'PROJECTION_RECEIVED',
+          payload: {
+            data: data,
+            digest: data?.digest || '',
+            receivedAt: new Date().toISOString(),
+          },
+        });
       },
       onStatusChange(status, detail, attempts) {
         switch (status) {
@@ -185,6 +277,11 @@ async function boot() {
         if (isDebug) updateDebugPanel(debugPanel, authority.snapshot());
       },
       onMessage(msg) {
+        // ── Bridge Protocol: route envelope messages ──────────────────
+        if (msg.schema_version === 'rig.relay.bridge_message.v1' && msg.message_id) {
+          protocolClient.handleMessage(msg)
+          return
+        }
         switch (msg.type) {
           case 'chat_state':
           case 'chat_state_updated':
@@ -209,6 +306,8 @@ async function boot() {
       },
     });
     setWsClient(wsClient, authority);
+    // Wire protocol client to the WebSocket for outbound envelopes
+    protocolClient.setWsClient(wsClient);
   } else {
     // ── Boot FSM: no transport URL → config_failed ───────────────────
     runtime.bootFSM.transition('boot:config_failed', { reason: 'No WebSocket URL available' });
@@ -240,6 +339,14 @@ async function boot() {
 
   // Start reactive loops (projection freshness, connection monitor, etc.)
   startReactiveLoops();
+
+  // Start bridge protocol heartbeat
+  protocolClient.sendHeartbeat()
+  setInterval(function () {
+    if (protocolClient && state.wsConnected) {
+      protocolClient.sendHeartbeat()
+    }
+  }, 15000)
 
   recordFrontendEvent(LIFECYCLE.WIDGETS_MOUNT_STARTED, {});
   wireUI();

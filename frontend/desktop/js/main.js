@@ -234,10 +234,11 @@ function _renderPanelColumn() {
     review: ['progressTimeline', 'receiptTimeline', 'refinementBacklog',
              'reviewValidation', 'reviewStorage', 'reviewSnippets', 'reviewDataset'],
     system: ['identity', 'modelProviders', 'telemetryConsent',
-             'authReceipts', 'connectionStatus', 'telemetryBundle',
+             'authReceipts', 'connectionStatus', 'bridgeProtocol', 'telemetryBundle',
              'updateStatus', 'projectionSources', 'storageDiagnostics'],
     technical: ['progressTimeline', 'receiptTimeline', 'projectionSources',
-                'storageDiagnostics', 'telemetryBundle', 'updateStatus'],
+                'storageDiagnostics', 'telemetryBundle', 'updateStatus',
+                'bridgeProtocol'],
   };
 
   const widgets = assignments[mode] || [];

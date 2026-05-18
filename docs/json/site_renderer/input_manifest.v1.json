@@ -1,0 +1,213 @@
+{
+  "$schema": "../schemas/rig.site_renderer.input_manifest.v1.schema.json",
+  "schema_version": "rig.site_renderer.input_manifest.v1",
+  "generated_at": "2026-05-18T00:00:00Z",
+  "head_sha": "unknown",
+  "branch": "main",
+  "inputs": [
+    {
+      "source_path": "docs/json/release_gate/rc_readiness_gate.v1.json",
+      "source_type": "json",
+      "page_target": "release-candidate",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Release Candidate Readiness Gate",
+      "renderer_kind": "release_gate"
+    },
+    {
+      "source_path": "docs/json/release_gate/rc_candidate_verdict.v1.json",
+      "source_type": "json",
+      "page_target": "release-candidate",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Release Candidate Verdict",
+      "renderer_kind": "rc_verdict"
+    },
+    {
+      "source_path": "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
+      "source_type": "json",
+      "page_target": "release-candidate",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Reviewer Golden Path Checklist",
+      "renderer_kind": "golden_path"
+    },
+    {
+      "source_path": "docs/json/release_gate/rc_blockers.v1.jsonl",
+      "source_type": "jsonl",
+      "page_target": "release-candidate",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Open RC Blockers"
+    },
+    {
+      "source_path": "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+      "source_type": "jsonl",
+      "page_target": "release-candidate",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Deferred RC Risks"
+    },
+    {
+      "source_path": "docs/json/security/threat_model_v0.v1.json",
+      "source_type": "json",
+      "page_target": "security",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Threat Model",
+      "renderer_kind": "threat_model"
+    },
+    {
+      "source_path": "docs/json/security/security_policy_v0.v1.json",
+      "source_type": "json",
+      "page_target": "security",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Security Policy",
+      "renderer_kind": "generic_page"
+    },
+    {
+      "source_path": "docs/json/release_candidate/rc_security_repository_hygiene.v1.json",
+      "source_type": "json",
+      "page_target": "security",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Security Repository Hygiene",
+      "renderer_kind": "security_hygiene"
+    },
+    {
+      "source_path": "docs/json/integrations/integration_permission_policy.v1.json",
+      "source_type": "json",
+      "page_target": "integrations",
+      "freshness_policy": "optional",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Integration Permission Policy"
+    },
+    {
+      "source_path": "docs/json/protocols/ide-capability-map.v1.json",
+      "source_type": "json",
+      "page_target": "integrations",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "IDE Capability Map",
+      "renderer_kind": "integration_manifest"
+    },
+    {
+      "source_path": "docs/json/rig-mcp-capability-map.v1.json",
+      "source_type": "json",
+      "page_target": "integrations",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Rig MCP Capability Map",
+      "renderer_kind": "integration_manifest"
+    },
+    {
+      "source_path": "docs/json/governance/telemetry-consent-enforcement.v1.json",
+      "source_type": "json",
+      "page_target": "telemetry",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Telemetry Consent Enforcement",
+      "renderer_kind": "telemetry_policy"
+    },
+    {
+      "source_path": "docs/json/tracing_policy.v1.json",
+      "source_type": "json",
+      "page_target": "telemetry",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Tracing Policy",
+      "renderer_kind": "telemetry_policy"
+    },
+    {
+      "source_path": "docs/json/governance/relay-desktop-projection-contract.v1.json",
+      "source_type": "json",
+      "page_target": "telemetry",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Relay Desktop Projection Contract",
+      "renderer_kind": "bridge_lifecycle"
+    },
+    {
+      "source_path": "docs/json/demo/desktop-golden-path.v1.json",
+      "source_type": "json",
+      "page_target": "frontend",
+      "freshness_policy": "if_schema_valid",
+      "safety_class": "content_light",
+      "public_safe": false,
+      "redaction_required": true,
+      "title": "Desktop Golden Path",
+      "renderer_kind": "frontend_maturity"
+    },
+    {
+      "source_path": "README.md",
+      "source_type": "static_asset",
+      "page_target": "home",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "README",
+      "renderer_kind": "homepage"
+    },
+    {
+      "source_path": "SECURITY.md",
+      "source_type": "static_asset",
+      "page_target": "security",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Security Policy",
+      "renderer_kind": "generic_page"
+    },
+    {
+      "source_path": "CHANGELOG.md",
+      "source_type": "static_asset",
+      "page_target": "security",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Changelog"
+    },
+    {
+      "source_path": "CODE_OF_CONDUCT.md",
+      "source_type": "static_asset",
+      "page_target": "security",
+      "freshness_policy": "always",
+      "safety_class": "public_safe",
+      "public_safe": true,
+      "redaction_required": false,
+      "title": "Code of Conduct"
+    }
+  ]
+}

@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.site_renderer.page_model.v1.schema.json",
+  "title": "Rig Site Renderer Page Model v1",
+  "description": "Schema for the intermediate page model produced by the Rig Relay static site renderer — a normalized representation between canonical JSON artifacts and rendered HTML.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "page_id",
+    "title",
+    "route",
+    "section_order",
+    "generated_at",
+    "source_commit",
+    "source_artifact_paths",
+    "public_safety_status"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.site_renderer.page_model.v1",
+      "description": "Schema version identifier for this page model."
+    },
+    "page_id": {
+      "type": "string",
+      "description": "Unique page identifier."
+    },
+    "title": {
+      "type": "string",
+      "description": "Page title."
+    },
+    "route": {
+      "type": "string",
+      "description": "URL route, e.g. '/release-candidate.html'."
+    },
+    "section_order": {
+      "type": "integer",
+      "description": "Ordering within navigation."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of page model generation."
+    },
+    "source_commit": {
+      "type": "string",
+      "description": "Git HEAD SHA at generation time.",
+      "minLength": 40,
+      "maxLength": 40,
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_artifact_paths": {
+      "type": "array",
+      "description": "Paths to the canonical source artifacts.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "public_safety_status": {
+      "type": "string",
+      "enum": [
+        "public_safe",
+        "content_light",
+        "redacted",
+        "internal_only"
+      ],
+      "description": "Safety classification for public rendering."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional page description."
+    },
+    "cards": {
+      "type": "array",
+      "description": "Ordered list of content cards.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "body_html",
+          "status",
+          "source_ref"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Card title."
+          },
+          "body_html": {
+            "type": "string",
+            "description": "Rendered HTML body content."
+          },
+          "status": {
+            "type": "string",
+            "description": "Card status indicator."
+          },
+          "source_ref": {
+            "type": "string",
+            "description": "Reference to the source artifact path."
+          }
+        }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "description": "Ordered list of rendered tables.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "caption",
+          "headers",
+          "rows"
+        ],
+        "properties": {
+          "caption": {
+            "type": "string",
+            "description": "Table caption."
+          },
+          "headers": {
+            "type": "array",
+            "description": "Column headers.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "description": "Table rows.",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "lists": {
+      "type": "array",
+      "description": "Ordered list of rendered lists.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "heading",
+          "items"
+        ],
+        "properties": {
+          "heading": {
+            "type": "string",
+            "description": "List heading."
+          },
+          "items": {
+            "type": "array",
+            "description": "List items.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "timelines": {
+      "type": "array",
+      "description": "Ordered list of rendered timelines.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "heading",
+          "entries"
+        ],
+        "properties": {
+          "heading": {
+            "type": "string",
+            "description": "Timeline heading."
+          },
+          "entries": {
+            "type": "array",
+            "description": "Timeline entries.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "timestamp",
+                "title",
+                "description",
+                "status"
+              ],
+              "properties": {
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 timestamp for this timeline entry."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Entry title."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Entry description."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Entry status indicator."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Warning messages for this page.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nav_section": {
+      "type": "string",
+      "enum": [
+        "release-gate",
+        "testing",
+        "integrations",
+        "telemetry",
+        "frontend",
+        "security",
+        "schemas",
+        "about"
+      ],
+      "description": "Navigation section this page belongs to."
+    },
+    "og_title": {
+      "type": "string",
+      "description": "Open Graph title override."
+    },
+    "og_description": {
+      "type": "string",
+      "description": "Open Graph description override."
+    },
+    "blocker_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of open blockers."
+    },
+    "ready_phase_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of phases marked ready."
+    },
+    "failed_test_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of failed tests."
+    }
+  }
+}

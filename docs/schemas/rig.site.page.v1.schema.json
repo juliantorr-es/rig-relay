@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.site.page.v1.schema.json",
+  "title": "Rig Site Page v1",
+  "description": "Schema for page models consumed by the Rig Relay static site renderer. Pages use a discriminated sections array keyed by kind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "page_id",
+    "title",
+    "route",
+    "layout",
+    "source_artifact_paths",
+    "generated_from_schema_versions",
+    "public_safety_status",
+    "sections",
+    "generated_at"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.site.page.v1"
+    },
+    "page_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "route": {
+      "type": "string"
+    },
+    "layout": {
+      "type": "string",
+      "enum": ["default", "hero", "dashboard"]
+    },
+    "source_artifact_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generated_from_schema_versions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "public_safety_status": {
+      "type": "string",
+      "enum": ["public_safe", "content_light", "redacted", "internal_only"]
+    },
+    "description": {
+      "type": "string"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "title", "status_label", "status_class", "summary"],
+            "properties": {
+              "kind": { "type": "string", "const": "hero_status" },
+              "title": { "type": "string" },
+              "status_label": { "type": "string" },
+              "status_class": { "type": "string", "enum": ["ok", "warn", "error", "info"] },
+              "summary": { "type": "string" },
+              "blocker_count": { "type": "integer", "minimum": 0 },
+              "ready_count": { "type": "integer", "minimum": 0 },
+              "failed_count": { "type": "integer", "minimum": 0 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "title", "cards"],
+            "properties": {
+              "kind": { "type": "string", "const": "card_grid" },
+              "title": { "type": "string" },
+              "cards": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["title", "body_html", "status"],
+                  "properties": {
+                    "title": { "type": "string" },
+                    "body_html": { "type": "string" },
+                    "status": { "type": "string" },
+                    "source_ref": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "caption", "headers", "rows"],
+            "properties": {
+              "kind": { "type": "string", "const": "table" },
+              "caption": { "type": "string" },
+              "headers": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": { "type": "string" }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "heading", "entries"],
+            "properties": {
+              "kind": { "type": "string", "const": "timeline" },
+              "heading": { "type": "string" },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["timestamp", "title", "description"],
+                  "properties": {
+                    "timestamp": { "type": "string" },
+                    "title": { "type": "string" },
+                    "description": { "type": "string" },
+                    "status": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "heading", "items"],
+            "properties": {
+              "kind": { "type": "string", "const": "definition_list" },
+              "heading": { "type": "string" },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["term", "definition"],
+                  "properties": {
+                    "term": { "type": "string" },
+                    "definition": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "heading", "links"],
+            "properties": {
+              "kind": { "type": "string", "const": "artifact_nav" },
+              "heading": { "type": "string" },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "href"],
+                  "properties": {
+                    "label": { "type": "string" },
+                    "href": { "type": "string" },
+                    "description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "heading", "body_html"],
+            "properties": {
+              "kind": { "type": "string", "const": "callout" },
+              "heading": { "type": "string" },
+              "body_html": { "type": "string" },
+              "callout_class": { "type": "string", "enum": ["info", "warning", "error", "success"] }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "heading", "entries"],
+            "properties": {
+              "kind": { "type": "string", "const": "schema_index" },
+              "heading": { "type": "string" },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["schema_id", "file_path"],
+                  "properties": {
+                    "schema_id": { "type": "string" },
+                    "file_path": { "type": "string" },
+                    "description": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
