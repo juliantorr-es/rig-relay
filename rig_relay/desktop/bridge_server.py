@@ -39,6 +39,7 @@ from rig_relay.desktop.bridge_state_machine import (
     TerminalBridgeStateError,
 )
 from rig_relay.desktop.correlation import DesktopCorrelation, new_correlation_id
+from rig_relay.desktop.lifecycle_artifact import LifecycleArtifactWriter
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
 from rig_relay.tracing.recorder import TraceRecorder
@@ -54,6 +55,12 @@ mimetypes.init()
 HTTP_OK = 200
 
 _JSON_HEADERS = Headers({"Content-Type": "application/json"})
+
+_FRONTEND_EVENT_TO_TRANSITION: dict[str, DesktopBridgeEvent] = {
+    "frontend_boot_started": DesktopBridgeEvent.WEBVIEW_CREATED,
+    "frontend_runtime_config_loaded": DesktopBridgeEvent.FRONTEND_CONFIG_LOADED,
+    "frontend_first_projection_rendered": DesktopBridgeEvent.PROJECTION_RENDERED,
+}
 
 # Allowed HTTP origins for browser requests. DNS-rebinding domains and remote
 # origins are rejected. Missing Origin is allowed for local tools (curl, health probes).
@@ -256,6 +263,7 @@ class DesktopBridgeServer:
             tls_enabled=config.tls_enabled,
         )
         self._probe_active = debug or self.probe_report.steps == []
+        self._lifecycle_writer = LifecycleArtifactWriter()
         self._golden_trace_id = ""
         self._golden_handshake_id = ""
         self._golden_commit_sha = ""
@@ -394,6 +402,12 @@ class DesktopBridgeServer:
         self._emit_golden_event(
             "desktop.bridge.frontend_resolved", payload={"frontend_dir_ok": True}
         )
+        self._lifecycle_writer.write_event(
+            step_id="bridge_frontend_dir_resolved",
+            status="ok",
+            source="backend",
+            handshake_id=self._golden_handshake_id,
+        )
         self._transition_state(
             DesktopBridgeEvent.ASSETS_VERIFIED,
             reason="verify asset files",
@@ -420,6 +434,12 @@ class DesktopBridgeServer:
         )
         self._emit_golden_event(
             "desktop.bridge.index_resolved", payload={"index_size_bytes": index_size}
+        )
+        self._lifecycle_writer.write_event(
+            step_id="bridge_index_resolved",
+            status="ok",
+            source="backend",
+            handshake_id=self._golden_handshake_id,
         )
 
         # ── bridge:03 verify asset files ────────────────────────────
@@ -470,6 +490,7 @@ class DesktopBridgeServer:
             handshake_id=getattr(self._config, "handshake_id", None),
         )
         self._golden_handshake_id = self._runtime_config.handshake_id
+        self._lifecycle_writer.set_handshake_id(self._golden_handshake_id)
         report.frontend_url = self._runtime_config.frontend_url
         report.ws_url = self._runtime_config.ws_url
         report.add_ok(
@@ -500,6 +521,12 @@ class DesktopBridgeServer:
             DesktopBridgeEvent.CONFIG_BUILT,
             reason="build runtime_config",
             attributes={"step_id": "bridge:04"},
+        )
+        self._lifecycle_writer.write_event(
+            step_id="bridge_config_built",
+            status="ok",
+            source="backend",
+            handshake_id=self._golden_handshake_id,
         )
 
         # ── bridge:05 create WS server ───────────────────────────────
@@ -590,6 +617,13 @@ class DesktopBridgeServer:
             reason="bind host/port",
             attributes={"step_id": "bridge:06", "bound_port": self._bound_port},
         )
+        self._lifecycle_writer.write_event(
+            step_id="bridge_server_bound",
+            status="ok",
+            source="backend",
+            handshake_id=self._golden_handshake_id,
+            duration_ms=bind_ms,
+        )
 
         self._runtime_config.bridge_port = self._bound_port
         self._runtime_config.frontend_url = f"{'https' if self._config.tls_enabled else 'http'}://{host}:{self._bound_port}/index.html"
@@ -610,6 +644,12 @@ class DesktopBridgeServer:
         # ── bridge:07 probe /healthz ─────────────────────────────────
         await self._probe_healthz(report)
         self._emit_golden_event("desktop.bridge.health_probe_passed")
+        self._lifecycle_writer.write_event(
+            step_id="bridge_health_probed",
+            status="ok",
+            source="backend",
+            handshake_id=self._golden_handshake_id,
+        )
         self._transition_state(
             DesktopBridgeEvent.SELF_PROBED,
             reason="probe ladder complete",
@@ -688,6 +728,7 @@ class DesktopBridgeServer:
 
     async def stop(self) -> None:
         """Stop the bridge server cleanly."""
+        self.write_lifecycle_summary()
         self._emit_golden_event("desktop.bridge.shutdown")
         if self._server is not None:
             self._server.close()
@@ -696,7 +737,7 @@ class DesktopBridgeServer:
         self._print_handshake_trace()
         self._started = False
 
-    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:  # noqa: PLR0911 PLR0912
+    def _handle_http(self, request: Request, frontend_dir: Path) -> Response | None:  # noqa: PLR0911 PLR0912 PLR0915
         raw_path = request.path or "/"
         path = raw_path.split("?", 1)[0] if "?" in raw_path else raw_path
 
@@ -777,6 +818,14 @@ class DesktopBridgeServer:
                 reason="runtime-config.json served",
                 attributes={"step_id": "bridge:13"},
             )
+            self._lifecycle_writer.write_event(
+                step_id="bridge_runtime_config_served",
+                status="ok",
+                source="backend",
+                handshake_id=self._runtime_config.handshake_id
+                if self._runtime_config
+                else "",
+            )
             return _json_response(config_dict)
 
         if path == "/frontend-event":
@@ -815,6 +864,9 @@ class DesktopBridgeServer:
                     payload={"detail": detail} if detail else None,
                     authority_kind=TraceAuthorityKind.frontend_runtime.value,
                 )
+            _match = _FRONTEND_EVENT_TO_TRANSITION.get(event_type)
+            if _match is not None:
+                self._apply_frontend_event_transition(_match, detail, event_type)
             return _empty_response(HTTP_OK, "OK")
 
         # /index.html or /
@@ -961,6 +1013,39 @@ class DesktopBridgeServer:
 
         return None
 
+    def write_lifecycle_summary(self) -> dict[str, Any]:
+        """Write and return the lifecycle summary artifact."""
+        summary = self._lifecycle_writer.build_summary()
+        summary.bridge_url = (
+            self._runtime_config.frontend_url if self._runtime_config else ""
+        )
+        summary.websocket_url = (
+            self._runtime_config.ws_url if self._runtime_config else ""
+        )
+        self._lifecycle_writer.evidence_dir.mkdir(parents=True, exist_ok=True)
+        from pathlib import Path as _Path
+
+        head_path = _Path(__file__).resolve().parent.parent.parent / ".git" / "HEAD"
+        if head_path.exists():
+            try:
+                head_text = head_path.read_text(encoding="utf-8").strip()
+                if head_text.startswith("ref:"):
+                    ref_path = (
+                        _Path(__file__).resolve().parent.parent.parent
+                        / ".git"
+                        / head_text[5:]
+                    )
+                    if ref_path.exists():
+                        summary.head_sha = ref_path.read_text(encoding="utf-8").strip()[
+                            :40
+                        ]
+                else:
+                    summary.head_sha = head_text[:40]
+            except OSError:
+                pass
+        self._lifecycle_writer.write_summary()
+        return summary.model_dump(mode="json")
+
     async def _handle_ws(self, conn: ServerConnection) -> None:
         """Handle WebSocket connections — delegates to ProjectionWebSocketServer."""
         report = self.probe_report
@@ -986,6 +1071,14 @@ class DesktopBridgeServer:
             DesktopBridgeEvent.WEBSOCKET_CONNECTED,
             reason="websocket upgrade accepted",
             attributes={"step_id": "bridge:14", "remote": remote},
+        )
+        self._lifecycle_writer.write_event(
+            step_id="bridge_websocket_accepted",
+            status="ok",
+            source="backend",
+            handshake_id=self._runtime_config.handshake_id
+            if self._runtime_config
+            else "",
         )
         if self._ws_server is None:
             report.add_fail(
@@ -1112,6 +1205,15 @@ class DesktopBridgeServer:
                     reason="projection rendered",
                     attributes=payload,
                 )
+
+    def _apply_frontend_event_transition(
+        self, event: DesktopBridgeEvent, detail: str, event_type: str
+    ) -> None:
+        self._transition_state(
+            event,
+            reason=f"frontend event: {event_type}",
+            attributes={"detail": detail, "source": "frontend-event"},
+        )
 
     def _build_healthz(self) -> Response:
         from rig_relay.governance.service_state import get_capability_gate

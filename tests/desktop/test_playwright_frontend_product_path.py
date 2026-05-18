@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import pytest
 
@@ -19,9 +20,7 @@ def browser_server(tmp_path_factory: pytest.TempPathFactory) -> RCLiveServer:
     home_root = tmp_path_factory.mktemp("rc-browser-home")
     evidence_root = tmp_path_factory.mktemp("rc-browser-evidence")
     with RCLiveServer(
-        home_root=home_root,
-        evidence_root=evidence_root,
-        telemetry_enabled=False,
+        home_root=home_root, evidence_root=evidence_root, telemetry_enabled=False
     ) as server:
         yield server
 
@@ -36,26 +35,24 @@ def browser_artifacts(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.mark.real_artifact
 @pytest.mark.timeout(120)
 def test_frontend_boots_primary_surface_and_shows_gate_and_telemetry(
-    browser_server: RCLiveServer,
-    browser_artifacts: Path,
-    page,
+    browser_server: RCLiveServer, browser_artifacts: Path, page
 ) -> None:
     console_errors: list[str] = []
     page_errors: list[str] = []
 
     page.on(
         "console",
-        lambda msg: console_errors.append(f"{msg.type}: {msg.text}")
-        if msg.type == "error"
-        else None,
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
     )
     page.on("pageerror", lambda exc: page_errors.append(str(exc)))
 
     try:
         page.goto(
-            browser_server.frontend_url,
-            wait_until="domcontentloaded",
-            timeout=15000,
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
         )
         page.wait_for_function(
             "() => (document.querySelector('#widget-releaseGate')?.textContent || '').includes('RC Gate')",
@@ -95,15 +92,11 @@ def test_frontend_boots_primary_surface_and_shows_gate_and_telemetry(
 @pytest.mark.real_artifact
 @pytest.mark.timeout(120)
 def test_frontend_read_only_intent_round_trip_is_visible(
-    browser_server: RCLiveServer,
-    browser_artifacts: Path,
-    page,
+    browser_server: RCLiveServer, browser_artifacts: Path, page
 ) -> None:
     try:
         page.goto(
-            browser_server.frontend_url,
-            wait_until="domcontentloaded",
-            timeout=15000,
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
         )
         page.wait_for_function(
             "() => !!window.RigRelay && typeof window.RigRelay.dispatchIntent === 'function'",
@@ -132,17 +125,13 @@ def test_frontend_read_only_intent_round_trip_is_visible(
 @pytest.mark.real_artifact
 @pytest.mark.timeout(120)
 def test_frontend_refuses_unsupported_intent_without_html_injection(
-    browser_server: RCLiveServer,
-    browser_artifacts: Path,
-    page,
+    browser_server: RCLiveServer, browser_artifacts: Path, page
 ) -> None:
     malicious_intent = "<script>alert(1)</script>"
 
     try:
         page.goto(
-            browser_server.frontend_url,
-            wait_until="domcontentloaded",
-            timeout=15000,
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
         )
         page.wait_for_function(
             "() => !!window.RigRelay && typeof window.RigRelay.dispatchIntent === 'function'",
@@ -150,8 +139,7 @@ def test_frontend_refuses_unsupported_intent_without_html_injection(
         )
 
         page.evaluate(
-            "intent => window.RigRelay.dispatchIntent(intent)",
-            malicious_intent,
+            "intent => window.RigRelay.dispatchIntent(intent)", malicious_intent
         )
 
         page.wait_for_function(
@@ -167,3 +155,231 @@ def test_frontend_refuses_unsupported_intent_without_html_injection(
     except Exception:
         _capture_browser_failure(page, browser_artifacts, "unsupported_intent")
         raise
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.real_artifact
+@pytest.mark.timeout(120)
+def test_frontend_shows_ready_state_from_healthz(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+
+    page.on(
+        "console",
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
+    )
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+    try:
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#status-connection');
+                if (!el) return false;
+                const text = el.textContent || '';
+                return text.length > 0 && text !== 'Idle' && text !== 'Disconnected';
+            }""",
+            timeout=30000,
+        )
+
+        status_text = page.locator("#status-connection").text_content() or ""
+        assert "Idle" not in status_text
+        assert "Disconnected" not in status_text
+        assert len(status_text.strip()) > 0
+    except Exception:
+        _capture_browser_failure(page, browser_artifacts, "ready_state")
+        raise
+
+    assert console_errors == [], (
+        f"Console errors during readiness check: {console_errors}"
+    )
+    assert page_errors == [], f"Page errors during readiness check: {page_errors}"
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.real_artifact
+@pytest.mark.timeout(120)
+def test_frontend_widgets_render_non_empty_content(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+
+    page.on(
+        "console",
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
+    )
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+    try:
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+        page.wait_for_function(
+            "() => document.querySelector('#main-grid') !== null", timeout=15000
+        )
+        assert page.locator("#main-grid").is_visible()
+
+        widget_ids = [
+            "#widget-operatorHeader",
+            "#widget-safetyState",
+            "#widget-connectionStatus",
+        ]
+        for widget_id in widget_ids:
+            page.wait_for_function(
+                f"""() => document.querySelector('{widget_id}') !== null""",
+                timeout=15000,
+            )
+
+        page.wait_for_function(
+            """() => {
+                const ids = ['#widget-operatorHeader', '#widget-safetyState', '#widget-connectionStatus'];
+                let nonEmpty = 0;
+                for (const id of ids) {
+                    const el = document.querySelector(id);
+                    if (!el) continue;
+                    const text = (el.textContent || '').trim();
+                    if (text.length > 0 && text !== 'No data') nonEmpty++;
+                }
+                return nonEmpty >= 3;
+            }""",
+            timeout=30000,
+        )
+
+        for widget_id in widget_ids:
+            text = (page.locator(widget_id).text_content() or "").strip()
+            assert len(text) > 0, f"{widget_id} is empty"
+            assert "No data" not in text, f"{widget_id} shows placeholder"
+    except Exception:
+        _capture_browser_failure(page, browser_artifacts, "widgets_render")
+        raise
+
+    assert console_errors == [], (
+        f"Console errors during widget render: {console_errors}"
+    )
+    assert page_errors == [], f"Page errors during widget render: {page_errors}"
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.adversarial
+@pytest.mark.timeout(120)
+def test_frontend_console_module_errors_captured(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    all_console: list[str] = []
+    page_errors: list[str] = []
+
+    page.on("console", lambda msg: all_console.append(f"{msg.type}: {msg.text}"))
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+    try:
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+        page.wait_for_function(
+            "() => document.querySelector('#main-grid') !== null", timeout=15000
+        )
+        page.wait_for_function(
+            "() => document.querySelector('#status-connection') !== null", timeout=15000
+        )
+    except Exception:
+        _capture_browser_failure(page, browser_artifacts, "console_audit")
+        raise
+
+    assert page_errors == [], f"Page errors: {page_errors}"
+
+    error_messages = [m for m in all_console if m.startswith("error:")]
+    assert error_messages == [], f"Console error-level messages: {error_messages}"
+
+    bridge_logs = [m for m in all_console if "[bridge:frontend]" in m]
+    assert len(bridge_logs) > 0, "No [bridge:frontend] log lines found in console"
+
+    hex_pattern = re.compile(r"[0-9a-fA-F]{64,}")
+    token_messages = [m for m in all_console if hex_pattern.search(m)]
+    assert token_messages == [], (
+        f"Console messages with 64-char hex patterns: {token_messages}"
+    )
+
+
+@pytest.mark.e2e
+@pytest.mark.integration
+@pytest.mark.adversarial
+@pytest.mark.timeout(120)
+def test_static_probe_alone_cannot_mark_ready(
+    browser_server: RCLiveServer, browser_artifacts: Path, page
+) -> None:
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+
+    page.on(
+        "console",
+        lambda msg: (
+            console_errors.append(f"{msg.type}: {msg.text}")
+            if msg.type == "error"
+            else None
+        ),
+    )
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+    try:
+        page.goto(
+            browser_server.frontend_url, wait_until="domcontentloaded", timeout=15000
+        )
+
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#status-connection');
+                if (!el) return false;
+                const text = el.textContent || '';
+                return text.length > 0 && text !== 'Idle' && text !== 'Disconnected';
+            }""",
+            timeout=30000,
+        )
+
+        snapshot = page.evaluate("""() => {
+            const statusEl = document.querySelector('#status-connection');
+            const widgetEl = document.querySelector('#widget-operatorHeader');
+            return {
+                status: (statusEl?.textContent || '').trim(),
+                widget: (widgetEl?.textContent || '').trim(),
+            };
+        }""")
+        assert "Ready" not in snapshot["status"], (
+            f"Status shows Ready before projection: {snapshot['status']}"
+        )
+
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#widget-operatorHeader');
+                if (!el) return false;
+                const text = (el.textContent || '').trim();
+                return text.length > 5 && text !== 'No data';
+            }""",
+            timeout=60000,
+        )
+
+        final_status = page.locator("#status-connection").text_content() or ""
+        assert "Idle" not in final_status
+        assert "Disconnected" not in final_status
+        assert len(final_status.strip()) > 0
+    except Exception:
+        _capture_browser_failure(page, browser_artifacts, "static_probe_readiness")
+        raise
+
+    assert console_errors == [], f"Console errors: {console_errors}"
+    assert page_errors == [], f"Page errors: {page_errors}"

@@ -230,6 +230,15 @@ class BridgeProbeReport:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(self.to_dict(), indent=2) + "\n")
 
+    def to_jsonl(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        d = self.to_dict()
+        line = json.dumps(d, sort_keys=True, ensure_ascii=False).replace("\n", " ")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+            f.flush()
+
     def write_text_log(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         lines: list[str] = []

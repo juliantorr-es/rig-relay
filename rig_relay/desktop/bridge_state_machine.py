@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum, auto
+import json as _json
+from pathlib import Path as _Path
 from typing import Any
 
 
@@ -161,6 +163,8 @@ _EVENT_TO_STATE: dict[DesktopBridgeEvent, DesktopBridgeState] = {
 
 
 class DesktopBridgeStateMachine:
+    _lifecycle_log_path: _Path | None = None
+
     def __init__(
         self,
         *,
@@ -174,6 +178,14 @@ class DesktopBridgeStateMachine:
         self._transition_count = 0
         self._on_transition = on_transition
         self._trace_id = trace_id
+
+    @property
+    def lifecycle_log_path(self) -> _Path | None:
+        return self._lifecycle_log_path
+
+    def set_lifecycle_log_path(self, path: _Path) -> None:
+        self._lifecycle_log_path = path
+        path.parent.mkdir(parents=True, exist_ok=True)
 
     @property
     def current_state(self) -> DesktopBridgeState:
@@ -232,6 +244,7 @@ class DesktopBridgeStateMachine:
         self._transition_count += 1
         transition = self._build_transition(previous, state, event, reason, attrs)
         self._emit(transition)
+        self._write_lifecycle_event(transition)
         return transition
 
     def fail(
@@ -302,6 +315,21 @@ class DesktopBridgeStateMachine:
             "trace_id": self._trace_id,
         }
         self._on_transition(**payload)
+
+    def _write_lifecycle_event(self, transition: DesktopBridgeTransition) -> None:
+        if self._lifecycle_log_path is None:
+            return
+        entry = {
+            "schema_version": "rig.desktop.bridge_lifecycle.v1",
+            "state": transition.to_state.value,
+            "previous_state": transition.from_state.value,
+            "event": transition.event.value,
+            "timestamp": transition.timestamp,
+            "transition_count": self._transition_count,
+        }
+        with self._lifecycle_log_path.open("a", encoding="utf-8") as f:
+            f.write(_json.dumps(entry, sort_keys=True) + "\n")
+            f.flush()
 
 
 __all__ = [

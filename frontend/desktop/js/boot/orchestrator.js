@@ -11,6 +11,25 @@ import { handleProjection, handleChatState, handleIntentResult,
          handleProgressEvent, handleProgressEvents } from '../projection.js';
 import { wireUI } from '../main.js';
 
+const LIFECYCLE = {
+  BOOT_STARTED: 'frontend_boot_started',
+  MODULE_GRAPH_LOADED: 'frontend_module_graph_loaded',
+  RUNTIME_CONFIG_REQUESTED: 'frontend_runtime_config_requested',
+  RUNTIME_CONFIG_LOADED: 'frontend_runtime_config_loaded',
+  WEBSOCKET_CONSTRUCTED: 'frontend_websocket_constructed',
+  SOCKET_OPEN: 'frontend_socket_open',
+  AUTH_SENT: 'frontend_auth_sent',
+  AUTH_OK: 'frontend_auth_ok',
+  PROJECTION_REQUESTED: 'frontend_projection_requested',
+  PROJECTION_RECEIVED: 'frontend_projection_received',
+  PROJECTION_RENDER_STARTED: 'frontend_projection_render_started',
+  PROJECTION_RENDER_OK: 'frontend_projection_render_ok',
+  WIDGETS_MOUNT_STARTED: 'frontend_widgets_mount_started',
+  WIDGETS_MOUNT_OK: 'frontend_widgets_mount_ok',
+  READY: 'frontend_ready',
+  FAILED: 'frontend_failed',
+};
+
 let debugPanel = null;
 const urlParams = new URLSearchParams(window.location.search);
 const isDebug = urlParams.get('boot_debug') === '1';
@@ -26,6 +45,7 @@ async function boot() {
     debugPanel = createDebugPanel();
   }
 
+  recordFrontendEvent(LIFECYCLE.MODULE_GRAPH_LOADED, {});
   recordFrontendEvent('frontend_boot_started');
 
   // Create transport authority
@@ -98,7 +118,9 @@ async function boot() {
     setWsClient(wsClient);
   }
 
+  recordFrontendEvent(LIFECYCLE.WIDGETS_MOUNT_STARTED, {});
   wireUI();
+  recordFrontendEvent(LIFECYCLE.WIDGETS_MOUNT_OK, {});
   recordFrontendEvent('frontend_ready');
 }
 

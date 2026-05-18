@@ -1,3 +1,11 @@
+// CONTRACT: Bridge Projection Pipeline
+// ─────────────────────────────────────
+// Owner: frontend/desktop/js/projection.js
+// Safety: Never renders raw backend data as innerHTML.
+//         Uses textContent for untrusted content, template for trusted HTML.
+//         Digest computed server-side when available.
+//         First projection triggers onProjectionReceived() on transport.
+//
 // Rig Relay — Projection
 // Ingestion, caching, widget render coordination
 // Batches DOM updates via requestAnimationFrame deduplication.
@@ -8,7 +16,10 @@ import { renderWidget, renderAllWidgets, updateIntentResult } from './widgets.js
 import { renderStatusBar } from './status.js';
 import { renderChat, restoreIntentButton } from './chat.js';
 
-// ── Render batching ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// STAGE 0: Render Batch — requestAnimationFrame dedup
+// Ownership: frontend/desktop/js/projection.js
+// ════════════════════════════════════════════════════════════════
 // Only one full render cycle per animation frame, regardless of how many
 // times scheduleRender() is called within that frame.
 
@@ -30,7 +41,10 @@ function scheduleRender(projection) {
   });
 }
 
-// ── Digest tracking ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════
+// STAGE 1: Digest — content hash comparison, skip redundant renders
+// Ownership: frontend/desktop/js/projection.js
+// ════════════════════════════════════════════════════════════════
 // Compute a content hash of the projection (excluding volatile fields
 // like generated_at) to detect true changes vs. timer ticks.
 
@@ -75,6 +89,10 @@ export function handleProjection(data) {
   }
   const isFirst = !_lastDigest;
   _lastDigest = effectiveDigest;
+  // ════════════════════════════════════════════════════════════════
+  // STAGE 2: First Projection — first digest received → signal transport readiness
+  // Ownership: frontend/desktop/js/projection.js
+  // ════════════════════════════════════════════════════════════════
   if (isFirst) {
     console.log("[bridge:frontend] first projection rendered, digest=" + effectiveDigest.substring(0, 12));
     if (window.pywebview && window.pywebview.api && window.pywebview.api.record_frontend_event) {
@@ -89,6 +107,10 @@ export function handleProjection(data) {
     }
   }
 
+  // ════════════════════════════════════════════════════════════════
+  // STAGE 3: Widget Dispatch — distribute projection fields to widget renderers
+  // Ownership: frontend/desktop/js/projection.js
+  // ════════════════════════════════════════════════════════════════
   if (projection.ralph_lifecycle) {
     state.ralph.lifecycle = projection.ralph_lifecycle;
   }

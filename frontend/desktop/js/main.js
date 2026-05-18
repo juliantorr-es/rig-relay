@@ -1,3 +1,10 @@
+// CONTRACT: Compat UI Wiring (Legacy Layer)
+// ──────────────────────────────────────────
+// Owner: frontend/desktop/js/main.js (compat — migrating to orchestrator.js)
+// Safety: wireUI() must be called AFTER transport is established.
+//         window.RigRelay API is the single JS bridge surface.
+//         No backend policy decisions here — display only.
+//
 // Rig Relay — Compat UI Wiring (legacy layer)
 // Boot ownership has moved to js/boot/orchestrator.js.
 // This module provides UI event wiring and the window.RigRelay API.
@@ -16,6 +23,8 @@ const cycleWidgetDisclosure = cycleDisclosure;
 
 export function wireUI() {
   // ── Window API for HTML onclick handlers ──────────────────────────
+  // ═══ STAGE 5: Operational — RigRelay API exposed ═══
+  // Only after wireUI() is called from orchestrator.js.
   window.RigRelay = {
     cycleWidgetDisclosure,
     dispatchIntent,
