@@ -1,4 +1,0 @@
-{
-  "signature": "tests/tracing/test_contract_real_source.py::Unresolved from this turn — tests/tracing/test_contract_real_source.py:\n🔴 STOP — 1 issue(s) must be fixed:\n  L131: Local variable `subagent_violations` is assigned to but never used",
-  "sessionId": "lens-mpa46ncm-42a45c61"
-}

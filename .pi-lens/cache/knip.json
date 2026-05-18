@@ -1,9 +1,0 @@
-{
-  "success": false,
-  "issues": [],
-  "unusedExports": [],
-  "unusedFiles": [],
-  "unusedDeps": [],
-  "unlistedDeps": [],
-  "summary": "Error: Process timed out after 30000ms (killed with SIGTERM)"
-}
