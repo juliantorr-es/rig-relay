@@ -230,6 +230,7 @@ export function createTransportStateAuthority(options = {}) {
   let _lastBreadcrumbResult = null;
   let _lastProjectionTimestamp = null;
   let _onTransition = typeof options.onTransition === 'function' ? options.onTransition : null;
+  let _onGlobalStateChange = typeof options.onGlobalStateChange === 'function' ? options.onGlobalStateChange : null;
 
   function _resolveEvent(rawEvent) {
     if (LEGACY_EVENT_MAP[rawEvent]) return LEGACY_EVENT_MAP[rawEvent];
@@ -308,6 +309,14 @@ export function createTransportStateAuthority(options = {}) {
       _onTransition(snap);
     }
 
+    if (_onGlobalStateChange) {
+      try {
+        _onGlobalStateChange(snap);
+      } catch (e) {
+        console.error('[transport-authority] onGlobalStateChange error:', e);
+      }
+    }
+
     return snap;
   }
 
@@ -347,6 +356,10 @@ export function createTransportStateAuthority(options = {}) {
     _onTransition = typeof callback === 'function' ? callback : null;
   }
 
+  function setOnGlobalStateChange(callback) {
+    _onGlobalStateChange = typeof callback === 'function' ? callback : null;
+  }
+
   // Legacy compat: the old machine exposed .transition() — alias to dispatch
   function transition(event, detail) {
     return dispatch(event, detail);
@@ -360,6 +373,7 @@ export function createTransportStateAuthority(options = {}) {
     isConnected,
     setHandshakeId,
     setOnTransition,
+    setOnGlobalStateChange,
   };
 }
 

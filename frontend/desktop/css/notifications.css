@@ -1,0 +1,480 @@
+/* Rig Relay — Notifications */
+
+/* ── Toast Animations ── */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(30px); }
+}
+
+/* ── Toast Container ── */
+.toast-container {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  max-width: 380px;
+  pointer-events: none;
+}
+
+/* ── Toast ── */
+.toast {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  pointer-events: auto;
+  box-shadow: var(--shadow-glass);
+  position: relative;
+  animation: toastSlideIn var(--transition-slow) ease forwards;
+}
+
+.toast.removing {
+  animation: toastSlideOut var(--transition-base) ease forwards;
+}
+
+/* ── Toast Kind Variants ── */
+.toast.warning {
+  border-left: 3px solid var(--warn);
+}
+
+.toast.error {
+  border-left: 3px solid var(--error);
+}
+
+.toast.success {
+  border-left: 3px solid var(--ok);
+}
+
+.toast.info {
+  border-left: 3px solid var(--info);
+}
+
+.toast.security {
+  border-left: 3px solid var(--error);
+  background: rgba(201, 74, 68, 0.12);
+}
+
+.toast.action {
+  border-left: 3px solid var(--accent);
+}
+
+.toast.telemetry {
+  border-left: 3px solid var(--text-muted);
+}
+
+.toast.lifecycle {
+  border-left: 3px solid var(--info);
+}
+
+/* Security toasts do not auto-dismiss */
+.toast.security[data-auto-dismiss="false"] {
+  animation: toastSlideIn var(--transition-slow) ease forwards;
+}
+
+.toast[data-auto-dismiss="false"].removing {
+  animation: toastSlideOut var(--transition-base) ease forwards;
+}
+
+/* ── Toast Title ── */
+.toast-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  margin-bottom: 4px;
+}
+
+/* ── Toast Body ── */
+.toast-body {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  max-height: 80px;
+  overflow: hidden;
+}
+
+/* ── Toast Actions ── */
+.toast-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+
+.toast-actions button {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.toast-actions button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+}
+
+.toast-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Toast Dismiss ── */
+.toast-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 2px;
+  transition: color var(--transition-fast);
+}
+
+.toast-dismiss:hover {
+  color: var(--text-primary);
+}
+
+/* ── Notification Bell ── */
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.notification-bell:hover {
+  background: var(--bg-card-hover);
+}
+
+.notification-bell-icon {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  background: var(--error);
+  color: white;
+  border-radius: var(--radius-pill);
+  min-width: 16px;
+  height: 16px;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.notification-badge:empty,
+.notification-badge.hidden {
+  display: none;
+}
+
+/* ── Notification Rail ── */
+.notification-rail {
+  position: fixed;
+  right: 0;
+  top: var(--header-height);
+  bottom: var(--footer-height);
+  width: 340px;
+  z-index: 150;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-slow);
+  box-shadow: var(--shadow-raised);
+}
+
+.notification-rail.open {
+  transform: translateX(0);
+}
+
+/* ── Notification Rail Header ── */
+.notification-rail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.notification-rail-header h3 {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.notification-rail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.notification-rail-actions button {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.notification-rail-actions button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+}
+
+.notification-rail-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Notification Rail List ── */
+.notification-rail-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.notification-rail-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.notification-rail-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notification-rail-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-pill);
+}
+
+/* ── Notification Item ── */
+.notification-item {
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.notification-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.notification-item.unacked {
+  background: var(--accent-subtle);
+  position: relative;
+  padding-left: 20px;
+}
+
+.notification-item.unacked::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 14px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ── Notification Item Kind Variants ── */
+.notification-item.warning {
+  border-left: 3px solid var(--warn);
+}
+
+.notification-item.error {
+  border-left: 3px solid var(--error);
+}
+
+.notification-item.success {
+  border-left: 3px solid var(--ok);
+}
+
+.notification-item.info {
+  border-left: 3px solid var(--info);
+}
+
+.notification-item.security {
+  border-left: 3px solid var(--error);
+  background: rgba(201, 74, 68, 0.05);
+}
+
+.notification-item.telemetry {
+  border-left: 3px solid var(--text-muted);
+}
+
+.notification-item.lifecycle {
+  border-left: 3px solid var(--info);
+}
+
+.notification-item.security:hover {
+  background: rgba(201, 74, 68, 0.08);
+}
+
+/* ── Notification Item Header ── */
+.notification-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.notification-item-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.notification-item-time {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+}
+
+/* ── Notification Item Body ── */
+.notification-item-body {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Notification Item Actions ── */
+.notification-item-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.notification-item-actions button {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.notification-item-actions button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+}
+
+.notification-item-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Notification Rail Empty State ── */
+.notification-rail-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Priority Level Styling ── */
+.notification-priority-critical {
+  border-left-color: var(--error) !important;
+  box-shadow: var(--shadow-glass), 0 0 0 1px rgba(201, 74, 68, 0.2);
+}
+
+.notification-priority-high {
+  border-left-color: var(--warn) !important;
+}
+
+.notification-priority-normal {
+  border-left-color: var(--info) !important;
+}
+
+.notification-priority-low {
+  border-left-color: var(--text-muted) !important;
+}
+
+/* ── Narrow Viewport ── */
+@media (max-width: 480px) {
+  .toast-container {
+    left: var(--space-2);
+    right: var(--space-2);
+    bottom: var(--space-2);
+    max-width: none;
+    padding: var(--space-2);
+  }
+
+  .toast {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-duration: 0ms;
+  }
+
+  .toast.removing {
+    animation-duration: 0ms;
+  }
+
+  .toast[data-auto-dismiss="false"] {
+    animation-duration: 0ms;
+  }
+
+  .toast[data-auto-dismiss="false"].removing {
+    animation-duration: 0ms;
+  }
+
+  .notification-rail {
+    transition: none;
+  }
+
+  .notification-rail.open {
+    transform: translateX(0);
+  }
+
+  .notification-item {
+    transition: none;
+  }
+
+  .notification-item:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .toast-dismiss {
+    transition: none;
+  }
+}

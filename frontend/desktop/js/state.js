@@ -46,6 +46,13 @@ export const state = {
     lifecycle: null,    // RalphLifecycleProjection model dump
     missionBoard: null, // OrchestratorMissionBoard model dump
   },
+
+  // Notifications
+  notifications: {
+    railOpen: false,
+    systemPermission: 'default',
+    systemSupported: false,
+  },
 };
 
 // Per-mode default disclosures
@@ -116,4 +123,8 @@ export function setMode(mode) {
   if (state.mode === mode) return;
   state.mode = mode;
   applyModeDefaults();
+}
+
+export function setNotificationRailOpen(open) {
+  state.notifications.railOpen = !!open;
 }

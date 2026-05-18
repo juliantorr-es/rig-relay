@@ -209,6 +209,13 @@ function _switchMode(mode) {
 
   _renderPanelColumn();
   renderAllWidgets();
+
+  // ── Kernel mode FSM: keep runtime state in sync ───────────────────
+  // Precondition: runtime kernel initialized (window.__RIG_RELAY_RUNTIME__ exists)
+  var rt = window.__RIG_RELAY_RUNTIME__;
+  if (rt && rt.modeFSM) {
+    rt.modeFSM.transition('mode:switch', { mode: mode });
+  }
 }
 
 function _renderPanelColumn() {

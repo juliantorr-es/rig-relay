@@ -17,6 +17,8 @@
 <link rel="stylesheet" href="css/header.css">
 <link rel="stylesheet" href="css/chat.css">
 <link rel="stylesheet" href="css/widgets.css">
+<link rel="stylesheet" href="css/notifications.css">
+<link rel="stylesheet" href="css/delight.css">
 </head>
 <body>
 
@@ -28,6 +30,10 @@
     <!-- STAGE 3/4: #status-connection — readiness indicator (header chip) -->
     <span id="status-connection" class="header-chip" role="status" aria-live="polite" aria-label="Connection status"><span class="header-dot" aria-hidden="true"></span>Idle</span>
     <span id="header-timestamp" class="header-timestamp" aria-live="polite" aria-label="Last projection update">&mdash;</span>
+    <button id="notification-bell" class="notification-bell" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+      <span class="notification-bell-icon" aria-hidden="true">🔔</span>
+      <span class="notification-badge hidden" id="notification-badge" aria-live="polite" aria-label="Unread notifications"></span>
+    </button>
     <span id="status-session" class="header-chip" role="status" aria-live="polite" aria-label="Session status"><span class="header-dot" aria-hidden="true"></span>No session</span>
     <span class="header-spacer"></span>
     <span id="status-safety" class="header-chip" role="status" aria-live="polite" aria-label="Safety status"><span class="header-dot" aria-hidden="true"></span>Unknown</span>
@@ -72,6 +78,21 @@
     <span aria-label="Privacy notice">Local authority. Content-light sharing. Read-only remote.</span>
   </footer>
 
+  <!-- Notification system -->
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-label="Notifications"></div>
+
+  <div class="notification-rail" id="notification-rail" role="complementary" aria-label="Notification center">
+    <div class="notification-rail-header">
+      <h3>Notifications</h3>
+      <div class="notification-rail-actions">
+        <button id="notification-clear-all" aria-label="Clear resolved notifications">Clear All</button>
+        <button id="notification-close-rail" aria-label="Close notification center">&times;</button>
+      </div>
+    </div>
+    <div class="notification-rail-list" id="notification-rail-list" role="list" aria-label="Notification list"></div>
+  </div>
+
+  <script type="module" src="js/delight.js"></script>
   <script type="module" src="js/boot/orchestrator.js"></script>
 </body>
 </html>

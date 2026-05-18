@@ -10,10 +10,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from dataclasses import dataclass, field
-from pathlib import Path
-import httpx
 import json
 import os
+from pathlib import Path
 import signal
 import socket
 import subprocess
@@ -21,8 +20,8 @@ import threading
 import time
 from typing import Any
 
+import httpx
 import websockets
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -134,7 +133,7 @@ class RCLiveServer:
             "--ws-port",
             str(self.ws_port),
         ]
-        self._process = subprocess.Popen(  # noqa: S603
+        self._process = subprocess.Popen(
             cmd,
             cwd=self.repo_root,
             env=build_live_env(self.home_root, telemetry_enabled=self.telemetry_enabled),

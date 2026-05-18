@@ -9,11 +9,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 from pathlib import Path
-import time
 
 import pytest
 
-from rig_relay.desktop.bridge_server import DesktopBridgeConfig
 from tests.helpers.bridge_runner import BridgeRunner
 
 EVIDENCE_DIR = (
@@ -364,7 +362,7 @@ def test_no_token_in_dom(bridge: BridgeRunner, page) -> None:
 
     body_text = page.evaluate("() => document.body.textContent || ''")
     if token and len(token) > 8:
-        assert token not in body_text, f"Token leaked in DOM visible text"
+        assert token not in body_text, "Token leaked in DOM visible text"
 
 
 @pytest.mark.adversarial

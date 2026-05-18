@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 import subprocess
 import uuid
@@ -10,6 +10,8 @@ import uuid
 import pytest
 
 from rig_relay.context.models import ContextMode
+from rig_relay.coordination.watcher import CoordinationWatcher
+from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 from rig_relay.core.telemetry.local import (
     get_degradation_marker_path,
     get_observability_log_path,
@@ -26,8 +28,6 @@ from rig_relay.core.tools.builtins.get_context import (
     GetContextResult,
     GetContextToolConfig,
 )
-from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
-from rig_relay.coordination.watcher import CoordinationWatcher
 from tests.helpers.rc_live_harness import RCLiveServer
 
 
