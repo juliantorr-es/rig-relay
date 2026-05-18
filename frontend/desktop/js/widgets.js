@@ -222,13 +222,80 @@ registerWidget('intentResult', (container, level) => {
     '<span class="widget-missing">No intents executed yet.</span>', 'intentResult');
 });
 
-export function updateIntentResult(status, intentName, summary) {
+export function updateIntentResult(status, intentName, summary, details) {
   const container = el('widget-intentResult');
   if (!container) return;
   const cls = status === 'completed' ? 'ok' : status === 'refused' ? 'warn' : 'error';
-  const html = '<div>' + escapeHtml(intentName) + ': ' + escapeHtml(status) + '</div>' +
-    (summary ? '<div style="margin-top:4px;color:var(--text-secondary)">' + escapeHtml(summary) + '</div>' : '');
-  renderStandardCard(container, 'Latest Result', html, 'intentResult', cls);
+
+  // DOM construction — no innerHTML for untrusted data
+  while (container.firstChild) container.removeChild(container.firstChild);
+
+  const header = document.createElement('div');
+  header.className = 'widget-header';
+  header.onclick = function() { window.RigRelay.cycleWidgetDisclosure('intentResult'); };
+  header.appendChild(document.createTextNode('Latest Result'));
+
+  var statusText = escapeHtml(intentName) + ': ' + escapeHtml(status);
+  if (details && details.error_code) {
+    statusText += ' (' + escapeHtml(details.error_code) + ')';
+  }
+
+  const chip = document.createElement('div');
+  chip.className = 'widget-chip ' + cls;
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  chip.appendChild(dot);
+  header.appendChild(chip);
+
+  const icon = document.createElement('span');
+  icon.className = 'widget-expand-icon';
+  icon.textContent = '\u25B2';
+  header.appendChild(icon);
+
+  const body = document.createElement('div');
+  body.className = 'widget-body';
+
+  const statusLine = document.createElement('div');
+  statusLine.textContent = statusText;
+  body.appendChild(statusLine);
+
+  if (summary) {
+    const sumLine = document.createElement('div');
+    sumLine.style.cssText = 'margin-top:4px;color:var(--text-secondary)';
+    sumLine.textContent = summary;
+    body.appendChild(sumLine);
+  }
+
+  // ── Structured refusal display ──
+  if (status === 'refused') {
+    if (details && details.required_approval) {
+      const approvalLine = document.createElement('div');
+      approvalLine.style.cssText = 'margin-top:6px;padding:4px 8px;background:var(--warn-bg, rgba(210,153,34,0.1));border-radius:4px;font-size:var(--font-size-xs);color:var(--warn)';
+      approvalLine.textContent = 'This action requires approval from: ' + details.required_approval;
+      body.appendChild(approvalLine);
+    }
+    if (details && details.required_receipt) {
+      const receiptLine = document.createElement('div');
+      receiptLine.style.cssText = 'margin-top:4px;padding:4px 8px;background:var(--warn-bg, rgba(210,153,34,0.1));border-radius:4px;font-size:var(--font-size-xs);color:var(--warn)';
+      receiptLine.textContent = 'This action requires a valid authorization receipt';
+      body.appendChild(receiptLine);
+    }
+    if (details && details.hint) {
+      const hintLine = document.createElement('div');
+      hintLine.style.cssText = 'margin-top:4px;font-size:var(--font-size-xs);color:var(--text-muted)';
+      hintLine.textContent = 'Try: ' + details.hint;
+      body.appendChild(hintLine);
+    }
+  }
+
+  const trigger = document.createElement('div');
+  trigger.className = 'widget-expand-trigger';
+  trigger.textContent = 'Expand \u2192';
+  trigger.onclick = function() { window.RigRelay.cycleWidgetDisclosure('intentResult'); };
+
+  container.appendChild(header);
+  container.appendChild(body);
+  container.appendChild(trigger);
 }
 
 registerWidget('providerHealth', (container, level) => {
@@ -264,6 +331,22 @@ registerWidget('providerHealth', (container, level) => {
 registerWidget('progressTimeline', (container, level) => {
   if (level === 'expanded') {
     renderExpandedWidget(container, 'Progress Timeline', buildProgressTimelineExpanded());
+    return;
+  }
+  if (level === 'compact') {
+    var events = state.progressEvents;
+    if (!events.length) return;
+    var latest = events[events.length - 1];
+    var data = latest.data || latest;
+    var type = (data.event_type || 'unknown').replace(/^operation\./, '');
+    var status = data.status || 'running';
+    var cls = status === 'completed' ? 'ok' : status === 'failed' ? 'error' : 'warn';
+    var text = type;
+    if (data.message) text += ': ' + data.message.substring(0, 40);
+    else text += ': ' + status;
+    renderCompactChip(container, 'Progress', function() {
+      return { text: text, cls: cls };
+    });
     return;
   }
   if (level !== 'standard') return;
@@ -428,6 +511,26 @@ function setSafeHTML(element, html) {
   element.appendChild(template.content.cloneNode(true));
 }
 
+// ── Receipt dot coloring ──
+function receiptKindDotCls(kind) {
+  var k = (kind || '').toLowerCase();
+  if (k === 'checkpoint') return 'info';
+  if (k === 'validation') return 'ok';
+  if (k === 'authorization') return 'warn';
+  if (k === 'bash') return 'info';
+  if (k === 'report') return '';
+  return '';
+}
+
+function receiptItemDotCls(receipt) {
+  var kind = (receipt.kind || '').toLowerCase();
+  if (kind === 'validation') {
+    var passed = receipt.passed !== false;
+    return passed ? 'ok' : 'warn';
+  }
+  return receiptKindDotCls(kind);
+}
+
 // ── Review mode widgets (continuation) ──
 
 registerWidget('receiptTimeline', (container, level) => {
@@ -442,13 +545,51 @@ registerWidget('receiptTimeline', (container, level) => {
       '<span class="widget-missing">No receipts available.</span>', 'receiptTimeline');
     return;
   }
-  var html = '';
-  receipts.slice(0, 10).forEach(function(r) {
-    html += '<div style="padding:4px 0;font-size:var(--font-size-xs);border-bottom:1px solid var(--border-subtle)">' +
-      '<span style="font-weight:500">' + escapeHtml(r.kind || 'Unknown') + '</span> ' +
-      '<span style="color:var(--text-muted)">' + escapeHtml(r.timestamp || '') + '</span>' +
-      '</div>';
+
+  // ── Group by kind ──
+  var grouped = {};
+  receipts.forEach(function(r) {
+    var kind = r.kind || 'Unknown';
+    if (!grouped[kind]) grouped[kind] = [];
+    grouped[kind].push(r);
   });
+
+  // Sort groups by most recent receipt in each group
+  var kindOrder = Object.keys(grouped).sort(function(a, b) {
+    var aTs = grouped[a][0].timestamp || '';
+    var bTs = grouped[b][0].timestamp || '';
+    return bTs.localeCompare(aTs);
+  });
+
+  var html = '';
+  var totalShown = 0;
+  var maxItems = 20;
+
+  for (var gi = 0; gi < kindOrder.length && totalShown < maxItems; gi++) {
+    var kind = kindOrder[gi];
+    var items = grouped[kind];
+    var dotCls = receiptKindDotCls(kind);
+
+    html += '<div style="padding:6px 0 2px 0;font-size:var(--font-size-xs);color:var(--text-secondary);border-bottom:1px solid var(--border);margin-top:4px">' +
+      '<span class="dot ' + dotCls + '" style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle"></span>' +
+      escapeHtml(kind) + ' (' + items.length + ')' +
+      '</div>';
+
+    for (var i = 0; i < items.length && totalShown < maxItems; i++) {
+      var r = items[i];
+      var isLatest = totalShown === 0;
+      var itemCls = receiptItemDotCls(r);
+
+      html += '<div style="padding:4px 0;font-size:var(--font-size-xs);border-bottom:1px solid var(--border-subtle)">' +
+        (isLatest ? '<span class="widget-chip ok" style="font-size:9px;padding:1px 5px;margin-right:4px;vertical-align:middle">latest</span>' : '') +
+        '<span class="dot ' + itemCls + '" style="display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:4px;vertical-align:middle"></span>' +
+        (r.summary ? '<span style="font-weight:500">' + escapeHtml(r.summary.substring(0, 80)) + '</span> ' : '') +
+        '<span style="color:var(--text-muted)">' + escapeHtml(r.timestamp || '') + '</span>' +
+        '</div>';
+      totalShown++;
+    }
+  }
+
   renderStandardCard(container, 'Receipt Timeline', html, 'receiptTimeline');
 });
 
@@ -1527,6 +1668,71 @@ registerWidget('roleModel', function(container, level) {
     '</div>';
 
   renderStandardCard(container, 'Role Model', html, 'roleModel', '');
+});
+
+registerWidget('releaseGate', (container, level) => {
+  const proj = state.projection;
+  const rg = proj && proj._release_gate;
+
+  if (!rg || !rg.available) {
+    if (level === 'compact') {
+      renderCompactChip(container, 'RC Gate', () => ({ text: 'N/A', cls: '' }));
+      return;
+    }
+    if (level === 'standard') {
+      renderStandardCard(container, 'Release Candidate Gate',
+        '<span class="widget-missing">No release gate data</span>', 'releaseGate');
+      return;
+    }
+    return;
+  }
+
+  const overallStatus = rg.overall_status || 'unknown';
+  const statusCls = overallStatus === 'ready' || overallStatus === 'passing' ? 'ok' :
+                    overallStatus === 'blocked' ? 'warn' : '';
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'RC Gate', () => ({
+      text: overallStatus,
+      cls: statusCls
+    }));
+    return;
+  }
+
+  if (level !== 'standard') return;
+
+  const phases = rg.phases || [];
+  const openBlockers = rg.open_blocker_count || 0;
+  const totalBlockers = rg.total_blocker_count || 0;
+
+  let html = '';
+  if (openBlockers > 0) {
+    html += '<div style="margin-bottom:8px;font-size:var(--font-size-sm)">' +
+      '<span class="widget-chip warn"><span class="dot"></span>' +
+      openBlockers + '/' + totalBlockers + ' blockers open</span>' +
+      '</div>';
+  }
+
+  if (phases.length > 0) {
+    html += '<table class="kv-table">';
+    phases.forEach(function(p) {
+      var pCls = p.status === 'ready' || p.status === 'passing' ? 'ok' :
+                 p.status === 'blocked' ? 'warn' : '';
+      html += row(p.title, p.status, pCls);
+    });
+    html += '</table>';
+  }
+
+  if (rg.last_validation_run) {
+    var lvr = rg.last_validation_run;
+    html += '<div style="margin-top:8px;font-size:var(--font-size-xs);color:var(--text-muted)">' +
+      'Last validation: ' + escapeHtml(lvr.result) +
+      ' (' + lvr.tests_run + ' tests)' +
+      (lvr.created_at ? ' · ' + formatTimestamp(lvr.created_at) : '') +
+      '</div>';
+  }
+
+  renderStandardCard(container, 'RC Gate: ' + overallStatus, html, 'releaseGate', statusCls);
 });
 
 function renderRoleModelExpanded(container, rm) {

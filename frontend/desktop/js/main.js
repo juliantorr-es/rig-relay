@@ -169,7 +169,7 @@ function _renderPanelColumn() {
                'roleModel',
                'missionBoard',
                'ralphScout', 'ralphLifecycle',
-               'validationSummary', 'storageBudget', 'intentResult',
+               'validationSummary', 'releaseGate', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
                'workspaceStatus', 'fleetStatus'],
     review: ['progressTimeline', 'receiptTimeline', 'refinementBacklog',

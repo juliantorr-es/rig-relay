@@ -423,9 +423,8 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 ):
     monkeypatch.chdir(tmp_path)
 
-    from rig_relay.core.context import assembler as assembler_mod
-
     from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.context import assembler as assembler_mod
     from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-shadow-failure"

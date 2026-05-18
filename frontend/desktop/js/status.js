@@ -29,6 +29,8 @@ export function renderStatusFromState(snap) {
   const label = snap.label || STATUS_LABELS[snap.transport.status] || 'Unknown';
   const chipClass = snap.chipClass || STATUS_CHIP_CLASS[snap.transport.status] || 'warn';
   setChip(chip, chipClass, label);
+  chip.classList.add('phase-' + (snap.transport.phase || 'boot'));
+  _renderTimestamp(snap.transport.updatedAt);
 }
 
 export function renderConnection() {
@@ -38,19 +40,22 @@ export function renderConnection() {
   const status = state.transport.status || TransportStatus.IDLE;
   const label = STATUS_LABELS[status] || 'Unknown';
   const chipClass = STATUS_CHIP_CLASS[status] || 'warn';
+  const phase = state.transport.phase || 'boot';
 
   recordFrontendEvent('frontend_status_rendered', {
     connection_state: status,
     ws_connected: state.wsConnected,
     label: label,
-    phase: state.transport.phase || 'unknown',
+    phase: phase,
     last_event: state.transport.lastEvent || '',
   });
 
-  // Golden-path contradiction detection
   detectStatusContradiction({ transport: state.transport, wsConnected: state.wsConnected }, label);
 
   setChip(chip, chipClass, label);
+  chip.classList.add('phase-' + phase);
+
+  _renderTimestamp(state.transport.updatedAt);
 }
 
 export function renderSession() {
@@ -83,5 +88,29 @@ export function renderSafety() {
     }
   } else {
     setChip(chip, '', 'Unknown');
+  }
+}
+
+function _renderTimestamp(updatedAt) {
+  const el = document.getElementById('header-timestamp');
+  if (!el) return;
+
+  if (!updatedAt) {
+    el.textContent = '\u2014';
+    el.classList.remove('stale');
+    return;
+  }
+
+  const seconds = (Date.now() - new Date(updatedAt).getTime()) / 1000;
+
+  if (seconds < 5) {
+    el.textContent = 'just now';
+    el.classList.remove('stale');
+  } else if (seconds <= 30) {
+    el.textContent = Math.round(seconds) + 's ago';
+    el.classList.remove('stale');
+  } else {
+    el.textContent = 'stale';
+    el.classList.add('stale');
   }
 }

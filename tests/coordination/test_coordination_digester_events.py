@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
-import threading
 from pathlib import Path
+import threading
 
 import pytest
 

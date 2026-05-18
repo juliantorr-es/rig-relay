@@ -12,6 +12,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     import sys as _sys
 
     args_list = list(argv) if argv is not None else _sys.argv[1:]
+
+    if args_list and args_list[0] == "doctor":
+        from rig_relay.cli.doctor import main as doctor_main
+
+        doctor_main(args_list[1:])
+        return
+
     from rig_relay.cli.desktop_cockpit import main as cockpit_main
 
     cockpit_main(args_list)

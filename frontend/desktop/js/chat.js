@@ -126,6 +126,21 @@ export function updateCharCount() {
 }
 
 export function dispatchIntent(name, params) {
+  // ── Button state: disable all buttons that trigger this intent ──
+  if (!state._pendingIntents) state._pendingIntents = {};
+  const buttons = document.querySelectorAll('button');
+  const matching = [];
+  buttons.forEach(function(btn) {
+    var onclick = btn.getAttribute('onclick') || '';
+    if (onclick.indexOf("dispatchIntent('" + name + "'") !== -1) {
+      btn.disabled = true;
+      btn._originalText = btn.textContent;
+      btn.textContent = intentPendingLabel(name);
+      matching.push(btn);
+    }
+  });
+  state._pendingIntents[name] = matching;
+
   const sentWS = sendMessage({
     type: 'desktop_intent_request',
     intent_name: name,
@@ -135,5 +150,55 @@ export function dispatchIntent(name, params) {
 
   if (!sentWS) {
     console.warn('Intent dispatch failed: WebSocket not connected');
+    // Re-enable immediately if send failed
+    restoreIntentButton(name, 'failed');
   }
+}
+
+export function restoreIntentButton(name, status) {
+  if (!state._pendingIntents) return;
+  var buttons = state._pendingIntents[name];
+  if (!buttons || !buttons.length) return;
+  buttons.forEach(function(btn) {
+    if (status === 'completed') {
+      btn.textContent = btn._originalText + ' \u2713';
+      btn.disabled = true;
+      setTimeout(function() {
+        btn.textContent = btn._originalText;
+        btn.disabled = false;
+      }, 2000);
+    } else {
+      btn.textContent = btn._originalText;
+      btn.disabled = false;
+    }
+  });
+  delete state._pendingIntents[name];
+}
+
+function intentPendingLabel(name) {
+  var mapping = {
+    run_validation_suite: 'Running\u2026',
+    run_storage_audit: 'Auditing\u2026',
+    ralph_scan: 'Scanning\u2026',
+    ralph_approve: 'Approving\u2026',
+    ralph_decline: 'Declining\u2026',
+    ralph_rescan: 'Rescanning\u2026',
+    fleet_queue_snapshot: 'Snapshotting\u2026',
+    run_queue_plan_dry_run: 'Planning\u2026',
+    run_spawn_plan_dry_run: 'Spawning\u2026',
+    fleet_orchestrate: 'Running\u2026',
+    workspace_init: 'Bootstrapping\u2026',
+    worktree_list: 'Listing\u2026',
+    council_consult: 'Consulting\u2026',
+    provider_status: 'Refreshing\u2026',
+    orchestrator_new_mission: 'Creating\u2026',
+    review_with_orchestrator: 'Loading\u2026',
+    ralph_background_toggle_on: 'Enabling\u2026',
+    ralph_background_toggle_off: 'Disabling\u2026',
+    ralph_sign_off: 'Signing off\u2026',
+    ralph_adopt: 'Adopting\u2026',
+    sign_in_google_exchange: 'Exchanging\u2026',
+    sign_in_github_exchange: 'Exchanging\u2026',
+  };
+  return mapping[name] || 'Pending\u2026';
 }

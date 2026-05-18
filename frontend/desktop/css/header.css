@@ -4,12 +4,15 @@
 #top-header {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: 0 var(--space-4);
   height: var(--header-height);
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  background: rgba(19, 22, 27, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(38, 43, 51, 0.5);
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .header-title {
@@ -18,6 +21,7 @@
   color: var(--accent);
   letter-spacing: -0.01em;
   white-space: nowrap;
+  user-select: none;
 }
 
 .header-spacer {
@@ -32,7 +36,9 @@
   background: var(--bg-chip);
   white-space: nowrap;
   color: var(--text-secondary);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast),
+              background var(--transition-fast),
+              color var(--transition-fast);
 }
 
 .header-chip.ok {
@@ -53,6 +59,12 @@
   background: var(--error-bg);
 }
 
+.header-chip.info {
+  color: var(--info);
+  border-color: var(--info);
+  background: rgba(79, 143, 204, 0.1);
+}
+
 .header-dot {
   display: inline-block;
   width: 6px;
@@ -61,4 +73,52 @@
   margin-right: 4px;
   vertical-align: middle;
   background: currentColor;
+}
+
+/* ── Connection chip variants per transport phase ── */
+.header-chip.phase-boot .header-dot {
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.header-chip.phase-handshake .header-dot {
+  animation: dotPulse 0.8s ease-in-out infinite;
+}
+
+.header-chip.phase-operational .header-dot {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(76, 154, 90, 0.5);
+}
+
+.header-chip.phase-recovery .header-dot {
+  animation: dotPulse 1s ease-in-out infinite;
+  background: var(--warn);
+}
+
+.header-chip.phase-degraded .header-dot {
+  animation: dotPulse 2s ease-in-out infinite;
+  background: var(--warn);
+}
+
+.header-chip.phase-terminal .header-dot {
+  background: var(--error);
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Projection timestamp in header ── */
+.header-timestamp {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+  user-select: none;
+}
+
+.header-timestamp.stale {
+  color: var(--warn);
+  opacity: 1;
 }

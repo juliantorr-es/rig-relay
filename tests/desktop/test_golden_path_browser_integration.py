@@ -11,11 +11,11 @@ from __future__ import annotations
 import importlib.util as _importlib_util
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import tempfile
 import time
-from pathlib import Path
 
 import pytest
 

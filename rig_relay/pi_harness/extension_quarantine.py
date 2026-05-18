@@ -209,7 +209,7 @@ def run_extension_with_containment(
         result = callback(*callback_args, **kwargs)
         store.record_success(extension)
         return {"status": "ok", "extension_id": extension.extension_id, "result": result}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         state, record, decision = store.record_crash(extension, lifecycle_phase, exc, session_id=session_id)
         return {
             "status": "crashed",

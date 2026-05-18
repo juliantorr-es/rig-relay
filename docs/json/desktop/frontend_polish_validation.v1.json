@@ -1,0 +1,29 @@
+{
+  "report_type": "rc_frontend_polish_wiring_mission",
+  "branch": "main",
+  "head_before": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "head_after": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "files_changed": [
+    "frontend/desktop/index.html",
+    "frontend/desktop/js/status.js",
+    "frontend/desktop/js/chat.js",
+    "frontend/desktop/js/projection.js",
+    "frontend/desktop/js/widgets.js",
+    "frontend/desktop/js/main.js",
+    "frontend/desktop/css/header.css",
+    "frontend/desktop/css/variables.css",
+    "frontend/desktop/css/layout.css",
+    "frontend/desktop/css/chat.css",
+    "frontend/desktop/css/widgets.css",
+    "rig_relay/desktop/projection.py"
+  ],
+  "files_created": [
+    "tests/desktop/test_frontend_polish.py",
+    "docs/json/desktop/frontend_polish_validation.v1.json"
+  ],
+  "tests_run": 45,
+  "tests_skipped": 0,
+  "test_classifications": { "contract": 45 },
+  "completed_work_summary": "Connection status rework (11 states), release-candidate panel widget with backend bridge, activity/evidence rail improvements, intent UX hardening (button states, refusal display), visual polish (glass layers, hierarchy, WCAG accessibility), 45 contract tests",
+  "generated_at": "2026-05-17T23:30:00Z"
+}

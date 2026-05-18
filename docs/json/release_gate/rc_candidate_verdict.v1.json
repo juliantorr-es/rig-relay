@@ -1,0 +1,67 @@
+{
+  "blocking_phase_ids": [
+    "phase_4_ui_docs_ci_packaging",
+    "phase_5_public_docs_licensing"
+  ],
+  "branch": "main",
+  "deferred_risk_ids": [
+    "risk_debug_packet_quarantine",
+    "risk_digestion_pipeline",
+    "risk_context_cache",
+    "risk_markdown_audit_leaks",
+    "risk_watchable_backends"
+  ],
+  "deferred_seam_count": 7,
+  "evidence_paths": [
+    "docs/json/release_gate/rc_blockers.v1.jsonl",
+    "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+    "docs/json/testing/known_test_seams.v1.jsonl",
+    "tests/rc_seams/test_rc_seam_tests.py"
+  ],
+  "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
+  "gate_overall_status": "blocked",
+  "generated_at": "2026-05-17T23:50:47Z",
+  "head_sha": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "known_seam_count": 12,
+  "open_blocker_ids": [
+    "blk_phase4_ci_repo_ref",
+    "blk_phase4_pi_lens_in_git",
+    "blk_phase4_deferred_checks_required",
+    "blk_phase5_license_policy_json_missing",
+    "blk_phase5_repo_policy_json_missing"
+  ],
+  "promote_blockers": [
+    "All 5 open blockers resolved",
+    "All phases status is 'ready' or 'passing'",
+    "Validator returns 'passed' with 0 errors",
+    "No 'unknown' phase statuses remain"
+  ],
+  "ready_phase_ids": [
+    "phase_1_governance_coordination",
+    "phase_2_telemetry_privacy",
+    "phase_3_runtime_tools_context_api"
+  ],
+  "required_next_actions": [
+    "Fix CI release workflow repo reference: mistralai/mistral-vibe → juliantorr-es/rig-relay",
+    "Add .pi-lens/ to .gitignore and remove 15 tracked .pi-lens/ files",
+    "Demote 3 deferred checks from required_checks in release gate policy",
+    "Create docs/json/license_policy.v1.json with AGPL-3.0-or-later policy",
+    "Create docs/json/repository_policy.v1.json with artifact-native doctrine",
+    "Resolve remaining 7 deferred test seams before RC promote"
+  ],
+  "resolved_blocker_ids": [],
+  "resolved_seam_count": 5,
+  "schema_version": "rig.relay.rc_candidate_verdict.v1",
+  "unknown_phase_ids": [],
+  "validation_run_ids": [
+    "vr_coordination_concurrency_20260517",
+    "vr_telemetry_consent_redaction_20260517",
+    "vr_release_gate_cli_20260517",
+    "vr_tracing_real_source_20260517",
+    "vr_guard_escape_hatches_20260517"
+  ],
+  "validator_error_count": 0,
+  "validator_result": "passed",
+  "verdict": "hold"
+}

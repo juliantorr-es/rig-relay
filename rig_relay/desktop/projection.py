@@ -76,8 +76,8 @@ def _load_markdown_summary(path: Path) -> dict[str, Any] | None:
 
 
 def _get_app_version() -> str:
-    """Read app version from vibe/__init__.py."""
-    init_path = REPO_ROOT / "vibe" / "__init__.py"
+    """Read app version from rig_relay/__init__.py."""
+    init_path = REPO_ROOT / "rig_relay" / "__init__.py"
     if not init_path.is_file():
         return "unknown"
     VERSION_PARTS_COUNT = 2
@@ -360,6 +360,72 @@ def _build_update(build_root: Path) -> dict[str, Any]:
     }
 
 
+def _build_release_gate() -> dict[str, Any]:
+    """Read release gate data from docs/json/release_gate/."""
+    gate_path = (
+        REPO_ROOT / "docs" / "json" / "release_gate" / "rc_readiness_gate.v1.json"
+    )
+    blockers_path = (
+        REPO_ROOT / "docs" / "json" / "release_gate" / "rc_blockers.v1.jsonl"
+    )
+
+    gate = _load_json(gate_path)
+    if not gate:
+        return {"available": False}
+
+    open_blocker_count = 0
+    total_blocker_count = 0
+    if blockers_path.is_file():
+        try:
+            for line in blockers_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    b = json.loads(line)
+                    total_blocker_count += 1
+                    if b.get("status") == "open":
+                        open_blocker_count += 1
+                except json.JSONDecodeError:
+                    pass
+        except OSError:
+            pass
+
+    phases = [
+        {
+            "phase_id": p.get("phase_id", ""),
+            "title": p.get("title", ""),
+            "status": p.get("status", "unknown"),
+        }
+        for p in gate.get("phases", [])
+    ]
+
+    last_validation_run = None
+    val_dir = DEFAULT_BUILD_ROOT / "validation_runs"
+    if val_dir.is_dir():
+        val_files = sorted(
+            val_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        if val_files:
+            val_data = _load_json(val_files[0])
+            if val_data:
+                last_validation_run = {
+                    "result": val_data.get("result", "unknown"),
+                    "tests_run": val_data.get("tests_run", 0),
+                    "created_at": val_data.get("created_at", ""),
+                }
+
+    return {
+        "available": True,
+        "gate_id": gate.get("gate_id", ""),
+        "overall_status": gate.get("overall_status", "unknown"),
+        "phases": phases,
+        "open_blocker_count": open_blocker_count,
+        "total_blocker_count": total_blocker_count,
+        "last_validation_run": last_validation_run,
+    }
+
+
 def _build_integrity(root: Path | None = None) -> dict[str, Any] | None:
     """Build a content-light projection integrity assessment from available receipts.
 
@@ -441,6 +507,7 @@ def build_projection(  # noqa: PLR0914
     providers = _build_providers()
     integrity = _build_integrity(root)
     tool_runtime_summary = _build_tool_runtime_summary()
+    release_gate = _build_release_gate()
 
     source_status = {
         "current_state": current_state["available"],
@@ -453,6 +520,7 @@ def build_projection(  # noqa: PLR0914
         "provider_status": providers["total"] > 0,
         "integrity": integrity is not None,
         "tool_runtime_summary": tool_runtime_summary.get("available", False),
+        "release_gate": release_gate["available"],
     }
 
     warnings: list[str] = []
@@ -478,6 +546,7 @@ def build_projection(  # noqa: PLR0914
         "providers": providers,
         "integrity": integrity,
         "tool_runtime_summary": tool_runtime_summary,
+        "_release_gate": release_gate,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

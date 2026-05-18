@@ -1,0 +1,153 @@
+{
+  "schema_version": "rig.release_candidate.installability_check.v1",
+  "generated_at": "2026-05-18T00:03:00Z",
+  "mission": "RC Installability + First-Run Product Path v1",
+  "branch": "main",
+  "head_before": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "head_after": "abc7430440720bd6259c0168f6b2139d4773ee28",
+  "dirty_state_before": {
+    "modified": [
+      "docs/json/release_gate/rc_blockers.v1.jsonl",
+      "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+      "docs/json/release_gate/rc_readiness_gate.v1.json",
+      "docs/json/release_gate/rc_validation_runs.v1.jsonl"
+    ],
+    "untracked": []
+  },
+  "dirty_state_after": {
+    "pre_existing_modified": [
+      "docs/json/release_gate/rc_blockers.v1.jsonl",
+      "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+      "docs/json/release_gate/rc_readiness_gate.v1.json",
+      "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+      "docs/json/testing/known_test_seams.v1.jsonl",
+      "frontend/desktop/css/*.css (5 files)",
+      "frontend/desktop/index.html",
+      "frontend/desktop/js/*.js (5 files)",
+      "rig_relay/coordination/file_markers.py",
+      "rig_relay/docs_renderer/blocks.py",
+      "rig_relay/pi_harness/extension_quarantine.py",
+      "tests/coordination/test_coordination_digester_events.py",
+      "tests/desktop/test_golden_path_browser_integration.py",
+      "tests/docs_renderer/test_path_portability.py",
+      "tests/pi_harness/test_extension_quarantine.py",
+      "tests/telemetry/test_observability_e2e.py"
+    ],
+    "this_mission_modified": [
+      "CHANGELOG.md (Unicode alpha → ASCII fix)",
+      "pyproject.toml (vibe/ cleanup, known-first-party fix)",
+      "rig_relay/cli/entrypoint.py (doctor subcommand dispatch)",
+      "rig_relay/desktop/projection.py (vibe/__init__.py → rig_relay/__init__.py)",
+      "scripts/install.sh (git install URL + stale naming fixes)"
+    ],
+    "this_mission_created": [
+      "rig_relay/cli/doctor.py",
+      "scripts/rig_rc_installability_check.py",
+      "tests/release_candidate/__init__.py",
+      "tests/release_candidate/test_installability_check.py",
+      "docs/schemas/rig.release_candidate.installability_check.v1.schema.json",
+      "docs/json/release_candidate/rc_installability_verdict.v1.json",
+      "docs/json/release_candidate/final_report.v1.json (this file)"
+    ]
+  },
+  "files_changed": 5,
+  "files_created": 7,
+  "files_deleted": 0,
+  "files_intentionally_skipped": [
+    "docs/json/release_gate/*.jsonl — owned by RC gate coordinator lane",
+    "docs/json/release_gate/*.json — owned by RC gate coordinator lane",
+    "docs/schemas/rig.release_gate.*.schema.json — owned by RC gate coordinator lane",
+    "scripts/rig_release_gate_validate.py — pre-existing, not modified",
+    "4 stale ruff per-file-ignores for vibe/ paths — deferred to migration owner"
+  ],
+  "subagent_ownership_map": {
+    "coordinator": "Final verdict, evidence wiring, schema validation, blocker fixes, final report",
+    "subagent_a_packaging": "pyproject.toml vibe/ cleanup, known-first-party fix, projection.py version path fix",
+    "subagent_b_cli": "doctor command module, entrypoint dispatch modification",
+    "subagent_c_installability": "RC installability validator script, schema duration_ms fix",
+    "subagent_d_hygiene": "Public docs audit — found Unicode alpha blocker and install.sh PyPI blocker",
+    "subagent_e_tests": "10 installability tests + test directory conflict analysis"
+  },
+  "installability_verdict_before": "No prior verdict existed — this is the first RC installability assessment",
+  "installability_verdict_after": "HOLD. 12/13 mission-owned checks pass. 1 pre-existing failure (26 schema $schema mismatches). 3 warnings.",
+  "package_metadata_status": "PASS — name, version, python_requires, license, classifiers, entry points all correct. vibe/ references removed from build/pyright/ruff config.",
+  "cli_first_run_status": "PASS — doctor command works with --json flag. rig-relay --help and rig-relay-acp --help both return exit 0.",
+  "public_docs_licensing_status": "PASS — all 8 public docs present. LICENSE (AGPL-3.0) matches pyproject.toml. Unicode alpha in CHANGELOG fixed. install.sh fixed to use git install.",
+  "side_effect_safety_status": "NOT TESTED — first-run artifact safety tests not implemented in this phase (deferred to future RC phase).",
+  "release_gate_evidence_wiring_status": "NOT WIRED — docs/json/release_gate/ owned by RC gate coordinator lane. Installability evidence artifact created at docs/json/release_candidate/rc_installability_verdict.v1.json for gate coordinator to reference.",
+  "tests_run": 10,
+  "tests_passed": 10,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": 1400,
+  "test_classifications": {
+    "test_installability_check_emits_valid_json": "real-artifact",
+    "test_installability_check_overall_status_passed": "real-artifact",
+    "test_schema_validates_installability_output": "contract",
+    "test_missing_public_doc_fails": "adversarial",
+    "test_license_mismatch_detected": "adversarial",
+    "test_cli_help_capture": "integration",
+    "test_failing_command_is_structured": "real-artifact",
+    "test_no_markdown_evidence_created": "substrate",
+    "test_version_is_ascii": "contract",
+    "test_doctor_command_as_subcheck": "integration"
+  },
+  "evidence_artifact_paths": [
+    "docs/schemas/rig.release_candidate.installability_check.v1.schema.json",
+    "docs/json/release_candidate/rc_installability_verdict.v1.json",
+    "docs/json/release_candidate/final_report.v1.json",
+    "scripts/rig_rc_installability_check.py",
+    "rig_relay/cli/doctor.py",
+    "tests/release_candidate/test_installability_check.py"
+  ],
+  "schema_validation_results": {
+    "new_schema_created": "rig.release_candidate.installability_check.v1.schema.json — valid Draft 7, passes project validator (0 errors)",
+    "verdict_artifact": "docs/json/release_candidate/rc_installability_verdict.v1.json — validates against schema",
+    "pre_existing_schema_failures": "26 schemas have $schema URL mismatches (NOT caused by this mission)",
+    "pre_existing_schema_total": "151 schemas total, 125 pass, 26 fail"
+  },
+  "markdown_files_created": [],
+  "markdown_files_modified": [
+    {
+      "file": "CHANGELOG.md",
+      "change": "Unicode U+03B1 → ASCII 'a' in version 0.1.0a1",
+      "allowed_exception": "CHANGELOG.md — allowed per AGENTS.md: 'CHANGELOG.md — if release tooling requires it'"
+    }
+  ],
+  "telemetry_and_redaction_implications": "None. Doctor command and installability validator are read-only inspection tools. No telemetry events emitted. No secrets in output.",
+  "dependency_changes": "None. No new dependencies added.",
+  "completed_work": [
+    "Fixed 5 packaging issues (vibe/ references, known-first-party, version path)",
+    "Created doctor command (rig_relay/cli/doctor.py) with --json support",
+    "Added doctor subcommand dispatch to rig_relay/cli/entrypoint.py",
+    "Created RC installability validator (scripts/rig_rc_installability_check.py) — 17 checks",
+    "Created RC installability JSON schema (valid Draft 7, passes project validator)",
+    "Fixed Unicode alpha in CHANGELOG.md",
+    "Fixed install.sh: git install URL, stale vibe naming",
+    "Created 10 installability tests — all pass",
+    "Created RC installability verdict artifact — validates against schema",
+    "Ran targeted validation: ruff check, schema validator, 10 tests"
+  ],
+  "intentionally_deferred_work": [
+    "First-run artifact safety tests (temp-home/temp-workspace smoke) — needs isolated environment setup",
+    "Packaging marker tests (wheel build, pipx install e2e) — needs real PyPI or index server",
+    "Cross-platform PATH validation tests",
+    "Upgrade path testing from previous version",
+    "4 stale ruff per-file-ignores for vibe/ paths — deferred to migration owner",
+    "Wiring installability evidence into release-gate — gate coordinator lane owns docs/json/release_gate/"
+  ],
+  "discovered_out_of_scope_risks": [
+    "26 pre-existing schema $schema mismatches block RC — must be fixed by separate cleanup mission",
+    "116 legacy .md files in docs/audits/ — migration to JSON artifacts is in-progress but incomplete",
+    "install.sh still has legacy 'vibe' terminology in a few remaining spots (BIN_PATH variables matched rig_relay but a full rename audit would catch more)",
+    "rig_relay/desktop/projection.py docstring still references 'vibe' — cosmetic, not functional",
+    "No PyPI release exists — install.sh uses git URL which works for RC but real release needs PyPI upload",
+    "Frontend/desktop files are being modified by another agent (16 dirty files in frontend/) — coordination window tight"
+  ],
+  "remaining_seams": [
+    "First-run temp-home isolation test — not implemented",
+    "Cross-platform install testing (Windows, Linux CI) — not implemented",
+    "Wheel build verification in CI — not implemented",
+    "Upgrade path testing — not implemented",
+    "Packaging marker test suite — not implemented"
+  ]
+}

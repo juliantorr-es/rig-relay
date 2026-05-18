@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from rig_relay.docs_renderer.paths import DOCS_OUT, get_relative_root, make_relative_link
+from rig_relay.docs_renderer.paths import (
+    DOCS_OUT,
+    get_relative_root,
+    make_relative_link,
+)
 
 
 def test_get_relative_root_returns_correct_depth():

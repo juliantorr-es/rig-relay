@@ -167,20 +167,19 @@ def render_block(
     renderer = BLOCK_RENDERERS.get(btype)
     if renderer is None:
         body = f'<p id="{bid}" class="{css_cls}"{data_attrs}>{content}</p>'
+    elif btype == "link":
+        body = renderer(  # type: ignore[operator]
+            block,
+            content,
+            title,
+            bid,
+            css_cls,
+            data_attrs,
+            relative_root=relative_root,
+            base_path=base_path,
+        )
     else:
-        if btype == "link":
-            body = renderer(  # type: ignore[operator]
-                block,
-                content,
-                title,
-                bid,
-                css_cls,
-                data_attrs,
-                relative_root=relative_root,
-                base_path=base_path,
-            )
-        else:
-            body = renderer(block, content, title, bid, css_cls, data_attrs)  # type: ignore[operator]
+        body = renderer(block, content, title, bid, css_cls, data_attrs)  # type: ignore[operator]
 
     if btype in {"code", "json"}:
         return body

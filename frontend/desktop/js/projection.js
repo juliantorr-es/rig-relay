@@ -6,7 +6,7 @@
 import { state } from './state.js';
 import { renderWidget, renderAllWidgets, updateIntentResult } from './widgets.js';
 import { renderStatusBar } from './status.js';
-import { renderChat } from './chat.js';
+import { renderChat, restoreIntentButton } from './chat.js';
 
 // ── Render batching ──────────────────────────────────────────────────
 // Only one full render cycle per animation frame, regardless of how many
@@ -107,6 +107,9 @@ export function handleIntentResult(msg) {
   const status = result.status || 'unknown';
   const summary = result.message || result.summary || '';
 
+  // ── Restore any pending intent buttons ──
+  restoreIntentButton(name, status);
+
   if (name.startsWith('ralph_')) {
     if (result.status !== 'refused' && result.ralph && result.ralph.panel) {
       state.ralph.panel = result.ralph.panel;
@@ -130,7 +133,14 @@ export function handleIntentResult(msg) {
     return;
   }
 
-  updateIntentResult(status, name, summary);
+  var details = {};
+  if (result.status === 'refused') {
+    details.error_code = result.error_code;
+    details.required_approval = result.required_approval;
+    details.required_receipt = result.required_receipt;
+    details.hint = result.hint;
+  }
+  updateIntentResult(status, name, summary, details);
 }
 
 export function handleProgressEvent(msg) {

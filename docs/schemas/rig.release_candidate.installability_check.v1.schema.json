@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.release_candidate.installability_check.v1.schema.json",
+  "title": "Rig Relay RC Installability Check v1",
+  "description": "Structured installability check result for Rig Relay release-candidate validation. Produced by scripts/rig_rc_installability_check.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_sha",
+    "package_name",
+    "package_version",
+    "python_requires",
+    "overall_status",
+    "cli_entry_points_checked",
+    "public_docs_checked",
+    "license_status",
+    "checks",
+    "errors",
+    "warnings",
+    "evidence_paths",
+    "commands_run",
+    "duration_ms",
+    "required_next_actions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["rig.release_candidate.installability_check.v1"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the installability check was generated."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch name at time of check."
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "40-character hexadecimal git HEAD SHA."
+    },
+    "package_name": {
+      "type": "string",
+      "description": "Package name as declared in pyproject.toml."
+    },
+    "package_version": {
+      "type": "string",
+      "description": "Package version as declared in pyproject.toml."
+    },
+    "python_requires": {
+      "type": "string",
+      "description": "Python version requirement string (e.g. '>=3.12')."
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["passed", "failed", "blocked"],
+      "description": "Overall installability status."
+    },
+    "cli_entry_points_checked": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "CLI entry point names that were verified."
+    },
+    "public_docs_checked": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Public documentation paths that were verified."
+    },
+    "license_status": {
+      "type": "string",
+      "enum": ["pass", "fail"],
+      "description": "License file presence and integrity check result."
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "status", "detail", "duration_ms"],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "description": "Unique identifier for this check."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "warn"],
+            "description": "Outcome of this individual check."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable description of the check result."
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Execution time of this check in milliseconds."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Individual check results."
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Error messages collected during the check."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Warning messages collected during the check."
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Relative paths to evidence artifacts produced by this check."
+    },
+    "commands_run": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Commands executed during the installability check."
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total execution time of the installability check in milliseconds."
+    },
+    "required_next_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable next actions required before the release candidate can proceed."
+    }
+  },
+  "additionalProperties": false
+}

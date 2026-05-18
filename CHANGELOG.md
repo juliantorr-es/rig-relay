@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0α1] — Unreleased
+## [0.1.0a1] — Unreleased
 
 ### Initial Release Candidate
 

@@ -6,7 +6,6 @@ from rig_relay.pi_harness.extension_quarantine import (
     ExtensionHealthPolicy,
     ExtensionHealthStore,
     ExtensionIdentity,
-    extension_content_hash,
     run_extension_with_containment,
 )
 

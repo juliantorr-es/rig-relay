@@ -87,7 +87,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-include = ["vibe/", "rig_relay/"]
+include = ["rig_relay/"]
 
 
 [project.scripts]
@@ -132,13 +132,13 @@ pythonVersion = "3.12"
 reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 
-include = ["vibe/**/*.py", "rig_relay/**/*.py", "tests/**/*.py"]
+include = ["rig_relay/**/*.py", "tests/**/*.py"]
 exclude = ["pyinstaller/", "docs/schemas/"]
 venvPath = "."
 venv = ".venv"
 
 [tool.ruff]
-include = ["vibe/**/*.py", "rig_relay/**/*.py", "tests/**/*.py"]
+include = ["rig_relay/**/*.py", "tests/**/*.py"]
 exclude = ["pyinstaller/", "docs/schemas/"]
 line-length = 88
 target-version = "py312"
@@ -197,7 +197,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 ban-relative-imports = "all"
 
 [tool.ruff.lint.isort]
-known-first-party = ["vibe"]
+known-first-party = ["rig_relay"]
 force-sort-within-sections = true
 split-on-trailing-comma = false
 combine-as-imports = true

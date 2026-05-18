@@ -3,15 +3,15 @@
   "schema_version": "rig.release_gate.readiness.v1",
   "gate_id": "rc_readiness_v0",
   "repository": "",
-  "head_sha": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
+  "head_sha": "abc7430440720bd6259c0168f6b2139d4773ee28",
   "branch": "main",
-  "generated_at": "2026-05-17T22:52:38Z",
+  "generated_at": "2026-05-17T23:32:44Z",
   "overall_status": "blocked",
   "phases": [
     {
       "phase_id": "phase_1_governance_coordination",
       "title": "Governance & Coordination",
-      "status": "unknown",
+      "status": "ready",
       "owner_surface": "coordination",
       "required_evidence": [
         "docs/schemas/rig.fleet.coordination_event.v1.schema.json",
@@ -20,7 +20,9 @@
         "docs/schemas/rig.relay.coordination_conflict.v1.schema.json"
       ],
       "blocker_ids": [],
-      "validation_run_ids": [],
+      "validation_run_ids": [
+        "vr_coordination_concurrency_20260517"
+      ],
       "schema_artifact_paths": [
         "docs/schemas/rig.fleet.coordination_event.v1.schema.json",
         "docs/schemas/rig.fleet.path_lease.v1.schema.json",
@@ -34,13 +36,13 @@
       "dependency_implications": "Coordination store is file-backed; no watchable-backend dependencies in v1.",
       "allowed_deferrals": [],
       "remaining_seams": ["Watchable backend coordination not yet implemented"],
-      "source_commit": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
-      "updated_at": "2026-05-17T22:52:38Z"
+      "source_commit": "abc7430440720bd6259c0168f6b2139d4773ee28",
+      "updated_at": "2026-05-17T23:32:44Z"
     },
     {
       "phase_id": "phase_2_telemetry_privacy",
       "title": "Telemetry & Privacy",
-      "status": "unknown",
+      "status": "ready",
       "owner_surface": "telemetry",
       "required_evidence": [
         "docs/schemas/rig.relay.telemetry_consent.v1.schema.json",
@@ -50,7 +52,9 @@
         "docs/governance/usage-data-doctrine.md"
       ],
       "blocker_ids": [],
-      "validation_run_ids": [],
+      "validation_run_ids": [
+        "vr_telemetry_consent_redaction_20260517"
+      ],
       "schema_artifact_paths": [
         "docs/schemas/rig.relay.telemetry_consent.v1.schema.json",
         "docs/schemas/rig.relay.telemetry_settings.v1.schema.json",
@@ -64,13 +68,13 @@
       "dependency_implications": "OpenTelemetry SDK is core dependency; no extra telemetry backends.",
       "allowed_deferrals": [],
       "remaining_seams": ["Remote telemetry export is opt-in, not yet end-to-end tested"],
-      "source_commit": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
-      "updated_at": "2026-05-17T22:52:38Z"
+      "source_commit": "abc7430440720bd6259c0168f6b2139d4773ee28",
+      "updated_at": "2026-05-17T23:32:44Z"
     },
     {
       "phase_id": "phase_3_runtime_tools_context_api",
       "title": "Runtime, Tools & Context API",
-      "status": "unknown",
+      "status": "ready",
       "owner_surface": "runtime",
       "required_evidence": [
         "docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json",
@@ -81,7 +85,9 @@
         "rig_relay/release_gate/_runtime_readiness.py"
       ],
       "blocker_ids": [],
-      "validation_run_ids": [],
+      "validation_run_ids": [
+        "vr_tracing_real_source_20260517"
+      ],
       "schema_artifact_paths": [
         "docs/schemas/rig.relay.runtime_tool_invocation.v1.schema.json",
         "docs/schemas/rig.relay.runtime_tool_invocation_receipt.v1.schema.json",
@@ -97,13 +103,13 @@
       "dependency_implications": "DuckDB used as disposable read-side analysis only — not as release-gate source of truth.",
       "allowed_deferrals": ["bash_rerouting_coverage", "tool_determinism_edge_cases"],
       "remaining_seams": ["Tool determinism inventory partially complete", "Bash rerouting coverage gaps in edge cases"],
-      "source_commit": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
-      "updated_at": "2026-05-17T22:52:38Z"
+      "source_commit": "abc7430440720bd6259c0168f6b2139d4773ee28",
+      "updated_at": "2026-05-17T23:32:44Z"
     },
     {
       "phase_id": "phase_4_ui_docs_ci_packaging",
       "title": "UI, Docs, CI & Packaging",
-      "status": "unknown",
+      "status": "blocked",
       "owner_surface": "docs",
       "required_evidence": [
         "docs/schemas/rig.documentation.page.v1.schema.json",
@@ -113,8 +119,15 @@
         "docs/schemas/rig.relay.desktop_intent_result.v1.schema.json",
         "docs/json/documentation_migration_manifest.v1.json"
       ],
-      "blocker_ids": [],
-      "validation_run_ids": [],
+      "blocker_ids": [
+        "blk_phase4_ci_repo_ref",
+        "blk_phase4_pi_lens_in_git",
+        "blk_phase4_deferred_checks_required"
+      ],
+      "validation_run_ids": [
+        "vr_release_gate_cli_20260517",
+        "vr_guard_escape_hatches_20260517"
+      ],
       "schema_artifact_paths": [
         "docs/schemas/rig.documentation.page.v1.schema.json",
         "docs/schemas/rig.documentation.collection.v1.schema.json",
@@ -130,13 +143,13 @@
       "dependency_implications": "Textual UI framework is core; static renderer uses Python stdlib + jsonschema.",
       "allowed_deferrals": ["markdown_migration_remaining_pages", "desktop_e2e_coverage"],
       "remaining_seams": ["Old Markdown docs not yet fully migrated", "Desktop E2E tests limited"],
-      "source_commit": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
-      "updated_at": "2026-05-17T22:52:38Z"
+      "source_commit": "abc7430440720bd6259c0168f6b2139d4773ee28",
+      "updated_at": "2026-05-17T23:32:44Z"
     },
     {
       "phase_id": "phase_5_public_docs_licensing",
       "title": "Public Docs & Licensing",
-      "status": "unknown",
+      "status": "blocked",
       "owner_surface": "legal",
       "required_evidence": [
         "LICENSE",
@@ -150,7 +163,10 @@
         "docs/json/license_policy.v1.json",
         "docs/json/repository_policy.v1.json"
       ],
-      "blocker_ids": [],
+      "blocker_ids": [
+        "blk_phase5_license_policy_json_missing",
+        "blk_phase5_repo_policy_json_missing"
+      ],
       "validation_run_ids": [],
       "schema_artifact_paths": [
         "docs/schemas/rig.relay.authorization_policy.v1.schema.json"
@@ -160,8 +176,8 @@
       "dependency_implications": "No additional dependencies; licensing is static audit.",
       "allowed_deferrals": [],
       "remaining_seams": ["Public doc audit tooling not yet built", "Third-party notice completeness not yet verified"],
-      "source_commit": "1985ce72856ec350d771f62fccd5059c4fc27eb1",
-      "updated_at": "2026-05-17T22:52:38Z"
+      "source_commit": "abc7430440720bd6259c0168f6b2139d4773ee28",
+      "updated_at": "2026-05-17T23:32:44Z"
     }
   ],
   "policy": {

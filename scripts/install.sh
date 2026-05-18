@@ -98,10 +98,10 @@ function install_uv() {
     fi
 }
 
-function check_vibe_installed() {
+function check_rig_relay_installed() {
     if [[ -n "$(find_command_in_path rig-relay "$ORIGINAL_PATH")" ]]; then
         info "rig-relay is already installed"
-        VIBE_INSTALLED=true
+        RIG_RELAY_INSTALLED=true
         return
     fi
 
@@ -109,21 +109,21 @@ function check_vibe_installed() {
     uv_bin_dir=$(uv tool dir --bin 2>/dev/null || true)
     if [[ -n "$uv_bin_dir" && -x "$uv_bin_dir/rig-relay" ]]; then
         info "rig-relay is already installed (off PATH) at $uv_bin_dir/rig-relay"
-        VIBE_INSTALLED=true
+        RIG_RELAY_INSTALLED=true
         return
     fi
 
-    VIBE_INSTALLED=false
+    RIG_RELAY_INSTALLED=false
 }
 
-function install_vibe() {
+function install_rig_relay() {
     info "Installing rig-relay from GitHub repository using uv..."
-    uv tool install rig-relay
+    uv tool install "git+https://github.com/juliantorr-es/rig-relay.git"
 
     success "Rig Relay installed successfully! (commands: rig-relay, rig-relay-acp)"
 }
 
-function update_vibe() {
+function update_rig_relay() {
     info "Updating rig-relay from GitHub repository using uv..."
     uv tool upgrade rig-relay
 
@@ -153,12 +153,12 @@ function main() {
         install_uv
     fi
 
-    check_vibe_installed
+    check_rig_relay_installed
 
-    if [[ "$VIBE_INSTALLED" == "false" ]]; then
-        install_vibe
+    if [[ "$RIG_RELAY_INSTALLED" == "false" ]]; then
+        install_rig_relay
     else
-        update_vibe
+        update_rig_relay
     fi
 
     if [[ -n "$(find_command_in_path rig-relay "$ORIGINAL_PATH")" ]]; then
@@ -171,14 +171,14 @@ function main() {
         echo "  rig-relay-acp"
     else
         local UV_BIN_DIR
-        local VIBE_BIN_PATH=""
+        local RIG_RELAY_BIN_PATH=""
         UV_BIN_DIR=$(uv tool dir --bin 2>/dev/null || true)
         if [[ -n "$UV_BIN_DIR" && -x "$UV_BIN_DIR/rig-relay" ]]; then
-            VIBE_BIN_PATH="$UV_BIN_DIR/rig-relay"
+            RIG_RELAY_BIN_PATH="$UV_BIN_DIR/rig-relay"
         fi
 
-        if [[ -n "$VIBE_BIN_PATH" ]]; then
-            print_missing_path_instructions "rig-relay" "$VIBE_BIN_PATH"
+        if [[ -n "$RIG_RELAY_BIN_PATH" ]]; then
+            print_missing_path_instructions "rig-relay" "$RIG_RELAY_BIN_PATH"
         else
             error "Installation completed but 'rig-relay' command not found"
             error "uv did not expose a 'rig-relay' executable in the expected tools directory."

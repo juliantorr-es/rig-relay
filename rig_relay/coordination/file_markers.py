@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 PROTOCOL = "rig.file_coordination.v1"
 STALE_TTL = timedelta(hours=8)
 
