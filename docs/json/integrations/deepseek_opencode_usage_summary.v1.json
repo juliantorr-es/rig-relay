@@ -1,0 +1,52 @@
+{
+  "cache_hit_ratio": 0.972298,
+  "cache_read_token_total": 1122514176,
+  "cache_write_visibility": "reported_zero",
+  "cache_write_visibility_note": "The source evidence explicitly reports cache-write tokens as zero.",
+  "estimated_discounted_cost_usd": 21.9204,
+  "estimated_full_cost_usd": 84.1858,
+  "final_recommendation_summary": "The sampled DeepSeek usage is already cost-aware: cache-read share is 97.23%, pro carries 88.25% of requests, and the discount window reduces the estimated bill from $84.1858 to $21.9204.",
+  "generated_at": "2026-05-19T23:18:33.450259Z",
+  "lane_policy_summary": "Use deepseek-v4-flash only for short, low-risk, low-context tasks. Use deepseek-v4-pro default for normal repo work. Use deepseek-v4-pro max for architecture, deep debugging, and long multi-step reasoning. Keep pro as the default lane while cache-read share stays high.",
+  "lane_usage": [
+    {
+      "model_id": "deepseek-v4-pro",
+      "request_count": 4783,
+      "request_share": 0.585291,
+      "session_count": 299,
+      "session_share": 0.908815,
+      "variant": "default"
+    },
+    {
+      "model_id": "deepseek-v4-pro",
+      "request_count": 2429,
+      "request_share": 0.297234,
+      "session_count": 22,
+      "session_share": 0.066869,
+      "variant": "max"
+    },
+    {
+      "model_id": "deepseek-v4-flash",
+      "request_count": 960,
+      "request_share": 0.117474,
+      "session_count": 8,
+      "session_share": 0.024316,
+      "variant": "default"
+    }
+  ],
+  "opencode_version": "1.14.50",
+  "provider": "deepseek",
+  "recommended_lane": "deepseek-v4-pro default",
+  "redaction_notes": [
+    "No API keys, auth headers, raw prompts, raw completions, raw private file contents, or raw absolute paths were persisted.",
+    "Evidence references use symbolic labels such as opencode_db, opencode_log_latest, opencode_binary, and opencode_sdk_types.",
+    "22 session rows with null model metadata were excluded from DeepSeek-specific counts so other providers are not misattributed.",
+    "Local logs were scanned for DeepSeek beta and Anthropic route strings, and no beta/Anthropic base URL evidence was found.",
+    "OpenCode's session DB exposes cache-read/cache-write counters; raw prompt_cache_hit_tokens and prompt_cache_miss_tokens were not surfaced in the inspected logs."
+  ],
+  "request_count_if_available": 8172,
+  "schema_version": "rig.deepseek_opencode_usage_summary.v1",
+  "session_count": 329,
+  "source_report_path": "docs/json/integrations/deepseek_opencode_usage_report.v1.json",
+  "source_report_sha256": "326d1e72fdef4d7918c0038df2b340fa9c12ad675eb4115f7dcdae15e51a35e6"
+}

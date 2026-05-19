@@ -2,6 +2,8 @@
   "cache_hit_ratio": 0.972298,
   "cache_read_token_total": 1122514176,
   "cache_write_token_total": 0,
+  "cache_write_visibility": "reported_zero",
+  "cache_write_visibility_note": "The source evidence explicitly reports cache-write tokens as zero.",
   "estimated_discounted_cost_if_pricing_available": {
     "amount_usd": 21.9204,
     "currency": "USD",
@@ -185,7 +187,7 @@
     "summary": "The sampled DeepSeek usage is already cost-aware: cache-read share is 97.23%, pro carries 88.25% of requests, and the discount window reduces the estimated bill from $84.1858 to $21.9204.",
     "verdict": "Keep DeepSeek on the OpenAI-compatible api.deepseek.com path, preserve stable prefixes, and route most normal work through deepseek-v4-pro. Use flash only when the task is cheap and local to the prefix. Do not spend the discount window on beta-only prefix/FIM work."
   },
-  "generated_at": "2026-05-19T22:50:12.129608Z",
+  "generated_at": "2026-05-19T23:18:33.450259Z",
   "lane_policy_recommendation": {
     "cache_guidance": "Cache-read share is 0.9723; keep system and tool prefixes stable so the current cache economics hold.",
     "lanes": [
@@ -330,7 +332,7 @@
       ],
       "finding_id": "cache-write-zero",
       "impact": "There is no evidence that cache warming or write-side behavior is a meaningful lever here.",
-      "summary": "Cache-write tokens are zero across the sampled DeepSeek sessions."
+      "summary": "Cache-write tokens are reported as zero across the sampled DeepSeek sessions."
     },
     {
       "evidence_refs": [

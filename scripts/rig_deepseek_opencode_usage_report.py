@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -25,6 +26,10 @@ import jsonschema
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_ID = "rig.deepseek_opencode_usage_report.v1"
 SCHEMA_PATH = REPO_ROOT / "docs" / "schemas" / f"{SCHEMA_ID}.schema.json"
+SUMMARY_SCHEMA_ID = "rig.deepseek_opencode_usage_summary.v1"
+SUMMARY_SCHEMA_PATH = (
+    REPO_ROOT / "docs" / "schemas" / f"{SUMMARY_SCHEMA_ID}.schema.json"
+)
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
 DEFAULT_LOG_DIR = Path.home() / ".local" / "share" / "opencode" / "log"
 DEFAULT_OUTPUT_PATH = (
@@ -33,6 +38,13 @@ DEFAULT_OUTPUT_PATH = (
     / "json"
     / "integrations"
     / "deepseek_opencode_usage_report.v1.json"
+)
+DEFAULT_SUMMARY_OUTPUT_PATH = (
+    REPO_ROOT
+    / "docs"
+    / "json"
+    / "integrations"
+    / "deepseek_opencode_usage_summary.v1.json"
 )
 PRICING_SOURCE_URL = "https://api-docs.deepseek.com/quick_start/pricing/"
 
@@ -187,6 +199,7 @@ def _load_session_rows(db_path: Path) -> list[dict[str, Any]]:
         records.append({
             "model_id": model_id,
             "variant": variant,
+            "cache_write_present": True,
             "input_token_total": int(tokens_input or 0),
             "output_token_total": int(tokens_output or 0),
             "reasoning_token_total": int(tokens_reasoning or 0),
@@ -225,6 +238,7 @@ def _load_request_rows(db_path: Path) -> list[dict[str, Any]]:
         records.append({
             "model_id": model_id,
             "variant": variant,
+            "cache_write_present": "write" in cache,
             "input_token_total": int(tokens.get("input") or 0),
             "output_token_total": int(tokens.get("output") or 0),
             "reasoning_token_total": int(tokens.get("reasoning") or 0),
@@ -443,6 +457,40 @@ def _usage_totals_dict(
     return totals.as_dict(session_share=session_share, request_share=request_share)
 
 
+def _cache_write_visibility(rows: list[dict[str, Any]]) -> tuple[str, str]:
+    reported_values = [
+        int(row["cache_write_token_total"])
+        for row in rows
+        if row.get("cache_write_present") is True
+    ]
+    if any(value > 0 for value in reported_values):
+        return (
+            "reported_nonzero",
+            "The source evidence explicitly reports nonzero cache-write tokens.",
+        )
+    if reported_values:
+        return (
+            "reported_zero",
+            "The source evidence explicitly reports cache-write tokens as zero.",
+        )
+    if rows:
+        return (
+            "not_reported_by_source",
+            "The inspected source evidence does not expose cache-write fields, so zero cannot be inferred.",
+        )
+    return (
+        "unknown",
+        "No cache-write evidence was available in the inspected source data.",
+    )
+
+
+def _content_light_path_str(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return path.name
+
+
 def _summarize_model_usage(
     session_totals_by_key: dict[tuple[str, str], Totals],
     request_counts_by_key: Counter[tuple[str, str]],
@@ -656,6 +704,69 @@ def _build_lane_policy(
     }
 
 
+def _lane_usage_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    total_sessions = int(report["session_count"])
+    total_requests = int(report["request_count_if_available"] or 0)
+    for row in report["model_counts"]:
+        session_count = int(row["session_count"])
+        request_count = int(row["request_count"])
+        rows.append({
+            "model_id": row["model_id"],
+            "variant": row["variant"],
+            "session_count": session_count,
+            "request_count": request_count,
+            "session_share": round(session_count / total_sessions, 6)
+            if total_sessions
+            else None,
+            "request_share": round(request_count / total_requests, 6)
+            if total_requests
+            else None,
+        })
+    priority = {
+        ("deepseek-v4-pro", "default"): 0,
+        ("deepseek-v4-pro", "max"): 1,
+        ("deepseek-v4-flash", "default"): 2,
+    }
+    return sorted(
+        rows, key=lambda row: priority.get((row["model_id"], row["variant"]), 99)
+    )
+
+
+def _build_summary_artifact(
+    report: dict[str, Any], *, source_report_path: Path, source_report_sha256: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": "rig.deepseek_opencode_usage_summary.v1",
+        "generated_at": report["generated_at"],
+        "source_report_path": _content_light_path_str(source_report_path),
+        "source_report_sha256": source_report_sha256,
+        "opencode_version": report["opencode_version"],
+        "provider": report["provider"],
+        "session_count": report["session_count"],
+        "request_count_if_available": report["request_count_if_available"],
+        "lane_usage": _lane_usage_rows(report),
+        "cache_hit_ratio": report["cache_hit_ratio"],
+        "cache_read_token_total": report["cache_read_token_total"],
+        "cache_write_visibility": report["cache_write_visibility"],
+        "cache_write_visibility_note": report["cache_write_visibility_note"],
+        "estimated_discounted_cost_usd": report[
+            "estimated_discounted_cost_if_pricing_available"
+        ]["amount_usd"]
+        if report["estimated_discounted_cost_if_pricing_available"] is not None
+        else None,
+        "estimated_full_cost_usd": report["estimated_full_cost_if_pricing_available"][
+            "amount_usd"
+        ]
+        if report["estimated_full_cost_if_pricing_available"] is not None
+        else None,
+        "recommended_lane": "deepseek-v4-pro default",
+        "lane_policy_summary": report["lane_policy_recommendation"]["policy_summary"],
+        "final_recommendation_summary": report["final_recommendation"]["summary"],
+        "redaction_notes": report["redaction_notes"],
+    }
+
+
 def build_deepseek_opencode_usage_report(
     *,
     db_path: Path = DEFAULT_DB_PATH,
@@ -668,6 +779,9 @@ def build_deepseek_opencode_usage_report(
     log_signals = _scan_logs(log_dir)
     reasoning_tool_message_count = _count_reasoning_tool_messages(db_path)
     snapshot = _build_usage_snapshot(session_rows, request_rows)
+    cache_write_visibility, cache_write_visibility_note = _cache_write_visibility(
+        session_rows + request_rows
+    )
     pricing_snapshot_date = (generated_at or datetime.now(tz=UTC).date().isoformat())[
         :10
     ]
@@ -731,6 +845,8 @@ def build_deepseek_opencode_usage_report(
         "reasoning_token_total": snapshot.deepseek_totals.reasoning_token_total,
         "cache_read_token_total": snapshot.deepseek_totals.cache_read_token_total,
         "cache_write_token_total": snapshot.deepseek_totals.cache_write_token_total,
+        "cache_write_visibility": cache_write_visibility,
+        "cache_write_visibility_note": cache_write_visibility_note,
         "cache_hit_ratio": snapshot.cache_hit_ratio,
         "output_token_total_if_available": snapshot.deepseek_totals.output_token_total,
         "estimated_discounted_cost_if_pricing_available": discounted_estimate,
@@ -755,7 +871,9 @@ def build_deepseek_opencode_usage_report(
             },
             {
                 "finding_id": "cache-write-zero",
-                "summary": "Cache-write tokens are zero across the sampled DeepSeek sessions.",
+                "summary": (
+                    "Cache-write tokens are reported as zero across the sampled DeepSeek sessions."
+                ),
                 "impact": "There is no evidence that cache warming or write-side behavior is a meaningful lever here.",
                 "evidence_refs": ["opencode_db"],
             },
@@ -823,6 +941,83 @@ def write_deepseek_opencode_usage_report(
     output_path.write_text(_json_dumps(report) + "\n", encoding="utf-8")
 
 
+def _summary_schema() -> dict[str, Any]:
+    return json.loads(SUMMARY_SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
+def build_deepseek_opencode_usage_summary(
+    report: dict[str, Any],
+    *,
+    source_report_path: Path,
+    source_report_bytes: bytes | None = None,
+) -> dict[str, Any]:
+    source_bytes = (
+        source_report_bytes
+        if source_report_bytes is not None
+        else source_report_path.read_bytes()
+    )
+    source_report_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    return _build_summary_artifact(
+        report,
+        source_report_path=source_report_path,
+        source_report_sha256=source_report_sha256,
+    )
+
+
+def validate_deepseek_opencode_usage_summary(summary: dict[str, Any]) -> list[str]:
+    schema = _summary_schema()
+    validator = jsonschema.Draft7Validator(schema)
+    return [
+        f"{'/'.join(str(part) for part in err.absolute_path)}: {err.message}"
+        for err in validator.iter_errors(summary)
+    ]
+
+
+def write_deepseek_opencode_usage_summary(
+    summary: dict[str, Any], output_path: Path
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(_json_dumps(summary) + "\n", encoding="utf-8")
+
+
+def _render_summary_table(summary: dict[str, Any]) -> str:
+    lane_rows = summary["lane_usage"]
+    split = "; ".join(
+        (
+            f"{row['model_id']} {row['variant']} "
+            f"{row['session_count']:,} sessions / {row['request_count']:,} requests"
+        )
+        for row in lane_rows
+    )
+    rows = [
+        ("Sessions", f"{summary['session_count']:,}"),
+        ("Assistant requests", f"{summary['request_count_if_available']:,}"),
+        ("Lane split", split),
+        (
+            "Cache-hit ratio",
+            f"{summary['cache_hit_ratio'] * 100:.2f}% ({summary['cache_hit_ratio']:.6f})",
+        ),
+        ("Cache-read tokens", f"{summary['cache_read_token_total']:,}"),
+        ("Cache-write visibility", summary["cache_write_visibility"]),
+        ("Cache-write note", summary["cache_write_visibility_note"]),
+        (
+            "Discounted estimated cost",
+            f"${summary['estimated_discounted_cost_usd']:.4f}",
+        ),
+        ("Full estimated cost", f"${summary['estimated_full_cost_usd']:.4f}"),
+        ("Recommended lane", summary["recommended_lane"]),
+    ]
+    label_width = max(len(label) for label, _ in rows)
+    value_width = max(len(value) for _, value in rows)
+    header = f"{'Metric'.ljust(label_width)} | {'Value'.ljust(value_width)}"
+    separator = f"{'-' * label_width}-+-{'-' * value_width}"
+    body = "\n".join(
+        f"{label.ljust(label_width)} | {value.ljust(value_width)}"
+        for label, value in rows
+    )
+    return "\n".join([header, separator, body])
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate a local DeepSeek/OpenCode usage and cache report."
@@ -830,8 +1025,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH)
     parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_DIR)
     parser.add_argument("--output-path", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument(
+        "--summary-output-path", type=Path, default=DEFAULT_SUMMARY_OUTPUT_PATH
+    )
     parser.add_argument("--opencode-version", type=str, default=None)
     parser.add_argument("--generated-at", type=str, default=None)
+    parser.add_argument("--summary", action="store_true")
     parser.add_argument("--fail-on-schema-error", action="store_true")
     return parser.parse_args(argv)
 
@@ -849,30 +1048,44 @@ def main(argv: list[str] | None = None) -> int:
         print(str(exc))
         return 1
 
-    errors = validate_deepseek_opencode_usage_report(report)
-    if errors:
+    report_errors = validate_deepseek_opencode_usage_report(report)
+    report_json = _json_dumps(report) + "\n"
+    summary = build_deepseek_opencode_usage_summary(
+        report,
+        source_report_path=args.output_path,
+        source_report_bytes=report_json.encode("utf-8"),
+    )
+    summary_errors = validate_deepseek_opencode_usage_summary(summary)
+    if report_errors or summary_errors:
         if args.fail_on_schema_error:
             print("Schema validation failed:")
-            for err in errors:
-                print(f"  - {err}")
+            for err in report_errors:
+                print(f"  - report: {err}")
+            for err in summary_errors:
+                print(f"  - summary: {err}")
         return 1
 
     write_deepseek_opencode_usage_report(report, args.output_path)
-    print(
-        json.dumps(
-            {
-                "output_path": str(args.output_path),
-                "session_count": report["session_count"],
-                "request_count": report["request_count_if_available"],
-                "cache_hit_ratio": report["cache_hit_ratio"],
-                "discounted_cost_usd": report[
-                    "estimated_discounted_cost_if_pricing_available"
-                ]["amount_usd"],
-            },
-            indent=2,
-            sort_keys=True,
+    write_deepseek_opencode_usage_summary(summary, args.summary_output_path)
+    if args.summary:
+        print(_render_summary_table(summary))
+    else:
+        print(
+            json.dumps(
+                {
+                    "output_path": str(args.output_path),
+                    "summary_output_path": str(args.summary_output_path),
+                    "session_count": report["session_count"],
+                    "request_count": report["request_count_if_available"],
+                    "cache_hit_ratio": report["cache_hit_ratio"],
+                    "discounted_cost_usd": report[
+                        "estimated_discounted_cost_if_pricing_available"
+                    ]["amount_usd"],
+                },
+                indent=2,
+                sort_keys=True,
+            )
         )
-    )
     return 0
 
 

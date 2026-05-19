@@ -3,15 +3,20 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sqlite3
+from typing import Any
 
 import jsonschema
 import pytest
 
 from scripts.rig_deepseek_opencode_usage_report import (
+    _cache_write_visibility,
     build_deepseek_opencode_usage_report,
+    build_deepseek_opencode_usage_summary,
     main as report_main,
     validate_deepseek_opencode_usage_report,
+    validate_deepseek_opencode_usage_summary,
     write_deepseek_opencode_usage_report,
+    write_deepseek_opencode_usage_summary,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -386,6 +391,15 @@ def _build_report(
     )
 
 
+def _build_summary(
+    tmp_path: Path, *, generated_at: str = "2026-05-19T12:00:00Z"
+) -> dict[str, object]:
+    report = _build_report(tmp_path, generated_at=generated_at)
+    report_path = tmp_path / "report.json"
+    write_deepseek_opencode_usage_report(report, report_path)
+    return build_deepseek_opencode_usage_summary(report, source_report_path=report_path)
+
+
 @pytest.mark.contract
 def test_schema_validates() -> None:
     schema = _schema("rig.deepseek_opencode_usage_report.v1")
@@ -418,6 +432,31 @@ def test_cache_ratio_calculation_is_deterministic(tmp_path: Path) -> None:
     report = _build_report(tmp_path)
     expected = 32_000 / (32_000 + 3_500)
     assert report["cache_hit_ratio"] == round(expected, 6)
+
+
+@pytest.mark.contract
+@pytest.mark.parametrize(
+    ("rows", "expected"),
+    [
+        (
+            [{"cache_write_present": True, "cache_write_token_total": 0}],
+            "reported_zero",
+        ),
+        (
+            [{"cache_write_present": False, "cache_write_token_total": 0}],
+            "not_reported_by_source",
+        ),
+        (
+            [{"cache_write_present": True, "cache_write_token_total": 12}],
+            "reported_nonzero",
+        ),
+    ],
+)
+def test_cache_write_visibility_semantics(
+    rows: list[dict[str, Any]], expected: str
+) -> None:
+    visibility, _ = _cache_write_visibility(rows)
+    assert visibility == expected
 
 
 @pytest.mark.substrate
@@ -484,6 +523,23 @@ def test_feature_status_categories_are_distinguished(tmp_path: Path) -> None:
     assert "thinking_mode_noop_parameters" in not_priority
 
 
+@pytest.mark.real_artifact
+@pytest.mark.contract
+def test_summary_validates_against_schema(tmp_path: Path) -> None:
+    summary = _build_summary(tmp_path)
+    errors = validate_deepseek_opencode_usage_summary(summary)
+    assert not errors
+
+
+@pytest.mark.real_artifact
+def test_summary_writer_round_trip(tmp_path: Path) -> None:
+    summary = _build_summary(tmp_path)
+    output_path = tmp_path / "out" / "deepseek_opencode_usage_summary.v1.json"
+    write_deepseek_opencode_usage_summary(summary, output_path)
+    parsed = json.loads(output_path.read_text(encoding="utf-8"))
+    assert parsed["schema_version"] == "rig.deepseek_opencode_usage_summary.v1"
+
+
 @pytest.mark.integration
 def test_cli_writes_report(tmp_path: Path) -> None:
     db_path = tmp_path / "opencode.db"
@@ -491,6 +547,7 @@ def test_cli_writes_report(tmp_path: Path) -> None:
     _make_db(db_path)
     _make_logs(logs_dir)
     output_path = tmp_path / "report.json"
+    summary_output_path = tmp_path / "summary.json"
     exit_code = report_main([
         "--db-path",
         str(db_path),
@@ -498,6 +555,8 @@ def test_cli_writes_report(tmp_path: Path) -> None:
         str(logs_dir),
         "--output-path",
         str(output_path),
+        "--summary-output-path",
+        str(summary_output_path),
         "--generated-at",
         "2026-05-19T12:00:00Z",
         "--opencode-version",
@@ -506,25 +565,95 @@ def test_cli_writes_report(tmp_path: Path) -> None:
     ])
     assert exit_code == 0
     assert output_path.is_file()
+    assert summary_output_path.is_file()
     jsonschema.validate(
         json.loads(output_path.read_text(encoding="utf-8")),
         _schema("rig.deepseek_opencode_usage_report.v1"),
+    )
+    jsonschema.validate(
+        json.loads(summary_output_path.read_text(encoding="utf-8")),
+        _schema("rig.deepseek_opencode_usage_summary.v1"),
     )
 
 
 @pytest.mark.adversarial
 def test_cli_exits_non_zero_on_missing_db(tmp_path: Path) -> None:
     output_path = tmp_path / "report.json"
+    summary_output_path = tmp_path / "summary.json"
     exit_code = report_main([
         "--db-path",
         str(tmp_path / "missing.db"),
         "--output-path",
         str(output_path),
+        "--summary-output-path",
+        str(summary_output_path),
         "--generated-at",
         "2026-05-19T12:00:00Z",
     ])
     assert exit_code == 1
     assert not output_path.exists()
+    assert not summary_output_path.exists()
+
+
+@pytest.mark.integration
+@pytest.mark.adversarial
+def test_cli_summary_mode_writes_summary_and_redacts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db_path = tmp_path / "opencode.db"
+    logs_dir = tmp_path / "log"
+    _make_db(db_path)
+    _make_logs(logs_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "UPDATE session SET model = ? WHERE id = ?",
+            (
+                json.dumps({
+                    "id": "deepseek-v4-pro",
+                    "providerID": "deepseek",
+                    "variant": "default",
+                    "path": "/Users/user/Private/Repo",
+                    "access_token": "sk-secret-test-value",
+                }),
+                "session-pro-default",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    output_path = tmp_path / "report.json"
+    summary_output_path = tmp_path / "summary.json"
+    exit_code = report_main([
+        "--db-path",
+        str(db_path),
+        "--log-dir",
+        str(logs_dir),
+        "--output-path",
+        str(output_path),
+        "--summary-output-path",
+        str(summary_output_path),
+        "--generated-at",
+        "2026-05-19T12:00:00Z",
+        "--opencode-version",
+        "1.14.50",
+        "--summary",
+        "--fail-on-schema-error",
+    ])
+    captured = capsys.readouterr().out
+    assert exit_code == 0
+    assert output_path.is_file()
+    assert summary_output_path.is_file()
+    assert "Cache-hit ratio" in captured
+    assert "90.14%" in captured
+    assert "0.901408" in captured
+    assert "reported_zero" in captured
+    assert "/Users/user/Private/Repo" not in captured
+    assert "sk-secret-test-value" not in captured
+    jsonschema.validate(
+        json.loads(summary_output_path.read_text(encoding="utf-8")),
+        _schema("rig.deepseek_opencode_usage_summary.v1"),
+    )
 
 
 @pytest.mark.contract

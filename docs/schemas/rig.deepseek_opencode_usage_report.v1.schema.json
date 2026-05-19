@@ -16,6 +16,8 @@
     "reasoning_token_total",
     "cache_read_token_total",
     "cache_write_token_total",
+    "cache_write_visibility",
+    "cache_write_visibility_note",
     "cache_hit_ratio",
     "output_token_total_if_available",
     "estimated_discounted_cost_if_pricing_available",
@@ -75,6 +77,19 @@
     "cache_write_token_total": {
       "type": "integer",
       "minimum": 0
+    },
+    "cache_write_visibility": {
+      "type": "string",
+      "enum": [
+        "reported_zero",
+        "reported_nonzero",
+        "not_reported_by_source",
+        "unknown"
+      ]
+    },
+    "cache_write_visibility_note": {
+      "type": "string",
+      "minLength": 1
     },
     "cache_hit_ratio": {
       "type": "number",
