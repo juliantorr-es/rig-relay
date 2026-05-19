@@ -2,6 +2,7 @@
 
 import { generateHandshakeId } from '../telemetry/correlation.js';
 import { recordFrontendEvent, setFrontendHandshakeId } from '../telemetry/frontendTrace.js';
+import { initializeTraceContext, setBootPhase, setHandshakeId, recordReady, annotate } from '../telemetry/traceContext.js';
 import { fetchRuntimeConfig } from './runtimeConfig.js';
 import { createDebugPanel, updateDebugPanel } from './debugPanel.js';
 import { createTransportStateAuthority } from '../transportState.js';
@@ -51,7 +52,12 @@ async function boot() {
   // runtime config. Only generate a frontend hs_* when no backend ID exists.
   const config = await fetchRuntimeConfig();
   const canonicalHandshakeId = config.handshake_id || generateHandshakeId();
+  // Initialize canonical trace context
+  initializeTraceContext({ handshakeId: canonicalHandshakeId })
   setFrontendHandshakeId(canonicalHandshakeId);
+  var _firstProjectionReceived = false
+  var _projectionRendered = false
+  var _widgetsMounted = false
 
   // ── Frontend Runtime Kernel ────────────────────────────────────────
   // Creates the browser-side runtime that owns lifecycle, state machines,
@@ -70,6 +76,26 @@ async function boot() {
           lastAction: action.type,
         });
       }
+      // ── Unified READY emission ───────────────────────────────────
+      var bp = runtime.bootFSM ? runtime.bootFSM.getState() : ''
+      setBootPhase(bp)
+      if (_newState && _newState.transport === 'READY') {
+        var prerequisites = {
+          runtime_config_loaded: true,
+          websocket_authenticated: true,
+          first_projection_received: _firstProjectionReceived,
+          projection_rendered: _projectionRendered,
+          widgets_mounted: _widgetsMounted,
+        }
+        var readyResult = recordReady(prerequisites)
+        if (!readyResult.duplicate) {
+          recordFrontendEvent('frontend_ready', {
+            prereqs: prerequisites,
+            boot_phase: bp,
+            projection_sequence: _newState.projectionSequence || 0,
+          })
+        }
+      }
     },
   });
   runtime.init();
@@ -84,6 +110,9 @@ async function boot() {
         recordFrontendEvent(LIFECYCLE.PROJECTION_RECEIVED, {
           projection_sequence: parsed.projectionSequence || 0,
         })
+        _firstProjectionReceived = true
+        _projectionRendered = true
+        annotate('projection_render_ok', true)
         recordFrontendEvent(LIFECYCLE.PROJECTION_RENDER_OK, {
           projection_sequence: parsed.projectionSequence || 0,
         })
@@ -98,6 +127,14 @@ async function boot() {
         runtime.bootFSM.transition('boot:projection_waiting', {})
         runtime.bootFSM.transition('boot:rendering', {})
         runtime.bootFSM.transition('boot:ready', {})
+        // Mark widgets as mounted after render
+        setTimeout(function() {
+          _widgetsMounted = true
+          annotate('widgets_mount_ok', true)
+          recordFrontendEvent('frontend_widgets_mount_ok', {
+            widget_count: document.querySelectorAll('.widget-card').length,
+          })
+        }, 500)
         protocolClient.sendProjectionRenderedAck(parsed.projectionSequence || 0)
       }
     },
@@ -345,13 +382,8 @@ async function boot() {
   // Start reactive loops (projection freshness, connection monitor, etc.)
   startReactiveLoops();
 
-  // Start bridge protocol heartbeat
-  protocolClient.sendHeartbeat()
-  setInterval(function () {
-    if (protocolClient && state.wsConnected) {
-      protocolClient.sendHeartbeat()
-    }
-  }, 15000)
+  // Start bridge protocol heartbeat (owned by protocol client)
+  protocolClient.startHeartbeat()
 
   recordFrontendEvent(LIFECYCLE.WIDGETS_MOUNT_STARTED, {});
   wireUI();

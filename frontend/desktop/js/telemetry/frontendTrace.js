@@ -2,30 +2,21 @@
 // Unified trace point for frontend lifecycle observability
 
 import { getSafeTimestamp } from "./correlation.js";
-
-let sharedHandshakeId = null;
-let _frontendSessionId = null;
-let _frontendSequence = 0;
-
-function _ensureFrontendSessionId() {
-	if (!_frontendSessionId) {
-		_frontendSessionId =
-			"fs_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-	}
-	return _frontendSessionId;
-}
+import { nextFrontendSequence, getTraceContext, setHandshakeId } from './traceContext.js'
+import { sanitize } from './sanitizer.js'
 
 export function setFrontendHandshakeId(id) {
-	sharedHandshakeId = id;
+	setHandshakeId(id)
 }
 
 export function recordFrontendEvent(type, detail = {}) {
-	_frontendSequence++;
+	var seq = nextFrontendSequence()
+	var ctx = getTraceContext()
 	const payload = {
 		type,
-		handshake_id: sharedHandshakeId,
-		frontend_session_id: _ensureFrontendSessionId(),
-		frontend_sequence: _frontendSequence,
+		handshake_id: ctx.handshakeId,
+		frontend_session_id: ctx.frontendSessionId,
+		frontend_sequence: seq,
 		timestamp: getSafeTimestamp(),
 		...detail,
 	};
@@ -47,8 +38,8 @@ export function recordFrontendEvent(type, detail = {}) {
 	}
 
 	// 2. HTTP GET fallback (for browser debug) — uses query params, never hits /ws
-	const detailParam = encodeURIComponent(JSON.stringify(detail || {}));
-	const url = `/frontend-event?type=${encodeURIComponent(type)}&handshake_id=${encodeURIComponent(sharedHandshakeId || "")}&detail=${detailParam}`;
+	const detailParam = encodeURIComponent(JSON.stringify(sanitize(detail || {}, 0)));
+	const url = `/frontend-event?type=${encodeURIComponent(type)}&handshake_id=${encodeURIComponent(ctx.handshakeId || "")}&detail=${detailParam}`;
 	try {
 		fetch(url, {
 			method: "GET",

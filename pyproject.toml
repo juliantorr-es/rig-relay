@@ -194,6 +194,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "scripts/rig_relay_generate_ide_capability_map.py" = ["PLR"]
 "rig_relay/docs_renderer/cli.py" = ["PLR"]
 "rig_relay/site_renderer/normalizers.py" = ["PLR"]
+"scripts/package_release.py" = ["PLR"]
 "scripts/rig_site_render.py" = ["PLR"]
 "rig_relay/governance/findings_lifecycle.py" = ["PLR"]
 

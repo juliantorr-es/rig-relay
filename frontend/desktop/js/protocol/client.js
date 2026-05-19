@@ -12,6 +12,7 @@
 
 import { buildEnvelope, parseEnvelope, isEnvelope, KIND } from './envelope.js'
 import { recordFrontendEvent } from '../telemetry/frontendTrace.js'
+import { setProtocolMessageId, setProjectionSequence, recordHeartbeat, withProtocolMessage, nextFrontendSequence, getTraceContext } from '../telemetry/traceContext.js'
 
 export function createProtocolClient(config) {
   // config: { wsClient, handshakeId, onProjection, onIntentAck,
@@ -145,6 +146,12 @@ export function createProtocolClient(config) {
       return { envelope: null, isLegacy: false, error: 'parse_failed' }
     }
 
+    // Annotate trace context with current envelope
+    setProtocolMessageId(parsed.messageId)
+    if (parsed.projectionSequence != null) {
+      setProjectionSequence(parsed.projectionSequence)
+    }
+
     // Dedup
     if (_isDuplicateMessageId(parsed.messageId)) {
       return { envelope: parsed, isLegacy: false, deduped: true }
@@ -165,23 +172,50 @@ export function createProtocolClient(config) {
     // Dispatch
     switch (parsed.kind) {
       case KIND.PROJECTION:
+        recordFrontendEvent('protocol_projection_received', {
+          message_id: parsed.messageId,
+          projection_sequence: parsed.projectionSequence,
+        })
         if (config.onProjection) config.onProjection(parsed)
         break
       case KIND.INTENT_ACK:
+        recordFrontendEvent('protocol_intent_ack', {
+          message_id: parsed.messageId,
+          intent_id: parsed.payload?.intent_id || '',
+          ack_for: parsed.ackFor,
+        })
         if (config.onIntentAck) config.onIntentAck(parsed)
         break
       case KIND.INTENT_RESULT:
+        recordFrontendEvent('protocol_intent_result', {
+          message_id: parsed.messageId,
+          intent_id: parsed.payload?.intent_id || '',
+          status: parsed.payload?.status || 'unknown',
+        })
         if (config.onIntentResult) config.onIntentResult(parsed)
         break
       case KIND.HEARTBEAT:
+        recordHeartbeat()
         _lastHeartbeatAt = Date.now()
+        recordFrontendEvent('protocol_heartbeat', {
+          message_id: parsed.messageId,
+          heartbeat_age_ms: Date.now() - _lastHeartbeatAt,
+        })
         if (config.onHeartbeat) config.onHeartbeat(parsed)
         break
       case KIND.FLOW_CONTROL:
+        recordFrontendEvent('protocol_flow_control', {
+          message_id: parsed.messageId,
+          reason: parsed.payload?.reason || '',
+        })
         if (config.onFlowControl) config.onFlowControl(parsed)
         break
       case KIND.ERROR:
         _protocolErrorCount++
+        recordFrontendEvent('protocol_error', {
+          message_id: parsed.messageId,
+          error_type: parsed.payload?.error_type || '',
+        })
         if (config.onError) config.onError(parsed)
         break
     }
@@ -218,9 +252,27 @@ export function createProtocolClient(config) {
   }
 
   function destroy() {
+    stopHeartbeat()
     wsClient = null
     _seenMessageIds = Object.create(null)
     _seenIdempotencyKeys = Object.create(null)
+  }
+
+  var _heartbeatTimer = null
+
+  function startHeartbeat() {
+    if (_heartbeatTimer) return
+    sendHeartbeat()
+    _heartbeatTimer = setInterval(function() {
+      sendHeartbeat()
+    }, 15000)
+  }
+
+  function stopHeartbeat() {
+    if (_heartbeatTimer) {
+      clearInterval(_heartbeatTimer)
+      _heartbeatTimer = null
+    }
   }
 
   return Object.freeze({
@@ -234,6 +286,8 @@ export function createProtocolClient(config) {
     setHandshakeId: setHandshakeId,
     setWsClient: setWsClient,
     destroy: destroy,
+    startHeartbeat: startHeartbeat,
+    stopHeartbeat: stopHeartbeat,
     isEnvelope: isEnvelope,
   })
 }

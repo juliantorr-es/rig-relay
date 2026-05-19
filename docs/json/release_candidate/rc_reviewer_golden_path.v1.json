@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.release_candidate.reviewer_golden_path.v1",
   "golden_path_id": "rc_dogfood_v1",
-  "generated_at": "2026-05-18T04:00:21Z",
-  "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
+  "generated_at": "2026-05-18T21:24:16Z",
+  "head_sha": "cda4ac087e71e0ad670c73f875747da500b100dc",
   "branch": "main",
   "title": "RC Dogfood Operational Readiness Golden Path",
   "description": "Golden path for exercising the live Rig Relay dogfood path. Verify the local server/control-plane, the desktop cockpit, browser rendering, read-only intents, structured evidence, and clean shutdown without treating CLI smoke as readiness.",
@@ -233,6 +233,93 @@
       "phase_id": "phase_1_governance_coordination"
     },
     {
+      "step_id": "gp_ci_cd_structured_evidence",
+      "user_goal": "Verify CI/CD produces structured evidence artifacts, not raw bash exit codes",
+      "command_or_ui_action": "Run CI orchestrator: uv run python scripts/rig_ci_orchestrator.py --mode ci --dry-run. Verify .build/rig-relay/ci/<run_id>/ci_run.v1.json and ci_verdict.v1.json validate against schemas.",
+      "expected_result": "CI orchestrator produces schema-validated JSON evidence. CI verdict includes blocker_ids, check results, and required_next_actions. Release gate validator consumes CI verdict artifacts.",
+      "evidence_path": ".build/rig-relay/ci/ci_verdict.v1.json",
+      "blocking_failure_conditions": [
+        "CI pipeline relies on bash exit codes as sole evidence",
+        "No ci_run.v1.json or ci_verdict.v1.json produced",
+        "CI artifacts lack schema validation",
+        "CI capability manifest does not exist",
+        "Release gate cannot consume CI verdict artifacts"
+      ],
+      "status": "blocked",
+      "validation_method": "automated_script",
+      "phase_id": "phase_4_ui_docs_ci_packaging"
+    },
+    {
+      "step_id": "gp_mcp_read_only_server",
+      "user_goal": "Verify MCP stdio server exposes only read-only tools (tier 0-2) and refuses mutation tools (tier 3-5)",
+      "command_or_ui_action": "Start MCP stdio server. List tools — only tier 0-2 tools appear. Attempt to call a tier 4 tool — verify structured refusal with machine-readable code. Inspect tool call receipts.",
+      "expected_result": "MCP server lists only read-only tools/resources/prompts. Tier 3-5 mutation tools are registered but refused at call time. Every tool call produces a receipt envelope. Structured refusals include code and governance_decision.",
+      "evidence_path": "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
+      "blocking_failure_conditions": [
+        "MCP server exposes mutation tools (tier 3-5) by default",
+        "No structured refusal when mutation tool is called",
+        "Tool call receipts are missing or lack SHA256",
+        "No governance check before tool execution",
+        "Mutation tools can execute without authorization_receipt",
+        "SSE/HTTP transport exposed before public alpha (must be stdio only)"
+      ],
+      "status": "blocked",
+      "validation_method": "automated_script",
+      "phase_id": "phase_7_protocol_surfaces"
+    },
+    {
+      "step_id": "gp_acp_auth_resume_hardening",
+      "user_goal": "Verify ACP authenticate, resume_session, and session hardening are implemented and tested",
+      "command_or_ui_action": "Start ACP agent. Verify NON_INTERACTIVE_DISABLED_TOOLS is defined. Test resume_session with workspace-bound isolation and stale session detection. Test authenticate against identity provider.",
+      "expected_result": "ACP starts without undefined symbols. resume_session supports workspace isolation. authenticate wires to identity providers. Capability summary appears in every session response.",
+      "evidence_path": "rig_relay/acp/_disabled_tools.py",
+      "blocking_failure_conditions": [
+        "NON_INTERACTIVE_DISABLED_TOOLS is undefined (NameError at runtime)",
+        "resume_session raises NotImplementedError",
+        "authenticate raises NotImplementedError",
+        "ForkSessionParams is undefined",
+        "No workspace isolation on session resume",
+        "No capability summary in session response field_meta"
+      ],
+      "status": "blocked",
+      "validation_method": "automated_script",
+      "phase_id": "phase_7_protocol_surfaces"
+    },
+    {
+      "step_id": "gp_internal_sdk_programmatic_api",
+      "user_goal": "Verify internal SDK v0 provides governed facade with observe-by-default mode and no raw subsystem exposure",
+      "command_or_ui_action": "Instantiate RigClient(mode='observe', mutations='refuse'). Attempt stream with mutation-capable prompt — verify refusal. Register on_tool_approval callback, set mutations='governed', verify approval gating.",
+      "expected_result": "SDK defaults to observe/read-only mode. Mutation requires explicit governed mode and approval callback. Content-light events only. No raw AgentLoop/ToolManager/GovernanceEngine access.",
+      "evidence_path": "rig_relay/sdk/__init__.py",
+      "blocking_failure_conditions": [
+        "SDK default mode allows mutations",
+        "Raw AgentLoop, ToolManager, coordination, governance, or identity exposed as public attributes",
+        "No RigMutationRefusal when mutation requested in observe mode",
+        "Events contain raw file content or secrets",
+        "Cancellation leaves orphaned subprocesses"
+      ],
+      "status": "blocked",
+      "validation_method": "automated_script",
+      "phase_id": "phase_6_dogfood_operational_readiness"
+    },
+    {
+      "step_id": "gp_internal_a2a_dogfood_substrate",
+      "user_goal": "Verify internal A2A dogfood substrate is schema-governed, local-only, and not externally exposed",
+      "command_or_ui_action": "Inspect AgentCard, TaskCard, ArtifactRef models — verify SHA256 hashing and content-light guarantee. Inspect a2a_promotion_readiness.v1.json — verify external_enabled=false with all 10 gates pending.",
+      "expected_result": "Internal A2A models are schema-validated. Task lifecycle is event-sourced through CoordinationStore. No network listener or external auth. external_enabled=false.",
+      "evidence_path": "docs/json/protocols/a2a_promotion_readiness.v1.json",
+      "blocking_failure_conditions": [
+        "External A2A is enabled (external_enabled=true) before promotion gates pass",
+        "Network listener exists for agent discovery",
+        "Third-party agent auth is supported",
+        "Task card schema validation fails",
+        "Task lifecycle is not event-sourced via CoordinationStore"
+      ],
+      "status": "blocked",
+      "validation_method": "automated_script",
+      "phase_id": "phase_6_dogfood_operational_readiness"
+    },
+    {
       "step_id": "gp_shutdown_cleanly",
       "user_goal": "Shut down the server and cockpit cleanly",
       "command_or_ui_action": "Send SIGTERM or use cockpit quit command; observe shutdown sequence",
@@ -336,6 +423,13 @@
     "scripts/rig_release_gate_validate.py",
     "scripts/rig_relay_validate_schemas.py",
     "docs/schemas/rig.relay.desktop_projection.v1.schema.json",
-    "docs/schemas/rig.relay.bash_receipt.v1.schema.json"
+    "docs/schemas/rig.relay.bash_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
+    "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
+    "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
+    ".build/rig-relay/ci/ci_verdict.v1.json",
+    "rig_relay/acp/_disabled_tools.py",
+    "rig_relay/sdk/__init__.py",
+    "docs/json/protocols/a2a_promotion_readiness.v1.json"
   ]
 }

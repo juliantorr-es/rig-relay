@@ -2,8 +2,8 @@
   "$schema": "https://rig-relay.github.io/schemas/rig.release_gate.readiness.v1.schema.json",
   "branch": "main",
   "gate_id": "rc_readiness_v0",
-  "generated_at": "2026-05-18T04:00:47Z",
-  "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
+  "generated_at": "2026-05-18T21:24:16Z",
+  "head_sha": "cda4ac087e71e0ad670c73f875747da500b100dc",
   "overall_status": "blocked",
   "phases": [
     {
@@ -127,14 +127,16 @@
       "blocker_ids": [
         "blk_phase4_ci_repo_ref",
         "blk_phase4_pi_lens_in_git",
-        "blk_phase4_deferred_checks_required"
+        "blk_phase4_deferred_checks_required",
+        "blk_ci_cd_structured_evidence_surface"
       ],
-      "dependency_implications": "Textual UI framework is core; static renderer uses Python stdlib + jsonschema.",
+      "dependency_implications": "Textual UI framework is core; static renderer uses Python stdlib + jsonschema. CI/CD requires schema-governed evidence orchestrator producing ci_run, ci_verdict, ci_blocker artifacts.",
       "owner_surface": "docs",
       "phase_id": "phase_4_ui_docs_ci_packaging",
       "remaining_seams": [
         "Old Markdown docs not yet fully migrated",
-        "Desktop E2E tests limited"
+        "Desktop E2E tests limited",
+        "CI evidence surface not yet schema-governed"
       ],
       "required_evidence": [
         "docs/schemas/rig.documentation.page.v1.schema.json",
@@ -159,7 +161,7 @@
         "tests/desktop/"
       ],
       "title": "UI, Docs, CI & Packaging",
-      "updated_at": "2026-05-18T04:00:47Z",
+      "updated_at": "2026-05-18T21:24:16Z",
       "validation_run_ids": [
         "vr_installability_20260518",
         "vr_frontend_browser_chromium_20260518",
@@ -206,35 +208,91 @@
     },
     {
       "allowed_deferrals": [],
-      "blocker_ids": [],
-      "dependency_implications": "Golden path checklist gates PROMOTE on all blocking steps passing. Phase 6 does not own unique blockers; it inherits blockers from phases 1-5 via golden path step status.",
+      "blocker_ids": [
+        "blk_internal_sdk_programmatic_api_v0",
+        "blk_internal_a2a_dogfood_substrate_v0"
+      ],
+      "dependency_implications": "Golden path checklist gates PROMOTE on all blocking steps passing. Phase 6 also gates internal SDK v0 and internal A2A v0 dogfood substrates per canonicalization assessment.",
       "owner_surface": "reviewer",
       "phase_id": "phase_6_dogfood_operational_readiness",
       "remaining_seams": [
         "Golden path has not been exercised by a human reviewer",
-        "Automated installability smoke test does not equal dogfood readiness"
+        "Automated installability smoke test does not equal dogfood readiness",
+        "Internal SDK v0 facade not yet implemented",
+        "Internal A2A dogfood substrate not yet canonicalized"
       ],
       "required_evidence": [
         "docs/json/release_candidate/rc_reviewer_golden_path.v1.json",
-        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json"
+        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
+        "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
+        "docs/schemas/rig.relay.sdk.status.v1.schema.json",
+        "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
+        "docs/schemas/rig.relay.a2a.agent_card.v1.schema.json",
+        "docs/json/protocols/a2a_promotion_readiness.v1.json"
       ],
       "schema_artifact_paths": [
-        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json"
+        "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
+        "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
+        "docs/schemas/rig.relay.sdk.status.v1.schema.json",
+        "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
+        "docs/schemas/rig.relay.a2a.agent_card.v1.schema.json"
       ],
-      "source_commit": "a0dc9c56003ddade9f3c09e023e40426979ea412",
+      "source_commit": "cda4ac087e71e0ad670c73f875747da500b100dc",
       "status": "blocked",
-      "telemetry_or_redaction_implications": "Golden path evidence must not embed reviewer identity or session secrets. Structured evidence paths must be JSON/JSONL/CSV only.",
+      "telemetry_or_redaction_implications": "Golden path evidence must not embed reviewer identity or session secrets. Structured evidence paths must be JSON/JSONL/CSV only. SDK events must be content-light (SHA256 only). A2A coordination events must not contain raw content.",
       "test_artifact_paths": [
-        "tests/release_candidate/test_golden_path_validation.py"
+        "tests/release_candidate/test_golden_path_validation.py",
+        "tests/sdk/test_rig_client.py",
+        "tests/protocols/a2a/"
       ],
       "title": "Dogfood Operational Readiness",
-      "updated_at": "2026-05-18T04:00:47Z",
+      "updated_at": "2026-05-18T21:24:16Z",
       "validation_run_ids": [
         "vr_live_rc_python_20260518",
         "vr_frontend_browser_chromium_20260518",
         "vr_golden_path_check_20260518",
         "vr_release_gate_validate_20260518"
       ]
+    },
+    {
+      "allowed_deferrals": [],
+      "blocker_ids": [
+        "blk_mcp_read_only_server_alpha",
+        "blk_acp_session_auth_resume_hardening"
+      ],
+      "dependency_implications": "MCP requires mcp library and stdio transport. ACP requires acp SDK v0.9.0. Both surfaces consume existing governance, coordination, identity, and evidence subsystems.",
+      "owner_surface": "protocols",
+      "phase_id": "phase_7_protocol_surfaces",
+      "remaining_seams": [
+        "MCP server skeleton needs wiring to mcp library transport layer",
+        "MCP mutation tiers 3-5 gated to post-alpha",
+        "ACP resume_session and authenticate not yet implemented",
+        "ACP NON_INTERACTIVE_DISABLED_TOOLS symbol undefined"
+      ],
+      "required_evidence": [
+        "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
+        "docs/schemas/rig.relay.mcp.tool_call_receipt.v1.schema.json",
+        "docs/schemas/rig.relay.mcp.refusal.v1.schema.json",
+        "rig_relay/acp/_disabled_tools.py",
+        "rig_relay/protocols/mcp/server.py",
+        "tests/protocols/mcp/test_read_only_server.py",
+        "tests/acp/test_auth_resume_hardening.py"
+      ],
+      "schema_artifact_paths": [
+        "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
+        "docs/schemas/rig.relay.mcp.tool_call_receipt.v1.schema.json",
+        "docs/schemas/rig.relay.mcp.refusal.v1.schema.json"
+      ],
+      "source_commit": "cda4ac087e71e0ad670c73f875747da500b100dc",
+      "status": "blocked",
+      "telemetry_or_redaction_implications": "MCP and ACP protocol events must not expose raw tool inputs, API keys, or private file content. MCP tool call receipts follow content-light doctrine. ACP session capability summaries must not embed raw secrets.",
+      "test_artifact_paths": [
+        "tests/protocols/mcp/",
+        "tests/acp/"
+      ],
+      "title": "Protocol & API Surfaces",
+      "updated_at": "2026-05-18T21:24:16Z",
+      "validation_run_ids": []
     }
   ],
   "policy": {

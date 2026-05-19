@@ -69,6 +69,11 @@ STEP_TO_BLOCKER: dict[str, str] = {
     "gp_bash_rerouting_transparency": "blk_bash_rerouting_transparency",
     "gp_telemetry_degradation_visibility": "blk_telemetry_disabled_degradation",
     "gp_debug_packet_quarantine": "blk_debug_packet_quarantine",
+    "gp_ci_cd_structured_evidence": "blk_ci_cd_structured_evidence_surface",
+    "gp_mcp_read_only_server": "blk_mcp_read_only_server_alpha",
+    "gp_acp_auth_resume_hardening": "blk_acp_session_auth_resume_hardening",
+    "gp_internal_sdk_programmatic_api": "blk_internal_sdk_programmatic_api_v0",
+    "gp_internal_a2a_dogfood_substrate": "blk_internal_a2a_dogfood_substrate_v0",
 }
 
 

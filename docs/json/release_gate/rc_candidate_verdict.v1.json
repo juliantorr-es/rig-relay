@@ -1,6 +1,8 @@
 {
   "blocking_phase_ids": [
-    "phase_6_dogfood_operational_readiness"
+    "phase_4_ui_docs_ci_packaging",
+    "phase_6_dogfood_operational_readiness",
+    "phase_7_protocol_surfaces"
   ],
   "branch": "main",
   "deferred_risk_ids": [
@@ -27,31 +29,48 @@
     "docs/schemas/rig.release_gate.readiness.v1.schema.json",
     "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
     "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json",
+    "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
+    "docs/schemas/rig.relay.sdk.status.v1.schema.json",
+    "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
+    "docs/schemas/rig.relay.mcp.tool_call_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
+    "docs/schemas/rig.relay.a2a.agent_card.v1.schema.json",
+    "docs/json/protocols/a2a_promotion_readiness.v1.json",
     "rig_relay/cli/desktop_cockpit.py"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
   "gate_overall_status": "blocked",
-  "generated_at": "2026-05-18T04:00:17Z",
-  "head_sha": "a0dc9c56003ddade9f3c09e023e40426979ea412",
+  "generated_at": "2026-05-18T21:24:16Z",
+  "head_sha": "cda4ac087e71e0ad670c73f875747da500b100dc",
   "installability_status": "passed",
-  "known_seam_count": 10,
-  "open_blocker_ids": [],
+  "known_seam_count": 14,
+  "open_blocker_ids": [
+    "blk_ci_cd_structured_evidence_surface",
+    "blk_mcp_read_only_server_alpha",
+    "blk_acp_session_auth_resume_hardening",
+    "blk_internal_sdk_programmatic_api_v0",
+    "blk_internal_a2a_dogfood_substrate_v0"
+  ],
   "promote_blockers": [
     "All open blockers resolved",
     "Dogfood golden path reviewer checklist all blocking steps 'passing'",
-    "Validator returns 'passed' with 0 errors"
+    "Validator returns 'passed' with 0 errors",
+    "All five protocol/CI/SDK surfaces have implementation evidence and passing tests"
   ],
   "ready_phase_ids": [
     "phase_1_governance_coordination",
     "phase_2_telemetry_privacy",
     "phase_3_runtime_tools_context_api",
-    "phase_4_ui_docs_ci_packaging",
     "phase_5_public_docs_licensing"
   ],
   "required_next_actions": [
-    "Complete dogfood golden path reviewer checklist — 2 not_verified manual steps remain before PROMOTE",
-    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state",
-    "Verify demo-mode removal: gp_readme_no_demo, gp_cli_help_no_demo, gp_no_demo_evidence steps must pass"
+    "Resolve blk_ci_cd_structured_evidence_surface: implement CI evidence orchestrator with schema-governed artifacts",
+    "Resolve blk_mcp_read_only_server_alpha: implement MCP stdio read-only server with tier 0-2 tools",
+    "Resolve blk_acp_session_auth_resume_hardening: close authenticate/resume/session hardening gaps in ACP",
+    "Resolve blk_internal_sdk_programmatic_api_v0: implement regret-minimizing RigClient SDK facade",
+    "Resolve blk_internal_a2a_dogfood_substrate_v0: canonicalize internal A2A models and promotion gates",
+    "Complete dogfood golden path reviewer checklist — 4 new protocol/CI/SDK steps must pass",
+    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state"
   ],
   "resolved_blocker_ids": [
     "blk_phase4_ci_repo_ref",

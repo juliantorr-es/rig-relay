@@ -6,6 +6,9 @@
 //           No full chat message content, raw file contents, or prompt content
 //           in evidence payloads. Callers are responsible for this invariant.
 
+import { sanitize } from '../telemetry/sanitizer.js'
+import { getTraceContext } from '../telemetry/traceContext.js'
+
 // Evidence event type constants — single frozen authority for all event kinds.
 const EvidenceEventType = Object.freeze({
   RUNTIME_INITIALIZED: 'RUNTIME_INITIALIZED',
@@ -29,16 +32,6 @@ const EvidenceEventType = Object.freeze({
   KERNEL_SNAPSHOT: 'KERNEL_SNAPSHOT',
 });
 
-// Keys whose name (case-insensitive) contains any of these substrings are
-// redacted. A match replaces the entire value with '[REDACTED]'.
-var _SECRET_KEY_RE = /token|secret|key|password|credential|api_key|auth|bearer/i;
-
-// JWT header prefix and PEM boundary marker — redacted at the value level
-// independent of key name, because they are token-shaped payloads.
-var _JWT_PREFIX = 'eyJ';
-var _PEM_BOUNDARY = '-----BEGIN';
-
-var _MAX_SANITIZE_DEPTH = 10;
 var _DEFAULT_MAX_BUFFER_SIZE = 500;
 
 // ── action_id generation ───────────────────────────────────────────────
@@ -50,69 +43,6 @@ function _generateActionId() {
     return globalThis.crypto.randomUUID();
   }
   return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-}
-
-// ── value-level heuristics ─────────────────────────────────────────────
-
-function _isHexLike(str) {
-  // Hex string longer than 32 chars is likely a content hash (SHA-256, etc.).
-  // These are safe — they are derived fingerprints, not secrets.
-  if (str.length <= 32) return false;
-  return /^[0-9a-fA-F]+$/.test(str);
-}
-
-function _isTokenLike(str) {
-  if (typeof str !== 'string') return false;
-  // JWT: starts with base64url-encoded header {"alg":...
-  if (str.indexOf(_JWT_PREFIX) === 0) return true;
-  // PEM-encoded key material or certificate
-  if (str.indexOf(_PEM_BOUNDARY) !== -1) return true;
-  return false;
-}
-
-// ── recursive sanitizer ────────────────────────────────────────────────
-// Recursively walks objects and arrays up to _MAX_SANITIZE_DEPTH levels.
-// - Secret-key matches → value replaced with '[REDACTED]'
-// - JWT / PEM string values → '[REDACTED]' (hex hashes > 32 chars kept)
-// - Non-string primitives pass through unchanged
-// - Exceeding max depth returns the sentinel '[MAX_DEPTH]'
-
-function _sanitize(value, depth) {
-  if (depth > _MAX_SANITIZE_DEPTH) return '[MAX_DEPTH]';
-  if (value === null || value === undefined) return value;
-
-  if (Array.isArray(value)) {
-    var arr = [];
-    for (var i = 0; i < value.length; i++) {
-      arr.push(_sanitize(value[i], depth + 1));
-    }
-    return arr;
-  }
-
-  if (typeof value === 'object') {
-    var out = {};
-    for (var k in value) {
-      if (!Object.prototype.hasOwnProperty.call(value, k)) continue;
-      if (_SECRET_KEY_RE.test(k)) {
-        out[k] = '[REDACTED]';
-        // Do not recurse — the value is already replaced.
-        continue;
-      }
-      out[k] = _sanitize(value[k], depth + 1);
-    }
-    return out;
-  }
-
-  if (typeof value === 'string') {
-    // Content hashes (hex > 32 chars) are safe — pass through.
-    if (_isHexLike(value)) return value;
-    // Token-shaped strings are redacted regardless of key name.
-    if (_isTokenLike(value)) return '[REDACTED]';
-    return value;
-  }
-
-  // number, boolean — pass through
-  return value;
 }
 
 // ── bridge emission ────────────────────────────────────────────────────
@@ -176,14 +106,18 @@ export function createEvidenceRecorder(config) {
     var raw = details || {};
 
     // Recursive sanitization removes secret-keyed values and token-shaped strings.
-    var sanitized = _sanitize(raw, 0);
+    var sanitized = sanitize(raw, 0);
 
+    var ctx = getTraceContext()
     var event = {
       action_id: _generateActionId(),
       timestamp: new Date().toISOString(),
-      handshake_id: handshakeId,
-      frontend_session_id: frontendSessionId,
+      handshake_id: ctx.handshakeId || handshakeId,
+      frontend_session_id: ctx.frontendSessionId || frontendSessionId,
       sequence: _seq,
+      frontend_sequence: ctx.frontendSequence,
+      boot_phase: ctx.bootPhase,
+      projection_sequence: ctx.projectionSequence >= 0 ? ctx.projectionSequence : undefined,
       event_type: eventType,
       details: sanitized,
     };

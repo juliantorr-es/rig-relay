@@ -1,0 +1,65 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "release-packaging-architecture",
+  "title": "Release Packaging Architecture v1",
+  "sections": [
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Official Release Mint"
+    },
+    {
+      "kind": "paragraph",
+      "content": "GitHub Actions is the official release bundle mint for Rig Relay. All release artifacts (Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, Windows x86_64) are built on OS-native GitHub Actions runners via the build-and-upload.yml workflow."
+    },
+    {
+      "kind": "paragraph",
+      "content": "Every release bundle includes a schema-governed manifest (rig.release_bundle_manifest.v1) with SHA-256 checksums, provenance metadata, and signing placeholders. Manual uploads without manifest/checksum evidence are not canonical release artifacts."
+    },
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Codespaces / Devcontainer Role"
+    },
+    {
+      "kind": "paragraph",
+      "content": "Codespaces and devcontainers are interactive packaging labs for Linux repro/debug and packaging-script development. They use the same scripts/package_release.py entrypoint but do not produce official release artifacts. The runner_class field in the manifest will be codespaces_lab, and official_release will always be false in this context."
+    },
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Platform Constraints"
+    },
+    {
+      "kind": "paragraph",
+      "content": "Linux bundles can be debugged and developed in Codespaces (Linux container). Windows bundles MUST be packaged on a Windows runner (windows-latest or windows-2022). Codespaces does not provide a Windows environment and cannot be used for Windows packaging."
+    },
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Bundle Evidence"
+    },
+    {
+      "kind": "paragraph",
+      "content": "Each release bundle produces: (1) release_bundle_manifest.v1.json — the canonical manifest, (2) SHA256SUMS — GNU-format checksums, (3) release_evidence.v1.jsonl — append-only structured evidence line. All three are uploaded as GitHub Actions artifacts alongside the binary bundle."
+    },
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Signing Roadmap"
+    },
+    {
+      "kind": "paragraph",
+      "content": "Signing and notarization are explicitly placeholder in v1. The manifest includes signing.method and signing.status fields that default to 'none' and 'unavailable'. Future slices will add: codesign (macOS), signtool (Windows), GPG signatures (Linux), and Apple notarytool integration."
+    },
+    {
+      "kind": "heading",
+      "level": 2,
+      "content": "Telemetry/Redaction"
+    },
+    {
+      "kind": "paragraph",
+      "content": "Release bundle manifests contain no raw prompts, secrets, credentials, private file contents, or private repository contents. All content-derived data uses SHA-256 hashes. The manifest is a content-light evidence artifact suitable for public audit."
+    }
+  ]
+}

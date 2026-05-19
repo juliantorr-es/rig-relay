@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.release_bundle_manifest.v1.schema.json",
+  "title": "Release Bundle Manifest v1",
+  "description": "Canonical manifest produced by scripts/package_release.py for each release bundle build. Records git metadata, environment, artifacts, checksums, signing status, and structured evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "bundle_name",
+    "bundle_format",
+    "target_os",
+    "target_arch",
+    "git_branch",
+    "git_commit_sha",
+    "git_dirty",
+    "runner_class",
+    "official_release",
+    "build_timestamp",
+    "build_host",
+    "python_version",
+    "pyinstaller_version",
+    "uv_version",
+    "spec_files",
+    "artifacts",
+    "signing",
+    "evidence",
+    "telemetry_redaction_notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.release_bundle_manifest.v1",
+      "description": "Schema version identifier."
+    },
+    "bundle_id": {
+      "type": "string",
+      "description": "Stable identifier for this bundle build (e.g., rig-relay-acp-darwin-arm64-abc1234)."
+    },
+    "bundle_name": {
+      "type": "string",
+      "description": "Human-readable name for this bundle configuration."
+    },
+    "bundle_format": {
+      "type": "string",
+      "enum": ["onedir", "onefile", "native"],
+      "description": "PyInstaller bundle format. onedir for a directory bundle, onefile for a single executable, native for non-PyInstaller packaging."
+    },
+    "target_os": {
+      "type": "string",
+      "enum": ["darwin", "linux", "windows"],
+      "description": "Target operating system."
+    },
+    "target_arch": {
+      "type": "string",
+      "enum": ["x86_64", "aarch64"],
+      "description": "Target CPU architecture."
+    },
+    "git_branch": {
+      "type": "string",
+      "description": "Git branch at build time."
+    },
+    "git_commit_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "description": "Full 40-character git commit SHA at build time."
+    },
+    "git_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree had uncommitted changes at build time."
+    },
+    "runner_class": {
+      "type": "string",
+      "enum": ["github_actions", "codespaces_lab", "local"],
+      "description": "CI/CD runner classification."
+    },
+    "official_release": {
+      "type": "boolean",
+      "description": "True only for GitHub Actions runs triggered by a release event. False for all other cases including codespaces."
+    },
+    "build_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of build start."
+    },
+    "build_host": {
+      "type": "string",
+      "description": "Hostname of the build machine."
+    },
+    "python_version": {
+      "type": "string",
+      "description": "Python version string (e.g., 3.12.3)."
+    },
+    "pyinstaller_version": {
+      "type": ["string", "null"],
+      "description": "PyInstaller version string, or null if unavailable."
+    },
+    "uv_version": {
+      "type": ["string", "null"],
+      "description": "uv version string, or null if unavailable."
+    },
+    "spec_files": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "PyInstaller spec files used in this build."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind", "size_bytes", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path from output directory to the artifact."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Artifact kind (e.g., executable, checksum, manifest, evidence, placeholder)."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 hex digest of the artifact."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Non-fatal warnings encountered during the build."
+    },
+    "errors": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Fatal errors encountered during the build."
+    },
+    "signing": {
+      "type": "object",
+      "required": ["method", "status", "notes"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "Signing method used."
+        },
+        "status": {
+          "type": "string",
+          "description": "Signing status."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional signing notes."
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["manifest_sha256", "checksums_path", "evidence_jsonl_path"],
+      "properties": {
+        "manifest_sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "description": "SHA-256 of this manifest file (filled in after write)."
+        },
+        "checksums_path": {
+          "type": "string",
+          "description": "Relative path to the SHA256SUMS file."
+        },
+        "evidence_jsonl_path": {
+          "type": "string",
+          "description": "Relative path to the evidence JSONL file."
+        }
+      },
+      "additionalProperties": false
+    },
+    "telemetry_redaction_notes": {
+      "type": "string",
+      "description": "Statement that no raw prompts, secrets, credentials, or private files were emitted in this manifest."
+    }
+  },
+  "additionalProperties": false
+}

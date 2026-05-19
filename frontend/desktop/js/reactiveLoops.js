@@ -3,6 +3,7 @@
 import { state } from './state.js';
 import { TransportStatus } from './transportState.js';
 import { createNotification, resolveNotification, getActiveNotifications } from './notifications.js';
+import { recordFrontendEvent } from './telemetry/frontendTrace.js';
 
 const PROJECTION_STALE_KEY = 'projection_stale';
 const CONNECTION_DEGRADED_KEY = 'connection_degraded';
@@ -144,10 +145,19 @@ function _notify(kind, source, dedupeKey, title, body, opts) {
     expires_at: expiresInMs ? new Date(Date.now() + expiresInMs).toISOString() : null,
     action_buttons: actionObj ? [actionObj] : [],
   });
+  recordFrontendEvent('feedback_notification_created', {
+    dedup_key: dedupeKey || '',
+    kind: kind || '',
+    source: 'reactive_loops',
+  })
 }
 
 function _resolve(dedupeKey) {
   resolveNotification(dedupeKey);
+  recordFrontendEvent('feedback_notification_resolved', {
+    dedup_key: dedupeKey || '',
+    source: 'reactive_loops',
+  })
 }
 
 // ── Projection Freshness Monitor ──────────────────────────────────────
