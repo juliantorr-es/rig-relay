@@ -63,6 +63,7 @@ ASSETS_OUT = OUTPUT_DIR / "assets"
 SITE_CSS_SRC = ASSETS_SRC / "site.css"
 GITHUB_URL = "https://github.com/juliantorr-es/rig-relay"
 OG_IMAGE_SRC = REPO_ROOT / "docs" / "assets" / "og" / "rig-relay-card.svg"
+OG_IMAGE_PNG_SRC = REPO_ROOT / "docs" / "assets" / "og" / "rig-relay-card.png"
 
 
 NORMALIZER_MAP: dict[str, Callable[[dict], list[dict]]] = {
@@ -170,86 +171,101 @@ def _count_schemas(repo_root: Path) -> int:
     return len(glob.glob(str(schemas_dir / "*.schema.json")))
 
 
+def _extract_claim_text(c: Any) -> str:
+    """Helper to extract a clean string from any claim representation."""
+    if isinstance(c, str):
+        return c
+    if isinstance(c, dict):
+        for key in ("claim_text", "claim", "boundary", "description", "text", "message", "name"):
+            if val := c.get(key):
+                if isinstance(val, str):
+                    return val
+        for key, val in sorted(c.items()):
+            if isinstance(val, str) and len(val) > 10:
+                return val
+        for key, val in sorted(c.items()):
+            if isinstance(val, str):
+                return val
+        return str(c)
+    return str(c)
+
+
 def _load_governance_claims(repo_root: Path) -> tuple[list[str], list[str], list[str]]:
-    """Load public claims, rejected claims, and remaining seams from governance artifacts."""
-    supported: list[str] = []
-    rejected: list[str] = []
-    seams: list[str] = []
+    """Load public claims, rejected claims, and remaining seams from governance/site/release_candidate artifacts."""
+    supported: list[Any] = []
+    rejected: list[Any] = []
+    seams: list[Any] = []
 
-    # Cross-surface convergence review
-    conv_path = (
-        repo_root
-        / "docs"
-        / "json"
-        / "governance"
-        / "cross_surface_v1_convergence_review.v1.json"
-    )
-    if conv_path.exists():
-        try:
-            conv = json.loads(conv_path.read_text(encoding="utf-8"))
-            supported.extend(conv.get("release_paper_claims_supported", []))
-            rejected.extend(conv.get("release_paper_claims_rejected", []))
-        except Exception:
-            pass
+    search_dirs = [
+        repo_root / "docs" / "json" / "governance",
+        repo_root / "docs" / "json" / "site",
+        repo_root / "docs" / "json" / "release_candidate",
+    ]
 
-    # Hardening artifact
-    hard_path = (
-        repo_root
-        / "docs"
-        / "json"
-        / "governance"
-        / "cross_surface_v1_1_hardening.v1.json"
-    )
-    if hard_path.exists():
-        try:
-            hard = json.loads(hard_path.read_text(encoding="utf-8"))
-            for cb in hard.get("remaining_claim_boundaries", []):
-                if isinstance(cb, str):
-                    rejected.append(cb)
-                elif isinstance(cb, dict) and "boundary" in cb:
-                    rejected.append(cb["boundary"])
-        except Exception:
-            pass
+    for d in search_dirs:
+        if not d.exists() or not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.json")):
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    continue
+                
+                # Load supported claims
+                for k in ("release_paper_claims_supported", "claims_supported", "supported_claims"):
+                    if k in data:
+                        val = data[k]
+                        if isinstance(val, list):
+                            supported.extend(val)
+                        elif isinstance(val, str):
+                            supported.append(val)
+                
+                # Load rejected claims
+                for k in ("release_paper_claims_rejected", "claims_rejected", "rejected_claims", "remaining_claim_boundaries"):
+                    if k in data:
+                        val = data[k]
+                        if isinstance(val, list):
+                            rejected.extend(val)
+                        elif isinstance(val, str):
+                            rejected.append(val)
 
-    # Agent execution readiness
-    exec_path = (
-        repo_root
-        / "docs"
-        / "json"
-        / "governance"
-        / "agent_execution_readiness_v1.v1.json"
-    )
-    if exec_path.exists():
-        try:
-            ex = json.loads(exec_path.read_text(encoding="utf-8"))
-            seams.extend(ex.get("remaining_seams", []))
-        except Exception:
-            pass
+                # Load seams
+                for k in ("remaining_seams", "seams", "remaining_blockers"):
+                    if k in data:
+                        val = data[k]
+                        if isinstance(val, list):
+                            seams.extend(val)
+                        elif isinstance(val, str):
+                            seams.append(val)
+            except Exception:
+                pass
 
-    # Deduplicate while preserving order
+    # Deduplicate while preserving order, ensuring we only yield strings
     seen_s: set[str] = set()
-    unique_supported = []
+    unique_supported: list[str] = []
     for c in supported:
-        key = str(c) if isinstance(c, str) else json.dumps(c)
-        if key not in seen_s:
-            seen_s.add(key)
-            if isinstance(c, dict):
-                unique_supported.append(c.get("claim", str(c)))
-            else:
-                unique_supported.append(c)
+        text = _extract_claim_text(c).strip()
+        if text and text not in seen_s:
+            seen_s.add(text)
+            unique_supported.append(text)
 
     seen_r: set[str] = set()
-    unique_rejected = []
+    unique_rejected: list[str] = []
     for c in rejected:
-        key = str(c) if isinstance(c, str) else json.dumps(c)
-        if key not in seen_r:
-            seen_r.add(key)
-            if isinstance(c, dict):
-                unique_rejected.append(c.get("boundary", str(c)))
-            else:
-                unique_rejected.append(c)
+        text = _extract_claim_text(c).strip()
+        if text and text not in seen_r:
+            seen_r.add(text)
+            unique_rejected.append(text)
 
-    return unique_supported, unique_rejected, seams
+    seen_seams: set[str] = set()
+    unique_seams: list[str] = []
+    for s in seams:
+        text = _extract_claim_text(s).strip()
+        if text and text not in seen_seams:
+            seen_seams.add(text)
+            unique_seams.append(text)
+
+    return unique_supported, unique_rejected, unique_seams
 
 
 def main() -> int:
@@ -548,7 +564,7 @@ def main() -> int:
                 "og_description": page_desc[:200]
                 if page_desc
                 else f"Evidence: {page_title}",
-                "og_image": f"{relative_root}/assets/og/rig-relay-card.svg",
+                "og_image": f"{relative_root}/assets/og/rig-relay-card.png",
                 "og_type": "article",
                 "og_url": route,
                 "canonical_url": route,
@@ -634,7 +650,7 @@ def main() -> int:
             "github_url": GITHUB_URL,
             "og_title": "Rig Relay",
             "og_description": homepage_desc[:200],
-            "og_image": "./assets/og/rig-relay-card.svg",
+            "og_image": "./assets/og/rig-relay-card.png",
             "og_type": "website",
             "og_url": "./index.html",
             "twitter_card": "summary",
@@ -676,6 +692,8 @@ def main() -> int:
         og_out_dir.mkdir(parents=True, exist_ok=True)
         if OG_IMAGE_SRC.exists():
             shutil.copy2(OG_IMAGE_SRC, og_out_dir / "rig-relay-card.svg")
+        if OG_IMAGE_PNG_SRC.exists():
+            shutil.copy2(OG_IMAGE_PNG_SRC, og_out_dir / "rig-relay-card.png")
 
         # Generate sitemap.xml
         sitemap_lines = [
@@ -810,6 +828,7 @@ def main() -> int:
                 "assets/site.css",
                 "assets/favicon.svg",
                 "assets/og/rig-relay-card.svg",
+                "assets/og/rig-relay-card.png",
             ],
         }
         manifest_out_path = OUTPUT_DIR / "site_manifest.v1.json"

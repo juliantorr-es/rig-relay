@@ -1,0 +1,26 @@
+{
+  "receipt_id": "c6d7718d-a922-43c1-a5d6-f094fbc95d4d",
+  "trace_id": "94ff7423-7500-4e34-bb98-c63e6f07c21e",
+  "dry_run": false,
+  "config_summary": {
+    "oauth_configured": false,
+    "redirect_uri_configured": false,
+    "service_account_configured": false,
+    "domain_wide_delegation_configured": false,
+    "client_id_hash": "",
+    "service_account_email_hash": "",
+    "admin_email_hash": ""
+  },
+  "issues": [
+    {
+      "kind": "no_auth_configured",
+      "detail": "Neither OAuth nor service account auth is configured"
+    }
+  ],
+  "live_results": {
+    "schema_version": "rig.google_workspace.live_auth_refusal.v1",
+    "error": "missing_access_token",
+    "error_description": "Set GOOGLE_ACCESS_TOKEN to a valid OAuth access token to run live smoke tests"
+  },
+  "timestamp_utc": "2026-05-19T21:56:05.311928+00:00"
+}

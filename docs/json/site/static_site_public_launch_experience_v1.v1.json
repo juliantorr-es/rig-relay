@@ -41,7 +41,7 @@
     "overflow_handling": "pre/code blocks use overflow-x auto; long paths wrap."
   },
   "social_preview_checks": {
-    "og_image_status": "Static SVG OG card copied to output. PNG conversion deferred (no new dependencies).",
+    "og_image_status": "Static PNG and SVG OG cards generated and copied to output.",
     "og_fields_complete": "og:title, og:type, og:url, og:image, og:description, og:site_name, og:locale present.",
     "twitter_fields_complete": "twitter:card, twitter:title, twitter:description, twitter:image present."
   },
@@ -84,7 +84,8 @@
     "Public evidence artifacts validated against 246+ schemas",
     "Mobile-responsive static site with no JavaScript dependency",
     "Social preview metadata for link unfurling",
-    "Sitemap and robots.txt for crawler discoverability"
+    "Sitemap and robots.txt for crawler discoverability",
+    "PNG OG card generated for link previews on non-SVG crawlers"
   ],
   "claims_rejected": [
     "Agents are proven safe",
@@ -93,12 +94,11 @@
     "No remaining seams or deferrals",
     "Complete OS-level sandboxing",
     "Production live OAuth (not yet landed)",
-    "OG image renders as PNG on all social platforms (SVG only)",
+    "Automatic dynamic OG image generation based on page content",
     "Client-side interactive search or sorting",
     "Real-time live data on static pages"
   ],
   "remaining_seams": [
-    "OG image is SVG-only; Facebook/LinkedIn may not render preview. PNG conversion deferred.",
     "92+ legacy Markdown audits in docs/audits/ not yet migrated to JSON.",
     "Structured data types limited to WebSite, SoftwareApplication, TechArticle, BreadcrumbList.",
     "No contact email or social media URLs available for CTA links.",

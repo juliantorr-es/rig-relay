@@ -1,0 +1,45 @@
+{
+  "receipt_id": "77ac08c4-be15-4daf-9ba5-8ba42b8e6740",
+  "trace_id": "98a32c5a-55f6-42e9-a3e8-737c6ab22968",
+  "dry_run": false,
+  "config_summary": {
+    "app_id_configured": false,
+    "installation_id_configured": false,
+    "private_key_source": "none",
+    "private_key_present": false,
+    "client_id_configured": false,
+    "client_secret_configured": false,
+    "redirect_uri_configured": false,
+    "app_auth_possible": false,
+    "oauth_auth_possible": false,
+    "any_auth_configured": false
+  },
+  "issues": [
+    {
+      "kind": "no_auth_configured",
+      "detail": "Neither GitHub App auth nor OAuth auth is configured"
+    }
+  ],
+  "live_results": {
+    "auth_mode": "app_installation",
+    "token_exchange": {
+      "schema_version": "rig.github.live_auth_refusal.v1",
+      "error": "config_incomplete",
+      "issues": [
+        {
+          "kind": "missing_private_key",
+          "detail": "No private key available from RIG_GITHUB_PRIVATE_KEY_PATH or RIG_GITHUB_PRIVATE_KEY_ENV"
+        },
+        {
+          "kind": "missing_app_id",
+          "detail": "RIG_GITHUB_APP_ID is not set"
+        },
+        {
+          "kind": "missing_installation_id",
+          "detail": "RIG_GITHUB_INSTALLATION_ID is not set"
+        }
+      ]
+    }
+  },
+  "timestamp_utc": "2026-05-19T21:55:58.528127+00:00"
+}

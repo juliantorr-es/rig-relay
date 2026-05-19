@@ -1,0 +1,51 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-19T21:56:30Z",
+  "mission_title": "Live Auth Battle Test and PNG OG Card Generation",
+  "branch": "main",
+  "head_before": "e1ca62b4ed53071efb7c95b769bfedd6d26a3a1c",
+  "head_after": "e1ca62b4ed53071efb7c95b769bfedd6d26a3a1c",
+  "dirty_state_before": "Modified: docs/json/site/static_site_public_launch_experience_v1.v1.json, docs/pages/rc-verdict.html, docs/pages/schemas.html, docs/render-manifest.json, scripts/rig_site_render.py",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "scripts/rig_site_render.py"
+    ],
+    "this_mission_created": [
+      "docs/assets/og/rig-relay-card.png",
+      "docs/json/governance/live_github_auth_result.v1.json",
+      "docs/json/governance/live_google_auth_result.v1.json",
+      "docs/json/2026-05-19--rig-relay--live-auth-battle-test-and-png-og-card--mission-report.json"
+    ],
+    "pre_existing_modified": "docs/json/site/static_site_public_launch_experience_v1.v1.json, docs/pages/rc-verdict.html, docs/pages/schemas.html, docs/render-manifest.json"
+  },
+  "files_changed": 1,
+  "files_created": 4,
+  "files_deleted": 0,
+  "tests_run": 2,
+  "tests_intentionally_skipped": "site_renderer tests covered by previous session",
+  "test_classifications": {
+    "live_auth_smoke": "2"
+  },
+  "evidence_artifacts": [
+    "docs/json/governance/live_github_auth_result.v1.json",
+    "docs/json/governance/live_google_auth_result.v1.json",
+    "docs/assets/og/rig-relay-card.png"
+  ],
+  "schema_validation_results": "Passed",
+  "telemetry_and_redaction_implications": "Live auth scripts generated content-light refusal traces with redacted secrets and token hashes.",
+  "dependency_changes": "None",
+  "completed_work": [
+    "Verified and fixed _load_governance_claims() in scripts/rig_site_render.py to prevent raw dict rendering and to recursively scan docs/json/.",
+    "Generated premium PNG OG Card via generate_image tool and copied to docs/assets/og/.",
+    "Ran GitHub live auth smoke check with RIG_LIVE_AUTH_TESTS=1.",
+    "Ran Google Workspace live auth smoke check with RIG_LIVE_AUTH_TESTS=1."
+  ],
+  "intentionally_deferred_work": [
+    "Production OAuth configuration",
+    "Real API credentials for live auth tests"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "Local testing environment does not mock external provider networks (skipped on live auth test by default without RIG_LIVE_AUTH_TESTS=1)"
+  ]
+}
