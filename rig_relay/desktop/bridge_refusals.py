@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from enum import StrEnum
 import hashlib
 import json
 import re
@@ -9,6 +10,20 @@ from typing import Any
 
 _LIFECYCLE_SCHEMA_VERSION = "rig.relay.bridge_lifecycle_event.v1"
 _SCHEMA_VERSION = "rig.relay.bridge_envelope.v1"
+
+
+class TraceField(StrEnum):
+    TRACE_ID = "trace_id"
+    PARENT_MESSAGE_ID = "parent_message_id"
+    INBOUND_MESSAGE_ID = "inbound_message_id"
+    OUTBOUND_MESSAGE_ID = "outbound_message_id"
+    FRONTEND_SESSION_ID = "frontend_session_id"
+    BACKEND_SESSION_ID = "backend_session_id"
+    PROJECTION_SEQUENCE = "projection_sequence"
+    LIFECYCLE_EVENT_ID = "lifecycle_event_id"
+
+
+TRACE_CORRELATION_FIELDS: frozenset[str] = frozenset(f.value for f in TraceField)
 
 _REFUSAL_KINDS: frozenset[str] = frozenset({
     "unknown_intent_kind",
@@ -27,7 +42,25 @@ _REFUSAL_KINDS: frozenset[str] = frozenset({
     "internal_error",
 })
 
-_MAX_INTENT_BYTES = 64 * 1024
+# ── Budget Constants ─────────────────────────────────────────────────────
+# These are public so modules across the desktop package can reference them.
+
+MAX_INBOUND_MESSAGE_BYTES = 64 * 1024  # Inbound WebSocket message size limit (64 KiB)
+_MAX_INTENT_BYTES = MAX_INBOUND_MESSAGE_BYTES  # Aliased for backward compatibility
+MAX_OUTBOUND_MESSAGE_BYTES = 64 * 1024  # Outbound envelope size limit (64 KiB)
+
+MAX_PENDING_INBOUND_MESSAGES = 64  # Per-connection inbound queue depth
+MAX_PENDING_OUTBOUND_MESSAGES = 64  # Per-connection outbound queue depth
+
+MAX_LIFECYCLE_TRACE_ROW_BYTES = 8192  # Max serialized bytes per lifecycle trace row
+MAX_LIFECYCLE_TRACE_FILE_BYTES = (
+    10 * 1024 * 1024
+)  # Max lifecycle trace file size (10 MiB)
+
+MAX_PROJECTION_PATCH_SECTIONS = 8  # Coalesce to full projection above this threshold
+PROJECTION_PATCH_MAX_BYTES = (
+    256 * 1024
+)  # Max serialized projection patch bytes (256 KiB)
 
 _MIN_SECRET_LENGTH = 5
 
@@ -177,6 +210,46 @@ def build_bridge_refusal_trace_event(
         event["payload_hash"] = payload_hash
     if refusal_reason:
         event["refusal_reason_hash"] = _hash_reason(refusal_reason)
+
+    return event
+
+
+def build_accepted_intent_lifecycle_event(
+    *,
+    event_type: str,
+    intent_name: str,
+    intent_id: str,
+    inbound_message_id: str = "",
+    outbound_message_id: str = "",
+    trace_id: str = "",
+    frontend_session_id: str = "",
+    backend_session_id: str = "",
+    handshake_id: str = "",
+    source: str = "intents",
+    safe_summary_hash: str = "",
+) -> dict[str, Any]:
+    event: dict[str, Any] = {
+        "schema_version": _LIFECYCLE_SCHEMA_VERSION,
+        "event_id": _new_event_id(),
+        "trace_id": trace_id or _new_trace_id(),
+        "handshake_id": handshake_id,
+        "frontend_session_id": frontend_session_id,
+        "backend_session_id": backend_session_id,
+        "event": event_type,
+        "created_at": datetime.now(UTC).isoformat(),
+        "redaction_status": "content_light",
+        "content_light": True,
+        "intent_name": intent_name,
+        "intent_id": intent_id,
+        "source": source,
+    }
+
+    if inbound_message_id:
+        event["inbound_message_id"] = inbound_message_id
+    if outbound_message_id:
+        event["outbound_message_id"] = outbound_message_id
+    if safe_summary_hash:
+        event["refusal_reason_hash"] = safe_summary_hash
 
     return event
 

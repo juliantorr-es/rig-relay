@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.v1_readiness.v1.schema.json",
+  "title": "Google Workspace v1 Readiness v1",
+  "description": "V1 readiness artifact for the Google Workspace provider integration.",
+  "type": "object",
+  "required": ["schema_version", "provider_id", "generated_at", "claim_boundaries", "implementation_files", "test_files", "v1_criteria_summary", "remaining_seams"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.google_workspace.v1_readiness.v1"},
+    "provider_id": {"type": "string", "const": "google_workspace"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "claim_boundaries": {"type": "object", "required": ["no_live_network", "no_raw_credential_storage", "no_mutation_in_v1", "credential_refusal_posture"], "properties": {"no_live_network": {"type": "boolean"}, "no_raw_credential_storage": {"type": "boolean"}, "no_mutation_in_v1": {"type": "boolean"}, "credential_refusal_posture": {"type": "string"}}, "additionalProperties": false},
+    "implementation_files": {"type": "array", "items": {"type": "string"}},
+    "test_files": {"type": "array", "items": {"type": "string"}},
+    "v1_criteria_summary": {"type": "object", "required": ["schemas_validated", "manifest_validated", "auth_persistence_works", "raw_credentials_refused", "restricted_scopes_refused", "domain_wide_delegation_deferred", "fixture_adapter_emits_receipts", "status_snapshot_validates", "cli_works", "no_network_calls"], "properties": {"schemas_validated": {"type": "boolean"}, "manifest_validated": {"type": "boolean"}, "auth_persistence_works": {"type": "boolean"}, "raw_credentials_refused": {"type": "boolean"}, "restricted_scopes_refused": {"type": "boolean"}, "domain_wide_delegation_deferred": {"type": "boolean"}, "fixture_adapter_emits_receipts": {"type": "boolean"}, "status_snapshot_validates": {"type": "boolean"}, "cli_works": {"type": "boolean"}, "no_network_calls": {"type": "boolean"}}, "additionalProperties": false},
+    "remaining_seams": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

@@ -67,9 +67,7 @@ def main() -> None:
 
     from datetime import datetime
 
-    run_id = (
-        args.run_id or f"exp0-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}"
-    )
+    run_id = args.run_id or f"exp0-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}"
     target_schema = Path(args.target_schema)
     output_root = Path(args.output_root)
     worktree_root = Path(args.worktree_root)

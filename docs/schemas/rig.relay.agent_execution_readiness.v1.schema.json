@@ -1,0 +1,334 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.agent_execution_readiness.v1.schema.json",
+  "title": "Agent Execution Readiness v1",
+  "description": "Machine-readable agent execution readiness gate. Audits the agent loop, subagent runtime, supervisor, hardened tools, bash rerouting, context engine, Ralph, tracing, concurrency, resource budgets, content-light enforcement, adversarial coverage, and claim boundaries to produce a promote/park/reject recommendation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "agent_loop_status",
+    "subagent_runtime_status",
+    "runtime_supervisor_status",
+    "hardened_tools_status",
+    "bash_rerouting_status",
+    "context_engine_status",
+    "ralph_status",
+    "tracing_status",
+    "concurrency_status",
+    "resource_budgets_status",
+    "content_light_status",
+    "adversarial_coverage_status",
+    "claim_boundaries",
+    "remaining_seams",
+    "recommendation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.agent_execution_readiness.v1",
+      "description": "Schema version identifier."
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this readiness artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this readiness artifact was generated."
+    },
+    "agent_loop_status": {
+      "type": "object",
+      "required": ["trace_propagation", "session_lifecycle"],
+      "properties": {
+        "trace_propagation": {
+          "type": "boolean",
+          "description": "Trace propagation is active across the agent loop."
+        },
+        "session_lifecycle": {
+          "type": "boolean",
+          "description": "Session lifecycle management (init, reset, fork, finalize) is implemented and operational."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of the core agent loop subsystem."
+    },
+    "subagent_runtime_status": {
+      "type": "object",
+      "required": ["task_lifecycle", "duplicate_completion_refused", "cancellation_drains"],
+      "properties": {
+        "task_lifecycle": {
+          "type": "boolean",
+          "description": "Subagent task lifecycle (spawn, execute, complete, cancel) is implemented."
+        },
+        "duplicate_completion_refused": {
+          "type": "boolean",
+          "description": "Duplicate completion signals are detected and refused."
+        },
+        "cancellation_drains": {
+          "type": "boolean",
+          "description": "Cancellation drains subagent resources cleanly."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of the subagent runtime subsystem."
+    },
+    "runtime_supervisor_status": {
+      "type": "object",
+      "required": ["lifecycle_valid", "lease_gated", "env_scrubbed"],
+      "properties": {
+        "lifecycle_valid": {
+          "type": "boolean",
+          "description": "Supervisor lifecycle (start, monitor, stop) is valid and test-covered."
+        },
+        "lease_gated": {
+          "type": "boolean",
+          "description": "Tool invocations are lease-gated through the supervisor."
+        },
+        "env_scrubbed": {
+          "type": "boolean",
+          "description": "Environment variables are scrubbed before subprocess execution."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of the runtime supervisor subsystem."
+    },
+    "hardened_tools_status": {
+      "type": "object",
+      "required": [
+        "receipts_for_allowed_ops",
+        "receipts_for_refused_ops",
+        "shell_true_refused",
+        "subprocess_argv_array",
+        "bash_policy_enforced",
+        "command_injection_refused"
+      ],
+      "properties": {
+        "receipts_for_allowed_ops": {
+          "type": "boolean",
+          "description": "Receipts are generated for all allowed tool operations."
+        },
+        "receipts_for_refused_ops": {
+          "type": "boolean",
+          "description": "Receipts are generated for refused tool operations."
+        },
+        "shell_true_refused": {
+          "type": "boolean",
+          "description": "shell=True invocations are refused at the supervisor level."
+        },
+        "subprocess_argv_array": {
+          "type": "boolean",
+          "description": "Subprocess calls use argv arrays, not shell strings."
+        },
+        "bash_policy_enforced": {
+          "type": "boolean",
+          "description": "Bash execution policy is enforced (dangerous pattern detection, sensitive path blocking)."
+        },
+        "command_injection_refused": {
+          "type": "boolean",
+          "description": "Command injection attempts are detected and refused."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of tool hardening defenses."
+    },
+    "bash_rerouting_status": {
+      "type": "object",
+      "required": ["transparent_reroute_receipts", "reroute_permission_gated"],
+      "properties": {
+        "transparent_reroute_receipts": {
+          "type": "boolean",
+          "description": "Transparent bash-to-tool reroutes produce receipts."
+        },
+        "reroute_permission_gated": {
+          "type": "boolean",
+          "description": "Rerouted calls check target tool permission before execution."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of bash rerouting transparency."
+    },
+    "context_engine_status": {
+      "type": "object",
+      "required": ["budget_enforced", "source_hashes", "out_of_scope_refused"],
+      "properties": {
+        "budget_enforced": {
+          "type": "boolean",
+          "description": "Context budget limits are enforced."
+        },
+        "source_hashes": {
+          "type": "boolean",
+          "description": "Source content is identified by SHA256 hashes, not raw paths."
+        },
+        "out_of_scope_refused": {
+          "type": "boolean",
+          "description": "Out-of-scope context access is explicitly refused."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of the context engine subsystem."
+    },
+    "ralph_status": {
+      "type": "object",
+      "required": ["observe_only", "schema_governed", "no_auto_mutation"],
+      "properties": {
+        "observe_only": {
+          "type": "boolean",
+          "description": "Ralph is strictly observe-only; it never mutates files."
+        },
+        "schema_governed": {
+          "type": "boolean",
+          "description": "Ralph projections are governed by JSON schemas."
+        },
+        "no_auto_mutation": {
+          "type": "boolean",
+          "description": "Ralph never auto-mutates the workspace without explicit approval."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of the Ralph observe-only scanner."
+    },
+    "tracing_status": {
+      "type": "object",
+      "required": ["trace_propagation", "content_light"],
+      "properties": {
+        "trace_propagation": {
+          "type": "boolean",
+          "description": "Trace propagation is active across subsystems."
+        },
+        "content_light": {
+          "type": "boolean",
+          "description": "Tracing is content-light (no raw file contents, secrets, or prompts)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of trace propagation and content-light enforcement."
+    },
+    "concurrency_status": {
+      "type": "object",
+      "required": ["taskgroup_or_equivalent", "orphan_prevention", "cancellation_safe"],
+      "properties": {
+        "taskgroup_or_equivalent": {
+          "type": "boolean",
+          "description": "Concurrency uses TaskGroup or equivalent structured concurrency primitive."
+        },
+        "orphan_prevention": {
+          "type": "boolean",
+          "description": "Orphaned tasks are prevented through structured concurrency."
+        },
+        "cancellation_safe": {
+          "type": "boolean",
+          "description": "Cancellation is proven safe (no resource leaks, no partial state)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of concurrency safety guarantees."
+    },
+    "resource_budgets_status": {
+      "type": "object",
+      "required": ["cpu_budget", "memory_budget", "io_budget", "network_budget"],
+      "properties": {
+        "cpu_budget": {
+          "type": "boolean",
+          "description": "CPU budget is measured and enforced."
+        },
+        "memory_budget": {
+          "type": "boolean",
+          "description": "Memory budget is measured and enforced."
+        },
+        "io_budget": {
+          "type": "boolean",
+          "description": "I/O budget is measured and enforced."
+        },
+        "network_budget": {
+          "type": "boolean",
+          "description": "Network budget is measured and enforced."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of resource budget enforcement."
+    },
+    "content_light_status": {
+      "type": "object",
+      "required": ["no_raw_paths", "no_secrets", "no_prompts"],
+      "properties": {
+        "no_raw_paths": {
+          "type": "boolean",
+          "description": "Raw file paths are not emitted in telemetry/observability events."
+        },
+        "no_secrets": {
+          "type": "boolean",
+          "description": "Secrets are not emitted in telemetry/observability events."
+        },
+        "no_prompts": {
+          "type": "boolean",
+          "description": "Prompt content is not emitted in telemetry/observability events."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of content-light enforcement."
+    },
+    "adversarial_coverage_status": {
+      "type": "object",
+      "required": ["command_injection", "secret_leakage", "stalled_tools"],
+      "properties": {
+        "command_injection": {
+          "type": "boolean",
+          "description": "Command injection adversarial coverage is sufficient."
+        },
+        "secret_leakage": {
+          "type": "boolean",
+          "description": "Secret leakage adversarial coverage is sufficient."
+        },
+        "stalled_tools": {
+          "type": "boolean",
+          "description": "Stalled tool detection adversarial coverage is sufficient."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of adversarial test coverage."
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "required": ["rig_may_claim", "rig_must_not_claim"],
+      "properties": {
+        "rig_may_claim": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domains Rig Relay may claim as owned."
+        },
+        "rig_must_not_claim": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domains Rig Relay must not claim as owned."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Claim boundary declarations."
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Remaining seams identified during the readiness audit."
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["promote", "park", "reject"],
+      "description": "Readiness recommendation: promote (criteria largely met), park (significant gaps, revisit), reject (criteria not met)."
+    }
+  },
+  "additionalProperties": false
+}

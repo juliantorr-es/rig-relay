@@ -189,19 +189,46 @@ def _check_repo_permission(
     for req_perm in required_perms:
         if str(req_perm.permission_kind) == "public_access":
             continue
-        if auth_state.has_repository_permission(
-            target_repository_hash,
-            req_perm.permission_id,
-            str(req_perm.permission_kind),
-            str(req_perm.access_level),
-        ):
+        for grant in auth_state.grants_for_repository(target_repository_hash):
+            if str(grant.grant_status) == "revoked":
+                return GitHubProviderCapabilityDecision(
+                    capability_id=capability_id or cap.capability_id,
+                    verdict=GitHubVerdict.REFUSED,
+                    refusal_code="github.grant.revoked",
+                    reason=f"Grant {grant.grant_hash[:16]}... is revoked",
+                    requires_step_up=cap.requires_step_up,
+                    step_up_satisfied=False,
+                )
+            if str(grant.grant_status) == "expired":
+                return GitHubProviderCapabilityDecision(
+                    capability_id=capability_id or cap.capability_id,
+                    verdict=GitHubVerdict.REFUSED,
+                    refusal_code="github.grant.expired",
+                    reason=f"Grant {grant.grant_hash[:16]}... is expired",
+                    requires_step_up=cap.requires_step_up,
+                    step_up_satisfied=False,
+                )
+            if str(grant.grant_status) != "active":
+                continue
+            if not permission_satisfies(
+                GitHubProviderRequiredPermission(
+                    permission_id=req_perm.permission_id,
+                    permission_kind=str(req_perm.permission_kind),
+                    access_level=str(req_perm.access_level),
+                    required=True,
+                ),
+                grant.permission_id,
+                grant.permission_kind,
+                grant.access_level,
+            ):
+                continue
             return None
 
     return GitHubProviderCapabilityDecision(
         capability_id=capability_id or cap.capability_id,
         verdict=GitHubVerdict.REFUSED,
         refusal_code="github.permission.missing",
-        reason=f"No repository grant satisfies required permissions for repo {target_repository_hash[:16]}...",
+        reason=f"No active repository grant satisfies required permissions for repo {target_repository_hash[:16]}...",
         requires_step_up=cap.requires_step_up,
         step_up_satisfied=False,
     )

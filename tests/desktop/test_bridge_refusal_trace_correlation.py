@@ -16,7 +16,10 @@ pytestmark = [
 from jsonschema import validate
 
 from rig_relay.desktop.bridge_refusals import (
+    TRACE_CORRELATION_FIELDS,
+    TraceField,
     _hash_reason,
+    build_accepted_intent_lifecycle_event,
     build_bridge_refusal_envelope,
     build_bridge_refusal_trace_event,
     enforce_intent,
@@ -383,7 +386,7 @@ def test_lifecycle_events_include_refusal_emitted() -> None:
     schema = _lifecycle_schema()
     events = schema["properties"]["event"]["enum"]
     assert "refusal_emitted" in events
-    assert len(events) == 17
+    assert len(events) == 19
 
 
 def test_frontend_kind_constants_still_align() -> None:
@@ -453,3 +456,139 @@ def test_trace_event_never_contains_raw_refusal_reason() -> None:
     assert "Content-light violation detected" not in raw
     assert "not recognised" not in raw
     assert "exceeds maximum" not in raw
+
+
+# ── Trace correlation tuple ───────────────────────────────────────────────
+
+
+def test_trace_correlation_tuple_has_eight_fields() -> None:
+    assert len(TRACE_CORRELATION_FIELDS) == 8
+    assert TraceField.TRACE_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.PARENT_MESSAGE_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.INBOUND_MESSAGE_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.OUTBOUND_MESSAGE_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.FRONTEND_SESSION_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.BACKEND_SESSION_ID in TRACE_CORRELATION_FIELDS
+    assert TraceField.PROJECTION_SEQUENCE in TRACE_CORRELATION_FIELDS
+    assert TraceField.LIFECYCLE_EVENT_ID in TRACE_CORRELATION_FIELDS
+
+
+# ── Accepted intent lifecycle events ───────────────────────────────────────
+
+
+def test_accepted_intent_emits_lifecycle_event() -> None:
+    event = build_accepted_intent_lifecycle_event(
+        event_type="intent_completed",
+        intent_name="refresh_projection",
+        intent_id="intent_abc123",
+        trace_id="trace_accepted_001",
+        frontend_session_id="fs_acc_001",
+        backend_session_id="bs_acc_001",
+        handshake_id="hs_acc_001",
+        inbound_message_id="msg_inbound_001",
+        outbound_message_id="msg_outbound_001",
+        source="intents",
+        safe_summary_hash="abcdef0123456789",
+    )
+    validate(instance=event, schema=_lifecycle_schema())
+    assert event["event"] == "intent_completed"
+    assert event["intent_name"] == "refresh_projection"
+    assert event["intent_id"] == "intent_abc123"
+    assert event["trace_id"] == "trace_accepted_001"
+    assert event["content_light"] is True
+    raw = json.dumps(event)
+    assert "unknown_intent" not in raw
+
+
+def test_accepted_intent_dispatched_event_type_validates() -> None:
+    event = build_accepted_intent_lifecycle_event(
+        event_type="intent_dispatched",
+        intent_name="worktree_create",
+        intent_id="intent_dispatch_001",
+        trace_id="trace_dispatch_001",
+        source="intents",
+    )
+    validate(instance=event, schema=_lifecycle_schema())
+    assert event["event"] == "intent_dispatched"
+
+
+def test_accepted_intent_preserves_trace_id_to_projection_patch() -> None:
+    event = build_accepted_intent_lifecycle_event(
+        event_type="intent_completed",
+        intent_name="refresh_projection",
+        intent_id="intent_trace_001",
+        trace_id="trace_propagate_001",
+        frontend_session_id="fs_prop_001",
+        backend_session_id="bs_prop_001",
+        handshake_id="hs_prop_001",
+        inbound_message_id="msg_inbound_prop_001",
+        outbound_message_id="msg_outbound_prop_001",
+        safe_summary_hash="hash1234",
+    )
+    assert event["trace_id"] == "trace_propagate_001"
+    assert event["frontend_session_id"] == "fs_prop_001"
+    assert event["backend_session_id"] == "bs_prop_001"
+    assert event["inbound_message_id"] == "msg_inbound_prop_001"
+    assert event["outbound_message_id"] == "msg_outbound_prop_001"
+
+
+def test_projection_patch_carries_trace_session_context() -> None:
+    event = build_accepted_intent_lifecycle_event(
+        event_type="intent_completed",
+        intent_name="run_validation_suite",
+        intent_id="intent_proj_001",
+        trace_id="trace_proj_ctx_001",
+        frontend_session_id="fs_ctx_001",
+        backend_session_id="bs_ctx_001",
+        handshake_id="hs_ctx_001",
+    )
+    assert event["event_id"].startswith("evt_")
+    assert event["trace_id"] == "trace_proj_ctx_001"
+    assert event["handshake_id"] == "hs_ctx_001"
+    assert event["schema_version"] == "rig.relay.bridge_lifecycle_event.v1"
+
+
+def test_lifecycle_writer_persists_accepted_and_refused_events() -> None:
+    from rig_relay.desktop.bridge_lifecycle_trace import BridgeLifecycleTraceWriter
+
+    trace_dir = Path(__file__).parent.parent.parent / ".build" / "rig-relay" / "desktop"
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    trace_path = trace_dir / "test_lifecycle_trace.jsonl"
+
+    if trace_path.exists():
+        trace_path.unlink()
+    writer = BridgeLifecycleTraceWriter(trace_path)
+
+    accepted_event = build_accepted_intent_lifecycle_event(
+        event_type="intent_completed",
+        intent_name="refresh_projection",
+        intent_id="intent_persist_001",
+        trace_id="trace_persist_001",
+        handshake_id="hs_persist_001",
+    )
+    validate(instance=accepted_event, schema=_lifecycle_schema())
+    writer.write_event(accepted_event)
+
+    _, refused_event = _refuse_and_trace("unknown_intent_xyz")
+    refused_event["handshake_id"] = "hs_persist_001"
+    validate(instance=refused_event, schema=_lifecycle_schema())
+    writer.write_event(refused_event)
+
+    events = writer.read_events()
+    assert writer.event_count() == 2
+
+    accepted_from_file = events[0]
+    refused_from_file = events[1]
+    assert accepted_from_file["event"] == "intent_completed"
+    assert accepted_from_file["intent_name"] == "refresh_projection"
+    assert refused_from_file["event"] == "refusal_emitted"
+
+
+def test_refusal_trace_regression_still_valid() -> None:
+    refusal, trace_event = _refuse_and_trace("unknown_xyz")
+    validate(instance=refusal, schema=_envelope_schema())
+    validate(instance=trace_event, schema=_lifecycle_schema())
+    assert trace_event["event"] == "refusal_emitted"
+    assert "refusal_kind" in trace_event
+    assert "inbound_message_id" in trace_event
+    assert "refusal_message_id" in trace_event

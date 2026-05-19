@@ -6,9 +6,9 @@
 # Do not edit. This file lives in a scratch worktree and is not in the canonical repo.
 
 from __future__ import annotations
-{%- for imp in imports %}
+{% for imp in imports %}
 {{ imp }}
-{%- endfor %}
+{% endfor %}
 
 {% for model in models %}
 class {{ model.class_name }}({{ model.base }}):
@@ -16,6 +16,6 @@ class {{ model.class_name }}({{ model.base }}):
 
     schema_version: str = "{{ model.schema_version }}"
 {%- for field in model.fields %}
-    {{ field.name }}: {{ field.type }} = None
+    {{ field.name }}: {{ field.type }}{% if field.optional %} = None{% endif %}
 {%- endfor %}
 {% endfor %}

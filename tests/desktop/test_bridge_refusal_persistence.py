@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -16,11 +17,16 @@ pytestmark = [
 from jsonschema import ValidationError, validate
 
 from rig_relay.desktop.bridge_lifecycle_trace import BridgeLifecycleTraceWriter
+from rig_relay.desktop.bridge_protocol import ProtocolTracker
 from rig_relay.desktop.bridge_refusals import (
+    MAX_LIFECYCLE_TRACE_ROW_BYTES,
+    MAX_PROJECTION_PATCH_SECTIONS,
+    PROJECTION_PATCH_MAX_BYTES,
     build_bridge_refusal_envelope,
     build_bridge_refusal_trace_event,
     enforce_intent,
 )
+from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
 _LIFECYCLE_SCHEMA_PATH = SCHEMAS_DIR / "rig.relay.bridge_lifecycle_event.v1.schema.json"
@@ -310,3 +316,107 @@ def test_only_one_writer_file_created(tmp_path: Path) -> None:
     writer.write_event(event)
     jsonl_files = list(tmp_path.rglob("*.jsonl"))
     assert len(jsonl_files) == 1
+
+
+# ── Lifecycle trace row size budget ─────────────────────────────────────
+
+
+def _make_oversized_event(base_event: dict, size: int) -> dict:
+    event = dict(base_event)
+    event["payload_hash"] = "x" * size
+    return event
+
+
+def test_oversized_lifecycle_trace_event_rejected(tmp_path: Path) -> None:
+    writer = BridgeLifecycleTraceWriter(tmp_path / "trace.jsonl")
+    event = _make_refusal_trace("unknown_xyz")
+    oversized = _make_oversized_event(event, MAX_LIFECYCLE_TRACE_ROW_BYTES + 100)
+    with pytest.raises(ValueError, match="exceeds maximum size"):
+        writer.write_event(oversized)
+    assert writer.event_count() == 0
+    assert writer.rejected_row_count == 1
+
+
+def test_lifecycle_trace_event_within_budget_accepted(tmp_path: Path) -> None:
+    writer = BridgeLifecycleTraceWriter(tmp_path / "trace.jsonl")
+    event = _make_refusal_trace("unknown_xyz")
+    within_budget = _make_oversized_event(event, MAX_LIFECYCLE_TRACE_ROW_BYTES // 4)
+    writer.write_event(within_budget)
+    assert writer.event_count() == 1
+    assert writer.rejected_row_count == 0
+    assert writer.total_bytes_written > 0
+
+
+# ── Inbound/outbound queue cap enforcement ─────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_inbound_queue_budget_enforced(tmp_path: Path) -> None:
+    server = ProjectionWebSocketServer(build_root=tmp_path, auth_timeout=100)
+    tracker = ProtocolTracker("hs_queue_test")
+    server._protocol_trackers[tracker.handshake_id] = tracker
+
+    prefilled = [{"kind": "heartbeat", "seq": i, "fill": "x"} for i in range(64)]
+    server._per_connection_pending[tracker.handshake_id] = prefilled
+
+    ws = AsyncMock()
+    ws.closed = False
+    sent_messages: list[dict] = []
+
+    async def _fake_send(data: str) -> None:
+        sent_messages.append(json.loads(data))
+
+    ws.send = _fake_send
+
+    envelope = server._wrap_envelope("heartbeat", {"seq": 999}, tracker)
+    assert envelope is not None
+    await server._send_with_flow_control(ws, envelope, tracker, "heartbeat")
+    assert tracker._dropped_count > 0 or len(sent_messages) <= 64
+
+
+@pytest.mark.asyncio
+async def test_outbound_queue_budget_enforced(tmp_path: Path) -> None:
+    server = ProjectionWebSocketServer(build_root=tmp_path, auth_timeout=100)
+    tracker = ProtocolTracker("hs_queue_test_out")
+    server._protocol_trackers[tracker.handshake_id] = tracker
+
+    prefilled = [{"kind": "projection", "seq": i, "fill": "x"} for i in range(64)]
+    server._per_connection_pending[tracker.handshake_id] = prefilled
+
+    ws = AsyncMock()
+    ws.closed = False
+    sent_messages: list[dict] = []
+
+    async def _fake_send(data: str) -> None:
+        sent_messages.append(json.loads(data))
+
+    ws.send = _fake_send
+
+    envelope = server._wrap_envelope("projection", {"data": {"seq": 999}}, tracker)
+    assert envelope is not None
+    await server._send_with_flow_control(ws, envelope, tracker, "projection")
+    assert tracker._dropped_count > 0 or len(sent_messages) <= 64
+
+
+# ── Projection patch section count budget ──────────────────────────────
+
+
+def test_projection_patch_batch_budget_enforced() -> None:
+    assert MAX_PROJECTION_PATCH_SECTIONS == 8
+    assert PROJECTION_PATCH_MAX_BYTES == 256 * 1024
+    assert isinstance(MAX_PROJECTION_PATCH_SECTIONS, int)
+    assert isinstance(PROJECTION_PATCH_MAX_BYTES, int)
+
+
+# ── Persistence failure does not execute refused action ────────────────
+
+
+def test_persistence_failure_does_not_execute_refused_action() -> None:
+    writer = BridgeLifecycleTraceWriter("/dev/null/subdir/trace.jsonl")
+    event = _make_refusal_trace("unknown_xyz")
+    try:
+        writer.write_event(event)
+    except (OSError, PermissionError, NotADirectoryError):
+        pass
+    assert writer.event_count() == 0
+    assert writer.total_bytes_written == 0

@@ -514,6 +514,44 @@ def test_bridge_message_direction_count():
     assert len(BridgeMessageDirection) == 2
 
 
+def test_projection_sequence_monotonic():
+    tracker = ProtocolTracker("mono")
+    assert tracker.check_projection_sequence(1)
+    assert tracker.check_projection_sequence(5)
+    assert not tracker.check_projection_sequence(3)
+    assert not tracker.check_projection_sequence(5)
+    assert tracker.check_projection_sequence(10)
+    assert tracker._stale_projection_count == 2
+    assert tracker._projection_seq == 10
+
+
+def test_out_of_order_projection_patch_rejected_or_held():
+    tracker = ProtocolTracker("ooo")
+    assert tracker.check_projection_sequence(100)
+    assert not tracker.check_projection_sequence(99)
+    assert not tracker.check_projection_sequence(50)
+    assert tracker._stale_projection_count == 2
+    assert tracker.check_projection_sequence(200)
+    assert tracker._stale_projection_count == 2
+    assert not tracker.check_projection_sequence(0)
+    assert tracker._stale_projection_count == 3
+
+
+def test_projection_sequence_never_decrements():
+    tracker = ProtocolTracker("no_decrement")
+    tracker.check_projection_sequence(42)
+    prev = tracker._projection_seq
+    tracker.check_projection_sequence(1)
+    assert tracker._projection_seq == prev
+
+
+def test_projection_sequence_huge_gap_accepted():
+    tracker = ProtocolTracker("gap")
+    assert tracker.check_projection_sequence(1)
+    assert tracker.check_projection_sequence(999999)
+    assert tracker._projection_seq == 999999
+
+
 def test_no_overlap_between_priority_sets():
     all_kinds = {k.value for k in BridgeMessageKind}
     critical = set(CRITICAL_KINDS)

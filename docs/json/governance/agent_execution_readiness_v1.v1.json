@@ -1,0 +1,95 @@
+{
+  "schema_version": "rig.relay.agent_execution_readiness.v1",
+  "artifact_id": "agent_execution_readiness_v1_wave1",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "agent_loop_status": {
+    "trace_propagation": true,
+    "session_lifecycle": true
+  },
+  "subagent_runtime_status": {
+    "task_lifecycle": true,
+    "duplicate_completion_refused": false,
+    "cancellation_drains": true
+  },
+  "runtime_supervisor_status": {
+    "lifecycle_valid": true,
+    "lease_gated": true,
+    "env_scrubbed": true
+  },
+  "hardened_tools_status": {
+    "receipts_for_allowed_ops": true,
+    "receipts_for_refused_ops": true,
+    "shell_true_refused": true,
+    "subprocess_argv_array": true,
+    "bash_policy_enforced": false,
+    "command_injection_refused": true
+  },
+  "bash_rerouting_status": {
+    "transparent_reroute_receipts": true,
+    "reroute_permission_gated": true
+  },
+  "context_engine_status": {
+    "budget_enforced": true,
+    "source_hashes": true,
+    "out_of_scope_refused": false
+  },
+  "ralph_status": {
+    "observe_only": true,
+    "schema_governed": true,
+    "no_auto_mutation": true
+  },
+  "tracing_status": {
+    "trace_propagation": true,
+    "content_light": true
+  },
+  "concurrency_status": {
+    "taskgroup_or_equivalent": true,
+    "orphan_prevention": true,
+    "cancellation_safe": false
+  },
+  "resource_budgets_status": {
+    "cpu_budget": false,
+    "memory_budget": false,
+    "io_budget": false,
+    "network_budget": false
+  },
+  "content_light_status": {
+    "no_raw_paths": true,
+    "no_secrets": true,
+    "no_prompts": true
+  },
+  "adversarial_coverage_status": {
+    "command_injection": true,
+    "secret_leakage": true,
+    "stalled_tools": false
+  },
+  "claim_boundaries": {
+    "rig_may_claim": [
+      "agent execution lifecycle",
+      "tool receipt-backed evidence",
+      "bash rerouting transparency",
+      "observe-only scanning (Ralph)",
+      "content-light telemetry and observability",
+      "runtime supervisor lease gating",
+      "environment sanitization for subprocesses",
+      "context budget enforcement",
+      "structured concurrency through TaskGroup"
+    ],
+    "rig_must_not_claim": [
+      "full container isolation",
+      "eBPF-level enforcement",
+      "hardware-level attestation",
+      "external network budget (local-only scope)",
+      "OS-level resource cgroup enforcement"
+    ]
+  },
+  "remaining_seams": [
+    "Resource budget wire-up: cpu_budget, memory_budget, io_budget, network_budget are being added by Agent B but do not yet exist in the codebase",
+    "Cancellation safety proof: cancellation is not yet proven safe (no resource leak or partial state guarantees)",
+    "bash_policy_enforced: bash execution policy is enforced only at the supervisor level, not as a standalone hardening gate",
+    "out_of_scope_refused: out-of-scope context access lacks an explicit refusal gate",
+    "stalled_tools adversarial coverage: stall detection exists but adversarial test coverage is thin",
+    "duplicate_completion_refused: duplicate completion signal detection is not yet test-proven"
+  ],
+  "recommendation": "promote"
+}

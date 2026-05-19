@@ -9,9 +9,12 @@ from typing import ClassVar
 import pytest
 
 from rig_relay.desktop.projection import (
+    PATCH_SECTION_NAMES,
     _load_json as relay_load_json,
     _load_markdown_summary as relay_load_markdown_summary,
     build_projection as relay_build_projection,
+    build_projection_patch,
+    reset_patch_state,
 )
 from scripts.rig_relay_desktop_projection import (
     _load_json,
@@ -443,6 +446,204 @@ class TestRelayNativeImports:
         )
 
         assert relay_actions == script_actions
+
+
+class TestProjectionPatch:
+    """Projection patch builder produces compliant partial and full patches."""
+
+    def test_full_patch_has_required_schema_fields(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(patch_kind="full")
+        required = [
+            "schema_version",
+            "projection_sequence",
+            "trace_id",
+            "frontend_session_id",
+            "backend_session_id",
+            "generated_at",
+            "patch_kind",
+            "changed_sections",
+            "digest",
+            "redaction_status",
+        ]
+        for field in required:
+            assert field in patch, f"Missing required field: {field}"
+        assert patch["patch_kind"] == "full"
+        assert patch["redaction_status"] == "content_light"
+        assert patch["digest"].startswith("sha256:")
+        assert len(patch["digest"]) == 71
+        assert patch["projection_sequence"] == 1
+        assert len(patch["changed_sections"]) > 0
+        assert "sections" in patch
+
+    def test_full_patch_schema_version_matches(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(patch_kind="full")
+        assert patch["schema_version"] == "rig.relay.backend_projection_patch.v1"
+
+    def test_partial_patch_contains_only_asked_sections(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers", "service_state"]
+        )
+        assert patch["patch_kind"] == "partial"
+        assert set(patch["changed_sections"]) == {"providers", "service_state"}
+        sections = patch["sections"]
+        assert set(sections.keys()) == {"providers", "service_state"}
+        assert "current_state" not in sections
+        assert "queue" not in sections
+
+    def test_delta_patch_updates_only_target_widget(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial",
+            asked_sections=["providers"],
+            frontend_session_id="frontend-1",
+            backend_session_id="backend-1",
+        )
+        assert patch["patch_kind"] == "partial"
+        assert patch["changed_sections"] == ["providers"]
+        sections = patch["sections"]
+        assert "providers" in sections
+        provider_data = sections["providers"]
+        assert "total" in provider_data
+        assert "configured" in provider_data
+        assert len(sections) == 1
+
+    def test_full_patch_includes_all_known_sections(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="full",
+            frontend_session_id="frontend-1",
+            backend_session_id="backend-1",
+            trace_id="trace-abc",
+            stale_after_seconds=60,
+        )
+        assert patch["patch_kind"] == "full"
+        assert "stale_after_seconds" in patch
+        assert patch["stale_after_seconds"] == 60
+        trace = patch["trace_id"]
+        assert trace == "trace-abc"
+        assert len(patch["changed_sections"]) >= 10
+        for section in patch["changed_sections"]:
+            assert section in PATCH_SECTION_NAMES
+            assert section in patch["sections"]
+
+    def test_partial_patch_from_previous_diff(self) -> None:
+        reset_patch_state()
+        full = build_projection_patch(patch_kind="full")
+        assert full["patch_kind"] == "full"
+        partial = build_projection_patch(
+            patch_kind="partial", previous_sections=full["sections"]
+        )
+        assert partial["patch_kind"] == "partial"
+        assert partial["projection_sequence"] > full["projection_sequence"]
+
+    def test_patch_sessions_have_monotonic_sequence(self) -> None:
+        reset_patch_state()
+        seqs: list[int] = []
+        for _ in range(3):
+            patch = build_projection_patch(patch_kind="full")
+            seqs.append(patch["projection_sequence"])
+        assert seqs == sorted(seqs)
+        assert len(set(seqs)) == len(seqs)
+        assert seqs[2] == seqs[0] + 2
+
+    def test_partial_patch_section_names_valid(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers", "current_state"]
+        )
+        for name in patch["changed_sections"]:
+            assert name in PATCH_SECTION_NAMES
+
+    def test_patch_digest_is_valid_sha256_format(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers"]
+        )
+        d = patch["digest"]
+        assert d.startswith("sha256:")
+        hex_part = d.split("sha256:")[1]
+        assert len(hex_part) == 64
+        assert all(c in "0123456789abcdef" for c in hex_part)
+
+    def test_patch_digest_changes_when_sections_differ(self) -> None:
+        reset_patch_state()
+        a = build_projection_patch(patch_kind="partial", asked_sections=["providers"])
+        b = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers", "current_state"]
+        )
+        assert a["digest"] != b["digest"]
+
+    def test_patch_digest_stable_within_same_call(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers"]
+        )
+        first = patch["digest"]
+        second = patch["digest"]
+        assert first == second
+
+    def test_patch_content_light_no_secrets(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(patch_kind="full")
+        serialized = json.dumps(patch)
+        for forbidden in ["sk-", "ghp_", "api_key", "password"]:
+            assert forbidden not in serialized.lower()
+
+    def test_delta_patch_kind_returns_valid_changed_sections(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(patch_kind="delta", asked_sections=["providers"])
+        assert patch["patch_kind"] == "delta"
+        assert patch["changed_sections"] == ["providers"]
+        assert "providers" in patch["sections"]
+
+    def test_trace_context_flows_through_patch(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="full",
+            trace_id="trace_abc123def456",
+            frontend_session_id="frontend-session-1",
+            backend_session_id="backend-session-1",
+        )
+        assert patch["trace_id"] == "trace_abc123def456"
+        assert patch["frontend_session_id"] == "frontend-session-1"
+        assert patch["backend_session_id"] == "backend-session-1"
+        assert patch["schema_version"] == "rig.relay.backend_projection_patch.v1"
+
+    def test_trace_context_defaults_to_empty(self) -> None:
+        reset_patch_state()
+        patch = build_projection_patch(
+            patch_kind="partial", asked_sections=["providers"]
+        )
+        assert patch["trace_id"] == ""
+        assert patch["frontend_session_id"] == ""
+        assert patch["backend_session_id"] == ""
+        assert patch["patch_kind"] == "partial"
+
+    def test_trace_id_format_consistent(self) -> None:
+        import secrets
+
+        reset_patch_state()
+        tid = f"trace_{secrets.token_hex(12)}"
+        patch = build_projection_patch(
+            patch_kind="delta",
+            asked_sections=["providers"],
+            trace_id=tid,
+            frontend_session_id="fs-1",
+            backend_session_id="bs-1",
+        )
+        assert patch["trace_id"].startswith("trace_")
+        assert patch["trace_id"] == tid
+        assert len(patch["trace_id"]) == 30
+
+    def test_unknown_patch_kind_raises(self) -> None:
+        reset_patch_state()
+        import pytest as pt
+
+        with pt.raises(ValueError, match="Unknown patch_kind"):
+            build_projection_patch(patch_kind="bogus")
 
 
 # ---------------------------------------------------------------------------

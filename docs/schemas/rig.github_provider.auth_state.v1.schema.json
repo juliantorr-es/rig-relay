@@ -125,6 +125,11 @@
             "type": "string",
             "format": "date-time",
             "description": "ISO 8601 timestamp when this grant expires. Empty for non-expiring grants."
+          },
+          "grant_status": {
+            "type": "string",
+            "enum": ["active", "expired", "revoked"],
+            "description": "Grant lifecycle status."
           }
         },
         "additionalProperties": false

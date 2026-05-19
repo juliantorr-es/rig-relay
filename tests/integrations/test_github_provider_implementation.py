@@ -15,6 +15,7 @@ from rig_relay.integrations.github_provider import (
     GitHubAccessLevel,
     GitHubAuthMode,
     GitHubAuthStatus,
+    GitHubGrantStatus,
     GitHubOperationClass,
     GitHubPermissionKind,
     GitHubProviderAuthState,
@@ -34,7 +35,9 @@ from rig_relay.integrations.github_provider import (
     hash_identifier,
     load_github_capability_manifest,
     permission_satisfies,
+    read_auth_state,
     validate_github_operation_receipt,
+    write_auth_state,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1045,3 +1048,298 @@ class TestPerRepoPermissionGranularity:
         )
         receipt = build_github_operation_receipt(request, decision)
         assert receipt.repository_hash == "r" * 64
+
+
+class TestAuthStatePersistence:
+    @pytest.mark.contract
+    def test_write_and_read_roundtrip_content_light(self, tmp_path: Path):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_permission_grants=[_make_grant("r" * 64, "issues:read")],
+        )
+        path = write_auth_state(auth, tmp_path / "auth_state.json")
+        assert path.is_file()
+        loaded = read_auth_state(path)
+        assert loaded.provider_id == "github"
+        assert len(loaded.repository_permission_grants) == 1
+
+    @pytest.mark.adversarial
+    def test_rejects_raw_token_field_on_write(self, tmp_path: Path):
+        auth = GitHubProviderAuthState()
+        data = auth.to_dict()
+        data["access_token"] = "ghp_fake12345"
+        path = tmp_path / "auth_state.json"
+        path.write_text(json.dumps(data, indent=2))
+        with pytest.raises(ValueError, match="raw_token_field"):
+            read_auth_state(path)
+
+    @pytest.mark.adversarial
+    def test_rejects_raw_token_field_on_read(self, tmp_path: Path):
+        path = tmp_path / "malformed.json"
+        path.write_text(json.dumps({"access_token": "ghp_fake12345"}))
+        with pytest.raises(ValueError, match="raw_token_field"):
+            read_auth_state(path)
+
+    @pytest.mark.adversarial
+    def test_malformed_json_rejected(self, tmp_path: Path):
+        path = tmp_path / "bad.json"
+        path.write_text("not json")
+        with pytest.raises(json.JSONDecodeError):
+            read_auth_state(path)
+
+    @pytest.mark.adversarial
+    def test_no_raw_owner_repo_in_persisted(self, tmp_path: Path):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64
+        )
+        path = write_auth_state(auth, tmp_path / "auth_state.json")
+        content = path.read_text()
+        assert "owner/repo" not in content
+
+
+class TestGrantLifecycle:
+    @pytest.mark.adversarial
+    def test_expired_grant_does_not_authorize(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                GitHubRepositoryPermissionGrant(
+                    repository_hash="r" * 64,
+                    permission_id="issues:read",
+                    permission_kind="github_app_permission",
+                    access_level="read",
+                    source_auth_mode="github_app_installation",
+                    grant_hash="g" * 64,
+                    grant_status=GitHubGrantStatus.EXPIRED,
+                )
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.grant.expired"
+
+    @pytest.mark.adversarial
+    def test_revoked_grant_does_not_authorize(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                GitHubRepositoryPermissionGrant(
+                    repository_hash="r" * 64,
+                    permission_id="issues:read",
+                    permission_kind="github_app_permission",
+                    access_level="read",
+                    source_auth_mode="github_app_installation",
+                    grant_hash="g" * 64,
+                    grant_status=GitHubGrantStatus.REVOKED,
+                )
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.grant.revoked"
+
+
+class TestLegacyFallback:
+    @pytest.mark.contract
+    def test_legacy_flat_access_works_when_no_grants(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_legacy_flat_access_blocked_when_repo_scope_missing(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64, scopes_or_permissions=["issues:read"]
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+
+class TestLocalAdapter:
+    @pytest.mark.integration
+    def test_repo_metadata_read_allowed_public(self):
+        from rig_relay.integrations.github_provider._adapter import (
+            run_local_read_operation,
+        )
+
+        auth = GitHubProviderAuthState.unauthenticated()
+        receipt = run_local_read_operation("op-001", "github.repo.metadata.read", auth)
+        assert receipt.verdict == "allowed"
+
+    @pytest.mark.adversarial
+    def test_issues_read_requires_issues_grant(self):
+        from rig_relay.integrations.github_provider._adapter import (
+            run_local_read_operation,
+        )
+
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64, scopes_or_permissions=["issues:read"]
+        )
+        receipt = run_local_read_operation(
+            "op-002", "github.repo.issues.read", auth, repository_hash="r" * 64
+        )
+        assert receipt.verdict == "refused"
+
+    @pytest.mark.integration
+    def test_adapter_emits_receipt_for_allowed_read(self):
+        from rig_relay.integrations.github_provider._adapter import (
+            run_local_read_operation,
+        )
+
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[_make_grant("r" * 64, "issues:read")],
+        )
+        receipt = run_local_read_operation(
+            "op-003", "github.repo.issues.read", auth, repository_hash="r" * 64
+        )
+        assert receipt.verdict == "allowed"
+        errors = validate_github_operation_receipt(receipt.to_dict())
+        assert not errors, f"Receipt schema errors: {errors}"
+
+    @pytest.mark.integration
+    def test_adapter_emits_receipt_for_refused_read(self):
+        from rig_relay.integrations.github_provider._adapter import (
+            run_local_read_operation,
+        )
+
+        auth = GitHubProviderAuthState.unauthenticated()
+        receipt = run_local_read_operation(
+            "op-004", "github.actions.artifacts.read", auth, repository_hash="r" * 64
+        )
+        assert receipt.verdict == "refused"
+        assert receipt.refusal_code
+
+    @pytest.mark.substrate
+    def test_adapter_does_not_make_network_calls(self):
+        pass
+
+
+class TestStatusSnapshot:
+    @pytest.mark.contract
+    def test_snapshot_validates(self):
+        from rig_relay.integrations.github_provider._status import (
+            _validate_status_snapshot,
+            build_status_snapshot,
+        )
+
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_permission_grants=[_make_grant("r" * 64, "issues:read")],
+        )
+        snapshot = build_status_snapshot(auth)
+        errors = _validate_status_snapshot(snapshot)
+        assert not errors, f"Status snapshot errors: {errors}"
+
+    @pytest.mark.contract
+    def test_snapshot_counts_grants_correctly(self):
+        from rig_relay.integrations.github_provider._status import build_status_snapshot
+
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read"),
+                GitHubRepositoryPermissionGrant(
+                    repository_hash="s" * 64,
+                    permission_id="contents:read",
+                    permission_kind="github_app_permission",
+                    access_level="read",
+                    source_auth_mode="github_app_installation",
+                    grant_hash="g2" + "y" * 62,
+                    grant_status=GitHubGrantStatus.EXPIRED,
+                ),
+                GitHubRepositoryPermissionGrant(
+                    repository_hash="t" * 64,
+                    permission_id="issues:write",
+                    permission_kind="github_app_permission",
+                    access_level="write",
+                    source_auth_mode="github_app_installation",
+                    grant_hash="g3" + "z" * 62,
+                    grant_status=GitHubGrantStatus.REVOKED,
+                ),
+            ],
+        )
+        snapshot = build_status_snapshot(auth)
+        assert snapshot["grant_count"] == 1
+        assert snapshot["expired_grant_count"] == 1
+        assert snapshot["revoked_grant_count"] == 1
+        assert snapshot["repository_count"] == 1
+
+
+class TestAdversarialRedaction:
+    @pytest.mark.adversarial
+    def test_no_github_token_patterns_in_receipt(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        request = GitHubProviderOperationRequest(
+            operation_id="op-redact-001",
+            capability_id="github.repo.metadata.read",
+            operation_kind="Read metadata",
+            operation_class=GitHubOperationClass.READ_ONLY,
+            auth_state=auth,
+            repository_hash="r" * 64,
+            actor_hash=hash_identifier("test"),
+        )
+        decision = GitHubProviderCapabilityDecision(
+            capability_id="github.repo.metadata.read", verdict=GitHubVerdict.ALLOWED
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        data = json.dumps(receipt.to_dict())
+        for pat in ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"]:
+            assert pat not in data, f"Token pattern '{pat}' found"
+
+    @pytest.mark.adversarial
+    def test_no_raw_owner_repo_in_receipt(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        request = GitHubProviderOperationRequest(
+            operation_id="op-redact-002",
+            capability_id="github.repo.metadata.read",
+            operation_kind="Read metadata",
+            operation_class=GitHubOperationClass.READ_ONLY,
+            auth_state=auth,
+            repository_hash=hash_identifier("myorg/myrepo"),
+            actor_hash=hash_identifier("test"),
+        )
+        decision = GitHubProviderCapabilityDecision(
+            capability_id="github.repo.metadata.read", verdict=GitHubVerdict.ALLOWED
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        data = json.dumps(receipt.to_dict())
+        assert "myorg/myrepo" not in data
+
+    @pytest.mark.adversarial
+    def test_no_raw_content_fields_in_receipt(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        request = GitHubProviderOperationRequest(
+            operation_id="op-redact-003",
+            capability_id="github.repo.metadata.read",
+            auth_state=auth,
+            repository_hash="r" * 64,
+            actor_hash=hash_identifier("test"),
+        )
+        decision = GitHubProviderCapabilityDecision(
+            capability_id="github.repo.metadata.read", verdict=GitHubVerdict.ALLOWED
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        data = json.dumps(receipt.to_dict())
+        for key in [
+            "raw_token",
+            "raw_prompt",
+            "raw_credential",
+            "raw_repository_content",
+            "raw_absolute_path",
+        ]:
+            assert key not in data, f"Forbidden key '{key}' in receipt"

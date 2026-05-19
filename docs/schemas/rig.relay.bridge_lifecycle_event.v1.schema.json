@@ -58,7 +58,9 @@
         "bridge_error",
         "bridge_failed",
         "bridge_closed",
-        "refusal_emitted"
+        "refusal_emitted",
+        "intent_dispatched",
+        "intent_completed"
       ],
       "description": "Lifecycle event type."
     },
@@ -99,7 +101,19 @@
     },
     "inbound_message_id": {
       "type": "string",
-      "description": "Original inbound envelope message_id that triggered the refusal."
+      "description": "Original inbound envelope message_id."
+    },
+    "outbound_message_id": {
+      "type": "string",
+      "description": "Outbound message_id of the response or result."
+    },
+    "intent_name": {
+      "type": "string",
+      "description": "Canonical intent name (e.g. refresh_projection)."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Unique intent identifier from the intent request."
     },
     "refusal_message_id": {
       "type": "string",
@@ -137,8 +151,8 @@
     },
     "source": {
       "type": "string",
-      "enum": ["bridge_dispatcher", "websocket_server", "bridge_refusal_builder"],
-      "description": "Which component emitted the refusal trace event."
+      "enum": ["bridge_dispatcher", "websocket_server", "bridge_refusal_builder", "intents"],
+      "description": "Which component emitted the trace event."
     }
   },
   "additionalProperties": false

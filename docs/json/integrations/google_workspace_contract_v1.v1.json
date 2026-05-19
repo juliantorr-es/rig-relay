@@ -1,0 +1,23 @@
+{
+  "schema_version": "rig.google_workspace.contract.v1",
+  "contract_id": "google_workspace_contract_v1",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "auth_modes": [
+    {"auth_mode": "none", "intended_use": "Public unauthenticated metadata. No user data.", "implementation_status": "implemented", "requires_secret_storage": false, "token_kind": "none", "requires_domain_wide_delegation": false, "security_notes": "No auth required. Only public metadata."},
+    {"auth_mode": "oauth_user", "intended_use": "User-consented OAuth for personal Workspace data.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "access_token", "requires_domain_wide_delegation": false, "security_notes": "Requires OAuth client ID/secret. Tokens stored in keychain. Never in JSON."},
+    {"auth_mode": "oauth_desktop_deferred", "intended_use": "Desktop OAuth flow for CLI/GTK environments.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "access_token", "requires_domain_wide_delegation": false, "security_notes": "PKCE required. Localhost redirect. Deferred to desktop App auth slice."},
+    {"auth_mode": "service_account", "intended_use": "Application-owned data. No user consent needed.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "jwt_assertion", "requires_domain_wide_delegation": false, "security_notes": "Private key stored in keychain only. JWT signing deferred."},
+    {"auth_mode": "service_account_domain_wide_delegation", "intended_use": "Domain-wide impersonation of Workspace users. Super admin must authorize.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "jwt_assertion", "requires_domain_wide_delegation": true, "security_notes": "Requires super admin delegation in Google Admin Console. Deferred and refused in v1."},
+    {"auth_mode": "workspace_marketplace_deferred", "intended_use": "Google Workspace Marketplace app installation.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "access_token", "requires_domain_wide_delegation": false, "security_notes": "Deferred to Marketplace integration slice."},
+    {"auth_mode": "api_key_public", "intended_use": "Public API key for open data only.", "implementation_status": "deferred", "requires_secret_storage": true, "token_kind": "api_key", "requires_domain_wide_delegation": false, "security_notes": "API key must be stored in keychain. Never in JSON."}
+  ],
+  "scope_taxonomy": {
+    "levels": {"non_sensitive": {}, "sensitive": {}, "restricted": {}, "admin_restricted": {}, "unknown": {}},
+    "restricted_scope_policy": {"live_refused": true, "requires_security_assessment": true, "fixture_only": true, "explanation": "Restricted scopes (e.g., Gmail read/write, Drive) provide wide access to user data. Storing or transmitting restricted-scope data may require a Google security assessment. Refused for live use in v1."},
+    "sensitive_scope_policy": {"live_requires_verification_posture": true, "fixture_allowed": true, "explanation": "Sensitive scopes (e.g., Calendar, Admin Directory) require explicit verification posture before live use. Fixture-backed read allowed."}
+  },
+  "delegation_policy": {"domain_wide_delegation_refused_in_v1": true, "requires_super_admin_authorization": true, "deferred_impersonation_capabilities": ["admin.directory.users.list", "admin.directory.domain_wide_impersonate"]},
+  "claim_boundaries": {"no_live_network": true, "no_raw_token_storage": true, "no_mutation_in_v1": true, "credential_safety": "No raw access tokens, refresh tokens, client secrets, service account private keys, OAuth codes, or JWT assertions stored in any artifact."},
+  "implementation_status": "contract_only",
+  "deferred_work": ["Implement OAuth user flow with PKCE", "Implement service account JWT signing", "Implement domain-wide delegation authorization flow", "Complete restricted-scope security assessment documentation", "Build live Google API client layer", "Implement Admin Directory domain-wide operations", "Build Gmail/Drive/Calendar/Admin live mutation guard"]
+}

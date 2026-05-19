@@ -10,6 +10,7 @@
 // Ingestion, caching, widget render coordination
 // Batches DOM updates via requestAnimationFrame deduplication.
 // Tracks projection digests to skip redundant full re-renders.
+// Supports progressive partial/delta patches for targeted widget updates.
 
 import { state } from './state.js';
 import { renderWidget, renderAllWidgets, updateIntentResult } from './widgets.js';
@@ -22,23 +23,130 @@ import { renderChat, restoreIntentButton } from './chat.js';
 // ════════════════════════════════════════════════════════════════
 // Only one full render cycle per animation frame, regardless of how many
 // times scheduleRender() is called within that frame.
+// For partial patches, uses a merge queue to coalesce multiple sections
+// into fewer render calls.
 
 let _renderScheduled = false;
 let _pendingProjection = null;
+let _pendingPartialSections = null;
+let _partialSectionCount = 0;
+
+// Threshold: if more than this many sections change in partial patches
+// during one frame, coalesce into a full render.
+var COALESCE_PARTIAL_THRESHOLD = 8;
 
 function scheduleRender(projection) {
   _pendingProjection = projection;
+  _pendingPartialSections = null;
   if (_renderScheduled) return;
   _renderScheduled = true;
   requestAnimationFrame(() => {
     _renderScheduled = false;
-    if (_pendingProjection) {
+    if (_pendingPartialSections) {
+      _applyPartialSections(_pendingPartialSections);
+      _pendingPartialSections = null;
+    } else if (_pendingProjection) {
       state.projection = _pendingProjection;
       _pendingProjection = null;
       renderStatusBar();
       renderAllWidgets();
     }
   });
+}
+
+function _schedulePartial(sections, changedSectionNames) {
+  _pendingProjection = null;
+  _partialSectionCount += changedSectionNames.length;
+  if (_partialSectionCount > COALESCE_PARTIAL_THRESHOLD) {
+    _pendingPartialSections = null;
+    _pendingProjection = state.projection;
+    if (!_renderScheduled) {
+      _renderScheduled = true;
+      requestAnimationFrame(() => {
+        _renderScheduled = false;
+        state.projection = _pendingProjection || state.projection;
+        _pendingProjection = null;
+        _pendingPartialSections = null;
+        renderStatusBar();
+        renderAllWidgets();
+      });
+    }
+    return;
+  }
+  if (!_pendingPartialSections) {
+    _pendingPartialSections = Object.create(null);
+  }
+  for (var k in sections) {
+    if (sections.hasOwnProperty(k)) {
+      _pendingPartialSections[k] = sections[k];
+    }
+  }
+  if (!_renderScheduled) {
+    _renderScheduled = true;
+    requestAnimationFrame(() => {
+      _renderScheduled = false;
+      if (_pendingPartialSections) {
+        _applyPartialSections(_pendingPartialSections);
+        _pendingPartialSections = null;
+      } else if (_pendingProjection) {
+        state.projection = _pendingProjection;
+        _pendingProjection = null;
+        renderStatusBar();
+        renderAllWidgets();
+      }
+    });
+  }
+}
+
+function _applyPartialSections(sections) {
+  if (!state.projection) {
+    state.projection = sections;
+    renderStatusBar();
+    renderAllWidgets();
+    return;
+  }
+  for (var key in sections) {
+    if (sections.hasOwnProperty(key)) {
+      state.projection[key] = sections[key];
+    }
+  }
+  var sectionToWidget = {
+    current_state: 'safetyState',
+    queue: 'queuePlan',
+    dataset: 'datasetSummary',
+    semantic_snippets: 'semanticSnippets',
+    telemetry_bundle: 'telemetryBundle',
+    update: 'updateStatus',
+    storage: 'storageBudget',
+    providers: 'providerStatus',
+    identity: 'identity',
+    integrations: 'integrations',
+    release_gate: 'releaseGate',
+    service_state: 'serviceState',
+    warnings: 'warnings',
+    execution_progress: 'executionProgress',
+    tool_runtime_summary: 'toolRuntimeSummary',
+  };
+  var rendered = Object.create(null);
+  for (var sectionName in sections) {
+    if (sections.hasOwnProperty(sectionName)) {
+      var widgetId = sectionToWidget[sectionName];
+      if (widgetId && !rendered[widgetId]) {
+        rendered[widgetId] = true;
+        var container = document.getElementById('widget-' + widgetId);
+        var wasFocused = document.activeElement && container && container.contains(document.activeElement);
+        var scrollTop = container ? container.scrollTop : 0;
+        renderWidget(widgetId);
+        if (container && wasFocused) {
+          try { document.activeElement && document.activeElement.focus(); } catch (_) {}
+        }
+        if (container && scrollTop > 0) {
+          try { container.scrollTop = scrollTop; } catch (_) {}
+        }
+      }
+    }
+  }
+  renderStatusBar();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -78,6 +186,27 @@ function getDigest(data) {
 }
 
 // ── Public API ───────────────────────────────────────────────────────
+
+export function handleProjectionPatch(patch) {
+  if (!patch || !patch.schema_version) return;
+
+  var kind = patch.patch_kind || 'full';
+  var changedSections = patch.changed_sections || [];
+  var sections = patch.sections || {};
+
+  switch (kind) {
+    case 'full':
+      scheduleRender(sections);
+      break;
+    case 'partial':
+    case 'delta':
+      if (changedSections.length === 0) return;
+      _schedulePartial(sections, changedSections);
+      break;
+    default:
+      scheduleRender(sections);
+  }
+}
 
 export function handleProjection(data) {
   const serverDigest = (data && data.digest) || '';

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.capability_manifest.v1.schema.json",
+  "title": "Google Workspace Capability Manifest v1",
+  "description": "Canonical capability manifest for Google Workspace provider. Declares all supported capabilities with product, scope sensitivity, boundary requirements, and refusal codes.",
+  "type": "object",
+  "required": ["schema_version", "provider_id", "generated_at", "capabilities", "default_policy"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.google_workspace.capability_manifest.v1"},
+    "provider_id": {"type": "string", "const": "google_workspace"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "capabilities": {"type": "array", "minItems": 1, "items": {
+      "type": "object",
+      "required": ["capability_id", "product", "operation_class", "required_scopes", "required_auth_modes", "required_boundary", "scope_sensitivity", "default_allowed", "mutation_class", "refusal_codes", "requires_domain_wide_delegation", "requires_user_subject", "requires_customer_boundary", "local_fixture_supported", "local_fixture_hashed_output"],
+      "properties": {
+        "capability_id": {"type": "string"},
+        "product": {"type": "string", "enum": ["gmail", "drive", "calendar", "docs", "sheets", "contacts", "admin_directory", "chat", "tasks", "keep_future"]},
+        "operation_kind": {"type": "string"},
+        "operation_class": {"type": "string", "enum": ["public_read", "user_read", "user_metadata_read", "domain_read", "safe_local_mutation", "user_mutation", "domain_mutation", "destructive_mutation", "credentialed_live_operation"]},
+        "required_scopes": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "required_auth_modes": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "required_boundary": {"type": "string", "enum": ["user_subject", "customer", "domain", "drive_file", "calendar", "gmail_label", "gmail_message", "admin_directory_user", "chat_space", "none", "unknown"]},
+        "scope_sensitivity": {"type": "string", "enum": ["non_sensitive", "sensitive", "restricted", "admin_restricted", "unknown"]},
+        "default_allowed": {"type": "boolean"},
+        "mutation_class": {"type": "string", "enum": ["none", "safe_local", "user_credentialed", "domain_credentialed", "destructive"]},
+        "refusal_codes": {"type": "array", "items": {"type": "string"}},
+        "requires_domain_wide_delegation": {"type": "boolean"},
+        "requires_user_subject": {"type": "boolean"},
+        "requires_customer_boundary": {"type": "boolean"},
+        "local_fixture_supported": {"type": "boolean"},
+        "local_fixture_hashed_output": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }},
+    "default_policy": {"type": "object", "required": ["read_only_default", "mutation_default", "destructive_default", "live_network_default"], "properties": {"read_only_default": {"type": "string"}, "mutation_default": {"type": "string"}, "destructive_default": {"type": "string"}, "live_network_default": {"type": "string"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

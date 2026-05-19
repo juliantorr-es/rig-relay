@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from datetime import UTC, datetime
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,24 @@ from rig_relay.evidence.storage_lifecycle import compute_storage_summary
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
+
+PATCH_SECTION_NAMES: frozenset[str] = frozenset({
+    "current_state",
+    "queue",
+    "dataset",
+    "semantic_snippets",
+    "telemetry_bundle",
+    "update",
+    "storage",
+    "providers",
+    "identity",
+    "integrations",
+    "release_gate",
+    "service_state",
+    "warnings",
+    "read_only_actions",
+    "execution_progress",
+})
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -628,6 +647,125 @@ def build_projection(  # noqa: PLR0914
         warnings.extend(f"Schema violation: {e}" for e in schema_errors)
 
     return projection
+
+
+# ── Per-session patch state ──────────────────────────────────────────────
+
+_last_full_sections: dict[str, Any] | None = None
+_last_full_projection_seq: int = 0
+
+
+def reset_patch_state() -> None:
+    global _last_full_sections, _last_full_projection_seq
+    _last_full_sections = None
+    _last_full_projection_seq = 0
+
+
+def build_projection_patch(
+    build_root: Path | None = None,
+    trace_id: str = "",
+    frontend_session_id: str = "",
+    backend_session_id: str = "",
+    patch_kind: str = "full",
+    asked_sections: Sequence[str] | None = None,
+    previous_sections: dict[str, Any] | None = None,
+    stale_after_seconds: int | None = None,
+) -> dict[str, Any]:
+    """Build a projection patch compliant with the backend_projection_patch schema.
+
+    Args:
+        build_root: Path to .build/rig-relay directory.
+        trace_id: Correlates to the intent or lifecycle event that triggered this patch.
+        frontend_session_id: Frontend session this patch targets.
+        backend_session_id: Backend session that produced this patch.
+        patch_kind: "full", "partial", or "delta".
+        asked_sections: For partial patches, the list of section names to include.
+            If None for a partial patch, computes diff from ``previous_sections``.
+        previous_sections: Prior section state for diff computation.
+        stale_after_seconds: Optional max age before frontend should request fresh full.
+
+    Returns:
+        Dict compliant with rig.relay.backend_projection_patch.v1.
+    """
+    global _last_full_sections, _last_full_projection_seq
+
+    full = build_projection(build_root=build_root)
+
+    all_sections: dict[str, Any] = {}
+    for section in PATCH_SECTION_NAMES:
+        if section in full:
+            all_sections[section] = full[section]
+
+    match patch_kind:
+        case "full":
+            _last_full_sections = dict(all_sections)
+            _last_full_projection_seq += 1
+            changed = sorted(all_sections.keys())
+            sections = dict(all_sections)
+            seq = _last_full_projection_seq
+
+        case "partial":
+            if asked_sections:
+                names = [s for s in asked_sections if s in all_sections]
+            elif previous_sections:
+                names = [
+                    s
+                    for s in sorted(all_sections.keys())
+                    if s not in previous_sections
+                    or all_sections.get(s) != previous_sections.get(s)
+                ]
+            else:
+                names = sorted(all_sections.keys())
+
+            _last_full_projection_seq += 1
+            changed = names
+            sections = {n: all_sections[n] for n in names}
+            if _last_full_sections is not None:
+                for n in names:
+                    _last_full_sections[n] = all_sections[n]
+            else:
+                _last_full_sections = dict(all_sections)
+            seq = _last_full_projection_seq
+
+        case "delta":
+            _last_full_projection_seq += 1
+            changed = (
+                sorted(all_sections.keys())
+                if asked_sections is None
+                else list(asked_sections)
+            )
+            sections = {n: all_sections[n] for n in changed if n in all_sections}
+            seq = _last_full_projection_seq
+
+        case _:
+            raise ValueError(f"Unknown patch_kind: {patch_kind}")
+
+    digest_sections = {k: v for k, v in sections.items() if k != "generated_at"}
+    digest_raw = json.dumps(digest_sections, sort_keys=True, ensure_ascii=False).encode(
+        "utf-8"
+    )
+    digest = f"sha256:{hashlib.sha256(digest_raw).hexdigest()}"
+
+    warnings: list[str] = []
+    missing = [s for s in changed if s not in sections]
+    if missing:
+        warnings.append(f"Sections requested but not available: {missing}")
+
+    return {
+        "schema_version": "rig.relay.backend_projection_patch.v1",
+        "projection_sequence": seq,
+        "trace_id": trace_id,
+        "frontend_session_id": frontend_session_id,
+        "backend_session_id": backend_session_id,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "patch_kind": patch_kind,
+        "changed_sections": changed,
+        "sections": sections,
+        "digest": digest,
+        "redaction_status": "content_light",
+        "warnings": warnings,
+        **({"stale_after_seconds": stale_after_seconds} if stale_after_seconds else {}),
+    }
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

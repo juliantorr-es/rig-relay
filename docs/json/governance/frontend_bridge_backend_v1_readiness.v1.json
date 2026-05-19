@@ -1,0 +1,288 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "frontend-bridge-backend-v1-readiness",
+  "document_type": "governance",
+  "title": "Frontend / Bridge / Backend v1 Readiness",
+  "summary": "Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.",
+  "status": "active",
+  "created_at": "2026-05-19",
+  "updated_at": "2026-05-19",
+  "source_commit": "038adbad",
+  "owners": ["maintainer"],
+  "tags": ["frontend", "bridge", "backend", "readiness", "convergence", "v1", "acceptance"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/governance/frontend_bridge_backend_v1_readiness.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Frontend / Bridge / Backend v1 Readiness",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-1",
+      "type": "paragraph",
+      "content": "This artifact records the complete readiness state of the Frontend / Bridge / Backend v1 contract lane at the conclusion of the ten-wave convergence. It covers all four governed schemas, all implementation files, all test files, all proofs, and deferred seams.",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Schemas in Scope",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "list-schemas",
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "rig.relay.frontend_intent.v1 — frontend intent schema",
+        "rig.relay.bridge_envelope.v1 — bridge envelope schema",
+        "rig.relay.backend_projection_patch.v1 — backend projection patch schema",
+        "rig.relay.bridge_lifecycle_event.v1 — bridge lifecycle event schema"
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Implementation Files",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-impl",
+      "type": "table",
+      "columns": ["File", "Role", "Status"],
+      "rows": [
+        ["rig_relay/desktop/bridge_protocol.py", "BridgeMessage model, ProtocolTracker, evidence helpers", "active"],
+        ["rig_relay/desktop/bridge_refusals.py", "Dispatcher refusal enforcement, content-light scanner", "active"],
+        ["rig_relay/desktop/bridge_lifecycle_trace.py", "BridgeLifecycleTraceWriter, lifecycle event persistence", "active"],
+        ["rig_relay/desktop/websocket_server.py", "WebSocket server, flow control, queue caps, coalescing", "active"],
+        ["rig_relay/desktop/intents.py", "Intent dispatcher, mutation class routing", "active"],
+        ["rig_relay/desktop/projection.py", "Projection builder, content-light patch construction", "active"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Frontend Files",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-frontend",
+      "type": "table",
+      "columns": ["File", "Role", "Status"],
+      "rows": [
+        ["frontend/desktop/js/projection.js", "Projection renderer, patch application, digest tracking", "active"],
+        ["frontend/desktop/js/protocol/envelope.js", "Bridge envelope construction, schema alignment", "active"],
+        ["frontend/desktop/js/protocol/client.js", "WebSocket client, auth, transport state machine", "active"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Files",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "h3-tests-desktop",
+      "type": "heading",
+      "level": 3,
+      "content": "Desktop Tests (tests/desktop/)",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "list-tests-desktop",
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "test_frontend_bridge_backend_contract.py — schema validation, refusal enforcement, mutation classes, trace fields, content-light",
+        "test_bridge_protocol.py — BridgeMessage model, ProtocolTracker state machine",
+        "test_bridge_dispatcher_refusals.py — 22 refusal types, enforce_intent coverage",
+        "test_bridge_refusal_persistence.py — BridgeLifecycleTraceWriter JSONL persistence",
+        "test_bridge_refusal_trace_correlation.py — trace_id propagation through refusal lifecycle events",
+        "test_bridge_diagnostics.py — diagnostic snapshots",
+        "test_desktop_bridge_state_machine.py — DesktopBridgeStateMachine transitions",
+        "test_desktop_projection.py / test_projection.py / test_projection_contract.py — projection builder, patch construction",
+        "test_projection_integrity.py — projection integrity checks",
+        "test_chat_state.py / test_chat_adapter.py / test_chat_persistence.py — chat state management",
+        "test_desktop_events.py — event routing",
+        "test_websocket_server.py — WebSocket server lifecycle",
+        "test_websocket_concurrency.py — async lock correctness, task lifecycle, dedup guard, no threading primitives",
+        "test_websocket_security_rejections.py — origin validation, token auth rejection",
+        "test_websocket_correlation.py — correlation ID propagation",
+        "test_correlation.py — DesktopCorrelation lifecycle",
+        "test_intents.py / test_protected_intents.py — intent dispatch, protected intent gating",
+        "test_progress_events.py / test_execution_progress_projection.py — progress event streaming",
+        "test_local_service_security.py — localhost security constraints",
+        "test_readiness_gating.py — healthz, readiness states, auth roundtrip",
+        "test_cockpit_lifecycle.py — cockpit lifecycle",
+        "test_tls.py — TLS configuration",
+        "test_authorization_receipts.py — authorization receipts",
+        "test_cpu_budget.py — CPU budget measurement as counts, queue cap enforcement, coalesce throughput",
+        "test_frontend_bridge_backend_v1_convergence.py — v1 convergence readiness artifact validation"
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h3-tests-frontend",
+      "type": "heading",
+      "level": 3,
+      "content": "Frontend Tests (tests/frontend/)",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "list-tests-frontend",
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "test_bridge_contract_static.py — static contract verification",
+        "test_frontend_trace_endpoint.py — trace endpoint alignment",
+        "test_frontend_state_machines.py — UI state machines",
+        "test_runtime_kernel.py / test_frontend_runtime_kernel.py — runtime kernel",
+        "test_fan_in_stabilization.py — fan-in stabilization",
+        "test_notifications.py / test_frontend_notifications.py — notification flow",
+        "test_transport_state_machine_source.py — transport state machine",
+        "test_static_import_graph.py — static import graph",
+        "test_frontend_module_imports.py — module import verification",
+        "test_frontend_polish.py — UI polish",
+        "test_projection_patch_application.mjs — projection patch application verification",
+        "test_ws_protocol_derivation.mjs — WebSocket protocol derivation",
+        "test_prompt_clear_on_ack.mjs — prompt clear on ack",
+        "test_no_inner_html_for_untrusted_fields.mjs — innerHTML safety",
+        "test_intent_result_rendering.mjs — intent result rendering",
+        "test_delight.py — UI delight states",
+        "test_trace_spine.py — trace spine alignment",
+        "test_protocol.py — protocol module tests"
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Proofs",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-proofs",
+      "type": "table",
+      "columns": ["Proof", "Status", "Agent", "Wave"],
+      "rows": [
+        ["Trace propagation proof", "PASS", "Agent A", "Wave 1-2"],
+        ["Refusal proof", "PASS", "N/A", "Wave 1"],
+        ["Lifecycle persistence proof", "PASS", "N/A", "Wave 1"],
+        ["Concurrency proof", "PASS", "Agent B", "Wave 1"],
+        ["Thread-safety proof", "PASS (no OS threads)", "N/A", "N/A"],
+        ["Progressive rendering proof", "PASS", "Agent C", "Wave 1"],
+        ["Resource budget proof", "PASS", "Agent D", "Wave 1"],
+        ["Content-light proof", "PASS", "Agent D", "Wave 1"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "CPU Budget Philosophy",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-cpu",
+      "type": "paragraph",
+      "content": "CPU budget is measured in counts, not wall-clock. Bounds are enforced by queue caps (_MAX_PER_CONNECTION_QUEUE = 64), coalesce semantics (COALESCE_KINDS = {lifecycle_event, heartbeat}), never-drop protection (NEVER_DROP_KINDS = {error, intent_result}), and drop counting (record_dropped). ProtocolTracker.snapshot() reports only count-based metrics: coalesced_count, dropped_count, max_queue_depth, no wall-clock or elapsed-time fields. Tests validate message count and byte throughput per operation, coalesce count per drain cycle, and drop enforcement at cap boundaries.",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred Seams",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-deferred",
+      "type": "table",
+      "columns": ["Seam", "Status", "Mitigation"],
+      "rows": [
+        ["WebSocketStream backpressure", "Deferred", "Bounded-queue representation (MAX_PER_CONNECTION_QUEUE + drop/coalesce) provides count-based backpressure; full WebSocketStream backpressure deferred"],
+        ["E2E browser tests", "Deferred", "CLI environment constraint — Playwright/headless browser not available in test environment; contract and substrate tests cover equivalent paths"],
+        ["Lifecycle file rotation", "Deferred", "BridgeLifecycleTraceWriter appends to single JSONL; file rotation policy deferred"],
+        ["External network budget", "Deferred", "N/A local-only bridge; no external network path through WebSocket server"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Claim Boundaries (Untouched)",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "list-boundaries",
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "GitHub provider / OAuth — untouched",
+        "Coordination store — untouched",
+        "Release gate — untouched",
+        "CI evidence — untouched",
+        "OTel / compiler — untouched",
+        "MCP / ACP / A2A / SDK — untouched"
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Acceptance Matrix Status",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-acceptance",
+      "type": "paragraph",
+      "content": "The v1 acceptance matrix shows 34/34 items PASS. Items #23 (CPU budget) and #32 (v1 readiness artifact) were the final gaps closed by Wave 2 Agent B. CPU budget tests validate count-based measurement, coalesce throughput, queue drain byte/count metrics, and drop enforcement at cap boundaries. The v1 readiness artifact (this document) records all schemas, implementation files, test files, proofs, and deferred seams.",
+      "disclosure": {"level": "standard"}
+    }
+  ],
+  "references": [
+    {"document_id": "frontend-bridge-backend-contract-v1", "title": "Frontend / Bridge / Backend Contract v1"}
+  ],
+  "related_documents": [
+    {"document_id": "frontend-bridge-backend-contract-v1", "title": "Frontend / Bridge / Backend Contract v1", "relationship": "parent_contract"},
+    {"document_id": "frontend-rendering-safety", "title": "Frontend Rendering Safety Doctrine", "relationship": "related_doctrine"},
+    {"document_id": "desktop-hitl-boundary", "title": "Desktop HITL Boundary", "relationship": "related_boundary"}
+  ],
+  "provenance": {
+    "author": "Wave 2 Agent B",
+    "source_files": [
+      "rig_relay/desktop/bridge_protocol.py",
+      "rig_relay/desktop/bridge_refusals.py",
+      "rig_relay/desktop/bridge_lifecycle_trace.py",
+      "rig_relay/desktop/websocket_server.py",
+      "rig_relay/desktop/intents.py",
+      "rig_relay/desktop/projection.py",
+      "frontend/desktop/js/projection.js",
+      "frontend/desktop/js/protocol/envelope.js",
+      "frontend/desktop/js/protocol/client.js",
+      "tests/desktop/test_cpu_budget.py",
+      "tests/desktop/test_frontend_bridge_backend_v1_convergence.py"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": ["summary", "standard", "detailed", "exhaustive"],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

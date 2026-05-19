@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.status_snapshot.v1.schema.json",
+  "title": "Google Workspace Status Snapshot v1",
+  "description": "Local status snapshot. Never calls live APIs. Content-light.",
+  "type": "object",
+  "required": ["schema_version", "provider_id", "generated_at", "auth_state_hash", "capability_manifest_hash", "configured_auth_modes", "available_capabilities", "refused_capabilities", "grant_count", "expired_grant_count", "revoked_grant_count", "restricted_scope_count", "sensitive_scope_count", "domain_wide_delegation_authorized", "product_counts", "live_network_enabled", "content_light"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.google_workspace.status_snapshot.v1"},
+    "provider_id": {"type": "string", "const": "google_workspace"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "auth_state_hash": {"type": "string", "minLength": 64, "maxLength": 64},
+    "capability_manifest_hash": {"type": "string", "minLength": 64, "maxLength": 64},
+    "configured_auth_modes": {"type": "array", "items": {"type": "string"}},
+    "available_capabilities": {"type": "array", "items": {"type": "string"}},
+    "refused_capabilities": {"type": "array", "items": {"type": "string"}},
+    "grant_count": {"type": "integer", "minimum": 0},
+    "expired_grant_count": {"type": "integer", "minimum": 0},
+    "revoked_grant_count": {"type": "integer", "minimum": 0},
+    "restricted_scope_count": {"type": "integer", "minimum": 0},
+    "sensitive_scope_count": {"type": "integer", "minimum": 0},
+    "domain_wide_delegation_authorized": {"type": "boolean", "const": false},
+    "product_counts": {"type": "object"},
+    "live_network_enabled": {"type": "boolean", "const": false},
+    "content_light": {"type": "boolean", "const": true}
+  },
+  "additionalProperties": false
+}

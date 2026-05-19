@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+import hashlib
 import inspect
 import json
 from pathlib import Path
@@ -496,6 +497,7 @@ def execute_desktop_intent(
     request: dict[str, Any],
     chat_state_provider: Any | None = None,
     progress_emitter: Any | None = None,
+    trace_id: str = "",
 ) -> dict[str, Any]:
     """Execute a desktop intent request and return a content-light result.
 
@@ -504,10 +506,13 @@ def execute_desktop_intent(
         chat_state_provider: Optional callable returning dict of chat state.
         progress_emitter: Optional callable accepting a dict to broadcast
             progress events over WebSocket. Content-light only.
+        trace_id: Optional trace correlation ID carried from the inbound
+            BridgeMessage.
 
     Returns:
         Intent result dict (schema-validated, content-light).
     """
+    from rig_relay.desktop.bridge_refusals import build_accepted_intent_lifecycle_event
     from rig_relay.desktop.intent_audit import emit_received, emit_result
     from rig_relay.desktop.progress_events import (
         EVENT_OPERATION_COMPLETED,
@@ -567,6 +572,20 @@ def execute_desktop_intent(
                 intent_id,
                 request.get("parameters", {}),
                 request.get("authorization_receipt"),
+            )
+            status = result.get("status", "failed")
+            lifecycle_event_type = (
+                "intent_completed" if status == "completed" else "intent_dispatched"
+            )
+            result["_bridge_lifecycle_event"] = build_accepted_intent_lifecycle_event(
+                event_type=lifecycle_event_type,
+                intent_name=intent_name,
+                intent_id=intent_id,
+                trace_id=trace_id or request.get("trace_id", ""),
+                inbound_message_id=request.get("parent_message_id", ""),
+                safe_summary_hash=hashlib.sha256(
+                    result.get("summary", "").encode()
+                ).hexdigest()[:16],
             )
             status = result.get("status", "failed")
             event = (
@@ -652,6 +671,21 @@ def execute_desktop_intent(
                 chat_state_provider,
             )
             result_status = result.get("status", "failed")
+            lifecycle_event_type = (
+                "intent_completed"
+                if result_status == "completed"
+                else "intent_dispatched"
+            )
+            result["_bridge_lifecycle_event"] = build_accepted_intent_lifecycle_event(
+                event_type=lifecycle_event_type,
+                intent_name=intent_name,
+                intent_id=intent_id,
+                trace_id=trace_id or request.get("trace_id", ""),
+                inbound_message_id=request.get("parent_message_id", ""),
+                safe_summary_hash=hashlib.sha256(
+                    result.get("summary", "").encode()
+                ).hexdigest()[:16],
+            )
             _emit_progress(
                 EVENT_OPERATION_COMPLETED
                 if result_status == "completed"

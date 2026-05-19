@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.operation_receipt.v1.schema.json",
+  "title": "Google Workspace Operation Receipt v1",
+  "description": "Content-light operation receipt. All identifiers are SHA-256 hashes. Never contains raw tokens, private keys, client secrets, OAuth codes, JWT assertions, email addresses, domain names, Gmail subjects/bodies, Drive filenames/content, Calendar titles/descriptions, Docs text, Sheets cells, or private user data.",
+  "type": "object",
+  "required": ["schema_version", "provider_id", "operation_id", "capability_id", "operation_class", "auth_mode", "auth_state_hash", "request_hash", "response_hash", "subject_hash", "customer_hash", "resource_hash", "verdict", "refusal_code", "redaction_status", "content_light", "generated_at"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.google_workspace.operation_receipt.v1"},
+    "provider_id": {"type": "string", "const": "google_workspace"},
+    "operation_id": {"type": "string"},
+    "capability_id": {"type": "string"},
+    "product": {"type": "string"},
+    "operation_kind": {"type": "string"},
+    "operation_class": {"type": "string", "enum": ["public_read", "user_read", "user_metadata_read", "domain_read", "safe_local_mutation", "user_mutation", "domain_mutation", "destructive_mutation", "credentialed_live_operation"]},
+    "auth_mode": {"type": "string"},
+    "auth_state_hash": {"type": "string"},
+    "request_hash": {"type": "string"},
+    "response_hash": {"type": "string"},
+    "subject_hash": {"type": "string", "description": "SHA-256 of user subject. Never raw email."},
+    "customer_hash": {"type": "string", "description": "SHA-256 of customer ID. Never raw."},
+    "resource_hash": {"type": "string", "description": "SHA-256 of resource ID (file, calendar, label, etc.). Never raw."},
+    "scope_grant_hashes": {"type": "array", "items": {"type": "string"}},
+    "verdict": {"type": "string", "enum": ["allowed", "refused", "failed", "completed"]},
+    "refusal_code": {"type": "string"},
+    "redaction_status": {"type": "string", "enum": ["clean", "redacted", "not_applicable"]},
+    "content_light": {"type": "boolean", "const": true},
+    "generated_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

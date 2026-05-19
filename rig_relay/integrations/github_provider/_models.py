@@ -50,6 +50,12 @@ class GitHubRedactionStatus(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
+class GitHubGrantStatus(StrEnum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    REVOKED = "revoked"
+
+
 @dataclass
 class GitHubRepositoryPermissionGrant:
     repository_hash: str
@@ -60,6 +66,7 @@ class GitHubRepositoryPermissionGrant:
     grant_hash: str
     granted_at: str = field(default_factory=_now_iso)
     expires_at: str = ""
+    grant_status: GitHubGrantStatus | str = GitHubGrantStatus.ACTIVE
 
 
 _GITHUB_APP_AUTH_MODES = frozenset({
@@ -133,6 +140,8 @@ class GitHubProviderAuthState:
         required_access: str,
     ) -> bool:
         for grant in self.grants_for_repository(repository_hash):
+            if str(grant.grant_status) != "active":
+                continue
             if not permission_satisfies(
                 GitHubProviderRequiredPermission(
                     permission_id=required_permission_id,
@@ -147,6 +156,13 @@ class GitHubProviderAuthState:
                 continue
             return True
         return False
+
+    def active_grants(self) -> list[GitHubRepositoryPermissionGrant]:
+        return [
+            g
+            for g in self.repository_permission_grants
+            if str(g.grant_status) == "active"
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -176,6 +192,11 @@ class GitHubProviderAuthState:
                     "grant_hash": g.grant_hash,
                     "granted_at": g.granted_at,
                     "expires_at": g.expires_at,
+                    "grant_status": (
+                        g.grant_status.value
+                        if isinstance(g.grant_status, GitHubGrantStatus)
+                        else g.grant_status
+                    ),
                 }
                 for g in self.repository_permission_grants
             ],

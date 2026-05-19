@@ -21,6 +21,10 @@ Usage:
 
 from __future__ import annotations
 
+from rig_relay.integrations.github_provider._auth_state_store import (
+    read_auth_state,
+    write_auth_state,
+)
 from rig_relay.integrations.github_provider._capabilities import (
     evaluate_github_capability,
     get_capability,
@@ -31,6 +35,7 @@ from rig_relay.integrations.github_provider._models import (
     GitHubAccessLevel,
     GitHubAuthMode,
     GitHubAuthStatus,
+    GitHubGrantStatus,
     GitHubOperationClass,
     GitHubPermissionKind,
     GitHubProviderAuthState,
@@ -62,6 +67,7 @@ __all__ = [
     "GitHubAccessLevel",
     "GitHubAuthMode",
     "GitHubAuthStatus",
+    "GitHubGrantStatus",
     "GitHubOperationClass",
     "GitHubPermissionKind",
     "GitHubProviderAuthState",
@@ -84,7 +90,9 @@ __all__ = [
     "load_github_capability_manifest",
     "normalize_oauth_scope_to_app_permission",
     "permission_satisfies",
+    "read_auth_state",
     "scan_for_tokens",
     "validate_github_capability_manifest",
     "validate_github_operation_receipt",
+    "write_auth_state",
 ]

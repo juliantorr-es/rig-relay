@@ -208,3 +208,89 @@ def test_bridge_message_enforces_content_light() -> None:
         sequence=0,
     )
     assert msg.redaction_status == "content_light"
+
+
+# ── Projection patch progressive rendering contract ───────────────────────
+
+
+def test_projection_js_has_partial_patch_handler() -> None:
+    proj_js = FRONTEND_DIR / "projection.js"
+    content = proj_js.read_text(encoding="utf-8")
+    assert "handleProjectionPatch" in content, (
+        "projection.js must export handleProjectionPatch for progressive patches"
+    )
+    assert "COALESCE_PARTIAL_THRESHOLD" in content, (
+        "projection.js must define coalescence threshold"
+    )
+    assert "_applyPartialSections" in content, (
+        "projection.js must have partial section applier"
+    )
+    assert "_schedulePartial" in content, (
+        "projection.js must have partial scheduling function"
+    )
+
+
+def test_projection_js_uses_request_animation_frame() -> None:
+    proj_js = FRONTEND_DIR / "projection.js"
+    content = proj_js.read_text(encoding="utf-8")
+    assert "requestAnimationFrame" in content, (
+        "projection.js must use requestAnimationFrame for batch scheduling"
+    )
+
+
+def test_projection_patch_schema_sections_align_with_patch_section_names() -> None:
+    from rig_relay.desktop.projection import PATCH_SECTION_NAMES
+
+    schema = json.loads(
+        (SCHEMAS_DIR / "rig.relay.backend_projection_patch.v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    schema_sections = set(schema["properties"]["changed_sections"]["items"]["enum"])
+    for section in PATCH_SECTION_NAMES:
+        assert section in schema_sections, (
+            f"PATCH_SECTION_NAMES member '{section}' missing from schema enum"
+        )
+
+
+def test_projection_patch_kinds_match_schema() -> None:
+    schema = json.loads(
+        (SCHEMAS_DIR / "rig.relay.backend_projection_patch.v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    patch_kinds = schema["properties"]["patch_kind"]["enum"]
+    assert "full" in patch_kinds
+    assert "partial" in patch_kinds
+    assert "delta" in patch_kinds
+    assert len(patch_kinds) == 3
+
+
+def test_projection_patch_redaction_is_content_light() -> None:
+    schema = json.loads(
+        (SCHEMAS_DIR / "rig.relay.backend_projection_patch.v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    redaction = schema["properties"]["redaction_status"]["const"]
+    assert redaction == "content_light"
+
+
+def test_projection_patch_digest_format() -> None:
+    schema = json.loads(
+        (SCHEMAS_DIR / "rig.relay.backend_projection_patch.v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    digest_pattern = schema["properties"]["digest"]["pattern"]
+    assert digest_pattern == "^sha256:[a-f0-9]{64}$"
+
+
+def test_projection_js_frontend_progressive_patch_test_exists() -> None:
+    path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "tests"
+        / "frontend"
+        / "test_projection_patch_application.mjs"
+    )
+    assert path.exists(), f"Frontend progressive patch test missing: {path}"

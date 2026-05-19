@@ -471,3 +471,63 @@ def test_all_refusal_kinds_produce_valid_envelope(refusal_kind: str) -> None:
         trace_id="trace_001",
     )
     validate(instance=refusal, schema=_envelope_schema())
+
+
+# ── Content-light audit: no raw paths/secrets/tokens/prompts in outputs ──
+
+
+def test_bridge_outputs_have_no_raw_secret_path_prompt_content() -> None:
+
+    # -- Projection-like payload --
+    projection_payload = {
+        "schema_version": "rig.relay.desktop_projection.v1",
+        "sections": {
+            "chat": {"messages": [{"role": "user", "text": "hello"}]},
+            "fleet": {"workers": 1},
+            "providers": [{"name": "deepseek", "status": "ok"}],
+        },
+    }
+    result = scan_bridge_payload(projection_payload)
+    assert result.safe, (
+        f"Projection payload flagged: {result.finding_kind} {result.detail}"
+    )
+
+    # -- Bridge envelope payload --
+    refusal_envelope = build_bridge_refusal_envelope(
+        refusal_kind="unknown_intent_kind",
+        reason_code="unknown_intent_kind",
+        human_safe_message="Intent not recognised.",
+        trace_id="trace_audit_001",
+        frontend_session_id="fs_audit_001",
+        backend_session_id="bs_audit_001",
+        parent_message_id="msg_abcdef1234567890",
+        refused_intent_kind="some_missing_intent",
+    )
+    raw = json.dumps(refusal_envelope, sort_keys=True)
+    assert "ghp_" not in raw
+    assert "github_pat_" not in raw
+    assert "/Users/" not in raw
+    assert "/home/" not in raw
+    assert "raw_prompt" not in raw
+    assert "raw_file_contents" not in raw
+    assert "private_repo_contents" not in raw
+
+    # -- Lifecycle trace events (content-light assertion) --
+    from rig_relay.desktop.bridge_refusals import build_bridge_refusal_trace_event
+
+    trace_event = build_bridge_refusal_trace_event(
+        refusal_kind="unknown_intent_kind",
+        refused_intent_kind="some_intent",
+        refusal_message_id="msg_abcdef1234567890",
+        inbound_message_id="msg_inbound_001",
+        refusal_reason="Intent not recognised.",
+        trace_id="trace_audit_001",
+        frontend_session_id="fs_audit_001",
+        backend_session_id="bs_audit_001",
+        handshake_id="hs_audit_001",
+    )
+    raw_trace = json.dumps(trace_event, sort_keys=True)
+    assert "content_light" in raw_trace
+    assert "ghp_" not in raw_trace
+    assert "/Users/" not in raw_trace
+    assert "refusal_reason" not in raw_trace or "refusal_reason_hash" in raw_trace

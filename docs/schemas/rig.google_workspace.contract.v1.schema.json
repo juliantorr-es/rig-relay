@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.contract.v1.schema.json",
+  "title": "Google Workspace Provider Contract v1",
+  "description": "Canonical Google Workspace Provider Contract. Defines auth modes, scope sensitivity taxonomy, domain-wide delegation policy, and claim boundaries. Contract-only; no live Google API calls.",
+  "type": "object",
+  "required": ["schema_version", "contract_id", "generated_at", "auth_modes", "scope_taxonomy", "delegation_policy", "claim_boundaries", "implementation_status", "deferred_work"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.google_workspace.contract.v1"},
+    "contract_id": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "auth_modes": {"type": "array", "items": {
+      "type": "object",
+      "required": ["auth_mode", "intended_use", "implementation_status", "requires_secret_storage", "token_kind", "security_notes"],
+      "properties": {
+        "auth_mode": {"type": "string", "enum": ["none", "oauth_user", "oauth_desktop_deferred", "service_account", "service_account_domain_wide_delegation", "workspace_marketplace_deferred", "api_key_public"]},
+        "intended_use": {"type": "string"},
+        "implementation_status": {"type": "string", "enum": ["proposed", "deferred", "implemented", "refused"]},
+        "requires_secret_storage": {"type": "boolean"},
+        "token_kind": {"type": "string"},
+        "requires_domain_wide_delegation": {"type": "boolean"},
+        "security_notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    }},
+    "scope_taxonomy": {"type": "object", "required": ["levels", "restricted_scope_policy", "sensitive_scope_policy"], "properties": {
+      "levels": {"type": "object", "required": ["non_sensitive", "sensitive", "restricted", "admin_restricted", "unknown"], "properties": {
+        "non_sensitive": {"type": "object"}, "sensitive": {"type": "object"}, "restricted": {"type": "object"}, "admin_restricted": {"type": "object"}, "unknown": {"type": "object"}
+      }, "additionalProperties": false},
+      "restricted_scope_policy": {"type": "object", "required": ["live_refused", "requires_security_assessment", "fixture_only", "explanation"], "properties": {"live_refused": {"type": "boolean"}, "requires_security_assessment": {"type": "boolean"}, "fixture_only": {"type": "boolean"}, "explanation": {"type": "string"}}, "additionalProperties": false},
+      "sensitive_scope_policy": {"type": "object", "required": ["live_requires_verification_posture", "fixture_allowed", "explanation"], "properties": {"live_requires_verification_posture": {"type": "boolean"}, "fixture_allowed": {"type": "boolean"}, "explanation": {"type": "string"}}, "additionalProperties": false}
+    }, "additionalProperties": false},
+    "delegation_policy": {"type": "object", "required": ["domain_wide_delegation_refused_in_v1", "requires_super_admin_authorization", "deferred_impersonation_capabilities"], "properties": {"domain_wide_delegation_refused_in_v1": {"type": "boolean"}, "requires_super_admin_authorization": {"type": "boolean"}, "deferred_impersonation_capabilities": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+    "claim_boundaries": {"type": "object", "required": ["no_live_network", "no_raw_token_storage", "no_mutation_in_v1", "credential_safety"], "properties": {"no_live_network": {"type": "boolean"}, "no_raw_token_storage": {"type": "boolean"}, "no_mutation_in_v1": {"type": "boolean"}, "credential_safety": {"type": "string"}}, "additionalProperties": false},
+    "implementation_status": {"type": "string", "const": "contract_only"},
+    "deferred_work": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

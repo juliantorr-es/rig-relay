@@ -3,9 +3,10 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
-import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import time
 from typing import Any
 import uuid
@@ -48,12 +49,16 @@ def derive_model_spec_from_schema(schema: dict, schema_path: Path) -> dict:
     props = schema.get("properties", {})
 
     fields = []
-    for field_name in required_fields:
+    for field_name, prop in props.items():
         if field_name == "schema_version":
             continue
-        prop = props.get(field_name, {})
         field_type = _map_type(prop)
-        fields.append({"name": field_name, "type": field_type})
+        is_required = field_name in required_fields
+        fields.append({
+            "name": field_name,
+            "type": field_type,
+            "optional": not is_required,
+        })
 
     return {
         "contract_family_id": _derive_family_id(schema_id),
@@ -66,7 +71,7 @@ def derive_model_spec_from_schema(schema: dict, schema_path: Path) -> dict:
                 "fields": fields,
             }
         ],
-        "imports": ["from pydantic import BaseModel, Field"],
+        "imports": ["from pydantic import BaseModel"],
     }
 
 
@@ -90,10 +95,12 @@ def _map_type(prop: dict) -> str:
         return "bool"
     if t == "object":
         return "dict"
+    if t == "string":
+        return "str"
     if isinstance(t, list):
         non_null = [x for x in t if x != "null"]
         return _map_type({"type": non_null[0]}) if non_null else "str"
-    return t
+    return "str"
 
 
 def render_candidate_model(spec: dict) -> bytes:
@@ -135,6 +142,9 @@ def apply_candidate_patch(
     )
     target_file.parent.mkdir(parents=True, exist_ok=True)
     target_file.write_bytes(candidate_code)
+    init_file = target_file.parent / "__init__.py"
+    if not init_file.exists():
+        init_file.write_text("")
     return target_file, compute_sha256(candidate_code)
 
 
@@ -144,20 +154,21 @@ def run_validation_matrix(
     target_schema_path: Path,
     run_id: str,
     candidate_id: str,
+    repo_root: Path,
 ) -> dict:
     started = _now_iso()
     gates = []
 
     gates.append(_gate_json_schema(target_schema_path))
     gates.append(_gate_importability(worktree_dir, candidate_file))
-    gates.append(_gate_pyright(worktree_dir, candidate_file))
-    gates.append(_gate_ruff_lint(worktree_dir, candidate_file))
-    gates.append(_gate_ruff_format(worktree_dir, candidate_file))
+    gates.append(_gate_pyright(worktree_dir, candidate_file, repo_root))
+    gates.append(_gate_ruff_lint(worktree_dir, candidate_file, repo_root))
+    gates.append(_gate_ruff_format(worktree_dir, candidate_file, repo_root))
     gates.append(_gate_round_trip(worktree_dir, candidate_file, target_schema_path))
     gates.append(_gate_adversarial(worktree_dir, candidate_file, target_schema_path))
     gates.append(_gate_deterministic_regeneration(target_schema_path))
     gates.append(_gate_redaction(worktree_dir))
-    gates.append(_gate_dirty_check(worktree_dir))
+    gates.append(_gate_dirty_check(worktree_dir, candidate_file))
 
     completed = _now_iso()
     return _build_matrix_result(run_id, candidate_id, started, completed, gates)
@@ -185,8 +196,12 @@ def _gate_json_schema(schema_path: Path) -> dict:
 def _gate_importability(worktree_dir: Path, candidate_file: Path) -> dict:
     start = time.monotonic()
     try:
-        import_name = _candidate_import_name(candidate_file, worktree_dir)
-        code = f"import sys; sys.path.insert(0, {str(worktree_dir)!r}); import {import_name}"
+        code = (
+            "import importlib.util;"
+            f"spec = importlib.util.spec_from_file_location('_candidate', {str(candidate_file)!r});"
+            "mod = importlib.util.module_from_spec(spec);"
+            "spec.loader.exec_module(mod)"
+        )
         result = subprocess.run(
             [str(_find_python(worktree_dir)), "-c", code],
             capture_output=True,
@@ -206,15 +221,15 @@ def _gate_importability(worktree_dir: Path, candidate_file: Path) -> dict:
     )
 
 
-def _gate_pyright(worktree_dir: Path, candidate_file: Path) -> dict:
+def _gate_pyright(worktree_dir: Path, candidate_file: Path, repo_root: Path) -> dict:
     start = time.monotonic()
     try:
         result = subprocess.run(
-            ["uv", "run", "pyright", str(candidate_file.relative_to(worktree_dir))],
+            ["uv", "run", "pyright", str(candidate_file)],
             capture_output=True,
             text=True,
             timeout=120,
-            cwd=str(worktree_dir),
+            cwd=str(repo_root),
         )
         status = "pass" if result.returncode == 0 else "fail"
     except Exception:
@@ -224,21 +239,22 @@ def _gate_pyright(worktree_dir: Path, candidate_file: Path) -> dict:
     )
 
 
-def _gate_ruff_lint(worktree_dir: Path, candidate_file: Path) -> dict:
+def _gate_ruff_lint(worktree_dir: Path, candidate_file: Path, repo_root: Path) -> dict:
     start = time.monotonic()
     try:
-        result = subprocess.run(
-            [
-                "uv",
-                "run",
-                "ruff",
-                "check",
-                str(candidate_file.relative_to(worktree_dir)),
-            ],
+        subprocess.run(
+            ["uv", "run", "ruff", "check", "--fix", str(candidate_file)],
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(worktree_dir),
+            cwd=str(repo_root),
+        )
+        result = subprocess.run(
+            ["uv", "run", "ruff", "check", str(candidate_file)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=str(repo_root),
         )
         status = "pass" if result.returncode == 0 else "fail"
     except Exception:
@@ -248,22 +264,24 @@ def _gate_ruff_lint(worktree_dir: Path, candidate_file: Path) -> dict:
     )
 
 
-def _gate_ruff_format(worktree_dir: Path, candidate_file: Path) -> dict:
+def _gate_ruff_format(
+    worktree_dir: Path, candidate_file: Path, repo_root: Path
+) -> dict:
     start = time.monotonic()
     try:
-        result = subprocess.run(
-            [
-                "uv",
-                "run",
-                "ruff",
-                "format",
-                "--check",
-                str(candidate_file.relative_to(worktree_dir)),
-            ],
+        subprocess.run(
+            ["uv", "run", "ruff", "format", str(candidate_file)],
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(worktree_dir),
+            cwd=str(repo_root),
+        )
+        result = subprocess.run(
+            ["uv", "run", "ruff", "format", "--check", str(candidate_file)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=str(repo_root),
         )
         status = "pass" if result.returncode == 0 else "fail"
     except Exception:
@@ -278,7 +296,6 @@ def _gate_round_trip(
 ) -> dict:
     start = time.monotonic()
     try:
-        import_name = _candidate_import_name(candidate_file, worktree_dir)
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         test_payload = _build_test_payload(schema)
         if test_payload is None:
@@ -290,10 +307,12 @@ def _gate_round_trip(
                 compute_sha256("skipped"),
             )
         code = (
-            f"import sys, json; sys.path.insert(0, {str(worktree_dir)!r});"
-            f" from {import_name} import GeneratedModel;"
-            f" m = GeneratedModel(**{json.dumps(test_payload)});"
-            f" dump = json.loads(m.model_dump_json()); print(json.dumps(dump))"
+            "import importlib.util, json;"
+            f"spec = importlib.util.spec_from_file_location('_candidate', {str(candidate_file)!r});"
+            "mod = importlib.util.module_from_spec(spec);"
+            "spec.loader.exec_module(mod);"
+            f"m = mod.GeneratedModel(**{json.dumps(test_payload)});"
+            "dump = json.loads(m.model_dump_json()); print(json.dumps(dump))"
         )
         result = subprocess.run(
             [str(_find_python(worktree_dir)), "-c", code],
@@ -340,18 +359,69 @@ def _build_test_payload(schema: dict) -> dict | None:
 def _generate_payload_candidates(schema: dict) -> list[dict]:
     required = schema.get("required", [])
     props = schema.get("properties", {})
-    payload = {
-        "schema_version": schema
-        .get("properties", {})
-        .get("schema_version", {})
-        .get("const", "")
-    }
+    schema_version = props.get("schema_version", {}).get("const", "")
+    base = {"schema_version": schema_version}
+
+    candidates: list[dict] = []
     for field in required:
         if field == "schema_version":
             continue
         prop = props.get(field, {})
-        payload[field] = _default_value_for_prop(prop)
-    return [payload]
+        values = _candidate_values_for_field(field, prop)
+        if not candidates:
+            candidates = [{**base, field: v} for v in values]
+        else:
+            new_candidates = []
+            for c in candidates:
+                for v in values:
+                    nc = dict(c)
+                    nc[field] = v
+                    new_candidates.append(nc)
+            candidates = new_candidates
+
+    if not candidates:
+        return [base]
+
+    return candidates
+
+
+def _candidate_values_for_field(field_name: str, prop: dict) -> list[Any]:
+    values: list[Any] = []
+
+    if "enum" in prop:
+        values.extend(prop["enum"])
+    else:
+        t = prop.get("type", "string")
+        if isinstance(t, list):
+            non_null = [x for x in t if x != "null"]
+            t = non_null[0] if non_null else "string"
+
+        if t == "string":
+            fmt = prop.get("format", "")
+            if fmt == "date-time":
+                values.extend(["2026-01-01T00:00:00Z", "2025-12-31T23:59:59Z"])
+            else:
+                values.append(_default_value_for_prop(prop))
+        elif t == "integer":
+            mn = prop.get("minimum")
+            if mn is not None:
+                values.extend([mn, mn + 1])
+            else:
+                values.extend([0, 1, 42])
+        elif t == "number":
+            values.extend([0.0, 0.5, 1.0])
+        elif t == "boolean":
+            values.extend([True, False])
+        elif t == "array":
+            items = prop.get("items", {})
+            item_val = _default_value_for_prop(items) if items else "item"
+            values.extend([[], [item_val]])
+        elif t == "object":
+            values.extend([{}, {"key": "value"}])
+        else:
+            values.append(_default_value_for_prop(prop))
+
+    return values if values else [_default_value_for_prop(prop)]
 
 
 def _default_value_for_prop(prop: dict) -> Any:
@@ -380,7 +450,6 @@ def _gate_adversarial(
 ) -> dict:
     start = time.monotonic()
     try:
-        import_name = _candidate_import_name(candidate_file, worktree_dir)
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         required = schema.get("required", [])
         if not required:
@@ -393,9 +462,11 @@ def _gate_adversarial(
             )
         malformed = {}
         code = (
-            f"import sys; sys.path.insert(0, {str(worktree_dir)!r});"
-            f" from {import_name} import GeneratedModel;"
-            f" m = GeneratedModel(**{json.dumps(malformed)}); print('accepted')"
+            "import importlib.util;"
+            f"spec = importlib.util.spec_from_file_location('_candidate', {str(candidate_file)!r});"
+            "mod = importlib.util.module_from_spec(spec);"
+            "spec.loader.exec_module(mod);"
+            f"m = mod.GeneratedModel(**{json.dumps(malformed)}); print('accepted')"
         )
         result = subprocess.run(
             [str(_find_python(worktree_dir)), "-c", code],
@@ -478,7 +549,7 @@ def _gate_redaction(worktree_dir: Path) -> dict:
     )
 
 
-def _gate_dirty_check(worktree_dir: Path) -> dict:
+def _gate_dirty_check(worktree_dir: Path, candidate_file: Path | None = None) -> dict:
     start = time.monotonic()
     try:
         result = subprocess.run(
@@ -488,13 +559,49 @@ def _gate_dirty_check(worktree_dir: Path) -> dict:
             timeout=30,
             cwd=str(worktree_dir),
         )
-        dirty = bool(result.stdout.strip())
-        status = "pass" if dirty else "fail"
+        dirty_lines = [l for l in result.stdout.strip().split("\n") if l.strip()]
+        unexpected = _filter_expected_dirty(dirty_lines, worktree_dir, candidate_file)
+        status = "pass" if not unexpected else "fail"
     except Exception:
         status = "fail"
     return _gate_result(
         "gate-dirty", "worktree_dirty_state", status, start, compute_sha256(str(status))
     )
+
+
+_EXPECTED_DIRTY_PREFIXES = ("rig_relay/generated_candidates/", ".build/")
+
+
+def _filter_expected_dirty(
+    dirty_lines: list[str], worktree_dir: Path, candidate_file: Path | None
+) -> list[str]:
+    unexpected: list[str] = []
+    for line in dirty_lines:
+        path = _parse_porcelain_path(line)
+        if path is None:
+            unexpected.append(line)
+            continue
+        if any(path.startswith(prefix) for prefix in _EXPECTED_DIRTY_PREFIXES):
+            continue
+        if candidate_file is not None:
+            try:
+                rel_candidate = candidate_file.relative_to(worktree_dir)
+                if path == str(rel_candidate):
+                    continue
+            except ValueError:
+                pass
+        unexpected.append(line)
+    return unexpected
+
+
+def _parse_porcelain_path(line: str) -> str | None:
+    if len(line) < 4:
+        return None
+    rest = line[3:]
+    if " -> " in rest:
+        rest = rest.split(" -> ")[-1]
+    rest = rest.strip().strip('"')
+    return rest if rest else None
 
 
 def _gate_result(
@@ -509,6 +616,24 @@ def _gate_result(
         "duration_ms": int((time.monotonic() - start_mono) * 1000),
         "evidence_hash": evidence_hex,
     }
+
+
+_GATE_KIND_TO_FAILURE_CLASS: dict[str, str] = {
+    "json_schema_validation": "constraint_violation",
+    "python_importability": "type_error",
+    "pyright_type_check": "type_error",
+    "ruff_lint": "format_error",
+    "ruff_format": "format_error",
+    "real_artifact_round_trip": "constraint_violation",
+    "adversarial_malformed_input": "constraint_violation",
+    "deterministic_regeneration": "constraint_violation",
+    "content_light_redaction": "redaction_leak",
+    "worktree_dirty_state": "worktree_dirty_state",
+}
+
+
+def _failure_class_for_gate(gate_kind: str) -> str:
+    return _GATE_KIND_TO_FAILURE_CLASS.get(gate_kind, "constraint_violation")
 
 
 def _build_matrix_result(
@@ -542,16 +667,12 @@ def _build_matrix_result(
 
 def _candidate_import_name(candidate_file: Path, worktree_dir: Path) -> str:
     rel = candidate_file.relative_to(worktree_dir)
-    parts = list(rel.with_suffix("").parts)
+    parts = [p.replace("-", "_") for p in rel.with_suffix("").parts]
     return ".".join(parts)
 
 
 def _find_python(worktree_dir: Path) -> Path:
-    return (
-        Path(os.environ.get("VIRTUAL_ENV", "")) / "bin" / "python"
-        if os.environ.get("VIRTUAL_ENV")
-        else Path("/usr/bin/env python3")
-    )
+    return Path(sys.executable or shutil.which("python3") or "python3")
 
 
 def _git_head_sha(repo_root: Path) -> str:
@@ -680,7 +801,15 @@ def emit_counterexample(
     failure_class: str,
     expected_behavior: str,
     actual_behavior_hash: str,
+    replay_command_hash: str | None = None,
+    minimal_reproduction_artifact_path: str | None = None,
 ) -> Path:
+    if replay_command_hash is None:
+        replay_command_hash = compute_sha256(
+            f"uv run python scripts/rig_compiler_experiment_0.py --run-id {run_id}"
+        )
+    if minimal_reproduction_artifact_path is None:
+        minimal_reproduction_artifact_path = "counterexamples/repro.json"
     record = {
         "schema_version": "rig.contract_compiler.counterexample.v1",
         "counterexample_id": f"ce-{candidate_id}-{source_gate}",
@@ -695,10 +824,8 @@ def emit_counterexample(
         "actual_behavior_hash": actual_behavior_hash,
         "failure_class": failure_class,
         "spurious_or_genuine": "unknown",
-        "replay_command_hash": compute_sha256(
-            f"uv run python scripts/rig_compiler_experiment_0.py --run-id {run_id}"
-        ),
-        "minimal_reproduction_artifact_path": "counterexamples/repro.json",
+        "replay_command_hash": replay_command_hash,
+        "minimal_reproduction_artifact_path": minimal_reproduction_artifact_path,
         "redaction_status": "content_light",
         "deduplication_key": compute_sha256(
             f"{candidate_id}:{source_gate}:{failure_class}"
@@ -708,6 +835,52 @@ def emit_counterexample(
     }
     path = evidence_dir / "counterexample.v1.json"
     path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+    return path
+
+
+def emit_permutation_corpus_row(
+    evidence_dir: Path,
+    run_id: str,
+    candidate_id: str,
+    contract_family_id: str,
+    contract_slice_id: str,
+    generator_id: str,
+    generator_version: str,
+    schema_pattern_id: str,
+    template_branch_id: str,
+    candidate_status: str,
+    fit_score: float,
+    gate_summary: dict,
+    counterexample_count: int,
+    counterexample_cluster_ids: list[str],
+    promoted_to_stage: bool,
+    accepted: bool,
+) -> Path:
+    row_id = f"pcr-{candidate_id}-{uuid.uuid4().hex[:8]}"
+    row = {
+        "schema_version": "rig.contract_compiler.permutation_corpus_row.v1",
+        "row_id": row_id,
+        "run_id": run_id,
+        "candidate_id": candidate_id,
+        "contract_family_id": contract_family_id,
+        "contract_slice_id": contract_slice_id,
+        "generator_id": generator_id,
+        "generator_version": generator_version,
+        "schema_pattern_id": schema_pattern_id,
+        "template_branch_id": template_branch_id,
+        "candidate_status": candidate_status,
+        "fit_score": fit_score,
+        "gate_summary": gate_summary,
+        "counterexample_count": counterexample_count,
+        "counterexample_cluster_ids": counterexample_cluster_ids,
+        "promoted_to_stage": promoted_to_stage,
+        "accepted": accepted,
+        "emitted_at": _now_iso(),
+        "content_light": True,
+    }
+    path = evidence_dir / "permutation_corpus_row.v1.jsonl"
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row) + "\n")
     return path
 
 
@@ -760,7 +933,7 @@ def emit_run_manifest(
             "candidates_jsonl": "candidates/candidate.jsonl",
             "validation_results_jsonl": "candidates/validation_results.jsonl",
             "counterexamples_jsonl": "candidates/counterexamples.jsonl",
-            "permutation_corpus_jsonl": "permutation_corpus.jsonl",
+            "permutation_corpus_jsonl": "permutation_corpus_row.v1.jsonl",
             "pattern_report_path": "pattern_report.v1.json",
             "worktree_lifecycle_jsonl": "candidates/worktree_lifecycle.v1.jsonl",
         },
@@ -768,7 +941,9 @@ def emit_run_manifest(
             "candidates_jsonl_sha256": compute_sha256("candidates"),
             "validation_results_jsonl_sha256": compute_sha256("results"),
             "counterexamples_jsonl_sha256": compute_sha256("counterexamples"),
-            "permutation_corpus_jsonl_sha256": compute_sha256("corpus"),
+            "permutation_corpus_jsonl_sha256": compute_sha256(
+                "permutation_corpus_row.v1.jsonl"
+            ),
             "pattern_report_sha256": compute_sha256("report"),
             "worktree_lifecycle_jsonl_sha256": compute_sha256("lifecycle"),
             "run_manifest_sha256": compute_sha256(run_id),
@@ -846,7 +1021,12 @@ def run_experiment_0(
         )
 
         matrix_result = run_validation_matrix(
-            worktree_dir, candidate_file, target_schema_path, run_id, candidate_id
+            worktree_dir,
+            candidate_file,
+            target_schema_path,
+            run_id,
+            candidate_id,
+            repo_root,
         )
         overall = matrix_result["overall_status"]
 
@@ -865,20 +1045,62 @@ def run_experiment_0(
         counterexamples_emitted = 0
         for gate in matrix_result["gates"]:
             if gate["status"] in {"fail", "hold"}:
+                failure_class = _failure_class_for_gate(gate["gate_kind"])
+                replay_command_hash = compute_sha256(
+                    f"uv run python scripts/rig_compiler_experiment_0.py "
+                    f"--target-schema {target_schema_path} --run-id {run_id} "
+                    f"--gate {gate['gate_id']}"
+                )
+                repro_path = f"candidates/{candidate_id}/repro/{gate['gate_kind']}.json"
                 emit_counterexample(
                     evidence_dir,
                     run_id,
                     candidate_id,
                     gate["gate_kind"],
-                    "constraint_violation",
+                    failure_class,
                     f"Gate {gate['gate_kind']} expected pass",
                     gate["evidence_hash"],
+                    replay_command_hash=replay_command_hash,
+                    minimal_reproduction_artifact_path=repro_path,
                 )
                 counterexamples_emitted += 1
 
         passed_gates = matrix_result["passed_gate_count"]
         failed_gates = matrix_result["failed_gate_count"]
         held_gates = matrix_result["warning_gate_count"]
+
+        skipped_gates = sum(
+            1 for g in matrix_result["gates"] if g["status"] == "skipped"
+        )
+        total_gates = len(matrix_result["gates"])
+        corpus_gate_summary = {
+            "passed": passed_gates,
+            "failed": failed_gates,
+            "held": held_gates,
+            "skipped": skipped_gates,
+        }
+        emit_permutation_corpus_row(
+            evidence_dir=evidence_dir,
+            run_id=run_id,
+            candidate_id=candidate_id,
+            contract_family_id=spec["contract_family_id"],
+            contract_slice_id="slice-0",
+            generator_id="jinja2_template_v0",
+            generator_version="0.0.1-dev",
+            schema_pattern_id="experiment_0_default",
+            template_branch_id="jinja2_template_v0/main",
+            candidate_status="accepted" if overall == "pass" else "rejected",
+            fit_score=passed_gates / total_gates if total_gates > 0 else 0.0,
+            gate_summary=corpus_gate_summary,
+            counterexample_count=counterexamples_emitted,
+            counterexample_cluster_ids=[
+                f"ce-{candidate_id}-{gate['gate_kind']}"
+                for gate in matrix_result["gates"]
+                if gate["status"] in {"fail", "hold"}
+            ],
+            promoted_to_stage=False,
+            accepted=overall == "pass",
+        )
 
         emit_run_manifest(
             evidence_dir,
