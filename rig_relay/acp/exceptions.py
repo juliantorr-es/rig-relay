@@ -36,6 +36,15 @@ CONFIGURATION_ERROR = -31002
 CONVERSATION_LIMIT = -31003
 CONTEXT_TOO_LONG = -31004
 
+# Rig-specific refusal codes (outside JSON-RPC reserved range)
+REFUSAL_GENERAL = -31005
+REFUSAL_SESSION_RESUME = -31006
+REFUSAL_LIVE_AUTH = -31007
+REFUSAL_CAPABILITY_DISABLED = -31008
+REFUSAL_WORKSPACE_ISOLATION = -31009
+REFUSAL_STALE_SESSION = -31010
+REFUSAL_MUTATION_DENIED = -31011
+
 
 class VibeRequestError(RequestError):
     code: int
@@ -140,6 +149,84 @@ class ConversationLimitError(VibeRequestError):
 
     def __init__(self, detail: str) -> None:
         super().__init__(message=detail)
+
+
+class RigRefusalError(VibeRequestError):
+    code = REFUSAL_GENERAL
+
+    def __init__(self, refusal_code: str, detail: str, remediation: str = "") -> None:
+        data: dict[str, Any] = {"refusal_code": refusal_code, "content_light": True}
+        if remediation:
+            data["remediation"] = remediation
+        super().__init__(message=detail, data=data)
+
+
+class SessionResumeRefusalError(VibeRequestError):
+    code = REFUSAL_SESSION_RESUME
+
+    def __init__(self, session_id: str, detail: str, remediation: str = "") -> None:
+        data: dict[str, Any] = {
+            "refusal_code": "resume_not_supported",
+            "session_id": session_id,
+            "content_light": True,
+        }
+        if remediation:
+            data["remediation"] = remediation
+        super().__init__(message=detail, data=data)
+
+
+class LiveAuthRefusalError(VibeRequestError):
+    code = REFUSAL_LIVE_AUTH
+
+    def __init__(self, method_id: str, detail: str, remediation: str = "") -> None:
+        data: dict[str, Any] = {
+            "refusal_code": "live_auth_deferred",
+            "method_id": method_id,
+            "content_light": True,
+        }
+        if remediation:
+            data["remediation"] = remediation
+        super().__init__(message=detail, data=data)
+
+
+class CapabilityDisabledError(VibeRequestError):
+    code = REFUSAL_CAPABILITY_DISABLED
+
+    def __init__(self, capability: str, detail: str) -> None:
+        super().__init__(
+            message=detail, data={"capability": capability, "content_light": True}
+        )
+
+
+class WorkspaceIsolationError(VibeRequestError):
+    code = REFUSAL_WORKSPACE_ISOLATION
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(
+            message=detail,
+            data={
+                "refusal_code": "workspace_isolation_violation",
+                "content_light": True,
+            },
+        )
+
+
+class StaleSessionError(VibeRequestError):
+    code = REFUSAL_STALE_SESSION
+
+    def __init__(self, session_id: str, detail: str) -> None:
+        super().__init__(
+            message=detail, data={"session_id": session_id, "content_light": True}
+        )
+
+
+class MutationDeniedError(VibeRequestError):
+    code = REFUSAL_MUTATION_DENIED
+
+    def __init__(self, tool_name: str, detail: str) -> None:
+        super().__init__(
+            message=detail, data={"tool_name": tool_name, "content_light": True}
+        )
 
 
 class InternalError(VibeRequestError):

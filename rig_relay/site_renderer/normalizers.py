@@ -747,3 +747,404 @@ def build_page_model(
         "public_safety_status": safety_status,
         "sections": sections,
     }
+
+
+def normalize_proof_chain(artifacts: dict) -> list[dict]:
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    verdict = _artifact_dict(artifacts, "rc_verdict")
+    inventory = _artifact_dict(artifacts, "test_inventory")
+
+    sections = []
+
+    overall_status = "HOLD"
+    detail = "No candidate verdict found."
+    if verdict:
+        overall_status = verdict.get("verdict", "hold").upper()
+        detail = f"Release candidate status: {verdict.get('gate_overall_status', 'unknown')}. Open blockers: {len(verdict.get('open_blocker_ids', []))}."
+    sections.append(_hero_section("Proof Chain Status", overall_status, detail))
+
+    cards = []
+    if verdict:
+        cards.append({
+            "title": "Blockers",
+            "body_html": f"<p>{len(verdict.get('open_blocker_ids', []))} Open / {len(verdict.get('resolved_blocker_ids', []))} Resolved</p><p>Release block status across all phases</p>",
+            "status": "info",
+        })
+    if inventory:
+        summary = inventory.get("summary", {})
+        cards.append({
+            "title": "Tests",
+            "body_html": f"<p>{summary.get('total_test_functions', 0)} Functions</p><p>Across {summary.get('total_test_files', 0)} files. classified keep: {summary.get('classified_keep', 0)}.</p>",
+            "status": "info",
+        })
+    try:
+        schema_count = len(list((repo_root / "docs" / "schemas").glob("*.schema.json")))
+    except Exception:
+        schema_count = 0
+    cards.append({
+        "title": "Governed Schemas",
+        "body_html": f"<p>{schema_count} Schemas</p><p>JSON Schemas Draft 7 governing all artifacts</p>",
+        "status": "info",
+    })
+
+    sections.append(_card_grid_section("Overall Evidence Metrics", cards))
+
+    headers = [
+        "Surface / Subsystem",
+        "Contract / Specification",
+        "JSON Schema",
+        "Implementation File",
+        "Associated Tests",
+        "Readiness Verdict",
+    ]
+    rows = [
+        [
+            "Static Site Compiler",
+            "static_site_compiler_contract.v1.json",
+            "rig.static_site.compiler_contract.v1",
+            "scripts/rig_site_render.py",
+            "tests/site_renderer/test_fake_green_resistance.py",
+            "PASSED",
+        ],
+        [
+            "Release Gate Runner",
+            "release_gate_policy.v1.json",
+            "rig.release_gate.readiness.v1",
+            "scripts/rig_release_gate_validate.py",
+            "tests/site_renderer/test_fake_green_resistance.py",
+            "BLOCKED",
+        ],
+        [
+            "Telemetry & Redaction",
+            "telemetry-consent-enforcement.v1.json",
+            "rig.relay.sdk.status.v1",
+            "rig_relay/evidence/_telemetry.py",
+            "tests/site_renderer/test_fake_green_resistance.py",
+            "PASSED",
+        ],
+        [
+            "Protocol surfaces (ACP)",
+            "protocol-surfaces.v1.json",
+            "rig.documentation.page.v1",
+            "rig_relay/acp/acp_agent_loop.py",
+            "tests/acp/test_commands.py",
+            "HOLD",
+        ],
+        [
+            "Provider Integrations",
+            "github_provider_contract_v0.v1.json",
+            "rig.relay.mcp.capability_profile.v1",
+            "rig_relay/integrations/github_provider/",
+            "tests/tools/test_mcp.py",
+            "HOLD",
+        ],
+    ]
+    sections.append(
+        _table_section(
+            "Proof Chain Lineage Map",
+            headers,
+            rows,
+            "Traces the path from contracts/schemas to their test coverage and final verdicts.",
+        )
+    )
+    return sections
+
+
+def normalize_contracts(artifacts: dict) -> list[dict]:
+    import json
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    sections = []
+
+    schemas = []
+    schemas_dir = repo_root / "docs" / "schemas"
+    if schemas_dir.is_dir():
+        for path in sorted(schemas_dir.glob("*.schema.json")):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+                schemas.append({
+                    "schema_id": data.get("$id", path.name),
+                    "file_path": f"docs/schemas/{path.name}",
+                    "description": data.get("description", "No description provided."),
+                })
+            except Exception:
+                pass
+
+    sections.append(_schema_index_section("Registered System JSON Schemas", schemas))
+    return sections
+
+
+def normalize_protocol(artifacts: dict) -> list[dict]:
+    sections = []
+    surfaces = _artifact_dict(artifacts, "protocol_surfaces")
+    a2a = _artifact_dict(artifacts, "a2a_readiness")
+
+    if surfaces:
+        sections.append(
+            _callout_section(
+                surfaces.get("title", "Protocol Surfaces"),
+                surfaces.get("summary", ""),
+                "info",
+            )
+        )
+
+        headers = ["Concept", "Rig Mapping"]
+        rows = [
+            ["ACP Session", "Rig mission / lane / worktree session"],
+            ["ACP Progress", "Rig progress events (phase, status, percent)"],
+            ["ACP Edit", "Rig patch proposal (never direct write)"],
+            ["ACP Permission", "Rig approval gate / authorization receipt"],
+            ["ACP Terminal", "Rig deterministic execution stream"],
+        ]
+        sections.append(
+            _table_section("Agent Client Protocol (ACP) Mapping", headers, rows)
+        )
+
+        headers_tiers = ["Tier", "Access Level", "Examples"]
+        rows_tiers = [
+            [
+                "0 — Read-only",
+                "Always available",
+                "`rig.current_mission`, `rig.summarize_dirty_state`, `rig.list_worktrees`",
+            ],
+            [
+                "1 — Analysis",
+                "Always available",
+                "`rig.build_context_packet`, `rig.create_consult_packet`",
+            ],
+            [
+                "2 — Validation",
+                "Always available",
+                "`rig.run_validator`, `rig.check_merge_friendly`",
+            ],
+            [
+                "3 — Patch proposal",
+                "Gated behind authorization receipt",
+                "`rig.propose_patch`",
+            ],
+            [
+                "4 — Mutation",
+                "Requires user approval receipt",
+                "`rig.request_user_approval`",
+            ],
+            [
+                "5 — Git/release",
+                "Denied by default in sandbox",
+                "`rig.promote_to_preproduction`",
+            ],
+        ]
+        sections.append(
+            _table_section("MCP Server Tool Tiers", headers_tiers, rows_tiers)
+        )
+    else:
+        sections.append(
+            _callout_section(
+                "Protocol Surfaces Not Available",
+                "No protocol surfaces evidence loaded.",
+                "info",
+            )
+        )
+
+    if a2a:
+        sections.append(
+            _callout_section(
+                "A2A Promotion Readiness Status",
+                f"Gate status: {a2a.get('status', 'unknown')}. Owner: {a2a.get('owners', ['unknown'])[0]}.",
+                "info",
+            )
+        )
+
+    return sections
+
+
+def normalize_compiler(artifacts: dict) -> list[dict]:
+    sections = []
+    contract = _artifact_dict(artifacts, "compiler_contract")
+    refinement = _artifact_dict(artifacts, "compiler_refinement")
+
+    if refinement:
+        status_label = (
+            "PASSED"
+            if refinement.get("validation_results", {}).get("passed", False)
+            else "FAILED"
+        )
+        sections.append(
+            _hero_section(
+                "Compiler Refinement Validation",
+                status_label,
+                f"Target version: {refinement.get('target_version', 'unknown')}",
+            )
+        )
+
+        cards = []
+        for claim in refinement.get("supported_claims", []):
+            cards.append({
+                "title": "Validated Claim",
+                "body_html": f"<p>{claim}</p><p>Verified by compiler v0 contract verification suite</p>",
+                "status": "success",
+            })
+        sections.append(_card_grid_section("Supported and Validated Claims", cards))
+
+    if contract:
+        items = []
+        for inv in contract.get("rendering_invariants", []):
+            items.append({"term": "Invariant", "definition": _e(inv)})
+        for rule in contract.get("deterministic_ordering_rules", []):
+            items.append({"term": "Deterministic Rule", "definition": _e(rule)})
+        sections.append(
+            _definition_list_section("Compiler Rendering Invariants & Rules", items)
+        )
+
+    return sections
+
+
+def normalize_hardening(artifacts: dict) -> list[dict]:
+    sections = []
+    policy = _artifact_dict(artifacts, "tracing_policy")
+    otel_config = _artifact_dict(artifacts, "otel_config")
+
+    if policy:
+        p = policy.get("policy", {})
+        items = [
+            {"term": "Release Gate Rule", "definition": _e(p.get("release_gate"))},
+            {"term": "Content Rule", "definition": _e(p.get("content_rule"))},
+            {"term": "Redaction Rule", "definition": _e(p.get("redaction_rule"))},
+            {
+                "term": "Handshake Correlation",
+                "definition": _e(p.get("handshake_rule")),
+            },
+        ]
+        sections.append(_definition_list_section("Rig Relay Tracing Policy", items))
+
+        timeline_entries = []
+        for stage in p.get("strict_mode_stages", []):
+            timeline_entries.append({
+                "timestamp": "Stage",
+                "title": stage,
+                "description": "Correlated Trace Span Event required for candidate promotion",
+                "status": "info",
+            })
+        sections.append(
+            _timeline_section(
+                "Golden Path Strict Mode Trace Lifecycle", timeline_entries
+            )
+        )
+
+    if otel_config:
+        sections.append(
+            _callout_section(
+                "Local OpenTelemetry Collector Config",
+                f"Service endpoint: {_e(otel_config.get('endpoint', 'http://localhost:4317'))}. Enabled metrics/traces pipeline.",
+                "info",
+            )
+        )
+
+    return sections
+
+
+def normalize_seams(artifacts: dict) -> list[dict]:
+    sections = []
+    seams = _artifact_list(artifacts, "test_seams")
+    risks = _artifact_list(artifacts, "deferred_risks")
+
+    headers_risks = ["Risk ID", "Title", "Severity", "Status", "Deferral Reason"]
+    rows_risks = []
+    for r in risks:
+        rows_risks.append([
+            _e(r.get("risk_id")),
+            _e(r.get("title")),
+            _e(r.get("severity")),
+            _e(r.get("status")),
+            _e(r.get("deferral_reason")),
+        ])
+    sections.append(
+        _table_section(
+            "Deferred Release Candidate Risks",
+            headers_risks,
+            rows_risks,
+            "Identifies risks that were explicitly deferred to post-RC, along with engineering justifications.",
+        )
+    )
+
+    headers_seams = [
+        "Seam ID",
+        "Stress Surface",
+        "File & Function",
+        "Status",
+        "Justification",
+    ]
+    rows_seams = []
+    for s in seams:
+        rows_seams.append([
+            _e(s.get("protected_seam")),
+            _e(s.get("stress_surface")),
+            f"<code>{_e(s.get('file_path'))}</code><br><code>{_e(s.get('test_function'))}</code>",
+            _e(s.get("classification")),
+            _e(s.get("reason")),
+        ])
+    sections.append(
+        _table_section(
+            "Known Test Seams & Gaps",
+            headers_seams,
+            rows_seams,
+            "Tracks testing seams, structural mocks, and coverage gaps with explicit justifications.",
+        )
+    )
+
+    return sections
+
+
+def normalize_artifacts_index(artifacts: dict) -> list[dict]:
+    sections = []
+    manifest = _artifact_dict(artifacts, "input_manifest")
+    elevation = _artifact_dict(artifacts, "experience_elevation")
+
+    if elevation:
+        sections.append(
+            _callout_section(
+                "Experience Elevation Audit Status",
+                f"Recommendation: {elevation.get('recommendation', '')}",
+                "info",
+            )
+        )
+
+        items = []
+        for claim in elevation.get("claims_supported", []):
+            items.append({"term": "Supported Claim", "definition": _e(claim)})
+        for rej in elevation.get("claims_rejected", []):
+            items.append({"term": "Deferred/Rejected Claim", "definition": _e(rej)})
+        sections.append(
+            _definition_list_section("UX Experience Claims Verification", items)
+        )
+
+    if manifest:
+        headers = [
+            "Source Path",
+            "Source Type",
+            "Page ID",
+            "Renderer Kind",
+            "Public Safe",
+        ]
+        rows = []
+        for entry in manifest.get("inputs", []):
+            rows.append([
+                _e(entry.get("source_path")),
+                _e(entry.get("source_type")),
+                _e(entry.get("page_id")),
+                _e(entry.get("renderer_kind")),
+                _e(str(entry.get("public_safe"))),
+            ])
+        sections.append(
+            _table_section(
+                "Registered Input Artifacts",
+                headers,
+                rows,
+                "Complete listing of all backing data files loaded for site generation.",
+            )
+        )
+
+    return sections

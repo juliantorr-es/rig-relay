@@ -25,8 +25,37 @@ def build_acp_refusal(
         "refusal_code": refusal_code,
         "reason": reason,
         "content_light": True,
+        "surface": "acp",
         "generated_at": datetime.now(UTC).isoformat(),
     }
+
+
+def build_acp_session_refusal(
+    refusal_code: str,
+    reason: str,
+    method: str,
+    trace_id: str = "",
+    session_id: str = "",
+) -> dict:
+    return build_acp_refusal(
+        refusal_code=refusal_code,
+        reason=reason,
+        method=method,
+        trace_id=trace_id,
+        session_id=session_id,
+    )
+
+
+def build_acp_permission_refusal(
+    permission: str, reason: str, trace_id: str = "", session_id: str = ""
+) -> dict:
+    return build_acp_refusal(
+        refusal_code="refused:permission_missing",
+        reason=reason,
+        method=f"permission/{permission}",
+        trace_id=trace_id,
+        session_id=session_id,
+    )
 
 
 def raise_acp_refusal(

@@ -62,7 +62,7 @@ def _hook_config_from_spy(spy: MagicMock) -> HookConfigResult | None:
 async def _new_session(backend: FakeBackend) -> MagicMock:
     spy, patched_loop = _spy_agent_loop(backend)
     acp = _create_acp_agent()
-    with patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=patched_loop):
+    with patch("rig_relay.core.agent_loop.AgentLoop", side_effect=patched_loop):
         await acp.new_session(cwd=str(Path.cwd()), mcp_servers=[])
     spy.assert_called_once()
     return spy
@@ -92,13 +92,13 @@ async def _load_session(
     loader_result = (loaded_messages or [], {"session_id": session_id})
 
     with (
-        patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=patched_loop),
+        patch("rig_relay.core.agent_loop.AgentLoop", side_effect=patched_loop),
         patch(
-            "vibe.acp.acp_agent_loop.SessionLoader.find_session_by_id",
+            "rig_relay.acp.acp_agent_loop.SessionLoader.find_session_by_id",
             return_value=session_dir,
         ),
         patch(
-            "vibe.acp.acp_agent_loop.SessionLoader.load_session",
+            "rig_relay.acp.acp_agent_loop.SessionLoader.load_session",
             return_value=loader_result,
         ),
     ):

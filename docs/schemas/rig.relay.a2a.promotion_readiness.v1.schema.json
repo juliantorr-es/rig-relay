@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.a2a.promotion_readiness.v1.schema.json",
+  "title": "Rig A2A Promotion Readiness Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "gate_id",
+    "generated_at",
+    "head_sha",
+    "branch",
+    "overall_status",
+    "external_enabled",
+    "local_only",
+    "remote_federation_supported",
+    "promotion_gates",
+    "required_next_actions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.a2a.promotion_readiness.v1"
+    },
+    "gate_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "head_sha": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "overall_status": {
+      "type": "string"
+    },
+    "external_enabled": {
+      "type": "boolean"
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "remote_federation_supported": {
+      "type": "boolean"
+    },
+    "promotion_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "title", "description", "status"],
+        "properties": {
+          "gate_id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string" },
+          "evidence_path": { "type": "string" },
+          "test_evidence": { "type": "string" },
+          "description_gap": { "type": "string" },
+          "required_resolution": { "type": "string" }
+        }
+      }
+    },
+    "required_next_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "telemetry_redaction_notes": {
+      "type": "string"
+    }
+  }
+}

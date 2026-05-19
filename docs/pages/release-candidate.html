@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Gate Readiness — Rig Relay Docs</title>
+<meta name="description" content="Phase-by-phase release gate readiness assessment with blocker and seam tracking.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rc_readiness.html">
+<meta property="og:title" content="Release Gate Readiness">
+<meta property="og:description" content="Phase-by-phase release gate readiness assessment with blocker and seam tracking.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rc_readiness.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Release Gate Readiness">
+<meta name="twitter:description" content="Phase-by-phase release gate readiness assessment with blocker and seam tracking.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/release-candidate.html">Release Candidate</a> / Release Gate Readiness</p>
+
+  <h1>Release Gate Readiness</h1>
+  <p class="doc-summary">Phase-by-phase release gate readiness assessment with blocker and seam tracking.</p>
+  <nav aria-label="Section" class="page-nav"><a href="../pages/rc_verdict.html">← RC Verdict</a><a href="../pages/golden_path.html">Golden Path →</a></nav>
+
+</header>
+<main id="main" class="doc-page">
+  <article>
+<section><h2>Overall Status</h2><p><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></p></section>
+<section><h2>Gate</h2><dl><dt>Gate ID</dt><dd>rc_readiness_v0</dd><dt>Branch</dt><dd>main</dd><dt>Commit</dt><dd><code>cda4ac0</code></dd><dt>Generated</dt><dd>2026-05-18T21:24:16Z</dd></dl></section>
+
+<section><h2>Phases (7)</h2>
+<table>
+<thead><tr><th>Phase ID</th><th>Title</th><th>Status</th><th>Blockers</th><th>Seams</th></tr></thead>
+<tbody>
+<tr><td><code>phase_1_governance_coordination</code></td><td>Governance &amp; Coordination</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td><td>0</td><td>0</td></tr>
+<tr><td><code>phase_2_telemetry_privacy</code></td><td>Telemetry &amp; Privacy</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td><td>2</td><td>1</td></tr>
+<tr><td><code>phase_3_runtime_tools_context_api</code></td><td>Runtime, Tools &amp; Context API</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td><td>0</td><td>1</td></tr>
+<tr><td><code>phase_4_ui_docs_ci_packaging</code></td><td>UI, Docs, CI &amp; Packaging</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td><td>4</td><td>3</td></tr>
+<tr><td><code>phase_5_public_docs_licensing</code></td><td>Public Docs &amp; Licensing</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td><td>2</td><td>2</td></tr>
+<tr><td><code>phase_6_dogfood_operational_readiness</code></td><td>Dogfood Operational Readiness</td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td><td>2</td><td>4</td></tr>
+<tr><td><code>phase_7_protocol_surfaces</code></td><td>Protocol &amp; API Surfaces</td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td><td>2</td><td>4</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="callout callout-warning"><h3>Telemetry &amp; Privacy — Blockers</h3><ul><li><code>blk_telemetry_disabled_degradation</code></li>
+<li><code>blk_debug_packet_quarantine</code></li></ul></section>
+
+<details><summary>Telemetry &amp; Privacy — Remaining Seams (1)</summary><ul><li>Remote telemetry export is opt-in, not yet end-to-end tested</li></ul></details>
+
+<details><summary>Runtime, Tools &amp; Context API — Remaining Seams (1)</summary><ul><li>Tool determinism inventory partially complete</li></ul></details>
+
+<section class="callout callout-warning"><h3>UI, Docs, CI &amp; Packaging — Blockers</h3><ul><li><code>blk_phase4_ci_repo_ref</code></li>
+<li><code>blk_phase4_pi_lens_in_git</code></li>
+<li><code>blk_phase4_deferred_checks_required</code></li>
+<li><code>blk_ci_cd_structured_evidence_surface</code></li></ul></section>
+
+<details><summary>UI, Docs, CI &amp; Packaging — Remaining Seams (3)</summary><ul><li>Old Markdown docs not yet fully migrated</li>
+<li>Desktop E2E tests limited</li>
+<li>CI evidence surface not yet schema-governed</li></ul></details>
+
+<section class="callout callout-warning"><h3>Public Docs &amp; Licensing — Blockers</h3><ul><li><code>blk_phase5_license_policy_json_missing</code></li>
+<li><code>blk_phase5_repo_policy_json_missing</code></li></ul></section>
+
+<details><summary>Public Docs &amp; Licensing — Remaining Seams (2)</summary><ul><li>Public doc audit tooling not yet built</li>
+<li>Third-party notice completeness not yet verified</li></ul></details>
+
+<section class="callout callout-warning"><h3>Dogfood Operational Readiness — Blockers</h3><ul><li><code>blk_internal_sdk_programmatic_api_v0</code></li>
+<li><code>blk_internal_a2a_dogfood_substrate_v0</code></li></ul></section>
+
+<details><summary>Dogfood Operational Readiness — Remaining Seams (4)</summary><ul><li>Golden path has not been exercised by a human reviewer</li>
+<li>Automated installability smoke test does not equal dogfood readiness</li>
+<li>Internal SDK v0 facade not yet implemented</li>
+<li>Internal A2A dogfood substrate not yet canonicalized</li></ul></details>
+
+<section class="callout callout-warning"><h3>Protocol &amp; API Surfaces — Blockers</h3><ul><li><code>blk_mcp_read_only_server_alpha</code></li>
+<li><code>blk_acp_session_auth_resume_hardening</code></li></ul></section>
+
+<details><summary>Protocol &amp; API Surfaces — Remaining Seams (4)</summary><ul><li>MCP server skeleton needs wiring to mcp library transport layer</li>
+<li>MCP mutation tiers 3-5 gated to post-alpha</li>
+<li>ACP resume_session and authenticate not yet implemented</li>
+<li>ACP NON_INTERACTIVE_DISABLED_TOOLS symbol undefined</li></ul></details>
+
+<section><h2>Policy</h2>
+<table>
+<thead><tr><th>Rule</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>allowed_markdown_exceptions</td><td>[&#x27;AGENTS.md&#x27;, &#x27;README.md&#x27;, &#x27;LICENSE&#x27;, &#x27;CONTRIBUTING.md&#x27;, &#x27;CONTRIBUTOR_LICENSE_AGREEMENT.md&#x27;, &#x27;ATTRIBUTION.md&#x27;, &#x27;UPSTREAM.md&#x27;, &#x27;THIRD_PARTY_NOTICES.md&#x27;, &#x27;CHANGELOG.md&#x27;, &#x27;SECURITY.md&#x27;, &#x27;CODE_OF_CONDUCT.md&#x27;]</td></tr>
+<tr><td>blocker_reference_enforcement</td><td>True</td></tr>
+<tr><td>markdown_evidence_enforcement</td><td>True</td></tr>
+<tr><td>missing_evidence_enforcement</td><td>True</td></tr>
+<tr><td>passing_phase_blocker_check</td><td>True</td></tr>
+<tr><td>test_classification_enforcement</td><td>True</td></tr>
+<tr><td>validation_run_reference_enforcement</td><td>True</td></tr>
+</tbody>
+</table>
+</section>
+
+  </article>
+</main>
+<footer>
+  <p class="source-ref">Source: <code>docs/json/release_gate/rc_readiness_gate.v1.json</code> (SHA: cda4ac0)</p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

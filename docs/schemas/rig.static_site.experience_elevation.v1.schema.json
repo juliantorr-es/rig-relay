@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.static_site.experience_elevation.v1",
+  "title": "Static Site Experience Elevation Evidence Schema",
+  "description": "Defines validation criteria and quality checks for the public experience layer of Rig Relay static website.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "design_system_summary",
+    "accessibility_checks",
+    "performance_checks",
+    "security_checks",
+    "deterministic_render_checks",
+    "pages_added_or_improved",
+    "evidence_surfaces_rendered",
+    "claims_supported",
+    "claims_rejected",
+    "remaining_seams",
+    "recommendation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.static_site.experience_elevation.v1"
+    },
+    "artifact_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "design_system_summary": {
+      "type": "object",
+      "required": ["tokens", "fonts", "styling_choices"],
+      "properties": {
+        "tokens": { "type": "string" },
+        "fonts": { "type": "string" },
+        "styling_choices": { "type": "string" }
+      }
+    },
+    "accessibility_checks": {
+      "type": "object",
+      "required": ["color_contrast", "skip_links", "keyboard_focus", "form_labels", "aria_attributes"],
+      "properties": {
+        "color_contrast": { "type": "string" },
+        "skip_links": { "type": "string" },
+        "keyboard_focus": { "type": "string" },
+        "form_labels": { "type": "string" },
+        "aria_attributes": { "type": "string" }
+      }
+    },
+    "performance_checks": {
+      "type": "object",
+      "required": ["layout_stability", "file_size_constraints", "no_js_blocking_navigation"],
+      "properties": {
+        "layout_stability": { "type": "string" },
+        "file_size_constraints": { "type": "string" },
+        "no_js_blocking_navigation": { "type": "string" }
+      }
+    },
+    "security_checks": {
+      "type": "object",
+      "required": ["html_escaping_validation", "csp_validation", "content_light_secrets_scrubbing"],
+      "properties": {
+        "html_escaping_validation": { "type": "string" },
+        "csp_validation": { "type": "string" },
+        "content_light_secrets_scrubbing": { "type": "string" }
+      }
+    },
+    "deterministic_render_checks": {
+      "type": "object",
+      "required": ["hashes_matching", "stable_url_routing", "stable_navigation_sorting"],
+      "properties": {
+        "hashes_matching": { "type": "string" },
+        "stable_url_routing": { "type": "string" },
+        "stable_navigation_sorting": { "type": "string" }
+      }
+    },
+    "pages_added_or_improved": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidence_surfaces_rendered": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "claims_supported": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "claims_rejected": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendation": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

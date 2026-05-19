@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.tracing_policy.v1.schema.json",
+  "title": "Rig Tracing Policy Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "title", "generated_at", "policy", "golden_path_event_names"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.tracing_policy.v1"
+    },
+    "title": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "release_gate",
+        "trace_name",
+        "envelope_version",
+        "content_rule",
+        "receipts_vs_traces",
+        "redaction_rule",
+        "handshake_rule",
+        "projection_rule",
+        "status_contradiction_rule",
+        "shutdown_rule",
+        "strict_mode_stages",
+        "failure_conditions"
+      ],
+      "properties": {
+        "release_gate": { "type": "string" },
+        "trace_name": { "type": "string" },
+        "envelope_version": { "type": "string" },
+        "content_rule": { "type": "string" },
+        "receipts_vs_traces": { "type": "string" },
+        "redaction_rule": { "type": "string" },
+        "handshake_rule": { "type": "string" },
+        "projection_rule": { "type": "string" },
+        "status_contradiction_rule": { "type": "string" },
+        "shutdown_rule": { "type": "string" },
+        "strict_mode_stages": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "failure_conditions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "golden_path_event_names": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}

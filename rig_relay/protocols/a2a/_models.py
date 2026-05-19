@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Literal
 
 
 class A2ATaskStatus(StrEnum):
@@ -40,6 +41,9 @@ class A2ATaskCard:
     input_hash: str = ""
     output_hash: str = ""
     trace_id: str = ""
+    messages: list[str] = field(default_factory=list)
+    events: list[A2ATaskLifecycleEvent] = field(default_factory=list)
+    seq: int = 0
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     content_light: bool = True
@@ -49,7 +53,7 @@ class A2ATaskCard:
 
 @dataclass
 class A2ATaskLifecycleEvent:
-    event_type: str
+    event_type: A2ATaskStatus
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     metadata_hash: str = ""
     schema_version: str = "rig.relay.a2a.task_lifecycle_event.v1"
@@ -57,6 +61,7 @@ class A2ATaskLifecycleEvent:
     trace_id: str = ""
     content_light: bool = True
     generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    seq: int = 0
 
 
 @dataclass
@@ -73,7 +78,7 @@ class A2ADelegationReceipt:
     receiving_agent_id: str
     task_id: str
     trace_id: str
-    verdict: str
+    verdict: Literal["allowed", "refused", "completed"]
     refusal_code: str = ""
     content_light: bool = True
     schema_version: str = "rig.relay.a2a.delegation_receipt.v1"

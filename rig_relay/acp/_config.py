@@ -12,6 +12,7 @@ from acp.schema import (
     SetSessionConfigOptionResponse,
 )
 
+from rig_relay.acp._disabled_tools import NON_INTERACTIVE_DISABLED_TOOLS
 from rig_relay.acp.session import AcpSessionLoop
 from rig_relay.acp.utils import (
     THINKING_LEVELS,

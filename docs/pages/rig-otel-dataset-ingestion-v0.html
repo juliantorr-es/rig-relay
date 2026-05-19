@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig OTel Dataset Ingestion v0 — Rig Relay Docs</title>
+<meta name="description" content="Local read-side OTel ingestion dataset for studying external agent/tool behavior without turning OTel into canonical Rig truth.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-otel-dataset-ingestion-v0.html">
+<meta property="og:title" content="Rig OTel Dataset Ingestion v0">
+<meta property="og:description" content="Local read-side OTel ingestion dataset for studying external agent/tool behavior without turning OTel into canonical Rig truth.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-otel-dataset-ingestion-v0.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig OTel Dataset Ingestion v0">
+<meta name="twitter:description" content="Local read-side OTel ingestion dataset for studying external agent/tool behavior without turning OTel into canonical Rig truth.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Rig OTel Dataset Ingestion v0</h1>
+  <p class="doc-summary">Local read-side OTel ingestion dataset for studying external agent/tool behavior without turning OTel into canonical Rig truth.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-19</dd>
+    <dt>Source</dt><dd><code>docs/json/otel/otel_dataset_ingestion_v0.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="purpose" class="disclosure-standard" data-disclosure-level="standard"></h1>
+
+<p id="purpose-body" class="disclosure-standard" data-disclosure-level="standard">This dataset captures OpenTelemetry traces, logs, and metrics into a local analytical substrate so Rig Relay can study tool and agent behavior before deciding which hardening slices matter.</p>
+
+<div class="decision disclosure-standard" id="local-only" data-disclosure-level="standard">
+  <h4>Local-only by default</h4>
+  <p>OpenTelemetry is observed locally, normalized locally, and analyzed locally. It does not become authoritative coordination truth, release-gate truth, or a remote vendor feed.</p>
+</div>
+
+<ul id="sources" class="disclosure-standard" data-disclosure-level="standard">
+  <li>OpenCode spans and events</li>
+  <li>OpenTelemetry Collector file exports</li>
+  <li>future local emitters that already speak OTLP</li>
+</ul>
+
+<div class="risk disclosure-standard" id="redaction" data-disclosure-level="standard">
+  <h4>Redaction posture</h4>
+  <p>Raw prompts, raw completions, credentials, secrets, private file contents, private repo contents, and raw absolute paths are hashed or dropped before normalization and summary generation.</p>
+</div>
+
+<p id="non-canonical" class="disclosure-standard" data-disclosure-level="standard">The normalized dataset is read-side only. It informs future tool hardening and may later emit seam-level coordination events, but it does not directly mutate the Coordination Event Ledger in this slice.</p>
+
+<p id="future-bridge" class="disclosure-standard" data-disclosure-level="standard">Useful signals from this dataset can later map into coordination seam events such as repeated tool failures, retry loops, missing parent spans, or high-latency tool categories.</p>
+
+<h2 id="not-implemented" class="disclosure-standard" data-disclosure-level="standard"></h2>
+
+<ul id="not-implemented-body" class="disclosure-standard" data-disclosure-level="standard">
+  <li>No remote telemetry exporter</li>
+  <li>No canonical coordination ledger writes</li>
+  <li>No release-gate mutation path</li>
+  <li>No DuckDB mutation authority</li>
+  <li>No dependency additions beyond existing repo dependencies</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/otel/otel_dataset_ingestion_v0.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

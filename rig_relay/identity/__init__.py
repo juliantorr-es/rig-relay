@@ -17,11 +17,25 @@ Token storage:
     - DevFileTokenStore (dev-only, temporary plaintext)
     - MacKeychainTokenStore (future)
 
+Credential store:
+    - CredentialStore (ABC protocol)
+    - InMemoryCredentialStore (testing)
+    - KeychainBackedCredentialStore (macOS keychain)
+    - NoOpCredentialStore (intentionally unavailable)
+
 See ``docs/governance/identity-provider-policy.md``.
 """
 
 from __future__ import annotations
 
+from rig_relay.identity._credential_store import (
+    CredentialMetadata,
+    CredentialStore,
+    InMemoryCredentialStore,
+    KeychainBackedCredentialStore,
+    NoOpCredentialStore,
+    get_credential_store,
+)
 from rig_relay.identity.auth_session_manager import (
     AuthSession,
     AuthSessionManager,
@@ -44,15 +58,21 @@ __all__ = [
     "AuthSession",
     "AuthSessionManager",
     "AuthSessionStatus",
+    "CredentialMetadata",
+    "CredentialStore",
     "DevFileTokenStore",
     "IdentityAccountSummary",
     "IdentityProvider",
     "IdentityProviderKind",
     "IdentitySessionStatus",
+    "InMemoryCredentialStore",
+    "KeychainBackedCredentialStore",
+    "NoOpCredentialStore",
     "OAuthCallbackReceipt",
     "OAuthStartRequest",
     "OAuthStartResult",
     "TokenBundleMetadata",
     "TokenStore",
     "get_auth_session_manager",
+    "get_credential_store",
 ]

@@ -1,0 +1,89 @@
+{
+  "$schema": "rig.static_site.compiler_contract.v1",
+  "input_artifact_classes": [
+    "governance",
+    "compiler",
+    "integrations",
+    "release_gate",
+    "otel",
+    "coordination",
+    "protocol/sdk",
+    "provider",
+    "CI evidence"
+  ],
+  "allowed_schema_families": [
+    "rig.site.*",
+    "rig.release_gate.*",
+    "rig.release_candidate.*",
+    "rig.testing.*",
+    "rig.security.*",
+    "rig.relay.*",
+    "rig.static_site.*"
+  ],
+  "required_metadata": [
+    "head_sha",
+    "branch",
+    "generated_at",
+    "schema_version"
+  ],
+  "rendering_invariants": [
+    "Every page must have an explicitly defined route and a unique page_id.",
+    "All HTML outputs must have the <!DOCTYPE html> declaration and an <html> root.",
+    "Every page must have a skip-link and a <main> landmark with id=\"main\".",
+    "Generated HTML must have relative links only, with no absolute hostname prefixes.",
+    "All text injected from artifacts must be HTML-escaped or sanitized."
+  ],
+  "deterministic_ordering_rules": [
+    "Page generation order is sorted alphabetically by page_id.",
+    "Navigation items are sorted alphabetically by page_id.",
+    "Dynamic tables/lists from JSONL files are ordered by their primary keys or timestamps."
+  ],
+  "content_light_redaction_posture": {
+    "default_posture": "content_light",
+    "forbidden_fields": [
+      "api_key",
+      "secret",
+      "password",
+      "private_key",
+      "token",
+      "auth_token",
+      "bearer",
+      "credential"
+    ]
+  },
+  "forbidden_raw_fields": [
+    "api_key",
+    "secret",
+    "password",
+    "private_key",
+    "token",
+    "auth_token",
+    "bearer",
+    "credential"
+  ],
+  "navigation_index_expectations": [
+    "A site index file (index.html) must be generated with links to all valid routes.",
+    "A navigation manifest (site_manifest.v1.json) must be generated containing the list of route metadata."
+  ],
+  "cross_link_behavior": [
+    "Internal cross-links must resolve correctly using relative paths.",
+    "No absolute URLs pointing to localhost or hardcoded repositories are allowed in internal links."
+  ],
+  "schema_validation_requirements": [
+    "The input manifest must be validated against rig.site.input_manifest.v1 schema before processing.",
+    "Each page model must be validated against rig.site.page.v1 schema before processing.",
+    "Each source JSON artifact must be validated against its declared schema if schema_path is present."
+  ],
+  "output_artifact_requirements": [
+    "A render report must be generated validating against rig.site.render_report.v1 schema."
+  ],
+  "failure_refusal_behavior": [
+    "If an artifact is invalid or unsafe, a failure verdict must be recorded in the page's status.",
+    "The error must be logged and written to the render report under pages with status: failed.",
+    "No HTML page is rendered for a critical validation failure, or a refusal page is output instead."
+  ],
+  "fake_green_risks": [
+    "Fake green occurs when invalid schemas or missing files are treated as warnings and return exit code 0.",
+    "Fake green occurs when tests run on mock/synthetic data only, failing to catch real-world syntax changes."
+  ]
+}

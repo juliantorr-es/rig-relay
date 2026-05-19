@@ -1,0 +1,20 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "protocol",
+  "title": "Protocol Surfaces & Tiers",
+  "route": "/protocol/index.html",
+  "layout": "default",
+  "source_artifact_paths": [
+    "docs/json/protocols/a2a_promotion_readiness.v1.json",
+    "docs/json/protocols/ide-sidecar-ipc.v1.json",
+    "docs/json/protocols/mcp-context-tools.v1.json",
+    "docs/json/protocol-surfaces.v1.json"
+  ],
+  "generated_from_schema_versions": [
+    "rig.relay.a2a.promotion_readiness.v1",
+    "rig.documentation.page.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [],
+  "generated_at": "2026-05-19T19:40:00Z"
+}

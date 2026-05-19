@@ -24,7 +24,7 @@ def acp_agent_loop(backend: FakeBackend) -> VibeAcpAgentLoop:
             )
             super().__init__(*args, **kwargs, backend=backend)
 
-    patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=PatchedAgent).start()
+    patch("rig_relay.core.agent_loop.AgentLoop", side_effect=PatchedAgent).start()
     vibe_acp_agent = VibeAcpAgentLoop()
     client = FakeClient()
     vibe_acp_agent.on_connect(client)

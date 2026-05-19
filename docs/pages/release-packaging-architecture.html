@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Packaging Architecture v1 — Rig Relay Docs</title>
+<meta name="description" content="">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/release-packaging-architecture.html">
+<meta property="og:title" content="Release Packaging Architecture v1">
+<meta property="og:description" content="">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/release-packaging-architecture.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Release Packaging Architecture v1">
+<meta name="twitter:description" content="">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Release Packaging Architecture v1</h1>
+  <p class="doc-summary"></p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>draft</dd>
+    
+    
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Official Release Mint</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">GitHub Actions is the official release bundle mint for Rig Relay. All release artifacts (Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, Windows x86_64) are built on OS-native GitHub Actions runners via the build-and-upload.yml workflow.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Every release bundle includes a schema-governed manifest (rig.release_bundle_manifest.v1) with SHA-256 checksums, provenance metadata, and signing placeholders. Manual uploads without manifest/checksum evidence are not canonical release artifacts.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Codespaces / Devcontainer Role</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Codespaces and devcontainers are interactive packaging labs for Linux repro/debug and packaging-script development. They use the same scripts/package_release.py entrypoint but do not produce official release artifacts. The runner_class field in the manifest will be codespaces_lab, and official_release will always be false in this context.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Platform Constraints</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Linux bundles can be debugged and developed in Codespaces (Linux container). Windows bundles MUST be packaged on a Windows runner (windows-latest or windows-2022). Codespaces does not provide a Windows environment and cannot be used for Windows packaging.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Bundle Evidence</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Each release bundle produces: (1) release_bundle_manifest.v1.json — the canonical manifest, (2) SHA256SUMS — GNU-format checksums, (3) release_evidence.v1.jsonl — append-only structured evidence line. All three are uploaded as GitHub Actions artifacts alongside the binary bundle.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Signing Roadmap</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Signing and notarization are explicitly placeholder in v1. The manifest includes signing.method and signing.status fields that default to &#x27;none&#x27; and &#x27;unavailable&#x27;. Future slices will add: codesign (macOS), signtool (Windows), GPG signatures (Linux), and Apple notarytool integration.</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Telemetry/Redaction</p>
+
+<p id="" class="disclosure-standard" data-disclosure-level="standard">Release bundle manifests contain no raw prompts, secrets, credentials, private file contents, or private repository contents. All content-derived data uses SHA-256 hashes. The manifest is a content-light evidence artifact suitable for public audit.</p>
+
+  </article>
+</main>
+<footer>
+  
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

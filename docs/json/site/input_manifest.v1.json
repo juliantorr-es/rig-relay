@@ -17,7 +17,27 @@
     {"source_path": "docs/json/testing/test_inventory.v1.json", "source_type": "json", "page_id": "testing", "renderer_kind": "test_inventory", "public_safe": true, "redaction_required": false},
     {"source_path": "docs/json/testing/known_test_seams.v1.jsonl", "source_type": "jsonl", "page_id": "testing", "renderer_kind": "test_inventory", "public_safe": true, "redaction_required": false},
     {"source_path": "README.md", "source_type": "static_asset", "page_id": "home", "renderer_kind": "readme", "public_safe": true, "redaction_required": false},
-    {"source_path": "SECURITY.md", "source_type": "static_asset", "page_id": "home", "renderer_kind": "readme", "public_safe": true, "redaction_required": false}
+    {"source_path": "SECURITY.md", "source_type": "static_asset", "page_id": "home", "renderer_kind": "readme", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_compiler_contract.v1.json", "source_type": "json", "page_id": "proof-chain", "renderer_kind": "compiler_contract", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_compiler_refinement_v0.v1.json", "source_type": "json", "page_id": "proof-chain", "renderer_kind": "compiler_refinement", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/release_gate/rc_readiness_gate.v1.json", "source_type": "json", "page_id": "proof-chain", "renderer_kind": "release_gate", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/testing/test_inventory.v1.json", "source_type": "json", "page_id": "proof-chain", "renderer_kind": "test_inventory", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/release_gate/rc_candidate_verdict.v1.json", "source_type": "json", "page_id": "proof-chain", "renderer_kind": "rc_verdict", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_compiler_contract.v1.json", "source_type": "json", "page_id": "contracts", "renderer_kind": "compiler_contract", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/protocols/a2a_promotion_readiness.v1.json", "source_type": "json", "page_id": "protocol", "renderer_kind": "a2a_readiness", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/protocols/ide-sidecar-ipc.v1.json", "source_type": "json", "page_id": "protocol", "renderer_kind": "ide_ipc", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/protocols/mcp-context-tools.v1.json", "source_type": "json", "page_id": "protocol", "renderer_kind": "mcp_tools", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/protocol-surfaces.v1.json", "source_type": "json", "page_id": "protocol", "renderer_kind": "protocol_surfaces", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_compiler_contract.v1.json", "source_type": "json", "page_id": "compiler", "renderer_kind": "compiler_contract", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_compiler_refinement_v0.v1.json", "source_type": "json", "page_id": "compiler", "renderer_kind": "compiler_refinement", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/otel/local_collector_config.v1.json", "source_type": "json", "page_id": "hardening", "renderer_kind": "otel_config", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/otel/otel_dataset_ingestion_v0.v1.json", "source_type": "json", "page_id": "hardening", "renderer_kind": "otel_ingestion", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/tracing/correlated_visibility_matrix.v1.json", "source_type": "json", "page_id": "hardening", "renderer_kind": "tracing_matrix", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/tracing_policy.v1.json", "source_type": "json", "page_id": "hardening", "renderer_kind": "tracing_policy", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/testing/known_test_seams.v1.jsonl", "source_type": "jsonl", "page_id": "seams", "renderer_kind": "test_seams", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/release_gate/rc_deferred_risks.v1.jsonl", "source_type": "jsonl", "page_id": "seams", "renderer_kind": "deferred_risks", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/input_manifest.v1.json", "source_type": "json", "page_id": "artifacts", "renderer_kind": "input_manifest", "public_safe": true, "redaction_required": false},
+    {"source_path": "docs/json/site/static_site_experience_elevation.v1.json", "source_type": "json", "page_id": "artifacts", "renderer_kind": "experience_elevation", "public_safe": true, "redaction_required": false}
   ],
   "generated_at": "2026-05-18T00:00:00Z"
 }

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repository Security Hygiene — Rig Relay Docs</title>
+<meta name="description" content="Security repository hygiene checks, release gate alignment, and tally.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/security-hygiene.html">
+<meta property="og:title" content="Repository Security Hygiene">
+<meta property="og:description" content="Security repository hygiene checks, release gate alignment, and tally.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/security-hygiene.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Repository Security Hygiene">
+<meta name="twitter:description" content="Security repository hygiene checks, release gate alignment, and tally.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <h1>Repository Security Hygiene</h1>
+  <p class="doc-summary">Security repository hygiene checks, release gate alignment, and tally.</p>
+</header>
+<main id="main" class="doc-page">
+  <article>
+
+    <section><h2>Summary</h2>
+      <div class="callout callout-info">
+        <strong>Overall Status:</strong> <span class="badge" style="background:#28a745">passed</span>
+      </div>
+      <dl class="doc-meta">
+        <dt>Generated</dt><dd>2026-05-18T05:37:00Z</dd>
+        <dt>Commit</dt><dd><code>361b93a50f857335b65e8a6da119548cb14b1abf</code></dd>
+        <dt>Source</dt><dd><code>docs/json/release_candidate/rc_security_repository_hygiene.v1.json</code></dd>
+      </dl>
+    </section>
+    <section><h2>Checks (6)</h2>
+      <table>
+        <thead><tr><th>Check ID</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody><tr>
+  <td><code>security_policy_private_reporting</code></td>
+  <td>Security policy supports private vulnerability reporting and 0.1.0a1 scope</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr>
+<tr>
+  <td><code>workflow_least_privilege</code></td>
+  <td>Workflow findings: 4</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr>
+<tr>
+  <td><code>license_consistency</code></td>
+  <td>Public license metadata is AGPL-3.0-or-later across policy and package metadata</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr>
+<tr>
+  <td><code>metadata_consistency</code></td>
+  <td>README, pyproject, policies, changelog, and install script are aligned</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr>
+<tr>
+  <td><code>secret_and_path_hygiene</code></td>
+  <td>Secret/path scan findings: 0</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr>
+<tr>
+  <td><code>markdown_exception_policy</code></td>
+  <td>Allowed Markdown exceptions remain allowed and forbidden report paths are rejected</td>
+  <td><span class="badge" style="background:#28a745">pass</span></td>
+</tr></tbody>
+      </table>
+    </section>
+    <section><h2>Tally</h2>
+      <table>
+        <tr><th>Passed</th><td>6</td></tr>
+        <tr><th>Failed</th><td>0</td></tr>
+        <tr><th>Warning</th><td>0</td></tr>
+      </table>
+    </section>
+    <section><h2>Release Gates</h2><p>Hygiene gates depend on all checks passing. Current overall status: passed.</p></section>
+    <section><h2>Workflow Findings (4)</h2><table><thead><tr><th>Workflow</th><th>Finding</th><th>Severity</th><th>Detail</th></tr></thead><tbody><tr>
+  <td><code>.github/workflows/build-and-upload.yml</code></td>
+  <td><code>workflow.permissions_not_explicit</code></td>
+  <td>low</td>
+  <td>Top-level permissions are not explicitly declared</td>
+</tr>
+<tr>
+  <td><code>.github/workflows/build-and-upload.yml</code></td>
+  <td><code>workflow.permissions_guarded_write</code></td>
+  <td>low</td>
+  <td>Job &#x27;attach-to-release&#x27; has elevated permissions (contents: write)</td>
+</tr>
+<tr>
+  <td><code>.github/workflows/ci.yml</code></td>
+  <td><code>workflow.permissions_not_explicit</code></td>
+  <td>low</td>
+  <td>Top-level permissions are not explicitly declared</td>
+</tr>
+<tr>
+  <td><code>.github/workflows/issue-labeler.yml</code></td>
+  <td><code>workflow.permissions_not_explicit</code></td>
+  <td>low</td>
+  <td>Top-level permissions are not explicitly declared</td>
+</tr></tbody></table></section>
+    <section><h2>Files Checked (22)</h2><details><summary>View files</summary><ul><li><code>README.md</code></li><li><code>SECURITY.md</code></li><li><code>LICENSE</code></li><li><code>CHANGELOG.md</code></li><li><code>CODE_OF_CONDUCT.md</code></li><li><code>CONTRIBUTING.md</code></li><li><code>THIRD_PARTY_NOTICES.md</code></li><li><code>ATTRIBUTION.md</code></li><li><code>pyproject.toml</code></li><li><code>.gitignore</code></li><li><code>docs/json/repository_policy.v1.json</code></li><li><code>docs/json/license_policy.v1.json</code></li><li><code>docs/json/release_gate/rc_candidate_verdict.v1.json</code></li><li><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></li><li><code>scripts/install.sh</code></li><li><code>.github/workflows/build-and-upload.yml</code></li><li><code>.github/workflows/ci.yml</code></li><li><code>.github/workflows/issue-labeler.yml</code></li><li><code>.github/workflows/pages.yml</code></li><li><code>.github/workflows/release.yml</code></li><li><code>.github/ISSUE_TEMPLATE/bug-report.yml</code></li><li><code>.github/ISSUE_TEMPLATE/config.yml</code></li></ul></details></section>
+
+  </article>
+</main>
+<footer>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

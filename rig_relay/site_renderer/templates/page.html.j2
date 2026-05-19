@@ -15,7 +15,7 @@
       {% for card in section.cards %}
       <div class="card status-{{ card.status | default('info') }}"{% if card.id %} data-id="{{ card.id }}"{% endif %}>
         <h3>{{ card.title }}</h3>
-        <div class="card-body">{{ card.body_html | safe }}</div>
+        <div class="card-body">{{ card.body_html }}</div>
         {% if card.source_ref %}<div class="card-source">Source: {{ card.source_ref }}</div>{% endif %}
       </div>
       {% endfor %}
@@ -76,7 +76,7 @@
   {% elif section.kind == "callout" %}
   <section class="callout callout-{{ section.callout_class | default('info') }}">
     {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
-    <div class="callout-body">{{ section.body_html | safe }}</div>
+    <div class="callout-body">{{ section.body_html }}</div>
   </section>
   {% elif section.kind == "schema_index" %}
   <section>
@@ -91,6 +91,22 @@
         </tbody>
       </table>
     </div>
+  </section>
+  {% elif section.kind == "raw_json" %}
+  <section class="raw-json-section">
+    <details class="raw-json-details">
+      <summary><strong>{{ section.title | default('Raw Canonical JSON Payload') }}</strong></summary>
+      {% if section.metadata %}
+      <div class="metadata-block">
+        <dl class="definition-list">
+          {% for k, v in section.metadata.items() %}
+          <dt>{{ k | replace('_', ' ') | title }}</dt><dd>{{ v }}</dd>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endif %}
+      <pre><code>{{ section.payload }}</code></pre>
+    </details>
   </section>
   {% endif %}
 {% endfor %}

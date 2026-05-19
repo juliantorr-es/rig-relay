@@ -7,12 +7,14 @@ import json
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 from rig_relay.sdk import (
     RigClient,
     RigRefusal,
     RigRunResult,
     RigStatus,
+    RigTransportBudgets,
     RigVerdict,
     get_sdk_status,
 )
@@ -51,14 +53,14 @@ class TestSDKV1:
         assert d.verdict == RigVerdict.REFUSED
 
     def test_mcp_read_only_bridge_receipt(self):
-        r = RigClient().run_mcp_read_only("rig.get_context", "t2")
+        r = RigClient().run_mcp_read_only("rig.current_mission", "t2")
         assert r.verdict == RigVerdict.COMPLETED
         assert r.trace_id == "t2"
 
     def test_trace_context_preserved(self):
         c = RigClient(trace_id="pt-123")
         assert c.status().trace_support is True
-        r = c.run_mcp_read_only("x", "pt-123")
+        r = c.run_mcp_read_only("rig.current_mission", "pt-123")
         assert r.trace_id == "pt-123"
 
     def test_no_desktop_provider_imports(self):
@@ -78,3 +80,62 @@ class TestSDKV1:
         s = get_sdk_status()
         assert s.provider_id == "rig_sdk"
         assert s.mcp_available is True
+
+    @pytest.mark.asyncio
+    async def test_run_mcp_read_only_returns_completed_for_tier0_tool(self):
+        c = RigClient(trace_id="t0-test")
+        r = await c.async_run_mcp_read_only("rig.current_mission", "t0-test")
+        assert r.verdict == RigVerdict.COMPLETED
+        assert r.trace_id == "t0-test"
+
+    @pytest.mark.asyncio
+    async def test_run_mcp_read_only_refuses_tier4_tool(self):
+        c = RigClient(trace_id="t4-test")
+        r = await c.async_run_mcp_read_only("rig.request_user_approval", "t4-test")
+        assert r.verdict == RigVerdict.REFUSED
+        assert r.refusal_code == "mutation_refused"
+
+    @pytest.mark.asyncio
+    async def test_list_mcp_tools_returns_tool_list(self):
+        c = RigClient()
+        r = await c.async_list_mcp_tools("t-list")
+        assert r.verdict == RigVerdict.COMPLETED
+        assert r.operation_kind == "list_mcp_tools"
+
+    @pytest.mark.asyncio
+    async def test_list_mcp_resources_returns_resource_list(self):
+        c = RigClient()
+        r = await c.async_list_mcp_resources("t-res")
+        assert r.verdict == RigVerdict.COMPLETED
+        assert r.operation_kind == "list_mcp_resources"
+
+    @pytest.mark.asyncio
+    async def test_list_mcp_prompts_returns_prompt_list(self):
+        c = RigClient()
+        r = await c.async_list_mcp_prompts("t-pr")
+        assert r.verdict == RigVerdict.COMPLETED
+        assert r.operation_kind == "list_mcp_prompts"
+
+    def test_send_a2a_local_task_delegates_task(self):
+        r = RigClient().send_a2a_local_task("task-1", "agent-builder", "t-a2a")
+        assert r.verdict == RigVerdict.COMPLETED
+        assert r.operation_kind == "a2a_local_task"
+
+    def test_transport_budgets_model_defaults(self):
+        b = RigTransportBudgets()
+        assert b.max_request_bytes == 65536
+        assert b.max_response_bytes == 65536
+        assert b.max_pending_requests == 64
+        assert b.content_light is True
+        c = RigClient()
+        assert c.budgets.max_concurrent_sessions == 8
+        assert c.budgets.request_timeout_seconds == 30
+
+    def test_sdk_trace_id_propagated_across_protocols(self):
+        c = RigClient(trace_id="pt-cross")
+        mr = c.run_mcp_read_only("rig.current_mission", "pt-cross")
+        assert mr.trace_id == "pt-cross"
+        ar = c.start_acp_session("pt-cross")
+        assert ar.trace_id == "pt-cross"
+        a2a = c.send_a2a_local_task("t-1", "agent-1", "pt-cross")
+        assert a2a.trace_id == "pt-cross"

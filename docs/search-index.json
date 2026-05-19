@@ -1124,6 +1124,21 @@
     "path": "pages/coordination-ownership-policy.html"
   },
   {
+    "document_id": "coordination-ledger-contract-v1",
+    "title": "Coordination Event Ledger Contract v1",
+    "summary": "Schema-governed substrate for recording proof-chain seams, fake-green tests, and release-blocker evidence gaps discovered by Rig Relay contract audits. Defines seam event vocabulary, proof-chain event format, fake-green event format, content-light path hashing rule, and payload builder API.",
+    "tags": [
+      "coordination",
+      "ledger",
+      "contract",
+      "audit",
+      "seam",
+      "proof-chain",
+      "fake-green"
+    ],
+    "path": "pages/coordination-ledger-contract-v1.html"
+  },
+  {
     "document_id": "cross-session-coordination",
     "title": "Cross-Session Coordination",
     "summary": "Rig Relay sessions coordinate through typed state, not chat transcripts.",
@@ -1196,6 +1211,38 @@
     "summary": "**Draft.** Derived from Intake's security boundary policies and adapted for",
     "tags": [],
     "path": "pages/frontend-rendering-safety.html"
+  },
+  {
+    "document_id": "frontend-bridge-backend-contract-v1",
+    "title": "Frontend / Bridge / Backend Contract v1",
+    "summary": "Canonical schema-governed contract defining frontend intents, bridge envelopes, backend projection patches, and lifecycle events for Rig Relay's desktop cockpit. Establishes trust boundary, mutation semantics, trace propagation, refusal semantics, and content-light rules.",
+    "tags": [
+      "frontend",
+      "bridge",
+      "backend",
+      "contract",
+      "desktop",
+      "cockpit",
+      "projection",
+      "envelope",
+      "lifecycle"
+    ],
+    "path": "pages/frontend-bridge-backend-contract-v1.html"
+  },
+  {
+    "document_id": "frontend-bridge-backend-v1-readiness",
+    "title": "Frontend / Bridge / Backend v1 Readiness",
+    "summary": "Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.",
+    "tags": [
+      "frontend",
+      "bridge",
+      "backend",
+      "readiness",
+      "convergence",
+      "v1",
+      "acceptance"
+    ],
+    "path": "pages/frontend-bridge-backend-v1-readiness.html"
   },
   {
     "document_id": "future-passkey-plan",
@@ -1602,6 +1649,32 @@
     "path": "pages/usage-data-license-alpha.html"
   },
   {
+    "document_id": "rig-otel-local-collector-config-v1",
+    "title": "Rig OTel Local Collector Configuration v0",
+    "summary": "Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.",
+    "tags": [
+      "otel",
+      "telemetry",
+      "collector",
+      "local-only",
+      "redaction"
+    ],
+    "path": "pages/rig-otel-local-collector-config-v1.html"
+  },
+  {
+    "document_id": "rig-otel-dataset-ingestion-v0",
+    "title": "Rig OTel Dataset Ingestion v0",
+    "summary": "Local read-side OTel ingestion dataset for studying external agent/tool behavior without turning OTel into canonical Rig truth.",
+    "tags": [
+      "otel",
+      "dataset",
+      "telemetry",
+      "local-only",
+      "hardening"
+    ],
+    "path": "pages/rig-otel-dataset-ingestion-v0.html"
+  },
+  {
     "document_id": "protocol-surfaces",
     "title": "Protocol Surfaces",
     "summary": "Rig Relay exposes four protocol surfaces for different integration patterns. Each surface has a distinct role, transport, and authority model.",
@@ -1706,6 +1779,13 @@
     "path": "pages/rig-relay-threat-model-v0.html"
   },
   {
+    "document_id": "release-packaging-architecture",
+    "title": "Release Packaging Architecture v1",
+    "summary": "",
+    "tags": [],
+    "path": "pages/release-packaging-architecture.html"
+  },
+  {
     "document_id": "runtime-provenance",
     "title": "Runtime Provenance",
     "summary": "How to verify what code Rig Relay is actually running and diagnose stale-install problems.",
@@ -1774,5 +1854,89 @@
     "summary": "The Textual chat UI streams provider output into assistant message widgets. The",
     "tags": [],
     "path": "pages/textual-streaming-smoothness.html"
+  },
+  {
+    "document_id": "release-candidate",
+    "title": "Release Gate Readiness",
+    "summary": "Phase-by-phase release gate readiness assessment with blocker and seam tracking.",
+    "tags": [],
+    "path": "pages/release-candidate.html"
+  },
+  {
+    "document_id": "rc-verdict",
+    "title": "RC Candidate Verdict",
+    "summary": "Current release candidate verdict with promote blockers, phase status, and evidence references.",
+    "tags": [],
+    "path": "pages/rc-verdict.html"
+  },
+  {
+    "document_id": "golden-path",
+    "title": "Golden Path \u2014 Dogfood Operational Readiness",
+    "summary": "Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.",
+    "tags": [],
+    "path": "pages/golden-path.html"
+  },
+  {
+    "document_id": "testing",
+    "title": "Test Inventory",
+    "summary": "Structured evidence of test coverage across all stress surfaces.",
+    "tags": [],
+    "path": "pages/testing.html"
+  },
+  {
+    "document_id": "test-classifications",
+    "title": "Test Classifications",
+    "summary": "Taxonomy of test classification markers used across the project.",
+    "tags": [],
+    "path": "pages/test-classifications.html"
+  },
+  {
+    "document_id": "known-seams",
+    "title": "Known Test Seams",
+    "summary": "Known gaps in test coverage that have been intentionally deferred.",
+    "tags": [],
+    "path": "pages/known-seams.html"
+  },
+  {
+    "document_id": "telemetry",
+    "title": "Telemetry & Privacy Policy",
+    "summary": "Telemetry consent enforcement, tracing policy, degradation behavior, and redaction rules.",
+    "tags": [],
+    "path": "pages/telemetry.html"
+  },
+  {
+    "document_id": "bridge-lifecycle",
+    "title": "Desktop Bridge Lifecycle",
+    "summary": "Desktop bridge lifecycle projection contract and state machine.",
+    "tags": [],
+    "path": "pages/bridge-lifecycle.html"
+  },
+  {
+    "document_id": "frontend",
+    "title": "Frontend Maturity Evidence",
+    "summary": "Frontend maturity evidence from desktop golden path exercises.",
+    "tags": [],
+    "path": "pages/frontend.html"
+  },
+  {
+    "document_id": "security",
+    "title": "Security Policy",
+    "summary": "Security policy, posture, reporting procedures, and code schema trust rules.",
+    "tags": [],
+    "path": "pages/security.html"
+  },
+  {
+    "document_id": "security-hygiene",
+    "title": "Repository Security Hygiene",
+    "summary": "Security repository hygiene checks, release gate alignment, and tally.",
+    "tags": [],
+    "path": "pages/security-hygiene.html"
+  },
+  {
+    "document_id": "schemas",
+    "title": "Schema Index",
+    "summary": "Index of all JSON schemas in the project with validation status.",
+    "tags": [],
+    "path": "pages/schemas.html"
   }
 ]

@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from rig_relay import RIG_ROOT, __version__
 from rig_relay.acp._commands import CommandsMixin
 from rig_relay.acp._config import ConfigMixin
+from rig_relay.acp._disabled_tools import NON_INTERACTIVE_DISABLED_TOOLS
 from rig_relay.acp._prompt import PromptMixin
 from rig_relay.acp._protocol import ProtocolMixin
 from rig_relay.acp._session_lifecycle import SessionLifecycleMixin
@@ -57,6 +58,7 @@ class VibeAcpAgentLoop(
         self.sessions: dict[str, AcpSessionLoop] = {}
         self.client_capabilities: ClientCapabilities | None = None
         self.client_info: Implementation | None = None
+        self._mcp_servers: list | None = None
 
         gate = get_capability_gate()
         state = gate.state_summary()

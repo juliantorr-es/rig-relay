@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telemetry &amp; Privacy Policy — Rig Relay Docs</title>
+<meta name="description" content="Telemetry &amp; Privacy Policy">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/3e714bbe9e03.html">
+<meta property="og:title" content="Telemetry &amp; Privacy Policy">
+<meta property="og:description" content="Telemetry &amp; Privacy Policy">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/3e714bbe9e03.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Telemetry &amp; Privacy Policy">
+<meta name="twitter:description" content="Telemetry &amp; Privacy Policy">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / Telemetry &amp; Privacy Policy</p>
+  <h1>Telemetry &amp; Privacy Policy</h1>
+</header>
+<main id="main" class="doc-page">
+  <article>
+<section id="telemetry-consent">
+<h2>Telemetry Consent</h2>
+<p>**Status**: active **Version**: v0 (alpha) **Governed by**: `docs/schemas/rig.relay.telemetry_consent.v1.schema.json` **Implements**: `rig_relay/core/telemetry/send.py` (`_evaluate_consent_gate`)</p>
+<p class="source-ref">Source: <code>docs/json/governance/telemetry-consent-enforcement.v1.json</code></p>
+</section>
+<section id="tracing-policy">
+<h2>Tracing Policy</h2>
+<p>Every release-critical golden-path stage emits a correlated trace event carrying trace_id, span_id, and handshake_id. The app does not &#x27;work&#x27; until the golden path can prove it worked from one correlated trace.</p>
+<h3>Content-Light Doctrine</h3><p>Trace payloads are content-light. No token values, no full file contents, no prompt payloads, no model outputs.</p>
+<h3>Redaction Rule</h3><p>token_value_included must always be false in emitted golden-path traces. token_present may be true as a boolean.</p>
+<h3>Correlation</h3><p>Desktop/frontend/WebSocket events must carry handshake_id for cross-subsystem correlation.</p>
+<h3>Strict Mode Stages</h3>
+<ol><li>bridge started</li>
+<li>server bound</li>
+<li>frontend booted</li>
+<li>runtime config loaded</li>
+<li>websocket connected</li>
+<li>auth ok</li>
+<li>projection sent</li>
+<li>projection received</li>
+<li>projection rendered</li>
+<li>status rendered</li>
+<li>ready reached</li>
+<li>shutdown observed</li></ol>
+<h3>Failure Conditions</h3><dl>
+<dt>missing_trace_id</dt><dd>Cannot correlate. Useless breadcrumb confetti.</dd>
+<dt>missing_handshake_id_on_desktop_frontend_websocket_events</dt><dd>Cannot join frontend to bridge.</dd>
+<dt>token_value_appears_anywhere</dt><dd>Security bug. Straight to airlock.</dd>
+<dt>frontend_auth_ok_without_desktop_websocket_auth_ok</dt><dd>Split-brain auth trace.</dd>
+<dt>desktop_projection_sent_without_frontend_projection_received</dt><dd>Transport/protocol seam broke.</dd>
+<dt>frontend_projection_received_without_frontend_projection_rendered</dt><dd>Renderer seam broke.</dd>
+<dt>frontend_status_rendered_contradicts_reducer_state</dt><dd>UI is lying.</dd>
+</dl>
+<h3>Golden Path Events</h3>
+<h4>bridge</h4><ul><li>desktop.bridge.launch_requested</li>
+<li>desktop.bridge.frontend_resolved</li>
+<li>desktop.bridge.index_resolved</li>
+<li>desktop.bridge.asset_probe_passed</li>
+<li>desktop.bridge.runtime_config_built</li>
+<li>desktop.bridge.websocket_server_created</li>
+<li>desktop.bridge.server_bound</li>
+<li>desktop.bridge.health_probe_passed</li>
+<li>desktop.bridge.index_probe_passed</li>
+<li>desktop.bridge.frontend_url_announced</li>
+<li>desktop.bridge.websocket_url_announced</li>
+<li>desktop.bridge.window_created</li>
+<li>desktop.bridge.window_start_called</li>
+<li>desktop.bridge.window_closed</li>
+<li>desktop.bridge.shutdown</li></ul>
+<h4>websocket_backend</h4><ul><li>desktop.websocket.accepted</li>
+<li>desktop.websocket.auth_received</li>
+<li>desktop.websocket.auth_ok</li>
+<li>desktop.websocket.auth_failed</li>
+<li>desktop.websocket.closed</li></ul>
+<h4>websocket_frontend</h4><ul><li>frontend.websocket_connecting</li>
+<li>frontend.websocket_open</li>
+<li>frontend.auth_sent</li>
+<li>frontend.auth_ok</li>
+<li>frontend.auth_failed</li>
+<li>frontend.websocket_closed</li>
+<li>frontend.websocket_error</li></ul>
+<h4>projection_backend</h4><ul><li>desktop.projection.build_started</li>
+<li>desktop.projection.build_ok</li>
+<li>desktop.projection.sent</li>
+<li>desktop.projection.send_failed</li></ul>
+<h4>projection_frontend</h4><ul><li>frontend.projection_received</li>
+<li>frontend.projection_render_started</li>
+<li>frontend.projection_rendered</li>
+<li>frontend.projection_render_failed</li></ul>
+<h4>frontend_state</h4><ul><li>frontend.transport_state</li>
+<li>frontend.status_rendered</li>
+<li>frontend.status_contradiction_detected</li>
+<li>frontend.ready</li></ul>
+<p class="source-ref">Source: <code>docs/json/tracing_policy.v1.json</code></p>
+</section>
+<section id="degradation-policy">
+<h2>Degradation Policy</h2>
+<p>Degradation policy derived from tracing policy and consent enforcement rules. When telemetry is disabled, all optional tracing stops. Mission-critical receipts remain. The UI shows a degraded-mode indicator.</p>
+</section>
+<section id="redaction-rules">
+<h2>Redaction Rules</h2>
+<ul>
+<li>Token values must never appear in telemetry (token_value_included: false)</li>
+<li>Full file contents must never be emitted</li>
+<li>Secrets and credentials are always redacted</li>
+<li>Prompt payloads and model outputs are excluded</li>
+<li>Content-derived data uses SHA256 hashes only</li>
+<li>Home directory paths are replaced with [REDACTED]</li>
+</ul>
+</section>
+  </article>
+</main>
+<footer>
+  <p>Source: <code>docs/json/governance/telemetry-consent-enforcement.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

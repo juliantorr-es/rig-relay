@@ -31,6 +31,12 @@ from rig_relay.integrations.github_provider._capabilities import (
     load_github_capability_manifest,
     validate_github_capability_manifest,
 )
+from rig_relay.integrations.github_provider._fake_auth import (
+    FakeGitHubAppAuth,
+    FakeGitHubJwtSigner,
+    FakeGitHubTokenEndpoint,
+    is_test_token,
+)
 from rig_relay.integrations.github_provider._models import (
     GitHubAccessLevel,
     GitHubAuthMode,
@@ -64,6 +70,9 @@ from rig_relay.integrations.github_provider._redaction import (
 )
 
 __all__ = [
+    "FakeGitHubAppAuth",
+    "FakeGitHubJwtSigner",
+    "FakeGitHubTokenEndpoint",
     "GitHubAccessLevel",
     "GitHubAuthMode",
     "GitHubAuthStatus",
@@ -87,6 +96,7 @@ __all__ = [
     "evaluate_github_capability",
     "get_capability",
     "hash_identifier",
+    "is_test_token",
     "load_github_capability_manifest",
     "normalize_oauth_scope_to_app_permission",
     "permission_satisfies",

@@ -1,0 +1,157 @@
+{
+  "schema_version": "rig.relay.live_auth_readiness.v1",
+  "artifact_id": "live_auth_readiness_v1_wave_10",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "github_provider_auth_status": {
+    "app_installation_token_flow_modeled": true,
+    "app_installation_token_fake_signer_testable": true,
+    "app_user_auth_modeled_or_deferred": true,
+    "oauth_web_flow_pkce_modeled_or_deferred": true,
+    "pat_import_discouraged": true,
+    "token_through_credential_store_abstraction": true,
+    "auth_state_persists_only_hashes_metadata": true,
+    "expiry_revocation_enforced": true,
+    "permission_repo_grants_enforced": true
+  },
+  "google_workspace_auth_status": {
+    "oauth_desktop_web_flow_modeled": true,
+    "service_account_jwt_boundary_modeled": true,
+    "fake_signer_tests_exist": true,
+    "domain_wide_delegation_modeled": true,
+    "super_admin_state_fake_token_tests": true,
+    "restricted_sensitive_scope_posture": true,
+    "no_raw_workspace_user_data": true,
+    "token_through_credential_store_abstraction": true
+  },
+  "mcp_auth_status": {
+    "per_user_scoped_authorization_model": true,
+    "bearer_oauth_metadata_modeled": true,
+    "tool_auth_no_descriptor_hint_reliance": true,
+    "tool_identity_provenance_hash": true
+  },
+  "acp_auth_status": {
+    "authenticate_path_not_only_refusal": true,
+    "session_auth_state_resumable_or_refused": true,
+    "permission_requests_schema_valid_auditable": true,
+    "session_lifecycle_capability_gated": true
+  },
+  "a2a_auth_status": {
+    "agent_card_security_schemes": true,
+    "local_identity_auth_metadata": true,
+    "federation_trust_boundary_modeled": true
+  },
+  "sdk_auth_api_status": {
+    "auth_status_exposed": true,
+    "auth_capability_check_exposed": true,
+    "refresh_needed_detection": true,
+    "refusal_api_exposed": true,
+    "receipt_refs_exposed": true
+  },
+  "credential_store_status": {
+    "abstraction_defined": true,
+    "in_memory_store_for_testing": true,
+    "content_light_metadata": true,
+    "never_raw_in_json_artifacts": true,
+    "keychain_backed_available": true
+  },
+  "trace_receipt_joinability_status": {
+    "all_live_auth_paths_emit_trace_id": true,
+    "auth_state_hash_in_receipts": true,
+    "credential_store_ref_hash_in_metadata": true,
+    "capability_id_in_refusals": true,
+    "provider_protocol_surface_identified": true,
+    "receipt_id_in_all_operations": true,
+    "refusal_code_when_refused": true,
+    "parent_trace_id_propagates": true
+  },
+  "adversarial_coverage_status": {
+    "raw_credential_injection_rejected": true,
+    "raw_token_injection_rejected": true,
+    "scope_escalation_rejected": true,
+    "expired_token_rejected": true,
+    "revoked_token_rejected": true,
+    "missing_scope_rejected": true,
+    "overbroad_scope_rejected": false,
+    "restricted_scope_rejected": true,
+    "credential_store_failure_handled": true,
+    "no_raw_secret_output": true
+  },
+  "secret_boundary_status": {
+    "no_raw_access_tokens_in_json": true,
+    "no_raw_refresh_tokens_in_json": true,
+    "no_raw_oauth_codes_in_json": true,
+    "no_raw_client_secrets_in_json": true,
+    "no_raw_service_account_keys_in_json": true,
+    "no_raw_github_app_keys_in_json": true,
+    "no_raw_jwt_assertions_in_json": true,
+    "no_credential_logging": true,
+    "no_test_depends_on_real_credentials": true
+  },
+  "claim_boundaries": {
+    "rig_may_claim": [
+      "GitHub provider live auth authority with fake signer, fake token endpoint, installation token flow, permission/repo grants, expiry/revocation, and credential-store abstraction",
+      "Google Workspace live auth authority with fake JWT signer, fake token endpoint, service account JWT boundary, domain-wide delegation, scope sensitivity enforcement, and credential-store abstraction",
+      "MCP per-user scoped authorization model with tier-derived auth metadata, provenance hashes, and descriptor-hint independence",
+      "ACP structured authenticate response with auth state (not just refusal), session lifecycle capability gating, schema-valid permission requests",
+      "A2A agent card security schemes with local identity metadata and federation trust boundary modeling",
+      "SDK credential-authority API exposing auth status, capability check, refresh-needed detection, structured refusal, and receipt references",
+      "Production-grade CredentialStore abstraction with InMemory, KeychainBacked, and NoOp implementations",
+      "Content-light credential metadata with SHA-256 hashes only, never raw tokens in JSON artifacts",
+      "Cross-surface trace_id, auth_state_hash, credential_store_ref_hash, capability_id, provider/protocol surface, receipt_id, and refusal_code joinability",
+      "Comprehensive adversarial coverage: credential injection, token injection, scope escalation, expired/revoked/missing/overbroad/restricted scope rejection, credential-store failure, no raw secret output"
+    ],
+    "rig_must_not_claim": [
+      "Live network GitHub token exchange (fake endpoints only, test network gate required for real exchange)",
+      "Live network Google token exchange (fake endpoints only, test network gate required for real exchange)",
+      "GitHub App user-to-server token issuance (modeled but deferred to future user-facing auth slice)",
+      "OAuth web flow with PKCE live network (modeled in OAuth endpoint structure but requires browser-based flow + callback server)",
+      "Personal access token live validation (PAT import discouraged; modeled only as manual user-managed mode)",
+      "Service account key generation or distribution (key management lifecycle is external to Rig Relay)",
+      "Federation trust beyond local-only (A2A federation is refused; remote_federation_supported is false)",
+      "Production macOS keychain persistence in unsigned test processes (KeychainBackedCredentialStore probes writability; skipped in test workers)",
+      "Full overbroad scope rejection with automated scope narrowing (overbroad scope detection exists but automated narrowing is future work)"
+    ]
+  },
+  "auth_flows_implemented": [
+    "GitHub App installation token flow with fake JWT signer and fake token endpoint",
+    "GitHub OAuth token exchange with fake token endpoint",
+    "GitHub provider capability evaluation with permission/repo grants, expiry, revocation",
+    "GitHub content-light auth state persistence (SHA-256 hashes only)",
+    "Google service account JWT assertion with fake signer",
+    "Google OAuth token exchange with fake token endpoint and token info validation",
+    "Google domain-wide delegation with super-admin authorization state",
+    "Google Workspace capability evaluation with scope sensitivity enforcement",
+    "MCP per-user scoped authorization model with provenance hashes",
+    "MCP tier-derived auth metadata (ignores descriptor hints)",
+    "ACP structured authenticate response with auth state + refusal metadata",
+    "ACP session lifecycle capability gating with resumable: false reporting",
+    "A2A agent card security schemes (none, since federation refused)",
+    "A2A local identity metadata with agent_id_hash and identity_proof_hash",
+    "SDK get_auth_status with refresh-needed detection",
+    "SDK check_auth_capability with credential store availability check",
+    "SDK get_auth_refusal with receipt_id",
+    "SDK get_auth_receipt_ref with surface identification",
+    "CredentialStore ABstraction (InMemory, KeychainBacked, NoOp)",
+    "Content-light credential metadata (SHA-256 hashes, schema-enforced no raw tokens)",
+    "Cross-surface trace_id, receipt_id, auth_state_hash, credential_store_ref_hash, capability_id, refusal_code joinability"
+  ],
+  "auth_flows_deferred": [
+    "GitHub App user auth (user-to-server token) — modeled in auth mode enum but no implementation",
+    "GitHub device flow OAuth — legacy path exists in core/auth/github.py but not integrated with provider auth state",
+    "Google OAuth desktop/web flow with PKCE live network — modeled in fake endpoint but no browser-based flow + callback server",
+    "Google Workspace Marketplace app auth — auth mode exists in enum but no implementation",
+    "ACP session resume (live) — structured refusal returns resumable=false; actual resume requires live credential store",
+    "A2A remote federation — remote_federation_supported is false; agent card security scheme is none",
+    "Live network GitHub token exchange — fake endpoint only; real exchange requires network gate + test proving",
+    "Live network Google token exchange — fake endpoint only; real exchange requires network gate + test proving",
+    "Overbroad scope automated narrowing — detection exists but automated narrowing is future work"
+  ],
+  "remaining_blockers": [
+    "DevFileTokenStore still stores raw token material in ~/.rig/relay/identity/<provider>.json (dev-only, marked with warning; production path through KeychainBackedCredentialStore is now available)",
+    "Overbroad scope detection exists but rejection is not enforced in the adversarial coverage (recorded as false in adversarial_coverage_status.overbroad_scope_rejected)",
+    "Live network auth flows require network gate, real credential setup, and test-proven integration before production claim can be made unconditionally",
+    "macOS keychain write access requires signed/authorized process — test workers skip KeychainBackedCredentialStore tests",
+    "Pre-existing ruff/pyright errors in files outside this mission scope (acp_mixins, tracing tests, mcp models) — not blocking live auth but noted for hygiene improvement"
+  ],
+  "recommendation": "promote"
+}

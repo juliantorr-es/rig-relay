@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RC Candidate Verdict — Rig Relay Docs</title>
+<meta name="description" content="Current release candidate verdict with promote blockers, phase status, and evidence references.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rc_verdict.html">
+<meta property="og:title" content="RC Candidate Verdict">
+<meta property="og:description" content="Current release candidate verdict with promote blockers, phase status, and evidence references.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rc_verdict.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RC Candidate Verdict">
+<meta name="twitter:description" content="Current release candidate verdict with promote blockers, phase status, and evidence references.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/release-candidate.html">Release Candidate</a> / RC Candidate Verdict</p>
+
+  <h1>RC Candidate Verdict</h1>
+  <p class="doc-summary">Current release candidate verdict with promote blockers, phase status, and evidence references.</p>
+  <nav aria-label="Section" class="page-nav"><a href="../pages/rc_readiness.html">← RC Home</a><a href="../pages/golden_path.html">Golden Path →</a></nav>
+
+</header>
+<main id="main" class="doc-page">
+  <article>
+<section><h2>Verdict</h2><p style="font-size:1.4em"><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">HOLD</span></p></section>
+<section><h2>Status Summary</h2>
+<table>
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Gate Overall</td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td></tr>
+<tr><td>Validator</td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">FAILED</span></td></tr>
+<tr><td>Validator Errors</td><td>2</td></tr>
+<tr><td>Schema Validation</td><td>156/156 passed</td></tr>
+<tr><td>Installability</td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSED</span></td></tr>
+<tr><td>Open Blockers</td><td>5</td></tr>
+<tr><td>Known Seams</td><td>14</td></tr>
+<tr><td>Resolved Seams</td><td>7</td></tr>
+<tr><td>Deferred Seams</td><td>0</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="callout callout-warning"><h2>Promote Blockers</h2><ul><li>All open blockers resolved</li>
+<li>Dogfood golden path reviewer checklist all blocking steps &#x27;passing&#x27;</li>
+<li>Validator returns &#x27;passed&#x27; with 0 errors</li>
+<li>All five protocol/CI/SDK surfaces have implementation evidence and passing tests</li></ul></section>
+
+<section><h2>Required Next Actions</h2><ul><li>Resolve blk_ci_cd_structured_evidence_surface: implement CI evidence orchestrator with schema-governed artifacts</li>
+<li>Resolve blk_mcp_read_only_server_alpha: implement MCP stdio read-only server with tier 0-2 tools</li>
+<li>Resolve blk_acp_session_auth_resume_hardening: close authenticate/resume/session hardening gaps in ACP</li>
+<li>Resolve blk_internal_sdk_programmatic_api_v0: implement regret-minimizing RigClient SDK facade</li>
+<li>Resolve blk_internal_a2a_dogfood_substrate_v0: canonicalize internal A2A models and promotion gates</li>
+<li>Complete dogfood golden path reviewer checklist — 4 new protocol/CI/SDK steps must pass</li>
+<li>Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state</li></ul></section>
+
+<section><h2>Phase Status</h2>
+<table>
+<thead><tr><th>Phase ID</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td><code>phase_1_governance_coordination</code></td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td></tr>
+<tr><td><code>phase_2_telemetry_privacy</code></td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td></tr>
+<tr><td><code>phase_3_runtime_tools_context_api</code></td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td></tr>
+<tr><td><code>phase_5_public_docs_licensing</code></td><td><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">READY</span></td></tr>
+<tr><td><code>phase_4_ui_docs_ci_packaging</code></td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td></tr>
+<tr><td><code>phase_6_dogfood_operational_readiness</code></td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td></tr>
+<tr><td><code>phase_7_protocol_surfaces</code></td><td><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span></td></tr>
+</tbody>
+</table>
+</section>
+
+<section><h2>Resolved Blockers (9)</h2><ul><li><code>blk_phase4_ci_repo_ref</code></li>
+<li><code>blk_phase4_pi_lens_in_git</code></li>
+<li><code>blk_phase4_deferred_checks_required</code></li>
+<li><code>blk_phase5_license_policy_json_missing</code></li>
+<li><code>blk_phase5_repo_policy_json_missing</code></li>
+<li><code>blk_telemetry_disabled_degradation</code></li>
+<li><code>blk_debug_packet_quarantine</code></li>
+<li><code>blk_runtime_feral_subprocess</code></li>
+<li><code>blk_bash_rerouting_transparency</code></li></ul></section>
+
+<section><h2>Deferred Risks (1)</h2><ul><li><code>risk_markdown_audit_leaks</code></li></ul></section>
+
+<section><h2>Validation Runs (7)</h2><ul><li><code>vr_live_rc_python_20260518</code></li>
+<li><code>vr_frontend_browser_chromium_20260518</code></li>
+<li><code>vr_runtime_bash_transparency_20260518</code></li>
+<li><code>vr_installability_20260518</code></li>
+<li><code>vr_schema_validation_20260518</code></li>
+<li><code>vr_golden_path_check_20260518</code></li>
+<li><code>vr_release_gate_validate_20260518</code></li></ul></section>
+
+<section><h2>Evidence Paths (27)</h2><ul><li><code>README.md</code></li>
+<li><code>docs/json/release_candidate/rc_installability_verdict.v1.json</code></li>
+<li><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></li>
+<li><code>docs/json/release_gate/rc_readiness_gate.v1.json</code></li>
+<li><code>docs/json/release_gate/rc_validation_runs.v1.jsonl</code></li>
+<li><code>docs/json/release_gate/rc_blockers.v1.jsonl</code></li>
+<li><code>docs/json/release_gate/rc_deferred_risks.v1.jsonl</code></li>
+<li><code>tests/release_candidate/test_golden_path_live.py</code></li>
+<li><code>tests/desktop/test_playwright_frontend_product_path.py</code></li>
+<li><code>tests/runtime/test_feral_subprocess_accountability.py</code></li>
+<li><code>tests/tools/test_bash_rerouting_transparency.py</code></li>
+<li><code>scripts/rig_rc_golden_path_check.py</code></li>
+<li><code>scripts/rig_release_gate_validate.py</code></li>
+<li><code>scripts/rig_relay_validate_schemas.py</code></li>
+<li><code>docs/schemas/rig.release_candidate.golden_path_run.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.release_gate.readiness.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.release_gate.validation_run.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.sdk.run_result.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.sdk.status.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.mcp.tool_call_receipt.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.a2a.task_card.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.a2a.agent_card.v1.schema.json</code></li>
+<li><code>docs/json/protocols/a2a_promotion_readiness.v1.json</code></li>
+<li><code>rig_relay/cli/desktop_cockpit.py</code></li></ul></section>
+
+  </article>
+</main>
+<footer>
+  <p class="source-ref">Source: <code>docs/json/release_gate/rc_candidate_verdict.v1.json</code> (SHA: cda4ac0)</p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

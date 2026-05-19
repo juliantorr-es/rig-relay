@@ -1,0 +1,35 @@
+{
+  "$schema": "rig.static_site.compiler_refinement.v1",
+  "refinement_id": "static-site-compiler-refinement-v0",
+  "target_version": "v0",
+  "supported_claims": [
+    "Deterministic page and route sorting",
+    "Strict JSON schema validation for page models, input manifest, and artifacts",
+    "Safety scanning and credentials redaction for all data layers",
+    "Deterministic hashing for output verification and skips",
+    "Safe exit code and report generation on validation refusal/failure"
+  ],
+  "rejected_claims": [
+    "Untrusted HTML input pass-through is not allowed; all HTML text is escaped"
+  ],
+  "files_modified": [
+    "rig_relay/site_renderer/loaders.py",
+    "scripts/rig_site_render.py",
+    "rig_relay/site_renderer/templates/page.html.j2"
+  ],
+  "schemas_introduced": [
+    "docs/schemas/rig.static_site.compiler_contract.v1.schema.json",
+    "docs/schemas/rig.static_site.compiler_refinement.v1.schema.json",
+    "docs/schemas/rig.static_site.render_candidate.v1.schema.json",
+    "docs/schemas/rig.static_site.render_validation.v1.schema.json"
+  ],
+  "tests_implemented": [
+    "tests/site_renderer/test_static_site_compiler_contract.py",
+    "tests/site_renderer/test_static_site_compiler_refinement_artifact.py",
+    "tests/site_renderer/test_fake_green_resistance.py"
+  ],
+  "validation_results": {
+    "passed": true,
+    "report_path": ".build/rig-relay/site/site_render_report.v1.json"
+  }
+}

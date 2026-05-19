@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.static_site.compiler_refinement.v1.schema.json",
+  "title": "Rig Static Site Compiler Refinement v1",
+  "description": "Schema for the static site compiler contract-satisfaction refinement evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "refinement_id",
+    "target_version",
+    "supported_claims",
+    "rejected_claims",
+    "files_modified",
+    "schemas_introduced",
+    "tests_implemented",
+    "validation_results"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.static_site.compiler_refinement.v1"
+    },
+    "refinement_id": {
+      "type": "string"
+    },
+    "target_version": {
+      "type": "string"
+    },
+    "supported_claims": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rejected_claims": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files_modified": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "schemas_introduced": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests_implemented": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "validation_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "report_path"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "report_path": { "type": "string" }
+      }
+    }
+  }
+}

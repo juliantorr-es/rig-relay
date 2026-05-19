@@ -19,7 +19,7 @@ ACP_LOG_FILE = ACP_LOG_DIR / "messages.jsonl"
 MAX_LOG_SIZE_BYTES = 1_000_000
 BACKUP_COUNT = 3
 
-ACP_LOGGING_ENABLED_KEY = "VIBE_ACP_LOGGING_ENABLED"
+ACP_LOGGING_ENABLED_KEY = "RIG_RELAY_ACP_LOGGING_ENABLED"
 
 _session_cache: TTLCache[int | str, str] = TTLCache(maxsize=1000, ttl=3600)
 _current_session: str | None = None

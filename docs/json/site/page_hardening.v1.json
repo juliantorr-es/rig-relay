@@ -1,0 +1,19 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "hardening",
+  "title": "OTel & Hardening Trace Policy",
+  "route": "/hardening/index.html",
+  "layout": "default",
+  "source_artifact_paths": [
+    "docs/json/otel/local_collector_config.v1.json",
+    "docs/json/otel/otel_dataset_ingestion_v0.v1.json",
+    "docs/json/tracing/correlated_visibility_matrix.v1.json",
+    "docs/json/tracing_policy.v1.json"
+  ],
+  "generated_from_schema_versions": [
+    "rig.trace_event.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [],
+  "generated_at": "2026-05-19T19:40:00Z"
+}

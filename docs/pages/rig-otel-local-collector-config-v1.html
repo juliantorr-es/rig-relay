@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rig OTel Local Collector Configuration v0 — Rig Relay Docs</title>
+<meta name="description" content="Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/rig-otel-local-collector-config-v1.html">
+<meta property="og:title" content="Rig OTel Local Collector Configuration v0">
+<meta property="og:description" content="Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/rig-otel-local-collector-config-v1.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Rig OTel Local Collector Configuration v0">
+<meta name="twitter:description" content="Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Rig OTel Local Collector Configuration v0</h1>
+  <p class="doc-summary">Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-19</dd>
+    <dt>Source</dt><dd><code>docs/json/otel/local_collector_config.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="collector-intent" class="disclosure-standard" data-disclosure-level="standard"></h1>
+
+<p id="collector-intent-body" class="disclosure-standard" data-disclosure-level="standard">Use a local OpenTelemetry Collector or OTLP JSON export only. Bind receivers to localhost, export to local files, and keep remote exporters disabled by default.</p>
+
+<ul id="collector-endpoints" class="disclosure-standard" data-disclosure-level="standard">
+  <li>OTLP HTTP endpoint: http://localhost:4318</li>
+  <li>OTLP gRPC endpoint: localhost:4317</li>
+  <li>OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318</li>
+  <li>OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf</li>
+  <li>OTEL_SERVICE_NAME=opencode-rig-relay-dev</li>
+  <li>OTEL_RESOURCE_ATTRIBUTES=project=rig-relay,environment=local-dev,telemetry_source=opencode</li>
+</ul>
+
+<ul id="collector-processors" class="disclosure-standard" data-disclosure-level="standard">
+  <li>memory_limiter or an equivalent local safeguard</li>
+  <li>batch</li>
+  <li>attributes redaction or hashing for risky keys before file export</li>
+</ul>
+
+<p id="collector-export" class="disclosure-standard" data-disclosure-level="standard">Write raw capture files to .build/rig-relay/otel/raw/&lt;run_id&gt;/otel_raw.json and keep exporter output local. Remote exporters stay prohibited unless a later slice explicitly changes the policy.</p>
+
+<div class="risk disclosure-standard" id="collector-prohibited" data-disclosure-level="standard">
+  <h4>Do not enable remote export by default</h4>
+  <p>Remote vendors are not part of this slice. The collector description is local-first and read-side only.</p>
+</div>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/otel/local_collector_config.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -13,7 +13,9 @@ _env = Environment(
 )
 
 
-def render_page(page_model: dict, relative_root: str = ".") -> str:
+def render_page(
+    page_model: dict, nav_pages: list[dict] = None, relative_root: str = "."
+) -> str:
     """Render a page model dict to HTML string using the page.html.j2 template."""
     template = _env.get_template("page.html.j2")
     return template.render(
@@ -26,10 +28,16 @@ def render_page(page_model: dict, relative_root: str = ".") -> str:
         generated_at=page_model.get("generated_at", datetime.now(UTC).isoformat()),
         nav_section=page_model.get("page_id", ""),
         relative_root=relative_root,
+        nav_pages=nav_pages or [],
     )
 
 
-def render_index(pages: list[dict], site_meta: dict, relative_root: str = ".") -> str:
+def render_index(
+    pages: list[dict],
+    site_meta: dict,
+    nav_pages: list[dict] = None,
+    relative_root: str = ".",
+) -> str:
     """Render the homepage index."""
     template = _env.get_template("index.html.j2")
     return template.render(
@@ -41,6 +49,7 @@ def render_index(pages: list[dict], site_meta: dict, relative_root: str = ".") -
         head_sha=site_meta.get("head_sha", ""),
         safety_passed=site_meta.get("safety_passed", False),
         relative_root=relative_root,
+        nav_pages=nav_pages or [],
     )
 
 

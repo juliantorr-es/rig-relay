@@ -9,7 +9,11 @@ from jsonschema import ValidationError, validate
 import pytest
 
 from rig_relay.acp._protocol import ProtocolMixin
-from rig_relay.acp._refusal_adapter import build_acp_refusal
+from rig_relay.acp._refusal_adapter import (
+    build_acp_permission_refusal,
+    build_acp_refusal,
+    build_acp_session_refusal,
+)
 from rig_relay.acp._session_lifecycle import SessionLifecycleMixin
 from rig_relay.acp.exceptions import RefusalError
 
@@ -46,6 +50,9 @@ class _TestSessionLifecycleMixin(SessionLifecycleMixin):
         self.client = None
         self.client_capabilities = None
         self.client_info = None
+
+    def _store_mcp_servers(self, mcp_servers: object | None) -> None:
+        pass
 
 
 class TestBuildAcpRefusal:
@@ -107,32 +114,37 @@ class TestRefusalWiring:
     def test_authenticate_unsupported_returns_schema_valid_refusal(self):
         refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
         mixin = _TestProtocolMixin()
-        with pytest.raises(RefusalError) as exc_info:
-            asyncio.run(mixin.authenticate("fake_method_id"))
-
-        validate(_get_refusal(exc_info), refusal_schema)
+        result = asyncio.run(mixin.authenticate("fake_method_id"))
+        assert result is not None
+        assert result.field_meta is not None
+        validate(result.field_meta["refusal"], refusal_schema)
 
     def test_authenticate_refusal_has_refusal_code_live_auth_deferred(self):
         mixin = _TestProtocolMixin()
-        with pytest.raises(RefusalError) as exc_info:
-            asyncio.run(mixin.authenticate("fake_method_id"))
-
-        assert _get_refusal(exc_info)["refusal_code"] == "live_auth_deferred"
+        result = asyncio.run(mixin.authenticate("fake_method_id"))
+        assert result is not None
+        assert result.field_meta is not None
+        assert (
+            result.field_meta["refusal"]["refusal_code"]
+            == "acp.authenticate.deferred_or_unconfigured"
+        )
 
     def test_resume_session_unsupported_returns_schema_valid_refusal(self):
         refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
         mixin = _TestSessionLifecycleMixin()
-        with pytest.raises(RefusalError) as exc_info:
-            asyncio.run(mixin.resume_session(cwd="/tmp", session_id="s1"))
-
-        validate(_get_refusal(exc_info), refusal_schema)
+        result = asyncio.run(mixin.resume_session(cwd=str(Path.cwd()), session_id="s1"))
+        assert result is not None
+        assert result.field_meta is not None
+        validate(result.field_meta["refusal"], refusal_schema)
 
     def test_resume_refusal_has_refusal_code_resume_not_supported(self):
         mixin = _TestSessionLifecycleMixin()
-        with pytest.raises(RefusalError) as exc_info:
-            asyncio.run(mixin.resume_session(cwd="/tmp", session_id="s1"))
-
-        assert _get_refusal(exc_info)["refusal_code"] == "resume_not_supported"
+        result = asyncio.run(mixin.resume_session(cwd=str(Path.cwd()), session_id="s1"))
+        assert result is not None
+        assert result.field_meta is not None
+        assert (
+            result.field_meta["refusal"]["refusal_code"] == "not_implemented_deferred"
+        )
 
     def test_unknown_ext_method_returns_schema_valid_refusal(self):
         refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
@@ -169,10 +181,10 @@ class TestRefusalWiring:
 
     def test_refusal_is_content_light_no_raw_params_echoed(self):
         mixin = _TestProtocolMixin()
-        with pytest.raises(RefusalError) as exc_info:
-            asyncio.run(mixin.authenticate("fake_method_id"))
-
-        refusal = _get_refusal(exc_info)
+        result = asyncio.run(mixin.authenticate("fake_method_id"))
+        assert result is not None
+        assert result.field_meta is not None
+        refusal = result.field_meta["refusal"]
         assert refusal["content_light"] is True
         assert "params" not in refusal
         assert "kwargs" not in refusal
@@ -183,6 +195,8 @@ class TestRefusalWiring:
         profile = {
             "schema_version": "rig.relay.acp.capability_profile.v1",
             "generated_at": "2026-01-01T00:00:00Z",
+            "authenticate_supported": False,
+            "session_resume_supported": False,
             "session_lifecycle_supported": {
                 "initialize": True,
                 "authenticate": False,
@@ -208,6 +222,8 @@ class TestRefusalWiring:
         profile = {
             "schema_version": "rig.relay.acp.capability_profile.v1",
             "generated_at": "2026-01-01T00:00:00Z",
+            "authenticate_supported": False,
+            "session_resume_supported": False,
             "session_lifecycle_supported": {
                 "initialize": True,
                 "authenticate": False,
@@ -253,3 +269,67 @@ class TestRefusalWiring:
         assert "api_key" not in result
         assert "secret" not in result
         assert result["content_light"] is True
+
+    def test_refusal_includes_surface_acp(self):
+        result = build_acp_refusal(
+            refusal_code="test_code", reason="test reason", method="test_method"
+        )
+        assert result["surface"] == "acp"
+
+    def test_no_extra_fields_includes_surface_only(self):
+        refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
+        result = build_acp_refusal(
+            refusal_code="test_code", reason="test reason", method="test_method"
+        )
+        validate(result, refusal_schema)
+
+
+class TestBuildAcpSessionRefusal:
+    def test_builds_schema_valid_refusal(self):
+        refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
+        result = build_acp_session_refusal(
+            refusal_code="not_implemented_deferred",
+            reason="Session operation deferred",
+            method="resume",
+            trace_id="t1",
+            session_id="s1",
+        )
+        validate(result, refusal_schema)
+
+    def test_sets_method_correctly(self):
+        result = build_acp_session_refusal(
+            refusal_code="test_code", reason="reason", method="fork"
+        )
+        assert result["method"] == "fork"
+
+    def test_surface_is_acp(self):
+        result = build_acp_session_refusal(
+            refusal_code="test_code", reason="reason", method="new_session"
+        )
+        assert result["surface"] == "acp"
+
+
+class TestBuildAcpPermissionRefusal:
+    def test_builds_schema_valid_refusal(self):
+        refusal_schema = _load_schema("rig.relay.acp.refusal.v1.schema.json")
+        result = build_acp_permission_refusal(
+            permission="write_file",
+            reason="Write not allowed",
+            trace_id="t1",
+            session_id="s1",
+        )
+        validate(result, refusal_schema)
+
+    def test_uses_permission_missing_code(self):
+        result = build_acp_permission_refusal(permission="bash", reason="Not allowed")
+        assert result["refusal_code"] == "refused:permission_missing"
+
+    def test_method_includes_permission_prefix(self):
+        result = build_acp_permission_refusal(permission="grep", reason="Not allowed")
+        assert result["method"] == "permission/grep"
+
+    def test_surface_is_acp(self):
+        result = build_acp_permission_refusal(
+            permission="write_file", reason="Not allowed"
+        )
+        assert result["surface"] == "acp"

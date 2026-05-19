@@ -49,7 +49,7 @@ def acp_agent_loop(backend) -> VibeAcpAgentLoop:
             except ValueError:
                 pass
 
-    patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
+    patch("rig_relay.core.agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
 
     return _create_acp_agent()
 
@@ -259,7 +259,7 @@ class TestACPSetConfigOptionModel:
         )
         session_id = session_response.session_id
 
-        with patch("vibe.acp.acp_agent_loop.VibeConfig.save_updates") as mock_save:
+        with patch("rig_relay.acp.acp_agent_loop.VibeConfig.save_updates") as mock_save:
             response = await acp_agent_loop.set_config_option(
                 session_id=session_id, config_id="model", value="devstral-small"
             )
@@ -276,7 +276,7 @@ class TestACPSetConfigOptionModel:
         )
         session_id = session_response.session_id
 
-        with patch("vibe.acp.acp_agent_loop.VibeConfig.save_updates") as mock_save:
+        with patch("rig_relay.acp.acp_agent_loop.VibeConfig.save_updates") as mock_save:
             response = await acp_agent_loop.set_config_option(
                 session_id=session_id, config_id="model", value="non-existent-model"
             )

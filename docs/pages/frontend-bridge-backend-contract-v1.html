@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend / Bridge / Backend Contract v1 — Rig Relay Docs</title>
+<meta name="description" content="Canonical schema-governed contract defining frontend intents, bridge envelopes, backend projection patches, and lifecycle events for Rig Relay&#x27;s desktop cockpit. Establishes trust boundary, mutation semantics, trace propagation, refusal semantics, and content-light rules.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/frontend-bridge-backend-contract-v1.html">
+<meta property="og:title" content="Frontend / Bridge / Backend Contract v1">
+<meta property="og:description" content="Canonical schema-governed contract defining frontend intents, bridge envelopes, backend projection patches, and lifecycle events for Rig Relay&#x27;s desktop cockpit. Establishes trust boundary, mutation semantics, trace propagation, refusal semantics, and content-light rules.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/frontend-bridge-backend-contract-v1.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Frontend / Bridge / Backend Contract v1">
+<meta name="twitter:description" content="Canonical schema-governed contract defining frontend intents, bridge envelopes, backend projection patches, and lifecycle events for Rig Relay&#x27;s desktop cockpit. Establishes trust boundary, mutation semantics, trace propagation, refusal semantics, and content-light rules.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Frontend / Bridge / Backend Contract v1</h1>
+  <p class="doc-summary">Canonical schema-governed contract defining frontend intents, bridge envelopes, backend projection patches, and lifecycle events for Rig Relay&#x27;s desktop cockpit. Establishes trust boundary, mutation semantics, trace propagation, refusal semantics, and content-light rules.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-19</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/frontend_bridge_backend_contract_v1.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Frontend / Bridge / Backend Contract v1</h1>
+
+<p id="p-1" class="disclosure-standard" data-disclosure-level="standard">Rig Relay is a desktop cockpit. The frontend/bridge/backend contract is the most important product surface: it defines how frontend intents flow through the bridge envelope to the backend dispatcher, governed action, receipt/evidence production, projection update, and frontend render. This contract must be stable before expanding provider integrations (GitHub OAuth, MCP, ACP, SDK).</p>
+
+<h2 id="h2-1" class="disclosure-standard" data-disclosure-level="standard">Contract Purpose</h2>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">The contract governs every message crossing the bridge. It defines: the trust boundary (WebSocket origin validation, local-only scope), the mutation safety classes all intents must declare, the trace propagation requirement across frontend→bridge→backend→projection, the refusal envelope for rejected messages, and the content-light rule that prohibits raw paths, secrets, prompts, credentials, and private file contents from crossing the bridge.</p>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Trust Boundary</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">The bridge is localhost-only and token-gated. WebSocket connections validate allowed local origins. The backend MUST validate Origin during connection establishment to prevent cross-site WebSocket hijacking. The frontend is a dumb renderer; the backend owns all policy transitions. The frontend receives projection fields and displays them as human labels without inferring or overriding policy. All messages carry redaction_status: content_light.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Bridge Envelope</h2>
+
+<p id="p-4" class="disclosure-standard" data-disclosure-level="standard">Every message crossing the bridge is wrapped in a bridge envelope (schema: rig.relay.bridge_envelope.v1). The envelope carries: message_id, trace_id, frontend_session_id, backend_session_id, protocol_version, direction, kind, sequence, projection_sequence, idempotency_key, payload_schema, payload, safe_summary, redaction_status, priority, and optionally a refusal object. The trace_id must survive the full round-trip: frontend intent → bridge envelope → backend receipt/refusal → projection update. The implementation-level bridge_message model (rig.relay.bridge_message.v1) has been hardened with trace_id, parent_message_id, frontend_session_id, and backend_session_id fields.</p>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Frontend Intent</h2>
+
+<p id="p-5" class="disclosure-standard" data-disclosure-level="standard">Every frontend intent (schema: rig.relay.frontend_intent.v1) must declare: mutation_class, capability_required, auth_required, receipt_required, and projection_patch_required in addition to the standard intent_kind, trace_id, and frontend_session_id. Intent parameters are hashed (intent_payload_hash) rather than stored raw in the envelope. This lets the bridge and backend govern before dispatch without inspecting parameter contents beyond their hash.</p>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Backend Projection Patch</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">The backend sends incremental projection patches (schema: rig.relay.backend_projection_patch.v1) rather than always sending full snapshots. A patch carries projection_sequence, patch_kind (full|partial|delta), changed_sections, sections, digest, and optional stale_after_seconds. The frontend must discard patches with sequence &lt;= last rendered. Content-light rules apply: sections contain only hashes, counts, and status flags.</p>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Refusal and Error Semantics</h2>
+
+<p id="p-7" class="disclosure-standard" data-disclosure-level="standard">The bridge envelope carries a refusal object for rejected messages. Refusal kinds now cover 22 types: unknown_intent_kind, invalid_schema_version, unknown_kind, missing_trace_id, duplicate_message_id, oversized_payload, mutation_without_capability, missing_capability, mutation_class_refused, credentialed_provider_mutation_refused, release_affecting_mutation_refused, external_network_mutation_refused, unsafe_payload_refused, raw_secret_refused, raw_path_refused, auth_required_not_satisfied, capability_gate_refused, rate_limited, server_full, malformed_envelope, redaction_violation, internal_error. Unknown intent_kind must be refused, not ignored. Duplicate message_id must be idempotent or explicitly refused.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Mutation Classes</h2>
+
+<ul id="list-1" class="disclosure-standard" data-disclosure-level="standard">
+  <li>read_only — no mutation, no side effects (e.g., refresh_projection, ralph_scan).</li>
+  <li>safe_local_mutation — local-only change with receipt (e.g., chat_state.save).</li>
+  <li>dangerous_local_mutation — file mutation requiring checkpoint gating (e.g., checkpoint.commit).</li>
+  <li>external_network_mutation — outbound network call with capability gate.</li>
+  <li>credentialed_provider_mutation — requires explicit provider credentials and capability. Refused in this lane.</li>
+  <li>release_affecting_mutation — changes release gate status, packaging, or remote state. Refused in this lane.</li>
+</ul>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Trace Propagation</h2>
+
+<p id="p-8" class="disclosure-standard" data-disclosure-level="standard">Every message must carry trace_id. The trace_propagation contract requires: trace_id survives frontend intent → bridge envelope → backend receipt/refusal → projection update. At minimum, each message carries: trace_id, message_id, parent_message_id (where applicable), frontend_session_id, backend_session_id, and projection_sequence. Lifecycle events record the trace_id so the bridge lifecycle can be correlated with specific intent execution traces.</p>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Bridge Lifecycle Events</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">Bridge lifecycle events (schema: rig.relay.bridge_lifecycle_event.v1) record handshake, transport, authentication, projection streaming, errors, and graceful shutdown. 16 event types cover the full lifecycle from handshake_requested through bridge_closed. Each event carries event_id, trace_id, handshake_id, frontend_session_id, backend_session_id, state_before, state_after, transition_count, and content-light details.</p>
+
+<h2 id="h2-10" class="disclosure-standard" data-disclosure-level="standard">Content-Light and Redaction Rule</h2>
+
+<p id="p-10" class="disclosure-standard" data-disclosure-level="standard">Every bridge envelope, frontend intent, projection patch, and lifecycle event carries redaction_status: content_light (const). Raw absolute paths, secrets, tokens, API keys, OAuth codes, raw prompts, raw private file contents, and raw credentials MUST NOT cross the bridge. Intent parameters are hashed (intent_payload_hash using sha256: prefix). Projection sections contain only hashes, counts, status flags, and display-safe labels.</p>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Intentionally Deferred</h2>
+
+<p id="p-11" class="disclosure-standard" data-disclosure-level="standard">The following integrations are intentionally deferred until the local bridge/backend contract is stable: GitHub OAuth/App integration (deferred to GitHub Provider Contract v0), MCP/ACP/A2A protocol surfaces (deferred to separate lane after local contract exists), SDK v0 (deferred to after local contract), CI evidence contract (partially implemented in parallel lane, consumes this contract), and OTel dataset ingestion (parallel lane, avoids bridge/backend files). The contract explicitly refuses credentialed_provider_mutation in this lane.</p>
+
+<h2 id="h2-12" class="disclosure-standard" data-disclosure-level="standard">Implementation Notes</h2>
+
+<ul id="list-2" class="disclosure-standard" data-disclosure-level="standard">
+  <li>BridgeMessage model (bridge_protocol.py) hardened with trace_id, parent_message_id, frontend_session_id, backend_session_id fields (default empty string for backward compatibility).</li>
+  <li>Existing websocket_server.py validates origin, enforces token auth, rate-limiting, connection cap, and message size limits.</li>
+  <li>Existing bridge_state_machine.py records lifecycle transitions as inline JSONL events.</li>
+  <li>Frontend protocol modules (envelope.js, client.js, flowControl.js) align with backend schemas on kind enums, direction constants, NEVER_DROP/COALESCE_KINDS, sequence tracking, and dedup.</li>
+</ul>
+
+<h2 id="h2-13" class="disclosure-standard" data-disclosure-level="standard">Dispatcher Refusal Coverage (v1.1)</h2>
+
+<p id="p-13" class="disclosure-standard" data-disclosure-level="standard">Bridge Dispatcher Refusal Coverage v1 was implemented in rig_relay/desktop/bridge_refusals.py and wired into the WebSocket server&#x27;s envelope handler. All intents now pass through enforce_intent() before dispatch. The following refusals are enforced: unknown intent_kind → typed refusal with reason code. Invalid schema_version → typed refusal. Missing trace_id → typed refusal. Mutation class enforcement: external_network_mutation, credentialed_provider_mutation, release_affecting_mutation, and dangerous_local_mutation are all refused in this lane. Missing capability_required for mutation intents → typed refusal. Content-light scanner (scan_bridge_payload) rejects GitHub token patterns, secret fields, absolute paths, and raw content fields before any intent reaches the handler. All refusal envelopes are schema-valid bridge_envelope.v1 objects preserving trace_id, session IDs, and parent message linkage.</p>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Remaining Seams (v1.1)</h2>
+
+<ul id="list-3" class="disclosure-standard" data-disclosure-level="standard">
+  <li>unknown intent_kind application-layer refusal coverage implemented via enforce_intent() in bridge_refusals.py.</li>
+  <li>Credentialed provider mutation still refused pending GitHub Provider Contract v0.</li>
+  <li>External network mutation still refused — no network capability gate defined yet.</li>
+  <li>Release-affecting mutation still refused — release-gate refactor pending.</li>
+  <li>Dangerous local mutation refused — capability gate must explicitly permit it.</li>
+  <li>Safe local mutation accepted only when capability is declared.</li>
+  <li>GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched.</li>
+</ul>
+
+<h2 id="h2-15" class="disclosure-standard" data-disclosure-level="standard">Bridge Refusal Runtime Trace Correlation (v1.2)</h2>
+
+<p id="p-14" class="disclosure-standard" data-disclosure-level="standard">Bridge Refusal Runtime Trace Correlation v1 was implemented. Every dispatcher refusal now produces a schema-valid lifecycle event (refusal_emitted) alongside the refusal envelope. The trace event carries: inbound_message_id, refusal_message_id, refusal_kind, refused_intent_kind, mutation_class, capability_required, payload_hash, refusal_reason_hash (content-light), trace_id, session IDs, and source. Trace correlation rules: trace_id matches across inbound/refusal/trace, inbound_message_id is the original message, refusal_message_id is the generated refusal, parent_message_id links refusal to inbound. All trace events are content_light with raw reasons hashed, never stored in plaintext.</p>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Remaining Seams (v1.2)</h2>
+
+<ul id="list-4" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Bridge refusal runtime trace correlation implemented — every refusal path produces schema-valid trace events with message/session/trace linkage.</li>
+  <li>Credentialed provider mutation still refused pending GitHub Provider Contract v0.</li>
+  <li>External network mutation still refused — no network capability gate defined.</li>
+  <li>Release-affecting mutation still refused — release-gate refactor pending.</li>
+  <li>Dangerous local mutation refused — capability gate must explicitly permit.</li>
+  <li>GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched.</li>
+</ul>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Bridge Refusal Persistence (v1.3)</h2>
+
+<p id="p-15" class="disclosure-standard" data-disclosure-level="standard">Bridge Refusal Persistence v1 was implemented. Refusal_emitted lifecycle events are now persisted to an append-only JSONL file via BridgeLifecycleTraceWriter (rig_relay/desktop/bridge_lifecycle_trace.py) when a trace writer is configured on the WebSocket server. Each persisted event is schema-validated before write. Persistence is local-only and content-light: no raw tokens, paths, prompts, or private content are persisted. The writer is injected via set_trace_writer() for test configurability. Persistence failure never crashes the dispatcher or causes a refused intent to execute. The existing bridge_state_machine.py lifecycle log covers bridge state transitions only; refusal events use a separate trace writer. No release-gate evidence, coordination ledger, OTel dataset, or GitHub provider code is touched.</p>
+
+<h2 id="h2-18" class="disclosure-standard" data-disclosure-level="standard">Remaining Seams (v1.3)</h2>
+
+<ul id="list-5" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Bridge refusal persistence implemented — refusal_emitted events are schema-validated and appended to lifecycle trace JSONL.</li>
+  <li>Credentialed provider mutation still refused pending GitHub Provider Contract v0.</li>
+  <li>External network mutation still refused.</li>
+  <li>Release-affecting mutation still refused.</li>
+  <li>Dangerous local mutation refused.</li>
+  <li>Durable session-level lifecycle trace retention policy not yet defined — current write is flush-only, no fsync guarantee.</li>
+  <li>GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched.</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/frontend_bridge_backend_contract_v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

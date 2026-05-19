@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.relay.a2a.promotion_readiness.v1",
+  "gate_id": "a2a_promotion_readiness_v0",
+  "generated_at": "2026-05-19T19:00:00Z",
+  "head_sha": "6ee5a2f72830ddfdfb5a104e961d063d7565f420",
+  "branch": "main",
+  "overall_status": "blocked",
+  "external_enabled": false,
+  "local_only": true,
+  "remote_federation_supported": false,
+  "promotion_gates": [
+    {
+      "gate_id": "g1_agent_card_schema",
+      "title": "AgentCard schema validated",
+      "description": "A2AAgentCard model validates against rig.relay.a2a.agent_card.v1 schema with local_only=true and remote_federation_supported=false.",
+      "status": "passing",
+      "evidence_path": "docs/schemas/rig.relay.a2a.agent_card.v1.schema.json",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_agent_card_validates"
+    },
+    {
+      "gate_id": "g2_task_card_schema",
+      "title": "TaskCard schema validated",
+      "description": "A2ATaskCard model validates against rig.relay.a2a.task_card.v1 schema. Status enum covers all 7 lifecycle states.",
+      "status": "passing",
+      "evidence_path": "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_task_card_validates"
+    },
+    {
+      "gate_id": "g3_lifecycle_event_schema",
+      "title": "TaskLifecycleEvent schema validated",
+      "description": "A2ATaskLifecycleEvent model validates against rig.relay.a2a.task_lifecycle_event.v1 schema.",
+      "status": "passing",
+      "evidence_path": "docs/schemas/rig.relay.a2a.task_lifecycle_event.v1.schema.json"
+    },
+    {
+      "gate_id": "g4_delegation_receipt_schema",
+      "title": "DelegationReceipt schema validated",
+      "description": "A2ADelegationReceipt model validates against rig.relay.a2a.delegation_receipt.v1 schema with verdict enum of allowed/refused/completed.",
+      "status": "passing",
+      "evidence_path": "docs/schemas/rig.relay.a2a.delegation_receipt.v1.schema.json",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_delegation_receipt_validates"
+    },
+    {
+      "gate_id": "g5_state_machine_transitions",
+      "title": "State machine transitions validated",
+      "description": "A2A task state machine enforces valid transitions (7 statuses, 9 valid transitions, 3 terminal states). Invalid transitions raise ValueError.",
+      "status": "passing",
+      "evidence_path": "rig_relay/protocols/a2a/_lifecycle.py",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_valid_transitions"
+    },
+    {
+      "gate_id": "g6_content_light_guarantee",
+      "title": "Content-light guarantee verified",
+      "description": "All A2A models enforce content_light=true. No raw file content, secrets, or private data in any field. SHA-256 hashing for all content-derived values.",
+      "status": "passing",
+      "evidence_path": "rig_relay/protocols/a2a/_models.py",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_trace_context_present"
+    },
+    {
+      "gate_id": "g7_local_only_enforcement",
+      "title": "Local-only enforcement",
+      "description": "remote_federation_supported=false enforced at model level. No network listeners for external A2A. Agent card defaults to local_only=true.",
+      "status": "passing",
+      "evidence_path": "rig_relay/protocols/a2a/_models.py",
+      "test_evidence": "tests/protocols/a2a/test_a2a_v1.py:test_remote_federation_refused"
+    },
+    {
+      "gate_id": "g8_event_sourcing_via_coordination_store",
+      "title": "Event-sourced lifecycle via CoordinationStore",
+      "description": "A2A task lifecycle events persisted through CoordinationStore with content-light event records. Events include task creation, state transitions, and delegation receipts.",
+      "status": "blocked",
+      "description_gap": "Lifecycle events defined but persistence through CoordinationStore not yet wired. Events are in-memory only.",
+      "required_resolution": "Wire A2ATaskLifecycle to CoordinationStore for event persistence. Each transition must produce a schema-valid lifecycle event written to the events ledger."
+    },
+    {
+      "gate_id": "g9_capability_gated_delegation",
+      "title": "Capability-gated delegation",
+      "description": "A2A task delegation must pass capability gate checks. Delegation receipts include capability decision verdict. Mutation delegations refused by default.",
+      "status": "blocked",
+      "description_gap": "RigClient.evaluate_capability() gates mutation but A2A-specific delegation capability checks not yet wired to the delegation path.",
+      "required_resolution": "Add A2A-specific capability evaluation to delegation path. Delegation must check that delegating and receiving agents both have the required capabilities."
+    },
+    {
+      "gate_id": "g10_external_a2a_disabled_until_promotion",
+      "title": "External A2A disabled until all gates pass",
+      "description": "External A2A federation must remain disabled (external_enabled=false) until all 10 promotion gates are passing. No network transport for A2A exists in v0.",
+      "status": "passing",
+      "evidence_path": "rig_relay/protocols/a2a/_models.py"
+    }
+  ],
+  "required_next_actions": [
+    "Wire A2ATaskLifecycle to CoordinationStore for event persistence (g8)",
+    "Add A2A-specific capability evaluation to delegation path (g9)",
+    "Both items are post-alpha — current blocked gates are acceptable for internal dogfood substrate v0"
+  ],
+  "telemetry_redaction_notes": "A2A event-sourced records must be content-light: no raw task content, agent prompts, or file content in coordination events. SHA-256 only for content-derived values."
+}

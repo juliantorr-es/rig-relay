@@ -5,12 +5,14 @@ from pathlib import Path
 from typing import Any, cast
 
 import jsonschema
+import pytest
 
 from rig_relay.protocols.mcp import (
     classify_tool_descriptor_suspicious,
     evaluate_mcp_request,
 )
 from rig_relay.protocols.mcp.models import MCPToolTier
+from rig_relay.protocols.mcp.server import RigMCPServer
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 S = REPO_ROOT / "docs" / "schemas"
@@ -245,3 +247,96 @@ class TestMCPRuntimeRefusalsV1:
         assert result["verdict"] == "allowed"
         assert result["tier"] == MCPToolTier.PATCH_PROPOSAL.value
         _validates_receipt(result)
+
+
+class TestServeStdio:
+    @pytest.mark.asyncio
+    async def test_serve_stdio_initialize(self):
+        server = RigMCPServer()
+        result = await server._handle_jsonrpc("initialize", {}, 1)
+        assert "capabilities" in result
+        caps = result["capabilities"]
+        assert caps.tools["listChanged"] is True
+        assert result["content_light"] is True
+        assert result["server_info"]["name"] == "Rig Relay MCP Server"
+
+    @pytest.mark.asyncio
+    async def test_serve_stdio_tools_list(self):
+        server = RigMCPServer()
+        result = await server._handle_jsonrpc("tools/list", {}, 1)
+        assert "tools" in result
+        assert isinstance(result["tools"], list)
+        assert len(result["tools"]) > 0
+        for tool in result["tools"]:
+            assert "name" in tool
+            assert "description" in tool
+            assert "tier" in tool
+
+    @pytest.mark.asyncio
+    async def test_serve_stdio_tools_call_read_only(self):
+        server = RigMCPServer()
+        result = await server._handle_jsonrpc(
+            "tools/call", {"name": "rig.list_worktrees", "arguments": {}}, 1
+        )
+        assert "status" in result
+
+    @pytest.mark.asyncio
+    async def test_serve_stdio_tools_call_mutation_refused(self):
+        server = RigMCPServer()
+        result = await server._handle_jsonrpc(
+            "tools/call",
+            {"name": "rig.request_user_approval", "arguments": {"action": "merge"}},
+            1,
+        )
+        assert result["status"] == "blocked_pending_approval"
+        assert result["approval_required"] is True
+
+    @pytest.mark.asyncio
+    async def test_serve_stdio_unknown_method(self):
+        server = RigMCPServer()
+        result = await server._handle_jsonrpc("fake/method", {}, 1)
+        assert "error" in result
+        assert result["error"]["code"] == -32601
+        assert "Method not found" in result["error"]["message"]
+
+    def test_serve_stdio_malformed_json(self):
+        server = RigMCPServer()
+        response = server._jsonrpc_error(-32700, "Parse error", None)
+        assert response["jsonrpc"] == "2.0"
+        assert response["error"]["code"] == -32700
+        assert response["id"] is None
+
+    def test_serve_stdio_missing_jsonrpc_version(self):
+        server = RigMCPServer()
+        response = server._jsonrpc_error(-32600, "Invalid Request", 1)
+        assert response["jsonrpc"] == "2.0"
+        assert response["error"]["code"] == -32600
+        assert response["id"] == 1
+
+    def test_jsonrpc_error_helper(self):
+        server = RigMCPServer()
+
+        err = server._jsonrpc_error(-32700, "Parse error", "req-1")
+        assert err == {
+            "jsonrpc": "2.0",
+            "error": {"code": -32700, "message": "Parse error"},
+            "id": "req-1",
+        }
+
+        err = server._jsonrpc_error(-32602, "Invalid params", 42, {"detail": "bad"})
+        assert err == {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32602,
+                "message": "Invalid params",
+                "data": {"detail": "bad"},
+            },
+            "id": 42,
+        }
+
+        err = server._jsonrpc_error(-32603, "Internal error")
+        assert err == {
+            "jsonrpc": "2.0",
+            "error": {"code": -32603, "message": "Internal error"},
+            "id": None,
+        }

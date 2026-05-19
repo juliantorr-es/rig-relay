@@ -43,10 +43,10 @@ def acp_agent_with_session_config(
             self._base_config = config
             self.agent_manager.invalidate_config()
 
-    monkeypatch.setattr("vibe.acp.acp_agent_loop.AgentLoop", PatchedAgentLoop)
+    monkeypatch.setattr("rig_relay.core.agent_loop.AgentLoop", PatchedAgentLoop)
     monkeypatch.setattr(VibeAcpAgentLoop, "_load_config", lambda self: config)
     monkeypatch.setattr(
-        "vibe.acp.acp_agent_loop.VibeConfig.load", lambda *args, **kwargs: config
+        "rig_relay.acp.acp_agent_loop.VibeConfig.load", lambda *args, **kwargs: config
     )
 
     vibe_acp_agent = VibeAcpAgentLoop()
@@ -173,7 +173,8 @@ class TestSessionSetTitle:
             raise ValueError("Cannot rewrite metadata")
 
         monkeypatch.setattr(
-            "vibe.acp.acp_agent_loop.update_saved_session_title_at_path", fail_persist
+            "rig_relay.acp.acp_agent_loop.update_saved_session_title_at_path",
+            fail_persist,
         )
 
         with pytest.raises(InternalError):

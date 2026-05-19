@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-18T03:36:22.657556+00:00",
-  "git_commit": "a0dc9c56003d",
-  "page_count": 238,
+  "generated_at": "2026-05-19T19:58:31.590375+00:00",
+  "git_commit": "6ee5a2f72830",
+  "page_count": 256,
   "collection_page_count": 35,
   "pages": [
     {
@@ -775,6 +775,11 @@
       "source_json_path": "json/governance/coordination-ownership-policy.v1.json"
     },
     {
+      "document_id": "coordination-ledger-contract-v1",
+      "title": "Coordination Event Ledger Contract v1",
+      "source_json_path": "json/governance/coordination_ledger_contract_v1.v1.json"
+    },
+    {
       "document_id": "cross-session-coordination",
       "title": "Cross-Session Coordination",
       "source_json_path": "json/governance/cross-session-coordination.v1.json"
@@ -823,6 +828,16 @@
       "document_id": "frontend-rendering-safety",
       "title": "Frontend Rendering Safety Doctrine",
       "source_json_path": "json/governance/frontend-rendering-safety.v1.json"
+    },
+    {
+      "document_id": "frontend-bridge-backend-contract-v1",
+      "title": "Frontend / Bridge / Backend Contract v1",
+      "source_json_path": "json/governance/frontend_bridge_backend_contract_v1.v1.json"
+    },
+    {
+      "document_id": "frontend-bridge-backend-v1-readiness",
+      "title": "Frontend / Bridge / Backend v1 Readiness",
+      "source_json_path": "json/governance/frontend_bridge_backend_v1_readiness.v1.json"
     },
     {
       "document_id": "future-passkey-plan",
@@ -1080,6 +1095,16 @@
       "source_json_path": "json/legal/usage-data-license-alpha.v1.json"
     },
     {
+      "document_id": "rig-otel-local-collector-config-v1",
+      "title": "Rig OTel Local Collector Configuration v0",
+      "source_json_path": "json/otel/local_collector_config.v1.json"
+    },
+    {
+      "document_id": "rig-otel-dataset-ingestion-v0",
+      "title": "Rig OTel Dataset Ingestion v0",
+      "source_json_path": "json/otel/otel_dataset_ingestion_v0.v1.json"
+    },
+    {
       "document_id": "protocol-surfaces",
       "title": "Protocol Surfaces",
       "source_json_path": "json/protocol-surfaces.v1.json"
@@ -1145,6 +1170,11 @@
       "source_json_path": "json/security/threat_model_v0.v1.json"
     },
     {
+      "document_id": "release-packaging-architecture",
+      "title": "Release Packaging Architecture v1",
+      "source_json_path": "json/site/packaging/release_packaging_architecture.v1.json"
+    },
+    {
       "document_id": "runtime-provenance",
       "title": "Runtime Provenance",
       "source_json_path": "json/troubleshooting/runtime-provenance.v1.json"
@@ -1193,6 +1223,66 @@
       "document_id": "textual-streaming-smoothness",
       "title": "Textual Streaming Smoothness \u2014 Provider Delta Coalescing",
       "source_json_path": "json/ui/textual-streaming-smoothness.v1.json"
+    },
+    {
+      "document_id": "release-candidate",
+      "title": "Release Gate Readiness",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "rc-verdict",
+      "title": "RC Candidate Verdict",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "golden-path",
+      "title": "Golden Path \u2014 Dogfood Operational Readiness",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "testing",
+      "title": "Test Inventory",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "test-classifications",
+      "title": "Test Classifications",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "known-seams",
+      "title": "Known Test Seams",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "telemetry",
+      "title": "Telemetry & Privacy Policy",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "bridge-lifecycle",
+      "title": "Desktop Bridge Lifecycle",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "frontend",
+      "title": "Frontend Maturity Evidence",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "security",
+      "title": "Security Policy",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "security-hygiene",
+      "title": "Repository Security Hygiene",
+      "source_json_path": ""
+    },
+    {
+      "document_id": "schemas",
+      "title": "Schema Index",
+      "source_json_path": ""
     }
   ],
   "collections": [

@@ -1,29 +1,112 @@
 {% extends "base.html.j2" %}
 {% block content %}
-<section class="hero">
-  <h2>{{ tagline | default('Structured evidence generated from canonical artifacts.') }}</h2>
-  <p>This site is a deterministic read-only projection of Rig Relay's structured truth. Every page is generated from JSON page models validated against JSON Schemas. No backend, no database, no tracking.</p>
+<section class="homepage-hero">
+  <h2>Rig Relay Governance Dossier</h2>
+  <p>A deterministic, schema-validated repository of Rig Relay’s operational truth, static validation gates, and proof-chain evidence.</p>
 </section>
-<section class="page-grid">
-  <h2>Evidence Pages</h2>
-  <div class="card-grid">
-    {% for page in pages %}
-    <a class="nav-card" href="{{ page.route }}">
-      <strong>{{ page.title }}</strong>
-      <span>{{ page.description | default('') }}</span>
-      {% if page.safety_status %}<span class="safety-chip safety-{{ page.safety_status }}">{{ page.safety_status }}</span>{% endif %}
-    </a>
-    {% endfor %}
+
+<div class="homepage-grid">
+  <!-- Left Column: Core Dossier Status -->
+  <div class="dossier-main">
+    <section>
+      <h2>Release Gate & Readiness Overview</h2>
+      {% if release_summary %}
+      <div class="hero-status status-{{ release_summary.status | default('unknown') | lower }}">
+        <h3>Readiness Verdict: <span class="status-chip status-{{ release_summary.status | default('unknown') | lower }}">{{ release_summary.status | default('unknown') | upper }}</span></h3>
+        <p class="summary">
+          Gate ID: <code>{{ release_summary.gate_id | default('N/A') }}</code>. 
+          The current release candidate is undergoing strict contract satisfaction checks.
+        </p>
+        <div class="metrics">
+          <span><strong>{{ release_summary.blocker_count | default(0) }}</strong> total blockers</span>
+          <span><strong>{{ release_summary.ready_count | default(0) }}</strong> resolved blockers</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="callout callout-info">
+        <h2>Gate Verdict Unknown</h2>
+        <div class="callout-body">No active release gate validation data was compiled for the dashboard.</div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Technical Proof Chain Summary</h2>
+      {% if proof_summary %}
+      <div class="card-grid">
+        <div class="card status-info">
+          <h3>Test Suite Coverage</h3>
+          <div class="card-body">
+            <p><strong>{{ proof_summary.test_count | default(0) }}</strong> test functions verified across <strong>{{ proof_summary.test_files | default(0) }}</strong> files.</p>
+          </div>
+          <div class="card-source">Source: test_inventory.v1.json</div>
+        </div>
+        <div class="card status-success">
+          <h3>Blocker Remediation</h3>
+          <div class="card-body">
+            <p><strong>{{ proof_summary.resolved_blockers | default(0) }}</strong> blockers resolved. <strong>{{ proof_summary.open_blockers | default(0) }}</strong> blockers remain active.</p>
+          </div>
+          <div class="card-source">Source: rc_candidate_verdict.v1.json</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="callout callout-info">
+        <h2>Proof Chain Data Unavailable</h2>
+        <div class="callout-body">Compile the proof-chain artifacts to enable live metrics here.</div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Dossier Evidence Sections</h2>
+      <div class="card-grid">
+        {% for p in pages %}
+        <div class="card status-{{ 'success' if p.status == 'rendered' else 'danger' }}">
+          <h3><a href="{{ p.route }}">{{ p.title }}</a></h3>
+          <div class="card-body">
+            <p>{{ p.description | default('Compiled evidence and tracking logs.') }}</p>
+            {% if p.safety_notes %}
+            <p class="status-chip status-danger">{{ p.safety_notes }}</p>
+            {% else %}
+            <p class="status-chip status-success">Safety Checked</p>
+            {% endif %}
+          </div>
+          <div class="card-source">Route: {{ p.route }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
   </div>
-</section>
-<section class="meta">
-  <h2>Site Metadata</h2>
-  <dl class="definition-list">
-    <dt>Generated</dt><dd>{{ generated_at }}</dd>
-    <dt>Branch</dt><dd>{{ branch }}</dd>
-    <dt>HEAD</dt><dd>{{ head_sha }}</dd>
-    <dt>Pages</dt><dd>{{ pages | length }}</dd>
-    <dt>Public Safety</dt><dd>{{ 'Passed' if safety_passed else 'Warning — review required' }}</dd>
-  </dl>
-</section>
+
+  <!-- Right Column: Site Metadata & Governance Thesis -->
+  <aside class="dossier-sidebar">
+    <section>
+      <h2>System Thesis</h2>
+      <div class="callout callout-info" style="margin-top: 0;">
+        <div class="callout-body">
+          <p style="margin: 0 0 0.75rem 0;"><strong>Governance via Code:</strong> This dossier acts as a zero-trust, static projection of Rig Relay's repository validation.</p>
+          <p style="margin: 0;">Every metric, schema, and page is deterministically regenerated from cryptographically signed or locally generated JSON evidence artifacts to guarantee high-integrity validation before code promotion.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dossier Provenance</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Variable</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Generated At</td><td><code>{{ generated_at }}</code></td></tr>
+            <tr><td>Git Branch</td><td><code>{{ branch }}</code></td></tr>
+            <tr><td>Commit SHA</td><td><code>{{ head_sha }}</code></td></tr>
+            <tr><td>Pages Count</td><td><code>{{ pages | length }}</code></td></tr>
+            <tr><td>Public Safety</td><td><span class="status-chip status-{{ 'success' if safety_passed else 'danger' }}">{{ 'Passed' if safety_passed else 'Hold' }}</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </aside>
+</div>
 {% endblock %}

@@ -1,0 +1,512 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.live_auth_readiness.v1.schema.json",
+  "title": "Live Auth & Credential Authority Readiness v1",
+  "description": "Machine-readable live auth readiness gate. Audits GitHub provider, Google Workspace, MCP, ACP, A2A, SDK auth-API, credential-store, receipt/trace joinability, adversarial coverage, and secret boundaries to produce a promote/park/reject recommendation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "github_provider_auth_status",
+    "google_workspace_auth_status",
+    "mcp_auth_status",
+    "acp_auth_status",
+    "a2a_auth_status",
+    "sdk_auth_api_status",
+    "credential_store_status",
+    "trace_receipt_joinability_status",
+    "adversarial_coverage_status",
+    "secret_boundary_status",
+    "claim_boundaries",
+    "auth_flows_implemented",
+    "auth_flows_deferred",
+    "remaining_blockers",
+    "recommendation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.live_auth_readiness.v1",
+      "description": "Schema version identifier."
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this readiness artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this readiness artifact was generated."
+    },
+    "github_provider_auth_status": {
+      "type": "object",
+      "required": [
+        "app_installation_token_flow_modeled",
+        "app_installation_token_fake_signer_testable",
+        "app_user_auth_modeled_or_deferred",
+        "oauth_web_flow_pkce_modeled_or_deferred",
+        "pat_import_discouraged",
+        "token_through_credential_store_abstraction",
+        "auth_state_persists_only_hashes_metadata",
+        "expiry_revocation_enforced",
+        "permission_repo_grants_enforced"
+      ],
+      "properties": {
+        "app_installation_token_flow_modeled": {
+          "type": "boolean",
+          "description": "GitHub App installation token flow is modeled (auth state, token endpoint, JWT signer)."
+        },
+        "app_installation_token_fake_signer_testable": {
+          "type": "boolean",
+          "description": "Fake JWT signer and fake token endpoint exist for local testing."
+        },
+        "app_user_auth_modeled_or_deferred": {
+          "type": "boolean",
+          "description": "GitHub App user auth is modeled or honestly deferred with schema-valid refusal."
+        },
+        "oauth_web_flow_pkce_modeled_or_deferred": {
+          "type": "boolean",
+          "description": "OAuth web flow with PKCE is modeled or honestly deferred."
+        },
+        "pat_import_discouraged": {
+          "type": "boolean",
+          "description": "Personal access token import is discouraged unless explicitly marked manual user-managed mode."
+        },
+        "token_through_credential_store_abstraction": {
+          "type": "boolean",
+          "description": "Token material is stored only through credential-store abstraction, never JSON."
+        },
+        "auth_state_persists_only_hashes_metadata": {
+          "type": "boolean",
+          "description": "Auth state persists only SHA-256 hashes and metadata, never raw tokens."
+        },
+        "expiry_revocation_enforced": {
+          "type": "boolean",
+          "description": "Token expiry and revocation are enforced by time and status checks."
+        },
+        "permission_repo_grants_enforced": {
+          "type": "boolean",
+          "description": "Per-repository permission grants are enforced in capability evaluation."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of GitHub provider live auth readiness."
+    },
+    "google_workspace_auth_status": {
+      "type": "object",
+      "required": [
+        "oauth_desktop_web_flow_modeled",
+        "service_account_jwt_boundary_modeled",
+        "fake_signer_tests_exist",
+        "domain_wide_delegation_modeled",
+        "super_admin_state_fake_token_tests",
+        "restricted_sensitive_scope_posture",
+        "no_raw_workspace_user_data",
+        "token_through_credential_store_abstraction"
+      ],
+      "properties": {
+        "oauth_desktop_web_flow_modeled": {
+          "type": "boolean",
+          "description": "OAuth desktop/web flow with PKCE is modeled or explicitly deferred."
+        },
+        "service_account_jwt_boundary_modeled": {
+          "type": "boolean",
+          "description": "Service account JWT signing boundary is modeled with fake signer."
+        },
+        "fake_signer_tests_exist": {
+          "type": "boolean",
+          "description": "Fake Google token endpoint and fake JWT signer tests exist."
+        },
+        "domain_wide_delegation_modeled": {
+          "type": "boolean",
+          "description": "Domain-wide delegation is modeled with super-admin authorization state."
+        },
+        "super_admin_state_fake_token_tests": {
+          "type": "boolean",
+          "description": "Domain-wide delegation fake-token tests exist."
+        },
+        "restricted_sensitive_scope_posture": {
+          "type": "boolean",
+          "description": "Restricted and sensitive scope posture is enforced."
+        },
+        "no_raw_workspace_user_data": {
+          "type": "boolean",
+          "description": "No raw Workspace user data in artifacts."
+        },
+        "token_through_credential_store_abstraction": {
+          "type": "boolean",
+          "description": "Token material is stored only through credential-store abstraction."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of Google Workspace live auth readiness."
+    },
+    "mcp_auth_status": {
+      "type": "object",
+      "required": [
+        "per_user_scoped_authorization_model",
+        "bearer_oauth_metadata_modeled",
+        "tool_auth_no_descriptor_hint_reliance",
+        "tool_identity_provenance_hash"
+      ],
+      "properties": {
+        "per_user_scoped_authorization_model": {
+          "type": "boolean",
+          "description": "Per-user scoped authorization model exists."
+        },
+        "bearer_oauth_metadata_modeled": {
+          "type": "boolean",
+          "description": "Bearer/OAuth-style auth metadata is modeled locally."
+        },
+        "tool_auth_no_descriptor_hint_reliance": {
+          "type": "boolean",
+          "description": "Tool authorization does not rely on descriptor hints (readOnlyHint, destructiveHint)."
+        },
+        "tool_identity_provenance_hash": {
+          "type": "boolean",
+          "description": "Tool identity/provenance hash or attestation placeholder exists."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of MCP auth readiness."
+    },
+    "acp_auth_status": {
+      "type": "object",
+      "required": [
+        "authenticate_path_not_only_refusal",
+        "session_auth_state_resumable_or_refused",
+        "permission_requests_schema_valid_auditable",
+        "session_lifecycle_capability_gated"
+      ],
+      "properties": {
+        "authenticate_path_not_only_refusal": {
+          "type": "boolean",
+          "description": "Authenticate path returns structured response with auth state, not just refusal."
+        },
+        "session_auth_state_resumable_or_refused": {
+          "type": "boolean",
+          "description": "Session auth state is resumable or explicitly refused with capability false."
+        },
+        "permission_requests_schema_valid_auditable": {
+          "type": "boolean",
+          "description": "Permission requests are schema-valid and auditable."
+        },
+        "session_lifecycle_capability_gated": {
+          "type": "boolean",
+          "description": "Session lifecycle operations are capability-gated."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of ACP auth readiness."
+    },
+    "a2a_auth_status": {
+      "type": "object",
+      "required": [
+        "agent_card_security_schemes",
+        "local_identity_auth_metadata",
+        "federation_trust_boundary_modeled"
+      ],
+      "properties": {
+        "agent_card_security_schemes": {
+          "type": "boolean",
+          "description": "Agent card includes security schemes field."
+        },
+        "local_identity_auth_metadata": {
+          "type": "boolean",
+          "description": "Local identity/auth metadata exists on agent card."
+        },
+        "federation_trust_boundary_modeled": {
+          "type": "boolean",
+          "description": "Federation trust boundary is modeled (none for local-only)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of A2A identity readiness."
+    },
+    "sdk_auth_api_status": {
+      "type": "object",
+      "required": [
+        "auth_status_exposed",
+        "auth_capability_check_exposed",
+        "refresh_needed_detection",
+        "refusal_api_exposed",
+        "receipt_refs_exposed"
+      ],
+      "properties": {
+        "auth_status_exposed": {
+          "type": "boolean",
+          "description": "SDK exposes auth status (provider, status, refresh-needed, credential-store ref)."
+        },
+        "auth_capability_check_exposed": {
+          "type": "boolean",
+          "description": "SDK exposes auth capability check."
+        },
+        "refresh_needed_detection": {
+          "type": "boolean",
+          "description": "SDK exposes refresh-needed detection."
+        },
+        "refusal_api_exposed": {
+          "type": "boolean",
+          "description": "SDK exposes structured refusal with receipt reference."
+        },
+        "receipt_refs_exposed": {
+          "type": "boolean",
+          "description": "SDK exposes receipt references for auth operations."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of SDK auth API readiness."
+    },
+    "credential_store_status": {
+      "type": "object",
+      "required": [
+        "abstraction_defined",
+        "in_memory_store_for_testing",
+        "content_light_metadata",
+        "never_raw_in_json_artifacts",
+        "keychain_backed_available"
+      ],
+      "properties": {
+        "abstraction_defined": {
+          "type": "boolean",
+          "description": "CredentialStore abstraction is defined (ABC with store/retrieve/delete/list)."
+        },
+        "in_memory_store_for_testing": {
+          "type": "boolean",
+          "description": "InMemoryCredentialStore exists for local testing."
+        },
+        "content_light_metadata": {
+          "type": "boolean",
+          "description": "Credential metadata stores only SHA-256 hashes, never raw credentials."
+        },
+        "never_raw_in_json_artifacts": {
+          "type": "boolean",
+          "description": "No raw credentials in any JSON artifact."
+        },
+        "keychain_backed_available": {
+          "type": "boolean",
+          "description": "KeychainBackedCredentialStore implements the abstract store for production use on macOS."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of credential store abstraction readiness."
+    },
+    "trace_receipt_joinability_status": {
+      "type": "object",
+      "required": [
+        "all_live_auth_paths_emit_trace_id",
+        "auth_state_hash_in_receipts",
+        "credential_store_ref_hash_in_metadata",
+        "capability_id_in_refusals",
+        "provider_protocol_surface_identified",
+        "receipt_id_in_all_operations",
+        "refusal_code_when_refused",
+        "parent_trace_id_propagates"
+      ],
+      "properties": {
+        "all_live_auth_paths_emit_trace_id": {
+          "type": "boolean",
+          "description": "All live-auth paths emit trace_id."
+        },
+        "auth_state_hash_in_receipts": {
+          "type": "boolean",
+          "description": "Auth state hash is included in operation receipts."
+        },
+        "credential_store_ref_hash_in_metadata": {
+          "type": "boolean",
+          "description": "Credential store ref hash is included in auth metadata."
+        },
+        "capability_id_in_refusals": {
+          "type": "boolean",
+          "description": "Capability ID is included in structured refusals."
+        },
+        "provider_protocol_surface_identified": {
+          "type": "boolean",
+          "description": "Provider/protocol surface is identified in auth metadata."
+        },
+        "receipt_id_in_all_operations": {
+          "type": "boolean",
+          "description": "Receipt ID is emitted for all operations."
+        },
+        "refusal_code_when_refused": {
+          "type": "boolean",
+          "description": "Refusal code is emitted when any operation is refused."
+        },
+        "parent_trace_id_propagates": {
+          "type": "boolean",
+          "description": "Parent trace ID propagates correctly across operation lifecycle."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of trace/receipt joinability across live-auth paths."
+    },
+    "adversarial_coverage_status": {
+      "type": "object",
+      "required": [
+        "raw_credential_injection_rejected",
+        "raw_token_injection_rejected",
+        "scope_escalation_rejected",
+        "expired_token_rejected",
+        "revoked_token_rejected",
+        "missing_scope_rejected",
+        "overbroad_scope_rejected",
+        "restricted_scope_rejected",
+        "credential_store_failure_handled",
+        "no_raw_secret_output"
+      ],
+      "properties": {
+        "raw_credential_injection_rejected": {
+          "type": "boolean",
+          "description": "Raw credential injection into auth state is rejected."
+        },
+        "raw_token_injection_rejected": {
+          "type": "boolean",
+          "description": "Raw token injection into auth state is rejected."
+        },
+        "scope_escalation_rejected": {
+          "type": "boolean",
+          "description": "Scope escalation attempts are rejected."
+        },
+        "expired_token_rejected": {
+          "type": "boolean",
+          "description": "Expired tokens are rejected."
+        },
+        "revoked_token_rejected": {
+          "type": "boolean",
+          "description": "Revoked tokens are rejected."
+        },
+        "missing_scope_rejected": {
+          "type": "boolean",
+          "description": "Missing scope operations are rejected."
+        },
+        "overbroad_scope_rejected": {
+          "type": "boolean",
+          "description": "Overbroad scope operations are rejected."
+        },
+        "restricted_scope_rejected": {
+          "type": "boolean",
+          "description": "Restricted/sensitive scope operations are rejected."
+        },
+        "credential_store_failure_handled": {
+          "type": "boolean",
+          "description": "Credential store failures are handled gracefully."
+        },
+        "no_raw_secret_output": {
+          "type": "boolean",
+          "description": "No raw secret is ever output in any artifact."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of adversarial test coverage for auth paths."
+    },
+    "secret_boundary_status": {
+      "type": "object",
+      "required": [
+        "no_raw_access_tokens_in_json",
+        "no_raw_refresh_tokens_in_json",
+        "no_raw_oauth_codes_in_json",
+        "no_raw_client_secrets_in_json",
+        "no_raw_service_account_keys_in_json",
+        "no_raw_github_app_keys_in_json",
+        "no_raw_jwt_assertions_in_json",
+        "no_credential_logging",
+        "no_test_depends_on_real_credentials"
+      ],
+      "properties": {
+        "no_raw_access_tokens_in_json": {
+          "type": "boolean",
+          "description": "No raw access tokens in JSON artifacts."
+        },
+        "no_raw_refresh_tokens_in_json": {
+          "type": "boolean",
+          "description": "No raw refresh tokens in JSON artifacts."
+        },
+        "no_raw_oauth_codes_in_json": {
+          "type": "boolean",
+          "description": "No raw OAuth codes in JSON artifacts."
+        },
+        "no_raw_client_secrets_in_json": {
+          "type": "boolean",
+          "description": "No raw client secrets in JSON artifacts."
+        },
+        "no_raw_service_account_keys_in_json": {
+          "type": "boolean",
+          "description": "No raw service account private keys in JSON artifacts."
+        },
+        "no_raw_github_app_keys_in_json": {
+          "type": "boolean",
+          "description": "No raw GitHub App private keys in JSON artifacts."
+        },
+        "no_raw_jwt_assertions_in_json": {
+          "type": "boolean",
+          "description": "No raw JWT assertions in JSON artifacts."
+        },
+        "no_credential_logging": {
+          "type": "boolean",
+          "description": "No credential logging anywhere."
+        },
+        "no_test_depends_on_real_credentials": {
+          "type": "boolean",
+          "description": "No test depends on real personal credentials."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of secret boundary enforcement."
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "required": ["rig_may_claim", "rig_must_not_claim"],
+      "properties": {
+        "rig_may_claim": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domains Rig Relay may claim as production-complete for live auth."
+        },
+        "rig_must_not_claim": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domains Rig Relay must not claim as production-complete for live auth."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Claim boundary declarations for live auth."
+    },
+    "auth_flows_implemented": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Auth flows that are implemented and test-covered."
+    },
+    "auth_flows_deferred": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Auth flows that are honestly deferred with schema-valid refusal."
+    },
+    "remaining_blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Remaining blockers identified during the live auth readiness audit."
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["promote", "park", "reject"],
+      "description": "Readiness recommendation: promote (criteria largely met), park (significant gaps, revisit), reject (criteria not met)."
+    }
+  },
+  "additionalProperties": false
+}

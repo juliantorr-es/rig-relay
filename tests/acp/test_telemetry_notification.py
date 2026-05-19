@@ -18,7 +18,7 @@ def acp_agent_loop(backend) -> VibeAcpAgentLoop:
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **{**kwargs, "backend": backend})
 
-    patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
+    patch("rig_relay.core.agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
     return _create_acp_agent()
 
 
@@ -35,7 +35,7 @@ class TestTelemetryNotification:
         await acp_agent_loop.ext_notification(
             "telemetry/send",
             {
-                "event": "vibe.unsupported_event",
+                "event": "rig.relay.unsupported_event",
                 "session_id": session.session_id,
                 "properties": {"context_type": "file"},
             },
@@ -53,7 +53,7 @@ class TestTelemetryNotification:
         await acp_agent_loop.ext_notification(
             "telemetry/send",
             {
-                "event": "vibe.at_mention_inserted",
+                "event": "rig.relay.at_mention_inserted",
                 "session_id": session.session_id,
                 "properties": {
                     "nb_mentions": 2,
@@ -65,7 +65,9 @@ class TestTelemetryNotification:
         )
 
         at_mention_events = [
-            e for e in telemetry_events if e["event_name"] == "vibe.at_mention_inserted"
+            e
+            for e in telemetry_events
+            if e["event_name"] == "rig.relay.at_mention_inserted"
         ]
         assert len(at_mention_events) == 1
         props = at_mention_events[0]["properties"]
@@ -81,5 +83,5 @@ class TestTelemetryNotification:
         with pytest.raises(InvalidRequestError):
             await acp_agent_loop.ext_notification(
                 "telemetry/send",
-                {"event": "vibe.some_event"},  # missing session_id
+                {"event": "rig.relay.some_event"},  # missing session_id
             )

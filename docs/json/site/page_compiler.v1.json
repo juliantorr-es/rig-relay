@@ -1,0 +1,18 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "compiler",
+  "title": "Static Compiler Evidence",
+  "route": "/compiler/index.html",
+  "layout": "default",
+  "source_artifact_paths": [
+    "docs/json/site/static_site_compiler_contract.v1.json",
+    "docs/json/site/static_site_compiler_refinement_v0.v1.json"
+  ],
+  "generated_from_schema_versions": [
+    "rig.static_site.compiler_contract.v1",
+    "rig.static_site.compiler_refinement.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [],
+  "generated_at": "2026-05-19T19:40:00Z"
+}

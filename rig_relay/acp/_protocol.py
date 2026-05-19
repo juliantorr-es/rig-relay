@@ -8,7 +8,8 @@ from acp import Client
 from acp.schema import AuthenticateResponse, SessionInfoUpdate
 from pydantic import ValidationError
 
-from rig_relay.acp._refusal_adapter import raise_acp_refusal
+from rig_relay.acp._local_auth import build_acp_local_auth_state
+from rig_relay.acp._refusal_adapter import build_acp_refusal, raise_acp_refusal
 from rig_relay.acp.exceptions import (
     InternalError,
     InvalidRequestError,
@@ -28,10 +29,27 @@ class ProtocolMixin:
     async def authenticate(
         self, method_id: str, **kwargs: Any
     ) -> AuthenticateResponse | None:
-        raise_acp_refusal(
-            refusal_code="live_auth_deferred",
-            reason="Live authentication is deferred",
+        auth_state = build_acp_local_auth_state(
+            auth_status="deferred",
+            auth_method="unsupported",
+            capability_id="acp.authenticate",
+            trace_id=kwargs.get("trace_id", ""),
+            deferred_reason="Live authentication is deferred in this alpha. "
+            "Use the Rig Relay desktop cockpit to configure providers "
+            "and API keys before connecting via ACP. Remediation: run "
+            "'uv run rig-relay' and complete provider setup first.",
+        )
+        refusal = build_acp_refusal(
+            refusal_code="acp.authenticate.deferred_or_unconfigured",
+            reason="Live authentication is deferred in this alpha. "
+            "Use the Rig Relay desktop cockpit to configure providers "
+            "and API keys before connecting via ACP. Remediation: run "
+            "'uv run rig-relay' and complete provider setup first.",
             method=method_id,
+            trace_id=kwargs.get("trace_id", ""),
+        )
+        return AuthenticateResponse(
+            field_meta={"auth_state": auth_state.to_dict(), "refusal": refusal}
         )
 
     async def _emit_session_info_update(

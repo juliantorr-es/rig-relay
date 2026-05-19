@@ -109,7 +109,7 @@
       "block_id": "code-10",
       "type": "code",
       "language": "json",
-      "content": "{\n  \"type\": \"workspace_snapshot\",\n  \"roots\": [\"/home/user/project\"],\n  \"active_file\": \"/home/user/project/src/main.py\",\n  \"open_tabs\": [\"/home/user/project/src/main.py\", \"/home/user/project/src/utils.py\"],\n  \"selection\": {\n    \"file\": \"/home/user/project/src/main.py\",\n    \"startLine\": 42,\n    \"startCol\": 0,\n    \"endLine\": 42,\n    \"endCol\": 15\n  },\n  \"visible_ranges\": [\n    { \"file\": \"/home/user/project/src/main.py\", \"startLine\": 30, \"endLine\": 60 }\n  ],\n  \"editor_state\": {\n    \"language\": \"python\",\n    \"lineCount\": 200,\n    \"eol\": \"LF\",\n    \"isUntitled\": false,\n    \"isDirty\": false\n  }\n}",
+      "content": "{\n  \"type\": \"workspace_snapshot\",\n  \"roots\": [\"/workspace/project\"],\n  \"active_file\": \"/workspace/project/src/main.py\",\n  \"open_tabs\": [\"/workspace/project/src/main.py\", \"/workspace/project/src/utils.py\"],\n  \"selection\": {\n    \"file\": \"/workspace/project/src/main.py\",\n    \"startLine\": 42,\n    \"startCol\": 0,\n    \"endLine\": 42,\n    \"endCol\": 15\n  },\n  \"visible_ranges\": [\n    { \"file\": \"/workspace/project/src/main.py\", \"startLine\": 30, \"endLine\": 60 }\n  ],\n  \"editor_state\": {\n    \"language\": \"python\",\n    \"lineCount\": 200,\n    \"eol\": \"LF\",\n    \"isUntitled\": false,\n    \"isDirty\": false\n  }\n}",
       "disclosure": {
         "level": "detailed",
         "collapsible": true,
@@ -128,7 +128,7 @@
       "block_id": "code-12",
       "type": "code",
       "language": "json",
-      "content": "{\n  \"type\": \"capability_request\",\n  \"id\": \"req_abc123\",\n  \"capability\": \"ide.diagnostics.file\",\n  \"args\": { \"file\": \"/home/user/project/src/main.py\" }\n}",
+      "content": "{\n  \"type\": \"capability_request\",\n  \"id\": \"req_abc123\",\n  \"capability\": \"ide.diagnostics.file\",\n  \"args\": { \"file\": \"/workspace/project/src/main.py\" }\n}",
       "disclosure": {
         "level": "detailed",
         "collapsible": true,

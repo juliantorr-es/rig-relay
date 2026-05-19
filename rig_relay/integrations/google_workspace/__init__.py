@@ -15,6 +15,13 @@ from rig_relay.integrations.google_workspace._capabilities import (
     load_capability_manifest,
     validate_manifest,
 )
+from rig_relay.integrations.google_workspace._fake_auth import (
+    MODULE_DOC,
+    FakeGoogleDomainWideDelegation,
+    FakeGoogleJwtSigner,
+    FakeGoogleServiceAccountAuth,
+    FakeGoogleTokenEndpoint,
+)
 from rig_relay.integrations.google_workspace._models import (
     GoogleWorkspaceAuthMode,
     GoogleWorkspaceAuthState,
@@ -38,6 +45,11 @@ from rig_relay.integrations.google_workspace._receipts import (
 )
 
 __all__ = [
+    "MODULE_DOC",
+    "FakeGoogleDomainWideDelegation",
+    "FakeGoogleJwtSigner",
+    "FakeGoogleServiceAccountAuth",
+    "FakeGoogleTokenEndpoint",
     "GoogleWorkspaceAuthMode",
     "GoogleWorkspaceAuthState",
     "GoogleWorkspaceAuthStatus",

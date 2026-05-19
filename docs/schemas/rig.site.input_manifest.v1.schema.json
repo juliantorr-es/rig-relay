@@ -73,7 +73,21 @@
               "generic_page",
               "code_schema",
               "threat_model",
-              "readme"
+              "readme",
+              "compiler_contract",
+              "compiler_refinement",
+              "a2a_readiness",
+              "ide_ipc",
+              "mcp_tools",
+              "protocol_surfaces",
+              "otel_config",
+              "otel_ingestion",
+              "tracing_matrix",
+              "tracing_policy",
+              "test_seams",
+              "deferred_risks",
+              "input_manifest",
+              "experience_elevation"
             ]
           },
           "public_safe": {

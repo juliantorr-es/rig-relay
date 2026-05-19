@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 import uuid
 
 from rig_relay.protocols.a2a._models import (
     A2AAgentCard,
     A2ADelegationReceipt,
     A2ATaskCard,
+    A2ATaskLifecycleEvent,
     A2ATaskStatus,
 )
 
@@ -53,9 +55,24 @@ def build_agent_card(
 def build_task_card(
     task_id: str, agent_id: str, description: str = "", trace_id: str = ""
 ) -> A2ATaskCard:
-    return A2ATaskCard(
-        task_id=task_id, agent_id=agent_id, description=description, trace_id=trace_id
+    now = datetime.now(UTC).isoformat()
+    card = A2ATaskCard(
+        task_id=task_id,
+        agent_id=agent_id,
+        description=description,
+        trace_id=trace_id,
+        seq=1,
     )
+    card.events.append(
+        A2ATaskLifecycleEvent(
+            event_type=A2ATaskStatus.CREATED,
+            timestamp=now,
+            task_id=task_id,
+            trace_id=trace_id,
+            seq=1,
+        )
+    )
+    return card
 
 
 def transition_task(card: A2ATaskCard, new_status: A2ATaskStatus) -> A2ATaskCard:
@@ -65,7 +82,8 @@ def transition_task(card: A2ATaskCard, new_status: A2ATaskStatus) -> A2ATaskCard
             f"Invalid A2A task transition: {card.status.value} -> {new_status.value}"
         )
     now = datetime.now(UTC).isoformat()
-    return A2ATaskCard(
+    new_seq = card.seq + 1
+    new_card = A2ATaskCard(
         task_id=card.task_id,
         agent_id=card.agent_id,
         status=new_status,
@@ -73,18 +91,33 @@ def transition_task(card: A2ATaskCard, new_status: A2ATaskStatus) -> A2ATaskCard
         input_hash=card.input_hash,
         output_hash=card.output_hash,
         trace_id=card.trace_id,
+        messages=list(card.messages),
+        events=list(card.events),
+        seq=new_seq,
         created_at=card.created_at,
         updated_at=now,
         generated_at=now,
         content_light=True,
         schema_version=card.schema_version,
     )
+    new_card.events.append(
+        A2ATaskLifecycleEvent(
+            event_type=new_status,
+            timestamp=now,
+            task_id=card.task_id,
+            trace_id=card.trace_id,
+            seq=new_seq,
+        )
+    )
+    return new_card
 
 
 def send_local_task_message(
     card: A2ATaskCard, message: str, trace_id: str = ""
 ) -> A2ATaskCard:
     now = datetime.now(UTC).isoformat()
+    new_messages = list(card.messages)
+    new_messages.append(message)
     return A2ATaskCard(
         task_id=card.task_id,
         agent_id=card.agent_id,
@@ -93,6 +126,9 @@ def send_local_task_message(
         input_hash=card.input_hash,
         output_hash=card.output_hash,
         trace_id=card.trace_id,
+        messages=new_messages,
+        events=list(card.events),
+        seq=card.seq,
         created_at=card.created_at,
         updated_at=now,
         generated_at=now,
@@ -112,7 +148,7 @@ def build_delegation_receipt(
     receiving_agent_id: str,
     task_id: str,
     trace_id: str = "",
-    verdict: str = "allowed",
+    verdict: Literal["allowed", "refused", "completed"] = "allowed",
     refusal_code: str = "",
 ) -> A2ADelegationReceipt:
     return A2ADelegationReceipt(

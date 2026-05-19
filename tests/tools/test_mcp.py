@@ -145,7 +145,7 @@ class TestMCPStderrCapture:
     def test_stderr_logger_thread_logs_decoded_lines(self):
         r_fd, w_fd = os.pipe()
         try:
-            vibe_logger = logging.getLogger("vibe")
+            vibe_logger = logging.getLogger("rig-relay")
             with patch.object(vibe_logger, "debug") as debug_mock:
                 thread = threading.Thread(
                     target=_stderr_logger_thread, args=(r_fd,), daemon=True
@@ -175,7 +175,7 @@ class TestMCPStderrCapture:
 
     @pytest.mark.asyncio
     async def test_mcp_stderr_capture_logs_written_data(self):
-        vibe_logger = logging.getLogger("vibe")
+        vibe_logger = logging.getLogger("rig-relay")
         with patch.object(vibe_logger, "debug") as debug_mock:
             async with _mcp_stderr_capture() as stream:
                 stream.write("captured line\n")
@@ -184,7 +184,7 @@ class TestMCPStderrCapture:
 
     @pytest.mark.asyncio
     async def test_mcp_stderr_capture_ignores_empty_lines(self):
-        vibe_logger = logging.getLogger("vibe")
+        vibe_logger = logging.getLogger("rig-relay")
         with patch.object(vibe_logger, "debug") as debug_mock:
             async with _mcp_stderr_capture() as stream:
                 stream.write("\n\n")
@@ -497,7 +497,7 @@ class TestMCPRegistry:
         remote = RemoteTool(name="hello", description="Hi")
 
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_http", return_value=[remote]
+            "rig_relay.core.tools.mcp.registry.list_tools_http", return_value=[remote]
         ):
             tools = await registry._discover_http(srv)
 
@@ -512,7 +512,7 @@ class TestMCPRegistry:
         srv = self._make_http_server("fail", url="http://fail:1")
 
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_http",
+            "rig_relay.core.tools.mcp.registry.list_tools_http",
             side_effect=ConnectionError("down"),
         ):
             tools = await registry._discover_http(srv)
@@ -526,7 +526,7 @@ class TestMCPRegistry:
         remote = RemoteTool(name="run", description="Run it")
 
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_stdio", return_value=[remote]
+            "rig_relay.core.tools.mcp.registry.list_tools_stdio", return_value=[remote]
         ):
             tools = await registry._discover_stdio(srv)
 
@@ -541,7 +541,7 @@ class TestMCPRegistry:
         srv = self._make_stdio_server("broken")
 
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_stdio",
+            "rig_relay.core.tools.mcp.registry.list_tools_stdio",
             side_effect=OSError("no binary"),
         ):
             tools = await registry._discover_stdio(srv)
@@ -563,7 +563,8 @@ class TestMCPRegistry:
 
         new_remote = RemoteTool(name="nt")
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_http", return_value=[new_remote]
+            "rig_relay.core.tools.mcp.registry.list_tools_http",
+            return_value=[new_remote],
         ):
             tools = registry.get_tools([cached_srv, new_srv])
 
@@ -591,9 +592,11 @@ class TestMCPStdioCwd:
     @pytest.mark.asyncio
     async def test_list_tools_stdio_passes_cwd_to_params(self):
         with (
-            patch("vibe.core.tools.mcp.tools.stdio_client") as mock_client,
-            patch("vibe.core.tools.mcp.tools.ClientSession") as mock_session_cls,
-            patch("vibe.core.tools.mcp.tools.StdioServerParameters") as mock_params_cls,
+            patch("rig_relay.core.tools.mcp.tools.stdio_client") as mock_client,
+            patch("rig_relay.core.tools.mcp.tools.ClientSession") as mock_session_cls,
+            patch(
+                "rig_relay.core.tools.mcp.tools.StdioServerParameters"
+            ) as mock_params_cls,
         ):
             mock_client.return_value.__aenter__ = AsyncMock(
                 return_value=(MagicMock(), MagicMock())
@@ -616,10 +619,12 @@ class TestMCPStdioCwd:
     @pytest.mark.asyncio
     async def test_call_tool_stdio_passes_cwd_to_params(self):
         with (
-            patch("vibe.core.tools.mcp.tools.stdio_client") as mock_client,
-            patch("vibe.core.tools.mcp.tools.ClientSession") as mock_session_cls,
-            patch("vibe.core.tools.mcp.tools.StdioServerParameters") as mock_params_cls,
-            patch("vibe.core.tools.mcp.tools._parse_call_result") as mock_parse,
+            patch("rig_relay.core.tools.mcp.tools.stdio_client") as mock_client,
+            patch("rig_relay.core.tools.mcp.tools.ClientSession") as mock_session_cls,
+            patch(
+                "rig_relay.core.tools.mcp.tools.StdioServerParameters"
+            ) as mock_params_cls,
+            patch("rig_relay.core.tools.mcp.tools._parse_call_result") as mock_parse,
         ):
             mock_client.return_value.__aenter__ = AsyncMock(
                 return_value=(MagicMock(), MagicMock())
@@ -654,7 +659,7 @@ class TestMCPStdioCwd:
         remote = RemoteTool(name="run", description="Run it")
 
         with patch(
-            "vibe.core.tools.mcp.registry.list_tools_stdio", return_value=[remote]
+            "rig_relay.core.tools.mcp.registry.list_tools_stdio", return_value=[remote]
         ) as mock_list:
             await registry._discover_stdio(srv)
 
@@ -678,10 +683,11 @@ class TestMCPStdioCwd:
 
         with (
             patch(
-                "vibe.core.tools.mcp.registry.list_tools_stdio", return_value=[remote]
+                "rig_relay.core.tools.mcp.registry.list_tools_stdio",
+                return_value=[remote],
             ),
             patch(
-                "vibe.core.tools.mcp.registry.create_mcp_stdio_proxy_tool_class",
+                "rig_relay.core.tools.mcp.registry.create_mcp_stdio_proxy_tool_class",
                 wraps=create_mcp_stdio_proxy_tool_class,
             ) as mock_create,
         ):

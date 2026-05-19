@@ -1,0 +1,18 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "artifacts",
+  "title": "Raw Artifact Disclosure",
+  "route": "/artifacts/index.html",
+  "layout": "default",
+  "source_artifact_paths": [
+    "docs/json/site/input_manifest.v1.json",
+    "docs/json/site/static_site_experience_elevation.v1.json"
+  ],
+  "generated_from_schema_versions": [
+    "rig.site.input_manifest.v1",
+    "rig.static_site.experience_elevation.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [],
+  "generated_at": "2026-05-19T19:40:00Z"
+}

@@ -54,6 +54,20 @@ class RendererKind(StrEnum):
     SECURITY_HYGIENE = "security_hygiene"
     SCHEMA_INDEX = "schema_index"
     README = "readme"
+    COMPILER_CONTRACT = "compiler_contract"
+    COMPILER_REFINEMENT = "compiler_refinement"
+    A2A_READINESS = "a2a_readiness"
+    IDE_IPC = "ide_ipc"
+    MCP_TOOLS = "mcp_tools"
+    PROTOCOL_SURFACES = "protocol_surfaces"
+    OTEL_CONFIG = "otel_config"
+    OTEL_INGESTION = "otel_ingestion"
+    TRACING_MATRIX = "tracing_matrix"
+    TRACING_POLICY = "tracing_policy"
+    TEST_SEAMS = "test_seams"
+    DEFERRED_RISKS = "deferred_risks"
+    INPUT_MANIFEST = "input_manifest"
+    EXPERIENCE_ELEVATION = "experience_elevation"
 
 
 class HeroStatusSection(BaseModel):

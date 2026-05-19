@@ -14,6 +14,7 @@ from acp.schema import (
     UnstructuredCommandInput,
 )
 
+from rig_relay.acp._disabled_tools import NON_INTERACTIVE_DISABLED_TOOLS
 from rig_relay.acp.session import AcpSessionLoop
 from rig_relay.acp.utils import (
     create_compact_end_session_update,

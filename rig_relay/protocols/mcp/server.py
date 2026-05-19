@@ -17,12 +17,16 @@ Transport: stdio (local) or Streamable HTTP (remote).
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
+import sys
+import time
 from typing import Any
 
 from rig_relay.coordination.council import RedactionMode
+from rig_relay.protocols._transport_budgets import BudgetTracker
 from rig_relay.protocols.mcp.models import (
     GATED_TOOLS,
     PROMPTS,
@@ -50,6 +54,8 @@ class RigMCPServer:
 
     def __init__(self) -> None:
         self._initialized = False
+        self._budgets = BudgetTracker()
+        self._budgets.connection_start = time.monotonic()
         self._capabilities = ServerCapabilities(
             tools={"listChanged": True},
             resources={"subscribe": False, "listChanged": True},
@@ -90,6 +96,165 @@ class RigMCPServer:
                 }
 
         return await self._dispatch(tool.name, arguments)
+
+    async def handle_jsonrpc_request(self, raw_request: str) -> str:
+        if not self._budgets.can_accept_request(len(raw_request.encode("utf-8"))):
+            return json.dumps({
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32000,
+                    "message": "Rate limited: request budget exceeded",
+                },
+            })
+
+        self._budgets.track_request()
+        try:
+            try:
+                request = json.loads(raw_request)
+            except json.JSONDecodeError:
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32700, "message": "Parse error"},
+                })
+
+            if not isinstance(request, dict):
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                })
+
+            if request.get("jsonrpc") != "2.0":
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "error": {
+                        "code": -32600,
+                        "message": "Invalid Request: missing or wrong jsonrpc version",
+                    },
+                })
+
+            method = request.get("method")
+            req_id = request.get("id")
+
+            if method == "tools/call":
+                params = request.get("params", {})
+                tool_name = params.get("name", "")
+                arguments = params.get("arguments", {})
+                result = await self.call_tool(tool_name, arguments)
+                return json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result})
+
+            if method == "tools/list":
+                tools = self.list_tools()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"tools": [t.model_dump() for t in tools]},
+                })
+
+            if method == "resources/list":
+                resources = self.list_resources()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"resources": [r.model_dump() for r in resources]},
+                })
+
+            if method == "prompts/list":
+                prompts = self.list_prompts()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"prompts": [p.model_dump() for p in prompts]},
+                })
+
+            return json.dumps({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32601, "message": f"Method not found: {method}"},
+            })
+        finally:
+            self._budgets.release_request()
+
+    def process_jsonrpc_sync(self, raw_request: str) -> str:
+        if not self._budgets.can_accept_request(len(raw_request.encode("utf-8"))):
+            return json.dumps({
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32000,
+                    "message": "Rate limited: request budget exceeded",
+                },
+            })
+
+        self._budgets.track_request()
+        try:
+            try:
+                request = json.loads(raw_request)
+            except json.JSONDecodeError:
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32700, "message": "Parse error"},
+                })
+
+            if not isinstance(request, dict):
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                })
+
+            if request.get("jsonrpc") != "2.0":
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": request.get("id"),
+                    "error": {
+                        "code": -32600,
+                        "message": "Invalid Request: missing or wrong jsonrpc version",
+                    },
+                })
+
+            method = request.get("method")
+            req_id = request.get("id")
+
+            if method == "tools/list":
+                tools = self.list_tools()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"tools": [t.model_dump() for t in tools]},
+                })
+
+            if method == "resources/list":
+                resources = self.list_resources()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"resources": [r.model_dump() for r in resources]},
+                })
+
+            if method == "prompts/list":
+                prompts = self.list_prompts()
+                return json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {"prompts": [p.model_dump() for p in prompts]},
+                })
+
+            return json.dumps({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32601, "message": f"Method not found: {method}"},
+            })
+        finally:
+            self._budgets.release_request()
+
+    @property
+    def budget_tracker(self) -> BudgetTracker:
+        return self._budgets
 
     async def _dispatch(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         dispatch = {
@@ -302,8 +467,6 @@ class RigMCPServer:
         mission_id = args.get("mission_id", "")
         rationale = args.get("rationale", "")
         target_files = args.get("target_files", [])
-        proposed_changes = args.get("proposed_changes", "")
-
         receipt_id = f"rec-patch-{hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest()[:12]}"
 
         return {
@@ -331,6 +494,118 @@ class RigMCPServer:
             "rationale": rationale,
             "message": f"Approval requested for '{action}'. Awaiting user confirmation in Rig Relay.",
         }
+
+    # ═══ Transport — stdio ═══════════════════════════════════════════════
+
+    async def serve_stdio(self) -> None:
+        loop = asyncio.get_event_loop()
+        while True:
+            line = await loop.run_in_executor(None, sys.stdin.readline)
+            if not line:
+                break
+            line_str = line.strip()
+            if not line_str:
+                continue
+
+            try:
+                request = json.loads(line_str)
+            except json.JSONDecodeError:
+                response = self._jsonrpc_error(-32700, "Parse error", None)
+                sys.stdout.write(json.dumps(response) + "\n")
+                sys.stdout.flush()
+                continue
+
+            request_id = request.get("id")
+            method = request.get("method", "")
+            params = request.get("params", {})
+            jsonrpc = request.get("jsonrpc")
+
+            if jsonrpc != "2.0" or not method:
+                response = self._jsonrpc_error(-32600, "Invalid Request", request_id)
+                sys.stdout.write(json.dumps(response) + "\n")
+                sys.stdout.flush()
+                continue
+
+            trace_id = params.get("trace_id", "") if isinstance(params, dict) else ""
+            result = await self._handle_jsonrpc(method, params, request_id)
+            if "error" in result:
+                response = {
+                    "jsonrpc": "2.0",
+                    "error": result["error"],
+                    "id": request_id,
+                }
+            else:
+                response = {"jsonrpc": "2.0", "result": result, "id": request_id}
+            if trace_id:
+                response["trace_id"] = trace_id
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+
+    def _jsonrpc_error(
+        self,
+        code: int,
+        message: str,
+        request_id: str | int | None = None,
+        data: dict | None = None,
+    ) -> dict[str, Any]:
+        error: dict[str, Any] = {"code": code, "message": message}
+        if data is not None:
+            error["data"] = data
+        return {"jsonrpc": "2.0", "error": error, "id": request_id}  # type: ignore[return-type]
+
+    async def _handle_jsonrpc(
+        self, method: str, params: dict, request_id: str | int
+    ) -> dict[str, Any]:
+        match method:
+            case "initialize":
+                return {
+                    "capabilities": self._capabilities,
+                    "server_info": {"name": "Rig Relay MCP Server", "version": "0.1.0"},
+                    "content_light": True,
+                }
+            case "tools/list":
+                tool_list = [
+                    {
+                        "name": t.name,
+                        "description": t.description,
+                        "input_schema": t.input_schema,
+                        "tier": int(t.tier),
+                    }
+                    for t in self.list_tools()
+                ]
+                return {"tools": tool_list}
+            case "tools/call":
+                name = params.get("name", "")
+                arguments = params.get("arguments", {})
+                return await self.call_tool(name, arguments)
+            case "resources/list":
+                resource_list = [
+                    {
+                        "uri": r.uri,
+                        "name": r.name,
+                        "description": r.description,
+                        "mime_type": r.mime_type,
+                    }
+                    for r in self.list_resources()
+                ]
+                return {"resources": resource_list}
+            case "prompts/list":
+                prompt_list = [
+                    {
+                        "name": p.name,
+                        "description": p.description,
+                        "arguments": p.arguments,
+                    }
+                    for p in self.list_prompts()
+                ]
+                return {"prompts": prompt_list}
+            case _:
+                return self._jsonrpc_error(
+                    -32601, f"Method not found: {method}", request_id
+                )
+
+    async def serve_streamable_http(self, host: str, port: int) -> None:
+        raise NotImplementedError("Streamable HTTP transport deferred")
 
 
 __all__ = ["RigMCPServer"]

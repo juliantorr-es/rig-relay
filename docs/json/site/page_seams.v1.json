@@ -1,0 +1,17 @@
+{
+  "$schema": "rig.site.page.v1",
+  "page_id": "seams",
+  "title": "Known Seams & Deferrals",
+  "route": "/seams/index.html",
+  "layout": "default",
+  "source_artifact_paths": [
+    "docs/json/testing/known_test_seams.v1.jsonl",
+    "docs/json/release_gate/rc_deferred_risks.v1.jsonl"
+  ],
+  "generated_from_schema_versions": [
+    "rig.relay.test_classification.v1"
+  ],
+  "public_safety_status": "public_safe",
+  "sections": [],
+  "generated_at": "2026-05-19T19:40:00Z"
+}

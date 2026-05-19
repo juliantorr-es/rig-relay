@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.release_candidate_batteries_included.v1.schema.json",
+  "title": "Batteries-Included Release Candidate Verification",
+  "description": "Schema for the batteries-included release candidate verification artifact. Records the result of a full local smoke and release-readiness check across all public surfaces.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.release_candidate_batteries_included.v1"
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Unique smoke run identifier"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch under test"
+    },
+    "head_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "description": "Full git commit SHA at time of verification"
+    },
+    "git_dirty": {
+      "type": "boolean",
+      "description": "Whether the working tree had uncommitted changes"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of verification run"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["pass", "pass_with_warnings", "fail", "blocked"],
+      "description": "Overall release readiness status"
+    },
+    "surfaces_verified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_id": {
+            "type": "string",
+            "description": "Canonical surface identifier"
+          },
+          "surface_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["verified", "partial", "unverified", "blocked"]
+          },
+          "evidence_paths": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["surface_id", "surface_name", "status"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "smoke_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check_id": {"type": "string"},
+          "status": {"type": "string", "enum": ["pass", "fail", "warn"]},
+          "duration_ms": {"type": "integer"},
+          "detail": {"type": "string"},
+          "output_hash": {"type": "string"}
+        },
+        "required": ["check_id", "status"],
+        "additionalProperties": true
+      }
+    },
+    "blockers_resolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "blocker_id": {"type": "string"},
+          "title": {"type": "string"},
+          "resolution": {"type": "string"},
+          "resolved_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["blocker_id", "title", "resolution"],
+        "additionalProperties": false
+      }
+    },
+    "blockers_remaining": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "blocker_id": {"type": "string"},
+          "title": {"type": "string"},
+          "reason": {"type": "string"},
+          "severity": {"type": "string", "enum": ["high", "medium", "low"]}
+        },
+        "required": ["blocker_id", "title"],
+        "additionalProperties": false
+      }
+    },
+    "public_claims_supported": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_id": {"type": "string"},
+          "claim": {"type": "string"},
+          "evidence_paths": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "required": ["claim_id", "claim"],
+        "additionalProperties": false
+      }
+    },
+    "public_claims_rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_id": {"type": "string"},
+          "claim": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "required": ["claim_id", "claim", "reason"],
+        "additionalProperties": false
+      }
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "seam_id": {"type": "string"},
+          "description": {"type": "string"},
+          "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+          "target_phase": {"type": "string"}
+        },
+        "required": ["seam_id", "description"],
+        "additionalProperties": false
+      }
+    },
+    "release_recommendation": {
+      "type": "string",
+      "enum": [
+        "release_candidate",
+        "release_candidate_with_known_limitations",
+        "hold",
+        "reject"
+      ]
+    },
+    "files_changed": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "files_created": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "tests_run_summary": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer"},
+        "passed": {"type": "integer"},
+        "failed": {"type": "integer"},
+        "skipped": {"type": "integer"}
+      }
+    },
+    "telemetry_redaction_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "branch",
+    "head_sha",
+    "generated_at",
+    "overall_status",
+    "surfaces_verified",
+    "release_recommendation",
+    "files_changed",
+    "files_created"
+  ],
+  "additionalProperties": false
+}

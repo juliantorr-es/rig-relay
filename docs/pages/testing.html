@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Inventory — Rig Relay Docs</title>
+<meta name="description" content="Structured evidence of test coverage: 453 test files, 1400 test functions across 7 stress surfaces.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/test-inventory.html">
+<meta property="og:title" content="Test Inventory">
+<meta property="og:description" content="Structured evidence of test coverage: 453 test files, 1400 test functions across 7 stress surfaces.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/test-inventory.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Test Inventory">
+<meta name="twitter:description" content="Structured evidence of test coverage: 453 test files, 1400 test functions across 7 stress surfaces.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/index.html">Evidence Archive</a> / Test Evidence</p>
+  <h1>Test Inventory</h1>
+  <p class="doc-summary">Structured evidence of test coverage: 453 test files, 1400 test functions across 7 stress surfaces.</p>
+</header>
+<main id="main" class="doc-page">
+  <article>
+<nav class="page-nav" aria-label="Pagination"><a href="../collections/release-gate.html">← Release Candidate</a> | <a href="../collections/integration-audits.html"> Integrations →</a></nav>
+<section><h2>Summary</h2>
+<table>
+<caption>Inventory Summary</caption>
+<tr><th>Metric</th><th>Value</th></tr>
+<tr><td>Total Test Files</td><td>453</td></tr>
+<tr><td>Total Test Functions</td><td>1400</td></tr>
+<tr><td>Classified Keep</td><td>1370</td></tr>
+<tr><td>Classified Harden</td><td>16</td></tr>
+<tr><td>Classified Replace</td><td>5</td></tr>
+<tr><td>Classified Delete</td><td>9</td></tr>
+<tr><td>Branch</td><td>main</td></tr>
+<tr><td>HEAD SHA</td><td>565c2968d3a98f1b30b6bf5226b05e41818c3021</td></tr>
+</table>
+</section>
+<section><h2>Stress Surface Coverage</h2>
+<table>
+<caption>Test coverage across 7 stress surfaces (147 files total)</caption>
+<tr><th>Stress Surface</th><th>Files</th><th>Functions</th><th>Coverage Assessment</th></tr>
+<tr><td>coordination</td><td>28</td><td>232</td><td>STRONG — Real CoordinationStore, real concurrency (ThreadPoolExecutor+Barrier), real cross-process subprocesses, real DuckDB projections. Tests one-winner claims, stale lease recovery, heartbeat corruption prevention, read-only projection idempotency, 50-iteration stress tests, schema contract validation. Missing: adversarial ledger corruption injection, duplicate event detection under corruption.</td></tr>
+<tr><td>git-discipline</td><td>10</td><td>167</td><td>STRONG — 93% keep rate. All guard/worktree tests use real temp git repos (git init/add/commit via subprocess). Tests dirty tracked files, untracked files, ignored files, write refusal for protected files, overwrite refusal without flag, fail-closed safety policy, checkpoint commit safety. Missing: 5 mocked argv-construction git tests that must be replaced with real subprocess tests.</td></tr>
+<tr><td>tool-invocation</td><td>34</td><td>231</td><td>STRONG — Real subprocesses for bash timeout/truncation/decode tests. Structured receipts (content-light, sha256-only) verified. WriteFile/SearchReplace atomicity tests. Coordination lease blocking. Dirty guard integration. Permission resolution matrix (allowlist/denylist/word boundary). Windows syntax coverage. Missing: env blocklist scrubbing verification, bash binary rejection, bash symlink protection, dangerous pattern detection (command substitution, backtick injection, env var injection), sensitive path blocking.</td></tr>
+<tr><td>runtime-supervisor</td><td>20</td><td>29</td><td>ADEGUATE — Covers execution request models, runtime context resolver, orchestrator, supervisor projection, tool invocation adapter, receipt emission, and evidence adoption. Missing: feral subprocess accountability (cancellation mid-execution, partial output during kill, duplicate completion events, dangling task cleanup, trace span closure for abandoned tasks).</td></tr>
+<tr><td>telemetry-redaction</td><td>26</td><td>306</td><td>STRONG — 98% keep rate. Adversarial tests inject fake secrets (api_token, private paths, authorization_receipt raw secrets). Proves content-light enforcement (no raw stdout/stderr in receipts). Unicode safety (fire emoji truncation). Receipt chain integrity (tampered sha256 detected). Consent gating. Validation pipelines. Missing: telemetry-disabled deterministic degradation proof, opt-out visibility test.</td></tr>
+<tr><td>static-renderer</td><td>22</td><td>125</td><td>STRONG — Real JSON/JSONL/CSV/schema artifacts. Real jsonschema validation. Generated HTML safety (XSS escaping, no absolute paths, no token literals, no secret leakage). Markdown policy enforcement (pytest.fail for non-allowed .md files). Progressive disclosure contracts. Diagram rendering (all 7 kinds). GitHub app integration audit. Missing: 1 no-op audit test that must become a failing gate, fragile OR logic in token-literal test, no prompt-injection payload detection in rendered HTML.</td></tr>
+<tr><td>release-gate</td><td>7</td><td>17</td><td>ADEGUATE — Core GateRunner unit tests, static artifact substrate tests, findings lifecycle (all 6 states), CLI E2E (real subprocess, exit codes, JSON output, non-mutation guarantee), runtime readiness checks (trace contract, WebSocket, GitHub audit, CI workflow, triage). Missing: failure-path E2E (exit code 1 on failing check), stale evidence detection, inconsistent evidence detection, orphaned artifact detection.</td></tr>
+</table>
+</section>
+<section><h2>Known Test Seams</h2>
+<table>
+<caption>Known Test Seams — 23 critical gaps identified</caption>
+<tr><th>Stress Surface</th><th>Critical Gap</th></tr>
+<tr><td>coordination</td><td>No adversarial malformed-events.jsonl injection test (truncated lines, missing required fields, corrupted sequences)</td></tr>
+<tr><td>coordination</td><td>9 duplicate tests in test_delegate_fleet.py (identical to test_queue_plan.py)</td></tr>
+<tr><td>git-discipline</td><td>5 tests in tests/tools/test_git.py mock _run_git (argv-only) — must be replaced with real git subprocess tests</td></tr>
+<tr><td>git-discipline</td><td>No adversarial git corruption test (malformed .git/index, broken refs, corrupted objects)</td></tr>
+<tr><td>tool-invocation</td><td>No ENV_BLOCKLIST scrubbing test (28 sensitive env vars)</td></tr>
+<tr><td>tool-invocation</td><td>No bash binary file rejection test</td></tr>
+<tr><td>tool-invocation</td><td>No bash symlink traversal rejection test</td></tr>
+<tr><td>tool-invocation</td><td>No detect_dangerous_bash_patterns adversarial test</td></tr>
+<tr><td>tool-invocation</td><td>No _SENSITIVE_READ_PATTERNS blocking test</td></tr>
+<tr><td>tool-invocation</td><td>No bash rerouting transparency test (cat→read_file)</td></tr>
+<tr><td>runtime-supervisor</td><td>No cancellation/dangling-task test (process death mid-execution)</td></tr>
+<tr><td>runtime-supervisor</td><td>No duplicate completion event deduplication test</td></tr>
+<tr><td>runtime-supervisor</td><td>No partial output collection during SIGKILL test</td></tr>
+<tr><td>telemetry-redaction</td><td>No test proving telemetry-disabled causes visible deterministic degradation (empty JSONL, zero DuckDB rows)</td></tr>
+<tr><td>telemetry-redaction</td><td>test_remote_telemetry_disabled_by_default only checks default config — no behavioral assertion</td></tr>
+<tr><td>telemetry-redaction</td><td>2 doctor tests use hardcoded /tmp paths instead of tmp_path fixtures</td></tr>
+<tr><td>static-renderer</td><td>test_active_markdown_references_audit is a no-op — must become failing gate</td></tr>
+<tr><td>static-renderer</td><td>test_no_token_or_secret_literals has fragile OR logic</td></tr>
+<tr><td>static-renderer</td><td>No prompt-injection payload detection (Ignore previous instructions, SYSTEM:)</td></tr>
+<tr><td>static-renderer</td><td>No innerHTML/document.write/setTimeout-with-strings XSS vector test</td></tr>
+<tr><td>release-gate</td><td>No E2E test for FAILED gate path (exit code 1, structured blocker output)</td></tr>
+<tr><td>release-gate</td><td>No stale evidence detection test (artifacts older than HEAD)</td></tr>
+<tr><td>release-gate</td><td>No orphaned evidence artifact detection test</td></tr>
+</table>
+<p class="meta">These are known gaps in test coverage that have been intentionally deferred. They do not block RC promotion.</p>
+</section>
+<p class="meta">Source: <code class="file-ref">docs/json/testing/test_inventory.v1.json</code> (sha256:1dc437d74e3d, schema: rig.relay.test_inventory.v1, generated: 2026-05-17T00:00:00Z)</p>
+  </article>
+</main>
+<footer>
+  
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

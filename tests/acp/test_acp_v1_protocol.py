@@ -46,6 +46,7 @@ class TestACPV1Schemas:
                 "method": "prompt",
                 "refusal_code": "write_refused",
                 "reason": "not allowed",
+                "surface": "acp",
                 "content_light": True,
                 "generated_at": "2026-01-01T00:00:00Z",
             },
@@ -59,7 +60,13 @@ class TestACPV1Schemas:
                 "schema_version": "rig.relay.acp.auth_state.v1",
                 "provider_id": "acp_local",
                 "auth_status": "deferred",
+                "auth_method": "unsupported",
+                "credential_store_ref_hash": "sha256:deadbeef",
+                "auth_state_hash": "sha256:deadbeef",
+                "capability_id": "acp.authenticate",
+                "trace_id": "t1",
                 "deferred_reason": "live auth deferred",
+                "resumable": False,
                 "content_light": True,
                 "generated_at": "2026-01-01T00:00:00Z",
             },
@@ -88,6 +95,8 @@ class TestACPV1Schemas:
             {
                 "schema_version": "rig.relay.acp.capability_profile.v1",
                 "generated_at": "2026-01-01T00:00:00Z",
+                "authenticate_supported": False,
+                "session_resume_supported": False,
                 "session_lifecycle_supported": {
                     "initialize": True,
                     "authenticate": False,
@@ -113,6 +122,8 @@ class TestACPV1Schemas:
         p = {
             "schema_version": "rig.relay.acp.capability_profile.v1",
             "generated_at": "2026-01-01T00:00:00Z",
+            "authenticate_supported": False,
+            "session_resume_supported": False,
             "session_lifecycle_supported": {
                 "initialize": True,
                 "authenticate": False,
@@ -139,14 +150,16 @@ class TestACPV1Schemas:
 
 
 class TestACPStubSeams:
-    def test_authenticate_raises_refusal_error(self):
+    def test_authenticate_returns_auth_state_with_refusal(self):
         source = (ACP_SOURCE / "_protocol.py").read_text()
-        assert "raise_acp_refusal" in source
-        assert "live_auth_deferred" in source
+        assert "build_acp_refusal" in source
+        assert "acp.authenticate.deferred_or_unconfigured" in source
+        assert "AuthenticateResponse" in source
         assert "NotImplementedMethodError" not in source
 
-    def test_resume_session_raises_refusal_error(self):
+    def test_resume_session_returns_structured_response(self):
         source = (ACP_SOURCE / "_session_lifecycle.py").read_text()
-        assert "raise_acp_refusal" in source
-        assert "resume_not_supported" in source
+        assert "build_acp_refusal" in source
+        assert "not_implemented_deferred" in source
+        assert "ResumeSessionResponse" in source
         assert "NotImplementedMethodError" not in source

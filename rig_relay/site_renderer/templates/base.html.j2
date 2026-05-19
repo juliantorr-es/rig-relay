@@ -14,15 +14,38 @@
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
-  <div class="eyebrow"><a href="{{ relative_root }}/index.html">Rig Relay</a> / {{ nav_section | default('Evidence') }}</div>
+  <div class="eyebrow"><a href="{{ relative_root }}/index.html">Rig Relay</a> / {{ nav_section | default('Evidence Dossier') }}</div>
   <h1>{{ title }}</h1>
   {% if safety_status %}<div class="safety-badge safety-{{ safety_status }}">{{ safety_status | replace('_', ' ') | title }}</div>{% endif %}
 </header>
-<main id="main">
-{% block content %}{% endblock %}
-</main>
+<div class="main-wrapper">
+  <aside class="sidebar-nav">
+    <h2>Dossier Overview</h2>
+    <nav aria-label="Evidence dossier navigation">
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item-link{% if not page_id %} active{% endif %}" href="{{ relative_root }}/index.html">
+            <strong>Dossier Index</strong>
+            <span>Verification & readiness</span>
+          </a>
+        </li>
+        {% for p in nav_pages %}
+        <li>
+          <a class="nav-item-link{% if page_id == p.page_id %} active{% endif %}" href="{{ p.route }}">
+            <strong>{{ p.title }}</strong>
+            <span>{{ p.description | default('Page evidence') }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </aside>
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
 <footer class="site-footer">
-  <p>Generated {{ generated_at }} from {{ source_artifact_paths | join(', ') }}. <a href="{{ relative_root }}/index.html">Site index</a>.</p>
+  <p>Generated {{ generated_at }} from {% if source_artifact_paths %}{{ source_artifact_paths | join(', ') }}{% else %}site configuration{% endif %}. <a href="{{ relative_root }}/index.html">Site index</a>.</p>
 </footer>
 </body>
 </html>

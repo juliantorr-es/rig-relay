@@ -24,7 +24,7 @@ def acp_agent_loop(backend) -> VibeAcpAgentLoop:
             self._base_config = config
             self.agent_manager.invalidate_config()
 
-    patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
+    patch("rig_relay.core.agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
 
     return _create_acp_agent()
 
@@ -92,7 +92,7 @@ class TestProxySetupCommand:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -132,7 +132,7 @@ class TestProxySetupCommand:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -183,7 +183,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -210,7 +210,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -239,7 +239,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -274,7 +274,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -317,7 +317,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(
@@ -359,7 +359,7 @@ class TestProxySetupMessageId:
             path = env_file
 
         monkeypatch.setattr(
-            "vibe.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
+            "rig_relay.core.proxy_setup.GLOBAL_ENV_FILE", FakeGlobalEnvFile()
         )
 
         session_response = await acp_agent_loop.new_session(

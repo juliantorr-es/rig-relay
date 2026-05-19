@@ -33,10 +33,10 @@ from acp.schema import (
     SseMcpServer,
     TerminalAuthMethod,
 )
-from pydantic import ValidationError
 
 from rig_relay import __version__
-from rig_relay.acp._refusal_adapter import raise_acp_refusal
+from rig_relay.acp._local_auth import build_acp_local_auth_state
+from rig_relay.acp._refusal_adapter import build_acp_refusal, raise_acp_refusal
 from rig_relay.acp.commands import AcpCommandRegistry
 from rig_relay.acp.exceptions import (
     ConfigurationError,
@@ -55,6 +55,7 @@ from rig_relay.core.config import (
     load_dotenv_values,
 )
 from rig_relay.core.hooks.config import load_hooks_from_fs
+from rig_relay.core.logger import logger
 from rig_relay.core.session.session_loader import SessionLoader
 from rig_relay.core.types import Role
 from rig_relay.governance.service_state import get_capability_gate
@@ -62,6 +63,16 @@ from rig_relay.governance.service_state import get_capability_gate
 
 class SessionLifecycleMixin:
     """Mixin for VibeAcpAgentLoop."""
+
+    def _store_mcp_servers(
+        self, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None
+    ) -> None:
+        self._mcp_servers = mcp_servers
+        if mcp_servers:
+            logger.debug(
+                "mcp_servers parameter accepted but MCP server integration is deferred: count=%d",
+                len(mcp_servers),
+            )
 
     @override
     async def initialize(
@@ -211,6 +222,8 @@ class SessionLifecycleMixin:
         load_dotenv_values()
         os.chdir(cwd)
 
+        self._store_mcp_servers(mcp_servers)
+
         config = self._load_config()
         hook_config_result = load_hooks_from_fs(config)
 
@@ -282,6 +295,8 @@ class SessionLifecycleMixin:
 
         load_dotenv_values()
         os.chdir(cwd)
+
+        self._store_mcp_servers(mcp_servers)
 
         config = self._load_config()
         hook_config_result = load_hooks_from_fs(config)
@@ -373,11 +388,10 @@ class SessionLifecycleMixin:
         load_dotenv_values()
         os.chdir(cwd)
 
+        self._store_mcp_servers(mcp_servers)
+
         source_session = self._get_session(session_id)
-        try:
-            message_id = ForkSessionParams.model_validate(kwargs).message_id
-        except ValidationError as e:
-            raise InvalidRequestError(f"Invalid fork parameters: {e}") from e
+        message_id = kwargs.get("messageId") or kwargs.get("message_id")
         if (
             source_session.prompt_task is not None
             and not source_session.prompt_task.done()
@@ -414,9 +428,51 @@ class SessionLifecycleMixin:
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
-        raise_acp_refusal(
-            refusal_code="resume_not_supported",
-            reason="Session resume is not supported",
+        self._store_mcp_servers(mcp_servers)
+
+        gate = get_capability_gate()
+        state = gate.state_summary()
+        if state.get("service_state") in {"setup_required", "locked"}:
+            raise ConfigurationError(
+                "Service is locked. Profile must be unlocked to resume ACP sessions."
+            )
+
+        workspace_path = Path(cwd).resolve()
+        if not workspace_path.exists():
+            raise InvalidRequestError(f"Workspace path does not exist: {cwd}")
+
+        agent_loop_path = Path.cwd()
+        if agent_loop_path not in {workspace_path, *workspace_path.parents}:
+            raise_acp_refusal(
+                refusal_code="workspace_isolation_violation",
+                reason="Session resume outside allowed workspace is not permitted",
+                method="resume",
+                session_id=session_id,
+            )
+
+        auth_state = build_acp_local_auth_state(
+            auth_status="deferred",
+            auth_method="unsupported",
+            capability_id="acp.session_resume",
+            trace_id=kwargs.get("trace_id", ""),
+            deferred_reason="Session resume is not supported in this alpha",
+            resumable=False,
+        )
+        refusal = build_acp_refusal(
+            refusal_code="not_implemented_deferred",
+            reason=(
+                "Session resume is not yet supported in this alpha. "
+                "Create a new session instead. Remediation: use new_session "
+                "with the same cwd to start a fresh ACP session."
+            ),
             method="resume",
             session_id=session_id,
+            trace_id=kwargs.get("trace_id", ""),
+        )
+        return ResumeSessionResponse(
+            field_meta={
+                "auth_state": auth_state.to_dict(),
+                "refusal": refusal,
+                "resumable": False,
+            }
         )

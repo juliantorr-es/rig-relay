@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Path — Dogfood Operational Readiness — Rig Relay Docs</title>
+<meta name="description" content="Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/golden_path.html">
+<meta property="og:title" content="Golden Path — Dogfood Operational Readiness">
+<meta property="og:description" content="Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/golden_path.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Golden Path — Dogfood Operational Readiness">
+<meta name="twitter:description" content="Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/release-candidate.html">Release Candidate</a> / Golden Path — Dogfood Operational Readiness</p>
+
+  <h1>Golden Path — Dogfood Operational Readiness</h1>
+  <p class="doc-summary">Step-by-step dogfood operational readiness checklist with blocking failure conditions and evidence references.</p>
+  <nav aria-label="Section" class="page-nav"><a href="../pages/rc_readiness.html">← RC Readiness</a><a href="../pages/rc_verdict.html">RC Verdict →</a></nav>
+
+</header>
+<main id="main" class="doc-page">
+  <article>
+<section><h2>Overall Status</h2><p style="font-size:1.4em"><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span></p></section>
+
+<section><h2>Description</h2><p>Golden path for exercising the live Rig Relay dogfood path. Verify the local server/control-plane, the desktop cockpit, browser rendering, read-only intents, structured evidence, and clean shutdown without treating CLI smoke as readiness.</p></section>
+
+<section><h2>Steps (25)</h2>
+<section class="step-card" id="gp_install_sync"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_install_sync</code></h3><dl><dt>Goal</dt><dd>Install or sync the project from source</dd><dt>Command / Action</dt><dd><code>git clone &lt;repo&gt; &amp;&amp; cd rig-relay &amp;&amp; uv sync</code></dd><dt>Expected Result</dt><dd>uv sync completes without errors; all dependencies resolve; rig-relay, rig-relay-acp, rig-relay-cockpit entry points are available</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_installability_verdict.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>uv sync fails with dependency resolution error</li>
+<li>Any CLI entry point missing or crashes on --help</li></ul></section>
+
+<section class="step-card" id="gp_understand_product"><h3><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span> <code>gp_understand_product</code></h3><dl><dt>Goal</dt><dd>Understand what Rig Relay is and what it is not</dd><dt>Command / Action</dt><dd><code>Read README.md; read docs/json/release_gate/rc_readiness_gate.v1.json phases</code></dd><dt>Expected Result</dt><dd>Rig Relay is a local server/control-plane with a desktop cockpit as the primary surface; the CLI is a shim for launch/debug/operator flows and the README no longer presents the product as CLI-first.</dd><dt>Validation Method</dt><dd>manual_review</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>README.md</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>README.md is missing or fails to explain what Rig Relay is</li>
+<li>README.md does not describe server/frontend architecture</li>
+<li>README.md does not state frontend is the primary product surface</li>
+<li>README.md does not describe current alpha scope</li></ul></section>
+
+<section class="step-card" id="gp_launch_server"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_launch_server</code></h3><dl><dt>Goal</dt><dd>Launch the local server/control plane</dd><dt>Command / Action</dt><dd><code>uv run rig-relay-acp</code></dd><dt>Expected Result</dt><dd>The real bridge server starts in server-only mode, binds a localhost port, reports /healthz ok, and emits a bounded redacted startup log without crashing.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Server crashes on startup</li>
+<li>Server fails to bind port</li>
+<li>Server logs fatal error within first 30 seconds</li></ul></section>
+
+<section class="step-card" id="gp_launch_frontend"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_launch_frontend</code></h3><dl><dt>Goal</dt><dd>Launch the frontend cockpit as the primary product surface</dd><dt>Command / Action</dt><dd><code>uv run rig-relay (launches Textual desktop cockpit)</code></dd><dt>Expected Result</dt><dd>Chromium loads the served cockpit path without a blank screen or boot error.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Cockpit crashes on startup</li>
+<li>Cockpit fails to connect to ACP server</li>
+<li>Cockpit renders blank or unresponsive</li>
+<li>Frontend HTML fails to load in browser</li></ul></section>
+
+<section class="step-card" id="gp_frontend_primary_surface"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_frontend_primary_surface</code></h3><dl><dt>Goal</dt><dd>Confirm frontend is the primary product surface (not CLI-only)</dd><dt>Command / Action</dt><dd><code>Interact with cockpit UI: view agent state, inspect tool output, navigate tabs/panels</code></dd><dt>Expected Result</dt><dd>The cockpit renders as the primary surface and shows the release gate and telemetry state in-browser rather than delegating interaction to the CLI.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Critical workflow requires CLI and has no cockpit UI path</li>
+<li>Cockpit is a thin wrapper that delegates all interaction to CLI</li></ul></section>
+
+<section class="step-card" id="gp_run_real_work_lane"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_run_real_work_lane</code></h3><dl><dt>Goal</dt><dd>Run or coordinate a real bounded work lane through the agent</dd><dt>Command / Action</dt><dd><code>Submit a bounded task (e.g. &#x27;list files in src/&#x27;) through the cockpit or ACP; observe agent loop execute tools and produce output</code></dd><dt>Expected Result</dt><dd>A safe read-only work lane runs through the live backend and returns a structured result without creating Markdown evidence.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Agent hangs indefinitely on simple task</li>
+<li>Tool invocation crashes the session</li>
+<li>No observability data emitted for a completed session</li>
+<li>Agent loop produces incoherent or empty output</li></ul></section>
+
+<section class="step-card" id="gp_feral_subprocess_accountability"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_feral_subprocess_accountability</code></h3><dl><dt>Goal</dt><dd>Observe runtime accountability for feral subprocesses (timeout, cancel, partial output, process death)</dd><dt>Command / Action</dt><dd><code>Submit a task that spawns a long-running subprocess; observe timeout behavior, cancellation, and partial output capture</code></dd><dt>Expected Result</dt><dd>Timeout triggers clean cancellation; partial output is captured before timeout; process death is recorded in telemetry; large output is bounded</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_3_runtime_tools_context_api</code></dd><dt>Evidence</dt><dd><code>tests/runtime/test_feral_subprocess_accountability.py</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Subprocess timeout leaves orphaned process</li>
+<li>Cancellation does not close tracing spans</li>
+<li>Process death is silently ignored</li>
+<li>Large output exceeds bounds without truncation</li>
+<li>No tests exist proving any of the above</li></ul><p class="reviewer-notes"><em>PASSING: 8 adversarial tests prove timeout partial output capture, cancellation terminal event uniqueness, process death recording, large output truncation, fake secret exclusion from terminal evidence, and timeout orphan cleanup. 10 additional sabotage tests prove span closure exactly once and duplicate completion idempotency. 26 tests total pass with real subprocesses. blk_runtime_feral_subprocess resolved.</em></p></section>
+
+<section class="step-card" id="gp_bash_rerouting_transparency"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_bash_rerouting_transparency</code></h3><dl><dt>Goal</dt><dd>Verify bash rerouting transparency — when bash is transparently rerouted to a safer tool, receipts record original command, rerouted tool, and permission decision</dd><dt>Command / Action</dt><dd><code>Submit a task that triggers bash rerouting (e.g. &#x27;cat README.md&#x27; which reroutes to read_file); inspect the tool receipt</code></dd><dt>Expected Result</dt><dd>Tool receipt records: original command category, rerouted tool name, permission decision, whether raw bash was skipped</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_3_runtime_tools_context_api</code></dd><dt>Evidence</dt><dd><code>docs/schemas/rig.relay.bash_receipt.v1.schema.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Bash rerouting occurs silently with no receipt trace</li>
+<li>Receipt does not distinguish rerouted from raw bash execution</li>
+<li>Permission decision is not recorded in receipt</li>
+<li>No tests exist proving rerouting transparency</li></ul><p class="reviewer-notes"><em>RESOLVED: blk_bash_rerouting_transparency closed. Schema updated with reroute property (oneOf: object with 12 fields including was_rerouted, raw_bash_skipped, original_command_category, rerouted_tool_name, permission_decision, final_outcome, redaction_status, or null). BashReceipt/BashResult models updated with reroute field. Bash.build_receipt propagates reroute metadata. 20 tests cover: model defaults/serialization, cat/grep/git_status reroute detection, non-rerouted commands, permission refusal, dangerous pattern detection ($() / backticks), build_receipt propagation (with/without/null reroute). Verified with test suite and schema validation.</em></p></section>
+
+<section class="step-card" id="gp_telemetry_degradation_visibility"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_telemetry_degradation_visibility</code></h3><dl><dt>Goal</dt><dd>Verify telemetry-disabled degradation is visible and non-destructive</dd><dt>Command / Action</dt><dd><code>Launch with telemetry disabled (RIG_TELEMETRY_ENABLED=0); run a task; inspect observability output</code></dd><dt>Expected Result</dt><dd>Telemetry-disabled mode stays runnable, surfaces a degradation marker, and does not spam production observability.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_2_telemetry_privacy</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Telemetry-disabled mode crashes the agent loop</li>
+<li>Telemetry-disabled mode hangs on telemetry flush</li>
+<li>Telemetry-disabled mode produces corrupted observability</li>
+<li>No degradation marker distinguishes disabled from empty telemetry</li>
+<li>No tests exist proving degradation visibility</li></ul><p class="reviewer-notes"><em>Blocker blk_telemetry_disabled_degradation RESOLVED by parallel telemetry lane. Degradation gating, marker, 17 tests. Step status changed from blocked to not_verified — reviewer must verify tests pass.</em></p></section>
+
+<section class="step-card" id="gp_context_assembler_availability"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_context_assembler_availability</code></h3><dl><dt>Goal</dt><dd>Verify context assembler / context envelope is available for agent context construction, including digestion and cache</dd><dt>Command / Action</dt><dd><code>Run a task that invokes rig.get_context with ContextMode.DIGEST; inspect that digest packet is assembled from cache hits, coordination store projection, and repo index</code></dd><dt>Expected Result</dt><dd>Digest mode returns a cached context packet, redacts private content, and writes a receipt-backed cache artifact.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_3_runtime_tools_context_api</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Context assembler crashes on invocation</li>
+<li>Context packet is empty or missing required sections</li>
+<li>Digestion mode produces incoherent output</li>
+<li>Cache returns stale or incorrect data</li></ul><p class="reviewer-notes"><em>ContextDigester implemented (rig_relay/context/digester.py). ContextCache implemented (rig_relay/context/cache.py). risk_digestion_pipeline and risk_context_cache resolved. Reviewer must verify with live run.</em></p></section>
+
+<section class="step-card" id="gp_structured_evidence_inspection"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_structured_evidence_inspection</code></h3><dl><dt>Goal</dt><dd>Inspect structured evidence (JSON/JSONL receipts, not Markdown)</dd><dt>Command / Action</dt><dd><code>After running a work lane, inspect ~/.rig/relay/sessions/&lt;id&gt;/observability.jsonl and .rig/reports/reports.jsonl</code></dd><dt>Expected Result</dt><dd>The JSON/JSONL evidence ledger validates cleanly and no Markdown file is treated as canonical evidence.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_gate/rc_validation_runs.v1.jsonl</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Observability file is malformed JSONL</li>
+<li>Evidence is written as Markdown instead of JSON/JSONL/CSV</li>
+<li>Receipts are missing required fields (sha256, timestamp, tool_name)</li>
+<li>Reports file is not append-only (existing rows modified)</li></ul></section>
+
+<section class="step-card" id="gp_no_markdown_evidence_leakage"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_no_markdown_evidence_leakage</code></h3><dl><dt>Goal</dt><dd>Confirm no Markdown-as-evidence leakage in the golden path</dd><dt>Command / Action</dt><dd><code>Run the release-gate validator; verify no forbidden Markdown paths appear in required_evidence for any phase</code></dd><dt>Expected Result</dt><dd>Validator reports zero forbidden Markdown evidence paths; all evidence is JSON/JSONL/CSV or allowed Markdown exceptions</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Golden path references a .md file as canonical evidence (outside allowed exceptions)</li>
+<li>Validator does not check for Markdown evidence leakage</li></ul></section>
+
+<section class="step-card" id="gp_debug_packet_quarantine"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_debug_packet_quarantine</code></h3><dl><dt>Goal</dt><dd>Verify debug packets are quarantined separately from production telemetry</dd><dt>Command / Action</dt><dd><code>Run a task with debug flags enabled; inspect that debug packets land in quarantine storage, not in production telemetry bundle</code></dd><dt>Expected Result</dt><dd>Debug packets land in quarantine and stay out of production observability.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_2_telemetry_privacy</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Debug packets appear in production telemetry bundle</li>
+<li>Quarantine storage is not implemented</li>
+<li>No quarantine manifest reporting exists</li>
+<li>No tests exist proving quarantine separation</li></ul><p class="reviewer-notes"><em>Blocker blk_debug_packet_quarantine RESOLVED by parallel telemetry lane. Quarantine boundary, packet hash tracking, debug export gating, 14 tests. Step status changed from blocked to not_verified — reviewer must verify tests pass.</em></p></section>
+
+<section class="step-card" id="gp_coordination_watchable"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_coordination_watchable</code></h3><dl><dt>Goal</dt><dd>Verify coordination state is watchable (polling watcher detects ledger changes)</dd><dt>Command / Action</dt><dd><code>After running a work lane, verify the CoordinationWatcher detects new events and stale leases; inspect watch events</code></dd><dt>Expected Result</dt><dd>The coordination watcher observes appended events on the live store.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_1_governance_coordination</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Coordination store is empty after a session that claimed leases</li>
+<li>Coordination ledger is malformed or corrupted</li>
+<li>CoordinationWatcher fails to detect new events</li></ul><p class="reviewer-notes"><em>CoordinationWatcher implemented (rig_relay/coordination/watcher.py). Tests at tests/coordination/test_watcher.py. risk_watchable_backends resolved. Reviewer must verify with live run.</em></p></section>
+
+<section class="step-card" id="gp_ci_cd_structured_evidence"><h3><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span> <code>gp_ci_cd_structured_evidence</code></h3><dl><dt>Goal</dt><dd>Verify CI/CD produces structured evidence artifacts, not raw bash exit codes</dd><dt>Command / Action</dt><dd><code>Run CI evidence producer: uv run python -c &#x27;from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict)&#x27;. Verify .build/rig-relay/evidence/ci_*_run.v1.json, ci_*_job.v1.json, ci_*_verdict.v1.json, and ci_*_artifact_index.v1.json validate against schemas.</code></dd><dt>Expected Result</dt><dd>CI evidence producer creates schema-validated JSON evidence (run, job, verdict, artifact_index) under .build/rig-relay/evidence/. CI verdict includes blocking_reasons, schema_validation_summary, release_bundle_manifest_summary, and artifact hash verification. Release gate validator consumes CI verdict artifacts.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_4_ui_docs_ci_packaging</code></dd><dt>Evidence</dt><dd><code>.build/rig-relay/evidence/</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>CI pipeline relies on bash exit codes as sole evidence</li>
+<li>No ci_run.v1.json, ci_job.v1.json, or ci_verdict.v1.json produced</li>
+<li>CI artifacts fail schema validation</li>
+<li>Artifact hashes are missing or mismatched</li>
+<li>Release gate validator cannot consume CI verdict artifacts</li>
+<li>Local run falsely claims official_release=true</li>
+<li>CI verdict references artifacts that do not exist</li></ul></section>
+
+<section class="step-card" id="gp_mcp_read_only_server"><h3><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span> <code>gp_mcp_read_only_server</code></h3><dl><dt>Goal</dt><dd>Verify MCP stdio server exposes only read-only tools (tier 0-2) and refuses mutation tools (tier 3-5)</dd><dt>Command / Action</dt><dd><code>Start MCP stdio server. List tools — only tier 0-2 tools appear. Attempt to call a tier 4 tool — verify structured refusal with machine-readable code. Inspect tool call receipts.</code></dd><dt>Expected Result</dt><dd>MCP server lists only read-only tools/resources/prompts. Tier 3-5 mutation tools are registered but refused at call time. Every tool call produces a receipt envelope. Structured refusals include code and governance_decision.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_7_protocol_surfaces</code></dd><dt>Evidence</dt><dd><code>docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>MCP server exposes mutation tools (tier 3-5) by default</li>
+<li>No structured refusal when mutation tool is called</li>
+<li>Tool call receipts are missing or lack SHA256</li>
+<li>No governance check before tool execution</li>
+<li>Mutation tools can execute without authorization_receipt</li>
+<li>SSE/HTTP transport exposed before public alpha (must be stdio only)</li></ul></section>
+
+<section class="step-card" id="gp_acp_auth_resume_hardening"><h3><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span> <code>gp_acp_auth_resume_hardening</code></h3><dl><dt>Goal</dt><dd>Verify ACP authenticate, resume_session, and session hardening are implemented and tested</dd><dt>Command / Action</dt><dd><code>Start ACP agent. Verify NON_INTERACTIVE_DISABLED_TOOLS is defined. Test resume_session with workspace-bound isolation and stale session detection. Test authenticate against identity provider.</code></dd><dt>Expected Result</dt><dd>ACP starts without undefined symbols. resume_session supports workspace isolation. authenticate wires to identity providers. Capability summary appears in every session response.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_7_protocol_surfaces</code></dd><dt>Evidence</dt><dd><code>rig_relay/acp/_disabled_tools.py</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>NON_INTERACTIVE_DISABLED_TOOLS is undefined (NameError at runtime)</li>
+<li>resume_session raises NotImplementedError</li>
+<li>authenticate raises NotImplementedError</li>
+<li>ForkSessionParams is undefined</li>
+<li>No workspace isolation on session resume</li>
+<li>No capability summary in session response field_meta</li></ul></section>
+
+<section class="step-card" id="gp_internal_sdk_programmatic_api"><h3><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span> <code>gp_internal_sdk_programmatic_api</code></h3><dl><dt>Goal</dt><dd>Verify internal SDK v0 provides governed facade with observe-by-default mode and no raw subsystem exposure</dd><dt>Command / Action</dt><dd><code>Instantiate RigClient(mode=&#x27;observe&#x27;, mutations=&#x27;refuse&#x27;). Attempt stream with mutation-capable prompt — verify refusal. Register on_tool_approval callback, set mutations=&#x27;governed&#x27;, verify approval gating.</code></dd><dt>Expected Result</dt><dd>SDK defaults to observe/read-only mode. Mutation requires explicit governed mode and approval callback. Content-light events only. No raw AgentLoop/ToolManager/GovernanceEngine access.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>rig_relay/sdk/__init__.py</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>SDK default mode allows mutations</li>
+<li>Raw AgentLoop, ToolManager, coordination, governance, or identity exposed as public attributes</li>
+<li>No RigMutationRefusal when mutation requested in observe mode</li>
+<li>Events contain raw file content or secrets</li>
+<li>Cancellation leaves orphaned subprocesses</li></ul></section>
+
+<section class="step-card" id="gp_internal_a2a_dogfood_substrate"><h3><span class="badge" style="background:#dc3545;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">BLOCKED</span> <code>gp_internal_a2a_dogfood_substrate</code></h3><dl><dt>Goal</dt><dd>Verify internal A2A dogfood substrate is schema-governed, local-only, and not externally exposed</dd><dt>Command / Action</dt><dd><code>Inspect AgentCard, TaskCard, ArtifactRef models — verify SHA256 hashing and content-light guarantee. Inspect a2a_promotion_readiness.v1.json — verify external_enabled=false with all 10 gates pending.</code></dd><dt>Expected Result</dt><dd>Internal A2A models are schema-validated. Task lifecycle is event-sourced through CoordinationStore. No network listener or external auth. external_enabled=false.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/protocols/a2a_promotion_readiness.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>External A2A is enabled (external_enabled=true) before promotion gates pass</li>
+<li>Network listener exists for agent discovery</li>
+<li>Third-party agent auth is supported</li>
+<li>Task card schema validation fails</li>
+<li>Task lifecycle is not event-sourced via CoordinationStore</li></ul></section>
+
+<section class="step-card" id="gp_shutdown_cleanly"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_shutdown_cleanly</code></h3><dl><dt>Goal</dt><dd>Shut down the server and cockpit cleanly</dd><dt>Command / Action</dt><dd><code>Send SIGTERM or use cockpit quit command; observe shutdown sequence</code></dd><dt>Expected Result</dt><dd>The live server stops cleanly, leaves no orphan process, and records a shutdown summary.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Server leaves orphaned subprocesses after shutdown</li>
+<li>Cockpit crashes on quit</li>
+<li>State files are corrupted after unclean shutdown</li>
+<li>Active sessions are abandoned without closeout events</li></ul></section>
+
+<section class="step-card" id="gp_see_blocked_deferred_state"><h3><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span> <code>gp_see_blocked_deferred_state</code></h3><dl><dt>Goal</dt><dd>Understand what is blocked, deferred, or unsafe in the current RC</dd><dt>Command / Action</dt><dd><code>Read docs/json/release_gate/rc_blockers.v1.jsonl and docs/json/release_gate/rc_deferred_risks.v1.jsonl</code></dd><dt>Expected Result</dt><dd>All open blockers are documented with severity, phase, and required resolution; deferred risks have clear deferral justifications; no dogfood-essential capability is hidden as deferred</dd><dt>Validation Method</dt><dd>manual_review</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_gate/rc_blockers.v1.jsonl</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>A dogfood-essential capability is classified as deferred without justification</li>
+<li>Open blockers lack required resolution descriptions</li>
+<li>Deferred risks lack deferral reasons</li></ul></section>
+
+<section class="step-card" id="gp_release_gate_validator_baseline"><h3><span class="badge" style="background:#28a745;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">PASSING</span> <code>gp_release_gate_validator_baseline</code></h3><dl><dt>Goal</dt><dd>Run the release gate validator and confirm it correctly reflects dogfood readiness</dd><dt>Command / Action</dt><dd><code>uv run python scripts/rig_release_gate_validate.py</code></dd><dt>Expected Result</dt><dd>The release gate validator reports the current gate truthfully and does not promote on installability alone.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>scripts/rig_release_gate_validate.py</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>Validator returns PASS while golden path has blocking steps</li>
+<li>Validator does not check golden path status</li>
+<li>Validator does not distinguish installability from dogfood readiness</li></ul></section>
+
+<section class="step-card" id="gp_readme_no_demo"><h3><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span> <code>gp_readme_no_demo</code></h3><dl><dt>Goal</dt><dd>README Quick Start is demo-free</dd><dt>Command / Action</dt><dd><code>Read README.md; verify no references to demo-seed, demo-doctor, or demo-render-docs in the product path</code></dd><dt>Expected Result</dt><dd>README.md no longer references demo-seed/demo-doctor/demo-render-docs in the product path; demo mode is not presented as first-run story.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>README.md</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>README.md Quick Start still references demo-seed, demo-doctor, or demo-render-docs as product path</li>
+<li>README.md presenting demo mode as first-run story</li></ul></section>
+
+<section class="step-card" id="gp_cli_help_no_demo"><h3><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span> <code>gp_cli_help_no_demo</code></h3><dl><dt>Goal</dt><dd>CLI --help is demo-free</dd><dt>Command / Action</dt><dd><code>Run `uv run rig-relay --help`; verify no demo commands appear as primary product surface</code></dd><dt>Expected Result</dt><dd>rig-relay --help does not present demo-seed, demo-doctor, or demo-render-docs as product commands; demo commands are not accessible from primary CLI namespace.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>rig_relay/cli/desktop_cockpit.py</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>rig-relay --help shows demo-seed, demo-doctor, or demo-render-docs as product commands</li>
+<li>Demo commands still accessible from primary CLI namespace</li></ul></section>
+
+<section class="step-card" id="gp_no_demo_evidence"><h3><span class="badge" style="background:#ffc107;color:#fff;padding:0.2em 0.6em;border-radius:4px;font-weight:600">NOT VERIFIED</span> <code>gp_no_demo_evidence</code></h3><dl><dt>Goal</dt><dd>No demo artifacts in RC evidence</dd><dt>Command / Action</dt><dd><code>Inspect RC evidence paths; verify no demo-synthetic artifacts appear in RC evidence</code></dd><dt>Expected Result</dt><dd>No demo-synthetic artifacts appear in RC evidence paths or golden path evidence.</dd><dt>Validation Method</dt><dd>automated_script</dd><dt>Phase</dt><dd><code>phase_6_dogfood_operational_readiness</code></dd><dt>Evidence</dt><dd><code>docs/json/release_gate/rc_validation_runs.v1.jsonl</code></dd></dl><p><strong>Blocking failure conditions:</strong></p><ul><li>RC evidence paths reference demo artifacts (.build/rig-relay/demo/, demo-synthetic, demo_commands.py)</li>
+<li>Golden path evidence includes demo-generated data as passing</li></ul></section>
+
+</section>
+
+<section><h2>Evidence Paths (22)</h2><ul><li><code>README.md</code></li>
+<li><code>docs/json/release_candidate/rc_installability_verdict.v1.json</code></li>
+<li><code>docs/json/release_candidate/rc_golden_path_run.v1.json</code></li>
+<li><code>docs/json/release_gate/rc_validation_runs.v1.jsonl</code></li>
+<li><code>docs/json/release_gate/rc_candidate_verdict.v1.json</code></li>
+<li><code>docs/json/release_gate/rc_readiness_gate.v1.json</code></li>
+<li><code>docs/json/release_gate/rc_blockers.v1.jsonl</code></li>
+<li><code>docs/json/release_gate/rc_deferred_risks.v1.jsonl</code></li>
+<li><code>tests/release_candidate/test_golden_path_live.py</code></li>
+<li><code>tests/desktop/test_playwright_frontend_product_path.py</code></li>
+<li><code>scripts/rig_rc_golden_path_check.py</code></li>
+<li><code>scripts/rig_release_gate_validate.py</code></li>
+<li><code>scripts/rig_relay_validate_schemas.py</code></li>
+<li><code>docs/schemas/rig.relay.desktop_projection.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.bash_receipt.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.sdk.run_result.v1.schema.json</code></li>
+<li><code>docs/schemas/rig.relay.a2a.task_card.v1.schema.json</code></li>
+<li><code>.build/rig-relay/evidence/</code></li>
+<li><code>rig_relay/acp/_disabled_tools.py</code></li>
+<li><code>rig_relay/sdk/__init__.py</code></li>
+<li><code>docs/json/protocols/a2a_promotion_readiness.v1.json</code></li></ul></section>
+
+  </article>
+</main>
+<footer>
+  <p class="source-ref">Source: <code>docs/json/release_candidate/rc_reviewer_golden_path.v1.json</code> (SHA: cda4ac0)</p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

@@ -33,7 +33,7 @@ class TestCloseSession:
         session_closed_events = [
             event
             for event in telemetry_events
-            if event["event_name"] == "vibe.session_closed"
+            if event["event_name"] == "rig.relay.session.closed"
         ]
         assert len(session_closed_events) == 1
         assert (
@@ -90,7 +90,7 @@ class TestCloseSession:
         await acp_agent_loop.emit_session_closed_for_active_sessions()
 
         session_closed_events = [
-            e for e in telemetry_events if e["event_name"] == "vibe.session_closed"
+            e for e in telemetry_events if e["event_name"] == "rig.relay.session.closed"
         ]
         emitted_ids = {e["properties"]["session_id"] for e in session_closed_events}
         assert len(session_closed_events) == 2

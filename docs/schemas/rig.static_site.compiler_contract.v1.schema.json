@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.static_site.compiler_contract.v1.schema.json",
+  "title": "Rig Static Site Compiler Contract v1",
+  "description": "Schema governing the static website compiler contract rules and constraints.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "input_artifact_classes",
+    "allowed_schema_families",
+    "required_metadata",
+    "rendering_invariants",
+    "deterministic_ordering_rules",
+    "content_light_redaction_posture",
+    "forbidden_raw_fields",
+    "navigation_index_expectations",
+    "cross_link_behavior",
+    "schema_validation_requirements",
+    "output_artifact_requirements",
+    "failure_refusal_behavior",
+    "fake_green_risks"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.static_site.compiler_contract.v1"
+    },
+    "input_artifact_classes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "allowed_schema_families": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_metadata": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rendering_invariants": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "deterministic_ordering_rules": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "content_light_redaction_posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_posture", "forbidden_fields"],
+      "properties": {
+        "default_posture": { "type": "string" },
+        "forbidden_fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "forbidden_raw_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "navigation_index_expectations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cross_link_behavior": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "schema_validation_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "output_artifact_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failure_refusal_behavior": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "fake_green_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -71,11 +71,11 @@ def vibe_home_dir(tmp_path: Path) -> Path:
     return tmp_path / ".vibe"
 
 
-async def _spawn_vibe_acp(env: dict[str, str]) -> asyncio.subprocess.Process:
+async def _spawn_rig_relay_acp(env: dict[str, str]) -> asyncio.subprocess.Process:
     return await asyncio.create_subprocess_exec(
         "uv",
         "run",
-        "vibe-acp",
+        "rig-relay-acp",
         stdin=aio_subprocess.PIPE,
         stdout=aio_subprocess.PIPE,
         stderr=aio_subprocess.PIPE,
@@ -127,7 +127,7 @@ async def _connect_and_initialize(
     *, vibe_home_dir: Path, include_api_key: bool, terminal_auth: bool = False
 ) -> tuple[asyncio.subprocess.Process, Any, Any]:
     env = _build_env(vibe_home_dir, include_api_key=include_api_key)
-    proc = await _spawn_vibe_acp(env)
+    proc = await _spawn_rig_relay_acp(env)
 
     try:
         assert proc.stdin is not None
@@ -222,7 +222,7 @@ def test_vibe_acp_setup_shows_onboarding_and_exits_on_cancel(
     captured = io.StringIO()
     child = pexpect.spawn(
         "uv",
-        ["run", "vibe-acp", "--setup"],
+        ["run", "rig-relay-acp", "--setup"],
         cwd=str(TESTS_ROOT.parent),
         env=env,
         encoding="utf-8",

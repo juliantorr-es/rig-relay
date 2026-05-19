@@ -33,7 +33,7 @@ def acp_agent_loop(backend) -> VibeAcpAgentLoop:
             self._base_config = config
             self.agent_manager.invalidate_config()
 
-    patch("vibe.acp.acp_agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
+    patch("rig_relay.core.agent_loop.AgentLoop", side_effect=PatchedAgentLoop).start()
 
     return _create_acp_agent()
 
@@ -48,7 +48,9 @@ class TestACPNewSession:
         )
 
         new_session_events = [
-            e for e in telemetry_events if e.get("event_name") == "vibe.new_session"
+            e
+            for e in telemetry_events
+            if e.get("event_name") == "rig.relay.session.started"
         ]
         assert len(new_session_events) == 1
         assert new_session_events[0]["properties"]["entrypoint"] == "acp"

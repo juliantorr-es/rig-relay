@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke tests for the built vibe-acp binary.
+"""Smoke tests for the built rig-relay-acp binary.
 
 Usage: python tests/smoke_binary.py <binary-dir>
 
@@ -129,7 +129,7 @@ async def test_acp_initialize(binary: Path) -> None:
                 )
             if resp.agent_info is None:
                 _fail("agent_info is None")
-            if resp.agent_info.name != "@mistralai/mistral-vibe":
+            if resp.agent_info.name != "@rig/rig-relay":
                 _fail(f"unexpected agent name: {resp.agent_info.name}")
 
             print(
@@ -227,7 +227,7 @@ def test_no_executable_stack(binary_dir: Path) -> None:
     checked = 0
 
     # Check main binary + everything under _internal/
-    candidates = [binary_dir / "vibe-acp"]
+    candidates = [binary_dir / "rig-relay-acp"]
     candidates.extend(sorted(internal_dir.rglob("*")))
 
     for filepath in candidates:
@@ -262,7 +262,9 @@ def main() -> None:
         sys.exit(1)
 
     binary_dir = Path(sys.argv[1])
-    binary_name = "vibe-acp.exe" if platform.system() == "Windows" else "vibe-acp"
+    binary_name = (
+        "rig-relay-acp.exe" if platform.system() == "Windows" else "rig-relay-acp"
+    )
     binary = binary_dir / binary_name
 
     if not binary.exists():

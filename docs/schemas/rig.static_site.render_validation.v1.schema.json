@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.static_site.render_validation.v1.schema.json",
+  "title": "Rig Static Site Render Validation v1",
+  "description": "Schema for recording validation evidence for render candidates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "candidate_id",
+    "source_artifact_hashes",
+    "schema_count_rendered",
+    "page_count_rendered",
+    "nav_count",
+    "validation_gates",
+    "failed_gates",
+    "output_root_hash",
+    "deterministic_regeneration_hash",
+    "redaction_status",
+    "evidence_id"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "rig.static_site.render_validation.v1"
+    },
+    "candidate_id": {
+      "type": "string"
+    },
+    "source_artifact_hashes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "schema_count_rendered": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "page_count_rendered": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nav_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "validation_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failed_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "output_root_hash": {
+      "type": "string"
+    },
+    "deterministic_regeneration_hash": {
+      "type": "string"
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["content_light", "full", "redacted"]
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "evidence_id": {
+      "type": "string"
+    }
+  }
+}

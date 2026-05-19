@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from rig_relay.protocols.mcp._auth_metadata import (
+    MCPPerUserAuthorization,
+    MCPToolAuthMetadata,
+    build_mcp_auth_metadata,
+    compute_tool_provenance_hash,
+)
 from rig_relay.protocols.mcp._refusal_adapter import (
     classify_tool_descriptor_suspicious,
     evaluate_mcp_request,
@@ -34,12 +40,16 @@ __all__ = [
     "TIER_3_TOOLS",
     "TIER_4_TOOLS",
     "TIER_5_TOOLS",
+    "MCPPerUserAuthorization",
     "MCPPrompt",
     "MCPResource",
     "MCPTool",
+    "MCPToolAuthMetadata",
     "MCPToolTier",
     "RigMCPServer",
     "ServerCapabilities",
+    "build_mcp_auth_metadata",
     "classify_tool_descriptor_suspicious",
+    "compute_tool_provenance_hash",
     "evaluate_mcp_request",
 ]

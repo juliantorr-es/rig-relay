@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend / Bridge / Backend v1 Readiness — Rig Relay Docs</title>
+<meta name="description" content="Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/frontend-bridge-backend-v1-readiness.html">
+<meta property="og:title" content="Frontend / Bridge / Backend v1 Readiness">
+<meta property="og:description" content="Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/frontend-bridge-backend-v1-readiness.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Frontend / Bridge / Backend v1 Readiness">
+<meta name="twitter:description" content="Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Frontend / Bridge / Backend v1 Readiness</h1>
+  <p class="doc-summary">Convergence readiness artifact recording all schemas, implementation files, test files, proofs, and deferred seams for the Frontend / Bridge / Backend v1 ten-wave convergence.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-19</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/frontend_bridge_backend_v1_readiness.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<nav class="doc-toc" aria-label="Table of contents">
+  <h2>On this page</h2>
+  <ol>
+<li><a href="#h1-1">Frontend / Bridge / Backend v1 Readiness</a></li>
+<li><a href="#h2-1">Schemas in Scope</a></li>
+<li><a href="#h2-2">Implementation Files</a></li>
+<li><a href="#h2-3">Frontend Files</a></li>
+<li><a href="#h2-4">Test Files</a></li>
+<li><a href="#h3-tests-desktop">Desktop Tests (tests/desktop/)</a></li>
+<li><a href="#h3-tests-frontend">Frontend Tests (tests/frontend/)</a></li>
+<li><a href="#h2-5">Proofs</a></li>
+<li><a href="#h2-6">CPU Budget Philosophy</a></li>
+<li><a href="#h2-7">Deferred Seams</a></li>
+<li><a href="#h2-8">Claim Boundaries (Untouched)</a></li>
+<li><a href="#h2-9">Acceptance Matrix Status</a></li>
+  </ol>
+</nav>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Frontend / Bridge / Backend v1 Readiness</h1>
+
+<p id="p-1" class="disclosure-standard" data-disclosure-level="standard">This artifact records the complete readiness state of the Frontend / Bridge / Backend v1 contract lane at the conclusion of the ten-wave convergence. It covers all four governed schemas, all implementation files, all test files, all proofs, and deferred seams.</p>
+
+<h2 id="h2-1" class="disclosure-standard" data-disclosure-level="standard">Schemas in Scope</h2>
+
+<ul id="list-schemas" class="disclosure-standard" data-disclosure-level="standard">
+  <li>rig.relay.frontend_intent.v1 — frontend intent schema</li>
+  <li>rig.relay.bridge_envelope.v1 — bridge envelope schema</li>
+  <li>rig.relay.backend_projection_patch.v1 — backend projection patch schema</li>
+  <li>rig.relay.bridge_lifecycle_event.v1 — bridge lifecycle event schema</li>
+</ul>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Implementation Files</h2>
+
+<table id="table-impl" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Role</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>rig_relay/desktop/bridge_protocol.py</td><td>BridgeMessage model, ProtocolTracker, evidence helpers</td><td>active</td></tr>
+<tr><td>rig_relay/desktop/bridge_refusals.py</td><td>Dispatcher refusal enforcement, content-light scanner</td><td>active</td></tr>
+<tr><td>rig_relay/desktop/bridge_lifecycle_trace.py</td><td>BridgeLifecycleTraceWriter, lifecycle event persistence</td><td>active</td></tr>
+<tr><td>rig_relay/desktop/websocket_server.py</td><td>WebSocket server, flow control, queue caps, coalescing</td><td>active</td></tr>
+<tr><td>rig_relay/desktop/intents.py</td><td>Intent dispatcher, mutation class routing</td><td>active</td></tr>
+<tr><td>rig_relay/desktop/projection.py</td><td>Projection builder, content-light patch construction</td><td>active</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Frontend Files</h2>
+
+<table id="table-frontend" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>File</th><th>Role</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>frontend/desktop/js/projection.js</td><td>Projection renderer, patch application, digest tracking</td><td>active</td></tr>
+<tr><td>frontend/desktop/js/protocol/envelope.js</td><td>Bridge envelope construction, schema alignment</td><td>active</td></tr>
+<tr><td>frontend/desktop/js/protocol/client.js</td><td>WebSocket client, auth, transport state machine</td><td>active</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Test Files</h2>
+
+<h3 id="h3-tests-desktop" class="disclosure-standard" data-disclosure-level="standard">Desktop Tests (tests/desktop/)</h3>
+
+<ul id="list-tests-desktop" class="disclosure-standard" data-disclosure-level="standard">
+  <li>test_frontend_bridge_backend_contract.py — schema validation, refusal enforcement, mutation classes, trace fields, content-light</li>
+  <li>test_bridge_protocol.py — BridgeMessage model, ProtocolTracker state machine</li>
+  <li>test_bridge_dispatcher_refusals.py — 22 refusal types, enforce_intent coverage</li>
+  <li>test_bridge_refusal_persistence.py — BridgeLifecycleTraceWriter JSONL persistence</li>
+  <li>test_bridge_refusal_trace_correlation.py — trace_id propagation through refusal lifecycle events</li>
+  <li>test_bridge_diagnostics.py — diagnostic snapshots</li>
+  <li>test_desktop_bridge_state_machine.py — DesktopBridgeStateMachine transitions</li>
+  <li>test_desktop_projection.py / test_projection.py / test_projection_contract.py — projection builder, patch construction</li>
+  <li>test_projection_integrity.py — projection integrity checks</li>
+  <li>test_chat_state.py / test_chat_adapter.py / test_chat_persistence.py — chat state management</li>
+  <li>test_desktop_events.py — event routing</li>
+  <li>test_websocket_server.py — WebSocket server lifecycle</li>
+  <li>test_websocket_concurrency.py — async lock correctness, task lifecycle, dedup guard, no threading primitives</li>
+  <li>test_websocket_security_rejections.py — origin validation, token auth rejection</li>
+  <li>test_websocket_correlation.py — correlation ID propagation</li>
+  <li>test_correlation.py — DesktopCorrelation lifecycle</li>
+  <li>test_intents.py / test_protected_intents.py — intent dispatch, protected intent gating</li>
+  <li>test_progress_events.py / test_execution_progress_projection.py — progress event streaming</li>
+  <li>test_local_service_security.py — localhost security constraints</li>
+  <li>test_readiness_gating.py — healthz, readiness states, auth roundtrip</li>
+  <li>test_cockpit_lifecycle.py — cockpit lifecycle</li>
+  <li>test_tls.py — TLS configuration</li>
+  <li>test_authorization_receipts.py — authorization receipts</li>
+  <li>test_cpu_budget.py — CPU budget measurement as counts, queue cap enforcement, coalesce throughput</li>
+  <li>test_frontend_bridge_backend_v1_convergence.py — v1 convergence readiness artifact validation</li>
+</ul>
+
+<h3 id="h3-tests-frontend" class="disclosure-standard" data-disclosure-level="standard">Frontend Tests (tests/frontend/)</h3>
+
+<ul id="list-tests-frontend" class="disclosure-standard" data-disclosure-level="standard">
+  <li>test_bridge_contract_static.py — static contract verification</li>
+  <li>test_frontend_trace_endpoint.py — trace endpoint alignment</li>
+  <li>test_frontend_state_machines.py — UI state machines</li>
+  <li>test_runtime_kernel.py / test_frontend_runtime_kernel.py — runtime kernel</li>
+  <li>test_fan_in_stabilization.py — fan-in stabilization</li>
+  <li>test_notifications.py / test_frontend_notifications.py — notification flow</li>
+  <li>test_transport_state_machine_source.py — transport state machine</li>
+  <li>test_static_import_graph.py — static import graph</li>
+  <li>test_frontend_module_imports.py — module import verification</li>
+  <li>test_frontend_polish.py — UI polish</li>
+  <li>test_projection_patch_application.mjs — projection patch application verification</li>
+  <li>test_ws_protocol_derivation.mjs — WebSocket protocol derivation</li>
+  <li>test_prompt_clear_on_ack.mjs — prompt clear on ack</li>
+  <li>test_no_inner_html_for_untrusted_fields.mjs — innerHTML safety</li>
+  <li>test_intent_result_rendering.mjs — intent result rendering</li>
+  <li>test_delight.py — UI delight states</li>
+  <li>test_trace_spine.py — trace spine alignment</li>
+  <li>test_protocol.py — protocol module tests</li>
+</ul>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Proofs</h2>
+
+<table id="table-proofs" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Proof</th><th>Status</th><th>Agent</th><th>Wave</th></tr></thead>
+<tbody>
+<tr><td>Trace propagation proof</td><td>PASS</td><td>Agent A</td><td>Wave 1-2</td></tr>
+<tr><td>Refusal proof</td><td>PASS</td><td>N/A</td><td>Wave 1</td></tr>
+<tr><td>Lifecycle persistence proof</td><td>PASS</td><td>N/A</td><td>Wave 1</td></tr>
+<tr><td>Concurrency proof</td><td>PASS</td><td>Agent B</td><td>Wave 1</td></tr>
+<tr><td>Thread-safety proof</td><td>PASS (no OS threads)</td><td>N/A</td><td>N/A</td></tr>
+<tr><td>Progressive rendering proof</td><td>PASS</td><td>Agent C</td><td>Wave 1</td></tr>
+<tr><td>Resource budget proof</td><td>PASS</td><td>Agent D</td><td>Wave 1</td></tr>
+<tr><td>Content-light proof</td><td>PASS</td><td>Agent D</td><td>Wave 1</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">CPU Budget Philosophy</h2>
+
+<p id="p-cpu" class="disclosure-standard" data-disclosure-level="standard">CPU budget is measured in counts, not wall-clock. Bounds are enforced by queue caps (_MAX_PER_CONNECTION_QUEUE = 64), coalesce semantics (COALESCE_KINDS = {lifecycle_event, heartbeat}), never-drop protection (NEVER_DROP_KINDS = {error, intent_result}), and drop counting (record_dropped). ProtocolTracker.snapshot() reports only count-based metrics: coalesced_count, dropped_count, max_queue_depth, no wall-clock or elapsed-time fields. Tests validate message count and byte throughput per operation, coalesce count per drain cycle, and drop enforcement at cap boundaries.</p>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Deferred Seams</h2>
+
+<table id="table-deferred" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Seam</th><th>Status</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>WebSocketStream backpressure</td><td>Deferred</td><td>Bounded-queue representation (MAX_PER_CONNECTION_QUEUE + drop/coalesce) provides count-based backpressure; full WebSocketStream backpressure deferred</td></tr>
+<tr><td>E2E browser tests</td><td>Deferred</td><td>CLI environment constraint — Playwright/headless browser not available in test environment; contract and substrate tests cover equivalent paths</td></tr>
+<tr><td>Lifecycle file rotation</td><td>Deferred</td><td>BridgeLifecycleTraceWriter appends to single JSONL; file rotation policy deferred</td></tr>
+<tr><td>External network budget</td><td>Deferred</td><td>N/A local-only bridge; no external network path through WebSocket server</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Claim Boundaries (Untouched)</h2>
+
+<ul id="list-boundaries" class="disclosure-standard" data-disclosure-level="standard">
+  <li>GitHub provider / OAuth — untouched</li>
+  <li>Coordination store — untouched</li>
+  <li>Release gate — untouched</li>
+  <li>CI evidence — untouched</li>
+  <li>OTel / compiler — untouched</li>
+  <li>MCP / ACP / A2A / SDK — untouched</li>
+</ul>
+
+<h2 id="h2-9" class="disclosure-standard" data-disclosure-level="standard">Acceptance Matrix Status</h2>
+
+<p id="p-acceptance" class="disclosure-standard" data-disclosure-level="standard">The v1 acceptance matrix shows 34/34 items PASS. Items #23 (CPU budget) and #32 (v1 readiness artifact) were the final gaps closed by Wave 2 Agent B. CPU budget tests validate count-based measurement, coalesce throughput, queue drain byte/count metrics, and drop enforcement at cap boundaries. The v1 readiness artifact (this document) records all schemas, implementation files, test files, proofs, and deferred seams.</p>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/frontend_bridge_backend_v1_readiness.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

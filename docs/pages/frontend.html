@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend Maturity Evidence — Rig Relay Docs</title>
+<meta name="description" content="Frontend Maturity Evidence">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/2f49220b597b.html">
+<meta property="og:title" content="Frontend Maturity Evidence">
+<meta property="og:description" content="Frontend Maturity Evidence">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/2f49220b597b.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Frontend Maturity Evidence">
+<meta name="twitter:description" content="Frontend Maturity Evidence">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / Frontend Maturity Evidence</p>
+  <h1>Frontend Maturity Evidence</h1>
+</header>
+<main id="main" class="doc-page">
+  <article>
+<section id="runtime-kernel">
+<h2>Runtime Kernel</h2>
+<p>  ✅ [bridge:01] resolve frontend_dir: frontend/desktop
+  ✅ [bridge:02] resolve index.html: 3.7 KB
+  ✅ [bridge:03] verify asset files: js/main.js=11KB, css dir ok
+  ✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+  ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+  ✅ [bridge:06] bind host/port: http://127.0.0.1:{port}
+  ✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+  ✅ [bridge:08] probe /index.html: HTTP 200, text/html
+  ✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript
+  ✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css
+  ✅ [bridge:11] create pywebview window: window → http://127.0.0.1:{port}/index.html
+  ✅ [bridge:12] pywebview start called: webview.start(gui=cocoa)
+  ✅ [bridge:13] frontend runtime config loaded: source=pywebview_api token=present,len=32
+  ✅ [bridge:14] websocket upgrade accepted
+  ✅ [bridge:15] auth message received: token_present=true
+  ✅ [bridge:16] websocket auth accepted
+  ✅ [bridge:17] first projection sent
+  ✅ [bridge:18] first projection rendered: digest=...</p>
+<p>1. `open &quot;dist/Rig Relay.app&quot;` 2. If macOS blocks: **System Settings → Privacy &amp; Security → Open Anyway** 3. Click **Start Demo** → wait for status update 4. Click **Run Doctor** → see 22/22 checks 5. Click **Launch Cockpit** → rich frontend opens 6. Verify **Loopback Token Bridge** connects 7. Verify projections update</p>
+<p>DesktopBridgeServer.start()
+  → DesktopBridgeRuntimeConfig.to_dict()
+  → includes `token_present` plus token fields for backend-only use
+  → CockpitAPI.set_runtime_config(config)
+  → pywebview.js_api = CockpitAPI instance
+  → frontend calls window.pywebview.api.get_runtime_config()
+    → returns config with token
+  → frontend opens WebSocket with token
+  → ProjectionWebSocketServer._handle_auth() validates token
+  → auth_ok → get_projection → projection rendered</p>
+<p># E2E test: WebSocket auth + projection
+ws_url = bridge.runtime_config.ws_url
+ws = websockets.connect(ws_url)
+ws.send({&quot;type&quot;: &quot;auth&quot;, &quot;token&quot;: &quot;...&quot;})
+# → {&quot;type&quot;: &quot;auth_ok&quot;}
+ws.send({&quot;type&quot;: &quot;get_projection&quot;})
+# → {&quot;type&quot;: &quot;projection&quot;, &quot;data&quot;: {...}}</p>
+</section>
+<section id="notification-system">
+<h2>Notification System</h2>
+<p>1. `open &quot;dist/Rig Relay.app&quot;` 2. If macOS blocks: **System Settings → Privacy &amp; Security → Open Anyway** 3. Click **Start Demo** → wait for status update 4. Click **Run Doctor** → see 22/22 checks 5. Click **Launch Cockpit** → rich frontend opens 6. Verify **Loopback Token Bridge** connects 7. Verify projections update</p>
+</section>
+<section id="delight-system">
+<h2>Delight System</h2>
+<dl>
+<dt>Motion preferences</dt><dd>Respects prefers-reduced-motion. Transitions disabled when user prefers reduced motion.</dd>
+<dt>Sound opt-in</dt><dd>All sounds are opt-in only. No audio plays without explicit user consent. Sound toggle in settings panel.</dd>
+<dt>Animation budget</dt><dd>Animations capped at 200ms. No infinite animations. All animations CSS-only (no JS animation loops).</dd>
+<dt>Loading states</dt><dd>Skeleton screens for initial load. Spinner for in-flight operations. Empty states with actionable copy.</dd>
+<dt>Disclosure levels</dt><dd>Compact chips → standard cards → full-page expanded. User controls disclosure depth.</dd>
+</dl>
+</section>
+<section id="browser-test-coverage">
+<h2>Browser Test Coverage</h2>
+<p>  ✅ [bridge:01] resolve frontend_dir: frontend/desktop
+  ✅ [bridge:02] resolve index.html: 3.7 KB
+  ✅ [bridge:03] verify asset files: js/main.js=11KB, css dir ok
+  ✅ [bridge:04] build runtime_config: Loopback Token Bridge, token_present=True
+  ✅ [bridge:05] create WS server: ProjectionWebSocketServer ready
+  ✅ [bridge:06] bind host/port: http://127.0.0.1:{port}
+  ✅ [bridge:07] probe /healthz: HTTP 200, ok=True
+  ✅ [bridge:08] probe /index.html: HTTP 200, text/html
+  ✅ [bridge:09] probe /js/main.js: HTTP 200, text/javascript
+  ✅ [bridge:10] probe /css/chat.css: HTTP 200, text/css
+  ✅ [bridge:11] create pywebview window: window → http://127.0.0.1:{port}/index.html
+  ✅ [bridge:12] pywebview start called: webview.start(gui=cocoa)
+  ✅ [bridge:13] frontend runtime config loaded: source=pywebview_api token=present,len=32
+  ✅ [bridge:14] websocket upgrade accepted
+  ✅ [bridge:15] auth message received: token_present=true
+  ✅ [bridge:16] websocket auth accepted
+  ✅ [bridge:17] first projection sent
+  ✅ [bridge:18] first projection rendered: digest=...</p>
+<p>1. `open &quot;dist/Rig Relay.app&quot;` 2. If macOS blocks: **System Settings → Privacy &amp; Security → Open Anyway** 3. Click **Start Demo** → wait for status update 4. Click **Run Doctor** → see 22/22 checks 5. Click **Launch Cockpit** → rich frontend opens 6. Verify **Loopback Token Bridge** connects 7. Verify projections update</p>
+<p># E2E test: WebSocket auth + projection
+ws_url = bridge.runtime_config.ws_url
+ws = websockets.connect(ws_url)
+ws.send({&quot;type&quot;: &quot;auth&quot;, &quot;token&quot;: &quot;...&quot;})
+# → {&quot;type&quot;: &quot;auth_ok&quot;}
+ws.send({&quot;type&quot;: &quot;get_projection&quot;})
+# → {&quot;type&quot;: &quot;projection&quot;, &quot;data&quot;: {...}}</p>
+<h2>Regression Tests</h2>
+<p>uv run pytest tests/desktop/test_golden_path.py -v
+# 6 tests: config token, fallback tokenless, WS auth, WS projection, healthz, probe ladder</p>
+</section>
+  </article>
+</main>
+<footer>
+  <p>Source: <code>docs/json/demo/desktop-golden-path.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>
