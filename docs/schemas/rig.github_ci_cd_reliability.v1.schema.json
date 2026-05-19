@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_ci_cd_reliability.v1.schema.json",
+  "title": "GitHub CI/CD Reliability v1",
+  "description": "Machine-readable policy artifact describing which GitHub Actions checks are required, which are advisory, and which local commands define the deterministic merge gate.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "workflow_name",
+    "workflow_path",
+    "required_gate_rationale",
+    "required_checks",
+    "conditional_checks",
+    "advisory_checks",
+    "live_auth_policy",
+    "artifact_policy"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_ci_cd_reliability.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workflow_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_path": {
+      "type": "string",
+      "const": ".github/workflows/ci.yml"
+    },
+    "required_gate_rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_checks": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "$ref": "#/definitions/check"
+      }
+    },
+    "conditional_checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/conditional_check"
+      }
+    },
+    "advisory_checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/advisory_check"
+      }
+    },
+    "live_auth_policy": {
+      "type": "object",
+      "required": [
+        "default_mode",
+        "safe_default_commands",
+        "opt_in_live_commands",
+        "protected_environment_requirement"
+      ],
+      "properties": {
+        "default_mode": {
+          "type": "string",
+          "const": "safe_tests_only"
+        },
+        "safe_default_commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "opt_in_live_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "protected_environment_requirement": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifact_policy": {
+      "type": "object",
+      "required": [
+        "safe_json_artifacts",
+        "forbidden_artifacts"
+      ],
+      "properties": {
+        "safe_json_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbidden_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "check": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "job_name",
+        "commands",
+        "local_reproduction",
+        "artifacts"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "local_reproduction": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "conditional_check": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "job_name",
+        "commands",
+        "local_reproduction",
+        "artifacts",
+        "condition"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "local_reproduction": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "condition": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "advisory_check": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "job_name",
+        "commands",
+        "local_reproduction",
+        "artifacts",
+        "advisory_reason"
+      ],
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "local_reproduction": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "advisory_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

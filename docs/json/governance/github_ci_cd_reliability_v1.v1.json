@@ -1,0 +1,134 @@
+{
+  "$schema": "https://rig-relay.github.io/schemas/rig.github_ci_cd_reliability.v1.schema.json",
+  "schema_version": "rig.github_ci_cd_reliability.v1",
+  "artifact_id": "github_ci_cd_reliability_v1",
+  "generated_at": "2026-05-19T23:45:51Z",
+  "workflow_name": "CI",
+  "workflow_path": ".github/workflows/ci.yml",
+  "required_gate_rationale": "Required checks mirror the repository's deterministic local release-gate commands: schema validation, site renderer tests plus static rendering, DeepSeek/OpenCode usage report tests, and safe GitHub live-auth coverage. Broader release-evidence diagnostics remain available as advisory checks while full-suite pytest is intentionally not the required merge gate yet.",
+  "required_checks": [
+    {
+      "job_id": "schema-validation",
+      "job_name": "Schema validation",
+      "commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py"
+      ],
+      "local_reproduction": [
+        "uv run python scripts/rig_relay_validate_schemas.py"
+      ],
+      "artifacts": [
+        ".build/github-actions/schema-validation-summary.json"
+      ]
+    },
+    {
+      "job_id": "static-site-renderer",
+      "job_name": "Static site renderer",
+      "commands": [
+        "uv run pytest tests/site_renderer/ -v",
+        "uv run python scripts/rig_site_render.py"
+      ],
+      "local_reproduction": [
+        "uv run pytest tests/site_renderer/ -v",
+        "uv run python scripts/rig_site_render.py"
+      ],
+      "artifacts": [
+        ".build/github-actions/static-site-renderer-summary.json",
+        ".build/rig-relay/site/site_render_report.v1.json"
+      ]
+    },
+    {
+      "job_id": "deepseek-opencode-usage-report",
+      "job_name": "DeepSeek/OpenCode usage report",
+      "commands": [
+        "uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v"
+      ],
+      "local_reproduction": [
+        "uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v"
+      ],
+      "artifacts": [
+        ".build/github-actions/deepseek-opencode-usage-report-summary.json"
+      ]
+    },
+    {
+      "job_id": "github-live-auth",
+      "job_name": "GitHub live auth (safe by default)",
+      "commands": [
+        "uv run pytest tests/integrations/test_github_live_auth.py -v"
+      ],
+      "local_reproduction": [
+        "uv run pytest tests/integrations/test_github_live_auth.py -v"
+      ],
+      "artifacts": [
+        ".build/github-actions/github-live-auth-summary.json"
+      ]
+    }
+  ],
+  "conditional_checks": [
+    {
+      "job_id": "deepseek-lane-routing",
+      "job_name": "DeepSeek lane routing",
+      "commands": [
+        "uv run pytest tests/integrations/test_deepseek_lane_routing.py -v"
+      ],
+      "local_reproduction": [
+        "uv run pytest tests/integrations/test_deepseek_lane_routing.py -v"
+      ],
+      "artifacts": [
+        ".build/github-actions/deepseek-lane-routing-summary.json"
+      ],
+      "condition": "Only run when tests/integrations/test_deepseek_lane_routing.py exists."
+    }
+  ],
+  "advisory_checks": [
+    {
+      "job_id": "release-gate",
+      "job_name": "Release Evidence Gate (advisory)",
+      "commands": [
+        "uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"",
+        "uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json"
+      ],
+      "local_reproduction": [
+        "uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"",
+        "uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json"
+      ],
+      "artifacts": [
+        ".build/github-actions/release-gate-advisory-summary.json",
+        ".build/rig-relay/evidence/ci_*_run.v1.json",
+        ".build/rig-relay/evidence/ci_*_job.v1.json",
+        ".build/rig-relay/evidence/ci_*_artifact_index.v1.json",
+        ".build/rig-relay/evidence/ci_*_verdict.v1.json",
+        ".build/rig-relay/release-gate-ci.json"
+      ],
+      "advisory_reason": "Broader release-evidence diagnostics are still useful, but they are not the deterministic required merge gate while targeted release-gate commands define the current known-good path."
+    }
+  ],
+  "live_auth_policy": {
+    "default_mode": "safe_tests_only",
+    "safe_default_commands": [
+      "uv run pytest tests/integrations/test_github_live_auth.py -v"
+    ],
+    "opt_in_live_commands": [
+      "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json"
+    ],
+    "protected_environment_requirement": "Default CI leaves RIG_LIVE_AUTH_TESTS unset. Only a protected environment should provide RIG_LIVE_AUTH_TESTS=1 before the opt-in live smoke command is allowed to run."
+  },
+  "artifact_policy": {
+    "safe_json_artifacts": [
+      ".build/github-actions/*-summary.json",
+      ".build/rig-relay/site/site_render_report.v1.json",
+      ".build/rig-relay/evidence/ci_*_run.v1.json",
+      ".build/rig-relay/evidence/ci_*_job.v1.json",
+      ".build/rig-relay/evidence/ci_*_artifact_index.v1.json",
+      ".build/rig-relay/evidence/ci_*_verdict.v1.json",
+      ".build/rig-relay/release-gate-ci.json"
+    ],
+    "forbidden_artifacts": [
+      "raw logs",
+      ".rig/secrets",
+      "auth.json",
+      "OpenCode SQLite databases",
+      "private keys",
+      "unsanitized .build artifacts"
+    ]
+  }
+}
