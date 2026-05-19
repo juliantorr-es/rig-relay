@@ -1,0 +1,544 @@
+{
+  "schema_version": "rig.deepseek_opencode_feature_audit.v1",
+  "generated_at": "2026-05-19T22:26:01Z",
+  "external_references": [
+    {
+      "title": "DeepSeek Thinking Mode",
+      "url": "https://api-docs.deepseek.com/guides/thinking_mode",
+      "purpose": "Thinking mode defaults, reasoning_content handling, reasoning_effort, and tool-call continuation requirements.",
+      "retrieved_at": "2026-05-19"
+    },
+    {
+      "title": "DeepSeek Chat Prefix Completion",
+      "url": "https://api-docs.deepseek.com/guides/chat_prefix_completion",
+      "purpose": "Beta prefix-completion requirements and beta base URL constraint.",
+      "retrieved_at": "2026-05-19"
+    },
+    {
+      "title": "DeepSeek FIM Completion",
+      "url": "https://api-docs.deepseek.com/guides/fim_completion",
+      "purpose": "Beta FIM completion endpoint behavior and suffix/prompt requirements.",
+      "retrieved_at": "2026-05-19"
+    },
+    {
+      "title": "DeepSeek JSON Mode",
+      "url": "https://api-docs.deepseek.com/guides/json_mode",
+      "purpose": "response_format json_object requirements and prompt shaping.",
+      "retrieved_at": "2026-05-19"
+    },
+    {
+      "title": "DeepSeek Tool Calls",
+      "url": "https://api-docs.deepseek.com/guides/tool_calls",
+      "purpose": "OpenAI-format tool calls and strict tool-call beta constraints.",
+      "retrieved_at": "2026-05-19"
+    },
+    {
+      "title": "DeepSeek KV Cache",
+      "url": "https://api-docs.deepseek.com/guides/kv_cache",
+      "purpose": "Cache hit/miss visibility and automatic caching semantics.",
+      "retrieved_at": "2026-05-19"
+    }
+  ],
+  "opencode_installation_summary": {
+    "opencode_version": "1.14.50",
+    "binary_path": "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+    "repo_config_path": "opencode.json",
+    "user_config_path": "~/.config/opencode/opencode.json",
+    "user_auth_path": "~/.local/share/opencode/auth.json",
+    "active_plugins": [
+      "file:///Users/user/.opencode/plugins/opencode-google-antigravity-auth",
+      "file:///Users/user/.opencode/plugins/opencode-telemetry-plugin/dist/telemetry-plugin.bundle.min.js"
+    ],
+    "active_mcp_servers": [
+      "MCP_DOCKER",
+      "pencil",
+      "sequential-thinking"
+    ],
+    "current_shell": "/bin/bash",
+    "deepseek_auth_present": true,
+    "deepseek_auth_redacted": true,
+    "notes": "Repo-local and user-level config files do not pin a provider or model. DeepSeek auth exists in the user auth store as an API credential and was redacted. The current shell environment did not expose any DEEPSEEK, OPENAI, OPENCODE, ANTHROPIC, OPENROUTER, or AI_ provider variables."
+  },
+  "provider_config_locations_checked": [
+    {
+      "path": "opencode.json",
+      "observed": "No provider/model pin. Permissions set to allow, lsp enabled, repo-local plugins present.",
+      "conclusion": "No DeepSeek override or base-url pin found here."
+    },
+    {
+      "path": "~/.config/opencode/opencode.json",
+      "observed": "No provider/model pin. OpenTelemetry plugin enabled; DeepSeek auth is not stored here.",
+      "conclusion": "No DeepSeek override or base-url pin found here."
+    },
+    {
+      "path": "~/.config/opencode/config.json",
+      "observed": "Autoupdate and MCP entries only; no provider/model configuration.",
+      "conclusion": "No DeepSeek override or base-url pin found here."
+    },
+    {
+      "path": "~/.local/share/opencode/auth.json",
+      "observed": "DeepSeek auth present with type api and a redacted key; no explicit base_url field.",
+      "conclusion": "Auth exists, but base URL is not explicitly overridden here."
+    }
+  ],
+  "request_builder_locations_checked": [
+    {
+      "path": "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+      "observed": "Binary strings include deepseek-v4-pro, deepseek-v4-flash, deepseek-chat, deepseek-reasoner, reasoning_content, reasoning_effort, display_thinking, response_format, json_object, function.strict, function strict, tool_call_id, temperature, top_p, presence_penalty, frequency_penalty, and api.deepseek.com; no beta or anthropic DeepSeek URL strings were found.",
+      "conclusion": "Generic OpenAI-compatible DeepSeek request building is compiled in; beta endpoint support was not evidenced."
+    },
+    {
+      "path": "~/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts",
+      "observed": "Type surface includes reasoning_content / reasoning_details, display_thinking, and cache_read/cache_write fields in usage metadata.",
+      "conclusion": "SDK surface knows about reasoning and cache accounting fields."
+    },
+    {
+      "path": "~/.local/share/opencode/log/2026-05-19T191120.log",
+      "observed": "Runtime session creation and streaming lines show providerID=deepseek and modelID=deepseek-v4-pro.",
+      "conclusion": "Live runtime used the DeepSeek provider and streamed DeepSeek-backed sessions."
+    }
+  ],
+  "deepseek_model_config": {
+    "configured_model_id": null,
+    "configured_variant": null,
+    "active_session_model_id": "deepseek-v4-pro",
+    "active_session_variant": "max",
+    "aggregate_usage_breakdown": [
+      {
+        "model_id": "deepseek-v4-pro",
+        "variant": "default",
+        "session_count": 299,
+        "tokens_input": 14925771,
+        "tokens_output": 2356227,
+        "tokens_reasoning": 1078870,
+        "tokens_cache_read": 341192064,
+        "tokens_cache_write": 0
+      },
+      {
+        "model_id": "deepseek-v4-pro",
+        "variant": "max",
+        "session_count": 22,
+        "tokens_input": 15093761,
+        "tokens_output": 1513789,
+        "tokens_reasoning": 341642,
+        "tokens_cache_read": 512290432,
+        "tokens_cache_write": 0
+      },
+      {
+        "model_id": "deepseek-v4-flash",
+        "variant": "default",
+        "session_count": 7,
+        "tokens_input": 576184,
+        "tokens_output": 55540,
+        "tokens_reasoning": 6360,
+        "tokens_cache_read": 2490112,
+        "tokens_cache_write": 0
+      },
+      {
+        "model_id": "deepseek-v4-flash",
+        "variant": null,
+        "session_count": 1,
+        "tokens_input": 1386703,
+        "tokens_output": 315709,
+        "tokens_reasoning": 112452,
+        "tokens_cache_read": 266541568,
+        "tokens_cache_write": 0
+      }
+    ],
+    "legacy_aliases_detected_in_binary": [
+      "deepseek-chat",
+      "deepseek-reasoner"
+    ],
+    "notes": "The current install does not pin a DeepSeek model in config. Runtime evidence shows deepseek-v4-pro is the primary working model, with deepseek-v4-flash also used for a small number of sessions. Variant max appears in the active build session and in 22 historical sessions, which is the best evidence of effort-tier routing found."
+  },
+  "deepseek_base_url_config": {
+    "explicit_base_url_override_found": false,
+    "inferred_base_url": "https://api.deepseek.com",
+    "transport_format": "openai-compatible",
+    "beta_base_url_evidence_found": false,
+    "anthropic_base_url_evidence_found": false,
+    "notes": "No explicit base_url override was found in the checked config, auth, logs, or environment. The installed binary contains api.deepseek.com but no api.deepseek.com/beta or api.deepseek.com/anthropic string, so the standard OpenAI-compatible DeepSeek endpoint is the only supported inference from the inspected surfaces."
+  },
+  "feature_matrix": [
+    {
+      "feature_id": "thinking_mode",
+      "feature_name": "Thinking mode",
+      "deepseek_requirement": "OpenAI-format thinking toggle or provider default-on thinking; reasoning_content must survive tool-call turns.",
+      "opencode_current_behavior": "Observed DeepSeek sessions carry reasoning tokens on every DeepSeek session sampled, and the binary contains display_thinking and reasoning_effort support strings.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "~/.local/share/opencode/log/2026-05-19T191120.log",
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+      ],
+      "recommended_action": "Keep the current path; add an explicit DeepSeek profile only if you want manual control over when thinking is on.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "reasoning_effort_control",
+      "feature_name": "Thinking effort control",
+      "deepseek_requirement": "Reasoning effort high or max, either explicitly or via model routing that selects those tiers.",
+      "opencode_current_behavior": "The runtime uses deepseek-v4-pro with default and max variants; the active build session is max.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "~/.local/share/opencode/log/2026-05-19T191120.log"
+      ],
+      "recommended_action": "Treat the existing variant split as the current effort-control mechanism; add explicit request-level control only if you need tighter per-turn tuning.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "reasoning_content_continuation",
+      "feature_name": "reasoning_content continuation with tool calls",
+      "deepseek_requirement": "reasoning_content must be preserved across subsequent tool-call requests in thinking mode.",
+      "opencode_current_behavior": "The DB shows 8,997 messages with both reasoning and tool parts, indicating the runtime keeps reasoning and tool-call structure together.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "/Users/user/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts"
+      ],
+      "recommended_action": "Preserve this path and add a regression test if the DeepSeek adapter code changes.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "chat_prefix_completion_beta",
+      "feature_name": "Chat prefix completion beta",
+      "deepseek_requirement": "Beta base URL plus assistant prefix=true on the last message.",
+      "opencode_current_behavior": "No beta DeepSeek base URL or prefix=true evidence was found in config, logs, or binary strings.",
+      "status": "unsupported_by_opencode",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+        "~/.config/opencode/opencode.json",
+        "~/.config/opencode/config.json",
+        "~/.local/share/opencode/log/2026-05-19T191120.log"
+      ],
+      "recommended_action": "Would require adapter/code changes and an opt-in beta profile.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "fim_completion_beta",
+      "feature_name": "FIM completion beta",
+      "deepseek_requirement": "Beta base URL plus completions endpoint with prompt and optional suffix.",
+      "opencode_current_behavior": "No beta DeepSeek base URL or FIM workflow evidence was found.",
+      "status": "unsupported_by_opencode",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+        "~/.local/share/opencode/log/2026-05-19T191120.log"
+      ],
+      "recommended_action": "Only add this if you are willing to wire a separate code-completion path and accept beta coupling.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "json_output_mode",
+      "feature_name": "JSON output mode",
+      "deepseek_requirement": "response_format={\"type\":\"json_object\"} plus JSON-shaped prompting.",
+      "opencode_current_behavior": "The binary contains response_format and json_object support strings, but I found no active use in the inspected config or logs.",
+      "status": "supported_but_not_enabled",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+      ],
+      "recommended_action": "Enable only for workflows that truly need machine-parseable output.",
+      "confidence": "medium"
+    },
+    {
+      "feature_id": "tool_calls",
+      "feature_name": "Tool calls",
+      "deepseek_requirement": "OpenAI-format tool calls with tool_call_id and preserved assistant tool-call turns.",
+      "opencode_current_behavior": "Tool parts are present in the session DB and the binary contains tool_call_id strings.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+      ],
+      "recommended_action": "No change needed for the current OpenAI-format tool loop.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "strict_tool_call_mode_beta",
+      "feature_name": "Strict tool-call mode beta",
+      "deepseek_requirement": "Beta base URL plus function.strict=true and strict-compatible schemas.",
+      "opencode_current_behavior": "The binary contains function.strict strings, but no beta route or strict-mode activation evidence was found.",
+      "status": "supported_but_not_enabled",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+      ],
+      "recommended_action": "Only enable after you add an explicit beta profile and verify tool schemas satisfy DeepSeek strict-mode constraints.",
+      "confidence": "medium"
+    },
+    {
+      "feature_id": "context_cache_visibility",
+      "feature_name": "Context caching / KV cache hit visibility",
+      "deepseek_requirement": "Automatic cache is on by default; hit/miss visibility should be surfaced somewhere meaningful.",
+      "opencode_current_behavior": "The session DB records tokens_cache_read and tokens_cache_write; cache-read dominates the observed DeepSeek token footprint, but raw prompt_cache_hit_tokens / prompt_cache_miss_tokens were not exposed.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+      ],
+      "recommended_action": "Surface cache-read/write ratios in session or audit views if you want to tune cost and stability.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "base_url_format",
+      "feature_name": "OpenAI-format vs Anthropic-format DeepSeek base URLs",
+      "deepseek_requirement": "OpenAI-compatible DeepSeek route for current path; Anthropic-style route would require a different adapter surface.",
+      "opencode_current_behavior": "The installed binary and runtime logs indicate the OpenAI-compatible DeepSeek path; no Anthropic DeepSeek route was observed.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+        "~/.local/share/opencode/log/2026-05-19T191120.log"
+      ],
+      "recommended_action": "Stay on the OpenAI-compatible path unless you have a separate reason to build an Anthropic-format adapter.",
+      "confidence": "high"
+    },
+    {
+      "feature_id": "pricing_cache_efficiency",
+      "feature_name": "Pricing and cache-efficiency posture",
+      "deepseek_requirement": "Use cheaper models for lightweight work, higher effort for harder work, and preserve stable prefixes for cache hits.",
+      "opencode_current_behavior": "The model mix is cost-aware: pro dominates, flash exists for some sessions, max is used for build, and cache-read tokens dwarf the counted output/input footprint.",
+      "status": "supported_and_enabled",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db"
+      ],
+      "recommended_action": "Keep the current model split; add flash routing only for clearly low-stakes tasks if you want further savings.",
+      "confidence": "high"
+    }
+  ],
+  "thinking_mode_assessment": {
+    "status": "supported_and_enabled",
+    "finding": "Thinking is active in the observed DeepSeek sessions, but I did not find an explicit per-request thinking toggle in the checked config files.",
+    "evidence_refs": [
+      "~/.local/share/opencode/opencode.db",
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+      "~/.local/share/opencode/log/2026-05-19T191120.log"
+    ],
+    "current_mechanism": "DeepSeek thinking appears to be the default-on provider behavior combined with OpenCode's DeepSeek model routing.",
+    "recommended_action": "Leave it enabled for the current path; add an explicit profile only if you want to force thinking off for trivial work.",
+    "confidence": "high",
+    "notes": "DeepSeek docs say thinking defaults to enabled and reasoning_mode should preserve reasoning_content across tool calls. I saw no live 400s in the inspected logs."
+  },
+  "reasoning_content_assessment": {
+    "status": "supported_and_enabled",
+    "finding": "Reasoning content is being carried alongside tool-call messages in the local DB, which is the relevant DeepSeek requirement for thinking-mode tool turns.",
+    "evidence_refs": [
+      "~/.local/share/opencode/opencode.db",
+      "/Users/user/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts"
+    ],
+    "current_mechanism": "Assistant turns with both reasoning and tool parts are present in the stored session data.",
+    "recommended_action": "Keep the current tool loop shape; if the adapter is changed, add a regression test that replays a thinking-mode tool turn and preserves reasoning_content.",
+    "confidence": "high",
+    "notes": "I did not observe a DeepSeek 400 error in the logs I checked."
+  },
+  "tool_call_assessment": {
+    "status": "supported_and_enabled",
+    "finding": "OpenCode is using tool calls in the OpenAI-format loop.",
+    "evidence_refs": [
+      "~/.local/share/opencode/opencode.db",
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+    ],
+    "current_mechanism": "Assistant messages are followed by tool parts with tool_call_id data in the session store.",
+    "recommended_action": "No immediate change required for ordinary tool use.",
+    "confidence": "high",
+    "notes": "The runtime surface looks compatible with DeepSeek tool calls as currently used."
+  },
+  "strict_tool_call_assessment": {
+    "status": "supported_but_not_enabled",
+    "finding": "Strict-mode strings are compiled in, but the inspected install does not activate DeepSeek beta strict mode.",
+    "evidence_refs": [
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+    ],
+    "current_mechanism": "Generic strict-related code is present without evidence of a beta endpoint switch or strict schema normalization in use.",
+    "recommended_action": "Treat strict mode as an opt-in adapter change only if you want stricter tool-call validation.",
+    "confidence": "medium",
+    "notes": "I could not confirm that current tool schemas satisfy DeepSeek strict-mode constraints, so I would not turn this on blindly."
+  },
+  "json_output_assessment": {
+    "status": "supported_but_not_enabled",
+    "finding": "JSON output support is compiled in, but I found no evidence that OpenCode currently requests JSON mode from DeepSeek.",
+    "evidence_refs": [
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+    ],
+    "current_mechanism": "Generic response_format/json_object support exists in the binary but is not evidenced in the active config or runtime logs.",
+    "recommended_action": "Use JSON mode only for commands that truly need machine-parseable output; otherwise it is extra ceremony.",
+    "confidence": "medium",
+    "notes": "I did not inspect any request body containing JSON-mode parameters."
+  },
+  "chat_prefix_completion_assessment": {
+    "status": "unsupported_by_opencode",
+    "finding": "I found no evidence that the installed OpenCode path implements DeepSeek chat prefix completion beta.",
+    "evidence_refs": [
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+      "~/.local/share/opencode/log/2026-05-19T191120.log",
+      "~/.config/opencode/opencode.json"
+    ],
+    "current_mechanism": "No beta base URL or prefix=true message shaping was observed.",
+    "recommended_action": "This would require an adapter change and an explicit beta route.",
+    "confidence": "high",
+    "notes": "Good candidate only if you want a dedicated code-completion lane and are willing to couple to beta."
+  },
+  "fim_completion_assessment": {
+    "status": "unsupported_by_opencode",
+    "finding": "I found no evidence of a DeepSeek FIM completion flow in the installed OpenCode path.",
+    "evidence_refs": [
+      "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+      "~/.local/share/opencode/log/2026-05-19T191120.log"
+    ],
+    "current_mechanism": "No completions-endpoint DeepSeek beta route was observed.",
+    "recommended_action": "Only add a FIM adapter if you introduce a dedicated code-completion workflow and are happy to opt into beta.",
+    "confidence": "high",
+    "notes": "I would treat this as out of scope for the current DeepSeek discount optimization path."
+  },
+  "context_cache_assessment": {
+    "status": "supported_and_enabled",
+    "finding": "OpenCode exposes cache read/write counters at the session layer, and the observed DeepSeek workload is overwhelmingly cache-read heavy.",
+    "evidence_refs": [
+      "~/.local/share/opencode/opencode.db"
+    ],
+    "current_mechanism": "Session rows retain tokens_cache_read and tokens_cache_write, but raw prompt_cache_hit_tokens / prompt_cache_miss_tokens were not exposed in the inspected runtime logs.",
+    "recommended_action": "Expose cache-read/write ratios in the UI or audit summaries if you want to manage prompt stability more deliberately.",
+    "confidence": "high",
+    "notes": "Across observed DeepSeek sessions, tokens_cache_write is zero and tokens_cache_read dominates the counted token footprint."
+  },
+  "pricing_efficiency_assessment": {
+    "status": "supported_and_enabled",
+    "finding": "The current DeepSeek usage pattern is already pricing-aware: pro is the main workhorse, flash is present for a small number of sessions, and cached reads dominate the token footprint.",
+    "evidence_refs": [
+      "~/.local/share/opencode/opencode.db"
+    ],
+    "current_mechanism": "Model selection appears lane-based rather than arbitrary, with build work using pro/max and lighter sessions using pro/default or flash.",
+    "recommended_action": "Keep the current split; adding explicit flash routing for exploration could save money, but only if the task classes stay stable.",
+    "confidence": "high",
+    "notes": "This looks like real savings, not token/cost theater, because the cache-read share is very high and the heavier model is not used everywhere."
+  },
+  "risks": [
+    {
+      "risk_id": "RISK-01",
+      "title": "Reasoning-content loss in future adapter changes",
+      "severity": "high",
+      "description": "If DeepSeek reasoning_content is dropped across a tool-call turn in a future change, DeepSeek may return a 400 during thinking-mode continuation.",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "/Users/user/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts"
+      ],
+      "mitigation": "Keep reasoning_content attached to the continuation path and add a targeted regression test if the DeepSeek request builder is changed.",
+      "status": "inferred"
+    },
+    {
+      "risk_id": "RISK-02",
+      "title": "No raw cache-hit telemetry surfaced",
+      "severity": "medium",
+      "description": "The install records cache_read/cache_write counts, but not the raw DeepSeek prompt_cache_hit_tokens / prompt_cache_miss_tokens field names.",
+      "evidence_refs": [
+        "~/.local/share/opencode/opencode.db",
+        "/Users/user/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts"
+      ],
+      "mitigation": "Expose the existing session counters in a visible summary if you want to tune cost and prefix stability.",
+      "status": "observed"
+    },
+    {
+      "risk_id": "RISK-03",
+      "title": "Beta features require adapter coupling",
+      "severity": "medium",
+      "description": "Chat prefix completion, FIM, and strict tool-call mode all require the beta base URL path that I did not find in the current install.",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+        "~/.local/share/opencode/log/2026-05-19T191120.log"
+      ],
+      "mitigation": "Only add a beta profile if you actually need these workflows; do not enable them by default.",
+      "status": "observed"
+    },
+    {
+      "risk_id": "RISK-04",
+      "title": "No explicit provider/model pin in config",
+      "severity": "medium",
+      "description": "The repo-local and user-level config files do not pin a DeepSeek model or base URL, so behavior depends on auth/session defaults.",
+      "evidence_refs": [
+        "opencode.json",
+        "~/.config/opencode/opencode.json",
+        "~/.config/opencode/config.json",
+        "~/.local/share/opencode/auth.json"
+      ],
+      "mitigation": "If you want repeatable behavior, pin the model by lane instead of relying on defaults.",
+      "status": "observed"
+    },
+    {
+      "risk_id": "RISK-05",
+      "title": "Thinking-mode sampling knobs may be theater",
+      "severity": "low",
+      "description": "DeepSeek says temperature, top_p, presence_penalty, and frequency_penalty have no effect in thinking mode, so sending them there would be wasted configuration.",
+      "evidence_refs": [
+        "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode",
+        "https://api-docs.deepseek.com/guides/thinking_mode"
+      ],
+      "mitigation": "Do not rely on those knobs to shape thinking-mode output; use model choice and reasoning-effort routing instead.",
+      "status": "theoretical"
+    }
+  ],
+  "recommended_config_changes": [
+    "If you want stable behavior, pin deepseek-v4-pro for heavy build/refactor lanes and deepseek-v4-flash for cheap exploratory lanes instead of leaving the model selection entirely implicit.",
+    "If you want better cost visibility, surface the existing tokens_cache_read and tokens_cache_write session counters in a session summary or audit panel.",
+    "Do not add beta endpoint routing unless you truly need chat prefix completion, FIM, or strict tool-call mode."
+  ],
+  "recommended_code_changes": [
+    "No immediate code change is required for the current OpenAI-compatible DeepSeek path.",
+    "If the DeepSeek request builder ever changes, add a regression test that preserves reasoning_content across thinking-mode tool-call continuations.",
+    "If you decide to use beta-only features, add an explicit opt-in DeepSeek beta adapter instead of turning beta URLs on globally."
+  ],
+  "tests_run": [
+    "git status --short --branch",
+    "jq '.' ~/.config/opencode/opencode.json",
+    "jq '.' ~/.config/opencode/config.json",
+    "jq '.' ~/.local/share/opencode/auth.json",
+    "sqlite3 ~/.local/share/opencode/opencode.db \"select json_extract(model,'$.id') as model_id, json_extract(model,'$.variant') as variant, count(*) as sessions, sum(tokens_cache_read) as cache_read, sum(tokens_input+tokens_output+tokens_reasoning+tokens_cache_read) as total from session where json_extract(model,'$.providerID')='deepseek' group by 1,2 order by sessions desc;\"",
+    "rg -n \"reasoning_content|display_thinking|reasoning_effort|response_format|json_object|function.strict|api.deepseek.com/beta|api.deepseek.com/anthropic|prompt_cache_hit_tokens|prompt_cache_miss_tokens\" ~/.opencode ~/.config/opencode /opt/homebrew/Cellar/opencode/1.14.50",
+    "strings -a /opt/homebrew/Cellar/opencode/1.14.50/bin/opencode | rg -n \"api\\.deepseek\\.com|deepseek-v4-pro|deepseek-v4-flash|deepseek-chat|deepseek-reasoner|reasoning_content|reasoning_effort|display_thinking|response_format|json_object|function.strict|tool_call_id\"",
+    "uv run python scripts/rig_relay_validate_schemas.py"
+  ],
+  "evidence_paths": [
+    "opencode.json",
+    "~/.config/opencode/opencode.json",
+    "~/.config/opencode/config.json",
+    "~/.local/share/opencode/auth.json",
+    "~/.local/share/opencode/log/2026-05-19T191120.log",
+    "~/.local/share/opencode/opencode.db",
+    "~/.opencode/node_modules/@opencode-ai/sdk/dist/v2/gen/types.gen.d.ts",
+    "/opt/homebrew/Cellar/opencode/1.14.50/bin/opencode"
+  ],
+  "secrets_redaction_notes": [
+    "A DeepSeek API key exists in the local auth store and was not copied into the artifact.",
+    "No auth header, token, or raw request body was copied into the artifact.",
+    "No prompt or completion text was copied into the artifact.",
+    "No raw private repository content was copied into the artifact.",
+    "No raw absolute path is required for the conclusions; repo-relative and tilde paths were used where possible."
+  ],
+  "final_recommendation": {
+    "verdict": "Current OpenCode DeepSeek usage is functional and mostly well-aligned with the DeepSeek feature set, but the safe next improvement is visibility and policy clarity rather than broad adapter work.",
+    "enabled_now": [
+      "Thinking mode",
+      "Thinking-effort routing via model variants",
+      "Reasoning_content preserved with tool calls",
+      "OpenAI-format tool calls",
+      "Context caching visibility via session counters",
+      "OpenAI-compatible DeepSeek transport",
+      "Model lane split that uses pro more heavily and flash occasionally"
+    ],
+    "supported_but_not_used": [
+      "JSON output mode",
+      "Strict tool-call beta",
+      "Chat prefix completion beta",
+      "FIM beta"
+    ],
+    "requires_adapter_changes": [
+      "Beta endpoint routing",
+      "Prefix completion",
+      "FIM completion",
+      "Strict tool-call opt-in",
+      "Any future request-builder change that would have to preserve reasoning_content explicitly"
+    ],
+    "token_or_cost_theater": [
+      "Temperature/top_p/presence_penalty/frequency_penalty in thinking mode",
+      "Beta feature toggles that are not needed for the current task mix"
+    ],
+    "next_step": "If you want a concrete improvement during the DeepSeek discount window, implement a small cache-visibility and lane-policy patch instead of chasing beta-only features."
+  }
+}

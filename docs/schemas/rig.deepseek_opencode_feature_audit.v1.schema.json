@@ -1,0 +1,951 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek_opencode_feature_audit.v1.schema.json",
+  "title": "DeepSeek OpenCode Feature Audit Schema",
+  "description": "Local-only audit of the installed OpenCode DeepSeek integration surface, based on config, logs, binary strings, runtime session data, and SDK surface inspection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "opencode_installation_summary",
+    "provider_config_locations_checked",
+    "request_builder_locations_checked",
+    "deepseek_model_config",
+    "deepseek_base_url_config",
+    "feature_matrix",
+    "thinking_mode_assessment",
+    "reasoning_content_assessment",
+    "tool_call_assessment",
+    "strict_tool_call_assessment",
+    "json_output_assessment",
+    "chat_prefix_completion_assessment",
+    "fim_completion_assessment",
+    "context_cache_assessment",
+    "pricing_efficiency_assessment",
+    "risks",
+    "recommended_config_changes",
+    "recommended_code_changes",
+    "tests_run",
+    "evidence_paths",
+    "secrets_redaction_notes",
+    "final_recommendation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek_opencode_feature_audit.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "external_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "url",
+          "purpose"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "opencode_installation_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opencode_version",
+        "binary_path",
+        "repo_config_path",
+        "user_config_path",
+        "user_auth_path",
+        "active_plugins",
+        "active_mcp_servers",
+        "current_shell",
+        "deepseek_auth_present",
+        "deepseek_auth_redacted",
+        "notes"
+      ],
+      "properties": {
+        "opencode_version": {
+          "type": "string"
+        },
+        "binary_path": {
+          "type": "string"
+        },
+        "repo_config_path": {
+          "type": "string"
+        },
+        "user_config_path": {
+          "type": "string"
+        },
+        "user_auth_path": {
+          "type": "string"
+        },
+        "active_plugins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "active_mcp_servers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_shell": {
+          "type": "string"
+        },
+        "deepseek_auth_present": {
+          "type": "boolean"
+        },
+        "deepseek_auth_redacted": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "provider_config_locations_checked": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "observed",
+          "conclusion"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          },
+          "conclusion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "request_builder_locations_checked": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "observed",
+          "conclusion"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          },
+          "conclusion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "deepseek_model_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured_model_id",
+        "configured_variant",
+        "active_session_model_id",
+        "active_session_variant",
+        "aggregate_usage_breakdown",
+        "legacy_aliases_detected_in_binary",
+        "notes"
+      ],
+      "properties": {
+        "configured_model_id": {
+          "type": ["string", "null"]
+        },
+        "configured_variant": {
+          "type": ["string", "null"]
+        },
+        "active_session_model_id": {
+          "type": "string"
+        },
+        "active_session_variant": {
+          "type": "string"
+        },
+        "aggregate_usage_breakdown": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "model_id",
+              "variant",
+              "session_count",
+              "tokens_input",
+              "tokens_output",
+              "tokens_reasoning",
+              "tokens_cache_read",
+              "tokens_cache_write"
+            ],
+            "properties": {
+              "model_id": {
+                "type": "string"
+              },
+              "variant": {
+                "type": ["string", "null"]
+              },
+              "session_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_input": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_output": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_reasoning": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_cache_read": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_cache_write": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "legacy_aliases_detected_in_binary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "deepseek_base_url_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "explicit_base_url_override_found",
+        "inferred_base_url",
+        "transport_format",
+        "beta_base_url_evidence_found",
+        "anthropic_base_url_evidence_found",
+        "notes"
+      ],
+      "properties": {
+        "explicit_base_url_override_found": {
+          "type": "boolean"
+        },
+        "inferred_base_url": {
+          "type": "string"
+        },
+        "transport_format": {
+          "type": "string",
+          "enum": [
+            "openai-compatible",
+            "anthropic-compatible",
+            "unknown"
+          ]
+        },
+        "beta_base_url_evidence_found": {
+          "type": "boolean"
+        },
+        "anthropic_base_url_evidence_found": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "feature_matrix": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "feature_id",
+          "feature_name",
+          "deepseek_requirement",
+          "opencode_current_behavior",
+          "status",
+          "evidence_refs",
+          "recommended_action",
+          "confidence"
+        ],
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "feature_name": {
+            "type": "string"
+          },
+          "deepseek_requirement": {
+            "type": "string"
+          },
+          "opencode_current_behavior": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "supported_and_enabled",
+              "supported_but_not_enabled",
+              "unsupported_by_opencode",
+              "misconfigured",
+              "not_applicable",
+              "unknown"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "thinking_mode_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "reasoning_content_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "tool_call_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "strict_tool_call_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "json_output_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "chat_prefix_completion_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "fim_completion_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "context_cache_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "pricing_efficiency_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "finding",
+        "evidence_refs",
+        "current_mechanism",
+        "recommended_action",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "unsupported_by_opencode",
+            "misconfigured",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "finding": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "current_mechanism": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "risk_id",
+          "title",
+          "severity",
+          "description",
+          "evidence_refs",
+          "mitigation",
+          "status"
+        ],
+        "properties": {
+          "risk_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mitigation": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "inferred",
+              "theoretical",
+              "mitigated"
+            ]
+          }
+        }
+      }
+    },
+    "recommended_config_changes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommended_code_changes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "secrets_redaction_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "final_recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "enabled_now",
+        "supported_but_not_used",
+        "requires_adapter_changes",
+        "token_or_cost_theater",
+        "next_step"
+      ],
+      "properties": {
+        "verdict": {
+          "type": "string"
+        },
+        "enabled_now": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "supported_but_not_used": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requires_adapter_changes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token_or_cost_theater": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "next_step": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
