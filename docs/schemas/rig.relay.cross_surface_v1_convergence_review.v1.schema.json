@@ -1,0 +1,307 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.cross_surface_v1_convergence_review.v1.schema.json",
+  "title": "Cross-Surface V1 Convergence Review",
+  "description": "Schema-governed cross-surface convergence review for Rig Relay v1. Records traceability, refusal equivalence, receipt vocabulary, honest deferrals, seam classification, release paper claims, fake-green attacks, and proposed cross-surface tests across all v1 surfaces. Content-light: no raw paths, tokens, secrets, prompts, or private file contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "repo_head",
+    "surfaces_reviewed",
+    "traceability_matrix",
+    "refusal_equivalence_matrix",
+    "receipt_vocabulary_matrix",
+    "honest_deferral_matrix",
+    "seam_index",
+    "release_paper_claims_supported",
+    "release_paper_claims_rejected",
+    "fake_green_attack_matrix",
+    "proposed_cross_surface_tests",
+    "rc_recommendation",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.cross_surface_v1_convergence_review.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for this review artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of review generation."
+    },
+    "repo_head": {
+      "type": "string",
+      "description": "Git commit SHA at time of review."
+    },
+    "repo_branch": {
+      "type": "string",
+      "description": "Branch name at time of review."
+    },
+    "schemas_validated": {
+      "type": "integer",
+      "description": "Number of schemas that passed JSON Schema validation."
+    },
+    "surfaces_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_id", "source_artifacts"],
+        "additionalProperties": false,
+        "properties": {
+          "surface_id": { "type": "string" },
+          "source_artifacts": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of canonical artifact paths for this surface."
+          }
+        }
+      }
+    },
+    "traceability_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_event", "carries_trace_id", "content_light_enforced", "proof_strength"],
+        "additionalProperties": false,
+        "properties": {
+          "surface_event": { "type": "string" },
+          "schema_path": { "type": "string" },
+          "implementation_path": { "type": "string" },
+          "test_path": { "type": "string" },
+          "carries_trace_id": { "type": "boolean" },
+          "carries_parent_id": { "type": "string" },
+          "carries_session_or_run_id": { "type": "string" },
+          "carries_receipt_or_evidence_id": { "type": "string" },
+          "content_light_enforced": { "type": "boolean" },
+          "raw_payload_excluded": { "type": "boolean" },
+          "proof_strength": { "type": "string", "enum": ["strong", "partial", "weak", "missing"] },
+          "release_impact": { "type": "string" }
+        }
+      }
+    },
+    "refusal_equivalence_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_event", "equivalence_verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "surface_event": { "type": "string" },
+          "schema_version": { "type": "string" },
+          "refusal_code": { "type": "string" },
+          "refusal_kind": { "type": "string" },
+          "content_light": { "type": "boolean" },
+          "raw_reason_echoed": { "type": "string" },
+          "refusal_persisted": { "type": "string" },
+          "test_coverage": { "type": "string" },
+          "equivalence_verdict": { "type": "string", "enum": ["equivalent", "compatible", "divergent", "missing"] }
+        }
+      }
+    },
+    "receipt_vocabulary_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_event", "queryability_verdict"],
+        "additionalProperties": false,
+        "properties": {
+          "surface_event": { "type": "string" },
+          "schema_path": { "type": "string" },
+          "operation_or_receipt_id": { "type": "string" },
+          "trace_id": { "type": "string" },
+          "capability_id": { "type": "string" },
+          "verdict_or_status": { "type": "string" },
+          "redaction_status": { "type": "string" },
+          "can_join_with_otel": { "type": "string" },
+          "can_join_with_coordination": { "type": "string" },
+          "can_join_with_ci_evidence": { "type": "string" },
+          "queryability_verdict": { "type": "string", "enum": ["strong", "usable", "weak", "missing"] }
+        }
+      }
+    },
+    "honest_deferral_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["deferral_id", "surface", "classified_as", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "deferral_id": { "type": "string" },
+          "surface": { "type": "string" },
+          "source_artifact": { "type": "string" },
+          "description": { "type": "string" },
+          "user_visible_impact": { "type": "string" },
+          "security_impact": { "type": "string" },
+          "release_impact": { "type": "string" },
+          "telemetry_impact": { "type": "string" },
+          "workaround_or_refusal_behavior": { "type": "string" },
+          "covered_by_schema": { "type": "string" },
+          "covered_by_test": { "type": "string" },
+          "classified_as": {
+            "type": "string",
+            "enum": ["below_rc_line", "v1_1_hardening", "alpha_blocker", "release_blocker", "out_of_scope"]
+          },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "seam_index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seam_id", "severity", "release_classification"],
+        "additionalProperties": false,
+        "properties": {
+          "seam_id": { "type": "string" },
+          "surface": { "type": "string" },
+          "source": { "type": "string" },
+          "description": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "fake_green_risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "release_classification": {
+            "type": "string",
+            "enum": ["release_blocker", "alpha_blocker", "v1_1_hardening", "future_slice", "out_of_scope"]
+          },
+          "evidence_present": { "type": "boolean" },
+          "schema_present": { "type": "boolean" },
+          "test_present": { "type": "boolean" },
+          "refusal_present": { "type": "boolean" },
+          "trace_present": { "type": "boolean" },
+          "content_light_present": { "type": "boolean" },
+          "recommended_next_slice": { "type": "string" },
+          "why_not_blocking_or_why_blocking": { "type": "string" }
+        }
+      }
+    },
+    "release_paper_claims_supported": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim_id", "claim_text", "support_level"],
+        "additionalProperties": false,
+        "properties": {
+          "claim_id": { "type": "string" },
+          "claim_text": { "type": "string" },
+          "support_level": {
+            "type": "string",
+            "enum": ["strongly_supported", "supported_with_limitations", "speculative", "unsupported", "dishonest"]
+          },
+          "supporting_surfaces": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "supporting_artifacts": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "supporting_tests": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "required_caveats": { "type": "string" },
+          "reviewer_attack_likely": { "type": "boolean" },
+          "answer_to_attack": { "type": "string" }
+        }
+      }
+    },
+    "release_paper_claims_rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim_id", "claim_text", "why_dishonest"],
+        "additionalProperties": false,
+        "properties": {
+          "claim_id": { "type": "string" },
+          "claim_text": { "type": "string" },
+          "why_dishonest": { "type": "string" }
+        }
+      }
+    },
+    "fake_green_attack_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["attack", "current_evidence", "severity", "classification"],
+        "additionalProperties": false,
+        "properties": {
+          "attack": { "type": "string" },
+          "affected_surfaces": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "current_evidence": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "current_defense": { "type": "string" },
+          "missing_proof": { "type": "string" },
+          "classification": {
+            "type": "string",
+            "enum": ["acceptable_caveat", "v1_1_test_gap", "alpha_blocker", "release_blocker"]
+          },
+          "recommended_closure": { "type": "string" }
+        }
+      }
+    },
+    "proposed_cross_surface_tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["test_name", "surfaces_connected", "priority"],
+        "additionalProperties": false,
+        "properties": {
+          "test_name": { "type": "string" },
+          "surfaces_connected": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "real_artifact_required": { "type": "boolean" },
+          "command": { "type": "string" },
+          "why_it_would_fail_if_seam_leaks": { "type": "string" },
+          "classification": { "type": "string" },
+          "expected_cost": { "type": "string", "enum": ["low", "medium", "high"] },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2"] }
+        }
+      }
+    },
+    "rc_recommendation": {
+      "type": "string",
+      "enum": ["promote", "promote_with_v1_1_hardening", "hold", "reject"],
+      "description": "Release candidate recommendation after cross-surface review."
+    },
+    "rc_recommendation_rationale": {
+      "type": "string",
+      "description": "Rationale for the rc_recommendation."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: this review artifact is content-light."
+    },
+    "next_recommended_slices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "claim_boundaries": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "not": {
+      "anyOf": [
+        { "required": ["raw_prompt"] },
+        { "required": ["raw_completion"] },
+        { "required": ["raw_file_contents"] },
+        { "required": ["access_token"] },
+        { "required": ["client_secret"] },
+        { "required": ["private_key"] },
+        { "required": ["private_repo_contents"] }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
