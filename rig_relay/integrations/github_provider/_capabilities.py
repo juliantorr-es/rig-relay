@@ -11,7 +11,10 @@ from rig_relay.integrations.github_provider._models import (
     GitHubProviderCapability,
     GitHubProviderCapabilityDecision,
     GitHubProviderCapabilityManifest,
+    GitHubProviderRequiredPermission,
     GitHubVerdict,
+    normalize_oauth_scope_to_app_permission,
+    permission_satisfies,
 )
 
 _DEFAULT_MANIFEST_PATH = (
@@ -52,11 +55,22 @@ def load_github_capability_manifest(
 
     caps: dict[str, GitHubProviderCapability] = {}
     for cap_raw in raw.get("capabilities", []):
+        perms: list[GitHubProviderRequiredPermission] = []
+        for perm_raw in cap_raw.get("required_permissions", []):
+            perms.append(
+                GitHubProviderRequiredPermission(
+                    permission_id=perm_raw["permission_id"],
+                    permission_kind=perm_raw["permission_kind"],
+                    access_level=perm_raw["access_level"],
+                    required=perm_raw["required"],
+                )
+            )
         cap = GitHubProviderCapability(
             capability_id=cap_raw["capability_id"],
             operation_kind=cap_raw["operation_kind"],
             operation_class=cap_raw["operation_class"],
             required_auth_modes=cap_raw["required_auth_modes"],
+            required_permissions=perms,
             requires_step_up=cap_raw["requires_step_up"],
             requires_receipt=cap_raw["requires_receipt"],
             stores_raw_content=cap_raw["stores_raw_content"],
@@ -67,6 +81,98 @@ def load_github_capability_manifest(
         caps[cap.capability_id] = cap
 
     return GitHubProviderCapabilityManifest(provider_id="github", capabilities=caps)
+
+
+def _check_permissions(
+    auth_state: GitHubProviderAuthState,
+    cap: GitHubProviderCapability,
+    capability_id: str | None = None,
+) -> GitHubProviderCapabilityDecision | None:
+    required_perms = [p for p in cap.required_permissions if p.required]
+    if not required_perms:
+        return None
+
+    granted = set(auth_state.scopes_or_permissions)
+
+    auth_mode_str = auth_state.auth_mode.value
+    is_github_app = auth_mode_str in {"github_app_installation", "github_app_user"}
+    is_oauth = auth_mode_str in {
+        "oauth_web_flow",
+        "device_flow",
+        "personal_access_token_manual_import",
+    }
+
+    for req_perm in required_perms:
+        if str(req_perm.permission_kind) == "public_access":
+            continue
+
+        if is_github_app and str(req_perm.permission_kind) != "github_app_permission":
+            return GitHubProviderCapabilityDecision(
+                capability_id=capability_id or cap.capability_id,
+                verdict=GitHubVerdict.REFUSED,
+                refusal_code="github.permission.kind_mismatch",
+                reason=(
+                    f"Permission {req_perm.permission_id} requires kind "
+                    f"{req_perm.permission_kind} but auth mode is {auth_mode_str}"
+                ),
+                requires_step_up=cap.requires_step_up,
+                step_up_satisfied=False,
+            )
+
+        satisfied = False
+        for perm_str in granted:
+            perm_kind = req_perm.permission_kind
+            if is_oauth and str(perm_kind) == "github_app_permission":
+                mapped = normalize_oauth_scope_to_app_permission(perm_str)
+                if mapped == perm_str:
+                    continue
+                if permission_satisfies(
+                    req_perm,
+                    mapped,
+                    "github_app_permission",
+                    _infer_oauth_access_level(perm_str),
+                ):
+                    satisfied = True
+                    break
+            else:
+                if permission_satisfies(
+                    req_perm, perm_str, perm_kind, _infer_access_level(perm_str)
+                ):
+                    satisfied = True
+                    break
+
+        if not satisfied:
+            return GitHubProviderCapabilityDecision(
+                capability_id=capability_id or cap.capability_id,
+                verdict=GitHubVerdict.REFUSED,
+                refusal_code="github.permission.missing",
+                reason=(
+                    f"Required permission {req_perm.permission_id} ({req_perm.permission_kind}, "
+                    f"{req_perm.access_level}) not satisfied. Granted: {sorted(granted)}"
+                ),
+                requires_step_up=cap.requires_step_up,
+                step_up_satisfied=False,
+            )
+
+    return None
+
+
+def _infer_access_level(perm_str: str) -> str:
+    if ":" in perm_str:
+        level = perm_str.rsplit(":", 1)[1]
+        if level in {"read", "write", "admin"}:
+            return level
+    return "read"
+
+
+def _infer_oauth_access_level(scope: str) -> str:
+    if scope in {"public_repo", "read:user", "user:email", "read:org"}:
+        return "read"
+    if scope in {"repo", "delete_repo"}:
+        return "write"
+    if scope == "admin:org":
+        return "admin"
+    return "read"
 
 
 def get_capability(
@@ -137,7 +243,11 @@ def evaluate_github_capability(
             step_up_satisfied=False,
         )
 
-    if cap.is_read_only and cap.allows_auth_mode("none"):
+    if (
+        cap.is_read_only
+        and auth_state.auth_mode.value == "none"
+        and cap.allows_auth_mode("none")
+    ):
         return GitHubProviderCapabilityDecision(
             capability_id=capability_id,
             verdict=GitHubVerdict.ALLOWED,
@@ -176,6 +286,10 @@ def evaluate_github_capability(
             requires_step_up=cap.requires_step_up,
             step_up_satisfied=False,
         )
+
+    permission_decision = _check_permissions(auth_state, cap)
+    if permission_decision is not None:
+        return permission_decision
 
     if cap.is_mutation:
         if cap.requires_step_up and not step_up_satisfied:

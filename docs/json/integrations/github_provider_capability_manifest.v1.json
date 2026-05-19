@@ -8,6 +8,9 @@
       "operation_kind": "Read repository metadata",
       "operation_class": "read_only",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "metadata:read", "permission_kind": "public_access", "access_level": "read", "required": false}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -20,6 +23,9 @@
       "operation_kind": "Read repository contents",
       "operation_class": "remote_read",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "contents:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -32,6 +38,9 @@
       "operation_kind": "Read repository branches",
       "operation_class": "remote_read",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "metadata:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -44,6 +53,9 @@
       "operation_kind": "Read repository commits",
       "operation_class": "remote_read",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "contents:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -56,6 +68,9 @@
       "operation_kind": "Read repository issues",
       "operation_class": "remote_read",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "issues:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -68,6 +83,9 @@
       "operation_kind": "Read repository pull requests",
       "operation_class": "remote_read",
       "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "pull_requests:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -80,6 +98,9 @@
       "operation_kind": "Read GitHub Actions workflow runs",
       "operation_class": "remote_read",
       "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "actions:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -92,6 +113,9 @@
       "operation_kind": "Read GitHub Actions artifacts",
       "operation_class": "remote_read",
       "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "actions:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -104,6 +128,9 @@
       "operation_kind": "Write issue comment",
       "operation_class": "remote_mutation",
       "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "issues:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -116,6 +143,9 @@
       "operation_kind": "Write pull request review",
       "operation_class": "remote_mutation",
       "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "pull_requests:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -128,6 +158,9 @@
       "operation_kind": "Write repository contents",
       "operation_class": "credentialed_remote_mutation",
       "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "contents:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -140,6 +173,9 @@
       "operation_kind": "Update repository references",
       "operation_class": "credentialed_remote_mutation",
       "required_auth_modes": ["github_app_installation", "github_app_user", "personal_access_token_manual_import"],
+      "required_permissions": [
+        {"permission_id": "contents:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -152,6 +188,9 @@
       "operation_kind": "Rerun GitHub Actions workflow",
       "operation_class": "destructive_remote_mutation",
       "required_auth_modes": ["github_app_installation", "github_app_user"],
+      "required_permissions": [
+        {"permission_id": "actions:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -164,6 +203,9 @@
       "operation_kind": "Receive and process GitHub webhooks",
       "operation_class": "destructive_remote_mutation",
       "required_auth_modes": ["github_app_installation"],
+      "required_permissions": [
+        {"permission_id": "administration:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
+      ],
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -176,6 +218,9 @@
       "operation_kind": "Inspect GitHub App installation",
       "operation_class": "remote_read",
       "required_auth_modes": ["github_app_installation"],
+      "required_permissions": [
+        {"permission_id": "administration:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
+      ],
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,

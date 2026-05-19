@@ -148,12 +148,84 @@ class GitHubVerdict(StrEnum):
     COMPLETED = "completed"
 
 
+class GitHubPermissionKind(StrEnum):
+    OAUTH_SCOPE = "oauth_scope"
+    GITHUB_APP_PERMISSION = "github_app_permission"
+    PUBLIC_ACCESS = "public_access"
+    FUTURE = "future"
+
+
+class GitHubAccessLevel(StrEnum):
+    NONE = "none"
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
+
+
+@dataclass
+class GitHubProviderRequiredPermission:
+    permission_id: str
+    permission_kind: GitHubPermissionKind | str
+    access_level: GitHubAccessLevel | str
+    required: bool = True
+
+
+_PERMISSION_ACCESS_ORDER: dict[str, int] = {
+    "none": 0,
+    "read": 1,
+    "write": 2,
+    "admin": 3,
+}
+
+
+def permission_satisfies(
+    required: GitHubProviderRequiredPermission,
+    granted: str,
+    granted_kind: GitHubPermissionKind | str,
+    granted_access: GitHubAccessLevel | str = "read",
+) -> bool:
+    if not required.required:
+        return True
+    if str(required.permission_kind) != str(granted_kind):
+        return False
+    required_base = required.permission_id.rsplit(":", 1)[0]
+    granted_base = (
+        str(granted).rsplit(":", 1)[0] if ":" in str(granted) else str(granted)
+    )
+    if granted_base != required_base:
+        return False
+    if ":" in str(granted):
+        _, granted_level = str(granted).rsplit(":", 1)
+        granted_order = _PERMISSION_ACCESS_ORDER.get(granted_level, 0)
+    else:
+        granted_order = _PERMISSION_ACCESS_ORDER.get(str(granted_access), 0)
+    required_order = _PERMISSION_ACCESS_ORDER.get(str(required.access_level), 0)
+    return granted_order >= required_order
+
+
+_OAUTH_TO_APP_PERMISSION_MAP: dict[str, str] = {
+    "repo": "contents:write",
+    "public_repo": "contents:read",
+    "read:user": "metadata:read",
+    "user:email": "metadata:read",
+    "read:org": "administration:read",
+    "read:discussions": "discussions:read",
+}
+
+
+def normalize_oauth_scope_to_app_permission(scope: str) -> str:
+    return _OAUTH_TO_APP_PERMISSION_MAP.get(scope, scope)
+
+
 @dataclass
 class GitHubProviderCapability:
     capability_id: str
     operation_kind: str
     operation_class: GitHubOperationClass | str
     required_auth_modes: list[str] = field(default_factory=list)
+    required_permissions: list[GitHubProviderRequiredPermission] = field(
+        default_factory=list
+    )
     requires_step_up: bool = False
     requires_receipt: bool = True
     stores_raw_content: bool = False

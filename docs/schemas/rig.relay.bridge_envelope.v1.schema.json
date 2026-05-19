@@ -128,13 +128,21 @@
             "duplicate_message_id",
             "oversized_payload",
             "mutation_without_capability",
+            "missing_capability",
+            "mutation_class_refused",
             "credentialed_provider_mutation_refused",
+            "release_affecting_mutation_refused",
+            "external_network_mutation_refused",
+            "unsafe_payload_refused",
+            "raw_secret_refused",
+            "raw_path_refused",
             "auth_required_not_satisfied",
             "capability_gate_refused",
             "rate_limited",
             "server_full",
             "malformed_envelope",
-            "redaction_violation"
+            "redaction_violation",
+            "internal_error"
           ]
         }
       },

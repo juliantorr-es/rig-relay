@@ -28,18 +28,23 @@ from rig_relay.integrations.github_provider._capabilities import (
     validate_github_capability_manifest,
 )
 from rig_relay.integrations.github_provider._models import (
+    GitHubAccessLevel,
     GitHubAuthMode,
     GitHubAuthStatus,
     GitHubOperationClass,
+    GitHubPermissionKind,
     GitHubProviderAuthState,
     GitHubProviderCapability,
     GitHubProviderCapabilityDecision,
     GitHubProviderCapabilityManifest,
     GitHubProviderOperationReceipt,
     GitHubProviderOperationRequest,
+    GitHubProviderRequiredPermission,
     GitHubRedactionStatus,
     GitHubTokenStorageAuthority,
     GitHubVerdict,
+    normalize_oauth_scope_to_app_permission,
+    permission_satisfies,
 )
 from rig_relay.integrations.github_provider._receipts import (
     build_github_operation_receipt,
@@ -53,15 +58,18 @@ from rig_relay.integrations.github_provider._redaction import (
 )
 
 __all__ = [
+    "GitHubAccessLevel",
     "GitHubAuthMode",
     "GitHubAuthStatus",
     "GitHubOperationClass",
+    "GitHubPermissionKind",
     "GitHubProviderAuthState",
     "GitHubProviderCapability",
     "GitHubProviderCapabilityDecision",
     "GitHubProviderCapabilityManifest",
     "GitHubProviderOperationReceipt",
     "GitHubProviderOperationRequest",
+    "GitHubProviderRequiredPermission",
     "GitHubRedactionStatus",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
@@ -72,6 +80,8 @@ __all__ = [
     "get_capability",
     "hash_identifier",
     "load_github_capability_manifest",
+    "normalize_oauth_scope_to_app_permission",
+    "permission_satisfies",
     "scan_for_tokens",
     "validate_github_capability_manifest",
     "validate_github_operation_receipt",

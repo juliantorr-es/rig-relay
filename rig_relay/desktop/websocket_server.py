@@ -68,6 +68,10 @@ from rig_relay.desktop.bridge_protocol import (
     BridgeMessageKind,
     ProtocolTracker,
 )
+from rig_relay.desktop.bridge_refusals import (
+    build_bridge_refusal_envelope,
+    enforce_intent,
+)
 from rig_relay.desktop.correlation import (
     DesktopCorrelation,
     hash_dict_payload,
@@ -452,6 +456,14 @@ class ProjectionWebSocketServer:
                         ack_for=msg.message_id,
                     )
                     await _send_json(websocket, result)
+                    return
+
+                refusal = self._enforce_intent_bridge(msg)
+                if refusal:
+                    refusal_envelope = self._wrap_envelope(
+                        "error", refusal, tracker, ack_for=msg.message_id
+                    )
+                    await _send_json(websocket, refusal_envelope)
                     return
 
                 ack = self._wrap_envelope(
@@ -1419,6 +1431,49 @@ class ProjectionWebSocketServer:
             await _send_json(
                 websocket, self._make_error(self.ERR_CHAT_HANDLER_FAILED, str(e))
             )
+
+    def _enforce_intent_bridge(self, msg: BridgeMessage) -> dict[str, Any] | None:
+        from rig_relay.desktop.intents import ALLOWED_INTENTS
+
+        payload = msg.payload or {}
+        intent_kind = str(payload.get("intent_kind") or payload.get("intent_name", ""))
+        schema_version = str(
+            payload.get("schema_version") or payload.get("_schema_version", "")
+        )
+        mutation_class = str(payload.get("mutation_class", ""))
+        capability_required = payload.get("capability_required")
+        if isinstance(capability_required, list):
+            capability_required = [str(c) for c in capability_required]
+        else:
+            capability_required = []
+
+        allowed = frozenset(ALLOWED_INTENTS.keys())
+
+        result = enforce_intent(
+            intent_kind=intent_kind,
+            schema_version=schema_version,
+            mutation_class=mutation_class,
+            capability_required=capability_required,
+            trace_id=msg.trace_id,
+            payload=payload,
+            allowed_intents=allowed,
+        )
+
+        if result.allowed:
+            return None
+
+        return build_bridge_refusal_envelope(
+            refusal_kind=result.refusal_kind,
+            reason_code=result.reason_code,
+            human_safe_message=result.message,
+            trace_id=msg.trace_id,
+            frontend_session_id=msg.frontend_session_id,
+            backend_session_id=msg.backend_session_id,
+            parent_message_id=msg.message_id,
+            refused_intent_kind=intent_kind,
+            mutation_class=mutation_class,
+            capability_required=capability_required,
+        )
 
     async def _handle_desktop_intent(
         self,

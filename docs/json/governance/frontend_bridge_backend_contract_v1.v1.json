@@ -7,7 +7,7 @@
   "status": "active",
   "created_at": "2026-05-19",
   "updated_at": "2026-05-19",
-  "source_commit": "a2684d79112610a5c415730528e2a81ca675bc4d",
+  "source_commit": "65039aac5fb0b482c417006d2f773e25248dfc3d",
   "owners": ["maintainer"],
   "tags": ["frontend", "bridge", "backend", "contract", "desktop", "cockpit", "projection", "envelope", "lifecycle"],
   "audience": ["contributor", "maintainer"],
@@ -27,7 +27,7 @@
     {"block_id": "h2-5", "type": "heading", "level": 2, "content": "Backend Projection Patch", "disclosure": {"level": "standard", "initially_visible": true}},
     {"block_id": "p-6", "type": "paragraph", "content": "The backend sends incremental projection patches (schema: rig.relay.backend_projection_patch.v1) rather than always sending full snapshots. A patch carries projection_sequence, patch_kind (full|partial|delta), changed_sections, sections, digest, and optional stale_after_seconds. The frontend must discard patches with sequence <= last rendered. Content-light rules apply: sections contain only hashes, counts, and status flags.", "disclosure": {"level": "standard"}},
     {"block_id": "h2-6", "type": "heading", "level": 2, "content": "Refusal and Error Semantics", "disclosure": {"level": "standard", "initially_visible": true}},
-    {"block_id": "p-7", "type": "paragraph", "content": "The bridge envelope carries a refusal object for rejected messages. Refusal kinds cover: unknown_intent_kind, invalid_schema_version, unknown_kind, missing_trace_id, duplicate_message_id, oversized_payload, mutation_without_capability, credentialed_provider_mutation_refused (this lane), auth_required_not_satisfied, capability_gate_refused, rate_limited, server_full, malformed_envelope, and redaction_violation. Unknown intent_kind must be refused, not ignored. Duplicate message_id must be idempotent or explicitly refused.", "disclosure": {"level": "standard"}},
+    {"block_id": "p-7", "type": "paragraph", "content": "The bridge envelope carries a refusal object for rejected messages. Refusal kinds now cover 22 types: unknown_intent_kind, invalid_schema_version, unknown_kind, missing_trace_id, duplicate_message_id, oversized_payload, mutation_without_capability, missing_capability, mutation_class_refused, credentialed_provider_mutation_refused, release_affecting_mutation_refused, external_network_mutation_refused, unsafe_payload_refused, raw_secret_refused, raw_path_refused, auth_required_not_satisfied, capability_gate_refused, rate_limited, server_full, malformed_envelope, redaction_violation, internal_error. Unknown intent_kind must be refused, not ignored. Duplicate message_id must be idempotent or explicitly refused.", "disclosure": {"level": "standard"}},
     {"block_id": "h2-7", "type": "heading", "level": 2, "content": "Mutation Classes", "disclosure": {"level": "standard", "initially_visible": true}},
     {"block_id": "list-1", "type": "list", "style": "bullet", "items": [
       "read_only — no mutation, no side effects (e.g., refresh_projection, ralph_scan).",
@@ -51,6 +51,18 @@
       "Existing websocket_server.py validates origin, enforces token auth, rate-limiting, connection cap, and message size limits.",
       "Existing bridge_state_machine.py records lifecycle transitions as inline JSONL events.",
       "Frontend protocol modules (envelope.js, client.js, flowControl.js) align with backend schemas on kind enums, direction constants, NEVER_DROP/COALESCE_KINDS, sequence tracking, and dedup."
+    ], "disclosure": {"level": "standard"}},
+    {"block_id": "h2-13", "type": "heading", "level": 2, "content": "Dispatcher Refusal Coverage (v1.1)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-13", "type": "paragraph", "content": "Bridge Dispatcher Refusal Coverage v1 was implemented in rig_relay/desktop/bridge_refusals.py and wired into the WebSocket server's envelope handler. All intents now pass through enforce_intent() before dispatch. The following refusals are enforced: unknown intent_kind → typed refusal with reason code. Invalid schema_version → typed refusal. Missing trace_id → typed refusal. Mutation class enforcement: external_network_mutation, credentialed_provider_mutation, release_affecting_mutation, and dangerous_local_mutation are all refused in this lane. Missing capability_required for mutation intents → typed refusal. Content-light scanner (scan_bridge_payload) rejects GitHub token patterns, secret fields, absolute paths, and raw content fields before any intent reaches the handler. All refusal envelopes are schema-valid bridge_envelope.v1 objects preserving trace_id, session IDs, and parent message linkage.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-14", "type": "heading", "level": 2, "content": "Remaining Seams (v1.1)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "list-3", "type": "list", "style": "bullet", "items": [
+      "unknown intent_kind application-layer refusal coverage implemented via enforce_intent() in bridge_refusals.py.",
+      "Credentialed provider mutation still refused pending GitHub Provider Contract v0.",
+      "External network mutation still refused — no network capability gate defined yet.",
+      "Release-affecting mutation still refused — release-gate refactor pending.",
+      "Dangerous local mutation refused — capability gate must explicitly permit it.",
+      "Safe local mutation accepted only when capability is declared.",
+      "GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched."
     ], "disclosure": {"level": "standard"}}
   ]
 }

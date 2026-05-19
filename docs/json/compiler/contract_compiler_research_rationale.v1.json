@@ -1,0 +1,665 @@
+{
+  "schema_version": "rig.contract_compiler_research_rationale.v1",
+  "artifact_id": "contract_compiler_research_rationale_2026-05-19",
+  "generated_at": "2026-05-19T12:00:00Z",
+  "research_sources": [
+    {
+      "source_id": "wikipedia_program_synthesis_cegis",
+      "title": "Program Synthesis — CEGIS section (Wikipedia)",
+      "source_type": "encyclopedia",
+      "url": "https://en.wikipedia.org/wiki/Program_synthesis#Counter-example_guided_inductive_synthesis",
+      "key_claims": "CEGIS is a generator/verifier loop: the generator proposes candidate programs that satisfy the specification on a growing set of counterexample inputs; the verifier checks candidates against the full specification and returns counterexamples on failure; counterexamples are accumulated to constrain the generator; typically uses SMT solvers as verifiers; inspired by CEGAR.",
+      "relevance_to_rig": "Directly maps to Rig's compiler loop: Jinja2 generator + validation matrix verifier + counterexample accumulation. The CEGIS loop structure is the primary structural analogy for Rig's candidate search-and-evaluate architecture.",
+      "limitations": "Describes formal CEGIS with SMT verifiers; Rig's validators are not SMT-based. Rig must say 'CEGIS-inspired' rather than 'formally equivalent.'"
+    },
+    {
+      "source_id": "wikipedia_model_checking_cegar",
+      "title": "Model Checking — CEGAR section (Wikipedia)",
+      "source_type": "encyclopedia",
+      "url": "https://en.wikipedia.org/wiki/Model_checking",
+      "key_claims": "CEGAR begins with a coarse (imprecise) abstraction and iteratively refines it. When a counterexample is found, the tool analyzes it for feasibility: genuine violations are reported; spurious violations (caused by imprecise abstraction) are used to refine the abstraction. Designed to address the state explosion problem in model checking. Symbolic model checking, bounded model checking, and abstraction refinement are the core techniques.",
+      "relevance_to_rig": "Maps to Rig's staged worktree promotion: a contract slice is the coarse abstraction, the validation matrix checks it in a real worktree, spurious failures trigger schema/validator/contract refinement, and genuine failures reject candidate families. CEGAR provides the better language for staged refinement.",
+      "limitations": "Rig's abstractions are contract slices, not formal state-space abstractions. Rig lacks formal feasibility analysis distinguishing genuine from spurious counterexamples at the verifier level."
+    },
+    {
+      "source_id": "wikipedia_abstract_model_checking",
+      "title": "Abstract Model Checking (Wikipedia)",
+      "source_type": "encyclopedia",
+      "url": "https://en.wikipedia.org/wiki/Abstract_model_checking",
+      "key_claims": "Partitions variables into visible and invisible; real and abstract state spaces are Galois connected; concretization of abstracted real states produces supersets of original states; abstraction of concretized abstract states produces the original. Clarke, Grumberg, Long (1994) foundational paper.",
+      "relevance_to_rig": "Maps to Rig's contract slicing: visible = assertions currently checked, invisible = deferred contract assertions. The Galois connection analogy supports why partial success on one slice is a valid base for the next.",
+      "limitations": "Formal abstract interpretation is stricter than Rig's contract slicing. Rig's slices are not formal abstractions — they are ordered assertion groups."
+    },
+    {
+      "source_id": "wikipedia_rices_theorem",
+      "title": "Rice's Theorem (Wikipedia)",
+      "source_type": "encyclopedia",
+      "url": "https://en.wikipedia.org/wiki/Rice%27s_theorem",
+      "key_claims": "All non-trivial semantic properties of programs are undecidable. Cannot algorithmically check whether any given program satisfies a specification. Practical approaches include type systems, abstract interpretation, model checking (finite-state), and proof annotations. Rice (1953) proved this.",
+      "relevance_to_rig": "Critical humility boundary. Rig must not claim to prove arbitrary generated Python correct. The honest claim is bounded: bounded contract + bounded candidate space + real worktree validation matrix. The theorem provides the exact boundary between what Rig can claim and what would be dishonest.",
+      "limitations": "Applies to arbitrary programs; Rig's bounded candidate space and contract constraints narrow the claim scope, but the theorem still governs any claim of semantic correctness for arbitrary generated code."
+    },
+    {
+      "source_id": "clarke_grumberg_cegar_2000",
+      "title": "Counterexample-Guided Abstraction Refinement (Clarke, Grumberg, Jha, Lu, Veith, 2000)",
+      "source_type": "paper",
+      "url": "https://doi.org/10.1007/10722167_15",
+      "key_claims": "Foundational CEGAR paper. Coarse abstraction → model check → counterexample → feasibility analysis → refine abstraction if spurious → repeat. Genuine counterexamples reported to user. Formal verification of finite-state systems.",
+      "relevance_to_rig": "Foundation for Rig's staged worktree refinement loop. The paper's formal treatment of spurious vs genuine counterexamples informs Rig's counterexample classification design.",
+      "limitations": "Formal model checking on finite-state systems. Rig's validation matrix is broader but less formal — no BDD-based or SAT-based state-space exploration."
+    },
+    {
+      "source_id": "clarke_grumberg_long_1994",
+      "title": "Model checking and abstraction (Clarke, Grumberg, Long, 1994)",
+      "source_type": "paper",
+      "url": "https://doi.org/10.1145/186025.186051",
+      "key_claims": "Model checking with abstraction; Galois connection between real and abstract state spaces; early CEGAR precursor work establishing the mathematical foundation for abstraction refinement in verification.",
+      "relevance_to_rig": "Mathematical foundation for distinguishing genuine vs spurious counterexamples. Provides the formal backing for Rig's intuition that not all validation failures are genuine contract violations.",
+      "limitations": "Pre-CEGAR; abstraction is static, not iterative refinement. Formal treatment of model checking, not synthesis or code generation."
+    },
+    {
+      "source_id": "david_kroening_2017_survey",
+      "title": "Program synthesis: challenges and opportunities (David & Kroening, 2017)",
+      "source_type": "survey",
+      "url": "https://doi.org/10.1098/rsta.2015.0403",
+      "key_claims": "Comprehensive survey of program synthesis challenges: specification quality, search space explosion, verifier weakness, overfitting to examples, scalability, domain-specific language limits, and the gap between synthesized and intended behavior.",
+      "relevance_to_rig": "The challenge list directly applies to Rig's compiler risks. Every challenge is mapped to a specific mitigation in Rig's architecture (worktree budget, contract slicing, content-light redaction checks, etc.).",
+      "limitations": "Academic focus; the domain-specific language concern is less relevant since Rig's compiler domain is specifically contract → schema → Python, not arbitrary programs."
+    },
+    {
+      "source_id": "alur_singh_2018_search_based",
+      "title": "Search-based program synthesis (Alur, Singh, Fisman, Solar-Lezama, 2018)",
+      "source_type": "survey",
+      "url": "https://doi.org/10.1145/3208071",
+      "key_claims": "Program synthesis as search over candidate space; syntax-guided synthesis (SyGuS) as a unified framework; CEGIS as core synthesis technique; grammar constraints reduce search; synthesis competitions drive comparison.",
+      "relevance_to_rig": "Frames Rig's compiler as a search-based synthesis system with grammar constraints (Jinja2 templates). SyGuS competitions provide precedent for standardized synthesis input formats.",
+      "limitations": "Assumes formal SyGuS grammar expressed in SMT-Lib 2. Rig's template constraints are less formal — Jinja2 templates do not guarantee completeness."
+    },
+    {
+      "source_id": "sygus_comp",
+      "title": "SyGuS-Comp (Syntax-Guided Synthesis Competition)",
+      "source_type": "docs",
+      "url": "https://sygus-org.github.io/comp/",
+      "key_claims": "Standardized competition format for syntax-guided synthesis. Uses SMT-Lib 2 based input format: grammar + specification + constraints → synthesized program. Annual competitions from 2014-2019 compared algorithms.",
+      "relevance_to_rig": "Precedent for competitive synthesis with standardized input format. Suggests that Rig's compiler output (schemas, templates, validators) could be standardized as a comparable evaluation benchmark.",
+      "limitations": "Formal SMT-based synthesis. Rig's validation matrix is broader (14 gates) but less formal than SMT solving. Comparison would be qualitative, not quantitative."
+    },
+    {
+      "source_id": "manna_waldinger_1980",
+      "title": "A Deductive Approach to Program Synthesis (Manna & Waldinger, 1980)",
+      "source_type": "paper",
+      "url": "https://doi.org/10.1145/357084.357090",
+      "key_claims": "Deductive tableaux approach: specification as first-order logic, proof construction synthesizes program through unification and resolution rules, correct-by-construction output. Synthesized division, remainder, square root, unification, database queries, sorting algorithms.",
+      "relevance_to_rig": "Philosophical alignment: specification-first, proof-constructed programs. Correct-by-construction is the ideal, but Rig achieves a weaker form: contract-validated with preserved counterexample evidence.",
+      "limitations": "Requires human-guided proof construction; not fully automated. First-order logic specification is more formal than Rig's semantic contracts. The deductive approach does not scale to modern Python code generation."
+    }
+  ],
+  "concept_summaries": {
+    "cegis": {
+      "summary": "CEGIS (Counter-Example Guided Inductive Synthesis) is a generate-verify-counterexample-repeat loop. A generator proposes candidate programs that satisfy a specification on a growing set of counterexample inputs. A verifier checks the candidate against the full specification and returns counterexamples on failure. Counterexamples are accumulated to constrain the generator. The loop continues until a candidate satisfies the specification or resources are exhausted.",
+      "loop_structure": "generator (proposes candidate from specification + accumulated counterexamples) → verifier (checks candidate against full specification) → if pass: return candidate; if fail: add counterexample to input set → repeat",
+      "key_insight": "Counterexamples are not wasted computation. They become input constraints that shrink the candidate space, guiding the generator toward programs that are correct on a growing set of known-hard cases.",
+      "standard_implementation": "Typically uses SMT solvers as verifiers. CEGIS was inspired by CEGAR (Counter-Example Guided Abstraction Refinement). Standard in syntax-guided synthesis (SyGuS) frameworks."
+    },
+    "cegar": {
+      "summary": "CEGAR (Counter-Example Guided Abstraction Refinement) is a coarse-abstraction-check-classify-refine-repeat loop. It starts with a simplified (coarse) model that ignores some system details, checks the specification against it, finds counterexamples, and determines whether each counterexample is genuine (exists in real system) or spurious (caused by abstraction imprecision). Spurious counterexamples refine the abstraction; genuine ones are reported.",
+      "loop_structure": "coarse abstraction → model check → if pass: property holds; if counterexample found → feasibility analysis → if genuine: report to user; if spurious: refine abstraction → repeat",
+      "key_insight": "Not all verification failures are real. Distinguishing genuine violations from spurious ones caused by imprecision is the core intellectual challenge. Refinement adds back the missing detail that caused the spurious failure.",
+      "spurious_vs_genuine": "Genuine = violation exists in real system and abstraction. Spurious = violation exists only in abstraction due to imprecision. Spurious counterexamples are not wasted — they refine the abstraction, making it more precise."
+    },
+    "abstraction_refinement_synthesis": {
+      "summary": "BLAZE/SYNGAR-style synthesis combines abstraction with CEGIS. It starts with a coarse program template, verifies it, and refines the template when spurious counterexamples appear. The key contribution is using proofs of incorrectness to rule out entire families of candidates (not just individual programs), significantly reducing the search space in example-guided synthesis.",
+      "relevance_to_rig": "Provides the conceptual ancestor for Rig's 'counterexample prunes a schema/template family, not just a single failed Jinja output.' Pattern-level learning from counterexamples is stronger than candidate-level rejection."
+    },
+    "differences_from_verification_synthesis_repair": {
+      "verification": "Starts with program + specification. Produces pass/fail + counterexample. Fails when state explosion occurs or semantics are undecidable.",
+      "synthesis": "Starts with specification + grammar. Produces program satisfying spec. Fails when search space explodes or verifier is too weak.",
+      "repair": "Starts with buggy program + tests. Produces patched program. Fails when overfitting to test suite or introducing regressions.",
+      "rig_compiler": "Starts with semantic contract + schema. Produces candidate history + promoted artifact. Fails when fake-green acceptance occurs or contract is ambiguous. Unique: evidence-first, worktree-isolated, staged promotion."
+    },
+    "rig_compiler_differentiation": {
+      "staged_decomposition": "Rig decomposes the contract into ordered slices rather than synthesizing one monolithic program. Each slice is promoted through stage worktrees. This is stronger than flat CEGIS and more concrete than CEGAR abstraction.",
+      "real_world_worktree_validation": "Rig validates candidates in isolated Git worktrees against the real repository substrate, not against a formal model. This catches integration failures (import paths, real artifacts, real test runners) that formal verifiers miss.",
+      "evidence_first": "Rig preserves every permutation, counterexample, and validation result as schema-governed data products. CEGIS typically only returns the accepted program or failure. Rig's evidence products enable pattern learning across runs.",
+      "symbolic_not_neural": "Rig accumulates symbolic evidence and explicit pattern refinements, not statistical weight updates. This is search-guided curriculum learning, not neural model training."
+    }
+  },
+  "rig_mapping_matrix": [
+    {
+      "concept": "generator",
+      "cegis_meaning": "Synthesizes candidate program from specification + counterexample set",
+      "cegar_meaning": "N/A (abstraction construction, not program generation)",
+      "rig_meaning": "Jinja2 template renderer + schema candidate generator. Produces deterministic Python and JSON Schema candidates.",
+      "implementation_implication": "Uses deterministic templates; never an LLM for authority code. Generator is a candidate emitter, not an authority.",
+      "risk_if_misunderstood": "Generator treated as authority instead of candidate emitter. Generated Python becomes truth instead of hypothesis."
+    },
+    {
+      "concept": "verifier",
+      "cegis_meaning": "SMT solver checking candidate against full specification",
+      "cegar_meaning": "Model checker on abstract state space",
+      "rig_meaning": "Validation matrix of 14 gates executed in isolated worktree against real repo substrate",
+      "implementation_implication": "Heterogeneous gates: jsonschema, import, pyright, ruff, round-trip, adversarial, redaction, regeneration, trace, dirty-state checks.",
+      "risk_if_misunderstood": "Verifier weakness → fake-green acceptance. Syntactic validators (ruff, import) produce high pass rates but don't prove semantic correctness."
+    },
+    {
+      "concept": "candidate",
+      "cegis_meaning": "Program that satisfies specification on accumulated inputs",
+      "cegar_meaning": "N/A",
+      "rig_meaning": "Schema + Python files applied as patch in scratch worktree under .rig/relay/worktrees/compiler/<run_id>/scratch/<candidate_id>/",
+      "implementation_implication": "Candidate isolation: never touches canonical repo paths until human-governed promotion.",
+      "risk_if_misunderstood": "Candidate accepted without real-repo validation. Inert file validation under .build/ is fake-green theater."
+    },
+    {
+      "concept": "specification",
+      "cegis_meaning": "Formal logic formula",
+      "cegar_meaning": "Temporal logic (CTL, LTL) safety and liveness properties",
+      "rig_meaning": "Semantic contract JSON: entities, invariants, state transitions, telemetry posture, compatibility policy, mutation/read authority",
+      "implementation_implication": "Contract is the authority; JSON Schema is a machine-readable projection. Contract must be refined when ambiguity is detected.",
+      "risk_if_misunderstood": "Schema becomes authority instead of contract. Generated schema is treated as truth instead of projection."
+    },
+    {
+      "concept": "counterexample",
+      "cegis_meaning": "Input where candidate violates specification",
+      "cegar_meaning": "Execution trace violating property in abstract model",
+      "rig_meaning": "Failed artifact, malformed input, pyright error, schema drift, redaction leak, trace propagation failure — any validation gate failure",
+      "implementation_implication": "Stored as content-light JSON with SHA-256 hashes. Classified as genuine or spurious after replay analysis.",
+      "risk_if_misunderstood": "Counterexample deleted instead of preserved. Failure data lost instead of becoming learning data for pattern refinement."
+    },
+    {
+      "concept": "refinement",
+      "cegis_meaning": "N/A (counterexample constrains the generator, not the specification)",
+      "cegar_meaning": "Add missing detail back to abstraction after spurious counterexample",
+      "rig_meaning": "Schema/template/contract-slice refinement; stronger validators, richer tests, corrected contract language",
+      "implementation_implication": "Refinement proposals stored as coordination events. Three levels: candidate-level, pattern-level, contract-level.",
+      "risk_if_misunderstood": "Refinement overfits to specific counterexample instead of generalizing the class of failures."
+    },
+    {
+      "concept": "abstraction",
+      "cegis_meaning": "N/A",
+      "cegar_meaning": "Coarse model ignoring some system details; visible vs invisible variables",
+      "rig_meaning": "Contract slice: subset of assertions checked at this stage. Slices ordered by dependency.",
+      "implementation_implication": "Contract decomposed into ordered slices; each slice has acceptance threshold; partial success promotes to stage worktree.",
+      "risk_if_misunderstood": "Too-coarse abstraction → spurious failures. Too-fine abstraction → state explosion (permutation explosion in Rig)."
+    },
+    {
+      "concept": "spurious_counterexample",
+      "cegis_meaning": "N/A (CEGIS counterexamples are genuine by construction)",
+      "cegar_meaning": "Violation in abstraction that doesn't exist in real system",
+      "rig_meaning": "Failure caused by incomplete test harness, schema/model drift, or missing validator — not a true contract violation",
+      "implementation_implication": "Spurious failure → refine validators/schemas/tests, not reject candidate. Contract ambiguity index tracks assertion failure rates.",
+      "risk_if_misunderstood": "Spurious failure treated as genuine → wasted candidate rejection and refinement effort."
+    },
+    {
+      "concept": "genuine_counterexample",
+      "cegis_meaning": "All CEGIS counterexamples are genuine by construction",
+      "cegar_meaning": "Violation present in both abstraction and real system",
+      "rig_meaning": "Real contract violation: generated code breaks real artifact round-trip, leaks raw paths, fails type check, or violates contract invariants",
+      "implementation_implication": "Genuine failure → reject candidate, record counterexample, prune candidate family, refine generation patterns.",
+      "risk_if_misunderstood": "Genuine failure missed because validator is too weak → fake-green acceptance."
+    },
+    {
+      "concept": "search_space",
+      "cegis_meaning": "All programs conforming to grammar",
+      "cegar_meaning": "All reachable states in system",
+      "rig_meaning": "All schema/template/code permutations bounded by worktree budget",
+      "implementation_implication": "Max scratch worktrees, max candidates per slice, max stage depth, max runtime per candidate.",
+      "risk_if_misunderstood": "Unbounded search → resource exhaustion. No budget → infinite worktree spawning."
+    },
+    {
+      "concept": "termination",
+      "cegis_meaning": "Candidate found or resources exhausted",
+      "cegar_meaning": "Full state space explored or abstraction precise enough",
+      "rig_meaning": "Full contract satisfied (all slices) OR max candidates exhausted (budget termination)",
+      "implementation_implication": "Staged promotion: each slice reduces remaining search space. Hard budget limits prevent infinite loops.",
+      "risk_if_misunderstood": "Non-termination → orphaned worktrees pile up. Budget enforcement must be hard, not advisory."
+    },
+    {
+      "concept": "partial_success",
+      "cegis_meaning": "N/A (monolithic synthesis only has pass/fail)",
+      "cegar_meaning": "N/A",
+      "rig_meaning": "All assertions for current contract slice satisfied; candidate promoted to stage worktree which becomes base for next slice",
+      "implementation_implication": "Stage worktree is a checkpoint. Next slice builds on it, not on original HEAD. This is staged accumulation, not slot-machine retry.",
+      "risk_if_misunderstood": "Partial success treated as full success → premature promotion to canonical path."
+    },
+    {
+      "concept": "promotion",
+      "cegis_meaning": "Candidate returned as output of synthesis",
+      "cegar_meaning": "N/A",
+      "rig_meaning": "Governed promotion proposal from accepted worktree to canonical path; requires human approval with SHA-256 verification",
+      "implementation_implication": "Never automatic. Human governance gate before any generated code touches rig_relay/ or docs/schemas/.",
+      "risk_if_misunderstood": "Promotion without human governance → generated code silently replaces hand-written code."
+    },
+    {
+      "concept": "quarantine",
+      "cegis_meaning": "N/A",
+      "cegar_meaning": "N/A",
+      "rig_meaning": "Novel failures retained for debugging; duplicate failures deduped by input_hash + failure_gate",
+      "implementation_implication": "Only first-of-class failures quarantined. Deduplication prevents storage explosion from repeated template-branch failures.",
+      "risk_if_misunderstood": "All failures quarantined → storage explosion. Novel but trivial failure quarantined → noise."
+    },
+    {
+      "concept": "pattern_aggregation",
+      "cegis_meaning": "N/A (only the accepted program or failure is returned)",
+      "cegar_meaning": "N/A",
+      "rig_meaning": "Post-run data products: permutation corpus, schema pattern library, template refinement backlog, contract ambiguity index, fake-green failure catalog, counterexample cluster report",
+      "implementation_implication": "Schema-governed .json/.jsonl artifacts. Patterns are observations that inform refinement, not rules that enforce it.",
+      "risk_if_misunderstood": "Patterns treated as rules instead of observations. Pattern-derived refinements applied without adversary testing."
+    }
+  ],
+  "literature_challenges": [
+    {
+      "rank": 1,
+      "challenge": "search_space_explosion",
+      "literature_says": "CEGIS faces exponential candidate growth with program size. State explosion is the central model-checking challenge. Bounded synthesis and abstraction address this.",
+      "rig_appearance": "Permutation explosion across schema variants, Jinja2 template branches, code candidates, and validators. Example: 10 schema options × 3 template branches × 50 code candidates = 1,500 worktree candidates per slice.",
+      "concrete_mitigation": "Worktree budget (max scratch, max stage depth, max candidates per slice). Contract slicing reduces depth. Pattern pruning eliminates entire candidate families. Hard runtime limits per candidate.",
+      "belongs_in": "compiler + worktree_lifecycle"
+    },
+    {
+      "rank": 2,
+      "challenge": "spurious_counterexamples",
+      "literature_says": "CEGAR's core challenge: abstraction imprecision creates failures that don't exist in real system. Feasibility analysis is required to distinguish genuine from spurious.",
+      "rig_appearance": "Schema/model drift: generated Python passes schema validation but fails because schema doesn't encode contract. Incomplete test harness: validator passes but misses real contract violation.",
+      "concrete_mitigation": "contract_ambiguity_index tracks which assertions fail across unrelated candidates. Spurious counterexample classification: unknown → spurious → genuine after replay analysis. Three-level refinement: validator, schema, contract.",
+      "belongs_in": "compiler + validation_matrix + pattern_aggregation"
+    },
+    {
+      "rank": 3,
+      "challenge": "verifier_weakness",
+      "literature_says": "Synthesis is only as strong as its verifier. Weak verifiers produce false confidence. SyGuS uses SMT solvers which are sound but domain-limited.",
+      "rig_appearance": "Validation matrix has 14 gates but none are formal verifiers. jsonschema checks structure, not semantics. Round-trip tests catch only tested paths. Pyright/ruff catch syntax, not contract violations.",
+      "concrete_mitigation": "Property-based testing (parked Hypothesis). Mutation testing (parked cosmic-ray). Adversarial malformed input tests derived from contract invariants, not schema examples. Real artifact corpus expansion over time.",
+      "belongs_in": "validation_matrix"
+    },
+    {
+      "rank": 4,
+      "challenge": "overfitting_to_counterexamples",
+      "literature_says": "Program synthesis from examples can produce programs that satisfy provided examples while failing the user's actual intent. Neural-guided deductive search warns about generalization from sparse examples.",
+      "rig_appearance": "Compiler generates candidate that passes accumulated tests but violates unexpressed contract constraints. Generated tests mirror generated code — the 'fake-green overfitting' risk.",
+      "concrete_mitigation": "Tests derived from contract JSON, not generated code. Adversarial inputs derived from contract invariants, not schema examples. Counterexample diversity enforced. Property-based strategies from contract, not implementation.",
+      "belongs_in": "compiler + test_design"
+    },
+    {
+      "rank": 5,
+      "challenge": "weak_incomplete_specification",
+      "literature_says": "Programs correct w.r.t. specification may still be wrong because specification underspecifies behavior. Specification quality is the bottleneck in synthesis.",
+      "rig_appearance": "Semantic contract may miss invariants, edge cases, or failure modes. Contract ambiguity causes acceptance of weak-interpretation candidates that satisfy a literal reading but violate intent.",
+      "concrete_mitigation": "contract_ambiguity_index data product. Contract refinement proposals when assertion groups show high failure rates across independent candidate families. Partial success thresholds require high acceptance rates before promotion.",
+      "belongs_in": "contract_design + pattern_aggregation"
+    },
+    {
+      "rank": 6,
+      "challenge": "non_termination",
+      "literature_says": "CEGIS can loop forever if no candidate exists in grammar or generator cannot converge. Bounded synthesis sets explicit timeouts.",
+      "rig_appearance": "Compiler may never find candidate satisfying all slices within budget. Infinite loop on spurious counterexample/refinement cycle. Generator template may never produce correct output for some schemas.",
+      "concrete_mitigation": "Worktree budget enforces hard limits. Max runtime per candidate (300s). Max candidates per slice (50). Max stage depth (10). Explicit failure event after budget exhaustion. Startup orphan prune.",
+      "belongs_in": "compiler + worktree_lifecycle"
+    },
+    {
+      "rank": 7,
+      "challenge": "poor_counterexample_quality",
+      "literature_says": "Weak counterexamples don't prune enough candidates. Overly specific counterexamples cause overfitting. Counterexample selection is non-trivial in synthesis.",
+      "rig_appearance": "Malformed input too specific to generalize to broader candidate families. Fix one template branch but same failure pattern recurs in other branches. Counterexample doesn't identify the root cause.",
+      "concrete_mitigation": "Counterexample clustering into failure modalities. Pattern-level learning from multiple failures. Minimal reproduction artifacts. pruning_effect classification: single_candidate, candidate_family, template_branch, schema_constraint_pattern.",
+      "belongs_in": "counterexample_design + pattern_aggregation"
+    },
+    {
+      "rank": 8,
+      "challenge": "candidate_deduplication",
+      "literature_says": "In search-based synthesis, duplicate or near-duplicate candidates waste resources. Deduplication heuristics are necessary for scalability.",
+      "rig_appearance": "Two Jinja2 template branches may produce identical or semantically equivalent Python code. Duplicate candidates waste worktree allocation and validation runtime.",
+      "concrete_mitigation": "SHA-256 hashing of candidate patches. Deterministic regeneration comparison. input_hash + generator_version deduplication key. Skip duplicate candidates before worktree allocation.",
+      "belongs_in": "compiler"
+    },
+    {
+      "rank": 9,
+      "challenge": "generated_tests_mirroring_code",
+      "literature_says": "Standard program repair risk: patch generated to pass tests, not fix the underlying bug. Tests derived from implementation confirm decisions, not verify correctness.",
+      "rig_appearance": "Compiler generates Python that passes generated tests. Tests derived from generated schema/models, not from semantic contract. This is the central fake-green risk for code generation.",
+      "concrete_mitigation": "Tests hand-written from contract JSON. Tests are NOT generated by compiler. Test file version-controlled separately from generated code. Tests exercise contract invariants, not implementation details.",
+      "belongs_in": "test_design"
+    },
+    {
+      "rank": 10,
+      "challenge": "false_confidence_from_syntactic_validation",
+      "literature_says": "Shallow checks (lint, format, import) produce high pass rates but don't prove correctness. Syntactic conformance is not semantic correctness.",
+      "rig_appearance": "Generated Python passes ruff, pyright, jsonschema but violates contract semantics (accepts invalid data, rejects valid artifacts, leaks raw paths). Cosmetic validity masks integration failure.",
+      "concrete_mitigation": "Worktree validation against real repo substrate is the hard gate. No promotion without adversarial and round-trip tests. Mutation testing (parked) catches syntactic-only validation. Inert_file_only_validation risk is the explicit guard.",
+      "belongs_in": "validation_matrix + worktree_lifecycle"
+    }
+  ],
+  "worktree_lifecycle_recommendations": {
+    "state_machine": [
+      {"state": "created", "description": "Empty clean worktree checked out at current stage base", "transitions_to": ["patch_applied"]},
+      {"state": "patch_applied", "description": "Candidate patch applied to worktree", "transitions_to": ["validation_running"]},
+      {"state": "validation_running", "description": "Validation matrix executing against real repo substrate", "transitions_to": ["failed_reset", "partially_satisfied", "fully_satisfied"]},
+      {"state": "failed_reset", "description": "All assertions not met; scratch worktree reset to current stage base (not original HEAD)", "transitions_to": ["reaped", "patch_applied"]},
+      {"state": "partially_satisfied", "description": "All assertions for current contract slice satisfied; emits contract.slice.partially_satisfied", "transitions_to": ["promoted_to_stage"]},
+      {"state": "promoted_to_stage", "description": "Partial success becomes base for next contract slice search; emits contract.stage.worktree.promoted", "transitions_to": ["patch_applied"]},
+      {"state": "fully_satisfied", "description": "Entire contract satisfied by this candidate; emits contract.full_contract.satisfied", "transitions_to": ["accepted"]},
+      {"state": "accepted", "description": "Full contract-satisfying candidate; read-only, retained for human review", "transitions_to": ["promotion_proposal_emitted"]},
+      {"state": "promotion_proposal_emitted", "description": "Governed promotion proposal emitted to coordination ledger; emits contract.promotion_proposal.emitted", "transitions_to": ["worktree_cleaned"]},
+      {"state": "reaped", "description": "Failed scratch worktree removed after evidence copied to .build/", "transitions_to": []},
+      {"state": "worktree_cleaned", "description": "Accepted worktree cleaned after human checkpoint", "transitions_to": []}
+    ],
+    "required_lifecycle_events": [
+      "contract.candidate.worktree.created",
+      "contract.candidate.patch.applied",
+      "contract.candidate.validation.failed",
+      "contract.candidate.worktree.reset",
+      "contract.candidate.worktree.reaped",
+      "contract.slice.partially_satisfied",
+      "contract.stage.worktree.promoted",
+      "contract.full_contract.satisfied",
+      "contract.promotion_proposal.emitted"
+    ],
+    "budget_fields": {
+      "max_scratch_worktrees": 20,
+      "max_retained_failed_worktrees": 3,
+      "max_stage_depth": 10,
+      "max_candidates_per_slice": 50,
+      "max_runtime_seconds_per_candidate": 300
+    },
+    "cleanup_policy": "Failed scratch worktrees: removed immediately after evidence copied to .build/. Quarantined worktrees: retained only for novel failures (first-of-class, debug flag set). Stage worktrees: retain active lineage + 2 previous stages. Accepted worktree: retained until human review/checkpoint. Orphaned worktrees: detected and pruned on compiler startup (equivalent to 'git worktree prune').",
+    "evidence_retention_policy": "Failed worktree contents: NOT retained by default. Candidate hashes: ALWAYS retained. Counterexample hashes: ALWAYS retained. Novel failures: MAY be quarantined. Duplicate failures: deduped (input_hash + failure_gate). All evidence lives in .build/rig-relay/contract-compiler/runs/<run_id>/.",
+    "risks": [
+      {"risk": "Orphan accumulation from compiler crashes leaving worktrees behind", "mitigation": "Startup orphan prune on every compiler invocation. Hard budget on total worktrees per run_id."},
+      {"risk": "Stage lineage loss from cleanup policy pruning old stages too aggressively", "mitigation": "Debug flag disables pruning. Active lineage always retained. Retain N previous stages configurable."},
+      {"risk": "Resource exhaustion from OS-level limits (disk, memory) exceeding compiler budget", "mitigation": "Compiler budget is soft limit. OS-level backstop required. Max total disk per run_id enforced."},
+      {"risk": "Spurious quarantine from novel but trivial failures consuming quarantine storage", "mitigation": "Deduplication across runs. Quarantine retention only for failures with distinct pruning_effect classification. Manual review for quarantined candidates."}
+    ]
+  },
+  "counterexample_design": {
+    "counterexample_shape": {
+      "fields": [
+        {"field": "counterexample_id", "purpose": "SHA-256 hash uniquely identifying this counterexample"},
+        {"field": "source_gate", "purpose": "Which validation gate detected the failure (adversarial_malformed_input, pyright_type_check, etc.)"},
+        {"field": "contract_family_id", "purpose": "Which contract family was being compiled"},
+        {"field": "contract_slice_id", "purpose": "Which contract slice was being validated"},
+        {"field": "candidate_id", "purpose": "SHA-256 of the candidate that failed"},
+        {"field": "worktree_id", "purpose": "Path reference to the scratch worktree (hashed)"},
+        {"field": "input_artifact_hash", "purpose": "SHA-256 of the input that triggered the failure"},
+        {"field": "expected_behavior", "purpose": "What the contract says should happen"},
+        {"field": "actual_behavior_hash", "purpose": "SHA-256 of what actually happened"},
+        {"field": "failure_class", "purpose": "constraint_violation, schema_drift, redaction_leak, type_error, import_error, trace_failure, format_error, regeneration_mismatch"},
+        {"field": "spurious_or_genuine", "purpose": "unknown | spurious | genuine — classified after replay analysis"},
+        {"field": "replay_command_hash", "purpose": "SHA-256 of deterministic command to reproduce the failure"},
+        {"field": "minimal_reproduction_artifact", "purpose": "Relative path to minimal reproduction in .build/"},
+        {"field": "redaction_status", "purpose": "content_light — no raw paths, secrets, or file contents"},
+        {"field": "deduplication_key", "purpose": "SHA-256 of input_hash + failure_gate + candidate_id"},
+        {"field": "pruning_effect", "purpose": "single_candidate, candidate_family, template_branch, or schema_constraint_pattern"}
+      ]
+    },
+    "storage_policy": "Content-light posture: counterexample bodies hashed. Raw artifacts stored only in .build/ quarantine directory. Deduplication by input_hash + failure_gate prevents repeated storage of equivalent failures. Only first-of-class counterexamples stored as full artifacts.",
+    "replay_policy": "Counterexamples replayable via deterministic replay_command_hash. Replay runs in fresh scratch worktree with exact same stage base and candidate patch. Replay verifies that counterexample is reproducible, not a fluke.",
+    "pruning_policy": "pruning_effect classification determines scope: single_candidate eliminates one candidate; candidate_family eliminates all candidates from same template branch; template_branch eliminates all candidates from that Jinja2 branch; schema_constraint_pattern eliminates all candidates sharing that schema pattern. Pruning is applied before next generation cycle.",
+    "clustering_policy": "Counterexamples grouped by failure_class + source_gate for pattern reports. Clusters inform the counterexample_cluster_report.v1.json data product. Representative counterexample selected per cluster. Clusters with high frequency suggest systematic schema/template/contract issues."
+  },
+  "validation_matrix_recommendations": [
+    {
+      "validator": "json_schema_validation",
+      "why_needed": "Structural contract compliance; draft-07 metaschema check",
+      "fake_green_prevented": "Schema that's invalid JSON or violates metaschema accepted as valid",
+      "cost": "low",
+      "evidence_artifact": "schema_validation_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "generated_python_importability",
+      "why_needed": "Candidate must be syntactically valid Python and importable in real package context",
+      "fake_green_prevented": "Unparseable or unimportable Python accepted as valid code",
+      "cost": "low",
+      "evidence_artifact": "import_check_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "pyright_type_check",
+      "why_needed": "Static type correctness; catches type-level contract violations",
+      "fake_green_prevented": "Type errors masked by Any or missing annotations",
+      "cost": "low",
+      "evidence_artifact": "pyright_output_hash",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "ruff_lint_and_format",
+      "why_needed": "Code style consistency; deterministic formatting for regeneration comparison",
+      "fake_green_prevented": "Format instability across runs; unformatted code treated as different from formatted code",
+      "cost": "low",
+      "evidence_artifact": "ruff_output_hash",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "real_artifact_round_trip",
+      "why_needed": "Generated model must serialize/deserialize real data correctly",
+      "fake_green_prevented": "Model that looks correct in isolation but corrupts real data when applied to actual artifacts",
+      "cost": "medium",
+      "evidence_artifact": "round_trip_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "adversarial_malformed_input",
+      "why_needed": "Generated model must correctly REJECT invalid inputs according to contract invariants",
+      "fake_green_prevented": "Model that silently accepts invalid data because validators are missing or too permissive",
+      "cost": "medium",
+      "evidence_artifact": "adversarial_result + counterexample",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "deterministic_regeneration",
+      "why_needed": "Same inputs must produce byte-identical output across runs",
+      "fake_green_prevented": "Non-deterministic generation hiding bugs behind irreproducible output",
+      "cost": "low",
+      "evidence_artifact": "regeneration_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "model_schema_drift_check",
+      "why_needed": "Schema_version must resolve to valid schema file; model dump must validate against that schema",
+      "fake_green_prevented": "Model declares schema_version but schema file is wrong, missing, or model has drifted from schema",
+      "cost": "low",
+      "evidence_artifact": "drift_check_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "content_light_redaction",
+      "why_needed": "No raw paths, secrets, or file contents in model output (especially .model_dump() output)",
+      "fake_green_prevented": "Redaction leaks exposing sensitive data in telemetry events, coordination payloads, or export datasets",
+      "cost": "medium",
+      "evidence_artifact": "redaction_check_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "trace_correlation_propagation",
+      "why_needed": "Correlation IDs must propagate through generated models for observability",
+      "fake_green_prevented": "Uncoupled trace spans breaking end-to-end observability in production",
+      "cost": "low",
+      "evidence_artifact": "trace_check_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "worktree_dirty_state_check",
+      "why_needed": "Worktree must be clean after validation (no side effects from candidate or tests)",
+      "fake_green_prevented": "Candidate or validation that modifies files during validation, producing false pass",
+      "cost": "low",
+      "evidence_artifact": "dirty_state_result",
+      "implementation_status": "required_for_first_proof"
+    },
+    {
+      "validator": "property_based_tests",
+      "why_needed": "Random input generation finds edge cases not covered by fixture-based tests",
+      "fake_green_prevented": "Syntactically correct code that fails on unexpected inputs not in test fixtures",
+      "cost": "high",
+      "evidence_artifact": "property_test_corpus",
+      "implementation_status": "parked"
+    },
+    {
+      "validator": "mutation_testing",
+      "why_needed": "Mutated source must cause test failures; surviving mutations indicate fake-green tests",
+      "fake_green_prevented": "Tests that pass against both correct and mutated code are not enforcing contract behavior",
+      "cost": "very_high",
+      "evidence_artifact": "mutation_survival_rate",
+      "implementation_status": "parked"
+    },
+    {
+      "validator": "live_app_behavior_tests",
+      "why_needed": "Full integration: generated models in running Cockpit/ACP consumers",
+      "fake_green_prevented": "Model that passes in isolation but breaks real consumers (Cockpit projection, ACP tool dispatch)",
+      "cost": "very_high",
+      "evidence_artifact": "behavior_test_result",
+      "implementation_status": "future"
+    }
+  ],
+  "pattern_aggregation_recommendations": [
+    {
+      "product_id": "permutation_corpus.v1.jsonl",
+      "purpose": "Complete record of all generated schema/Python permutations with pass/fail/quarantine status and SHA-256 hashes",
+      "required_fields": ["candidate_id", "schema_sha256", "python_sha256", "status", "fit_score", "slice_results"],
+      "informs": "Cross-run pattern analysis, template refinement, contract ambiguity detection"
+    },
+    {
+      "product_id": "schema_pattern_report.v1.json",
+      "purpose": "Which schema constraints and structures repeatedly produced valid or failing candidates across runs",
+      "required_fields": ["pattern_id", "frequency", "success_rate", "affected_contract_families", "suggested_constraints"],
+      "informs": "Schema design improvements, constraint library creation, draft-07 best-practice catalog"
+    },
+    {
+      "product_id": "template_refinement_report.v1.json",
+      "purpose": "Which Jinja2 template branches produced valid or failing artifacts",
+      "required_fields": ["branch_id", "failure_count", "failure_classes", "suggested_refinement"],
+      "informs": "Jinja2 template authoring, branch-specific fixes, deterministic output guarantees"
+    },
+    {
+      "product_id": "counterexample_cluster_report.v1.json",
+      "purpose": "Counterexamples grouped by failure modality for systematic failure analysis",
+      "required_fields": ["cluster_id", "failure_class", "counterexample_count", "affected_candidate_count", "representative_counterexample_hash"],
+      "informs": "Validator hardening, adversarial test design, failure modality catalog"
+    },
+    {
+      "product_id": "contract_ambiguity_report.v1.json",
+      "purpose": "Contract assertions that were hardest to satisfy across candidates",
+      "required_fields": ["assertion_id", "attempt_count", "failure_rate", "suggested_contract_refinement"],
+      "informs": "Contract language refinement, assertion precision improvement, spurious-vs-genuine triage"
+    },
+    {
+      "product_id": "worktree_lifecycle_report.v1.json",
+      "purpose": "Worktree lifecycle statistics: scratch reaped, stages promoted, accepted/retained",
+      "required_fields": ["total_scratch", "total_reaped", "total_promoted", "total_accepted", "orphan_prune_count"],
+      "informs": "Budget tuning, resource planning, compiler performance optimization"
+    },
+    {
+      "product_id": "candidate_promotion_report.v1.json",
+      "purpose": "Candidates that survived to promotion with full evidence chain for human review",
+      "required_fields": ["candidate_id", "validation_matrix_sha256", "fit_report_sha256", "promotion_proposal_sha256"],
+      "informs": "Governed promotion decisions, evidence audit trail, release readiness"
+    }
+  ],
+  "proposed_rig_schemas_and_events": {
+    "candidate_schemas": [
+      {"schema_id": "rig.contract_compiler.run_manifest.v1", "purpose": "Manifest of all inputs and outputs for a compiler run with SHA-256 hashes", "status": "to_create_before_compiler"},
+      {"schema_id": "rig.contract_compiler.candidate.v1", "purpose": "Single candidate: schema_sha256, python_sha256, status, worktree_info", "status": "to_create_before_compiler"},
+      {"schema_id": "rig.contract_compiler.worktree_lifecycle.v1", "purpose": "Worktree lifecycle state, budget, cleanup decisions, state machine transitions", "status": "to_create_before_compiler"},
+      {"schema_id": "rig.contract_compiler.counterexample.v1", "purpose": "Standardized counterexample with classification, replay command, dedup key, pruning effect", "status": "to_create_before_compiler"},
+      {"schema_id": "rig.contract_compiler.validation_matrix_result.v1", "purpose": "Per-candidate gate results with pass/fail per gate and aggregate score", "status": "to_create_before_compiler"},
+      {"schema_id": "rig.contract_compiler.permutation_corpus.v1", "purpose": "Schema for permutation_corpus.jsonl rows recording all candidate outcomes", "status": "to_create_with_compiler"},
+      {"schema_id": "rig.contract_compiler.pattern_report.v1", "purpose": "Schema for schema/template pattern reports and refinement proposals", "status": "to_create_with_compiler"},
+      {"schema_id": "rig.contract_compiler.research_rationale.v1", "purpose": "This artifact's schema — the CEGIS/CEGAR research justification", "status": "already_created"}
+    ],
+    "candidate_events": [
+      {"event_name": "contract.compilation.started", "purpose": "Compiler run initiated with contract family, generator version, repo HEAD", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.schema_candidate.generated", "purpose": "Schema candidate generated with SHA-256 and parent reference", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.python_candidate.generated", "purpose": "Python candidate generated from schema with SHA-256", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.candidate.worktree.created", "purpose": "Scratch worktree created for candidate validation", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.candidate.patch.applied", "purpose": "Candidate patch applied to scratch worktree", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.candidate.validation.failed", "purpose": "Validation matrix found failures; records which gates failed", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.candidate.worktree.reset", "purpose": "Failed scratch worktree reset to current stage base", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.candidate.worktree.reaped", "purpose": "Failed scratch worktree removed after evidence copied", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.slice.partially_satisfied", "purpose": "All assertions for current contract slice satisfied; promotion eligibility", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.stage.worktree.promoted", "purpose": "Partial success promoted to stage worktree for next slice", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.full_contract.satisfied", "purpose": "Entire contract satisfied by candidate", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.promotion_proposal.emitted", "purpose": "Governed promotion proposal emitted for human review", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.permutation.patterns.aggregated", "purpose": "Post-run pattern aggregation complete with data product references", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.schema_pattern.discovered", "purpose": "Recurring schema pattern identified from permutation corpus", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.template_refinement.proposed", "purpose": "Jinja2 template refinement suggested based on failure patterns", "status": "already_in_feasibility_artifact"},
+      {"event_name": "contract.counterexample.classified", "purpose": "Counterexample classified as genuine or spurious after replay analysis", "status": "to_register_before_compiler"},
+      {"event_name": "contract.ambiguity.detected", "purpose": "Contract assertion group shows high failure rates across independent candidate families", "status": "to_register_before_compiler"},
+      {"event_name": "contract.worktree.orphan.pruned", "purpose": "Orphaned compiler worktrees detected and pruned on startup", "status": "to_register_before_compiler"}
+    ]
+  },
+  "final_recommendation": {
+    "should_adopt_cegis_cegar_inspired_model": true,
+    "what_to_copy_directly": [
+      "CEGIS loop structure: generator → verifier → counterexample → accumulate → repeat, adapted as Jinja2 → validation matrix → counterexample → pattern library → next candidate",
+      "CEGAR counterexample classification: genuine vs spurious, adapted as real contract violation vs schema/model drift vs incomplete test harness",
+      "CEGAR refinement policy: refine abstraction when counterexample is spurious, adapted as refine validators/schemas/contract slices when failures stem from imprecision, not genuine violations",
+      "Bounded search: explicit budget for worktree count, stage depth, candidates per slice, runtime per candidate",
+      "Counterexample accumulation: failed candidates become constraints on future generation, not wasted computation"
+    ],
+    "what_to_avoid_copying": [
+      "SMT-based verification: Rig's validation matrix is broader (14 gates) but less formal; do not claim formal verification",
+      "Monolithic synthesis: CEGIS typically synthesizes one complete program; Rig must keep staged slicing",
+      "Full automation of promotion: CEGIS returns accepted candidate automatically; Rig must keep human governance gate",
+      "Claims of completeness: SyGuS claims completeness within grammar; Rig must NOT claim that the compiler will eventually find a correct candidate"
+    ],
+    "what_must_exist_before_compiler_v0": [
+      "Coordination Event Ledger Contract v1 implemented — store accepts contract.compilation.* events",
+      "CI Evidence Contract v1 schemas exist — rig.relay.ci_run.v1 and rig.relay.ci_verdict.v1",
+      "EventName enum extended with compiler event names",
+      "Jinja2 template usage validated in Rig environment",
+      "Worktree budget enforcement in WorktreeManager",
+      "Staged accumulation logic: reset_after_failure uses current stage base, not original HEAD"
+    ],
+    "smallest_useful_compiler_experiment": "Compiler Experiment 0: Generate one Pydantic model for one existing coordination event payload schema (e.g., CoordinationSession). Apply it in one scratch worktree. Run: schema validation, import, pyright, ruff, one real payload round-trip, one adversarial rejection, deterministic regeneration, and dirty-state check. Emit candidate, validation result, and counterexample artifacts. Do not implement multi-slice promotion yet. This is the first proof-of-mechanism, not the full compiler.",
+    "what_to_defer": [
+      "Hypothesis property-based testing",
+      "cosmic-ray mutation testing",
+      "datamodel-code-generator comparison",
+      "LibCST codemods",
+      "Multi-slice staged promotion (implement after single-slice proof)",
+      "Pattern aggregation data products (implement after multi-run corpus exists)",
+      "Full permutation corpus (implement after multiple contract families compiled)",
+      "Large Code Model symbolic corpus/graph (implement after significant compiler run history)"
+    ],
+    "publishable_claims": [
+      "Given a bounded semantic contract, a bounded candidate space expressed as deterministic Jinja2 templates, an isolated Git worktree per candidate, and a validation matrix of 14 contract-derived gates including adversarial and real-artifact checks, Rig can iteratively generate, validate, and reject schema/code candidates with durable evidence",
+      "The compiler rejects cosmetically-valid-but-integration-broken artifacts more reliably than one-shot code generation because every candidate is validated against the real repository substrate, not just as inert files",
+      "Every accepted, rejected, and quarantined permutation is preserved as schema-governed coordination event data for future refinement",
+      "Counterexamples prune entire candidate families (template branches, schema constraint patterns), not just individual failed outputs",
+      "The compiler accumulates symbolic evidence and derives explicit pattern refinements — it is search-guided curriculum learning, not neural model training"
+    ],
+    "premature_or_dishonest_claims": [
+      "Rig proves generated Python correct — Rice's theorem prohibits this for arbitrary programs. The honest claim is bounded: bounded contract + bounded candidate space + real worktree validation matrix",
+      "Rig's compiler is CEGIS-equivalent — Rig borrows the CEGIS loop structure and CEGAR counterexample philosophy but uses a heterogeneous validation matrix (not an SMT verifier) and staged contract slices (not formal abstractions)",
+      "Rig learns from permutations like neural training — Rig accumulates symbolic evidence and pattern refinements, not statistical weight updates. It is closer to search-guided curriculum learning than neural learning",
+      "The compiler is complete within its grammar — Jinja2 templates do not guarantee that a correct candidate exists in the search space. The compiler can exhaust its budget without finding a valid candidate",
+      "Rig formally verifies generated code — No BDD-based or SAT-based state-space exploration occurs. The validation matrix is practical, not formal"
+    ]
+  },
+  "claim_boundaries": {
+    "rig_may_claim": [
+      "counterexample-guided candidate search",
+      "staged contract-slice refinement",
+      "worktree-isolated validation against real repository substrate",
+      "durable permutation/counterexample evidence as schema-governed data products",
+      "fake-green resistance stronger than one-shot code generation",
+      "pattern-level learning from counterexample clusters",
+      "deterministic candidate generation via Jinja2 templates",
+      "human-governed promotion of accepted candidates"
+    ],
+    "rig_must_not_claim": [
+      "formal verification of arbitrary Python",
+      "CEGIS equivalence",
+      "CEGAR equivalence",
+      "completeness within grammar",
+      "correctness beyond the bounded contract and validation matrix",
+      "neural-style learning from permutations",
+      "SMT-grade verifier strength",
+      "proof of semantic correctness for arbitrary generated code"
+    ]
+  },
+  "humility_boundaries": {
+    "rices_theorem": "Rice's theorem states that all non-trivial semantic properties of arbitrary programs are undecidable. Rig's compiler cannot algorithmically prove that any generated Python module is semantically correct. The compiler can only reject candidates that fail a bounded validation matrix derived from a bounded semantic contract, and accept candidates that survive it. Survival is not proof of correctness — it is survival of adversarial gates with preserved evidence.",
+    "no_formal_verification_claim": "Rig's validation matrix is a heterogeneous set of 14 practical checks (jsonschema, import, pyright, ruff, round-trip, adversarial, redaction, regeneration, etc.). None are formal verifiers. The matrix is stronger than one-shot code generation checks but is not BDD-based, SAT-based, or SMT-based formal verification. Claims must be bounded by the specific gates that passed, not by universal 'correctness.'",
+    "bounded_search_not_universal_synthesis": "Rig's compiler searches a bounded candidate space defined by deterministic Jinja2 templates and schema constraint generators. It does not search the space of all possible Python programs. It can exhaust its candidate budget without finding a valid artifact. This is bounded counterexample-guided search, not universal program synthesis.",
+    "symbolic_not_neural_learning": "Rig accumulates explicit, schema-governed evidence from compiler runs: permutation corpora, pattern reports, counterexample clusters, contract ambiguity indices. It derives refinement proposals through pattern analysis, not gradient descent. The 'learned object' is a governed pattern library and refinement backlog, not a neural weight matrix. This distinction is critical for the release paper's intellectual honesty."
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.trend_report.v1.schema.json",
+  "title": "Rig OTel Trend Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "trend_run_id",
+    "generated_at",
+    "input_aggregate_run_ids",
+    "input_aggregate_count",
+    "input_manifest_hashes",
+    "input_shortlist_hashes",
+    "comparison_window",
+    "trend_verdict",
+    "trend_summary",
+    "deltas_path",
+    "warnings",
+    "errors",
+    "local_only",
+    "coordination_ledger_mutated",
+    "release_gate_mutated"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.trend_report.v1"
+    },
+    "trend_run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input_aggregate_run_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input_aggregate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "input_manifest_hashes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["aggregate_run_id", "sha256"],
+        "properties": {
+          "aggregate_run_id": { "type": "string" },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "input_shortlist_hashes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["aggregate_run_id", "sha256"],
+        "properties": {
+          "aggregate_run_id": { "type": "string" },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "comparison_window": {
+      "type": "object",
+      "required": ["run_ids", "first_run_id", "latest_run_id", "run_count"],
+      "properties": {
+        "run_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "first_run_id": { "type": "string" },
+        "latest_run_id": { "type": "string" },
+        "run_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "trend_verdict": {
+      "type": "string",
+      "enum": ["pass", "hold", "fail"]
+    },
+    "trend_summary": {
+      "type": "object",
+      "required": [
+        "persistent_pain_count",
+        "new_regression_count",
+        "improved_category_count",
+        "one_off_noise_count",
+        "insufficient_sample_count",
+        "highest_priority_categories",
+        "redaction_pressure_trend",
+        "trace_context_quality_trend"
+      ],
+      "properties": {
+        "persistent_pain_count": { "type": "integer", "minimum": 0 },
+        "new_regression_count": { "type": "integer", "minimum": 0 },
+        "improved_category_count": { "type": "integer", "minimum": 0 },
+        "one_off_noise_count": { "type": "integer", "minimum": 0 },
+        "insufficient_sample_count": { "type": "integer", "minimum": 0 },
+        "highest_priority_categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "affected_tool_category",
+              "signal_kind",
+              "trend_class",
+              "severity",
+              "affected_event_count",
+              "confidence"
+            ],
+            "properties": {
+              "affected_tool_category": { "type": "string" },
+              "signal_kind": { "type": "string" },
+              "trend_class": {
+                "type": "string",
+                "enum": [
+                  "persistent_pain",
+                  "new_regression",
+                  "improved",
+                  "one_off_noise",
+                  "insufficient_sample"
+                ]
+              },
+              "severity": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
+              },
+              "affected_event_count": { "type": "integer", "minimum": 0 },
+              "confidence": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "redaction_pressure_trend": {
+          "type": "string",
+          "enum": ["improving", "stable", "worsening", "insufficient_sample"]
+        },
+        "trace_context_quality_trend": {
+          "type": "string",
+          "enum": ["improving", "stable", "worsening", "insufficient_sample"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "deltas_path": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "local_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "coordination_ledger_mutated": {
+      "type": "boolean",
+      "const": false
+    },
+    "release_gate_mutated": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}

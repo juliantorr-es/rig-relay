@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler_research_rationale.v1",
+  "title": "Contract Compiler Research Rationale v1",
+  "description": "Schema for the CEGIS/CEGAR/counterexample-guided synthesis research rationale that justifies Rig Relay's Contract-Satisfaction Compiler architecture.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "research_sources",
+    "concept_summaries",
+    "rig_mapping_matrix",
+    "literature_challenges",
+    "worktree_lifecycle_recommendations",
+    "counterexample_design",
+    "validation_matrix_recommendations",
+    "pattern_aggregation_recommendations",
+    "proposed_rig_schemas_and_events",
+    "final_recommendation",
+    "claim_boundaries",
+    "humility_boundaries"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler_research_rationale.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this research rationale artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this artifact was generated."
+    },
+    "research_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_id", "title", "source_type", "url", "key_claims", "relevance_to_rig", "limitations"],
+        "properties": {
+          "source_id": {"type": "string"},
+          "title": {"type": "string"},
+          "source_type": {"type": "string", "enum": ["paper", "survey", "encyclopedia", "docs", "tool_docs", "other"]},
+          "url": {"type": "string", "format": "uri"},
+          "key_claims": {"type": "string"},
+          "relevance_to_rig": {"type": "string"},
+          "limitations": {"type": "string"}
+        }
+      }
+    },
+    "concept_summaries": {
+      "type": "object",
+      "required": ["cegis", "cegar", "abstraction_refinement_synthesis", "differences_from_verification_synthesis_repair", "rig_compiler_differentiation"],
+      "properties": {
+        "cegis": {
+          "type": "object",
+          "required": ["summary", "loop_structure", "key_insight", "standard_implementation"],
+          "properties": {
+            "summary": {"type": "string"},
+            "loop_structure": {"type": "string"},
+            "key_insight": {"type": "string"},
+            "standard_implementation": {"type": "string"}
+          }
+        },
+        "cegar": {
+          "type": "object",
+          "required": ["summary", "loop_structure", "key_insight", "spurious_vs_genuine"],
+          "properties": {
+            "summary": {"type": "string"},
+            "loop_structure": {"type": "string"},
+            "key_insight": {"type": "string"},
+            "spurious_vs_genuine": {"type": "string"}
+          }
+        },
+        "abstraction_refinement_synthesis": {
+          "type": "object",
+          "required": ["summary", "relevance_to_rig"],
+          "properties": {
+            "summary": {"type": "string"},
+            "relevance_to_rig": {"type": "string"}
+          }
+        },
+        "differences_from_verification_synthesis_repair": {
+          "type": "object",
+          "required": ["verification", "synthesis", "repair", "rig_compiler"],
+          "properties": {
+            "verification": {"type": "string"},
+            "synthesis": {"type": "string"},
+            "repair": {"type": "string"},
+            "rig_compiler": {"type": "string"}
+          }
+        },
+        "rig_compiler_differentiation": {
+          "type": "object",
+          "required": ["staged_decomposition", "real_world_worktree_validation", "evidence_first", "symbolic_not_neural"],
+          "properties": {
+            "staged_decomposition": {"type": "string"},
+            "real_world_worktree_validation": {"type": "string"},
+            "evidence_first": {"type": "string"},
+            "symbolic_not_neural": {"type": "string"}
+          }
+        }
+      }
+    },
+    "rig_mapping_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["concept", "cegis_meaning", "cegar_meaning", "rig_meaning", "implementation_implication", "risk_if_misunderstood"],
+        "properties": {
+          "concept": {"type": "string"},
+          "cegis_meaning": {"type": "string"},
+          "cegar_meaning": {"type": "string"},
+          "rig_meaning": {"type": "string"},
+          "implementation_implication": {"type": "string"},
+          "risk_if_misunderstood": {"type": "string"}
+        }
+      }
+    },
+    "literature_challenges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "challenge", "literature_says", "rig_appearance", "concrete_mitigation", "belongs_in"],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1},
+          "challenge": {"type": "string"},
+          "literature_says": {"type": "string"},
+          "rig_appearance": {"type": "string"},
+          "concrete_mitigation": {"type": "string"},
+          "belongs_in": {"type": "string"}
+        }
+      }
+    },
+    "worktree_lifecycle_recommendations": {
+      "type": "object",
+      "required": ["state_machine", "required_lifecycle_events", "budget_fields", "cleanup_policy", "evidence_retention_policy", "risks"],
+      "properties": {
+        "state_machine": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["state", "description", "transitions_to"],
+            "properties": {
+              "state": {"type": "string"},
+              "description": {"type": "string"},
+              "transitions_to": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "required_lifecycle_events": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "budget_fields": {
+          "type": "object",
+          "required": ["max_scratch_worktrees", "max_retained_failed_worktrees", "max_stage_depth", "max_candidates_per_slice", "max_runtime_seconds_per_candidate"],
+          "properties": {
+            "max_scratch_worktrees": {"type": "integer"},
+            "max_retained_failed_worktrees": {"type": "integer"},
+            "max_stage_depth": {"type": "integer"},
+            "max_candidates_per_slice": {"type": "integer"},
+            "max_runtime_seconds_per_candidate": {"type": "integer"}
+          }
+        },
+        "cleanup_policy": {"type": "string"},
+        "evidence_retention_policy": {"type": "string"},
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["risk", "mitigation"],
+            "properties": {
+              "risk": {"type": "string"},
+              "mitigation": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "counterexample_design": {
+      "type": "object",
+      "required": ["counterexample_shape", "storage_policy", "replay_policy", "pruning_policy", "clustering_policy"],
+      "properties": {
+        "counterexample_shape": {
+          "type": "object",
+          "required": ["fields"],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["field", "purpose"],
+                "properties": {
+                  "field": {"type": "string"},
+                  "purpose": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "storage_policy": {"type": "string"},
+        "replay_policy": {"type": "string"},
+        "pruning_policy": {"type": "string"},
+        "clustering_policy": {"type": "string"}
+      }
+    },
+    "validation_matrix_recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["validator", "why_needed", "fake_green_prevented", "cost", "evidence_artifact", "implementation_status"],
+        "properties": {
+          "validator": {"type": "string"},
+          "why_needed": {"type": "string"},
+          "fake_green_prevented": {"type": "string"},
+          "cost": {"type": "string"},
+          "evidence_artifact": {"type": "string"},
+          "implementation_status": {"type": "string", "enum": ["required_for_first_proof", "parked", "future"]}
+        }
+      }
+    },
+    "pattern_aggregation_recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["product_id", "purpose", "required_fields", "informs"],
+        "properties": {
+          "product_id": {"type": "string"},
+          "purpose": {"type": "string"},
+          "required_fields": {"type": "array", "items": {"type": "string"}},
+          "informs": {"type": "string"}
+        }
+      }
+    },
+    "proposed_rig_schemas_and_events": {
+      "type": "object",
+      "required": ["candidate_schemas", "candidate_events"],
+      "properties": {
+        "candidate_schemas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["schema_id", "purpose", "status"],
+            "properties": {
+              "schema_id": {"type": "string"},
+              "purpose": {"type": "string"},
+              "status": {"type": "string", "enum": ["already_created", "to_create_before_compiler", "to_create_with_compiler"]}
+            }
+          }
+        },
+        "candidate_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event_name", "purpose", "status"],
+            "properties": {
+              "event_name": {"type": "string"},
+              "purpose": {"type": "string"},
+              "status": {"type": "string", "enum": ["already_in_feasibility_artifact", "to_register_before_compiler"]}
+            }
+          }
+        }
+      }
+    },
+    "final_recommendation": {
+      "type": "object",
+      "required": [
+        "should_adopt_cegis_cegar_inspired_model",
+        "what_to_copy_directly",
+        "what_to_avoid_copying",
+        "what_must_exist_before_compiler_v0",
+        "smallest_useful_compiler_experiment",
+        "what_to_defer",
+        "publishable_claims",
+        "premature_or_dishonest_claims"
+      ],
+      "properties": {
+        "should_adopt_cegis_cegar_inspired_model": {"type": "boolean"},
+        "what_to_copy_directly": {"type": "array", "items": {"type": "string"}},
+        "what_to_avoid_copying": {"type": "array", "items": {"type": "string"}},
+        "what_must_exist_before_compiler_v0": {"type": "array", "items": {"type": "string"}},
+        "smallest_useful_compiler_experiment": {"type": "string"},
+        "what_to_defer": {"type": "array", "items": {"type": "string"}},
+        "publishable_claims": {"type": "array", "items": {"type": "string"}},
+        "premature_or_dishonest_claims": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "claim_boundaries": {
+      "type": "object",
+      "required": ["rig_may_claim", "rig_must_not_claim"],
+      "properties": {
+        "rig_may_claim": {"type": "array", "items": {"type": "string"}},
+        "rig_must_not_claim": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "humility_boundaries": {
+      "type": "object",
+      "required": ["rices_theorem", "no_formal_verification_claim", "bounded_search_not_universal_synthesis", "symbolic_not_neural_learning"],
+      "properties": {
+        "rices_theorem": {"type": "string"},
+        "no_formal_verification_claim": {"type": "string"},
+        "bounded_search_not_universal_synthesis": {"type": "string"},
+        "symbolic_not_neural_learning": {"type": "string"}
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.hardening_delta.v1.schema.json",
+  "title": "Rig OTel Hardening Delta",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "trend_run_id",
+    "generated_at",
+    "deltas"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.hardening_delta.v1"
+    },
+    "trend_run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "delta_id",
+          "affected_tool_category",
+          "signal_kind",
+          "trend_class",
+          "severity",
+          "first_seen_run_id",
+          "latest_seen_run_id",
+          "evidence_run_ids",
+          "baseline_metrics",
+          "latest_metrics",
+          "delta_metrics",
+          "confidence",
+          "recommended_hardening_action",
+          "content_light_evidence_hashes"
+        ],
+        "properties": {
+          "delta_id": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "affected_tool_category": {
+            "type": "string"
+          },
+          "signal_kind": {
+            "type": "string"
+          },
+          "trend_class": {
+            "type": "string",
+            "enum": [
+              "persistent_pain",
+              "new_regression",
+              "improved",
+              "one_off_noise",
+              "insufficient_sample"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "first_seen_run_id": {
+            "type": "string"
+          },
+          "latest_seen_run_id": {
+            "type": "string"
+          },
+          "evidence_run_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "baseline_metrics": {
+            "type": "object",
+            "required": [
+              "candidate_count",
+              "affected_event_count",
+              "p50_duration_ms",
+              "p95_duration_ms",
+              "p99_duration_ms",
+              "error_count",
+              "retry_count",
+              "timeout_count",
+              "cancellation_count",
+              "missing_trace_id_count",
+              "missing_parent_span_id_count",
+              "redaction_drop_count",
+              "unknown_tool_category_count"
+            ],
+            "properties": {
+              "candidate_count": { "type": "integer" },
+              "affected_event_count": { "type": "integer", "minimum": 0 },
+              "p50_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "p95_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "p99_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "error_count": { "type": "integer", "minimum": 0 },
+              "retry_count": { "type": "integer", "minimum": 0 },
+              "timeout_count": { "type": "integer", "minimum": 0 },
+              "cancellation_count": { "type": "integer", "minimum": 0 },
+              "missing_trace_id_count": { "type": "integer", "minimum": 0 },
+              "missing_parent_span_id_count": { "type": "integer", "minimum": 0 },
+              "redaction_drop_count": { "type": "integer", "minimum": 0 },
+              "unknown_tool_category_count": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "latest_metrics": {
+            "type": "object",
+            "required": [
+              "candidate_count",
+              "affected_event_count",
+              "p50_duration_ms",
+              "p95_duration_ms",
+              "p99_duration_ms",
+              "error_count",
+              "retry_count",
+              "timeout_count",
+              "cancellation_count",
+              "missing_trace_id_count",
+              "missing_parent_span_id_count",
+              "redaction_drop_count",
+              "unknown_tool_category_count"
+            ],
+            "properties": {
+              "candidate_count": { "type": "integer" },
+              "affected_event_count": { "type": "integer", "minimum": 0 },
+              "p50_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "p95_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "p99_duration_ms": { "type": ["number", "null"], "minimum": 0 },
+              "error_count": { "type": "integer", "minimum": 0 },
+              "retry_count": { "type": "integer", "minimum": 0 },
+              "timeout_count": { "type": "integer", "minimum": 0 },
+              "cancellation_count": { "type": "integer", "minimum": 0 },
+              "missing_trace_id_count": { "type": "integer", "minimum": 0 },
+              "missing_parent_span_id_count": { "type": "integer", "minimum": 0 },
+              "redaction_drop_count": { "type": "integer", "minimum": 0 },
+              "unknown_tool_category_count": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "delta_metrics": {
+            "type": "object",
+            "required": [
+              "candidate_count",
+              "affected_event_count",
+              "p50_duration_ms",
+              "p95_duration_ms",
+              "p99_duration_ms",
+              "error_count",
+              "retry_count",
+              "timeout_count",
+              "cancellation_count",
+              "missing_trace_id_count",
+              "missing_parent_span_id_count",
+              "redaction_drop_count",
+              "unknown_tool_category_count"
+            ],
+            "properties": {
+              "candidate_count": { "type": "integer" },
+              "affected_event_count": { "type": "integer" },
+              "p50_duration_ms": { "type": ["number", "null"] },
+              "p95_duration_ms": { "type": ["number", "null"] },
+              "p99_duration_ms": { "type": ["number", "null"] },
+              "error_count": { "type": "integer" },
+              "retry_count": { "type": "integer" },
+              "timeout_count": { "type": "integer" },
+              "cancellation_count": { "type": "integer" },
+              "missing_trace_id_count": { "type": "integer" },
+              "missing_parent_span_id_count": { "type": "integer" },
+              "redaction_drop_count": { "type": "integer" },
+              "unknown_tool_category_count": { "type": "integer" }
+            },
+            "additionalProperties": false
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "recommended_hardening_action": {
+            "type": "string"
+          },
+          "content_light_evidence_hashes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
