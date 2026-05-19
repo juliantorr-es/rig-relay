@@ -187,9 +187,28 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras
 
+      - name: Produce CI evidence (structured)
+        id: ci-evidence
+        run: |
+          uv run python -c "
+          from rig_relay.ci_evidence import produce_ci_evidence
+          result = produce_ci_evidence()
+          print(f'CI evidence verdict: {result.verdict}')
+          print(f'Evidence paths: {result.evidence_paths}')
+          "
+
       - name: Run release evidence gate (non-mutating)
         id: gate
         run: uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json
+
+      - name: Upload CI evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ci-evidence
+          path: .build/rig-relay/evidence/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload gate result
         if: always()

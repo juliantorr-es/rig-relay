@@ -197,6 +197,8 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "scripts/package_release.py" = ["PLR"]
 "scripts/rig_site_render.py" = ["PLR"]
 "rig_relay/governance/findings_lifecycle.py" = ["PLR"]
+"rig_relay/ci_evidence/_producer.py" = ["PLR"]
+"rig_relay/coordination/models.py" = ["PLR0913"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

@@ -235,15 +235,17 @@
     {
       "step_id": "gp_ci_cd_structured_evidence",
       "user_goal": "Verify CI/CD produces structured evidence artifacts, not raw bash exit codes",
-      "command_or_ui_action": "Run CI orchestrator: uv run python scripts/rig_ci_orchestrator.py --mode ci --dry-run. Verify .build/rig-relay/ci/<run_id>/ci_run.v1.json and ci_verdict.v1.json validate against schemas.",
-      "expected_result": "CI orchestrator produces schema-validated JSON evidence. CI verdict includes blocker_ids, check results, and required_next_actions. Release gate validator consumes CI verdict artifacts.",
-      "evidence_path": ".build/rig-relay/ci/ci_verdict.v1.json",
+      "command_or_ui_action": "Run CI evidence producer: uv run python -c 'from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict)'. Verify .build/rig-relay/evidence/ci_*_run.v1.json, ci_*_job.v1.json, ci_*_verdict.v1.json, and ci_*_artifact_index.v1.json validate against schemas.",
+      "expected_result": "CI evidence producer creates schema-validated JSON evidence (run, job, verdict, artifact_index) under .build/rig-relay/evidence/. CI verdict includes blocking_reasons, schema_validation_summary, release_bundle_manifest_summary, and artifact hash verification. Release gate validator consumes CI verdict artifacts.",
+      "evidence_path": ".build/rig-relay/evidence/",
       "blocking_failure_conditions": [
         "CI pipeline relies on bash exit codes as sole evidence",
-        "No ci_run.v1.json or ci_verdict.v1.json produced",
-        "CI artifacts lack schema validation",
-        "CI capability manifest does not exist",
-        "Release gate cannot consume CI verdict artifacts"
+        "No ci_run.v1.json, ci_job.v1.json, or ci_verdict.v1.json produced",
+        "CI artifacts fail schema validation",
+        "Artifact hashes are missing or mismatched",
+        "Release gate validator cannot consume CI verdict artifacts",
+        "Local run falsely claims official_release=true",
+        "CI verdict references artifacts that do not exist"
       ],
       "status": "blocked",
       "validation_method": "automated_script",
@@ -427,7 +429,7 @@
     "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
     "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
     "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
-    ".build/rig-relay/ci/ci_verdict.v1.json",
+    ".build/rig-relay/evidence/",
     "rig_relay/acp/_disabled_tools.py",
     "rig_relay/sdk/__init__.py",
     "docs/json/protocols/a2a_promotion_readiness.v1.json"

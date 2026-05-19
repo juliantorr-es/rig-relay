@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.ci.verdict.v1.schema.json",
+  "title": "CI Verdict v1",
+  "description": "Canonical CI verdict produced by the CI evidence orchestrator. Evaluates CI evidence coherence: artifact presence, schema validation, hash verification, and runner class consistency. Consumed by the release gate validator.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "verdict",
+    "release_gate_blocker_id",
+    "runner_class",
+    "official_release",
+    "evaluated_at",
+    "required_artifacts_present",
+    "required_artifacts_valid",
+    "artifact_hashes_verified",
+    "blocking_reasons",
+    "warnings",
+    "evidence_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.ci.verdict.v1",
+      "description": "Schema version identifier."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Stable identifier for the parent CI run."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "hold", "fail"],
+      "description": "CI evidence verdict. pass: all evidence coherent and verifiable. hold: evidence present but some assertions unverified. fail: evidence missing, malformed, or contradictory."
+    },
+    "release_gate_blocker_id": {
+      "type": "string",
+      "const": "blk_ci_cd_structured_evidence_surface",
+      "description": "The release gate blocker this verdict evaluates."
+    },
+    "runner_class": {
+      "type": "string",
+      "enum": ["github_actions", "codespaces_lab", "local"],
+      "description": "CI/CD runner classification at verdict time."
+    },
+    "official_release": {
+      "type": "boolean",
+      "description": "True only for official release CI runs."
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this verdict was evaluated."
+    },
+    "required_artifacts_present": {
+      "type": "boolean",
+      "description": "True if all required artifacts (ci_run, ci_job, artifact_index, verdict) are present and parseable."
+    },
+    "required_artifacts_valid": {
+      "type": "boolean",
+      "description": "True if all required artifacts validate against their schemas."
+    },
+    "artifact_hashes_verified": {
+      "type": "boolean",
+      "description": "True if all artifact SHA-256 digests match the referenced file contents."
+    },
+    "schema_validation_summary": {
+      "type": "object",
+      "properties": {
+        "schemas_validated": {"type": "integer", "minimum": 0},
+        "schemas_passed": {"type": "integer", "minimum": 0},
+        "schemas_failed": {"type": "integer", "minimum": 0},
+        "schema_errors": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Summary of schema validation results for CI evidence artifacts."
+    },
+    "test_receipt_summary": {
+      "type": "object",
+      "properties": {
+        "test_receipts_found": {"type": "integer", "minimum": 0},
+        "test_receipts_valid": {"type": "integer", "minimum": 0},
+        "test_receipts_missing": {"type": "integer", "minimum": 0},
+        "receipt_errors": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Summary of test receipt presence and validity."
+    },
+    "release_bundle_manifest_summary": {
+      "type": "object",
+      "properties": {
+        "manifest_found": {"type": "boolean"},
+        "manifest_valid": {"type": "boolean"},
+        "manifest_sha256": {"type": "string"},
+        "bundle_id": {"type": "string"},
+        "artifact_count": {"type": "integer", "minimum": 0},
+        "manifest_errors": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Summary of release bundle manifest presence and validity."
+    },
+    "blocking_reasons": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Reasons the verdict is hold or fail. Empty for pass."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Non-blocking warnings about evidence quality or missing non-required artifacts."
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Relative paths from repo root to all evidence artifacts referenced by this verdict."
+    },
+    "telemetry_redaction_notes": {
+      "type": "string",
+      "description": "Statement that no raw secrets, credentials, private file contents, raw prompts, or private repository contents were emitted in this evidence."
+    }
+  },
+  "additionalProperties": false
+}

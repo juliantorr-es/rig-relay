@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.ci.artifact_index.v1.schema.json",
+  "title": "CI Artifact Index v1",
+  "description": "Canonical CI artifact index produced by the CI evidence orchestrator. Indexes every artifact produced or referenced by a CI run with its digest, classification, and release-gate relevance.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "artifacts",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.ci.artifact_index.v1",
+      "description": "Schema version identifier."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Stable identifier for the parent CI run."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "artifact_kind",
+          "path",
+          "sha256",
+          "size_bytes",
+          "producer",
+          "required_for_release_gate",
+          "source_surface",
+          "created_at"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "description": "Stable identifier for this artifact within the run."
+          },
+          "artifact_kind": {
+            "type": "string",
+            "description": "Artifact kind (e.g., ci_run, ci_verdict, ci_job, release_bundle, test_receipt, schema_validation, evidence_jsonl, manifest_json)."
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path from repo root to the artifact."
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 hex digest of the artifact content."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "File size in bytes."
+          },
+          "producer": {
+            "type": "string",
+            "description": "Component or script that produced this artifact (e.g., 'ci_evidence_producer', 'package_release', 'pytest')."
+          },
+          "required_for_release_gate": {
+            "type": "boolean",
+            "description": "True if this artifact is required for the release gate to close."
+          },
+          "redaction_classification": {
+            "type": "string",
+            "enum": ["public", "internal", "redacted", "redacted_content_hashed"],
+            "description": "Redaction classification of this artifact."
+          },
+          "source_surface": {
+            "type": "string",
+            "enum": ["release_bundle", "schema_validation", "test_receipt", "ci_evidence", "other"],
+            "description": "Source surface that produced this artifact."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this artifact was indexed."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "List of indexed artifacts for this CI run."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this index was generated."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.coordination.fake_green_event.v1.schema.json",
+  "title": "Coordination Fake-Green Event v1",
+  "description": "Records a detected enforcement test that passes but validates description text rather than implementation evidence. Content-light: uses file hashes, not raw paths or contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "contract_family_id",
+    "test_file_hash",
+    "test_function",
+    "fake_green_pattern",
+    "why_theatrical",
+    "what_would_still_pass_description",
+    "missing_adversarial_test_description",
+    "release_blocker_ids",
+    "severity",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.coordination.fake_green_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Deterministic event ID derived from content hash."
+    },
+    "contract_family_id": {
+      "type": "string",
+      "description": "Identifier of the contract family."
+    },
+    "test_file_hash": {
+      "type": "string",
+      "description": "Salted SHA256 hash of the test file path."
+    },
+    "test_function": {
+      "type": "string",
+      "description": "Name of the test function that is fake-green."
+    },
+    "fake_green_pattern": {
+      "type": "string",
+      "enum": [
+        "blocker_text_only_enforcement",
+        "file_existence_only",
+        "field_presence_only",
+        "static_fixture_only",
+        "mocked_seam",
+        "happy_path_only",
+        "stale_evidence_accepted",
+        "schema_not_loaded",
+        "producer_is_only_consumer"
+      ],
+      "description": "Pattern of fake-green enforcement."
+    },
+    "why_theatrical": {
+      "type": "string",
+      "description": "Explanation of why the test is theatrical (passes without real enforcement)."
+    },
+    "what_would_still_pass_description": {
+      "type": "string",
+      "description": "Description of what incorrect states the test would still pass through."
+    },
+    "missing_adversarial_test_description": {
+      "type": "string",
+      "description": "Description of what adversarial test coverage is missing."
+    },
+    "release_blocker_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related release blocker IDs."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Severity of the fake-green test."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of event generation."
+    }
+  },
+  "additionalProperties": false
+}

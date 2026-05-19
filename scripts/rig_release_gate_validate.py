@@ -77,6 +77,108 @@ STEP_TO_BLOCKER: dict[str, str] = {
 }
 
 
+def check_ci_evidence_surface(repo_root: Path, schemas_dir: Path) -> list[str]:
+    errors: list[str] = []
+    evidence_dir = repo_root / ".build" / "rig-relay" / "evidence"
+
+    if not evidence_dir.is_dir():
+        errors.append(
+            "CI evidence surface: no evidence directory found at "
+            ".build/rig-relay/evidence/. Run produce_ci_evidence() to generate CI artifacts."
+        )
+        return errors
+
+    verdict_files = sorted(evidence_dir.glob("ci_*_verdict.v1.json"))
+    if not verdict_files:
+        errors.append(
+            "CI evidence surface: no CI verdict artifacts found in "
+            ".build/rig-relay/evidence/. Run produce_ci_evidence() to generate CI artifacts."
+        )
+        return errors
+
+    verdict_path = verdict_files[-1]
+    try:
+        verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        errors.append(
+            f"CI evidence surface: failed to parse CI verdict {verdict_path.name}: {e}"
+        )
+        return errors
+
+    schema_errs = validate_schema_artifact(verdict, "rig.ci.verdict.v1", schemas_dir)
+    if schema_errs:
+        errors.append(
+            f"CI evidence surface: CI verdict {verdict_path.name} fails schema "
+            f"validation: {'; '.join(schema_errs)}"
+        )
+        return errors
+
+    verdict_value = verdict.get("verdict", "fail")
+    blocking_reasons = verdict.get("blocking_reasons", [])
+    required_present = verdict.get("required_artifacts_present", False)
+    required_valid = verdict.get("required_artifacts_valid", False)
+    hashes_verified = verdict.get("artifact_hashes_verified", False)
+
+    if verdict_value == "pass":
+        if not all([required_present, required_valid, hashes_verified]):
+            errors.append(
+                f"CI evidence surface: verdict is 'pass' but required_artifacts_present="
+                f"{required_present}, required_artifacts_valid={required_valid}, "
+                f"artifact_hashes_verified={hashes_verified}"
+            )
+    elif verdict_value == "fail":
+        errors.append(
+            f"CI evidence surface: CI verdict is 'fail'. Blocking reasons: "
+            f"{'; '.join(blocking_reasons[:5])}"
+            + (
+                f" ... ({len(blocking_reasons)} total)"
+                if len(blocking_reasons) > 5
+                else ""
+            )
+        )
+    elif verdict_value == "hold":
+        errors.append(
+            f"CI evidence surface: CI verdict is 'hold' — evidence exists but "
+            f"unverified. Warnings: {verdict.get('warnings', [])}"
+        )
+
+    run_files = sorted(evidence_dir.glob("ci_*_run.v1.json"))
+    job_files = sorted(evidence_dir.glob("ci_*_job.v1.json"))
+    index_files = sorted(evidence_dir.glob("ci_*_artifact_index.v1.json"))
+
+    if not run_files:
+        errors.append("CI evidence surface: missing ci_run.v1.json artifact")
+    else:
+        run_errs = validate_schema_artifact(
+            json.loads(run_files[-1].read_text(encoding="utf-8")),
+            "rig.ci.run.v1",
+            schemas_dir,
+        )
+        errors.extend(f"CI evidence surface: ci_run: {e}" for e in run_errs)
+
+    if not job_files:
+        errors.append("CI evidence surface: missing ci_job.v1.json artifact")
+    else:
+        job_errs = validate_schema_artifact(
+            json.loads(job_files[-1].read_text(encoding="utf-8")),
+            "rig.ci.job.v1",
+            schemas_dir,
+        )
+        errors.extend(f"CI evidence surface: ci_job: {e}" for e in job_errs)
+
+    if not index_files:
+        errors.append("CI evidence surface: missing ci_artifact_index.v1.json artifact")
+    else:
+        index_errs = validate_schema_artifact(
+            json.loads(index_files[-1].read_text(encoding="utf-8")),
+            "rig.ci.artifact_index.v1",
+            schemas_dir,
+        )
+        errors.extend(f"CI evidence surface: artifact_index: {e}" for e in index_errs)
+
+    return errors
+
+
 def check_golden_path(
     golden_path: dict[str, Any] | None, schemas_dir: Path
 ) -> list[str]:
@@ -628,6 +730,9 @@ def run_validation(
         errors.extend(
             check_golden_path_blocker_consistency(golden_path, blockers, repo_root)
         )
+
+    artifact_counts["ci_evidence_checked"] = 1
+    errors.extend(check_ci_evidence_surface(repo_root, schemas_dir))
 
     phase_summaries = _build_phase_summaries(phases, errors)
     status = "passed" if len(errors) == 0 else "failed"

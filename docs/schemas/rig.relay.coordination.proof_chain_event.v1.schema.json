@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.coordination.proof_chain_event.v1.schema.json",
+  "title": "Coordination Proof-Chain Event v1",
+  "description": "Records proof-chain completeness or gaps for a contract surface. Tracks which authority, schema, producer, consumer, validator, test, and evidence files are present or missing. Content-light: uses SHA256 hashes, not raw paths.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "surface_id",
+    "contract_family_id",
+    "proof_chain_status",
+    "authority_file_hashes",
+    "schema_file_hashes",
+    "producer_file_hashes",
+    "consumer_file_hashes",
+    "validator_file_hashes",
+    "test_file_hashes",
+    "evidence_file_hashes",
+    "missing_schema_validation",
+    "missing_artifact_hash_validation",
+    "missing_trace_or_correlation_validation",
+    "missing_telemetry_or_redaction_validation",
+    "concrete_failure_mode",
+    "recommended_next_action",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.coordination.proof_chain_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Deterministic event ID derived from content hash."
+    },
+    "surface_id": {
+      "type": "string",
+      "description": "Identifier of the contract surface under audit."
+    },
+    "contract_family_id": {
+      "type": "string",
+      "description": "Identifier of the contract family."
+    },
+    "proof_chain_status": {
+      "type": "string",
+      "enum": ["complete", "partial", "theatrical", "missing"],
+      "description": "Status of proof-chain completeness."
+    },
+    "authority_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of authority files (schemas, governance docs)."
+    },
+    "schema_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of schema file paths."
+    },
+    "producer_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of producer/implementation file paths."
+    },
+    "consumer_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of consumer file paths."
+    },
+    "validator_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of validator file paths."
+    },
+    "test_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of test file paths."
+    },
+    "evidence_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of evidence file paths."
+    },
+    "missing_schema_validation": {
+      "type": "boolean",
+      "description": "True if schema validation is missing from the proof chain."
+    },
+    "missing_artifact_hash_validation": {
+      "type": "boolean",
+      "description": "True if artifact hash validation is missing from the proof chain."
+    },
+    "missing_trace_or_correlation_validation": {
+      "type": "boolean",
+      "description": "True if trace or correlation validation is missing."
+    },
+    "missing_telemetry_or_redaction_validation": {
+      "type": "boolean",
+      "description": "True if telemetry or redaction validation is missing."
+    },
+    "concrete_failure_mode": {
+      "type": "string",
+      "description": "Description of what actually fails or is absent."
+    },
+    "recommended_next_action": {
+      "type": "string",
+      "description": "Recommended next action to close the proof-chain gap."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of event generation."
+    }
+  },
+  "additionalProperties": false
+}

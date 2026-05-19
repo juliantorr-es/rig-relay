@@ -39,6 +39,9 @@ class EventName(StrEnum):
     COORD_PROJECTION_READ = "coord.projection.read"
     COORD_LEASE_EXPIRED = "coord.lease.expired"
     COORD_LEASE_MARKED_STALE = "coord.lease.marked_stale"
+    COORD_TASK_CLAIM_REFUSED = "coord.task.claim_refused"
+    # Release events
+    RELEASE_BUNDLE_BUILT = "rig.relay.release.bundle_built"
     # Checkpoint commit events
     CHECKPOINT_COMMITTED = "rig.relay.checkpoint.committed"
     CHECKPOINT_REFUSED = "rig.relay.checkpoint.refused"

@@ -90,14 +90,25 @@ def detect_target_os() -> str:
 
 _ARCH_ARM64 = frozenset({"arm64", "aarch64"})
 _ARCH_AMD64 = frozenset({"x86_64", "amd64"})
-_ARCH_MANIFEST_MAP = {
+_NORMALIZE_TARGET_ARCH: dict[str, str] = {
     "arm64": "aarch64",
     "aarch64": "aarch64",
     "amd64": "x86_64",
     "x86_64": "x86_64",
+    "x64": "x86_64",
     "x86": "x86_64",
 }
 _ARCH_X86 = frozenset({"i386", "i686", "x86"})
+
+
+def normalize_target_arch(arch: str) -> str:
+    normalized = _NORMALIZE_TARGET_ARCH.get(arch.lower())
+    if normalized is None:
+        raise ValueError(
+            f"Unsupported target architecture: {arch!r}. "
+            f"Supported: {sorted(set(_NORMALIZE_TARGET_ARCH.values()))}"
+        )
+    return normalized
 
 
 def detect_target_arch() -> str:
@@ -283,7 +294,7 @@ def build_manifest_entrypoint(
         "bundle_name": bundle_name,
         "bundle_format": bundle_format,
         "target_os": target_os,
-        "target_arch": _ARCH_MANIFEST_MAP.get(target_arch, target_arch),
+        "target_arch": normalize_target_arch(target_arch),
         "git_branch": branch,
         "git_commit_sha": commit_sha,
         "git_dirty": dirty,

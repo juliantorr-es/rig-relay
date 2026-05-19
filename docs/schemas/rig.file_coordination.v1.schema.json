@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.file_coordination.v1.schema.json",
+  "title": "File Coordination Marker v1",
+  "description": "Schema for the coordination file-marker protocol declared by file_markers.py. Content-light: stores hashes, not raw paths or contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "protocol",
+    "session_id",
+    "task_id",
+    "claim_kind",
+    "marker_sha256",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.file_coordination.v1"
+    },
+    "protocol": {
+      "type": "string",
+      "const": "rig.file_coordination.v1",
+      "description": "Protocol identifier for the file coordination marker."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session ID that owns this file claim."
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Task ID within the session that claimed the file."
+    },
+    "claim_kind": {
+      "type": "string",
+      "enum": ["write", "read", "inspect"],
+      "description": "Kind of file claim."
+    },
+    "marker_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 hash of the marker payload."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of claim creation."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["active", "released_modified", "released_readonly"],
+      "description": "Current state of the file claim marker."
+    },
+    "released_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when claim was released."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.coordination.seam_event.v1.schema.json",
+  "title": "Coordination Seam Event v1",
+  "description": "Schema-governed contract seam event. Records audit-discovered gaps in contract surfaces: missing schemas, missing producers/consumers, validator theater, fake-green tests, and unverifiable release blockers. Content-light: no raw file paths or contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "contract_family_id",
+    "seam_class",
+    "severity",
+    "proof_chain_status",
+    "fake_green_risk",
+    "affected_file_hashes",
+    "evidence_file_hashes",
+    "schema_file_hashes",
+    "implementation_file_hashes",
+    "validator_file_hashes",
+    "test_file_hashes",
+    "trace_fields_observed",
+    "trace_fields_missing",
+    "telemetry_redaction_implications",
+    "concurrency_implications",
+    "recommended_next_action",
+    "detected_by",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.coordination.seam_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Deterministic event ID derived from content hash."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "contract_seam_discovered",
+        "proof_chain_incomplete",
+        "fake_green_test_detected",
+        "schema_authority_missing",
+        "schema_authority_disconnected",
+        "producer_missing",
+        "consumer_missing",
+        "validator_theater_detected",
+        "evidence_path_missing",
+        "artifact_digest_missing",
+        "stale_validation_run_detected",
+        "release_blocker_unverifiable",
+        "trace_context_missing",
+        "telemetry_redaction_gap",
+        "concurrency_authority_undefined",
+        "mutation_authority_ambiguous",
+        "contract_family_promoted",
+        "contract_family_deferred"
+      ],
+      "description": "Kind of coordination seam event."
+    },
+    "contract_family_id": {
+      "type": "string",
+      "description": "Identifier of the contract family (e.g., ci_cd, mcp, acp, sdk)."
+    },
+    "seam_class": {
+      "type": "string",
+      "enum": [
+        "schema_authority_missing",
+        "schema_authority_disconnected",
+        "producer_missing",
+        "consumer_missing",
+        "validator_theater_detected",
+        "evidence_path_missing",
+        "artifact_digest_missing",
+        "stale_validation_run_detected",
+        "release_blocker_unverifiable",
+        "trace_context_missing",
+        "telemetry_redaction_gap",
+        "concurrency_authority_undefined",
+        "mutation_authority_ambiguous",
+        "proof_chain_incomplete",
+        "fake_green_test_detected"
+      ],
+      "description": "Classification of the seam."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Severity of the seam."
+    },
+    "proof_chain_status": {
+      "type": "string",
+      "enum": ["complete", "partial", "theatrical", "missing"],
+      "description": "Status of the proof chain for this contract surface."
+    },
+    "fake_green_risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Risk that enforcement tests are fake-green (testing text, not evidence)."
+    },
+    "release_blocker_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Related release blocker IDs."
+    },
+    "affected_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "SHA256 hashes of affected file paths (salted, content-light)."
+    },
+    "evidence_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of evidence file paths."
+    },
+    "schema_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of schema file paths."
+    },
+    "implementation_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of implementation file paths."
+    },
+    "validator_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of validator file paths."
+    },
+    "test_file_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of test file paths."
+    },
+    "trace_fields_observed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Trace/correlation fields present at this contract surface."
+    },
+    "trace_fields_missing": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Trace/correlation fields absent from this contract surface."
+    },
+    "telemetry_redaction_implications": {
+      "type": "string",
+      "description": "Description of telemetry or redaction implications of this seam."
+    },
+    "concurrency_implications": {
+      "type": "string",
+      "description": "Description of concurrency or mutation authority implications."
+    },
+    "recommended_next_action": {
+      "type": "string",
+      "description": "Recommended next action to close this seam."
+    },
+    "detected_by": {
+      "type": "string",
+      "description": "Identifier of the audit or scanner that detected this seam."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of event generation."
+    }
+  },
+  "additionalProperties": false
+}

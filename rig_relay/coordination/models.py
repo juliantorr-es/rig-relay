@@ -469,6 +469,219 @@ def build_checkpoint_refused_payload(
     }
 
 
+# ── Coordination Event Ledger Contract v1 payload builders ──────────────
+
+_SEAM_SCHEMA_VERSION = "rig.relay.coordination.seam_event.v1"
+_PROOF_CHAIN_SCHEMA_VERSION = "rig.relay.coordination.proof_chain_event.v1"
+_FAKE_GREEN_SCHEMA_VERSION = "rig.relay.coordination.fake_green_event.v1"
+
+
+def _hash_file_paths(paths: list[str]) -> list[str]:
+    return sorted(salted_path_hash(p) for p in paths)
+
+
+def _canonical_event_id(payload: dict[str, Any]) -> str:
+    return _sha256_payload(payload)
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def build_seam_discovered_payload(
+    *,
+    contract_family_id: str,
+    seam_class: str,
+    severity: str,
+    proof_chain_status: str,
+    fake_green_risk: str,
+    affected_file_hashes: list[str],
+    evidence_file_hashes: list[str] | None = None,
+    schema_file_hashes: list[str] | None = None,
+    implementation_file_hashes: list[str] | None = None,
+    validator_file_hashes: list[str] | None = None,
+    test_file_hashes: list[str] | None = None,
+    release_blocker_ids: list[str] | None = None,
+    trace_fields_observed: list[str] | None = None,
+    trace_fields_missing: list[str] | None = None,
+    telemetry_redaction_implications: str = "",
+    concurrency_implications: str = "",
+    recommended_next_action: str = "",
+    detected_by: str = "",
+) -> dict[str, Any]:
+    payload = {
+        "event_kind": "contract_seam_discovered",
+        "contract_family_id": contract_family_id,
+        "seam_class": seam_class,
+        "severity": severity,
+        "proof_chain_status": proof_chain_status,
+        "fake_green_risk": fake_green_risk,
+        "affected_file_hashes": sorted(affected_file_hashes),
+        "evidence_file_hashes": sorted(evidence_file_hashes)
+        if evidence_file_hashes
+        else [],
+        "schema_file_hashes": sorted(schema_file_hashes) if schema_file_hashes else [],
+        "implementation_file_hashes": (
+            sorted(implementation_file_hashes) if implementation_file_hashes else []
+        ),
+        "validator_file_hashes": sorted(validator_file_hashes)
+        if validator_file_hashes
+        else [],
+        "test_file_hashes": sorted(test_file_hashes) if test_file_hashes else [],
+        "release_blocker_ids": release_blocker_ids or [],
+        "trace_fields_observed": trace_fields_observed or [],
+        "trace_fields_missing": trace_fields_missing or [],
+        "telemetry_redaction_implications": telemetry_redaction_implications,
+        "concurrency_implications": concurrency_implications,
+        "recommended_next_action": recommended_next_action,
+        "detected_by": detected_by,
+        "generated_at": _now_iso(),
+    }
+    event_id = _canonical_event_id(payload)
+    return {"schema_version": _SEAM_SCHEMA_VERSION, "event_id": event_id, **payload}
+
+
+def build_proof_chain_incomplete_payload(
+    *,
+    surface_id: str,
+    contract_family_id: str,
+    proof_chain_status: str,
+    authority_file_hashes: list[str] | None = None,
+    schema_file_hashes: list[str] | None = None,
+    producer_file_hashes: list[str] | None = None,
+    consumer_file_hashes: list[str] | None = None,
+    validator_file_hashes: list[str] | None = None,
+    test_file_hashes: list[str] | None = None,
+    evidence_file_hashes: list[str] | None = None,
+    missing_schema_validation: bool = False,
+    missing_artifact_hash_validation: bool = False,
+    missing_trace_or_correlation_validation: bool = False,
+    missing_telemetry_or_redaction_validation: bool = False,
+    concrete_failure_mode: str = "",
+    recommended_next_action: str = "",
+) -> dict[str, Any]:
+    payload = {
+        "surface_id": surface_id,
+        "contract_family_id": contract_family_id,
+        "proof_chain_status": proof_chain_status,
+        "authority_file_hashes": sorted(authority_file_hashes)
+        if authority_file_hashes
+        else [],
+        "schema_file_hashes": sorted(schema_file_hashes) if schema_file_hashes else [],
+        "producer_file_hashes": sorted(producer_file_hashes)
+        if producer_file_hashes
+        else [],
+        "consumer_file_hashes": sorted(consumer_file_hashes)
+        if consumer_file_hashes
+        else [],
+        "validator_file_hashes": sorted(validator_file_hashes)
+        if validator_file_hashes
+        else [],
+        "test_file_hashes": sorted(test_file_hashes) if test_file_hashes else [],
+        "evidence_file_hashes": sorted(evidence_file_hashes)
+        if evidence_file_hashes
+        else [],
+        "missing_schema_validation": missing_schema_validation,
+        "missing_artifact_hash_validation": missing_artifact_hash_validation,
+        "missing_trace_or_correlation_validation": missing_trace_or_correlation_validation,
+        "missing_telemetry_or_redaction_validation": missing_telemetry_or_redaction_validation,
+        "concrete_failure_mode": concrete_failure_mode,
+        "recommended_next_action": recommended_next_action,
+        "generated_at": _now_iso(),
+    }
+    event_id = _canonical_event_id(payload)
+    return {
+        "schema_version": _PROOF_CHAIN_SCHEMA_VERSION,
+        "event_id": event_id,
+        **payload,
+    }
+
+
+def build_fake_green_test_detected_payload(
+    *,
+    contract_family_id: str,
+    test_file_hash: str,
+    test_function: str,
+    fake_green_pattern: str,
+    why_theatrical: str,
+    what_would_still_pass_description: str,
+    missing_adversarial_test_description: str,
+    release_blocker_ids: list[str] | None = None,
+    severity: str = "high",
+) -> dict[str, Any]:
+    payload = {
+        "contract_family_id": contract_family_id,
+        "test_file_hash": test_file_hash,
+        "test_function": test_function,
+        "fake_green_pattern": fake_green_pattern,
+        "why_theatrical": why_theatrical,
+        "what_would_still_pass_description": what_would_still_pass_description,
+        "missing_adversarial_test_description": missing_adversarial_test_description,
+        "release_blocker_ids": release_blocker_ids or [],
+        "severity": severity,
+        "generated_at": _now_iso(),
+    }
+    event_id = _canonical_event_id(payload)
+    return {
+        "schema_version": _FAKE_GREEN_SCHEMA_VERSION,
+        "event_id": event_id,
+        **payload,
+    }
+
+
+def build_release_blocker_unverifiable_payload(
+    *,
+    contract_family_id: str,
+    blocker_id: str,
+    seam_class: str,
+    severity: str,
+    proof_chain_status: str,
+    fake_green_risk: str,
+    affected_file_hashes: list[str],
+    evidence_file_hashes: list[str] | None = None,
+    schema_file_hashes: list[str] | None = None,
+    implementation_file_hashes: list[str] | None = None,
+    validator_file_hashes: list[str] | None = None,
+    test_file_hashes: list[str] | None = None,
+    trace_fields_observed: list[str] | None = None,
+    trace_fields_missing: list[str] | None = None,
+    telemetry_redaction_implications: str = "",
+    concurrency_implications: str = "",
+    recommended_next_action: str = "",
+    detected_by: str = "",
+) -> dict[str, Any]:
+    payload = {
+        "event_kind": "release_blocker_unverifiable",
+        "contract_family_id": contract_family_id,
+        "seam_class": seam_class,
+        "severity": severity,
+        "proof_chain_status": proof_chain_status,
+        "fake_green_risk": fake_green_risk,
+        "affected_file_hashes": sorted(affected_file_hashes),
+        "evidence_file_hashes": sorted(evidence_file_hashes)
+        if evidence_file_hashes
+        else [],
+        "schema_file_hashes": sorted(schema_file_hashes) if schema_file_hashes else [],
+        "implementation_file_hashes": (
+            sorted(implementation_file_hashes) if implementation_file_hashes else []
+        ),
+        "validator_file_hashes": sorted(validator_file_hashes)
+        if validator_file_hashes
+        else [],
+        "test_file_hashes": sorted(test_file_hashes) if test_file_hashes else [],
+        "trace_fields_observed": trace_fields_observed or [],
+        "trace_fields_missing": trace_fields_missing or [],
+        "telemetry_redaction_implications": telemetry_redaction_implications,
+        "concurrency_implications": concurrency_implications,
+        "release_blocker_ids": [blocker_id],
+        "recommended_next_action": recommended_next_action,
+        "detected_by": detected_by,
+        "generated_at": _now_iso(),
+    }
+    event_id = _canonical_event_id(payload)
+    return {"schema_version": _SEAM_SCHEMA_VERSION, "event_id": event_id, **payload}
+
+
 from rig_relay.coordination.fleet_models import (
     CreateProposalResult,
     FleetAgentMessage,
@@ -526,6 +739,7 @@ __all__ = [
     "build_checkpoint_committed_payload",
     "build_checkpoint_refused_payload",
     "build_conflict_reported_payload",
+    "build_fake_green_test_detected_payload",
     "build_handoff_accepted_payload",
     "build_handoff_rejected_payload",
     "build_handoff_requested_payload",
@@ -535,7 +749,10 @@ __all__ = [
     "build_path_released_payload",
     "build_path_reserved_payload",
     "build_projection_read_payload",
+    "build_proof_chain_incomplete_payload",
+    "build_release_blocker_unverifiable_payload",
     "build_reservation_refused_payload",
+    "build_seam_discovered_payload",
     "build_session_registered_payload",
     "build_task_claim_payload",
     "build_task_claim_refused_payload",

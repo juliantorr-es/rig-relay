@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.ci.run.v1.schema.json",
+  "title": "CI Run Evidence v1",
+  "description": "Canonical CI run evidence produced by the CI evidence orchestrator. Captures runner context, git metadata, workflow information, release classification, and pointers to related evidence artifacts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "runner_class",
+    "official_release",
+    "release_class",
+    "git_branch",
+    "git_sha",
+    "git_dirty",
+    "started_at",
+    "artifact_index_path",
+    "verdict_path",
+    "evidence_event_stream_path",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.ci.run.v1",
+      "description": "Schema version identifier."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Stable identifier for this CI run. For GitHub Actions: run_id. For local: timestamp-based UUID."
+    },
+    "run_attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Run attempt number. Defaults to 1 for first attempt."
+    },
+    "runner_class": {
+      "type": "string",
+      "enum": ["github_actions", "codespaces_lab", "local"],
+      "description": "CI/CD runner classification."
+    },
+    "official_release": {
+      "type": "boolean",
+      "description": "True only for GitHub Actions runs triggered by a release event against a protected branch. False for all other cases including Codespaces and local execution."
+    },
+    "release_class": {
+      "type": "string",
+      "enum": ["official", "lab", "dry_run", "local_validation"],
+      "description": "Release classification derived from runner/event/ref context."
+    },
+    "git_branch": {
+      "type": "string",
+      "description": "Git branch at CI run time."
+    },
+    "git_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "description": "Full 40-character git commit SHA at CI run time."
+    },
+    "git_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree had uncommitted changes at CI run time."
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "Workflow name from GitHub Actions context. Empty for local runs."
+    },
+    "workflow_ref": {
+      "type": "string",
+      "description": "Workflow ref from GitHub Actions context (e.g., org/repo/.github/workflows/ci.yml@ref). Empty for local runs."
+    },
+    "workflow_sha": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 40,
+      "description": "Commit SHA of the workflow file. Empty if not determinable."
+    },
+    "job_name": {
+      "type": "string",
+      "description": "Current job name from the CI environment. Empty for local runs."
+    },
+    "event_name": {
+      "type": "string",
+      "description": "GitHub event name that triggered the workflow (push, pull_request, release, etc.). Empty for local runs."
+    },
+    "actor": {
+      "type": "string",
+      "description": "Human-readable actor classification (github username or 'local-user'). Never includes secrets or tokens."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of CI run start."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of CI run completion. Omitted if still running."
+    },
+    "artifact_index_path": {
+      "type": "string",
+      "description": "Relative path from repo root to the artifact index JSON for this run."
+    },
+    "verdict_path": {
+      "type": "string",
+      "description": "Relative path from repo root to the CI verdict JSON for this run."
+    },
+    "evidence_event_stream_path": {
+      "type": "string",
+      "description": "Relative path from repo root to the evidence event stream JSONL for this run."
+    },
+    "telemetry_redaction_notes": {
+      "type": "string",
+      "description": "Statement that no raw secrets, credentials, private file contents, raw prompts, or private repository contents were emitted in this evidence."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this evidence record was generated."
+    }
+  },
+  "additionalProperties": false
+}

@@ -9,7 +9,7 @@ import subprocess
 
 import pytest
 
-from scripts.package_release import build_manifest_entrypoint
+from scripts.package_release import build_manifest_entrypoint, normalize_target_arch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "package_release.py"
@@ -424,3 +424,77 @@ def test_cli_produces_manifest_when_pyinstaller_unavailable(tmp_path: Path):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert "bundle_id" in manifest
     assert len(manifest["artifacts"]) >= 1
+
+
+# ── Architecture Normalization Tests ───────────────────────────────────────
+
+
+@pytest.mark.contract
+def test_normalize_amd64_to_x86_64():
+    assert normalize_target_arch("amd64") == "x86_64"
+
+
+@pytest.mark.contract
+def test_normalize_x64_to_x86_64():
+    assert normalize_target_arch("x64") == "x86_64"
+
+
+@pytest.mark.contract
+def test_normalize_x86_64_to_x86_64():
+    assert normalize_target_arch("x86_64") == "x86_64"
+
+
+@pytest.mark.contract
+def test_normalize_arm64_to_aarch64():
+    assert normalize_target_arch("arm64") == "aarch64"
+
+
+@pytest.mark.contract
+def test_normalize_aarch64_to_aarch64():
+    assert normalize_target_arch("aarch64") == "aarch64"
+
+
+@pytest.mark.contract
+def test_normalize_x86_to_x86_64():
+    assert normalize_target_arch("x86") == "x86_64"
+
+
+@pytest.mark.contract
+def test_normalize_is_case_insensitive():
+    assert normalize_target_arch("AMD64") == "x86_64"
+    assert normalize_target_arch("Arm64") == "aarch64"
+    assert normalize_target_arch("X86_64") == "x86_64"
+
+
+@pytest.mark.adversarial
+def test_unknown_architecture_raises_value_error():
+    with pytest.raises(ValueError) as exc_info:
+        normalize_target_arch("sparc")
+    assert "sparc" in str(exc_info.value)
+    assert "Unsupported" in str(exc_info.value)
+
+
+@pytest.mark.adversarial
+def test_unknown_architecture_mips_raises():
+    with pytest.raises(ValueError):
+        normalize_target_arch("mips64")
+
+
+@pytest.mark.adversarial
+def test_empty_architecture_raises():
+    with pytest.raises(ValueError):
+        normalize_target_arch("")
+
+
+@pytest.mark.integration
+@pytest.mark.real_artifact
+def test_manifest_target_arch_is_schema_valid_after_normalization(tmp_path: Path):
+    result = _run_release(["--dry-run", "--output-dir", str(tmp_path)])
+    assert result.returncode == 0, f"stderr: {result.stderr}"
+    manifest_path = tmp_path / "release_bundle_manifest.v1.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["target_arch"] in {"x86_64", "aarch64"}, (
+        f"target_arch must be schema-compatible, got {manifest['target_arch']!r}"
+    )
+    errors = _validate(manifest)
+    assert not errors, f"Manifest fails schema validation: {errors}"

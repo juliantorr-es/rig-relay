@@ -14,14 +14,22 @@
       "phase_id": "phase_1_governance_coordination",
       "remaining_seams": [],
       "required_evidence": [
+        "docs/schemas/rig.file_coordination.v1.schema.json",
         "docs/schemas/rig.fleet.coordination_event.v1.schema.json",
         "docs/schemas/rig.fleet.path_lease.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.fake_green_event.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.proof_chain_event.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.seam_event.v1.schema.json",
         "docs/schemas/rig.relay.cross_session_coordination.v1.schema.json",
         "docs/schemas/rig.relay.coordination_conflict.v1.schema.json"
       ],
       "schema_artifact_paths": [
+        "docs/schemas/rig.file_coordination.v1.schema.json",
         "docs/schemas/rig.fleet.coordination_event.v1.schema.json",
         "docs/schemas/rig.fleet.path_lease.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.fake_green_event.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.proof_chain_event.v1.schema.json",
+        "docs/schemas/rig.relay.coordination.seam_event.v1.schema.json",
         "docs/schemas/rig.relay.cross_session_coordination.v1.schema.json",
         "docs/schemas/rig.relay.coordination_conflict.v1.schema.json"
       ],
