@@ -1,3 +1,4 @@
+from rig_relay.integrations.github_provider._redaction import safe_summary
 #!/usr/bin/env python3
 """GitHub live read-only check script.
 
@@ -243,7 +244,7 @@ async def main() -> None:
 
     output_dir = Path(args.output).parent
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_json = json.dumps(output, indent=2, ensure_ascii=False)
+    output_json = json.dumps(safe_summary(output), indent=2, ensure_ascii=False)
     Path(args.output).write_text(output_json + "\n", encoding="utf-8")
 
     print(output_json)

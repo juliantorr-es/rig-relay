@@ -37,6 +37,7 @@ def _lift_run_live_github(
 
     Lazily imports all live-auth modules and httpx. Content-light output only.
     """
+    from rig_relay.integrations.github_provider._redaction import safe_summary
     from rig_relay.integrations.github_provider._live_auth import (
         GitHubLiveAuthError,
         GitHubLiveReadOnlySmoke,
@@ -89,7 +90,7 @@ def _lift_run_live_github(
 
     exchanger = GitHubLiveTokenExchanger()
     try:
-        token_result = exchanger.exchange_installation_token(
+        token_result, raw_token = exchanger.exchange_installation_token(
             app_id=app_id,
             installation_id=installation_id,
             private_key_bytes=private_key,
@@ -107,7 +108,7 @@ def _lift_run_live_github(
 
     smoke = GitHubLiveReadOnlySmoke()
     try:
-        identity = smoke.inspect_identity("__placeholder__")
+        identity = smoke.inspect_identity(raw_token)
     except GitHubLiveAuthError as e:
         results["identity_inspect"] = {
             "schema_version": "rig.github.live_auth_refusal.v1",
@@ -121,7 +122,7 @@ def _lift_run_live_github(
     results["auth_mode"] = "app_installation"
 
     try:
-        repos = smoke.list_accessible_repos("__placeholder__")
+        repos = smoke.list_accessible_repos(raw_token)
         results["repos_list"] = {"repo_count": len(repos), "repos": repos[:10]}
     except GitHubLiveAuthError as e:
         results["repos_list"] = {
@@ -212,7 +213,7 @@ def _live_output(results: dict[str, Any], issues_report: dict[str, Any]) -> None
     print()
     print(f"Receipt ID: {issues_report['receipt_id']}")
     print(f"Trace ID:   {issues_report['trace_id']}")
-    config_hash = _sha256_hex(json.dumps(results, sort_keys=True))
+    config_hash = _sha256_hex(json.dumps(safe_summary(results), sort_keys=True))
     print(f"Auth state hash: {config_hash}")
 
 
@@ -318,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
                     "dry_run": False,
                     "config_summary": config.config_summary(),
                     "issues": issues_report["issues"],
-                    "live_results": results,
+                    "live_results": safe_summary(results),
                     "timestamp_utc": datetime.now(UTC).isoformat(),
                 },
             )

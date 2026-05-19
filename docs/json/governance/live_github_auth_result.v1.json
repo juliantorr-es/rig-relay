@@ -1,12 +1,12 @@
 {
-  "receipt_id": "77ac08c4-be15-4daf-9ba5-8ba42b8e6740",
-  "trace_id": "98a32c5a-55f6-42e9-a3e8-737c6ab22968",
+  "receipt_id": "2ee2c7f4-3363-4198-85d7-80cadbc33350",
+  "trace_id": "285b61e0-100b-484f-9a3b-3e163fd4c269",
   "dry_run": false,
   "config_summary": {
     "app_id_configured": false,
     "installation_id_configured": false,
-    "private_key_source": "none",
-    "private_key_present": false,
+    "private_key_source": "file",
+    "private_key_present": true,
     "client_id_configured": false,
     "client_secret_configured": false,
     "redirect_uri_configured": false,
@@ -27,10 +27,6 @@
       "error": "config_incomplete",
       "issues": [
         {
-          "kind": "missing_private_key",
-          "detail": "No private key available from RIG_GITHUB_PRIVATE_KEY_PATH or RIG_GITHUB_PRIVATE_KEY_ENV"
-        },
-        {
           "kind": "missing_app_id",
           "detail": "RIG_GITHUB_APP_ID is not set"
         },
@@ -41,5 +37,5 @@
       ]
     }
   },
-  "timestamp_utc": "2026-05-19T21:55:58.528127+00:00"
+  "timestamp_utc": "2026-05-19T23:27:13.522663+00:00"
 }

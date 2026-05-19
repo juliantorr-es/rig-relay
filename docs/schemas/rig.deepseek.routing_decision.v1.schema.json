@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek.routing_decision.v1.schema.json",
+  "title": "DeepSeek Routing Decision Schema",
+  "description": "Content-light receipt for deterministic DeepSeek lane routing. The decision stores hashes, selected lane metadata, and warnings without raw task text or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "decision_id",
+    "generated_at",
+    "task_text_hash",
+    "selected_lane",
+    "selected_model",
+    "thinking_mode",
+    "reasoning_effort",
+    "json_mode_enabled",
+    "strict_tool_beta_enabled",
+    "beta_endpoint_required",
+    "cache_stability_requirement",
+    "stable_prefix_warning",
+    "reason_codes",
+    "rejected_lanes",
+    "override_used",
+    "warnings",
+    "redaction_status",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek.routing_decision.v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "rig.deepseek.lane_policy.v1"
+    },
+    "decision_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "task_text_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selected_lane": {
+      "type": "string",
+      "enum": [
+        "cheap_inspect",
+        "normal_repo_work",
+        "hard_convergence",
+        "json_artifact",
+        "strict_tool_beta"
+      ]
+    },
+    "selected_model": {
+      "type": "string",
+      "enum": [
+        "deepseek-v4-pro",
+        "deepseek-v4-flash"
+      ]
+    },
+    "thinking_mode": {
+      "type": "string",
+      "enum": [
+        "disabled",
+        "enabled"
+      ]
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "enum": [
+        "none",
+        "high",
+        "max"
+      ]
+    },
+    "json_mode_enabled": {
+      "type": "boolean"
+    },
+    "strict_tool_beta_enabled": {
+      "type": "boolean"
+    },
+    "beta_endpoint_required": {
+      "type": "boolean"
+    },
+    "cache_stability_requirement": {
+      "type": "boolean",
+      "const": true
+    },
+    "stable_prefix_warning": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason_codes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rejected_lanes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "cheap_inspect",
+          "normal_repo_work",
+          "hard_convergence",
+          "json_artifact",
+          "strict_tool_beta"
+        ]
+      }
+    },
+    "override_used": {
+      "type": "boolean"
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

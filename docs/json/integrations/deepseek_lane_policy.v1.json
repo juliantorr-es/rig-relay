@@ -1,0 +1,276 @@
+{
+  "schema_version": "rig.deepseek.lane_policy.v1",
+  "policy_id": "rig.deepseek.lane_policy.v1",
+  "generated_at": "2026-05-19T23:40:00Z",
+  "provider": "deepseek",
+  "default_lane": "normal_repo_work",
+  "cheap_inspect_max_context_tokens": 20000,
+  "hard_convergence_context_threshold_tokens": 120000,
+  "json_artifact_small_context_token_threshold": 8000,
+  "read_only_dry_run_context_threshold_tokens": 20000,
+  "cache_stability_requirement": true,
+  "stable_prefix_items": [
+    "system prompts",
+    "provider descriptors",
+    "tool schemas",
+    "context ordering"
+  ],
+  "stable_prefix_warning": "Keep stable prefixes: system prompts, provider descriptors, tool schemas, and context ordering stable to preserve DeepSeek cache hit rate.",
+  "json_output_kinds": [
+    "json",
+    "json_artifact",
+    "artifact",
+    "structured_json",
+    "jsonl",
+    "structured"
+  ],
+  "read_only_dry_run_phrases": [
+    "read-only",
+    "read only",
+    "dry-run",
+    "dry run"
+  ],
+  "hard_convergence_text_phrases": [
+    "fake-green",
+    "fake green",
+    "release claim",
+    "release claims",
+    "audit"
+  ],
+  "dynamic_prefix_risk_phrases": [
+    "randomize",
+    "reorder",
+    "shuffle",
+    "dynamic ordering"
+  ],
+  "json_mode_guidance": {
+    "preferred_lane": "json_artifact",
+    "requires_prompt_keyword": "json",
+    "requires_example_shape": true,
+    "max_tokens_guidance": "Set max_tokens high enough to avoid truncating JSON.",
+    "notes": "Use for canonical JSON reports, schema artifacts, and structured evidence."
+  },
+  "strict_tool_beta_guidance": {
+    "preferred_lane": "strict_tool_beta",
+    "enabled_by_default": false,
+    "beta_base_url": "https://api.deepseek.com/beta",
+    "schema_compatibility_required": true,
+    "supported_schema_types": [
+      "object",
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "array",
+      "enum",
+      "anyOf"
+    ]
+  },
+  "lanes": [
+    {
+      "lane_id": "cheap_inspect",
+      "preferred_model_id": "deepseek-v4-flash",
+      "thinking_mode": "disabled",
+      "reasoning_effort": "none",
+      "json_mode_enabled": false,
+      "strict_tool_beta_enabled": false,
+      "beta_endpoint_required": false,
+      "intended_use": [
+        "short summaries",
+        "simple inspections",
+        "small docs polish",
+        "low-risk tasks"
+      ],
+      "selection_notes": [
+        "Use for short, low-risk, low-context work.",
+        "Prefer flash for the cheapest feasible lane."
+      ]
+    },
+    {
+      "lane_id": "normal_repo_work",
+      "preferred_model_id": "deepseek-v4-pro",
+      "thinking_mode": "enabled",
+      "reasoning_effort": "high",
+      "json_mode_enabled": false,
+      "strict_tool_beta_enabled": false,
+      "beta_endpoint_required": false,
+      "intended_use": [
+        "ordinary implementation",
+        "tests",
+        "schema updates",
+        "provider plumbing"
+      ],
+      "selection_notes": [
+        "Use the pro lane for the ordinary repo-default path.",
+        "Keep thinking enabled for normal engineering work."
+      ]
+    },
+    {
+      "lane_id": "hard_convergence",
+      "preferred_model_id": "deepseek-v4-pro",
+      "thinking_mode": "enabled",
+      "reasoning_effort": "max",
+      "json_mode_enabled": false,
+      "strict_tool_beta_enabled": false,
+      "beta_endpoint_required": false,
+      "intended_use": [
+        "architecture",
+        "multi-agent coordination",
+        "multi-file refactors",
+        "release claim reconciliation",
+        "fake-green audits",
+        "hard debugging"
+      ],
+      "selection_notes": [
+        "Use for the hardest reasoning and coordination slices.",
+        "Keep max effort for large or high-risk tasks."
+      ]
+    },
+    {
+      "lane_id": "json_artifact",
+      "preferred_model_id": "deepseek-v4-pro",
+      "small_artifact_model_id": "deepseek-v4-flash",
+      "small_artifact_context_token_threshold": 8000,
+      "thinking_mode": "enabled",
+      "reasoning_effort": "high",
+      "json_mode_enabled": true,
+      "strict_tool_beta_enabled": false,
+      "beta_endpoint_required": false,
+      "intended_use": [
+        "canonical JSON reports",
+        "schema artifacts",
+        "structured evidence"
+      ],
+      "selection_notes": [
+        "Use pro by default for JSON evidence work.",
+        "Allow flash only for small artifacts and short context."
+      ]
+    },
+    {
+      "lane_id": "strict_tool_beta",
+      "preferred_model_id": "deepseek-v4-pro",
+      "thinking_mode": "enabled",
+      "reasoning_effort": "high",
+      "json_mode_enabled": false,
+      "strict_tool_beta_enabled": true,
+      "beta_endpoint_required": true,
+      "intended_use": [
+        "schema-safe tool-call experiments",
+        "strict beta validation"
+      ],
+      "selection_notes": [
+        "Disabled by default.",
+        "Use only when explicitly requested and schema-compatible."
+      ]
+    }
+  ],
+  "routing_rules": [
+    {
+      "rule_id": "override",
+      "priority": 1,
+      "selected_lane": "cheap_inspect",
+      "description": "Honor a valid user override lane, but emit a warning.",
+      "conditions": [
+        "user_override_lane matches a known lane id"
+      ],
+      "reason_codes": [
+        "override_used"
+      ],
+      "warnings": [
+        "User override may bypass the default safety or cost policy."
+      ]
+    },
+    {
+      "rule_id": "hard_convergence",
+      "priority": 2,
+      "selected_lane": "hard_convergence",
+      "description": "Route high-risk, multi-file, provider-auth, live-network, release-claim, or fake-green audit work to hard convergence.",
+      "conditions": [
+        "release claim or audit wording appears in task text",
+        "mutation_risk is high",
+        "concurrency_risk is high",
+        "requires_multi_file_reasoning is true",
+        "estimated_context_tokens exceeds 120000",
+        "touches_provider_auth or live_network without a low-context read-only dry run"
+      ],
+      "reason_codes": [
+        "release_claim_or_audit",
+        "mutation_risk_high",
+        "concurrency_risk_high",
+        "multi_file_or_large_context",
+        "provider_auth_or_live_network"
+      ]
+    },
+    {
+      "rule_id": "json_artifact",
+      "priority": 3,
+      "selected_lane": "json_artifact",
+      "description": "Route canonical JSON and structured artifacts to the JSON lane.",
+      "conditions": [
+        "requires_json_output is true or requested output kind is JSON-like",
+        "hard convergence did not already take priority"
+      ],
+      "reason_codes": [
+        "json_output_requested"
+      ],
+      "warnings": [
+        "Prompt should include the word json and an example JSON shape when used for a live model call."
+      ]
+    },
+    {
+      "rule_id": "strict_tool_beta",
+      "priority": 4,
+      "selected_lane": "strict_tool_beta",
+      "description": "Route explicit, compatible strict-tool requests to the beta lane.",
+      "conditions": [
+        "requires_strict_tool_beta is true",
+        "strict_tool_schema_compatible is true",
+        "requires_tool_calls is true"
+      ],
+      "reason_codes": [
+        "strict_tool_beta_requested",
+        "strict_tool_schema_compatible",
+        "tool_calls_requested"
+      ]
+    },
+    {
+      "rule_id": "normal_repo_work",
+      "priority": 5,
+      "selected_lane": "normal_repo_work",
+      "description": "Route schema/test/provider-plumbing work with moderate context to the normal repo lane.",
+      "conditions": [
+        "touches_schemas or touches_tests is true",
+        "estimated_context_tokens is within the moderate range"
+      ],
+      "reason_codes": [
+        "tests_or_schemas_moderate_context"
+      ]
+    },
+    {
+      "rule_id": "cheap_inspect",
+      "priority": 6,
+      "selected_lane": "cheap_inspect",
+      "description": "Use flash for short, low-risk, low-context tasks.",
+      "conditions": [
+        "estimated_context_tokens is at or below 20000",
+        "mutation_risk is none or low",
+        "no higher-priority rule matched"
+      ],
+      "reason_codes": [
+        "short_low_risk"
+      ]
+    },
+    {
+      "rule_id": "fallback",
+      "priority": 7,
+      "selected_lane": "normal_repo_work",
+      "description": "Default to the repo lane when no more specific rule matches.",
+      "conditions": [
+        "no earlier rule matched"
+      ],
+      "reason_codes": [
+        "default_normal_repo_work"
+      ]
+    }
+  ]
+}

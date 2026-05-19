@@ -48,6 +48,7 @@ def _lift_run_live_google() -> dict[str, Any]:
             ),
         }
 
+    from rig_relay.integrations.github_provider._redaction import safe_summary
     from rig_relay.integrations.google_workspace._live_auth import (
         GoogleLiveReadOnlySmoke,
     )
@@ -173,7 +174,7 @@ def _live_output(results: dict[str, Any], issues_report: dict[str, Any]) -> None
 
     print(f"Receipt ID: {issues_report['receipt_id']}")
     print(f"Trace ID:   {issues_report['trace_id']}")
-    config_hash = _sha256_hex(json.dumps(results, sort_keys=True))
+    config_hash = _sha256_hex(json.dumps(safe_summary(results), sort_keys=True))
     print(f"Auth state hash: {config_hash}")
 
 
@@ -278,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
                     "dry_run": False,
                     "config_summary": config.config_summary(),
                     "issues": issues_report["issues"],
-                    "live_results": results,
+                    "live_results": safe_summary(results),
                     "timestamp_utc": datetime.now(UTC).isoformat(),
                 },
             )

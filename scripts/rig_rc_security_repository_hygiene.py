@@ -1,3 +1,4 @@
+from rig_relay.integrations.github_provider._redaction import safe_summary
 #!/usr/bin/env python3
 
 from __future__ import annotations
@@ -786,7 +787,7 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(args.repo_root).resolve()
     result = run_audit(repo_root)
 
-    payload = json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False)
+    payload = json.dumps(safe_summary(result), indent=2, sort_keys=True, ensure_ascii=False)
     print(payload)
 
     if args.output:

@@ -70,7 +70,7 @@ class FakeGitHubTokenEndpoint:
         self._issued_tokens: dict[str, dict[str, Any]] = {}
         self._issued_at: dict[str, datetime] = {}
 
-    def exchange_installation_token(self, jwt_assertion: str) -> dict[str, Any]:
+    def exchange_installation_token(self, jwt_assertion: str) -> tuple[dict[str, Any], str]:
         token = _make_test_token("ghs_test")
         now = datetime.now(UTC)
         expires_at = now + timedelta(seconds=self._token_expiry_seconds)
@@ -84,7 +84,7 @@ class FakeGitHubTokenEndpoint:
         }
         self._issued_tokens[token] = result
         self._issued_at[token] = now
-        return result
+        return result, token
 
     def exchange_oauth_token(
         self, code: str, code_verifier: str | None = None
@@ -160,9 +160,7 @@ class FakeGitHubAppAuth:
     ) -> tuple[GitHubProviderAuthState, dict[str, str]]:
         jwt_claims = self.build_jwt_claims()
         jwt_assertion = self._signer(jwt_claims)
-        token_response = self._token_endpoint.exchange_installation_token(jwt_assertion)
-
-        token = token_response["token"]
+        token_response, token = self._token_endpoint.exchange_installation_token(jwt_assertion)
         account_hash = hash_identifier(self._account)
         installation_id_hash = hash_identifier(self._installation_id)
 

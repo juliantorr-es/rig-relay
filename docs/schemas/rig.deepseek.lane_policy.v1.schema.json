@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek.lane_policy.v1.schema.json",
+  "title": "DeepSeek Lane Policy Schema",
+  "description": "Deterministic DeepSeek lane-routing policy for Rig Relay. The policy is local-only, content-light, and drives recommendation receipts without mutating OpenCode config or SQLite state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "generated_at",
+    "provider",
+    "default_lane",
+    "cheap_inspect_max_context_tokens",
+    "hard_convergence_context_threshold_tokens",
+    "json_artifact_small_context_token_threshold",
+    "read_only_dry_run_context_threshold_tokens",
+    "cache_stability_requirement",
+    "stable_prefix_items",
+    "stable_prefix_warning",
+    "json_output_kinds",
+    "read_only_dry_run_phrases",
+    "hard_convergence_text_phrases",
+    "dynamic_prefix_risk_phrases",
+    "json_mode_guidance",
+    "strict_tool_beta_guidance",
+    "lanes",
+    "routing_rules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek.lane_policy.v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "rig.deepseek.lane_policy.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provider": {
+      "type": "string",
+      "const": "deepseek"
+    },
+    "default_lane": {
+      "type": "string",
+      "enum": [
+        "cheap_inspect",
+        "normal_repo_work",
+        "hard_convergence",
+        "json_artifact",
+        "strict_tool_beta"
+      ]
+    },
+    "cheap_inspect_max_context_tokens": {
+      "type": "integer",
+      "const": 20000
+    },
+    "hard_convergence_context_threshold_tokens": {
+      "type": "integer",
+      "const": 120000
+    },
+    "json_artifact_small_context_token_threshold": {
+      "type": "integer",
+      "const": 8000
+    },
+    "read_only_dry_run_context_threshold_tokens": {
+      "type": "integer",
+      "const": 20000
+    },
+    "cache_stability_requirement": {
+      "type": "boolean",
+      "const": true
+    },
+    "stable_prefix_items": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "stable_prefix_warning": {
+      "type": "string",
+      "minLength": 1
+    },
+    "json_output_kinds": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "read_only_dry_run_phrases": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "hard_convergence_text_phrases": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "dynamic_prefix_risk_phrases": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "json_mode_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preferred_lane",
+        "requires_prompt_keyword",
+        "requires_example_shape",
+        "max_tokens_guidance"
+      ],
+      "properties": {
+        "preferred_lane": {
+          "type": "string",
+          "const": "json_artifact"
+        },
+        "requires_prompt_keyword": {
+          "type": "string",
+          "const": "json"
+        },
+        "requires_example_shape": {
+          "type": "boolean",
+          "const": true
+        },
+        "max_tokens_guidance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "strict_tool_beta_guidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preferred_lane",
+        "enabled_by_default",
+        "beta_base_url",
+        "schema_compatibility_required",
+        "supported_schema_types"
+      ],
+      "properties": {
+        "preferred_lane": {
+          "type": "string",
+          "const": "strict_tool_beta"
+        },
+        "enabled_by_default": {
+          "type": "boolean",
+          "const": false
+        },
+        "beta_base_url": {
+          "type": "string",
+          "const": "https://api.deepseek.com/beta"
+        },
+        "schema_compatibility_required": {
+          "type": "boolean",
+          "const": true
+        },
+        "supported_schema_types": {
+          "type": "array",
+          "minItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "object",
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "array",
+              "enum",
+              "anyOf"
+            ]
+          }
+        }
+      }
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "$ref": "#/definitions/lane"
+      }
+    },
+    "routing_rules": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "$ref": "#/definitions/rule"
+      }
+    }
+  },
+  "definitions": {
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lane_id",
+        "preferred_model_id",
+        "thinking_mode",
+        "reasoning_effort",
+        "json_mode_enabled",
+        "strict_tool_beta_enabled",
+        "beta_endpoint_required",
+        "intended_use",
+        "selection_notes"
+      ],
+      "properties": {
+        "lane_id": {
+          "type": "string",
+          "enum": [
+            "cheap_inspect",
+            "normal_repo_work",
+            "hard_convergence",
+            "json_artifact",
+            "strict_tool_beta"
+          ]
+        },
+        "preferred_model_id": {
+          "type": "string",
+          "enum": [
+            "deepseek-v4-pro",
+            "deepseek-v4-flash"
+          ]
+        },
+        "small_artifact_model_id": {
+          "type": "string",
+          "enum": [
+            "deepseek-v4-pro",
+            "deepseek-v4-flash"
+          ]
+        },
+        "small_artifact_context_token_threshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "thinking_mode": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "enabled"
+          ]
+        },
+        "reasoning_effort": {
+          "type": "string",
+          "enum": [
+            "none",
+            "high",
+            "max"
+          ]
+        },
+        "json_mode_enabled": {
+          "type": "boolean"
+        },
+        "strict_tool_beta_enabled": {
+          "type": "boolean"
+        },
+        "beta_endpoint_required": {
+          "type": "boolean"
+        },
+        "intended_use": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "selection_notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "priority",
+        "selected_lane",
+        "description",
+        "conditions",
+        "reason_codes"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_lane": {
+          "type": "string",
+          "enum": [
+            "cheap_inspect",
+            "normal_repo_work",
+            "hard_convergence",
+            "json_artifact",
+            "strict_tool_beta"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

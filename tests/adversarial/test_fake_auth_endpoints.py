@@ -73,13 +73,13 @@ class TestGitHubFakeJwtSigner:
 class TestGitHubFakeTokenEndpoint:
     def test_github_fake_token_endpoint_rejects_missing_jwt(self):
         endpoint = FakeGitHubTokenEndpoint()
-        result = endpoint.exchange_installation_token("")
+        result, _ = endpoint.exchange_installation_token("")
         assert "token" in result
         assert result["token_type"] == "installation"
 
     def test_github_fake_installation_token_has_expiry_field(self):
         endpoint = FakeGitHubTokenEndpoint(token_expiry_seconds=3600)
-        result = endpoint.exchange_installation_token("fake.jwt.token")
+        result, _ = endpoint.exchange_installation_token("fake.jwt.token")
         assert "token" in result
         assert "expires_at" in result
         assert "token_type" in result
@@ -94,7 +94,7 @@ class TestGitHubFakeTokenEndpoint:
 
     def test_github_fake_installation_token_is_valid_immediately(self):
         endpoint = FakeGitHubTokenEndpoint(token_expiry_seconds=3600)
-        result = endpoint.exchange_installation_token("fake.jwt.token")
+        result, _ = endpoint.exchange_installation_token("fake.jwt.token")
         assert endpoint.is_token_valid(result["token"]) is True
 
     def test_is_test_token_detects_test_tokens(self):
@@ -121,7 +121,7 @@ class TestGitHubFakeAppAuth:
 
     def test_installation_token_not_valid_for_oauth_flow(self):
         endpoint = FakeGitHubTokenEndpoint()
-        inst_result = endpoint.exchange_installation_token("fake.jwt.token")
+        inst_result, _ = endpoint.exchange_installation_token("fake.jwt.token")
         oauth_result = endpoint.exchange_oauth_token("some-code")
         assert inst_result["token_type"] == "installation"
         assert oauth_result["token_type"] == "oauth"
@@ -129,7 +129,7 @@ class TestGitHubFakeAppAuth:
 
     def test_oauth_token_not_valid_for_installation_flow(self):
         endpoint = FakeGitHubTokenEndpoint()
-        inst_result = endpoint.exchange_installation_token("fake.jwt.token")
+        inst_result, _ = endpoint.exchange_installation_token("fake.jwt.token")
         oauth_result = endpoint.exchange_oauth_token("some-code")
         assert inst_result["token_type"] != oauth_result["token_type"]
 

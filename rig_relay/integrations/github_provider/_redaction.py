@@ -41,6 +41,33 @@ def hash_private_field(data: dict, field: str) -> dict:
     return result
 
 
+_SENSITIVE_FIELDS = frozenset({
+    "access_token",
+    "private_key",
+    "client_secret",
+    "jwt_assertion",
+    "token",
+    "code",
+})
+
+def safe_summary(data: dict) -> dict:
+    """Returns a deep copy of data with sensitive fields hashed.
+    
+    Any key matching a sensitive field name has its string value replaced with a SHA-256 hash.
+    """
+    result = {}
+    for k, v in data.items():
+        if k in _SENSITIVE_FIELDS and isinstance(v, str):
+            result[k] = "sha256:" + hash_identifier(v)
+        elif isinstance(v, dict):
+            result[k] = safe_summary(v)
+        elif isinstance(v, list):
+            result[k] = [safe_summary(item) if isinstance(item, dict) else item for item in v]
+        else:
+            result[k] = v
+    return result
+
+
 def assert_no_raw_github_token(value: str) -> None:
     for pattern in _GITHUB_TOKEN_PATTERNS:
         if pattern.search(value):

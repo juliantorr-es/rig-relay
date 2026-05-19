@@ -57,7 +57,7 @@ class TestFakeJwtSigner:
 class TestFakeInstallationTokenEndpoint:
     def test_fake_installation_token_endpoint_returns_test_token(self):
         endpoint = FakeGitHubTokenEndpoint()
-        result = endpoint.exchange_installation_token("fake.jwt.assertion")
+        result, _ = endpoint.exchange_installation_token("fake.jwt.assertion")
 
         assert "token" in result
         assert "expires_at" in result
@@ -65,7 +65,7 @@ class TestFakeInstallationTokenEndpoint:
 
     def test_fake_installation_token_has_ghs_test_prefix(self):
         endpoint = FakeGitHubTokenEndpoint()
-        result = endpoint.exchange_installation_token("fake.jwt.assertion")
+        result, _ = endpoint.exchange_installation_token("fake.jwt.assertion")
 
         assert result["token"].startswith("ghs_test_")
         assert "_test_" in result["token"]
@@ -74,8 +74,8 @@ class TestFakeInstallationTokenEndpoint:
         short = FakeGitHubTokenEndpoint(token_expiry_seconds=60)
         long = FakeGitHubTokenEndpoint(token_expiry_seconds=7200)
 
-        result_short = short.exchange_installation_token("jwt")
-        result_long = long.exchange_installation_token("jwt")
+        result_short, _ = short.exchange_installation_token("jwt")
+        result_long, _ = long.exchange_installation_token("jwt")
 
         expires_short = datetime.strptime(
             result_short["expires_at"], "%Y-%m-%dT%H:%M:%SZ"
@@ -91,7 +91,7 @@ class TestFakeInstallationTokenEndpoint:
 
     def test_fake_installation_token_expired_after_expiry(self):
         endpoint = FakeGitHubTokenEndpoint(token_expiry_seconds=0)
-        result = endpoint.exchange_installation_token("jwt")
+        result, _ = endpoint.exchange_installation_token("jwt")
         token = result["token"]
 
         assert not endpoint.is_token_valid(token)
@@ -102,7 +102,7 @@ class TestFakeInstallationTokenEndpoint:
 
     def test_fake_installation_token_not_matched_as_real_token(self):
         endpoint = FakeGitHubTokenEndpoint()
-        result = endpoint.exchange_installation_token("jwt")
+        result, _ = endpoint.exchange_installation_token("jwt")
 
         found = scan_for_tokens(result["token"])
         assert len(found) == 0
@@ -275,7 +275,7 @@ class TestFakeTokenNotMistakenForReal:
 
     def test_test_token_prefix_is_distinct(self):
         endpoint = FakeGitHubTokenEndpoint()
-        inst = endpoint.exchange_installation_token("jwt")
+        inst, _ = endpoint.exchange_installation_token("jwt")
         oauth = endpoint.exchange_oauth_token("code")
 
         assert "test" in inst["token"]

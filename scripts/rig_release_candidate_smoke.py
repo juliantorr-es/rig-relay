@@ -1,3 +1,4 @@
+from rig_relay.integrations.github_provider._redaction import safe_summary
 #!/usr/bin/env python3
 """Batteries-included release candidate smoke test — Toddler-Safe edition.
 
@@ -609,7 +610,7 @@ def main() -> int:
     run_dir = _BUILD_DIR / report["run_id"]
     run_dir.mkdir(parents=True, exist_ok=True)
     rp = run_dir / "smoke_report.v1.json"
-    rp.write_text(json.dumps(report, indent=2) + "\n")
+    rp.write_text(json.dumps(safe_summary(report), indent=2) + "\n")
 
     print(f"\nReport: {rp}", file=sys.stderr)
     print(f"Status: {report['overall_status']}", file=sys.stderr)
@@ -618,7 +619,7 @@ def main() -> int:
     )
 
     if args.json:
-        print(json.dumps(report, indent=2))
+        print(json.dumps(safe_summary(report), indent=2))
     else:
         for c in report["checks"]:
             icon = {

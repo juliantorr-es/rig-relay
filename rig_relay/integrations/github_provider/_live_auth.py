@@ -174,11 +174,10 @@ class GitHubLiveTokenExchanger:
 
     def exchange_installation_token(
         self, app_id: int, installation_id: int, private_key_bytes: bytes
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], str]:
         """Exchange a GitHub App JWT for an installation access token.
 
-        Returns content-light dict with token_hash, token_prefix, expires_at,
-        permissions, repository_selection. NEVER returns raw token.
+        Returns (content-light dict, raw_token). NEVER returns raw token in dict.
         """
         signer = GitHubLiveJwtSigner(private_key_bytes)
         now = int(datetime.now(UTC).timestamp())
@@ -203,7 +202,7 @@ class GitHubLiveTokenExchanger:
         )
 
         token = token_response.get("token", "")
-        return _redact_token_response(token_response, token, kind="installation")
+        return _redact_token_response(token_response, token, kind="installation"), token
 
     def exchange_oauth_code(
         self,
@@ -249,14 +248,23 @@ class GitHubLiveReadOnlySmoke:
 
         Calls /user for OAuth/token, /app for installation tokens.
         """
-        user_response = _get_json(
-            f"{_GITHUB_API_BASE}/user",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            timeout=self._timeout,
-        )
+        httpx = _import_httpx()
+        try:
+            user_response = _get_json(
+                f"{_GITHUB_API_BASE}/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+                timeout=self._timeout,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                return {
+                    "error": "identity_inspect_failed",
+                    "error_description": f"HTTP {e.response.status_code}",
+                }
+            raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
 
         login = user_response.get("login", "")
         user_type = user_response.get("type", "")
@@ -282,14 +290,22 @@ class GitHubLiveReadOnlySmoke:
         Tries installation repos first, falls back to user repos.
         Content-light: repo names are hashed.
         """
-        user_response = _get_json(
-            f"{_GITHUB_API_BASE}/user",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            timeout=self._timeout,
-        )
+        httpx = _import_httpx()
+        try:
+            user_response = _get_json(
+                f"{_GITHUB_API_BASE}/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+                timeout=self._timeout,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                # We can't identify if it's user or bot, but we can assume user since /user failed.
+                user_response = {"type": "Unknown"}
+            else:
+                raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
 
         user_type = user_response.get("type", "")
 
@@ -298,27 +314,39 @@ class GitHubLiveReadOnlySmoke:
         return self._list_user_repos(token)
 
     def _list_installation_repos(self, token: str) -> list[dict[str, Any]]:
-        repos_response = _get_json(
-            f"{_GITHUB_API_BASE}/installation/repositories",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            timeout=self._timeout,
-        )
+        httpx = _import_httpx()
+        try:
+            repos_response = _get_json(
+                f"{_GITHUB_API_BASE}/installation/repositories",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+                timeout=self._timeout,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
+            raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
 
         return [_redact_repo(repo) for repo in repos_response.get("repositories", [])]
 
     def _list_user_repos(self, token: str) -> list[dict[str, Any]]:
-        repos_response = _get_json(
-            f"{_GITHUB_API_BASE}/user/repos",
-            params={"per_page": "100", "sort": "updated"},
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github.v3+json",
-            },
-            timeout=self._timeout,
-        )
+        httpx = _import_httpx()
+        try:
+            repos_response = _get_json(
+                f"{_GITHUB_API_BASE}/user/repos",
+                params={"per_page": "100", "sort": "updated"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+                timeout=self._timeout,
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
+            raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
 
         return [_redact_repo(repo) for repo in repos_response if isinstance(repo, dict)]
 
