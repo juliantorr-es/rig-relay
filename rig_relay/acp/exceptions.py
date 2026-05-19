@@ -64,6 +64,15 @@ class NotImplementedMethodError(VibeRequestError):
         )
 
 
+class RefusalError(VibeRequestError):
+    code = METHOD_NOT_FOUND
+
+    def __init__(self, method: str, refusal_code: str, refusal: dict) -> None:
+        super().__init__(
+            message=f"Refused: {method} ({refusal_code})", data={"refusal": refusal}
+        )
+
+
 class InvalidRequestError(VibeRequestError):
     code = INVALID_PARAMS
 

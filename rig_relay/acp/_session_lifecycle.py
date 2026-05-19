@@ -36,11 +36,11 @@ from acp.schema import (
 from pydantic import ValidationError
 
 from rig_relay import __version__
+from rig_relay.acp._refusal_adapter import raise_acp_refusal
 from rig_relay.acp.commands import AcpCommandRegistry
 from rig_relay.acp.exceptions import (
     ConfigurationError,
     InvalidRequestError,
-    NotImplementedMethodError,
     SessionLoadError,
     SessionNotFoundError,
 )
@@ -414,4 +414,9 @@ class SessionLifecycleMixin:
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
-        raise NotImplementedMethodError("resume_session")
+        raise_acp_refusal(
+            refusal_code="resume_not_supported",
+            reason="Session resume is not supported",
+            method="resume",
+            session_id=session_id,
+        )

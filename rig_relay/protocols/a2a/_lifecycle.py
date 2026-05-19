@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 from datetime import UTC, datetime
+import uuid
 
 from rig_relay.protocols.a2a._models import (
     A2AAgentCard,

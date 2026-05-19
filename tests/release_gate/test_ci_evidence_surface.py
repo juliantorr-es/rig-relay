@@ -243,6 +243,38 @@ class TestCiEvidenceProducer:
         assert not verdict_errors, f"Verdict schema errors: {verdict_errors}"
 
     @pytest.mark.integration
+    def test_ci_run_includes_trace_id_when_provided(self, tmp_path: Path):
+        from rig_relay.ci_evidence import produce_ci_evidence
+
+        evidence_dir = tmp_path / "ci_trace"
+        produce_ci_evidence(
+            output_dir=evidence_dir, trace_id="ci-tr-789", correlation_id="corr-xyz"
+        )
+        run_files = sorted(evidence_dir.glob("ci_*_run.v1.json"))
+        assert run_files, "No run evidence produced"
+        run_data = _load_json(run_files[-1])
+        assert run_data.get("trace_id") == "ci-tr-789"
+        assert run_data.get("correlation_id") == "corr-xyz"
+        run_errors = _validate_schema(run_data, "rig.ci.run.v1")
+        assert not run_errors, f"Run schema errors with trace_id: {run_errors}"
+
+    @pytest.mark.integration
+    def test_ci_verdict_includes_evidence_id(self, tmp_path: Path):
+        from rig_relay.ci_evidence import produce_ci_evidence
+
+        evidence_dir = tmp_path / "ci_evidence_id"
+        result = produce_ci_evidence(output_dir=evidence_dir, trace_id="ci-tr-901")
+        verdict_data = _load_json(result.verdict_path)
+        assert "evidence_id" in verdict_data
+        assert verdict_data["evidence_id"].startswith("sha256:")
+        assert len(verdict_data["evidence_id"]) == 71
+        assert verdict_data.get("trace_id") == "ci-tr-901"
+        verdict_errors = _validate_schema(verdict_data, "rig.ci.verdict.v1")
+        assert not verdict_errors, (
+            f"Verdict schema errors with evidence_id: {verdict_errors}"
+        )
+
+    @pytest.mark.integration
     def test_produced_events_jsonl_is_writable(self):
         from rig_relay.ci_evidence import produce_ci_evidence
 

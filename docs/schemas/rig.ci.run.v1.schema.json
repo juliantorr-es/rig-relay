@@ -118,6 +118,14 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp when this evidence record was generated."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Optional distributed trace identifier for joinability across surfaces."
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Optional correlation identifier linking related CI runs or provider operations."
     }
   },
   "additionalProperties": false

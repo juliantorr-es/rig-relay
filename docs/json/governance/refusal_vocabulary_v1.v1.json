@@ -1,0 +1,379 @@
+{
+  "schema_version": "rig.relay.refusal_vocabulary.v1",
+  "artifact_id": "refusal_vocabulary_v1_2026_05_19",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "shared_refusal_classes": [
+    {
+      "class_id": "unknown_capability",
+      "class_label": "Unknown Capability",
+      "category": "capability",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:unknown_capability",
+      "description": "The requested capability, intent kind, or operation kind is not recognized by the surface.",
+      "example_original_codes": ["unknown_intent_kind", "unknown_kind", "missing_capability"]
+    },
+    {
+      "class_id": "invalid_schema",
+      "class_label": "Invalid Schema",
+      "category": "input_validation",
+      "severity_range": "high",
+      "canonical_refusal_code": "refused:invalid_schema",
+      "description": "The schema version is not supported or the payload fails schema validation.",
+      "example_original_codes": ["invalid_schema_version", "malformed_envelope"]
+    },
+    {
+      "class_id": "malformed_request",
+      "class_label": "Malformed Request",
+      "category": "input_validation",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:malformed_request",
+      "description": "The request is syntactically or structurally invalid.",
+      "example_original_codes": ["malformed_envelope"]
+    },
+    {
+      "class_id": "missing_trace",
+      "class_label": "Missing Trace",
+      "category": "input_validation",
+      "severity_range": "low",
+      "canonical_refusal_code": "refused:missing_trace",
+      "description": "The required trace_id is absent from the request.",
+      "example_original_codes": ["missing_trace_id"]
+    },
+    {
+      "class_id": "duplicate_or_replay",
+      "class_label": "Duplicate or Replay",
+      "category": "input_validation",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:duplicate_or_replay",
+      "description": "A duplicate message_id or idempotency key was detected, indicating possible replay.",
+      "example_original_codes": ["duplicate_message_id"]
+    },
+    {
+      "class_id": "oversized_payload",
+      "class_label": "Oversized Payload",
+      "category": "resource",
+      "severity_range": "low",
+      "canonical_refusal_code": "refused:oversized_payload",
+      "description": "The payload exceeds the surface's maximum size limit.",
+      "example_original_codes": ["oversized_payload"]
+    },
+    {
+      "class_id": "unsafe_payload",
+      "class_label": "Unsafe Payload",
+      "category": "input_validation",
+      "severity_range": "critical",
+      "canonical_refusal_code": "refused:unsafe_payload",
+      "description": "The payload contains dangerous content (command injection, escaped paths, env var injection, redaction violation).",
+      "example_original_codes": ["unsafe_payload_refused", "redaction_violation", "command_injection_refused"]
+    },
+    {
+      "class_id": "raw_secret",
+      "class_label": "Raw Secret in Payload",
+      "category": "input_validation",
+      "severity_range": "critical",
+      "canonical_refusal_code": "refused:raw_secret",
+      "description": "The payload contains a raw secret, token, or credential in cleartext.",
+      "example_original_codes": ["raw_secret_refused"]
+    },
+    {
+      "class_id": "raw_path",
+      "class_label": "Raw Path in Payload",
+      "category": "input_validation",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:raw_path",
+      "description": "The payload contains a raw filesystem path that could enable traversal.",
+      "example_original_codes": ["raw_path_refused"]
+    },
+    {
+      "class_id": "auth_required",
+      "class_label": "Authentication Required",
+      "category": "authorization",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:auth_required",
+      "description": "The operation requires authentication that is not present or not satisfied.",
+      "example_original_codes": ["auth_required_not_satisfied", "google.delegation.not_authorized"]
+    },
+    {
+      "class_id": "credential_material_refused",
+      "class_label": "Credential Material Refused",
+      "category": "authorization",
+      "severity_range": "critical",
+      "canonical_refusal_code": "refused:credential_material",
+      "description": "Credential material (tokens, keys, OAuth codes, JWT assertions) is refused from crossing the surface boundary in v1.",
+      "example_original_codes": ["credential_material_refused"]
+    },
+    {
+      "class_id": "permission_missing",
+      "class_label": "Permission Missing",
+      "category": "authorization",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:permission_missing",
+      "description": "The required tool permission, capability gate, or step-up is not granted.",
+      "example_original_codes": ["mutation_without_capability", "capability_gate_refused", "reroute_refusal"]
+    },
+    {
+      "class_id": "scope_missing",
+      "class_label": "Scope Missing",
+      "category": "authorization",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:scope_missing",
+      "description": "A required OAuth scope is not granted for the operation.",
+      "example_original_codes": ["google.scope.missing", "google.scope.restricted_security_assessment_required"]
+    },
+    {
+      "class_id": "repository_or_resource_missing",
+      "class_label": "Repository or Resource Missing",
+      "category": "resource",
+      "severity_range": "low",
+      "canonical_refusal_code": "refused:resource_missing",
+      "description": "The target repository, user subject, customer, or resource is not found or not accessible.",
+      "example_original_codes": ["google.subject.missing", "google.customer.missing"]
+    },
+    {
+      "class_id": "repository_or_resource_denied",
+      "class_label": "Repository or Resource Denied",
+      "category": "authorization",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:resource_denied",
+      "description": "Access to the target repository or resource is denied by policy or insufficient permissions.",
+      "example_original_codes": ["github_repo_metadata_read_refused", "github_repo_contents_read_refused"]
+    },
+    {
+      "class_id": "mutation_refused",
+      "class_label": "Mutation Refused",
+      "category": "mutation",
+      "severity_range": "high",
+      "canonical_refusal_code": "refused:mutation",
+      "description": "A mutation operation (write, update, delete) is refused by policy or capability gate.",
+      "example_original_codes": ["mutation_class_refused", "github_issues_comment_write_refused_step_up_required", "google.mutation.refused"]
+    },
+    {
+      "class_id": "destructive_refused",
+      "class_label": "Destructive Mutation Refused",
+      "category": "mutation",
+      "severity_range": "critical",
+      "canonical_refusal_code": "refused:destructive",
+      "description": "A destructive or release-affecting mutation is refused in the current version.",
+      "example_original_codes": ["release_affecting_mutation_refused", "github_workflow_rerun_refused_destructive_v0"]
+    },
+    {
+      "class_id": "credentialed_mutation_refused",
+      "class_label": "Credentialed Mutation Refused",
+      "category": "mutation",
+      "severity_range": "critical",
+      "canonical_refusal_code": "refused:credentialed_mutation",
+      "description": "A credentialed mutation (requiring provider auth) is refused because live auth is not enabled.",
+      "example_original_codes": ["credentialed_provider_mutation_refused", "github_contents_write_refused_step_up_required"]
+    },
+    {
+      "class_id": "external_network_refused",
+      "class_label": "External Network Refused",
+      "category": "network",
+      "severity_range": "high",
+      "canonical_refusal_code": "refused:external_network",
+      "description": "An operation requiring external network access is refused because network is disabled.",
+      "example_original_codes": ["external_network_mutation_refused", "google.live_network.refused"]
+    },
+    {
+      "class_id": "live_auth_deferred",
+      "class_label": "Live Auth Deferred",
+      "category": "deferral",
+      "severity_range": "low",
+      "canonical_refusal_code": "deferred:live_auth",
+      "description": "Live authentication mechanisms (OAuth, domain-wide delegation) are deferred to a future slice. Refused by default.",
+      "example_original_codes": ["github_oauth_refused", "google_workspace_oauth_refused"]
+    },
+    {
+      "class_id": "live_transport_deferred",
+      "class_label": "Live Transport Deferred",
+      "category": "deferral",
+      "severity_range": "low",
+      "canonical_refusal_code": "deferred:live_transport",
+      "description": "Live protocol transport (MCP, ACP, A2A network) is deferred to a future slice. Refused by default.",
+      "example_original_codes": ["mcp_live_transport_refused", "a2a_remote_federation_refused"]
+    },
+    {
+      "class_id": "not_implemented_deferred",
+      "class_label": "Not Implemented (Deferred)",
+      "category": "deferral",
+      "severity_range": "low",
+      "canonical_refusal_code": "deferred:not_implemented",
+      "description": "The method or feature is honestly deferred via NotImplementedMethodError or stub.",
+      "example_original_codes": ["NotImplementedMethodError", "acp_authenticate_stub", "acp_resume_stub"]
+    },
+    {
+      "class_id": "rate_limited",
+      "class_label": "Rate Limited",
+      "category": "rate_limit",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:rate_limited",
+      "description": "The operation was refused due to rate limiting or throttling.",
+      "example_original_codes": ["rate_limited"]
+    },
+    {
+      "class_id": "resource_budget_exceeded",
+      "class_label": "Resource Budget Exceeded",
+      "category": "resource",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:resource_budget",
+      "description": "The operation exceeded resource budgets (timeout, server capacity, memory, CPU).",
+      "example_original_codes": ["server_full", "supervisor_timeout", "supervisor_cancelled"]
+    },
+    {
+      "class_id": "internal_error",
+      "class_label": "Internal Error",
+      "category": "error",
+      "severity_range": "high",
+      "canonical_refusal_code": "refused:internal_error",
+      "description": "An internal processing error prevented the operation from completing.",
+      "example_original_codes": ["internal_error"]
+    },
+    {
+      "class_id": "validation_failed",
+      "class_label": "Validation Failed",
+      "category": "validation",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:validation_failed",
+      "description": "A validation check (contract, counterexample, assertion) failed.",
+      "example_original_codes": ["failure_class", "spurious_or_genuine"]
+    },
+    {
+      "class_id": "candidate_rejected",
+      "class_label": "Candidate Rejected",
+      "category": "validation",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:candidate_rejected",
+      "description": "A compiler candidate was rejected or quarantined by the validation matrix.",
+      "example_original_codes": ["rejected", "quarantined"]
+    },
+    {
+      "class_id": "ci_hold",
+      "class_label": "CI Hold",
+      "category": "ci",
+      "severity_range": "medium",
+      "canonical_refusal_code": "refused:ci_hold",
+      "description": "CI evidence is present but some assertions are unverified, placing the verdict on hold.",
+      "example_original_codes": ["hold", "blocking_reasons"]
+    },
+    {
+      "class_id": "ci_fail",
+      "class_label": "CI Fail",
+      "category": "ci",
+      "severity_range": "high",
+      "canonical_refusal_code": "refused:ci_fail",
+      "description": "CI evidence is missing, malformed, or contradictory — the verdict is fail.",
+      "example_original_codes": ["fail", "blocking_reasons"]
+    }
+  ],
+  "surface_mappings": [
+    {"surface": "bridge", "original_code": "unknown_intent_kind", "original_kind": "refusal_kind", "shared_class": "unknown_capability", "rationale": "Bridge refuses intents whose intent_kind is not in the known enum. This is a capability discovery failure."},
+    {"surface": "bridge", "original_code": "invalid_schema_version", "original_kind": "refusal_kind", "shared_class": "invalid_schema", "rationale": "Bridge rejects messages whose schema_version does not match the expected const. Schema version mismatch is a schema validation failure."},
+    {"surface": "bridge", "original_code": "unknown_kind", "original_kind": "refusal_kind", "shared_class": "unknown_capability", "rationale": "Bridge refuses messages whose envelope kind is not recognized. Same class as unknown_intent_kind — capability not found."},
+    {"surface": "bridge", "original_code": "missing_trace_id", "original_kind": "refusal_kind", "shared_class": "missing_trace", "rationale": "Bridge requires trace_id on every envelope. Absence means the request cannot be traced."},
+    {"surface": "bridge", "original_code": "duplicate_message_id", "original_kind": "refusal_kind", "shared_class": "duplicate_or_replay", "rationale": "Bridge detects duplicate message_ids as replay attacks or idempotency violations."},
+    {"surface": "bridge", "original_code": "oversized_payload", "original_kind": "refusal_kind", "shared_class": "oversized_payload", "rationale": "Bridge enforces MAX_BYTES_ENVELOPE_BODY. Exceeding it triggers this refusal."},
+    {"surface": "bridge", "original_code": "mutation_without_capability", "original_kind": "refusal_kind", "shared_class": "permission_missing", "rationale": "Bridge refuses mutation intents that lack the required capability gate membership. Missing permission, not missing capability ID."},
+    {"surface": "bridge", "original_code": "missing_capability", "original_kind": "refusal_kind", "shared_class": "unknown_capability", "rationale": "Bridge cannot find a matching capability for the requested operation. Capability does not exist."},
+    {"surface": "bridge", "original_code": "mutation_class_refused", "original_kind": "refusal_kind", "shared_class": "mutation_refused", "rationale": "Bridge refuses the mutation_class outright — e.g., all credentialled_mutation intents refused in v1."},
+    {"surface": "bridge", "original_code": "credentialed_provider_mutation_refused", "original_kind": "refusal_kind", "shared_class": "credentialed_mutation_refused", "rationale": "Bridge refuses provider-credentialled mutations because live provider auth is not enabled in v1."},
+    {"surface": "bridge", "original_code": "release_affecting_mutation_refused", "original_kind": "refusal_kind", "shared_class": "destructive_refused", "rationale": "Mutations that would affect release artifacts are treated as destructive and refused."},
+    {"surface": "bridge", "original_code": "external_network_mutation_refused", "original_kind": "refusal_kind", "shared_class": "external_network_refused", "rationale": "Mutations requiring external network are refused because network is disabled in default policy."},
+    {"surface": "bridge", "original_code": "unsafe_payload_refused", "original_kind": "refusal_kind", "shared_class": "unsafe_payload", "rationale": "Payload contains dangerous patterns (injection, traversal, env injection)."},
+    {"surface": "bridge", "original_code": "raw_secret_refused", "original_kind": "refusal_kind", "shared_class": "raw_secret", "rationale": "Payload contains raw secret material (tokens, keys) that must never cross the bridge."},
+    {"surface": "bridge", "original_code": "raw_path_refused", "original_kind": "refusal_kind", "shared_class": "raw_path", "rationale": "Payload contains raw filesystem paths that could enable traversal."},
+    {"surface": "bridge", "original_code": "auth_required_not_satisfied", "original_kind": "refusal_kind", "shared_class": "auth_required", "rationale": "Operation requires authentication that the frontend session does not have."},
+    {"surface": "bridge", "original_code": "capability_gate_refused", "original_kind": "refusal_kind", "shared_class": "permission_missing", "rationale": "The capability gate check failed — the tool or operation is not in the allowed gate set."},
+    {"surface": "bridge", "original_code": "rate_limited", "original_kind": "refusal_kind", "shared_class": "rate_limited", "rationale": "Bridge enforces per-connection rate limits. Exceeding them triggers this refusal."},
+    {"surface": "bridge", "original_code": "server_full", "original_kind": "refusal_kind", "shared_class": "resource_budget_exceeded", "rationale": "Bridge queue or connection pool is full. Server capacity is at its budget limit."},
+    {"surface": "bridge", "original_code": "malformed_envelope", "original_kind": "refusal_kind", "shared_class": "malformed_request", "rationale": "The envelope JSON does not parse or fails basic structural validation. This is malformed input, not schema version mismatch."},
+    {"surface": "bridge", "original_code": "redaction_violation", "original_kind": "refusal_kind", "shared_class": "unsafe_payload", "rationale": "The payload violates content-light redaction rules. Classified as unsafe because redacted content may contain dangerous material."},
+    {"surface": "bridge", "original_code": "internal_error", "original_kind": "refusal_kind", "shared_class": "internal_error", "rationale": "An unexpected internal error occurred during bridge processing.", "notes": "Bridge dispatcher emits this when an unhandled exception escapes."},
+    {"surface": "sdk", "original_code": "refusal_code", "original_kind": "refusal_code", "shared_class": "mutation_refused", "rationale": "SDK run_result with verdict=refused maps to mutation_refused as the default shared class. SDK refusal_code is a free-form string; specific codes would map more narrowly."},
+    {"surface": "mcp", "original_code": "refusal_code", "original_kind": "refusal_code", "shared_class": "permission_missing", "rationale": "MCP refusal at tier levels (tier_3_mutation_refused, tier_4_credentialed_refused, tier_5_destructive_refused) all map through the capability profile. Schema-only; never instantiated at runtime. Default class is permission_missing (tier-based gate)."},
+    {"surface": "mcp", "original_code": "tier_3_mutation_refused", "original_kind": "refusal_policy", "shared_class": "mutation_refused", "rationale": "MCP capability profile declares tier 3 (mutation) operations refused. Maps to mutation_refused."},
+    {"surface": "mcp", "original_code": "tier_4_credentialed_refused", "original_kind": "refusal_policy", "shared_class": "credentialed_mutation_refused", "rationale": "MCP capability profile declares tier 4 (credentialed) operations refused."},
+    {"surface": "mcp", "original_code": "tier_5_destructive_refused", "original_kind": "refusal_policy", "shared_class": "destructive_refused", "rationale": "MCP capability profile declares tier 5 (destructive) operations refused."},
+    {"surface": "acp", "original_code": "refusal_code", "original_kind": "refusal_code", "shared_class": "not_implemented_deferred", "rationale": "ACP refusal envelope exists in schema but ACP refusals are raised as NotImplementedMethodError, not as structured envelopes. Schema-only default maps to not_implemented_deferred."},
+    {"surface": "acp", "original_code": "NotImplementedMethodError", "original_kind": "exception_class", "shared_class": "not_implemented_deferred", "rationale": "ACP authenticate() and resume_session() raise NotImplementedMethodError. These are honest deferral stubs, not runtime bugs.", "notes": "Deferral seam 'acp_live_notimplemented_stubs' classified as alpha_blocker in the convergence review."},
+    {"surface": "a2a", "original_code": "refusal_code", "original_kind": "refusal_code", "shared_class": "permission_missing", "rationale": "A2A delegation_receipt refusal_code is a free-form string. Default class is permission_missing (delegation denied)."},
+    {"surface": "github_provider", "original_code": "github_repo_metadata_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Metadata read refusal means the repository is not accessible. Resource denial, not capability unknown."},
+    {"surface": "github_provider", "original_code": "github_repo_contents_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Contents read refusal means the repository is not accessible or the resource is denied."},
+    {"surface": "github_provider", "original_code": "github_repo_branches_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Branches read refusal means the repository is not accessible."},
+    {"surface": "github_provider", "original_code": "github_repo_commits_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Commits read refusal means the repository is not accessible."},
+    {"surface": "github_provider", "original_code": "github_repo_issues_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Issues read refusal means the repository or its issues are denied."},
+    {"surface": "github_provider", "original_code": "github_repo_pull_requests_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Pull requests read refusal means the repository or its PRs are denied."},
+    {"surface": "github_provider", "original_code": "github_actions_runs_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Actions runs read refusal means the repository is not accessible or actions are denied."},
+    {"surface": "github_provider", "original_code": "github_actions_artifacts_read_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "Actions artifacts read refusal means the repository or its artifacts are denied."},
+    {"surface": "github_provider", "original_code": "github_issues_comment_write_refused_step_up_required", "original_kind": "refusal_code_when_denied", "shared_class": "mutation_refused", "rationale": "Issue comment write requires step-up auth. Refused because mutation_class is refused in default policy."},
+    {"surface": "github_provider", "original_code": "github_pull_requests_review_write_refused_step_up_required", "original_kind": "refusal_code_when_denied", "shared_class": "mutation_refused", "rationale": "PR review write requires step-up auth. Refused because mutation_class is refused in default policy."},
+    {"surface": "github_provider", "original_code": "github_contents_write_refused_step_up_required", "original_kind": "refusal_code_when_denied", "shared_class": "credentialed_mutation_refused", "rationale": "Contents write is a credentialed_remote_mutation. Requires live auth which is refused in v1."},
+    {"surface": "github_provider", "original_code": "github_refs_update_refused_step_up_required", "original_kind": "refusal_code_when_denied", "shared_class": "credentialed_mutation_refused", "rationale": "Refs update is a credentialed_remote_mutation. Requires live auth which is refused in v1."},
+    {"surface": "github_provider", "original_code": "github_workflow_rerun_refused_destructive_v0", "original_kind": "refusal_code_when_denied", "shared_class": "destructive_refused", "rationale": "Workflow rerun is classified as destructive_remote_mutation and refused in v0/v1."},
+    {"surface": "github_provider", "original_code": "github_webhooks_receive_refused_destructive_v0", "original_kind": "refusal_code_when_denied", "shared_class": "destructive_refused", "rationale": "Webhook receive is classified as destructive_remote_mutation and refused in v0/v1."},
+    {"surface": "github_provider", "original_code": "github_app_installation_inspect_refused", "original_kind": "refusal_code_when_denied", "shared_class": "repository_or_resource_denied", "rationale": "GitHub App installation inspect refusal means the installation is not accessible."},
+    {"surface": "github_provider", "original_code": "verdict:refused", "original_kind": "verdict", "shared_class": "permission_missing", "rationale": "GitHub operation receipt with verdict=refused without a more specific refusal_code. Defaults to permission_missing."},
+    {"surface": "google_workspace", "original_code": "google.scope.missing", "original_kind": "refusal_code", "shared_class": "scope_missing", "rationale": "Google Workspace operation requires a scope that is not granted. Direct scope missing."},
+    {"surface": "google_workspace", "original_code": "google.subject.missing", "original_kind": "refusal_code", "shared_class": "repository_or_resource_missing", "rationale": "Google Workspace operation requires a user subject (email identity) that is not present. Resource missing."},
+    {"surface": "google_workspace", "original_code": "google.scope.restricted_security_assessment_required", "original_kind": "refusal_code", "shared_class": "scope_missing", "rationale": "The requested scope is restricted and requires a security assessment. Treated as scope_missing since the scope is not granted at runtime."},
+    {"surface": "google_workspace", "original_code": "google.customer.missing", "original_kind": "refusal_code", "shared_class": "repository_or_resource_missing", "rationale": "Google Workspace domain operation requires a customer ID that is not present. Resource missing."},
+    {"surface": "google_workspace", "original_code": "google.delegation.not_authorized", "original_kind": "refusal_code", "shared_class": "auth_required", "rationale": "Domain-wide delegation requires authorization that is not granted. Auth failure."},
+    {"surface": "google_workspace", "original_code": "google.mutation.refused", "original_kind": "refusal_code", "shared_class": "mutation_refused", "rationale": "Google Workspace mutation operations (gmail.send etc.) are refused in v1 default policy."},
+    {"surface": "google_workspace", "original_code": "google.live_network.refused", "original_kind": "refusal_code", "shared_class": "external_network_refused", "rationale": "Google Workspace live network operations are refused in v1. Network is disabled."},
+    {"surface": "google_workspace", "original_code": "verdict:refused", "original_kind": "verdict", "shared_class": "permission_missing", "rationale": "Google Workspace operation receipt with verdict=refused without a more specific refusal_code. Defaults to permission_missing."},
+    {"surface": "ci_evidence", "original_code": "verdict:hold", "original_kind": "verdict", "shared_class": "ci_hold", "rationale": "CI evidence verdict hold means evidence is present but some assertions are unverified. Not a full failure, but gating."},
+    {"surface": "ci_evidence", "original_code": "verdict:fail", "original_kind": "verdict", "shared_class": "ci_fail", "rationale": "CI evidence verdict fail means evidence is missing, malformed, or contradictory. Release gate blocked."},
+    {"surface": "ci_evidence", "original_code": "blocking_reasons", "original_kind": "blocking_reasons", "shared_class": "ci_hold", "rationale": "Non-empty blocking_reasons array indicates a hold or fail verdict. Default mapped to ci_hold; individual reasons may be ci_fail if they represent hard failures.", "notes": "Ambiguous: blocking_reasons can accompany either hold or fail. Context from verdict field disambiguates."},
+    {"surface": "tools_bash_runtime", "original_code": "command_injection_refused", "original_kind": "refusal_reason", "shared_class": "unsafe_payload", "rationale": "Bash tool detects dangerous patterns (command substitution, inline execution, env injection). This is unsafe payload content."},
+    {"surface": "tools_bash_runtime", "original_code": "reroute_refusal", "original_kind": "refusal_reason", "shared_class": "permission_missing", "rationale": "Bash reroute detects a command that should use a governed tool instead (cat->read_file, grep->grep tool). Refused because the bash path lacks permission for that operation."},
+    {"surface": "tools_bash_runtime", "original_code": "supervisor_timeout", "original_kind": "terminal_classification", "shared_class": "resource_budget_exceeded", "rationale": "Supervisor terminates the invocation after exceeding the max runtime seconds budget."},
+    {"surface": "tools_bash_runtime", "original_code": "supervisor_cancelled", "original_kind": "terminal_classification", "shared_class": "resource_budget_exceeded", "rationale": "Supervisor cancels the invocation. Resource budget (time, attention) exceeded."},
+    {"surface": "tools_bash_runtime", "original_code": "status:blocked", "original_kind": "status", "shared_class": "mutation_refused", "rationale": "Runtime tool execution result with status=blocked means the tool was blocked before execution. Default class is mutation_refused."},
+    {"surface": "tools_bash_runtime", "original_code": "status:refused", "original_kind": "status", "shared_class": "mutation_refused", "rationale": "Runtime tool execution result with status=refused means the tool invocation was refused. Default class is mutation_refused."},
+    {"surface": "compiler", "original_code": "candidate_status:rejected", "original_kind": "candidate_status", "shared_class": "candidate_rejected", "rationale": "Compiler candidate rejected by the validation matrix. Candidate failed to meet contract requirements."},
+    {"surface": "compiler", "original_code": "candidate_status:quarantined", "original_kind": "candidate_status", "shared_class": "candidate_rejected", "rationale": "Compiler candidate quarantined — not accepted but not fully rejected. Kept for analysis. Still a rejection for gating purposes."},
+    {"surface": "compiler", "original_code": "failure_class", "original_kind": "failure_class", "shared_class": "validation_failed", "rationale": "Compiler counterexample or candidate assigned a failure_class. The contract validation step failed."},
+    {"surface": "github_provider", "original_code": "github_oauth_refused", "original_kind": "refusal_code", "shared_class": "live_auth_deferred", "rationale": "GitHub OAuth web flow, GitHub App user auth, and personal access token auth are deferred in v1. All live GitHub auth modes refused. Honest deferral per contract_v0.", "notes": "5 of 6 auth modes deferred. Only 'none' (unauthenticated) implemented."},
+    {"surface": "google_workspace", "original_code": "google_workspace_oauth_refused", "original_kind": "refusal_code", "shared_class": "live_auth_deferred", "rationale": "Google Workspace OAuth and service account auth modes are deferred in v1. Live network refused. Honest deferral per v1 readiness artifact.", "notes": "6 of 7 auth modes deferred. Dedicated v1_readiness artifact declares the deferral."},
+    {"surface": "mcp", "original_code": "mcp_live_transport_refused", "original_kind": "refusal_code", "shared_class": "live_transport_deferred", "rationale": "MCP has 16 tool handlers but no transport server. Not reachable via any transport. Refused because transport is deferred."},
+    {"surface": "a2a", "original_code": "a2a_remote_federation_refused", "original_kind": "refusal_code", "shared_class": "live_transport_deferred", "rationale": "A2A remote federation is refused by default (remote_federation_supported: false in schema). Local-only in v1."},
+    {"surface": "bridge", "original_code": "credential_material_refused", "original_kind": "refusal_code", "shared_class": "credential_material_refused", "rationale": "Bridge refuses credential material (tokens, OAuth codes, JWT assertions) from crossing the surface boundary in v1. Credential material must never traverse the bridge. This is a hardening class for future vocabulary; no surface currently emits a distinct credential_material_refused code — it is covered by raw_secret_refused and the bridge security posture."}
+  ],
+  "unmapped_known_codes": [
+    {
+      "surface": "bridge",
+      "code": "redaction_violation",
+      "why_unmapped": "Mapped to unsafe_payload as closest fit, but a dedicated redaction_refusal shared class may be warranted in future vocabulary versions since redaction violations are not payload injection — they are evidence contract violations."
+    },
+    {
+      "surface": "tools_bash_runtime",
+      "code": "sensitive_path_blocked",
+      "why_unmapped": "Sensitive path blocking (identity/token files) is conceptually distinct from raw_path_refused. It is path-aware refusal rather than raw path injection. Future vocabulary may add a dedicated sensitive_path shared class."
+    },
+    {
+      "surface": "acp",
+      "code": "session_cancel_request",
+      "why_unmapped": "ACP cancel() is a lifecycle method, not a refusal. The refusal vocabulary maps refusal outcomes; operation intent (cancel) is a different axis. May warrant a lifecycle_event class in future vocabulary versions."
+    },
+    {
+      "surface": "compiler",
+      "code": "candidate_status:accepted",
+      "why_unmapped": "Accepted status is not a refusal. The vocabulary maps only refusal-class outcomes."
+    }
+  ],
+  "strict_mode_behavior": {
+    "unknown_codes_fail_validation": false,
+    "missing_rationale_fails_validation": true,
+    "strict_mode_note": "Strict mode is advisory in v1. Unknown codes trigger a warning in evidence pipelines but do not fail validation. Missing rationale on a surface_mapping entry always fails validation. Strict mode can be enforced by downstream evidence processors that consume this vocabulary."
+  },
+  "claim_boundaries": [
+    "This vocabulary normalizes refusal codes across 10 surfaces into 29 shared classes. Domain schemas retain their original codes.",
+    "No live provider auth. No transport. This is a static normalization layer, not a runtime routing decision.",
+    "Content-light: no raw tokens, paths, secrets, prompts, or private file contents.",
+    "Unmapped codes are deliberately excluded. The vocabulary is not a superset of all possible codes — it is a curated shared classification.",
+    "Severity ranges are maximums. Individual refusal instances may have lower effective severity.",
+    "Cross-surface joinability of refusals is enabled by this vocabulary but downstream evidence processors must implement the join.",
+    "The vocabulary is append-only. New shared classes can be added; existing class_ids must not be removed.",
+    "Strict mode is advisory in v1. Downstream processors may enforce unknown code rejection independently."
+  ],
+  "redaction_status": "content_light"
+}

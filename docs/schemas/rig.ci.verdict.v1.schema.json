@@ -134,6 +134,14 @@
     "telemetry_redaction_notes": {
       "type": "string",
       "description": "Statement that no raw secrets, credentials, private file contents, raw prompts, or private repository contents were emitted in this evidence."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Optional distributed trace identifier for joinability across surfaces."
+    },
+    "evidence_id": {
+      "type": "string",
+      "description": "Optional self-referential evidence SHA-256 identifier for this verdict. Format: 'sha256:' + 64 hex chars."
     }
   },
   "additionalProperties": false

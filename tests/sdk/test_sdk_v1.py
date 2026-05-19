@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 
 import jsonschema
-import pytest
 
 from rig_relay.sdk import (
     RigClient,
@@ -15,7 +14,6 @@ from rig_relay.sdk import (
     RigRunResult,
     RigStatus,
     RigVerdict,
-    compute_sha256,
     get_sdk_status,
 )
 

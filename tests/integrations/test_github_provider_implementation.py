@@ -372,6 +372,52 @@ class TestOperationReceipts:
         with pytest.raises(ValueError, match="raw_content_field_detected"):
             assert_content_light_mapping(receipt_dict)
 
+    @pytest.mark.contract
+    def test_operation_receipt_includes_trace_id_when_provided(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        request = GitHubProviderOperationRequest(
+            operation_id="op-test-trace-001",
+            capability_id="github.repo.metadata.read",
+            operation_kind="Read repository metadata",
+            operation_class=GitHubOperationClass.READ_ONLY,
+            auth_state=auth,
+            repository_hash=hash_identifier("owner/repo"),
+            actor_hash=hash_identifier("test-actor"),
+        )
+        decision = GitHubProviderCapabilityDecision(
+            capability_id="github.repo.metadata.read", verdict=GitHubVerdict.ALLOWED
+        )
+        receipt = build_github_operation_receipt(
+            request, decision, trace_id="tr-abc-123"
+        )
+        receipt_dict = receipt.to_dict()
+        assert receipt_dict.get("trace_id") == "tr-abc-123"
+        errors = validate_github_operation_receipt(receipt_dict)
+        assert not errors, f"Receipt schema errors: {errors}"
+
+    @pytest.mark.contract
+    def test_operation_receipt_includes_receipt_id(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        request = GitHubProviderOperationRequest(
+            operation_id="op-test-rid-001",
+            capability_id="github.repo.metadata.read",
+            operation_kind="Read repository metadata",
+            operation_class=GitHubOperationClass.READ_ONLY,
+            auth_state=auth,
+            repository_hash=hash_identifier("owner/repo"),
+            actor_hash=hash_identifier("test-actor"),
+        )
+        decision = GitHubProviderCapabilityDecision(
+            capability_id="github.repo.metadata.read", verdict=GitHubVerdict.ALLOWED
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        assert receipt.receipt_id.startswith("sha256:")
+        assert len(receipt.receipt_id) == 71  # "sha256:" + 64 hex chars
+        receipt_dict = receipt.to_dict()
+        assert receipt_dict.get("receipt_id") == receipt.receipt_id
+        errors = validate_github_operation_receipt(receipt_dict)
+        assert not errors, f"Receipt schema errors: {errors}"
+
 
 class TestRedactionHelpers:
     @pytest.mark.adversarial

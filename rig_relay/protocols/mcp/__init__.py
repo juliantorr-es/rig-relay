@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from rig_relay.protocols.mcp._refusal_adapter import (
+    classify_tool_descriptor_suspicious,
+    evaluate_mcp_request,
+)
 from rig_relay.protocols.mcp.models import (
     GATED_TOOLS,
     PROMPTS,
@@ -36,4 +40,6 @@ __all__ = [
     "MCPToolTier",
     "RigMCPServer",
     "ServerCapabilities",
+    "classify_tool_descriptor_suspicious",
+    "evaluate_mcp_request",
 ]

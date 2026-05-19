@@ -1,0 +1,236 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.cross_surface_v1_1_hardening.v1.schema.json",
+  "title": "Cross-Surface V1.1 Hardening Artifact",
+  "description": "Schema-governed artifact that records the closure status of all 5 P0 cross-surface hardening seams from the v1 convergence review. Records roundtrip test results, shared refusal vocabulary status, provider/CI trace joinability, MCP runtime refusal adapter coverage, and ACP stub-to-schema refusal adapter coverage. Content-light: no raw tokens, paths, secrets, prompts, or private file contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "repo_head",
+    "source_review_artifact",
+    "p0_seams",
+    "trace_roundtrip_result",
+    "shared_refusal_vocabulary_result",
+    "provider_ci_joinability_result",
+    "mcp_runtime_refusal_result",
+    "acp_stub_refusal_adapter_result",
+    "validation_commands",
+    "tests_run",
+    "out_of_scope_surfaces_untouched",
+    "dependency_changes",
+    "rc_recommendation_after_hardening",
+    "remaining_claim_boundaries",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.cross_surface_v1_1_hardening.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for this hardening artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of hardening artifact generation."
+    },
+    "repo_head": {
+      "type": "string",
+      "description": "Git commit SHA at time of hardening closure."
+    },
+    "repo_branch": {
+      "type": "string",
+      "description": "Branch name at time of hardening closure."
+    },
+    "source_review_artifact": {
+      "type": "string",
+      "description": "Path to the convergence review artifact that identified these P0 seams."
+    },
+    "p0_seams": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "seam_id",
+          "status",
+          "test_paths",
+          "rationale",
+          "blocker_or_deferral_reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "seam_id": {
+            "type": "string",
+            "description": "P0 seam identifier from the convergence review."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "deferred"],
+            "description": "Hardening closure status for this seam."
+          },
+          "test_paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Test file paths covering this seam."
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why this seam is classified as pass/fail/deferred."
+          },
+          "blocker_or_deferral_reason": {
+            "type": "string",
+            "description": "If not pass, what blocks or defers closure."
+          }
+        }
+      },
+      "description": "All 5 P0 cross-surface hardening seams with closure status."
+    },
+    "trace_roundtrip_result": {
+      "type": "object",
+      "required": ["status", "detail", "test_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "deferred"],
+          "description": "Result of bridge→SDK→MCP trace roundtrip test."
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Detailed evidence for the result."
+        },
+        "test_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test functions proving the result."
+        }
+      },
+      "description": "Bridge→SDK→MCP refusal trace roundtrip closure evidence."
+    },
+    "shared_refusal_vocabulary_result": {
+      "type": "object",
+      "required": ["status", "detail", "test_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "deferred"]
+        },
+        "detail": { "type": "string", "minLength": 1 },
+        "test_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Shared refusal vocabulary v1 closure evidence."
+    },
+    "provider_ci_joinability_result": {
+      "type": "object",
+      "required": ["status", "detail", "test_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "deferred"]
+        },
+        "detail": { "type": "string", "minLength": 1 },
+        "test_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Provider and CI trace joinability closure evidence."
+    },
+    "mcp_runtime_refusal_result": {
+      "type": "object",
+      "required": ["status", "detail", "test_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "deferred"]
+        },
+        "detail": { "type": "string", "minLength": 1 },
+        "test_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "MCP runtime refusal adapter coverage closure evidence."
+    },
+    "acp_stub_refusal_adapter_result": {
+      "type": "object",
+      "required": ["status", "detail", "test_paths"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "deferred"]
+        },
+        "detail": { "type": "string", "minLength": 1 },
+        "test_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "ACP stub-to-schema refusal adapter closure evidence."
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Commands run to validate hardening closure."
+    },
+    "tests_run": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Test commands executed and their pass counts."
+    },
+    "out_of_scope_surfaces_untouched": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Surfaces not modified during this hardening slice."
+    },
+    "dependency_changes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Dependency changes (none expected per hardening scope)."
+    },
+    "rc_recommendation_after_hardening": {
+      "type": "string",
+      "enum": ["promote", "promote_with_v1_1_hardening", "hold", "reject"],
+      "description": "Release candidate recommendation after all 5 P0 seams are closed."
+    },
+    "rc_recommendation_rationale": {
+      "type": "string",
+      "description": "Rationale for the post-hardening RC recommendation."
+    },
+    "remaining_claim_boundaries": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Boundaries still applying after v1.1 hardening."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: this hardening artifact is content-light."
+    },
+    "not": {
+      "anyOf": [
+        { "required": ["raw_prompt"] },
+        { "required": ["raw_completion"] },
+        { "required": ["raw_file_contents"] },
+        { "required": ["access_token"] },
+        { "required": ["client_secret"] },
+        { "required": ["private_key"] }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

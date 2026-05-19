@@ -279,6 +279,36 @@ class TestReceipts:
         for raw in ["user@example.com", "gmail.com", "mydomain", "-----BEGIN"]:
             assert raw not in data, f"Raw value '{raw}' found in receipt"
 
+    @pytest.mark.contract
+    def test_operation_receipt_includes_trace_id_when_provided(self):
+        auth = GoogleWorkspaceAuthState.authenticated_oauth_user(
+            "a" * 64, [_make_grant("https://www.googleapis.com/auth/gmail.labels")]
+        )
+        d = GoogleWorkspaceDecision("x", GoogleWorkspaceVerdict.ALLOWED)
+        req = GoogleWorkspaceOperationRequest(
+            "op-trace-001", "x", auth_state=auth, subject_hash="s" * 64
+        )
+        r = build_workspace_receipt(req, d, trace_id="gw-tr-abc-456")
+        data = r.to_dict()
+        assert data.get("trace_id") == "gw-tr-abc-456"
+        assert not validate_receipt(data)
+
+    @pytest.mark.contract
+    def test_operation_receipt_includes_receipt_id(self):
+        auth = GoogleWorkspaceAuthState.authenticated_oauth_user(
+            "a" * 64, [_make_grant("https://www.googleapis.com/auth/gmail.labels")]
+        )
+        d = GoogleWorkspaceDecision("x", GoogleWorkspaceVerdict.ALLOWED)
+        req = GoogleWorkspaceOperationRequest(
+            "op-rid-001", "x", auth_state=auth, subject_hash="s" * 64
+        )
+        r = build_workspace_receipt(req, d)
+        assert r.receipt_id.startswith("sha256:")
+        assert len(r.receipt_id) == 71
+        data = r.to_dict()
+        assert data.get("receipt_id") == r.receipt_id
+        assert not validate_receipt(data)
+
 
 class TestLocalAdapter:
     @pytest.mark.integration

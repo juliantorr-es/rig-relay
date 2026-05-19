@@ -108,6 +108,18 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp when this receipt was generated."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Optional distributed trace identifier for joinability across surfaces. Content-light: no raw secrets, paths, or prompts."
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Optional self-referential receipt SHA-256 identifier. Format: 'sha256:' + 64 hex chars."
+    },
+    "parent_trace_id": {
+      "type": "string",
+      "description": "Optional parent trace identifier for causal chain ancestry."
     }
   },
   "additionalProperties": false

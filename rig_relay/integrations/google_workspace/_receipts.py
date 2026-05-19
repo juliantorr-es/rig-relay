@@ -25,6 +25,11 @@ def _hash_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _compute_receipt_id(data: dict[str, Any]) -> str:
+    canonical = json.dumps(data, sort_keys=True, ensure_ascii=False)
+    return "sha256:" + _hash_identifier(canonical)
+
+
 def validate_receipt(receipt: dict[str, Any]) -> list[str]:
     import jsonschema
 
@@ -38,6 +43,9 @@ def build_workspace_receipt(
     request: GoogleWorkspaceOperationRequest,
     decision: GoogleWorkspaceDecision,
     response_metadata: dict[str, Any] | None = None,
+    *,
+    trace_id: str = "",
+    parent_trace_id: str = "",
 ) -> GoogleWorkspaceOperationReceipt:
     response_metadata = response_metadata or {}
     receipt = GoogleWorkspaceOperationReceipt(
@@ -66,8 +74,14 @@ def build_workspace_receipt(
         refusal_code=decision.refusal_code,
         content_light=True,
         redaction_status="clean",
+        trace_id=trace_id,
+        parent_trace_id=parent_trace_id,
     )
     data = receipt.to_dict()
+
+    receipt.receipt_id = _compute_receipt_id(data)
+    data["receipt_id"] = receipt.receipt_id
+
     assert_no_workspace_content_fields(data)
     assert_no_raw_secret_patterns(json.dumps(data))
     errors = validate_receipt(data)

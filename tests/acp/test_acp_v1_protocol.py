@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -139,10 +139,14 @@ class TestACPV1Schemas:
 
 
 class TestACPStubSeams:
-    def test_authenticate_is_stub(self):
+    def test_authenticate_raises_refusal_error(self):
         source = (ACP_SOURCE / "_protocol.py").read_text()
-        assert 'NotImplementedMethodError("authenticate")' in source
+        assert "raise_acp_refusal" in source
+        assert "live_auth_deferred" in source
+        assert "NotImplementedMethodError" not in source
 
-    def test_resume_is_stub(self):
+    def test_resume_session_raises_refusal_error(self):
         source = (ACP_SOURCE / "_session_lifecycle.py").read_text()
-        assert 'NotImplementedMethodError("resume_session")' in source
+        assert "raise_acp_refusal" in source
+        assert "resume_not_supported" in source
+        assert "NotImplementedMethodError" not in source

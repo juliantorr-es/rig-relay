@@ -8,10 +8,10 @@ from acp import Client
 from acp.schema import AuthenticateResponse, SessionInfoUpdate
 from pydantic import ValidationError
 
+from rig_relay.acp._refusal_adapter import raise_acp_refusal
 from rig_relay.acp.exceptions import (
     InternalError,
     InvalidRequestError,
-    NotImplementedMethodError,
     SessionNotFoundError,
 )
 from rig_relay.acp.session import AcpSessionLoop
@@ -28,7 +28,11 @@ class ProtocolMixin:
     async def authenticate(
         self, method_id: str, **kwargs: Any
     ) -> AuthenticateResponse | None:
-        raise NotImplementedMethodError("authenticate")
+        raise_acp_refusal(
+            refusal_code="live_auth_deferred",
+            reason="Live authentication is deferred",
+            method=method_id,
+        )
 
     async def _emit_session_info_update(
         self, session_id: str, *, title: str, updated_at: str | None
@@ -120,7 +124,11 @@ class ProtocolMixin:
         if method == "session/set_title":
             return await self._handle_session_set_title(params)
 
-        raise NotImplementedMethodError(method)
+        raise_acp_refusal(
+            refusal_code="not_implemented_deferred",
+            reason=f"Extension method not implemented: {method}",
+            method=method,
+        )
 
     @override
     async def ext_notification(self, method: str, params: dict) -> None:

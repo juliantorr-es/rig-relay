@@ -274,9 +274,12 @@ class GoogleWorkspaceOperationReceipt:
     redaction_status: str = "clean"
     content_light: bool = True
     generated_at: str = field(default_factory=_now_iso)
+    receipt_id: str = ""
+    trace_id: str = ""
+    parent_trace_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "schema_version": "rig.google_workspace.operation_receipt.v1",
             "provider_id": "google_workspace",
             "operation_id": self.operation_id,
@@ -298,3 +301,10 @@ class GoogleWorkspaceOperationReceipt:
             "content_light": self.content_light,
             "generated_at": self.generated_at,
         }
+        if self.trace_id:
+            result["trace_id"] = self.trace_id
+        if self.receipt_id:
+            result["receipt_id"] = self.receipt_id
+        if self.parent_trace_id:
+            result["parent_trace_id"] = self.parent_trace_id
+        return result

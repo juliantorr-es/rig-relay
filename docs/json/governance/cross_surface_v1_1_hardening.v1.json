@@ -1,0 +1,137 @@
+{
+  "schema_version": "rig.relay.cross_surface_v1_1_hardening.v1",
+  "artifact_id": "cross_surface_v1_1_hardening_2026_05_19",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "repo_head": "168b13f163c0a28ab46c80527681abbfbc599938",
+  "repo_branch": "main",
+  "source_review_artifact": "docs/json/governance/cross_surface_v1_convergence_review.v1.json",
+  "p0_seams": [
+    {
+      "seam_id": "P0.1_bridge_to_sdk_to_mcp_refusal_trace_roundtrip",
+      "status": "pass",
+      "test_paths": [
+        "tests/governance/test_cross_surface_v1_1_hardening.py::test_bridge_to_sdk_to_mcp_refusal_trace_roundtrip",
+        "tests/governance/test_cross_surface_v1_1_hardening.py::test_cross_surface_roundtrip_no_raw_payload_echoed"
+      ],
+      "rationale": "test_bridge_to_sdk_to_mcp_refusal_trace_roundtrip constructs a bridge-like trace context with trace_id, creates an SDK RigRefusal, passes to evaluate_mcp_request with an unknown tool name, validates the MCP refusal against rig.relay.mcp.refusal.v1 schema, and asserts trace_id is preserved. test_cross_surface_roundtrip_no_raw_payload_echoed performs adversarial content-light sweep confirming no raw tokens, secrets, paths, or prompts appear in the output JSON.",
+      "blocker_or_deferral_reason": ""
+    },
+    {
+      "seam_id": "P0.2_shared_refusal_vocabulary_v1",
+      "status": "pass",
+      "test_paths": [
+        "tests/governance/test_refusal_vocabulary_v1.py"
+      ],
+      "rationale": "Agent A produced docs/json/governance/refusal_vocabulary_v1.v1.json and docs/schemas/rig.relay.refusal_vocabulary.v1.schema.json with 29 shared refusal classes, 71 surface mapping entries, and 10 surfaces mapped. 48 tests pass validating schema conformance, shared class coverage, surface completeness, and content-light enforcement. The vocabulary artifact is validated against its schema and all required assertion tests pass.",
+      "blocker_or_deferral_reason": ""
+    },
+    {
+      "seam_id": "P0.3_provider_and_ci_trace_joinability_v1",
+      "status": "pass",
+      "test_paths": [
+        "tests/governance/test_cross_surface_v1_1_hardening.py::test_provider_receipt_carries_trace_id_joinable",
+        "tests/governance/test_cross_surface_v1_1_hardening.py::test_ci_evidence_carries_correlation_id"
+      ],
+      "rationale": "Agent B extended 4 schemas (github_provider.operation_receipt.v1, google_workspace.operation_receipt.v1, rig.ci.run.v1, rig.ci.verdict.v1) with optional trace_id/receipt_id/evidence_id fields. GitHub receipt builder (build_github_operation_receipt) and Google Workspace receipt builder accept trace_id and auto-generate receipt_id. CI evidence producer (_build_run_evidence) accepts trace_id/correlation_id and populates them in the run evidence. test_provider_receipt_carries_trace_id_joinable verifies the GitHub receipt carries the matching trace_id and validates against the schema. test_ci_evidence_carries_correlation_id verifies CI run evidence carries matching correlation_id. 6 new tests pass, 169 regression pass.",
+      "blocker_or_deferral_reason": ""
+    },
+    {
+      "seam_id": "P0.4_mcp_minimum_runtime_refusal_tests_v1",
+      "status": "pass",
+      "test_paths": [
+        "tests/protocols/mcp/test_mcp_runtime_refusals_v1.py"
+      ],
+      "rationale": "Agent C created rig_relay/protocols/mcp/_refusal_adapter.py with evaluate_mcp_request() (produces schema-valid refusal envelopes for unknown, mutation, credentialed, and destructive tier tools) and classify_tool_descriptor_suspicious() (adversarial descriptor metadata detection). 19 tests in test_mcp_runtime_refusals_v1.py cover: unknown tool refusal, mutation tier refusal, open-world tier refusal, credentialed mutation refusal, destructive tier refusal, read-only tool allowance, descriptor classification (name mismatch, dual-hint shadowing, read-only claim for destructive, oversized description, foreign capability), malformed request handling, empty tool name, all 5 MCPToolTier values, and adversarial coverage.",
+      "blocker_or_deferral_reason": ""
+    },
+    {
+      "seam_id": "P0.5_acp_stub_to_schema_refusal_adapter_v1",
+      "status": "pass",
+      "test_paths": [
+        "tests/governance/test_cross_surface_v1_1_hardening.py::test_sdk_to_acp_refusal_trace_roundtrip",
+        "tests/acp/test_acp_schema_refusal_adapter_v1.py"
+      ],
+      "rationale": "Agent D created rig_relay/acp/_refusal_adapter.py with build_acp_refusal() and raise_acp_refusal(). authenticate() and resume_session() now produce schema-valid ACP refusal envelopes instead of bare NotImplementedMethodError. 20 tests in test_acp_schema_refusal_adapter_v1.py cover: refusal envelope construction, schema validation, trace_id preservation, content_light enforcement, refusal Error raising, session_id tracking, method field accuracy, and refusal_code/flow consistency. test_sdk_to_acp_refusal_trace_roundtrip confirms cross-surface trace_id survives SDK→ACP adapter path.",
+      "blocker_or_deferral_reason": ""
+    }
+  ],
+  "trace_roundtrip_result": {
+    "status": "pass",
+    "detail": "test_bridge_to_sdk_to_mcp_refusal_trace_roundtrip proves trace_id='trace-test-v1-abc123def456' survives the full bridge→SDK→MCP refusal path. Bridge-like trace context (trace_id, parent_message_id, frontend_session_id, backend_session_id) is constructed, SDK RigRefusal model produces a schema-valid refusal, evaluate_mcp_request with unknown tool name produces a schema-valid MCP refusal envelope (validated against rig.relay.mcp.refusal.v1 schema), and trace_id is preserved end-to-end. test_cross_surface_roundtrip_no_raw_payload_echoed confirms no raw tokens, secrets, paths, or prompts are echoed in the output JSON.",
+    "test_paths": [
+      "tests/governance/test_cross_surface_v1_1_hardening.py::test_bridge_to_sdk_to_mcp_refusal_trace_roundtrip",
+      "tests/governance/test_cross_surface_v1_1_hardening.py::test_cross_surface_roundtrip_no_raw_payload_echoed"
+    ]
+  },
+  "shared_refusal_vocabulary_result": {
+    "status": "pass",
+    "detail": "Shared refusal vocabulary artifact at docs/json/governance/refusal_vocabulary_v1.v1.json contains 29 shared refusal classes covering 11 categories. 71 surface mapping entries connect refusal codes across 10 surfaces to shared classes. Schema at docs/schemas/rig.relay.refusal_vocabulary.v1.schema.json enforces class coverage, surface completeness, and content_light invariant. 48 tests pass including schema validation, class enumeration, surface mapping completeness, and adversarial no-forbidden-field tests. The vocabulary is append-only and content-light.",
+    "test_paths": [
+      "tests/governance/test_refusal_vocabulary_v1.py"
+    ]
+  },
+  "provider_ci_joinability_result": {
+    "status": "pass",
+    "detail": "Agent B extended 4 provider/CI schemas with optional trace_id/receipt_id/evidence_id fields. GitHub and Google Workspace receipt builders accept trace_id param and auto-generate receipt_id. CI evidence producer (_build_run_evidence and produce_ci_evidence) accept trace_id and correlation_id. test_provider_receipt_carries_trace_id_joinable builds a GitHub operation receipt with trace_id='trace-test-v1-abc123def456', validates against rig.github_provider.operation_receipt.v1 schema, and confirms trace_id is carried through. test_ci_evidence_carries_correlation_id builds CI run evidence with correlation_id='corr-cross-surface-v1-1-001' and confirms it is carried. 6 new tests pass, 169 regression pass.",
+    "test_paths": [
+      "tests/governance/test_cross_surface_v1_1_hardening.py::test_provider_receipt_carries_trace_id_joinable",
+      "tests/governance/test_cross_surface_v1_1_hardening.py::test_ci_evidence_carries_correlation_id"
+    ]
+  },
+  "mcp_runtime_refusal_result": {
+    "status": "pass",
+    "detail": "Agent C created MCP refusal adapter at rig_relay/protocols/mcp/_refusal_adapter.py with evaluate_mcp_request() producing schema-valid refusal envelopes for unknown, mutation-tier, credentialed, and destructive tools. classify_tool_descriptor_suspicious() provides adversarial descriptor metadata detection (name mismatch, dual-hint shadowing, oversized description, foreign capabilities). 19 tests in test_mcp_runtime_refusals_v1.py cover all refusal paths and adversarial conditions. All tests pass.",
+    "test_paths": [
+      "tests/protocols/mcp/test_mcp_runtime_refusals_v1.py"
+    ]
+  },
+  "acp_stub_refusal_adapter_result": {
+    "status": "pass",
+    "detail": "Agent D created ACP refusal adapter at rig_relay/acp/_refusal_adapter.py with build_acp_refusal() producing schema-valid ACP refusal envelopes. authenticate() and resume_session() now produce schema-valid refusals (rig.relay.acp.refusal.v1) instead of NotImplementedMethodError. 20 tests in test_acp_schema_refusal_adapter_v1.py cover refusal envelope construction, schema validation, trace_id preservation, content_light enforcement, RefusalError raising, and session/method tracking. test_sdk_to_acp_refusal_trace_roundtrip confirms cross-surface trace_id survives the SDK→ACP adapter path.",
+    "test_paths": [
+      "tests/governance/test_cross_surface_v1_1_hardening.py::test_sdk_to_acp_refusal_trace_roundtrip",
+      "tests/acp/test_acp_schema_refusal_adapter_v1.py"
+    ]
+  },
+  "validation_commands": [
+    "uv run pytest tests/governance/test_cross_surface_v1_1_hardening.py -v",
+    "uv run pytest tests/governance/test_refusal_vocabulary_v1.py -v",
+    "uv run pytest tests/protocols/mcp/test_mcp_runtime_refusals_v1.py -v",
+    "uv run pytest tests/acp/test_acp_schema_refusal_adapter_v1.py -v",
+    "uv run pytest tests/governance/test_cross_surface_v1_convergence_review.py -v",
+    "uv run python scripts/rig_relay_validate_schemas.py"
+  ],
+  "tests_run": [
+    "tests/governance/test_cross_surface_v1_1_hardening.py — 5 tests (all new)",
+    "tests/governance/test_refusal_vocabulary_v1.py — 48 tests (Agent A)",
+    "tests/protocols/mcp/test_mcp_runtime_refusals_v1.py — 19 tests (Agent C)",
+    "tests/acp/test_acp_schema_refusal_adapter_v1.py — 20 tests (Agent D)",
+    "Agent B provider/CI tests — 6 new tests, 169 regression pass"
+  ],
+  "out_of_scope_surfaces_untouched": [
+    "frontend_bridge_backend_v1 (bridge transport/gate)",
+    "agent_execution_spine_v1 (runtime tool execution)",
+    "compiler_v1 (contract compiler experiments)",
+    "otel_tool_hardening_v1 (OTel pipeline)",
+    "coordination_event_ledger_v1 (coordination store)",
+    "a2a (A2A delegation/lifecycle)"
+  ],
+  "dependency_changes": [
+    "none"
+  ],
+  "rc_recommendation_after_hardening": "promote",
+  "rc_recommendation_rationale": "All 5 P0 cross-surface hardening seams from the v1 convergence review are closed with PASS status. P0.1 bridge→SDK→MCP refusal trace roundtrip is proven with a real-artifact integration test that validates trace_id survival and content_light enforcement. P0.2 shared refusal vocabulary v1 is complete with 29 classes, 10 surfaces mapped, 71 entries, and 48 schema-validated tests. P0.3 provider and CI trace joinability is proven with schema extensions for trace_id/receipt_id/evidence_id, populated by producers, and validated with cross-surface tests. P0.4 MCP minimum runtime refusal tests deliver 19 tests covering all refusal paths with adversarial coverage. P0.5 ACP stub-to-schema refusal adapter converts NotImplementedMethodError stubs to schema-valid refusal envelopes with 20 tests. The two alpha blockers identified in the convergence review (MCP zero tests and ACP live NotImplementedMethodError stubs) are now resolved. The convergence review's proposed cross-surface P0 test (bridge_to_sdk_to_mcp_refusal_trace_roundtrip) is implemented and passing. No remaining release blockers or alpha blockers. The recommendation upgrades from promote_with_v1_1_hardening to promote.",
+  "remaining_claim_boundaries": [
+    "No claim of agent safety or code correctness",
+    "No claim of full MCP/ACP/A2A implementation",
+    "No claim of production live GitHub/Google OAuth",
+    "No claim of formal verification or OS-level sandboxing",
+    "No claim of neural-style learning or CEGIS/CEGAR equivalence",
+    "P1/P2 cross-surface tests (sdk→a2a, provider_refusal_equivalence, otel join, compiler join, bash reroute join, ACP bridge refusal) are deferred to future slices",
+    "Live protocol transports remain disabled — protocol surfaces are local schema-only in v1",
+    "No live provider auth — all OAuth/auth modes deferred to future provider adapters",
+    "Content-light posture is schema-enforced and test-proven but not OS-guaranteed",
+    "Cross-surface trace propagated end-to-end for P0 paths; full cross-surface trace matrix is v.next hardening"
+  ],
+  "redaction_status": "content_light"
+}

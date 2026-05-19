@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -33,10 +34,18 @@ def validate_github_operation_receipt(receipt: dict[str, Any]) -> list[str]:
     return [e.message for e in validator.iter_errors(receipt)]
 
 
+def _compute_receipt_id(data: dict[str, Any]) -> str:
+    canonical = json.dumps(data, sort_keys=True, ensure_ascii=False)
+    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def build_github_operation_receipt(
     request: GitHubProviderOperationRequest,
     decision: GitHubProviderCapabilityDecision,
     response_metadata: dict[str, Any] | None = None,
+    *,
+    trace_id: str = "",
+    parent_trace_id: str = "",
 ) -> GitHubProviderOperationReceipt:
     response_metadata = response_metadata or {}
 
@@ -70,9 +79,15 @@ def build_github_operation_receipt(
         refusal_code=decision.refusal_code,
         content_light=True,
         redaction_status="clean",
+        trace_id=trace_id,
+        parent_trace_id=parent_trace_id,
     )
 
     receipt_dict = receipt.to_dict()
+
+    receipt.receipt_id = _compute_receipt_id(receipt_dict)
+    receipt_dict["receipt_id"] = receipt.receipt_id
+
     assert_content_light_mapping(receipt_dict)
 
     for value in receipt_dict.values():

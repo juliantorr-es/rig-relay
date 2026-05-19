@@ -212,14 +212,16 @@ def detect_run_context(output_dir: Path | None = None) -> RunContext:
     )
 
 
-def _build_run_evidence(ctx: RunContext, evidence_dir: Path) -> dict[str, Any]:
+def _build_run_evidence(
+    ctx: RunContext, evidence_dir: Path, *, trace_id: str = "", correlation_id: str = ""
+) -> dict[str, Any]:
     artifact_index_rel = (
         f".build/rig-relay/evidence/ci_{ctx.run_id}_artifact_index.v1.json"
     )
     verdict_rel = f".build/rig-relay/evidence/ci_{ctx.run_id}_verdict.v1.json"
     evidence_jsonl_rel = f".build/rig-relay/evidence/ci_{ctx.run_id}_events.v1.jsonl"
 
-    return {
+    result: dict[str, Any] = {
         "schema_version": "rig.ci.run.v1",
         "run_id": ctx.run_id,
         "run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
@@ -244,6 +246,11 @@ def _build_run_evidence(ctx: RunContext, evidence_dir: Path) -> dict[str, Any]:
         "telemetry_redaction_notes": REDACTION_NOTES,
         "generated_at": _now_iso(),
     }
+    if trace_id:
+        result["trace_id"] = trace_id
+    if correlation_id:
+        result["correlation_id"] = correlation_id
+    return result
 
 
 def _build_job_evidence(
@@ -400,6 +407,9 @@ def _evaluate_verdict(
     artifact_index_data: dict[str, Any],
     evidence_dir: Path,
     repo_root: Path = _REPO_ROOT,
+    *,
+    trace_id: str = "",
+    evidence_id: str = "",
 ) -> dict[str, Any]:
     blocking_reasons: list[str] = []
     warnings: list[str] = []
@@ -551,7 +561,7 @@ def _evaluate_verdict(
     else:
         verdict = "pass"
 
-    return {
+    result: dict[str, Any] = {
         "schema_version": "rig.ci.verdict.v1",
         "run_id": ctx.run_id,
         "verdict": verdict,
@@ -571,6 +581,11 @@ def _evaluate_verdict(
         "evidence_paths": evidence_paths,
         "telemetry_redaction_notes": REDACTION_NOTES,
     }
+    if trace_id:
+        result["trace_id"] = trace_id
+    if evidence_id:
+        result["evidence_id"] = evidence_id
+    return result
 
 
 @dataclass
@@ -590,12 +605,16 @@ def produce_ci_evidence(
     commands: str | None = None,
     validation_surfaces: list[str] | None = None,
     additional_artifact_paths: list[Path] | None = None,
+    trace_id: str = "",
+    correlation_id: str = "",
 ) -> CIVerdict:
     ctx = detect_run_context(output_dir)
     evidence_dir = output_dir or _EVIDENCE_DIR
     evidence_dir.mkdir(parents=True, exist_ok=True)
 
-    run_data = _build_run_evidence(ctx, evidence_dir)
+    run_data = _build_run_evidence(
+        ctx, evidence_dir, trace_id=trace_id, correlation_id=correlation_id
+    )
     run_path = evidence_dir / f"ci_{ctx.run_id}_run.v1.json"
     run_path.write_text(json.dumps(run_data, indent=2) + "\n", encoding="utf-8")
 
@@ -622,8 +641,10 @@ def produce_ci_evidence(
     )
 
     verdict_data = _evaluate_verdict(
-        ctx, run_data, job_data, artifact_index_data, evidence_dir
+        ctx, run_data, job_data, artifact_index_data, evidence_dir, trace_id=trace_id
     )
+    eid = "sha256:" + _sha256_text(json.dumps(verdict_data, sort_keys=True))
+    verdict_data["evidence_id"] = eid
     verdict_path = evidence_dir / f"ci_{ctx.run_id}_verdict.v1.json"
     verdict_path.write_text(json.dumps(verdict_data, indent=2) + "\n", encoding="utf-8")
 

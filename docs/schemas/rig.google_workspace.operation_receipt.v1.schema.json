@@ -25,7 +25,10 @@
     "refusal_code": {"type": "string"},
     "redaction_status": {"type": "string", "enum": ["clean", "redacted", "not_applicable"]},
     "content_light": {"type": "boolean", "const": true},
-    "generated_at": {"type": "string", "format": "date-time"}
+    "generated_at": {"type": "string", "format": "date-time"},
+    "trace_id": {"type": "string", "description": "Optional distributed trace identifier for joinability across surfaces."},
+    "receipt_id": {"type": "string", "description": "Optional self-referential receipt SHA-256 identifier. Format: 'sha256:' + 64 hex chars."},
+    "parent_trace_id": {"type": "string", "description": "Optional parent trace identifier for causal chain ancestry."}
   },
   "additionalProperties": false
 }

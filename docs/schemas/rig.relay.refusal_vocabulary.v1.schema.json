@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.refusal_vocabulary.v1.schema.json",
+  "title": "Shared Refusal Vocabulary v1",
+  "description": "Canonical refusal vocabulary that maps all known v1 refusal codes across surfaces into shared refusal classes. This is a normalization layer — domain schemas keep their own codes; the vocabulary adds shared classification. Content-light: no raw tokens, paths, secrets, prompts, or private file contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "shared_refusal_classes",
+    "surface_mappings",
+    "unmapped_known_codes",
+    "strict_mode_behavior",
+    "claim_boundaries",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.refusal_vocabulary.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for this vocabulary artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of vocabulary generation."
+    },
+    "shared_refusal_classes": {
+      "type": "array",
+      "minItems": 29,
+      "items": {
+        "type": "object",
+        "required": [
+          "class_id",
+          "class_label",
+          "category",
+          "severity_range",
+          "canonical_refusal_code"
+        ],
+        "properties": {
+          "class_id": {
+            "type": "string",
+            "description": "Stable shared class identifier (e.g., mutation_refused)."
+          },
+          "class_label": {
+            "type": "string",
+            "description": "Human-readable label for dashboards and reports."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "input_validation",
+              "capability",
+              "authorization",
+              "resource",
+              "mutation",
+              "network",
+              "deferral",
+              "rate_limit",
+              "error",
+              "validation",
+              "ci"
+            ],
+            "description": "High-level refusal category."
+          },
+          "severity_range": {
+            "type": "string",
+            "enum": ["info", "low", "medium", "high", "critical"],
+            "description": "Maximum severity level for this class. Used for alerting thresholds."
+          },
+          "canonical_refusal_code": {
+            "type": "string",
+            "description": "Canonical shared code string. Domain schemas keep their own codes."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what this refusal class covers."
+          },
+          "example_original_codes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Representative original codes from various surfaces that map to this class."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "All 29 shared refusal classes as the canonical vocabulary."
+    },
+    "surface_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "original_code",
+          "original_kind",
+          "shared_class",
+          "rationale"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string",
+            "description": "Origin surface (bridge, sdk, mcp, acp, a2a, github_provider, google_workspace, ci_evidence, tools_bash_runtime, compiler)."
+          },
+          "original_code": {
+            "type": "string",
+            "description": "The surface-local refusal code or identifier."
+          },
+          "original_kind": {
+            "type": "string",
+            "description": "What kind of code it is (refusal_kind, refusal_code, verdict, candidate_status, exception_class, etc.)."
+          },
+          "shared_class": {
+            "type": "string",
+            "description": "The canonical shared refusal class_id this maps to."
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why this mapping is correct."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional additional notes about edge cases or caveats."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Complete mapping of every known surface refusal code to a shared refusal class."
+    },
+    "unmapped_known_codes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface", "code", "why_unmapped"],
+        "properties": {
+          "surface": {"type": "string"},
+          "code": {"type": "string"},
+          "why_unmapped": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why this code is deliberately not mapped to any shared class."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Codes known but intentionally not mapped to any shared class."
+    },
+    "strict_mode_behavior": {
+      "type": "object",
+      "required": ["unknown_codes_fail_validation", "missing_rationale_fails_validation"],
+      "properties": {
+        "unknown_codes_fail_validation": {
+          "type": "boolean",
+          "description": "Whether a refusal code not found in this vocabulary should fail strict validation."
+        },
+        "missing_rationale_fails_validation": {
+          "type": "boolean",
+          "description": "Whether a mapping without rationale should fail strict validation."
+        },
+        "strict_mode_note": {
+          "type": "string",
+          "description": "Explanation of strict mode behavior and any exceptions."
+        }
+      },
+      "additionalProperties": false,
+      "description": "How this vocabulary enforces coverage in strict mode."
+    },
+    "claim_boundaries": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "description": "Boundary claims about what this vocabulary does and does not cover."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: this vocabulary artifact is content-light."
+    },
+    "not": {
+      "anyOf": [
+        {"required": ["raw_prompt"]},
+        {"required": ["raw_completion"]},
+        {"required": ["raw_file_contents"]},
+        {"required": ["access_token"]},
+        {"required": ["client_secret"]},
+        {"required": ["private_key"]}
+      ]
+    }
+  },
+  "additionalProperties": false
+}
