@@ -1,0 +1,230 @@
+{
+  "schema_version": "rig.github_provider.capability_manifest.v1",
+  "provider_id": "github",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "capabilities": [
+    {
+      "capability_id": "github.repo.metadata.read",
+      "operation_kind": "Read repository metadata",
+      "operation_class": "read_only",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_metadata_read_refused"
+    },
+    {
+      "capability_id": "github.repo.contents.read",
+      "operation_kind": "Read repository contents",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_contents_read_refused"
+    },
+    {
+      "capability_id": "github.repo.branches.read",
+      "operation_kind": "Read repository branches",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_branches_read_refused"
+    },
+    {
+      "capability_id": "github.repo.commits.read",
+      "operation_kind": "Read repository commits",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_commits_read_refused"
+    },
+    {
+      "capability_id": "github.repo.issues.read",
+      "operation_kind": "Read repository issues",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_issues_read_refused"
+    },
+    {
+      "capability_id": "github.repo.pull_requests.read",
+      "operation_kind": "Read repository pull requests",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["none", "github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_repo_pull_requests_read_refused"
+    },
+    {
+      "capability_id": "github.actions.runs.read",
+      "operation_kind": "Read GitHub Actions workflow runs",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_actions_runs_read_refused"
+    },
+    {
+      "capability_id": "github.actions.artifacts.read",
+      "operation_kind": "Read GitHub Actions artifacts",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_actions_artifacts_read_refused"
+    },
+    {
+      "capability_id": "github.issues.comment.write",
+      "operation_kind": "Write issue comment",
+      "operation_class": "remote_mutation",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_issues_comment_write_refused_step_up_required"
+    },
+    {
+      "capability_id": "github.pull_requests.review.write",
+      "operation_kind": "Write pull request review",
+      "operation_class": "remote_mutation",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_pull_requests_review_write_refused_step_up_required"
+    },
+    {
+      "capability_id": "github.contents.write",
+      "operation_kind": "Write repository contents",
+      "operation_class": "credentialed_remote_mutation",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_contents_write_refused_step_up_required"
+    },
+    {
+      "capability_id": "github.refs.update",
+      "operation_kind": "Update repository references",
+      "operation_class": "credentialed_remote_mutation",
+      "required_auth_modes": ["github_app_installation", "github_app_user", "personal_access_token_manual_import"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_refs_update_refused_step_up_required"
+    },
+    {
+      "capability_id": "github.workflow.rerun",
+      "operation_kind": "Rerun GitHub Actions workflow",
+      "operation_class": "destructive_remote_mutation",
+      "required_auth_modes": ["github_app_installation", "github_app_user"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_workflow_rerun_refused_destructive_v0"
+    },
+    {
+      "capability_id": "github.webhooks.receive",
+      "operation_kind": "Receive and process GitHub webhooks",
+      "operation_class": "destructive_remote_mutation",
+      "required_auth_modes": ["github_app_installation"],
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": false,
+      "refusal_code_when_denied": "github_webhooks_receive_refused_destructive_v0"
+    },
+    {
+      "capability_id": "github.app.installation.inspect",
+      "operation_kind": "Inspect GitHub App installation",
+      "operation_class": "remote_read",
+      "required_auth_modes": ["github_app_installation"],
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "stores_raw_content": false,
+      "content_light_output": true,
+      "default_allowed": true,
+      "refusal_code_when_denied": "github_app_installation_inspect_refused"
+    }
+  ],
+  "default_policy": {
+    "read_only_default": "allowed with appropriate auth",
+    "remote_mutation_default": "refused until explicit capability + step-up",
+    "destructive_mutation_default": "refused in v0",
+    "requires_explicit_step_up_for_mutation": true
+  },
+  "unsupported_operations": [
+    "github.repo.delete",
+    "github.org.admin",
+    "github.billing.read",
+    "github.secrets.write",
+    "github.actions.secrets.read",
+    "github.actions.secrets.write",
+    "github.security.advisories.write"
+  ],
+  "mutation_classes": [
+    {
+      "mutation_class": "remote_mutation",
+      "v0_allowed": false,
+      "step_up_required": true,
+      "receipt_required": true,
+      "auth_modes": ["github_app_installation", "github_app_user", "oauth_web_flow", "personal_access_token_manual_import"]
+    },
+    {
+      "mutation_class": "credentialed_remote_mutation",
+      "v0_allowed": false,
+      "step_up_required": true,
+      "receipt_required": true,
+      "auth_modes": ["github_app_installation", "github_app_user", "personal_access_token_manual_import"]
+    },
+    {
+      "mutation_class": "destructive_remote_mutation",
+      "v0_allowed": false,
+      "step_up_required": true,
+      "receipt_required": true,
+      "auth_modes": ["github_app_installation", "github_app_user"]
+    }
+  ],
+  "redaction_policy": {
+    "no_raw_tokens_in_manifest": true,
+    "no_raw_content_in_manifest": true,
+    "sha256_for_content_references": true
+  }
+}

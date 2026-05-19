@@ -11,13 +11,15 @@
     "release_gate_blocker_id",
     "runner_class",
     "official_release",
+    "release_class",
     "evaluated_at",
     "required_artifacts_present",
     "required_artifacts_valid",
     "artifact_hashes_verified",
     "blocking_reasons",
     "warnings",
-    "evidence_paths"
+    "evidence_paths",
+    "telemetry_redaction_notes"
   ],
   "properties": {
     "schema_version": {
@@ -47,6 +49,11 @@
     "official_release": {
       "type": "boolean",
       "description": "True only for official release CI runs."
+    },
+    "release_class": {
+      "type": "string",
+      "enum": ["official", "lab", "dry_run", "local_validation"],
+      "description": "Release classification for this CI run."
     },
     "evaluated_at": {
       "type": "string",

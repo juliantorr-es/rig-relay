@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.bridge_lifecycle_event.v1.schema.json",
+  "title": "Bridge Lifecycle Event v1",
+  "description": "Records bridge lifecycle transitions: handshake, transport connection, authentication, projection streaming, errors, and graceful shutdown. Content-light: attributes are hashed or enumerated, never raw paths or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "trace_id",
+    "handshake_id",
+    "frontend_session_id",
+    "event",
+    "created_at",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.bridge_lifecycle_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier for dedup."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "End-to-end trace identifier."
+    },
+    "handshake_id": {
+      "type": "string",
+      "description": "Session-scoped correlation ID linking all events in one bridge session."
+    },
+    "frontend_session_id": {
+      "type": "string",
+      "description": "Frontend-originated session identifier."
+    },
+    "backend_session_id": {
+      "type": "string",
+      "description": "Backend-assigned session identifier."
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "handshake_requested",
+        "handshake_completed",
+        "bridge_ready",
+        "transport_connecting",
+        "transport_connected",
+        "transport_disconnected",
+        "auth_succeeded",
+        "auth_failed",
+        "projection_stream_started",
+        "projection_stream_stopped",
+        "projection_rendered",
+        "heartbeat_timeout",
+        "connection_closed",
+        "bridge_error",
+        "bridge_failed",
+        "bridge_closed"
+      ],
+      "description": "Lifecycle event type."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of event occurrence."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: every lifecycle event is content_light."
+    },
+    "state_before": {
+      "type": "string",
+      "description": "Bridge state before this event."
+    },
+    "state_after": {
+      "type": "string",
+      "description": "Bridge state after this event."
+    },
+    "transition_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total transitions in this bridge session so far."
+    },
+    "details": {
+      "type": "object",
+      "description": "Content-light details. Only enumerated values, hashes, and safe labels allowed.",
+      "properties": {
+        "reason": { "type": "string" },
+        "step_id": { "type": "string" },
+        "duration_ms": { "type": "integer" },
+        "error_code": { "type": "string" },
+        "refusal_code": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

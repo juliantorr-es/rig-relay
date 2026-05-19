@@ -1,0 +1,1139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler_feasibility.v1",
+  "title": "Contract Compiler Feasibility Assessment v1",
+  "description": "Schema for the Contract-Satisfaction Compiler feasibility assessment canonical evidence artifact.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "repo_observation",
+    "online_research_summary",
+    "current_repo_capability_map",
+    "strategy_comparison_matrix",
+    "feasibility_verdict",
+    "proposed_compiler_architecture",
+    "first_compiler_target_ranking",
+    "minimum_viable_implementation_slice",
+    "dependency_recommendation",
+    "fake_green_risks",
+    "coordination_event_ledger_event_design",
+    "final_recommendation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler_feasibility.v1"
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for this feasibility assessment artifact.",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this artifact was generated."
+    },
+    "repo_observation": {
+      "type": "object",
+      "required": [
+        "branch",
+        "head",
+        "dirty_state",
+        "python_version_policy",
+        "schema_count_observed",
+        "schema_draft_observed",
+        "relevant_existing_dependencies",
+        "relevant_missing_dependencies",
+        "existing_codegen_status",
+        "existing_render_generation_scripts"
+      ],
+      "properties": {
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "dirty_state": {
+          "type": "string"
+        },
+        "python_version_policy": {
+          "type": "string"
+        },
+        "schema_count_observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "schema_draft_observed": {
+          "type": "string"
+        },
+        "relevant_existing_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dependency", "installed", "used_for_codegen"],
+            "properties": {
+              "dependency": {"type": "string"},
+              "installed": {"type": "boolean"},
+              "used_for_codegen": {"type": "boolean"}
+            }
+          }
+        },
+        "relevant_missing_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dependency", "purpose", "would_require_addition"],
+            "properties": {
+              "dependency": {"type": "string"},
+              "purpose": {"type": "string"},
+              "would_require_addition": {"type": "boolean"}
+            }
+          }
+        },
+        "existing_codegen_status": {
+          "type": "string"
+        },
+        "existing_render_generation_scripts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["script_path", "generates"],
+            "properties": {
+              "script_path": {"type": "string"},
+              "generates": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "online_research_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool_or_source", "source_url", "finding", "relevance_to_rig", "risk_or_limitation"],
+        "properties": {
+          "tool_or_source": {"type": "string"},
+          "source_url": {"type": "string", "format": "uri"},
+          "finding": {"type": "string"},
+          "relevance_to_rig": {"type": "string"},
+          "risk_or_limitation": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "current_repo_capability_map": {
+      "type": "object",
+      "required": [
+        "schema_validation",
+        "model_schema_drift_detection",
+        "python_codegen",
+        "formatting_static_checks",
+        "evidence_receipt_recording",
+        "coordination_ledger_readiness",
+        "property_based_testing",
+        "mutation_testing",
+        "template_rendering",
+        "git_worktree_available"
+      ],
+      "properties": {
+        "schema_validation": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "model_schema_drift_detection": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "python_codegen": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "formatting_static_checks": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "evidence_receipt_recording": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "coordination_ledger_readiness": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "property_based_testing": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "mutation_testing": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "template_rendering": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        },
+        "git_worktree_available": {
+          "type": "object",
+          "required": ["available", "maturity", "notes"],
+          "properties": {
+            "available": {"type": "boolean"},
+            "maturity": {"type": "string"},
+            "notes": {"type": "string"}
+          }
+        }
+      }
+    },
+    "strategy_comparison_matrix": {
+      "type": "object",
+      "required": [
+        "existing_generator_wrapper",
+        "first_party_template_compiler",
+        "cst_ast_compiler",
+        "hybrid_long_term"
+      ],
+      "properties": {
+        "existing_generator_wrapper": {
+          "$ref": "#/definitions/strategy_assessment"
+        },
+        "first_party_template_compiler": {
+          "$ref": "#/definitions/strategy_assessment"
+        },
+        "cst_ast_compiler": {
+          "$ref": "#/definitions/strategy_assessment"
+        },
+        "hybrid_long_term": {
+          "$ref": "#/definitions/strategy_assessment"
+        }
+      }
+    },
+    "feasibility_verdict": {
+      "type": "object",
+      "required": [
+        "feasible_now",
+        "feasible_after_coordination_ledger_v1",
+        "feasible_after_ci_evidence_v1",
+        "dependency_changes_required",
+        "safest_first_path",
+        "implementation_should_start_now",
+        "implementation_blocked_by"
+      ],
+      "properties": {
+        "feasible_now": {"type": "boolean"},
+        "feasible_after_coordination_ledger_v1": {"type": "boolean"},
+        "feasible_after_ci_evidence_v1": {"type": "boolean"},
+        "dependency_changes_required": {"type": "string"},
+        "safest_first_path": {"type": "string"},
+        "implementation_should_start_now": {"type": "boolean"},
+        "implementation_blocked_by": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "proposed_compiler_architecture": {
+      "type": "object",
+      "required": [
+        "compiler_kind",
+        "source_of_truth",
+        "candidate_isolation_path_pattern",
+        "candidate_worktree_path_pattern",
+        "git_worktree_requirement",
+        "schema_candidate_loop",
+        "python_candidate_loop",
+        "validation_matrix",
+        "evidence_artifacts",
+        "refinement_loop",
+        "promotion_policy",
+        "contract_slicing",
+        "pattern_aggregation"
+      ],
+      "properties": {
+        "compiler_kind": {
+          "type": "string",
+          "const": "contract_satisfaction_compiler"
+        },
+        "source_of_truth": {"type": "string"},
+        "candidate_isolation_path_pattern": {"type": "string"},
+        "candidate_worktree_path_pattern": {
+          "type": "string",
+          "description": "Path pattern for isolated Git worktrees where candidates are validated against the real repository substrate."
+        },
+        "git_worktree_requirement": {
+          "type": "object",
+          "required": ["enforced", "description", "worktree_lifecycle", "worktree_budget", "worktree_lifecycle_states", "evidence_preservation_policy", "cleanup_policy", "worktree_path_hierarchy"],
+          "properties": {
+            "enforced": {"type": "boolean"},
+            "description": {"type": "string"},
+            "worktree_lifecycle": {"type": "string"},
+            "base_branch": {"type": "string"},
+            "worktree_root_pattern": {"type": "string"},
+            "worktree_budget": {
+              "type": "object",
+              "required": ["max_scratch_worktrees", "max_retained_failed_worktrees", "max_stage_depth", "max_candidates_per_slice", "max_runtime_seconds_per_candidate"],
+              "properties": {
+                "max_scratch_worktrees": {"type": "integer", "minimum": 1},
+                "max_retained_failed_worktrees": {"type": "integer", "minimum": 0},
+                "max_stage_depth": {"type": "integer", "minimum": 1},
+                "max_candidates_per_slice": {"type": "integer", "minimum": 1},
+                "max_runtime_seconds_per_candidate": {"type": "integer", "minimum": 1}
+              }
+            },
+            "worktree_lifecycle_states": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["state", "description"],
+                "properties": {
+                  "state": {"type": "string"},
+                  "description": {"type": "string"},
+                  "transitions_to": {"type": "array", "items": {"type": "string"}}
+                }
+              }
+            },
+            "evidence_preservation_policy": {
+              "type": "object",
+              "required": ["failed_worktree_contents_not_retained_by_default", "candidate_hashes_always_retained", "counterexample_hashes_always_retained", "novel_failures_may_be_quarantined", "duplicate_failures_are_deduped"],
+              "properties": {
+                "failed_worktree_contents_not_retained_by_default": {"type": "boolean"},
+                "candidate_hashes_always_retained": {"type": "boolean"},
+                "counterexample_hashes_always_retained": {"type": "boolean"},
+                "novel_failures_may_be_quarantined": {"type": "boolean"},
+                "duplicate_failures_are_deduped": {"type": "boolean"}
+              }
+            },
+            "cleanup_policy": {
+              "type": "object",
+              "required": ["failed_scratch_worktrees_removed_immediately_after_evidence_copied", "quarantined_worktrees_retained_only_for_novel_failures", "stage_worktrees_retain_active_lineage_plus_n_previous", "accepted_worktree_retained_until_human_review", "orphaned_worktrees_detected_and_pruned_on_startup"],
+              "properties": {
+                "failed_scratch_worktrees_removed_immediately_after_evidence_copied": {"type": "boolean"},
+                "quarantined_worktrees_retained_only_for_novel_failures": {"type": "boolean"},
+                "stage_worktrees_retain_active_lineage_plus_n_previous": {"type": "integer", "minimum": 0},
+                "accepted_worktree_retained_until_human_review": {"type": "boolean"},
+                "orphaned_worktrees_detected_and_pruned_on_startup": {"type": "boolean"}
+              }
+            },
+            "worktree_path_hierarchy": {
+              "type": "object",
+              "required": ["scratch_path_pattern", "stages_path_pattern", "accepted_path_pattern", "quarantine_path_pattern"],
+              "properties": {
+                "scratch_path_pattern": {"type": "string"},
+                "stages_path_pattern": {"type": "string"},
+                "accepted_path_pattern": {"type": "string"},
+                "quarantine_path_pattern": {"type": "string"}
+              }
+            },
+            "staged_accumulation_rule": {
+              "type": "object",
+              "required": ["reset_after_failure_resets_to_current_stage_base_not_original_contract_base", "slice_n_base_is_stage_n_minus_1_promoted_worktree"],
+              "properties": {
+                "reset_after_failure_resets_to_current_stage_base_not_original_contract_base": {"type": "boolean"},
+                "slice_n_base_is_stage_n_minus_1_promoted_worktree": {"type": "boolean"}
+              }
+            },
+            "promotion_policy": {
+              "type": "object",
+              "required": ["candidate_never_mutates_canonical_directly", "promotion_is_governed", "worktree_cleaned_after_acceptance"],
+              "properties": {
+                "candidate_never_mutates_canonical_directly": {"type": "boolean"},
+                "promotion_is_governed": {"type": "boolean"},
+                "worktree_cleaned_after_acceptance": {"type": "boolean"},
+                "rejected_worktree_retention_policy": {"type": "string"}
+              }
+            }
+          }
+        },
+        "contract_slicing": {
+          "type": "object",
+          "required": ["enabled", "description", "slice_ordering", "partial_success_promotion"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "description": {"type": "string"},
+            "slice_ordering": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["slice_id", "assertion_group", "description"],
+                "properties": {
+                  "slice_id": {"type": "string"},
+                  "assertion_group": {"type": "string"},
+                  "description": {"type": "string"},
+                  "acceptance_threshold": {"type": "number", "minimum": 0, "maximum": 1}
+                }
+              }
+            },
+            "partial_success_promotion": {
+              "type": "object",
+              "required": ["enabled", "slice_n_base_is_stage_n_minus_1_promoted_worktree", "failed_slice_resets_to_current_stage_base"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "slice_n_base_is_stage_n_minus_1_promoted_worktree": {"type": "boolean"},
+                "failed_slice_resets_to_current_stage_base": {"type": "boolean"}
+              }
+            }
+          }
+        },
+        "pattern_aggregation": {
+          "type": "object",
+          "required": ["enabled", "description"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "description": {"type": "string"},
+            "data_products": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["product_id", "description"],
+                "properties": {
+                  "product_id": {"type": "string"},
+                  "description": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "schema_candidate_loop": {
+          "type": "object",
+          "required": ["generation_method", "acceptance_criteria", "rejection_criteria"],
+          "properties": {
+            "generation_method": {"type": "string"},
+            "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+            "rejection_criteria": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "python_candidate_loop": {
+          "type": "object",
+          "required": ["generation_method", "acceptance_criteria", "rejection_criteria"],
+          "properties": {
+            "generation_method": {"type": "string"},
+            "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+            "rejection_criteria": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "validation_matrix": {
+          "type": "object",
+          "required": [
+            "json_schema_validation",
+            "generated_python_importability",
+            "pyright_type_check",
+            "ruff_lint_check",
+            "ruff_format_check",
+            "model_dump_vs_schema",
+            "real_artifact_round_trip",
+            "adversarial_malformed_input",
+            "content_light_redaction",
+            "deterministic_regeneration",
+            "schema_version_to_file_resolution",
+            "trace_correlation_field_propagation",
+            "property_based_testing_optional",
+            "mutation_testing_optional"
+          ],
+          "properties": {
+            "json_schema_validation": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "generated_python_importability": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "pyright_type_check": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "ruff_lint_check": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "ruff_format_check": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "model_dump_vs_schema": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "real_artifact_round_trip": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "adversarial_malformed_input": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "content_light_redaction": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "deterministic_regeneration": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "schema_version_to_file_resolution": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "trace_correlation_field_propagation": {
+              "type": "object",
+              "required": ["enabled", "phase"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"}
+              }
+            },
+            "property_based_testing_optional": {
+              "type": "object",
+              "required": ["enabled", "phase", "notes"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"},
+                "notes": {"type": "string"}
+              }
+            },
+            "mutation_testing_optional": {
+              "type": "object",
+              "required": ["enabled", "phase", "notes"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "phase": {"type": "string"},
+                "notes": {"type": "string"}
+              }
+            }
+          }
+        },
+        "evidence_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["artifact_path_pattern", "description"],
+            "properties": {
+              "artifact_path_pattern": {"type": "string"},
+              "description": {"type": "string"}
+            }
+          }
+        },
+        "refinement_loop": {
+          "type": "object",
+          "required": ["enabled", "description"],
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "description": {"type": "string"}
+          }
+        },
+        "promotion_policy": {
+          "type": "object",
+          "required": ["requires_human_governance", "description"],
+          "properties": {
+            "requires_human_governance": {"type": "boolean"},
+            "description": {"type": "string"}
+          }
+        }
+      }
+    },
+    "first_compiler_target_ranking": {
+      "type": "object",
+      "required": [
+        "coordination_event_payload_models",
+        "ci_evidence_run_verdict_models",
+        "tool_invocation_receipt_models",
+        "desktop_projection_widget_models",
+        "release_bundle_manifest_model",
+        "trace_vocabulary_registry_models"
+      ],
+      "properties": {
+        "coordination_event_payload_models": {
+          "$ref": "#/definitions/compiler_target"
+        },
+        "ci_evidence_run_verdict_models": {
+          "$ref": "#/definitions/compiler_target"
+        },
+        "tool_invocation_receipt_models": {
+          "$ref": "#/definitions/compiler_target"
+        },
+        "desktop_projection_widget_models": {
+          "$ref": "#/definitions/compiler_target"
+        },
+        "release_bundle_manifest_model": {
+          "$ref": "#/definitions/compiler_target"
+        },
+        "trace_vocabulary_registry_models": {
+          "$ref": "#/definitions/compiler_target"
+        }
+      }
+    },
+    "minimum_viable_implementation_slice": {
+      "type": "object",
+      "required": [
+        "proposed_slice_name",
+        "files_likely_to_touch",
+        "files_to_avoid",
+        "tests_to_add",
+        "evidence_artifacts_to_emit",
+        "validation_commands",
+        "explicit_non_goals"
+      ],
+      "properties": {
+        "proposed_slice_name": {"type": "string"},
+        "files_likely_to_touch": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "files_to_avoid": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "tests_to_add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["test_file", "test_count_estimate", "test_names"],
+            "properties": {
+              "test_file": {"type": "string"},
+              "test_count_estimate": {"type": "integer", "minimum": 0},
+              "test_names": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        },
+        "evidence_artifacts_to_emit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["artifact_path", "description"],
+            "properties": {
+              "artifact_path": {"type": "string"},
+              "description": {"type": "string"}
+            }
+          }
+        },
+        "validation_commands": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "explicit_non_goals": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "dependency_recommendation": {
+      "type": "object",
+      "required": [
+        "no_new_dependency_path",
+        "optional_datamodel_code_generator_path",
+        "optional_hypothesis_path",
+        "optional_cosmic_ray_path",
+        "rejected_libcst_for_first_slice",
+        "rejected_openapi_generator_path"
+      ],
+      "properties": {
+        "no_new_dependency_path": {
+          "type": "object",
+          "required": ["recommended", "strategy", "description"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "strategy": {"type": "string"},
+            "description": {"type": "string"}
+          }
+        },
+        "optional_datamodel_code_generator_path": {
+          "type": "object",
+          "required": ["recommended", "description", "status"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "description": {"type": "string"},
+            "status": {"type": "string", "enum": ["parked", "promoted_for_later", "rejected"]}
+          }
+        },
+        "optional_hypothesis_path": {
+          "type": "object",
+          "required": ["recommended", "description", "status"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "description": {"type": "string"},
+            "status": {"type": "string", "enum": ["parked", "promoted_for_later", "rejected"]}
+          }
+        },
+        "optional_cosmic_ray_path": {
+          "type": "object",
+          "required": ["recommended", "description", "status"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "description": {"type": "string"},
+            "status": {"type": "string", "enum": ["parked", "promoted_for_later", "rejected"]}
+          }
+        },
+        "rejected_libcst_for_first_slice": {
+          "type": "object",
+          "required": ["recommended", "description", "status"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "description": {"type": "string"},
+            "status": {"type": "string", "enum": ["parked", "promoted_for_later", "rejected"]}
+          }
+        },
+        "rejected_openapi_generator_path": {
+          "type": "object",
+          "required": ["recommended", "description", "status"],
+          "properties": {
+            "recommended": {"type": "boolean"},
+            "description": {"type": "string"},
+            "status": {"type": "string", "enum": ["parked", "promoted_for_later", "rejected"]}
+          }
+        }
+      }
+    },
+    "fake_green_risks": {
+      "type": "object",
+      "required": [
+        "generated_code_imports_but_violates_semantics",
+        "generated_schema_accepts_too_much",
+        "generated_schema_rejects_valid_artifacts",
+        "generated_tests_mirror_generated_code",
+        "model_dump_schema_checks_only_field_names",
+        "weak_property_strategies",
+        "synthetic_fixture_only_acceptance",
+        "failed_candidates_deleted",
+        "duplicate_failures_not_deduped",
+        "schema_draft_mismatch",
+        "generated_code_without_provenance",
+        "inert_file_only_validation",
+        "contract_ambiguity_risk"
+      ],
+      "properties": {
+        "generated_code_imports_but_violates_semantics": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "generated_schema_accepts_too_much": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "generated_schema_rejects_valid_artifacts": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "generated_tests_mirror_generated_code": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "model_dump_schema_checks_only_field_names": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "weak_property_strategies": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "synthetic_fixture_only_acceptance": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "failed_candidates_deleted": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "duplicate_failures_not_deduped": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "schema_draft_mismatch": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "generated_code_without_provenance": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "inert_file_only_validation": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        },
+        "contract_ambiguity_risk": {
+          "type": "object",
+          "required": ["severity", "prevention"],
+          "properties": {
+            "severity": {"type": "string"},
+            "prevention": {"type": "string"}
+          }
+        }
+      }
+    },
+    "coordination_event_ledger_event_design": {
+      "type": "object",
+      "required": [
+        "contract_compilation_started",
+        "contract_schema_candidate_generated",
+        "contract_schema_candidate_rejected",
+        "contract_python_candidate_generated",
+        "contract_python_candidate_import_failed",
+        "contract_python_candidate_typecheck_failed",
+        "contract_python_candidate_schema_fit_failed",
+        "contract_counterexample_discovered",
+        "contract_deterministic_regeneration_mismatch",
+        "contract_fit_score_computed",
+        "contract_candidate_accepted",
+        "contract_candidate_quarantined",
+        "contract_refinement_proposed",
+        "contract_generation_permutation_recorded",
+        "contract_candidate_worktree_created",
+        "contract_candidate_patch_applied",
+        "contract_candidate_worktree_cleaned",
+        "contract_candidate_validation_failed",
+        "contract_candidate_worktree_reset",
+        "contract_candidate_worktree_reaped",
+        "contract_slice_partially_satisfied",
+        "contract_stage_worktree_promoted",
+        "contract_stage_validation_passed",
+        "contract_full_contract_satisfied",
+        "contract_promotion_proposal_emitted",
+        "contract_permutation_patterns_aggregated",
+        "contract_schema_pattern_discovered",
+        "contract_template_refinement_proposed"
+      ],
+      "properties": {
+        "contract_compilation_started": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_schema_candidate_generated": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_schema_candidate_rejected": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_python_candidate_generated": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_python_candidate_import_failed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_python_candidate_typecheck_failed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_python_candidate_schema_fit_failed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_counterexample_discovered": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_deterministic_regeneration_mismatch": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_fit_score_computed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_accepted": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_quarantined": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_refinement_proposed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_generation_permutation_recorded": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_worktree_created": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_patch_applied": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_worktree_cleaned": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_validation_failed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_worktree_reset": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_candidate_worktree_reaped": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_slice_partially_satisfied": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_stage_worktree_promoted": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_stage_validation_passed": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_full_contract_satisfied": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_promotion_proposal_emitted": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_permutation_patterns_aggregated": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_schema_pattern_discovered": {
+          "$ref": "#/definitions/compiler_event"
+        },
+        "contract_template_refinement_proposed": {
+          "$ref": "#/definitions/compiler_event"
+        }
+      }
+    },
+    "final_recommendation": {
+      "type": "object",
+      "required": [
+        "recommendation",
+        "exact_next_action",
+        "implementation_timing",
+        "required_prior_conditions",
+        "release_paper_relevance",
+        "remaining_risks"
+      ],
+      "properties": {
+        "recommendation": {
+          "type": "string",
+          "const": "promote"
+        },
+        "exact_next_action": {"type": "string"},
+        "implementation_timing": {"type": "string"},
+        "required_prior_conditions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "release_paper_relevance": {"type": "string"},
+        "remaining_risks": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "strategy_assessment": {
+      "type": "object",
+      "required": [
+        "feasibility",
+        "determinism_risk",
+        "dependency_risk",
+        "schema_compatibility_risk",
+        "generated_code_readability",
+        "hand_written_code_preservation",
+        "testability",
+        "fit_with_rig_architecture",
+        "release_candidate_path_fit",
+        "fake_green_risk",
+        "recommendation"
+      ],
+      "properties": {
+        "feasibility": {"type": "string"},
+        "determinism_risk": {"type": "string"},
+        "dependency_risk": {"type": "string"},
+        "schema_compatibility_risk": {"type": "string"},
+        "generated_code_readability": {"type": "string"},
+        "hand_written_code_preservation": {"type": "string"},
+        "testability": {"type": "string"},
+        "fit_with_rig_architecture": {"type": "string"},
+        "release_candidate_path_fit": {"type": "string"},
+        "fake_green_risk": {"type": "string"},
+        "recommendation": {
+          "type": "string",
+          "enum": ["promote", "park", "reject"]
+        }
+      }
+    },
+    "compiler_target": {
+      "type": "object",
+      "required": [
+        "rank",
+        "target_id",
+        "target_name",
+        "maturity",
+        "schema_stability",
+        "release_impact",
+        "blast_radius",
+        "fake_green_risk_reduction",
+        "first_proof_value",
+        "selected_as_first"
+      ],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "target_id": {"type": "string"},
+        "target_name": {"type": "string"},
+        "maturity": {"type": "string"},
+        "schema_stability": {"type": "string"},
+        "release_impact": {"type": "string"},
+        "blast_radius": {"type": "string"},
+        "fake_green_risk_reduction": {"type": "string"},
+        "first_proof_value": {"type": "string"},
+        "selected_as_first": {"type": "boolean"}
+      }
+    },
+    "compiler_event": {
+      "type": "object",
+      "required": [
+        "event_name",
+        "required_fields",
+        "content_light_posture",
+        "hash_requirements",
+        "implementation_status"
+      ],
+      "properties": {
+        "event_name": {"type": "string"},
+        "required_fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "content_light_posture": {"type": "string"},
+        "hash_requirements": {"type": "string"},
+        "implementation_status": {
+          "type": "string",
+          "const": "proposed_only"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

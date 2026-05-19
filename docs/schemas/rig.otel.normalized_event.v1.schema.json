@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.normalized_event.v1.schema.json",
+  "title": "Rig OTel Normalized Event",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "source_signal",
+    "source_system",
+    "service_name",
+    "trace_id",
+    "span_id",
+    "parent_span_id",
+    "span_name",
+    "span_kind",
+    "event_time",
+    "duration_ms",
+    "status_code",
+    "status_message_hash",
+    "tool_name_hash",
+    "tool_category",
+    "model_name_hash",
+    "provider_hash",
+    "session_id_hash",
+    "workspace_hash",
+    "repo_head_sha",
+    "git_branch_hash",
+    "attributes_hash",
+    "redaction_status",
+    "dropped_attribute_keys",
+    "retained_attribute_keys",
+    "content_light",
+    "normalized_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.normalized_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "source_signal": {
+      "type": "string",
+      "enum": ["trace", "log", "metric"]
+    },
+    "source_system": {
+      "type": "string",
+      "enum": ["opencode", "otel_collector", "unknown"]
+    },
+    "service_name": {
+      "type": "string"
+    },
+    "trace_id": {
+      "type": ["string", "null"]
+    },
+    "span_id": {
+      "type": ["string", "null"]
+    },
+    "parent_span_id": {
+      "type": ["string", "null"]
+    },
+    "span_name": {
+      "type": "string"
+    },
+    "span_kind": {
+      "type": "string",
+      "enum": ["unspecified", "internal", "server", "client", "producer", "consumer", "unknown"]
+    },
+    "event_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_ms": {
+      "type": ["number", "null"]
+    },
+    "status_code": {
+      "type": "string"
+    },
+    "status_message_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "tool_name_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "tool_category": {
+      "type": "string"
+    },
+    "model_name_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "provider_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "session_id_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "workspace_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "repo_head_sha": {
+      "type": ["string", "null"]
+    },
+    "git_branch_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "attributes_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["content_light", "hashed", "redacted"]
+    },
+    "dropped_attribute_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retained_attribute_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content_light": {
+      "type": "boolean"
+    },
+    "normalized_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}
+

@@ -1,0 +1,306 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_provider.contract.v1.schema.json",
+  "title": "GitHub Provider Contract v1",
+  "description": "Canonical GitHub Provider Contract defining supported auth modes, operation classes, token storage policy, capability gate policy, mutation step-up model, receipt policy, redaction policy, and offline behavior. Contract-only; no live GitHub OAuth/App implementation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_id",
+    "generated_at",
+    "auth_modes",
+    "operation_classes",
+    "token_storage_policy",
+    "capability_gate_policy",
+    "mutation_step_up_policy",
+    "receipt_policy",
+    "redaction_policy",
+    "offline_behavior",
+    "implementation_status",
+    "deferred_work"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_provider.contract.v1"
+    },
+    "contract_id": {
+      "type": "string",
+      "description": "Stable identifier for this provider contract."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this contract artifact was generated."
+    },
+    "auth_modes": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "auth_mode",
+          "intended_use",
+          "allowed_for_desktop",
+          "allowed_for_automation",
+          "token_kind",
+          "token_lifetime_class",
+          "requires_user_interaction",
+          "requires_github_app_registration",
+          "requires_oauth_app_registration",
+          "requires_secret_storage",
+          "implementation_status",
+          "security_notes"
+        ],
+        "properties": {
+          "auth_mode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "device_flow",
+              "oauth_web_flow",
+              "github_app_installation",
+              "github_app_user",
+              "personal_access_token_manual_import"
+            ]
+          },
+          "intended_use": {
+            "type": "string"
+          },
+          "allowed_for_desktop": {
+            "type": "boolean"
+          },
+          "allowed_for_automation": {
+            "type": "boolean"
+          },
+          "token_kind": {
+            "type": "string"
+          },
+          "token_lifetime_class": {
+            "type": "string",
+            "enum": ["none", "short_lived", "long_lived", "user_managed", "unknown"]
+          },
+          "requires_user_interaction": {
+            "type": "boolean"
+          },
+          "requires_github_app_registration": {
+            "type": "boolean"
+          },
+          "requires_oauth_app_registration": {
+            "type": "boolean"
+          },
+          "requires_secret_storage": {
+            "type": "boolean"
+          },
+          "implementation_status": {
+            "type": "string",
+            "enum": ["proposed", "deferred", "implemented", "rejected"]
+          },
+          "security_notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Supported GitHub authentication modes."
+    },
+    "operation_classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "operation_class",
+          "description",
+          "default_permission",
+          "requires_step_up",
+          "requires_receipt",
+          "examples"
+        ],
+        "properties": {
+          "operation_class": {
+            "type": "string",
+            "enum": [
+              "read_only",
+              "safe_local_mutation",
+              "remote_read",
+              "remote_mutation",
+              "credentialed_remote_mutation",
+              "destructive_remote_mutation"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "default_permission": {
+            "type": "string",
+            "enum": ["allowed", "refused", "requires_step_up"]
+          },
+          "requires_step_up": {
+            "type": "boolean"
+          },
+          "requires_receipt": {
+            "type": "boolean"
+          },
+          "examples": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Operation classes and their permission defaults."
+    },
+    "token_storage_policy": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "forbids_json_file_storage",
+        "forbids_plaintext_storage",
+        "storage_authorities_allowed",
+        "storage_authorities_forbidden",
+        "rules"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "forbids_json_file_storage": {"type": "boolean"},
+        "forbids_plaintext_storage": {"type": "boolean"},
+        "storage_authorities_allowed": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "storage_authorities_forbidden": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "rules": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Token storage policy for GitHub provider tokens."
+    },
+    "capability_gate_policy": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "default_read_permission",
+        "default_mutation_permission",
+        "destructive_mutation_v0_refused",
+        "step_up_required_for"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "default_read_permission": {"type": "string"},
+        "default_mutation_permission": {"type": "string"},
+        "destructive_mutation_v0_refused": {"type": "boolean"},
+        "step_up_required_for": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Capability gate policy for v0 provider contract."
+    },
+    "mutation_step_up_policy": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "requires_profile_unlock",
+        "requires_explicit_approval",
+        "requires_authorization_receipt",
+        "approval_lifetime_class"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "requires_profile_unlock": {"type": "boolean"},
+        "requires_explicit_approval": {"type": "boolean"},
+        "requires_authorization_receipt": {"type": "boolean"},
+        "approval_lifetime_class": {
+          "type": "string",
+          "enum": ["per_operation", "per_session", "per_installation", "permanent"]
+        },
+        "batch_approval_supported": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "description": "Step-up authorization requirements for mutation operations."
+    },
+    "receipt_policy": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "every_operation_requires_receipt",
+        "receipt_must_be_content_light",
+        "receipt_must_use_hashes",
+        "forbidden_receipt_fields"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "every_operation_requires_receipt": {"type": "boolean"},
+        "receipt_must_be_content_light": {"type": "boolean"},
+        "receipt_must_use_hashes": {"type": "boolean"},
+        "forbidden_receipt_fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "description": "Receipt policy for GitHub provider operations."
+    },
+    "redaction_policy": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "no_raw_tokens_in_evidence",
+        "no_raw_content_in_evidence",
+        "content_derived_values_use_sha256",
+        "no_private_repository_content",
+        "no_raw_prompts_or_credentials"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "no_raw_tokens_in_evidence": {"type": "boolean"},
+        "no_raw_content_in_evidence": {"type": "boolean"},
+        "content_derived_values_use_sha256": {"type": "boolean"},
+        "no_private_repository_content": {"type": "boolean"},
+        "no_raw_prompts_or_credentials": {"type": "boolean"},
+        "additional_notes": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "description": "Redaction policy for GitHub provider evidence and receipts."
+    },
+    "offline_behavior": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "read_operations_fallback",
+        "mutation_operations_blocked",
+        "cached_metadata_ttl",
+        "auth_required_for_any_operation"
+      ],
+      "properties": {
+        "policy_id": {"type": "string"},
+        "read_operations_fallback": {
+          "type": "string",
+          "enum": ["cached_only", "refused", "degraded_local"]
+        },
+        "mutation_operations_blocked": {"type": "boolean"},
+        "cached_metadata_ttl": {"type": "string"},
+        "auth_required_for_any_operation": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "description": "Behavior when GitHub is unreachable or auth is unavailable."
+    },
+    "implementation_status": {
+      "type": "string",
+      "enum": ["contract_only", "partially_implemented", "fully_implemented"],
+      "description": "Current implementation status of the GitHub provider."
+    },
+    "deferred_work": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of deferred implementation work items for future slices."
+    }
+  },
+  "additionalProperties": false
+}

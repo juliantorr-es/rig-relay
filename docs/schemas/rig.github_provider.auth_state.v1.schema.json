@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_provider.auth_state.v1.schema.json",
+  "title": "GitHub Provider Auth State v1",
+  "description": "Canonical GitHub provider authentication state. Records token metadata and presence, never token material. Explicitly forbids raw token values through additionalProperties: false and constrained field vocabulary.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "provider_id",
+    "auth_mode",
+    "auth_status",
+    "account_hash",
+    "installation_id_hash",
+    "scopes_or_permissions",
+    "token_storage_authority",
+    "token_material_present",
+    "token_material_stored",
+    "expires_at",
+    "generated_at",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_provider.auth_state.v1"
+    },
+    "provider_id": {
+      "type": "string",
+      "const": "github"
+    },
+    "auth_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "device_flow",
+        "oauth_web_flow",
+        "github_app_installation",
+        "github_app_user",
+        "personal_access_token_manual_import"
+      ]
+    },
+    "auth_status": {
+      "type": "string",
+      "enum": [
+        "unavailable",
+        "unauthenticated",
+        "pending_user_action",
+        "authenticated",
+        "expired",
+        "revoked",
+        "error"
+      ]
+    },
+    "account_hash": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SHA-256 hash of the GitHub account identifier. Never the raw username or account ID."
+    },
+    "installation_id_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the GitHub App installation ID. Empty string if not using GitHub App auth."
+    },
+    "scopes_or_permissions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Requested and granted scopes or permissions."
+    },
+    "token_storage_authority": {
+      "type": "string",
+      "enum": [
+        "none",
+        "environment",
+        "keychain_future",
+        "user_supplied_runtime",
+        "forbidden_json_file"
+      ],
+      "description": "Where token material is stored. Must not be forbidden_json_file."
+    },
+    "token_material_present": {
+      "type": "boolean",
+      "description": "True if a token is currently available to the provider runtime."
+    },
+    "token_material_stored": {
+      "type": "boolean",
+      "const": false,
+      "description": "Must always be false. The auth state artifact must never contain raw token material."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the current token expires. Empty string if no token."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this auth state record was generated."
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["clean", "redacted", "not_applicable"],
+      "description": "Redaction status of this auth state record."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.frontend_intent.v1.schema.json",
+  "title": "Frontend Intent v1",
+  "description": "Canonical frontend-to-backend intent contract. Every intent carries trace_id, mutation_class, capability_required, and auth_required so the bridge and backend can govern before dispatch. Content-light: intent parameters are hashed, not stored raw.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_id",
+    "trace_id",
+    "frontend_session_id",
+    "intent_id",
+    "created_at",
+    "intent_kind",
+    "mutation_class",
+    "capability_required",
+    "dry_run",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.frontend_intent.v1"
+    },
+    "message_id": {
+      "type": "string",
+      "description": "Bridge envelope message_id that wraps this intent."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "End-to-end trace identifier surviving frontend -> bridge -> backend -> projection."
+    },
+    "frontend_session_id": {
+      "type": "string",
+      "description": "Frontend-originated session identifier."
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Unique identifier for this intent request."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of intent creation."
+    },
+    "intent_kind": {
+      "type": "string",
+      "description": "Canonical intent name (e.g., refresh_projection, run_validation_suite, checkpoint.commit)."
+    },
+    "intent_payload_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Content-light hash of intent parameters. Raw parameters never cross the bridge unhashed."
+    },
+    "mutation_class": {
+      "type": "string",
+      "enum": [
+        "read_only",
+        "safe_local_mutation",
+        "dangerous_local_mutation",
+        "external_network_mutation",
+        "credentialed_provider_mutation",
+        "release_affecting_mutation"
+      ],
+      "description": "Mutation safety class for this intent."
+    },
+    "capability_required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Capability flags required to execute this intent."
+    },
+    "auth_required": {
+      "type": "boolean",
+      "description": "Whether this intent requires explicit authorization."
+    },
+    "receipt_required": {
+      "type": "boolean",
+      "description": "Whether this intent requires a receipt-backed evidence trail."
+    },
+    "projection_patch_required": {
+      "type": "boolean",
+      "description": "Whether this intent must produce a projection patch after completion."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "When true, intent is simulated and must not produce side effects."
+    },
+    "authorization_receipt": {
+      "type": "object",
+      "description": "Step-up authorization receipt for protected intents. Content-light: no raw tokens."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: every intent payload is content_light."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings from the frontend."
+    }
+  },
+  "additionalProperties": false
+}

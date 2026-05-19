@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_provider.operation_receipt.v1.schema.json",
+  "title": "GitHub Provider Operation Receipt v1",
+  "description": "Canonical operation receipt for GitHub provider operations. Records metadata and operation outcome, never raw content, tokens, or credentials. Content-light by design: request/response bodies are hashed, fields reference hashed identifiers.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "provider_id",
+    "operation_id",
+    "capability_id",
+    "operation_kind",
+    "operation_class",
+    "auth_mode",
+    "auth_state_hash",
+    "request_hash",
+    "response_hash",
+    "repository_hash",
+    "actor_hash",
+    "verdict",
+    "refusal_code",
+    "redaction_status",
+    "content_light",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_provider.operation_receipt.v1"
+    },
+    "provider_id": {
+      "type": "string",
+      "const": "github"
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Stable identifier for this operation instance."
+    },
+    "capability_id": {
+      "type": "string",
+      "description": "The capability that was exercised."
+    },
+    "operation_kind": {
+      "type": "string",
+      "description": "Human-readable operation kind."
+    },
+    "operation_class": {
+      "type": "string",
+      "enum": [
+        "read_only",
+        "safe_local_mutation",
+        "remote_read",
+        "remote_mutation",
+        "credentialed_remote_mutation",
+        "destructive_remote_mutation"
+      ]
+    },
+    "auth_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "device_flow",
+        "oauth_web_flow",
+        "github_app_installation",
+        "github_app_user",
+        "personal_access_token_manual_import"
+      ]
+    },
+    "auth_state_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the auth state record at operation time."
+    },
+    "request_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the serialized request payload. Never the raw request body."
+    },
+    "response_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the serialized response payload. Never the raw response body."
+    },
+    "repository_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the repository identifier. Never the raw repo full name or ID."
+    },
+    "actor_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the user or installation actor."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["allowed", "refused", "failed", "completed"],
+      "description": "Operation outcome."
+    },
+    "refusal_code": {
+      "type": "string",
+      "description": "Machine-readable refusal code. Empty string if allowed/completed."
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["clean", "redacted", "not_applicable"],
+      "description": "Redaction status of this receipt."
+    },
+    "content_light": {
+      "type": "boolean",
+      "description": "True if this receipt contains only hashes and metadata."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this receipt was generated."
+    }
+  },
+  "additionalProperties": false
+}

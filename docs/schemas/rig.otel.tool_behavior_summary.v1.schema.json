@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.tool_behavior_summary.v1.schema.json",
+  "title": "Rig OTel Tool Behavior Summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "source_event_count",
+    "normalized_event_count",
+    "dropped_event_count",
+    "tool_call_count",
+    "error_count",
+    "timeout_count",
+    "retry_count",
+    "cancellation_count",
+    "total_duration_ms",
+    "p50_duration_ms",
+    "p95_duration_ms",
+    "p99_duration_ms",
+    "top_tool_categories",
+    "error_by_tool_category",
+    "status_by_tool_category",
+    "redaction_summary",
+    "hardening_candidates",
+    "missing_trace_id_count",
+    "missing_parent_span_id_count"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.tool_behavior_summary.v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "normalized_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dropped_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tool_call_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "error_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timeout_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cancellation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "p50_duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "p95_duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "p99_duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "top_tool_categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tool_category", "count", "error_count", "p95_duration_ms"],
+        "properties": {
+          "tool_category": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "error_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "p95_duration_ms": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "error_by_tool_category": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "status_by_tool_category": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "hardening_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "description"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "missing_trace_id_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "missing_parent_span_id_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}
+

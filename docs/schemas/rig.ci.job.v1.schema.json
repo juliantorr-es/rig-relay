@@ -9,10 +9,18 @@
     "run_id",
     "job_id",
     "job_name",
-    "runner_os",
     "runner_class",
+    "runner_os",
+    "runner_arch",
     "status",
-    "started_at"
+    "conclusion",
+    "started_at",
+    "completed_at",
+    "referenced_artifacts",
+    "referenced_schema_validations",
+    "referenced_test_receipts",
+    "telemetry_redaction_notes",
+    "generated_at"
   ],
   "properties": {
     "schema_version": {
@@ -47,13 +55,13 @@
     },
     "status": {
       "type": "string",
-      "enum": ["queued", "in_progress", "completed"],
+      "enum": ["queued", "in_progress", "completed", "skipped", "unknown"],
       "description": "Current job status."
     },
     "conclusion": {
       "type": "string",
-      "enum": ["success", "failure", "cancelled", "skipped", null],
-      "description": "Job conclusion. Null if job has not completed."
+      "enum": ["success", "failure", "cancelled", "skipped", "timed_out", "neutral", "action_required", "unknown"],
+      "description": "Job conclusion. Reflects the final outcome of the job after completion."
     },
     "started_at": {
       "type": "string",
@@ -63,7 +71,7 @@
     "completed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp of job completion. Omitted if still running."
+      "description": "ISO 8601 timestamp of job completion."
     },
     "commands": {
       "type": "string",
@@ -96,6 +104,11 @@
     "telemetry_redaction_notes": {
       "type": "string",
       "description": "Statement that no raw secrets, credentials, private file contents, raw prompts, or private repository contents were emitted in this evidence."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this evidence record was generated."
     }
   },
   "additionalProperties": false

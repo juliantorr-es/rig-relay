@@ -1,0 +1,220 @@
+{
+  "schema_version": "rig.github_provider.contract.v1",
+  "contract_id": "github_provider_contract_v0",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "auth_modes": [
+    {
+      "auth_mode": "none",
+      "intended_use": "Unauthenticated public repository read access. Rate-limited and restricted to public repos only.",
+      "allowed_for_desktop": true,
+      "allowed_for_automation": false,
+      "token_kind": "none",
+      "token_lifetime_class": "none",
+      "requires_user_interaction": false,
+      "requires_github_app_registration": false,
+      "requires_oauth_app_registration": false,
+      "requires_secret_storage": false,
+      "implementation_status": "implemented",
+      "security_notes": "Public API rate limits apply (60 requests/hour). No access to private repos, user data, or mutation endpoints."
+    },
+    {
+      "auth_mode": "device_flow",
+      "intended_use": "Headless/CLI environments where browser-based OAuth is impractical. User authenticates via a code on a device.",
+      "allowed_for_desktop": false,
+      "allowed_for_automation": true,
+      "token_kind": "user_access_token",
+      "token_lifetime_class": "short_lived",
+      "requires_user_interaction": true,
+      "requires_github_app_registration": false,
+      "requires_oauth_app_registration": true,
+      "requires_secret_storage": true,
+      "implementation_status": "deferred",
+      "security_notes": "Device flow requires OAuth app registration. State parameter and PKCE are recommended for CSRF protection. Token must be stored in OS keychain, never in JSON files."
+    },
+    {
+      "auth_mode": "oauth_web_flow",
+      "intended_use": "Desktop and web environments where a browser redirect is available. Standard OAuth 2.0 authorization code grant.",
+      "allowed_for_desktop": true,
+      "allowed_for_automation": false,
+      "token_kind": "user_access_token",
+      "token_lifetime_class": "short_lived",
+      "requires_user_interaction": true,
+      "requires_github_app_registration": false,
+      "requires_oauth_app_registration": true,
+      "requires_secret_storage": true,
+      "implementation_status": "deferred",
+      "security_notes": "State parameter is required for CSRF protection. PKCE (Proof Key for Code Exchange) is strongly recommended. Redirect URI must be localhost-bound. Tokens must be stored in OS keychain, never in JSON files."
+    },
+    {
+      "auth_mode": "github_app_installation",
+      "intended_use": "Automated CI/CD, bots, and backend services that operate on behalf of the app installation. No user attribution.",
+      "allowed_for_desktop": false,
+      "allowed_for_automation": true,
+      "token_kind": "installation_access_token",
+      "token_lifetime_class": "short_lived",
+      "requires_user_interaction": false,
+      "requires_github_app_registration": true,
+      "requires_oauth_app_registration": false,
+      "requires_secret_storage": true,
+      "implementation_status": "deferred",
+      "security_notes": "GitHub App registration required. App authenticates with JWT signed by private key. Installation tokens expire after 1 hour. Private key must be stored in OS keychain, never in JSON files or environment variables."
+    },
+    {
+      "auth_mode": "github_app_user",
+      "intended_use": "Operations attributed to a specific user through a GitHub App. Combines installation access with user identity.",
+      "allowed_for_desktop": true,
+      "allowed_for_automation": false,
+      "token_kind": "user_access_token",
+      "token_lifetime_class": "short_lived",
+      "requires_user_interaction": true,
+      "requires_github_app_registration": true,
+      "requires_oauth_app_registration": false,
+      "requires_secret_storage": true,
+      "implementation_status": "deferred",
+      "security_notes": "Requires GitHub App registration. User must authorize the app for their account. Token is user-attributed and scoped to the app's permissions. Prefer over OAuth for fine-grained permissions."
+    },
+    {
+      "auth_mode": "personal_access_token_manual_import",
+      "intended_use": "Manual token import for development, testing, and local use. Not recommended for production or automation.",
+      "allowed_for_desktop": true,
+      "allowed_for_automation": false,
+      "token_kind": "personal_access_token",
+      "token_lifetime_class": "user_managed",
+      "requires_user_interaction": true,
+      "requires_github_app_registration": false,
+      "requires_oauth_app_registration": false,
+      "requires_secret_storage": true,
+      "implementation_status": "deferred",
+      "security_notes": "User-managed token with user-chosen scope and expiration. Token must be stored in OS keychain after import, never in JSON files. Import path should be environment variable or stdin, never hardcoded. Discourage broad scope tokens."
+    }
+  ],
+  "operation_classes": [
+    {
+      "operation_class": "read_only",
+      "description": "Operations that read metadata or public content without side effects.",
+      "default_permission": "allowed",
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "examples": ["github.repo.metadata.read", "github.repo.issues.read"]
+    },
+    {
+      "operation_class": "safe_local_mutation",
+      "description": "Mutations that affect only local state (cache, indexes, projections). No remote side effects.",
+      "default_permission": "allowed",
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "examples": ["cache repository metadata locally"]
+    },
+    {
+      "operation_class": "remote_read",
+      "description": "Read operations that fetch data from GitHub API. May require authentication for private repos.",
+      "default_permission": "allowed",
+      "requires_step_up": false,
+      "requires_receipt": true,
+      "examples": ["github.repo.contents.read", "github.repo.commits.read"]
+    },
+    {
+      "operation_class": "remote_mutation",
+      "description": "Mutations that have remote side effects but are reversible or non-destructive.",
+      "default_permission": "refused",
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "examples": ["github.issues.comment.write", "github.pull_requests.review.write"]
+    },
+    {
+      "operation_class": "credentialed_remote_mutation",
+      "description": "Mutations that require elevated permissions and produce audit-visible side effects.",
+      "default_permission": "refused",
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "examples": ["github.contents.write", "github.refs.update"]
+    },
+    {
+      "operation_class": "destructive_remote_mutation",
+      "description": "Mutations that are irreversible or could cause data loss or service disruption.",
+      "default_permission": "refused",
+      "requires_step_up": true,
+      "requires_receipt": true,
+      "examples": ["github.workflow.rerun", "github.webhooks.receive"]
+    }
+  ],
+  "token_storage_policy": {
+    "policy_id": "github_token_storage_v0",
+    "forbids_json_file_storage": true,
+    "forbids_plaintext_storage": true,
+    "storage_authorities_allowed": ["environment", "keychain_future", "user_supplied_runtime"],
+    "storage_authorities_forbidden": ["forbidden_json_file", "none"],
+    "rules": [
+      "Tokens must never be stored in JSON files",
+      "Tokens must never be stored in plaintext configuration files",
+      "Tokens must never appear in evidence, receipts, or telemetry",
+      "Tokens must be stored in OS keychain when available",
+      "Environment variable storage is acceptable only for development/local use",
+      "Token references in artifacts use SHA-256 hashes only"
+    ]
+  },
+  "capability_gate_policy": {
+    "policy_id": "github_capability_gate_v0",
+    "default_read_permission": "allowed with appropriate auth",
+    "default_mutation_permission": "refused until explicit capability + step-up",
+    "destructive_mutation_v0_refused": true,
+    "step_up_required_for": [
+      "remote_mutation",
+      "credentialed_remote_mutation",
+      "destructive_remote_mutation"
+    ]
+  },
+  "mutation_step_up_policy": {
+    "policy_id": "github_mutation_step_up_v0",
+    "requires_profile_unlock": true,
+    "requires_explicit_approval": true,
+    "requires_authorization_receipt": true,
+    "approval_lifetime_class": "per_operation",
+    "batch_approval_supported": false
+  },
+  "receipt_policy": {
+    "policy_id": "github_receipt_v0",
+    "every_operation_requires_receipt": true,
+    "receipt_must_be_content_light": true,
+    "receipt_must_use_hashes": true,
+    "forbidden_receipt_fields": [
+      "raw_token",
+      "raw_private_file_content",
+      "raw_repository_content",
+      "raw_prompt",
+      "raw_credential",
+      "raw_absolute_path"
+    ]
+  },
+  "redaction_policy": {
+    "policy_id": "github_redaction_v0",
+    "no_raw_tokens_in_evidence": true,
+    "no_raw_content_in_evidence": true,
+    "content_derived_values_use_sha256": true,
+    "no_private_repository_content": true,
+    "no_raw_prompts_or_credentials": true,
+    "additional_notes": "All content-derived values in evidence, receipts, and telemetry must use SHA-256 hashes. GitHub API response bodies must not appear in evidence artifacts."
+  },
+  "offline_behavior": {
+    "policy_id": "github_offline_v0",
+    "read_operations_fallback": "refused",
+    "mutation_operations_blocked": true,
+    "cached_metadata_ttl": "none",
+    "auth_required_for_any_operation": true
+  },
+  "implementation_status": "contract_only",
+  "deferred_work": [
+    "Implement GitHub OAuth web flow with PKCE and state parameter",
+    "Implement GitHub device flow for headless/CLI environments",
+    "Implement GitHub App installation authentication with JWT",
+    "Implement GitHub App user authentication with user attribution",
+    "Implement PAT import with keychain storage",
+    "Implement OS keychain integration for token storage",
+    "Implement step-up authorization modal in desktop cockpit",
+    "Implement content-light operation receipts with SHA-256 hashing",
+    "Implement capability gate enforcement in provider runtime",
+    "Implement auth state tracking without raw token storage",
+    "Add provider health checking and connectivity monitoring",
+    "Add GitHub API rate limit tracking and backoff"
+  ]
+}

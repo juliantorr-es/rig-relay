@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.bridge_envelope.v1.schema.json",
+  "title": "Bridge Envelope v1",
+  "description": "Canonical bridge envelope contract governing all frontend<->backend traffic. Builds on rig.relay.bridge_message.v1 with explicit trace_id, frontend_session_id, backend_session_id, protocol_version, and refusal/error envelope. Content-light: no raw paths, secrets, prompts, or private file contents cross the bridge.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_id",
+    "trace_id",
+    "frontend_session_id",
+    "protocol_version",
+    "direction",
+    "kind",
+    "sequence",
+    "created_at",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.bridge_envelope.v1"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^msg_[a-f0-9]{12,24}$",
+      "description": "Unique per-message identifier."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "End-to-end trace identifier surviving frontend -> bridge -> backend -> projection."
+    },
+    "parent_message_id": {
+      "type": "string",
+      "description": "When present, this message responds to or correlates with a prior message_id."
+    },
+    "frontend_session_id": {
+      "type": "string",
+      "description": "Frontend-originated session identifier stable across reconnections."
+    },
+    "backend_session_id": {
+      "type": "string",
+      "description": "Backend-assigned session identifier set during handshake completion."
+    },
+    "protocol_version": {
+      "type": "string",
+      "const": "v1",
+      "description": "Protocol version for contract compatibility checks."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["frontend_to_backend", "backend_to_frontend"]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "projection",
+        "intent_request",
+        "intent_ack",
+        "intent_result",
+        "lifecycle_event",
+        "notification",
+        "error",
+        "heartbeat",
+        "flow_control"
+      ],
+      "description": "Envelope kind routing the payload."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic per-sender-per-connection sequence number."
+    },
+    "projection_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic projection sequence. Frontend ignores stale sequences."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of envelope creation."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "When present, duplicate messages with the same key must not execute twice."
+    },
+    "payload_schema": {
+      "type": "string",
+      "description": "Schema identifier for the payload field (e.g., rig.relay.frontend_intent.v1)."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Kind-specific data. Content-light: no raw paths, tokens, keys, codes, prompts, or file contents."
+    },
+    "safe_summary": {
+      "type": "object",
+      "description": "Content-light summary for evidence/telemetry."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: every envelope is content_light."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "critical"]
+    },
+    "refusal": {
+      "type": "object",
+      "description": "Refusal envelope when backend refuses a message. Present only on kind=error or intent_result with refused status.",
+      "properties": {
+        "refusal_code": {
+          "type": "string",
+          "description": "Machine-readable refusal code."
+        },
+        "refusal_reason": {
+          "type": "string",
+          "description": "Human-readable refusal reason."
+        },
+        "refusal_kind": {
+          "type": "string",
+          "enum": [
+            "unknown_intent_kind",
+            "invalid_schema_version",
+            "unknown_kind",
+            "missing_trace_id",
+            "duplicate_message_id",
+            "oversized_payload",
+            "mutation_without_capability",
+            "credentialed_provider_mutation_refused",
+            "auth_required_not_satisfied",
+            "capability_gate_refused",
+            "rate_limited",
+            "server_full",
+            "malformed_envelope",
+            "redaction_violation"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

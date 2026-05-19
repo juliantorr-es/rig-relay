@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.backend_projection_patch.v1.schema.json",
+  "title": "Backend Projection Patch v1",
+  "description": "Incremental projection patch sent from backend to frontend. Unlike the full desktop_projection snapshot, a patch carries only changed sections with their new projection_sequence. Content-light: no raw paths, secrets, prompts, or private file contents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "projection_sequence",
+    "trace_id",
+    "frontend_session_id",
+    "backend_session_id",
+    "generated_at",
+    "patch_kind",
+    "changed_sections",
+    "digest",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.backend_projection_patch.v1"
+    },
+    "projection_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence number. Frontend must discard patches with sequence <= last rendered."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Correlates to the intent or lifecycle event that triggered this patch."
+    },
+    "frontend_session_id": {
+      "type": "string",
+      "description": "Frontend session this patch targets."
+    },
+    "backend_session_id": {
+      "type": "string",
+      "description": "Backend session that produced this patch."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of patch generation."
+    },
+    "patch_kind": {
+      "type": "string",
+      "enum": ["full", "partial", "delta"],
+      "description": "full = complete projection snapshot, partial = named sections replaced, delta = field-level changes."
+    },
+    "changed_sections": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "current_state",
+          "queue",
+          "dataset",
+          "semantic_snippets",
+          "telemetry_bundle",
+          "update",
+          "storage",
+          "providers",
+          "identity",
+          "integrations",
+          "release_gate",
+          "service_state",
+          "warnings",
+          "read_only_actions",
+          "execution_progress"
+        ]
+      },
+      "minItems": 1,
+      "description": "Names of projection sections included in this patch."
+    },
+    "sections": {
+      "type": "object",
+      "description": "Section data keyed by section name. Each value is content-light.",
+      "patternProperties": {
+        "^[a-z_]+$": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the deterministic canonical JSON of the sections payload."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "Hard invariant: every projection patch is content_light."
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-fatal warnings about patch completeness."
+    },
+    "stale_after_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "If set, frontend should request a fresh full projection after this many seconds."
+    }
+  },
+  "additionalProperties": false
+}

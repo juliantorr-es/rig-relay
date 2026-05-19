@@ -1,0 +1,75 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "rig-otel-local-collector-config-v1",
+  "document_type": "reference",
+  "title": "Rig OTel Local Collector Configuration v0",
+  "summary": "Recommended local-only collector shape for Rig Relay OTel capture and redaction before read-side ingestion.",
+  "status": "active",
+  "created_at": "2026-05-19",
+  "updated_at": "2026-05-19",
+  "tags": [
+    "otel",
+    "telemetry",
+    "collector",
+    "local-only",
+    "redaction"
+  ],
+  "audience": [
+    "agent",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/otel/local_collector_config.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "collector-intent",
+      "type": "heading",
+      "level": 1,
+      "title": "Intent"
+    },
+    {
+      "block_id": "collector-intent-body",
+      "type": "paragraph",
+      "content": "Use a local OpenTelemetry Collector or OTLP JSON export only. Bind receivers to localhost, export to local files, and keep remote exporters disabled by default."
+    },
+    {
+      "block_id": "collector-endpoints",
+      "type": "list",
+      "title": "Local endpoints and env",
+      "items": [
+        "OTLP HTTP endpoint: http://localhost:4318",
+        "OTLP gRPC endpoint: localhost:4317",
+        "OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318",
+        "OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf",
+        "OTEL_SERVICE_NAME=opencode-rig-relay-dev",
+        "OTEL_RESOURCE_ATTRIBUTES=project=rig-relay,environment=local-dev,telemetry_source=opencode"
+      ]
+    },
+    {
+      "block_id": "collector-processors",
+      "type": "list",
+      "title": "Required processors",
+      "items": [
+        "memory_limiter or an equivalent local safeguard",
+        "batch",
+        "attributes redaction or hashing for risky keys before file export"
+      ]
+    },
+    {
+      "block_id": "collector-export",
+      "type": "paragraph",
+      "content": "Write raw capture files to .build/rig-relay/otel/raw/<run_id>/otel_raw.json and keep exporter output local. Remote exporters stay prohibited unless a later slice explicitly changes the policy."
+    },
+    {
+      "block_id": "collector-prohibited",
+      "type": "risk",
+      "severity": "warning",
+      "title": "Do not enable remote export by default",
+      "content": "Remote vendors are not part of this slice. The collector description is local-first and read-side only."
+    }
+  ]
+}
+

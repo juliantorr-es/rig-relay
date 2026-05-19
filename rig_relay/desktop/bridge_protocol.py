@@ -61,6 +61,10 @@ class BridgeMessage(BaseModel):
     schema_version: str = "rig.relay.bridge_message.v1"
     message_id: str = Field(default_factory=lambda: f"msg_{secrets.token_hex(12)}")
     handshake_id: str = ""
+    trace_id: str = ""
+    parent_message_id: str = ""
+    frontend_session_id: str = ""
+    backend_session_id: str = ""
     direction: BridgeMessageDirection
     kind: BridgeMessageKind
     sequence: int = Field(ge=0)

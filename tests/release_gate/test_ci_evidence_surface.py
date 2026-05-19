@@ -87,9 +87,17 @@ class TestCiEvidenceSchemas:
             "job_id": "test-job-001",
             "job_name": "Test Job",
             "runner_os": "darwin",
+            "runner_arch": "aarch64",
             "runner_class": "local",
             "status": "completed",
+            "conclusion": "success",
             "started_at": "2026-05-18T00:00:00Z",
+            "completed_at": "2026-05-18T00:01:00Z",
+            "referenced_artifacts": [],
+            "referenced_schema_validations": [],
+            "referenced_test_receipts": [],
+            "telemetry_redaction_notes": "No raw secrets or credentials emitted.",
+            "generated_at": "2026-05-18T00:00:00Z",
         }
         errors = _validate_schema(data, "rig.ci.job.v1")
         assert not errors, f"Schema validation errors: {errors}"
@@ -129,6 +137,7 @@ class TestCiEvidenceSchemas:
             "release_gate_blocker_id": "blk_ci_cd_structured_evidence_surface",
             "runner_class": "local",
             "official_release": False,
+            "release_class": "local_validation",
             "evaluated_at": "2026-05-18T00:00:00Z",
             "required_artifacts_present": True,
             "required_artifacts_valid": True,
@@ -136,6 +145,7 @@ class TestCiEvidenceSchemas:
             "blocking_reasons": [],
             "warnings": [],
             "evidence_paths": [],
+            "telemetry_redaction_notes": "No raw secrets or credentials emitted.",
         }
         errors = _validate_schema(data, "rig.ci.verdict.v1")
         assert not errors, f"Schema validation errors: {errors}"
@@ -149,6 +159,7 @@ class TestCiEvidenceSchemas:
             "release_gate_blocker_id": "blk_ci_cd_structured_evidence_surface",
             "runner_class": "github_actions",
             "official_release": False,
+            "release_class": "dry_run",
             "evaluated_at": "2026-05-18T00:00:00Z",
             "required_artifacts_present": False,
             "required_artifacts_valid": False,
@@ -156,6 +167,7 @@ class TestCiEvidenceSchemas:
             "blocking_reasons": ["Missing required artifacts: ci_run"],
             "warnings": [],
             "evidence_paths": [],
+            "telemetry_redaction_notes": "No raw secrets or credentials emitted.",
         }
         errors = _validate_schema(data, "rig.ci.verdict.v1")
         assert not errors, f"Schema validation errors: {errors}"
@@ -680,3 +692,156 @@ class TestCiEvidenceValidatorIntegration:
         assert len(verdict_files) >= 1, "Verdict should exist"
         assert len(index_files) >= 1, "Artifact index should exist"
         assert len(events_files) >= 1, "Event stream should exist"
+
+
+class TestMissingSpecRequirements:
+    @pytest.mark.contract
+    def test_valid_artifact_index_validates(self):
+        data = {
+            "schema_version": "rig.ci.artifact_index.v1",
+            "run_id": "test-run-001",
+            "artifacts": [
+                {
+                    "artifact_id": "ci-run-test",
+                    "artifact_kind": "ci_run",
+                    "path": ".build/rig-relay/evidence/ci_test_run.v1.json",
+                    "sha256": "a" * 64,
+                    "size_bytes": 100,
+                    "producer": "ci_evidence_producer",
+                    "required_for_release_gate": True,
+                    "source_surface": "ci_evidence",
+                    "created_at": "2026-05-18T00:00:00Z",
+                }
+            ],
+            "generated_at": "2026-05-18T00:00:00Z",
+        }
+        errors = _validate_schema(data, "rig.ci.artifact_index.v1")
+        assert not errors, f"Artifact index schema errors: {errors}"
+
+    @pytest.mark.contract
+    def test_artifact_index_requires_sha256(self):
+        data = {
+            "schema_version": "rig.ci.artifact_index.v1",
+            "run_id": "test-run-001",
+            "artifacts": [
+                {
+                    "artifact_id": "ci-run-test",
+                    "artifact_kind": "ci_run",
+                    "path": ".build/rig-relay/evidence/ci_test_run.v1.json",
+                    "size_bytes": 100,
+                    "producer": "ci_evidence_producer",
+                    "required_for_release_gate": True,
+                    "source_surface": "ci_evidence",
+                    "created_at": "2026-05-18T00:00:00Z",
+                }
+            ],
+            "generated_at": "2026-05-18T00:00:00Z",
+        }
+        errors = _validate_schema(data, "rig.ci.artifact_index.v1")
+        assert errors, "Should reject artifact without sha256"
+        assert any("sha256" in e.lower() for e in errors)
+
+    @pytest.mark.adversarial
+    def test_github_release_tag_is_official(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "release")
+        monkeypatch.setenv("GITHUB_REF_TYPE", "tag")
+        monkeypatch.delenv("CODESPACES", raising=False)
+
+        from rig_relay.ci_evidence._producer import _detect_official_release
+
+        assert _detect_official_release("github_actions") is True
+
+    @pytest.mark.adversarial
+    def test_github_push_is_not_official(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+        monkeypatch.delenv("CODESPACES", raising=False)
+
+        from rig_relay.ci_evidence._producer import _detect_official_release
+
+        assert _detect_official_release("github_actions") is False
+
+    @pytest.mark.adversarial
+    def test_telemetry_redaction_notes_present_everywhere(self):
+        from rig_relay.ci_evidence import produce_ci_evidence
+
+        result = produce_ci_evidence()
+        evidence_dir = result.verdict_path.parent
+
+        for pattern in ["ci_*_run.v1.json", "ci_*_job.v1.json", "ci_*_verdict.v1.json"]:
+            files = sorted(evidence_dir.glob(pattern))
+            assert files, f"No files found for pattern {pattern}"
+            data = _load_json(files[-1])
+            notes = data.get("telemetry_redaction_notes", "")
+            assert isinstance(notes, str) and len(notes) > 0, (
+                f"{pattern} missing telemetry_redaction_notes"
+            )
+
+    @pytest.mark.adversarial
+    def test_no_raw_secrets_in_generated_evidence(self):
+        import re
+
+        secret_patterns: list[re.Pattern[str]] = [
+            re.compile(r"sk-[a-zA-Z0-9]{20,}"),
+            re.compile(r"gh[pousr]_[a-zA-Z0-9]{20,}"),
+            re.compile(r"eyJ[A-Za-z0-9\-_]+\.(?:[A-Za-z0-9\-_]+)?\.[A-Za-z0-9\-_]+"),
+            re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
+            re.compile(r"xox[bpras]-[a-zA-Z0-9-]+"),
+        ]
+
+        from rig_relay.ci_evidence import produce_ci_evidence
+
+        result = produce_ci_evidence()
+        evidence_dir = result.verdict_path.parent
+
+        for fpath in sorted(evidence_dir.glob("ci_*_*.json")):
+            if "events" in fpath.name:
+                continue
+            text = fpath.read_text(encoding="utf-8")
+            for pat in secret_patterns:
+                m = pat.search(text)
+                assert m is None, (
+                    f"Secret-like value found in {fpath.name}: {pat.pattern}"
+                )
+
+    @pytest.mark.adversarial
+    def test_no_raw_prompt_or_private_file_content(self):
+        forbidden_fields = {
+            "raw_prompt",
+            "raw_file_content",
+            "private_file_content",
+            "raw_source_code",
+            "secret",
+            "credential",
+            "api_key",
+            "token",
+            "password",
+            "private_key",
+        }
+
+        from rig_relay.ci_evidence import produce_ci_evidence
+
+        result = produce_ci_evidence()
+        evidence_dir = result.verdict_path.parent
+
+        for fpath in sorted(evidence_dir.glob("ci_*_*.json")):
+            if "events" in fpath.name:
+                continue
+            data = _load_json(fpath)
+            for key in forbidden_fields:
+                assert key not in data, f"Forbidden field '{key}' found in {fpath.name}"
+
+    @pytest.mark.integration
+    def test_cli_script_returns_exit_code(self):
+        result = subprocess.run(
+            ["uv", "run", "python", str(SCRIPTS_DIR / "rig_ci_evidence.py")],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            timeout=60,
+        )
+        assert result.returncode in {0, 2}, (
+            f"CLI should exit 0 (pass) or 2 (hold), got {result.returncode}"
+        )
+        assert "CI evidence producer completed" in result.stdout

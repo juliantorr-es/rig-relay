@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.raw_capture_manifest.v1.schema.json",
+  "title": "Rig OTel Raw Capture Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "source_system",
+    "raw_input_name",
+    "raw_input_sha256",
+    "capture_kind",
+    "signal_counts",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.raw_capture_manifest.v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_system": {
+      "type": "string",
+      "enum": ["opencode", "otel_collector", "unknown"]
+    },
+    "raw_input_name": {
+      "type": "string"
+    },
+    "raw_input_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "raw_input_path_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "capture_kind": {
+      "type": "string",
+      "enum": ["trace", "log", "metric", "mixed", "unknown"]
+    },
+    "signal_counts": {
+      "type": "object",
+      "required": ["trace", "log", "metric"],
+      "properties": {
+        "trace": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "log": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metric": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "content_light": {
+      "type": "boolean"
+    },
+    "redaction_summary": {
+      "type": "object",
+      "properties": {
+        "redacted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hashed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dropped_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
+

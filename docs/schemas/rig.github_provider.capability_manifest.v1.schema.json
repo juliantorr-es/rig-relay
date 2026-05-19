@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_provider.capability_manifest.v1.schema.json",
+  "title": "GitHub Provider Capability Manifest v1",
+  "description": "Canonical capability manifest for the GitHub provider. Declares all supported capabilities, their operation classes, auth requirements, step-up requirements, receipt requirements, and refusal codes. Contract-only; no live GitHub API calls.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "provider_id",
+    "generated_at",
+    "capabilities",
+    "default_policy",
+    "unsupported_operations",
+    "mutation_classes",
+    "redaction_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_provider.capability_manifest.v1"
+    },
+    "provider_id": {
+      "type": "string",
+      "const": "github"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this manifest was generated."
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "capability_id",
+          "operation_kind",
+          "operation_class",
+          "required_auth_modes",
+          "requires_step_up",
+          "requires_receipt",
+          "stores_raw_content",
+          "content_light_output",
+          "default_allowed",
+          "refusal_code_when_denied"
+        ],
+        "properties": {
+          "capability_id": {
+            "type": "string",
+            "description": "Stable capability identifier (e.g., github.repo.contents.read)."
+          },
+          "operation_kind": {
+            "type": "string",
+            "description": "Human-readable operation kind."
+          },
+          "operation_class": {
+            "type": "string",
+            "enum": [
+              "read_only",
+              "safe_local_mutation",
+              "remote_read",
+              "remote_mutation",
+              "credentialed_remote_mutation",
+              "destructive_remote_mutation"
+            ]
+          },
+          "required_auth_modes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"}
+          },
+          "requires_step_up": {
+            "type": "boolean"
+          },
+          "requires_receipt": {
+            "type": "boolean"
+          },
+          "stores_raw_content": {
+            "type": "boolean"
+          },
+          "content_light_output": {
+            "type": "boolean"
+          },
+          "default_allowed": {
+            "type": "boolean"
+          },
+          "refusal_code_when_denied": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Declared provider capabilities."
+    },
+    "default_policy": {
+      "type": "object",
+      "required": [
+        "read_only_default",
+        "remote_mutation_default",
+        "destructive_mutation_default",
+        "requires_explicit_step_up_for_mutation"
+      ],
+      "properties": {
+        "read_only_default": {"type": "string"},
+        "remote_mutation_default": {"type": "string"},
+        "destructive_mutation_default": {"type": "string"},
+        "requires_explicit_step_up_for_mutation": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "description": "Default permission levels for each operation class."
+    },
+    "unsupported_operations": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Operations explicitly unsupported in v0."
+    },
+    "mutation_classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mutation_class",
+          "v0_allowed",
+          "step_up_required",
+          "receipt_required",
+          "auth_modes"
+        ],
+        "properties": {
+          "mutation_class": {"type": "string"},
+          "v0_allowed": {"type": "boolean"},
+          "step_up_required": {"type": "boolean"},
+          "receipt_required": {"type": "boolean"},
+          "auth_modes": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Classification of mutation capabilities."
+    },
+    "redaction_policy": {
+      "type": "object",
+      "required": [
+        "no_raw_tokens_in_manifest",
+        "no_raw_content_in_manifest",
+        "sha256_for_content_references"
+      ],
+      "properties": {
+        "no_raw_tokens_in_manifest": {"type": "boolean"},
+        "no_raw_content_in_manifest": {"type": "boolean"},
+        "sha256_for_content_references": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "description": "Redaction policy for this manifest."
+    }
+  },
+  "additionalProperties": false
+}

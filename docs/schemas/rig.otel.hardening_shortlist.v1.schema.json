@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.hardening_shortlist.v1.schema.json",
+  "title": "Rig OTel Hardening Shortlist",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "aggregate_run_id",
+    "generated_at",
+    "candidate_count",
+    "candidates",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.hardening_shortlist.v1"
+    },
+    "aggregate_run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "category",
+          "severity",
+          "signal_kind",
+          "affected_tool_category",
+          "affected_event_count",
+          "evidence_run_ids",
+          "p50_duration_ms",
+          "p95_duration_ms",
+          "p99_duration_ms",
+          "error_count",
+          "retry_count",
+          "timeout_count",
+          "cancellation_count",
+          "missing_trace_id_count",
+          "missing_parent_span_id_count",
+          "redaction_drop_count",
+          "recommended_hardening_action",
+          "content_light_evidence_hashes"
+        ],
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "category": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "signal_kind": {
+            "type": "string",
+            "enum": [
+              "latency",
+              "error_rate",
+              "retry_loop",
+              "cancellation",
+              "timeout",
+              "missing_trace_context",
+              "redaction_pressure",
+              "malformed_input",
+              "excessive_attributes",
+              "unknown_tool_category"
+            ]
+          },
+          "affected_tool_category": {
+            "type": "string"
+          },
+          "affected_event_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evidence_run_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "p50_duration_ms": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "p95_duration_ms": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "p99_duration_ms": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "error_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "retry_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeout_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cancellation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_trace_id_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_parent_span_id_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "redaction_drop_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recommended_hardening_action": {
+            "type": "string"
+          },
+          "content_light_evidence_hashes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "input_run_count",
+        "loaded_run_count",
+        "skipped_run_count",
+        "candidate_count",
+        "signal_kind_counts",
+        "thresholds",
+        "warning_count",
+        "error_count",
+        "content_light"
+      ],
+      "properties": {
+        "input_run_count": { "type": "integer", "minimum": 0 },
+        "loaded_run_count": { "type": "integer", "minimum": 0 },
+        "skipped_run_count": { "type": "integer", "minimum": 0 },
+        "candidate_count": { "type": "integer", "minimum": 0 },
+        "signal_kind_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "thresholds": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "warning_count": { "type": "integer", "minimum": 0 },
+        "error_count": { "type": "integer", "minimum": 0 },
+        "content_light": { "type": "boolean" },
+        "local_only": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

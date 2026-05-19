@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.aggregate_report.v1.schema.json",
+  "title": "Rig OTel Aggregate Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "aggregate_run_id",
+    "generated_at",
+    "run_manifest_path",
+    "hardening_shortlist_path",
+    "aggregate_verdict",
+    "schema_validation_results",
+    "warnings",
+    "errors",
+    "local_only",
+    "coordination_ledger_mutated",
+    "release_gate_mutated"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.aggregate_report.v1"
+    },
+    "aggregate_run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_manifest_path": {
+      "type": "string"
+    },
+    "hardening_shortlist_path": {
+      "type": "string"
+    },
+    "aggregate_verdict": {
+      "type": "string",
+      "enum": ["pass", "hold", "fail"]
+    },
+    "schema_validation_results": {
+      "type": "object",
+      "required": ["run_manifest", "hardening_shortlist", "aggregate_report"],
+      "properties": {
+        "run_manifest": {
+          "type": "object",
+          "required": ["valid", "errors"],
+          "properties": {
+            "valid": { "type": "boolean" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "hardening_shortlist": {
+          "type": "object",
+          "required": ["valid", "errors"],
+          "properties": {
+            "valid": { "type": "boolean" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "aggregate_report": {
+          "type": "object",
+          "required": ["valid", "errors"],
+          "properties": {
+            "valid": { "type": "boolean" },
+            "errors": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "coordination_ledger_mutated": {
+      "type": "boolean",
+      "const": false
+    },
+    "release_gate_mutated": {
+      "type": "boolean",
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}

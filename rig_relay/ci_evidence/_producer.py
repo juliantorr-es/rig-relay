@@ -263,6 +263,7 @@ def _build_job_evidence(
         "runner_arch": ctx.runner_arch,
         "runner_class": ctx.runner_class,
         "status": "completed",
+        "conclusion": conclusion or "success",
         "started_at": ctx.started_at,
         "completed_at": _now_iso(),
         "commands": commands or "CI evidence production and validation",
@@ -272,9 +273,8 @@ def _build_job_evidence(
         "referenced_test_receipts": [],
         "failure_summary": "",
         "telemetry_redaction_notes": REDACTION_NOTES,
+        "generated_at": _now_iso(),
     }
-    if conclusion is not None:
-        data["conclusion"] = conclusion
     return data
 
 
@@ -558,6 +558,7 @@ def _evaluate_verdict(
         "release_gate_blocker_id": "blk_ci_cd_structured_evidence_surface",
         "runner_class": ctx.runner_class,
         "official_release": ctx.official_release,
+        "release_class": ctx.release_class,
         "evaluated_at": _now_iso(),
         "required_artifacts_present": required_artifacts_present,
         "required_artifacts_valid": required_artifacts_valid,
@@ -761,3 +762,64 @@ def validate_ci_evidence(
         evidence_paths=verdict_data["evidence_paths"],
         verdict_path=verdict_path,
     )
+
+
+def validate_ci_evidence_surface(
+    run_id: str | None = None,
+    evidence_dir: Path | None = None,
+    repo_root: Path = _REPO_ROOT,
+) -> CIVerdict:
+    return validate_ci_evidence(
+        run_id=run_id, evidence_dir=evidence_dir, repo_root=repo_root
+    )
+
+
+def load_ci_verdict(
+    run_id: str | None = None, evidence_dir: Path | None = None
+) -> CIVerdict:
+    return validate_ci_evidence(run_id=run_id, evidence_dir=evidence_dir)
+
+
+def classify_runner_environment(env: dict[str, str] | None = None) -> str:
+    _env = env or os.environ
+    if _env.get("GITHUB_ACTIONS") == "true":
+        return "github_actions"
+    if _env.get("CODESPACES") == "true":
+        return "codespaces_lab"
+    return "local"
+
+
+def classify_release_context(
+    runner_class: str, env: dict[str, str] | None = None
+) -> str:
+    _env = env or os.environ
+    if runner_class != "github_actions":
+        if runner_class == "codespaces_lab":
+            return "lab"
+        return "local_validation"
+    event_name = _env.get("GITHUB_EVENT_NAME", "")
+    if event_name == "release":
+        return "official"
+    return "dry_run"
+
+
+def compute_sha256(path: Path) -> str | None:
+    return _sha256_file(path)
+
+
+def collect_artifact_index(
+    ctx: RunContext,
+    evidence_dir: Path,
+    additional_paths: list[Path] | None = None,
+    repo_root: Path = _REPO_ROOT,
+) -> list[dict[str, Any]]:
+    return index_artifacts(ctx, evidence_dir, additional_paths, repo_root)
+
+
+def write_ci_event(
+    events_path: Path, event_name: str, event_data: dict[str, Any]
+) -> None:
+    entry: dict[str, Any] = {"event": event_name}
+    entry.update(event_data)
+    with events_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")

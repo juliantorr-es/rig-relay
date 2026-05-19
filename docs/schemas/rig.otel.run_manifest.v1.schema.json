@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.otel.run_manifest.v1.schema.json",
+  "title": "Rig OTel Run Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "aggregate_run_id",
+    "generated_at",
+    "input_runs",
+    "input_run_count",
+    "source_event_count",
+    "normalized_event_count",
+    "dropped_event_count",
+    "aggregate_input_sha256",
+    "manifest_sha256",
+    "redaction_summary",
+    "content_light",
+    "local_only"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.otel.run_manifest.v1"
+    },
+    "aggregate_run_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input_runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "normalized_events_path",
+          "ingest_report_path",
+          "tool_behavior_summary_path",
+          "normalized_events_sha256",
+          "ingest_report_sha256",
+          "tool_behavior_summary_sha256",
+          "event_count",
+          "warning_count",
+          "error_count"
+        ],
+        "properties": {
+          "run_id": { "type": "string" },
+          "normalized_events_path": { "type": "string" },
+          "ingest_report_path": { "type": "string" },
+          "tool_behavior_summary_path": { "type": "string" },
+          "normalized_events_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "ingest_report_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "tool_behavior_summary_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "warning_count": { "type": "integer", "minimum": 0 },
+          "error_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "input_run_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "normalized_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dropped_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "aggregate_input_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "redaction_summary": {
+      "type": "object",
+      "required": [
+        "run_count",
+        "skipped_run_count",
+        "redacted_count",
+        "hashed_count",
+        "dropped_count",
+        "warning_count",
+        "error_count"
+      ],
+      "properties": {
+        "run_count": { "type": "integer", "minimum": 0 },
+        "skipped_run_count": { "type": "integer", "minimum": 0 },
+        "redacted_count": { "type": "integer", "minimum": 0 },
+        "hashed_count": { "type": "integer", "minimum": 0 },
+        "dropped_count": { "type": "integer", "minimum": 0 },
+        "warning_count": { "type": "integer", "minimum": 0 },
+        "error_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "content_light": {
+      "type": "boolean"
+    },
+    "local_only": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
