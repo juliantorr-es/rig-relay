@@ -1,0 +1,344 @@
+{
+  "cache_hit_ratio": 0.972298,
+  "cache_read_token_total": 1122514176,
+  "cache_write_token_total": 0,
+  "estimated_discounted_cost_if_pricing_available": {
+    "amount_usd": 21.9204,
+    "currency": "USD",
+    "family_breakdown": [
+      {
+        "amount_usd": 1.1653,
+        "model_family": "deepseek-v4-flash"
+      },
+      {
+        "amount_usd": 20.7551,
+        "model_family": "deepseek-v4-pro"
+      }
+    ],
+    "method_summary": "Session-level DeepSeek token totals are priced with cache-read as discounted input and reasoning tokens treated as output-equivalent for a conservative estimate.",
+    "pricing_snapshot_date": "2026-05-19",
+    "pricing_source_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "reasoning_treated_as_output_equivalent": true
+  },
+  "estimated_full_cost_if_pricing_available": {
+    "amount_usd": 84.1858,
+    "currency": "USD",
+    "family_breakdown": [
+      {
+        "amount_usd": 1.1653,
+        "model_family": "deepseek-v4-flash"
+      },
+      {
+        "amount_usd": 83.0205,
+        "model_family": "deepseek-v4-pro"
+      }
+    ],
+    "method_summary": "Session-level DeepSeek token totals are priced with cache-read as discounted input and reasoning tokens treated as output-equivalent for a conservative estimate.",
+    "pricing_snapshot_date": "2026-05-19",
+    "pricing_source_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "reasoning_treated_as_output_equivalent": true
+  },
+  "features_already_enabled": [
+    {
+      "evidence_refs": [
+        "opencode_db"
+      ],
+      "feature_id": "thinking_mode",
+      "recommended_action": "Keep the current thinking-mode path; add explicit policy only if you need manual overrides.",
+      "status": "supported_and_enabled",
+      "summary": "DeepSeek reasoning tokens are present across the sampled sessions, which indicates thinking mode is already active in the current OpenCode lane."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db",
+        "opencode_log_latest"
+      ],
+      "feature_id": "reasoning_effort_control",
+      "recommended_action": "Use the existing variant split as the current effort-control mechanism.",
+      "status": "supported_and_enabled",
+      "summary": "deepseek-v4-pro is routed through both default and max variants, so effort-tier routing is already in use."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db",
+        "opencode_sdk_types"
+      ],
+      "feature_id": "reasoning_content_continuation_with_tool_calls",
+      "recommended_action": "Preserve the current reasoning/tool continuation path and add a regression test if the adapter changes.",
+      "status": "supported_and_enabled",
+      "summary": "7,492 assistant messages contain both reasoning and tool parts, which is the local evidence that reasoning_content survives tool-call turns."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db",
+        "opencode_sdk_types"
+      ],
+      "feature_id": "tool_calls",
+      "recommended_action": "Keep the current OpenAI-format tool loop.",
+      "status": "supported_and_enabled",
+      "summary": "Assistant tool-call parts and tool_call_id handling are present in the OpenCode session DB and SDK surface."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db"
+      ],
+      "feature_id": "context_cache_visibility",
+      "recommended_action": "Expose the same counters in any future dashboard so cache-share trends are visible without digging into SQLite.",
+      "status": "supported_and_enabled",
+      "summary": "OpenCode stores cache-read/cache-write counters in the session DB, which makes DeepSeek cache economics visible locally."
+    },
+    {
+      "evidence_refs": [
+        "opencode_binary",
+        "opencode_log_latest",
+        "opencode_config"
+      ],
+      "feature_id": "openai_compatible_deepseek_transport",
+      "recommended_action": "Stay on the OpenAI-compatible path unless a separate adapter need appears.",
+      "status": "supported_and_enabled",
+      "summary": "The installed OpenCode stack uses the standard OpenAI-compatible DeepSeek route rather than a beta or Anthropic-specific route."
+    }
+  ],
+  "features_not_enabled": {
+    "adapter_change_required": [
+      {
+        "evidence_refs": [
+          "opencode_binary",
+          "opencode_log_latest",
+          "opencode_config"
+        ],
+        "feature_id": "chat_prefix_completion_beta",
+        "recommended_action": "Treat as adapter work, not a config toggle.",
+        "status": "adapter_change_required",
+        "summary": "Chat prefix completion needs the beta route and prefix=true handling, neither of which is present in the current OpenCode evidence."
+      },
+      {
+        "evidence_refs": [
+          "opencode_binary",
+          "opencode_log_latest",
+          "opencode_config"
+        ],
+        "feature_id": "fim_completion_beta",
+        "recommended_action": "Treat as adapter work and only add it if a code-completion context really needs it.",
+        "status": "adapter_change_required",
+        "summary": "FIM completion needs the beta route and a completions-style prompt/suffix flow, which is absent from the current OpenCode evidence."
+      }
+    ],
+    "supported_but_not_enabled": [
+      {
+        "evidence_refs": [
+          "opencode_binary"
+        ],
+        "feature_id": "json_output_mode",
+        "recommended_action": "Enable only for workflows that actually need machine-parseable JSON output.",
+        "status": "supported_but_not_enabled",
+        "summary": "The binary contains response_format/json_object support strings, but JSON output mode was not actively used in the inspected usage data."
+      },
+      {
+        "evidence_refs": [
+          "opencode_binary"
+        ],
+        "feature_id": "strict_tool_call_mode_beta",
+        "recommended_action": "Only enable after you have a beta profile and strict-compatible tool schemas.",
+        "status": "supported_but_not_enabled",
+        "summary": "The binary contains function.strict strings, but there is no evidence of beta routing or strict-mode activation in the current usage data."
+      }
+    ]
+  },
+  "features_not_worth_prioritizing": [
+    {
+      "evidence_refs": [
+        "opencode_binary",
+        "opencode_log_latest"
+      ],
+      "feature_id": "chat_prefix_and_fim_beta_work",
+      "recommended_action": "Defer beta prefix/FIM work until the cache and lane policy are stable.",
+      "status": "not_worth_prioritizing",
+      "summary": "Chat prefix completion and FIM require adapter changes but do not address the dominant cost lever in this install: cache reuse."
+    },
+    {
+      "evidence_refs": [
+        "opencode_binary"
+      ],
+      "feature_id": "thinking_mode_noop_parameters",
+      "recommended_action": "Do not spend the discount window tuning parameters DeepSeek ignores in thinking mode.",
+      "status": "not_worth_prioritizing",
+      "summary": "temperature, top_p, presence_penalty, and frequency_penalty are no-op or ineffective in DeepSeek thinking mode."
+    },
+    {
+      "evidence_refs": [
+        "opencode_log_latest"
+      ],
+      "feature_id": "beta_endpoint_routing",
+      "recommended_action": "Keep the current OpenAI-compatible path and avoid beta-only routing unless a clear need appears.",
+      "status": "not_worth_prioritizing",
+      "summary": "Local logs do not show beta or Anthropic DeepSeek base URLs, so beta endpoint routing is not a near-term optimization target."
+    }
+  ],
+  "final_recommendation": {
+    "do_not_prioritize": [
+      "chat_prefix_completion_beta",
+      "fim_completion_beta",
+      "strict_tool_call_mode_beta unless a strict JSON tool workflow becomes necessary"
+    ],
+    "next_step": "Add a lightweight session-level cache and lane report so pro-vs-flash usage and cache-read share stay visible.",
+    "summary": "The sampled DeepSeek usage is already cost-aware: cache-read share is 97.23%, pro carries 88.25% of requests, and the discount window reduces the estimated bill from $84.1858 to $21.9204.",
+    "verdict": "Keep DeepSeek on the OpenAI-compatible api.deepseek.com path, preserve stable prefixes, and route most normal work through deepseek-v4-pro. Use flash only when the task is cheap and local to the prefix. Do not spend the discount window on beta-only prefix/FIM work."
+  },
+  "generated_at": "2026-05-19T22:50:12.129608Z",
+  "lane_policy_recommendation": {
+    "cache_guidance": "Cache-read share is 0.9723; keep system and tool prefixes stable so the current cache economics hold.",
+    "lanes": [
+      {
+        "effort": "default",
+        "lane_id": "flash",
+        "model_id": "deepseek-v4-flash",
+        "when_to_use": "Quick triage, exploratory reads, short-context summaries, and other cheap low-risk tasks.",
+        "why": "Flash is the cheap lane and is best reserved for work where a wrong first pass is inexpensive."
+      },
+      {
+        "effort": "default",
+        "lane_id": "pro-default",
+        "model_id": "deepseek-v4-pro",
+        "when_to_use": "Normal repo work, bugfixing, tests, and moderate-complexity reasoning.",
+        "why": "Pro accounts for most of the observed DeepSeek usage and is the safest default for real work."
+      },
+      {
+        "effort": "max",
+        "lane_id": "pro-max",
+        "model_id": "deepseek-v4-pro",
+        "when_to_use": "Architecture, deep debugging, long reasoning chains, and multi-file refactors.",
+        "why": "Max is the right escalation lane when the first pass fails or the task is likely to need broader synthesis."
+      }
+    ],
+    "policy_summary": "Use deepseek-v4-flash only for short, low-risk, low-context tasks. Use deepseek-v4-pro default for normal repo work. Use deepseek-v4-pro max for architecture, deep debugging, and long multi-step reasoning. Keep pro as the default lane while cache-read share stays high.",
+    "selection_rules": [
+      "Prefer flash only when the task can be completed with short context and failure is cheap.",
+      "Prefer pro default for anything that might need tool calls or non-trivial synthesis.",
+      "Escalate to pro max when the task spans multiple steps, needs broader reasoning, or the first pass stalls."
+    ]
+  },
+  "max_vs_default_effort_usage": {
+    "default": {
+      "cache_read_token_total": 610223744,
+      "cache_write_token_total": 0,
+      "input_token_total": 16888658,
+      "output_token_total": 2727476,
+      "reasoning_token_total": 1197682,
+      "request_count": 5743,
+      "request_share": 0.702766,
+      "session_count": 307,
+      "session_share": 0.933131
+    },
+    "max": {
+      "cache_read_token_total": 512290432,
+      "cache_write_token_total": 0,
+      "input_token_total": 15093761,
+      "output_token_total": 1513789,
+      "reasoning_token_total": 341642,
+      "request_count": 2429,
+      "request_share": 0.297234,
+      "session_count": 22,
+      "session_share": 0.066869
+    }
+  },
+  "model_counts": [
+    {
+      "cache_read_token_total": 269031680,
+      "cache_write_token_total": 0,
+      "input_token_total": 1962887,
+      "model_id": "deepseek-v4-flash",
+      "output_token_total": 371249,
+      "reasoning_token_total": 118812,
+      "request_count": 960,
+      "session_count": 8,
+      "variant": "default"
+    },
+    {
+      "cache_read_token_total": 341192064,
+      "cache_write_token_total": 0,
+      "input_token_total": 14925771,
+      "model_id": "deepseek-v4-pro",
+      "output_token_total": 2356227,
+      "reasoning_token_total": 1078870,
+      "request_count": 4783,
+      "session_count": 299,
+      "variant": "default"
+    },
+    {
+      "cache_read_token_total": 512290432,
+      "cache_write_token_total": 0,
+      "input_token_total": 15093761,
+      "model_id": "deepseek-v4-pro",
+      "output_token_total": 1513789,
+      "reasoning_token_total": 341642,
+      "request_count": 2429,
+      "session_count": 22,
+      "variant": "max"
+    }
+  ],
+  "opencode_version": "1.14.50",
+  "output_token_total_if_available": 4241265,
+  "pro_vs_flash_usage": {
+    "flash": {
+      "cache_read_token_total": 269031680,
+      "cache_write_token_total": 0,
+      "input_token_total": 1962887,
+      "output_token_total": 371249,
+      "reasoning_token_total": 118812,
+      "request_count": 960,
+      "request_share": 0.117474,
+      "session_count": 8,
+      "session_share": 0.024316
+    },
+    "pro": {
+      "cache_read_token_total": 853482496,
+      "cache_write_token_total": 0,
+      "input_token_total": 30019532,
+      "output_token_total": 3870016,
+      "reasoning_token_total": 1420512,
+      "request_count": 7212,
+      "request_share": 0.882526,
+      "session_count": 321,
+      "session_share": 0.975684
+    }
+  },
+  "provider": "deepseek",
+  "reasoning_token_total": 1539324,
+  "redaction_notes": [
+    "No API keys, auth headers, raw prompts, raw completions, raw private file contents, or raw absolute paths were persisted.",
+    "Evidence references use symbolic labels such as opencode_db, opencode_log_latest, opencode_binary, and opencode_sdk_types.",
+    "22 session rows with null model metadata were excluded from DeepSeek-specific counts so other providers are not misattributed.",
+    "Local logs were scanned for DeepSeek beta and Anthropic route strings, and no beta/Anthropic base URL evidence was found.",
+    "OpenCode's session DB exposes cache-read/cache-write counters; raw prompt_cache_hit_tokens and prompt_cache_miss_tokens were not surfaced in the inspected logs."
+  ],
+  "request_count_if_available": 8172,
+  "schema_version": "rig.deepseek_opencode_usage_report.v1",
+  "session_count": 329,
+  "top_cache_efficiency_findings": [
+    {
+      "evidence_refs": [
+        "opencode_db"
+      ],
+      "finding_id": "cache-read-dominates",
+      "impact": "Keep system/tool prefixes stable to preserve the current cache economics.",
+      "summary": "Cache-read tokens account for 97.23% of cache-eligible input tokens, so stable prefixes are already paying off."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db"
+      ],
+      "finding_id": "cache-write-zero",
+      "impact": "There is no evidence that cache warming or write-side behavior is a meaningful lever here.",
+      "summary": "Cache-write tokens are zero across the sampled DeepSeek sessions."
+    },
+    {
+      "evidence_refs": [
+        "opencode_db"
+      ],
+      "finding_id": "pro-dominates",
+      "impact": "Flash should stay an explicit cheap lane rather than the default.",
+      "summary": "deepseek-v4-pro accounts for 88.25% of DeepSeek requests and remains the right default lane."
+    }
+  ]
+}

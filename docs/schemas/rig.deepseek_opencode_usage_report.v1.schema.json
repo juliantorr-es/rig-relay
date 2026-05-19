@@ -1,0 +1,535 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek_opencode_usage_report.v1.schema.json",
+  "title": "DeepSeek OpenCode Usage Report Schema",
+  "description": "Local-only usage and cache economics report for the installed OpenCode DeepSeek integration. The report is derived from the OpenCode session DB and local logs without copying prompts, completions, secrets, or raw private paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "opencode_version",
+    "provider",
+    "model_counts",
+    "session_count",
+    "request_count_if_available",
+    "reasoning_token_total",
+    "cache_read_token_total",
+    "cache_write_token_total",
+    "cache_hit_ratio",
+    "output_token_total_if_available",
+    "estimated_discounted_cost_if_pricing_available",
+    "estimated_full_cost_if_pricing_available",
+    "pro_vs_flash_usage",
+    "max_vs_default_effort_usage",
+    "top_cache_efficiency_findings",
+    "lane_policy_recommendation",
+    "features_already_enabled",
+    "features_not_enabled",
+    "features_not_worth_prioritizing",
+    "redaction_notes",
+    "final_recommendation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek_opencode_usage_report.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "opencode_version": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "const": "deepseek"
+    },
+    "model_counts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/model_usage_row"
+      }
+    },
+    "session_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "request_count_if_available": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "reasoning_token_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cache_read_token_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cache_write_token_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cache_hit_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "output_token_total_if_available": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "estimated_discounted_cost_if_pricing_available": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/cost_estimate"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "estimated_full_cost_if_pricing_available": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/cost_estimate"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pro_vs_flash_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pro",
+        "flash"
+      ],
+      "properties": {
+        "pro": {
+          "$ref": "#/definitions/usage_totals"
+        },
+        "flash": {
+          "$ref": "#/definitions/usage_totals"
+        }
+      }
+    },
+    "max_vs_default_effort_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default",
+        "max"
+      ],
+      "properties": {
+        "default": {
+          "$ref": "#/definitions/usage_totals"
+        },
+        "max": {
+          "$ref": "#/definitions/usage_totals"
+        }
+      }
+    },
+    "top_cache_efficiency_findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/finding"
+      }
+    },
+    "lane_policy_recommendation": {
+      "$ref": "#/definitions/lane_policy"
+    },
+    "features_already_enabled": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/feature_item"
+      }
+    },
+    "features_not_enabled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supported_but_not_enabled",
+        "adapter_change_required"
+      ],
+      "properties": {
+        "supported_but_not_enabled": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/feature_item"
+          }
+        },
+        "adapter_change_required": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/feature_item"
+          }
+        }
+      }
+    },
+    "features_not_worth_prioritizing": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/feature_item"
+      }
+    },
+    "redaction_notes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "final_recommendation": {
+      "$ref": "#/definitions/final_recommendation"
+    }
+  },
+  "definitions": {
+    "usage_totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_count",
+        "request_count",
+        "input_token_total",
+        "output_token_total",
+        "reasoning_token_total",
+        "cache_read_token_total",
+        "cache_write_token_total"
+      ],
+      "properties": {
+        "session_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "request_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "session_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "request_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "input_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_token_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "model_usage_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "variant",
+        "session_count",
+        "request_count",
+        "input_token_total",
+        "output_token_total",
+        "reasoning_token_total",
+        "cache_read_token_total",
+        "cache_write_token_total"
+      ],
+      "properties": {
+        "model_id": {
+          "type": "string"
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "request_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoning_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_token_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_write_token_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "cost_estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "amount_usd",
+        "pricing_source_url",
+        "pricing_snapshot_date",
+        "reasoning_treated_as_output_equivalent",
+        "family_breakdown",
+        "method_summary"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "const": "USD"
+        },
+        "amount_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pricing_source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "pricing_snapshot_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "reasoning_treated_as_output_equivalent": {
+          "type": "boolean"
+        },
+        "family_breakdown": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/cost_breakdown"
+          }
+        },
+        "method_summary": {
+          "type": "string"
+        }
+      }
+    },
+    "cost_breakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_family",
+        "amount_usd"
+      ],
+      "properties": {
+        "model_family": {
+          "type": "string"
+        },
+        "amount_usd": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "summary",
+        "impact",
+        "evidence_refs"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "impact": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lane_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_summary",
+        "lanes",
+        "selection_rules",
+        "cache_guidance"
+      ],
+      "properties": {
+        "policy_summary": {
+          "type": "string"
+        },
+        "lanes": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/definitions/lane_item"
+          }
+        },
+        "selection_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "cache_guidance": {
+          "type": "string"
+        }
+      }
+    },
+    "lane_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lane_id",
+        "model_id",
+        "effort",
+        "when_to_use",
+        "why"
+      ],
+      "properties": {
+        "lane_id": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "effort": {
+          "type": "string",
+          "enum": [
+            "default",
+            "high",
+            "max"
+          ]
+        },
+        "when_to_use": {
+          "type": "string"
+        },
+        "why": {
+          "type": "string"
+        }
+      }
+    },
+    "feature_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feature_id",
+        "status",
+        "summary",
+        "evidence_refs",
+        "recommended_action"
+      ],
+      "properties": {
+        "feature_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported_and_enabled",
+            "supported_but_not_enabled",
+            "adapter_change_required",
+            "not_worth_prioritizing"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommended_action": {
+          "type": "string"
+        }
+      }
+    },
+    "final_recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "summary",
+        "next_step",
+        "do_not_prioritize"
+      ],
+      "properties": {
+        "verdict": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "next_step": {
+          "type": "string"
+        },
+        "do_not_prioritize": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
