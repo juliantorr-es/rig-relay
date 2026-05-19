@@ -19,6 +19,8 @@
     "repository_count",
     "rate_limit_status",
     "live_network_enabled",
+    "live_configured",
+    "live_auth_available",
     "content_light"
   ],
   "properties": {
@@ -79,8 +81,13 @@
       "enum": ["unknown", "fixture", "unavailable"]
     },
     "live_network_enabled": {
-      "type": "boolean",
-      "const": false
+      "type": "boolean"
+    },
+    "live_configured": {
+      "type": "boolean"
+    },
+    "live_auth_available": {
+      "type": "boolean"
     },
     "content_light": {
       "type": "boolean",

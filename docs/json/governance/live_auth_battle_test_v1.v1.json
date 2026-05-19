@@ -1,0 +1,112 @@
+{
+  "schema_version": "rig.relay.live_auth_battle_test.v1",
+  "artifact_id": "live_auth_battle_test_v1_wave1",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "setup_status": {
+    "github_oauth_app_configured": false,
+    "google_oauth_app_configured": false,
+    "credential_store_available": true,
+    "loopback_redirect_configured": true,
+    "pkce_ready": true
+  },
+  "github_live_auth_status": {
+    "app_installation_token_flow": "opt_in_live_test",
+    "oauth_code_flow": "opt_in_live_test",
+    "pat_manual_import": "refused",
+    "user_app_auth": "deferred",
+    "scopes_permissions_required": [
+      "repo:read (installation)",
+      "metadata:read"
+    ],
+    "live_operations_allowed": [
+      "inspect_identity",
+      "list_accessible_repos",
+      "read_repository_metadata",
+      "read_branches_commits"
+    ],
+    "live_operations_refused": [
+      "write",
+      "delete",
+      "create_issue",
+      "create_pr",
+      "merge",
+      "push"
+    ]
+  },
+  "google_live_auth_status": {
+    "oauth_pkce_flow": "opt_in_live_test",
+    "service_account_jwt": "opt_in_live_test",
+    "domain_wide_delegation": "opt_in_live_test",
+    "marketplace_app": "deferred",
+    "scopes_permissions_required": [
+      "openid",
+      "email",
+      "profile"
+    ],
+    "scope_sensitivity_posture": {
+      "restricted_scopes_verification_status": "requires_security_assessment",
+      "sensitive_scopes_verification_status": "requires_domain_admin_approval"
+    },
+    "live_operations_allowed": [
+      "inspect_identity",
+      "list_gmail_profile",
+      "list_calendar_list",
+      "list_drive_metadata",
+      "list_tasks_contacts"
+    ],
+    "live_operations_refused": [
+      "read_message_bodies",
+      "write",
+      "delete",
+      "modify"
+    ]
+  },
+  "credential_storage_status": {
+    "production_store_available": true,
+    "dev_store_blocked_by_default": true,
+    "content_light_metadata_enforced": true,
+    "raw_token_injection_rejected": true
+  },
+  "opt_in_live_test_commands": [
+    "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --dry-run",
+    "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live",
+    "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_google_workspace_live_auth_check.py --dry-run",
+    "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_google_workspace_live_auth_check.py --live"
+  ],
+  "safety_boundaries": {
+    "no_raw_tokens_in_json": true,
+    "no_raw_tokens_in_logs": true,
+    "no_remote_mutation": true,
+    "no_real_credentials_in_tests_by_default": true,
+    "live_tests_opt_in_only": true
+  },
+  "claims_supported": [
+    "Local live-auth setup works with GitHub App installation tokens and OAuth user auth when user provides credentials",
+    "Local live-auth setup works with Google OAuth PKCE flow when user provides credentials",
+    "All live-auth operations are read-only by design",
+    "All live-auth operations produce content-light evidence (SHA-256 hashes, no raw tokens)",
+    "All live-auth operations produce trace_id, receipt_id, auth_state_hash, credential_store_ref_hash",
+    "Live tests are opt-in only (RIG_LIVE_AUTH_TESTS=1)",
+    "No raw tokens in any JSON artifact",
+    "No raw tokens in logs",
+    "No remote mutation through live-auth paths",
+    "Credential store blocks raw token storage in metadata",
+    "DevFileTokenStore is blocked by default"
+  ],
+  "claims_rejected": [
+    "All provider mutations are production-ready",
+    "Google restricted scopes are approved",
+    "GitHub Marketplace distribution is ready",
+    "Hosted OAuth service is ready",
+    "Remote multi-user auth is ready",
+    "Live network auth works without explicit user credential setup"
+  ],
+  "remaining_blockers": [
+    "Real-account testing not yet performed (requires user's GitHub/Google OAuth apps)",
+    "GitHub App installation token exchange not yet tested against real GitHub API",
+    "Google PKCE OAuth flow not yet tested against real Google APIs",
+    "OAuth callback server integration with provider auth state not yet wired",
+    "Service account key management is external to Rig Relay"
+  ],
+  "recommendation": "promote_with_limitations"
+}

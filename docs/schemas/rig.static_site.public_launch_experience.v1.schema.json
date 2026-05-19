@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.static_site.public_launch_experience.v1",
+  "title": "Static Site Public Launch Experience Evidence Schema",
+  "description": "Evidence artifact schema for the public launch experience of the Rig Relay static site, covering SEO metadata, mobile responsiveness, social previews, crawler readiness, structured data, performance, accessibility, and security checks.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "public_site_goal",
+    "target_audiences",
+    "pages_improved",
+    "metadata_checks",
+    "mobile_checks",
+    "social_preview_checks",
+    "crawler_checks",
+    "structured_data_checks",
+    "performance_checks",
+    "accessibility_checks",
+    "security_checks",
+    "claims_supported",
+    "claims_rejected",
+    "remaining_seams",
+    "recommendation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.static_site.public_launch_experience.v1",
+      "description": "Schema version identifier."
+    },
+    "artifact_id": {
+      "type": "string",
+      "description": "Unique identifier for this evidence artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when this artifact was generated."
+    },
+    "public_site_goal": {
+      "type": "string",
+      "description": "High-level goal statement for the public site transformation."
+    },
+    "target_audiences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of target audiences for the public site."
+    },
+    "pages_improved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of page paths that were improved in this launch experience."
+    },
+    "metadata_checks": {
+      "type": "object",
+      "required": [
+        "og_tags",
+        "twitter_cards",
+        "canonical_urls",
+        "robots_meta",
+        "favicon"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "og_tags": {
+          "type": "string",
+          "description": "Status of Open Graph tag implementation."
+        },
+        "twitter_cards": {
+          "type": "string",
+          "description": "Status of Twitter Card tag implementation."
+        },
+        "canonical_urls": {
+          "type": "string",
+          "description": "Status of canonical URL implementation."
+        },
+        "robots_meta": {
+          "type": "string",
+          "description": "Status of robots meta tag implementation."
+        },
+        "favicon": {
+          "type": "string",
+          "description": "Status of favicon implementation."
+        }
+      },
+      "description": "SEO and social metadata implementation checks."
+    },
+    "mobile_checks": {
+      "type": "object",
+      "required": [
+        "responsive_breakpoints",
+        "viewport_meta",
+        "touch_targets",
+        "overflow_handling"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "responsive_breakpoints": {
+          "type": "string",
+          "description": "Status of responsive CSS breakpoint implementation."
+        },
+        "viewport_meta": {
+          "type": "string",
+          "description": "Status of viewport meta tag implementation."
+        },
+        "touch_targets": {
+          "type": "string",
+          "description": "Status of touch target sizing."
+        },
+        "overflow_handling": {
+          "type": "string",
+          "description": "Status of content overflow handling."
+        }
+      },
+      "description": "Mobile responsiveness checks."
+    },
+    "social_preview_checks": {
+      "type": "object",
+      "required": [
+        "og_image_status",
+        "og_fields_complete",
+        "twitter_fields_complete"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "og_image_status": {
+          "type": "string",
+          "description": "Status of OG image availability and format."
+        },
+        "og_fields_complete": {
+          "type": "string",
+          "description": "Completeness status of Open Graph fields."
+        },
+        "twitter_fields_complete": {
+          "type": "string",
+          "description": "Completeness status of Twitter Card fields."
+        }
+      },
+      "description": "Social preview and link unfurling checks."
+    },
+    "crawler_checks": {
+      "type": "object",
+      "required": [
+        "sitemap_generated",
+        "robots_txt_generated",
+        "internal_links_valid",
+        "canonical_urls_unique"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sitemap_generated": {
+          "type": "string",
+          "description": "Status of sitemap.xml generation."
+        },
+        "robots_txt_generated": {
+          "type": "string",
+          "description": "Status of robots.txt generation."
+        },
+        "internal_links_valid": {
+          "type": "string",
+          "description": "Status of internal link validation."
+        },
+        "canonical_urls_unique": {
+          "type": "string",
+          "description": "Status of canonical URL uniqueness."
+        }
+      },
+      "description": "Web crawler and search engine discoverability checks."
+    },
+    "structured_data_checks": {
+      "type": "object",
+      "required": [
+        "json_ld_valid",
+        "homepage_structured_data",
+        "evidence_page_structured_data"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "json_ld_valid": {
+          "type": "string",
+          "description": "Status of JSON-LD validity."
+        },
+        "homepage_structured_data": {
+          "type": "string",
+          "description": "Status of homepage structured data types."
+        },
+        "evidence_page_structured_data": {
+          "type": "string",
+          "description": "Status of evidence page structured data types."
+        }
+      },
+      "description": "JSON-LD structured data checks."
+    },
+    "performance_checks": {
+      "type": "object",
+      "required": [
+        "no_external_fonts",
+        "no_external_scripts",
+        "css_local_only",
+        "html_size_budget"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "no_external_fonts": {
+          "type": "string",
+          "description": "Status of external font dependency elimination."
+        },
+        "no_external_scripts": {
+          "type": "string",
+          "description": "Status of external script dependency elimination."
+        },
+        "css_local_only": {
+          "type": "string",
+          "description": "Status of local-only CSS usage."
+        },
+        "html_size_budget": {
+          "type": "string",
+          "description": "Status of HTML size budget compliance."
+        }
+      },
+      "description": "Performance and dependency checks."
+    },
+    "accessibility_checks": {
+      "type": "object",
+      "required": [
+        "skip_links",
+        "keyboard_focus",
+        "aria_landmarks",
+        "heading_hierarchy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "skip_links": {
+          "type": "string",
+          "description": "Status of skip-to-content link implementation."
+        },
+        "keyboard_focus": {
+          "type": "string",
+          "description": "Status of keyboard focus indicator implementation."
+        },
+        "aria_landmarks": {
+          "type": "string",
+          "description": "Status of ARIA landmark implementation."
+        },
+        "heading_hierarchy": {
+          "type": "string",
+          "description": "Status of heading hierarchy compliance."
+        }
+      },
+      "description": "Web accessibility checks."
+    },
+    "security_checks": {
+      "type": "object",
+      "required": [
+        "html_escaping",
+        "csp_headers",
+        "no_unsafe_insertion",
+        "content_light_scrubbing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "html_escaping": {
+          "type": "string",
+          "description": "Status of HTML content escaping."
+        },
+        "csp_headers": {
+          "type": "string",
+          "description": "Status of Content-Security-Policy implementation."
+        },
+        "no_unsafe_insertion": {
+          "type": "string",
+          "description": "Status of unsafe content insertion prevention."
+        },
+        "content_light_scrubbing": {
+          "type": "string",
+          "description": "Status of content-light scrubbing for sensitive paths."
+        }
+      },
+      "description": "Security hardening checks."
+    },
+    "claims_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of claims that are supported by evidence."
+    },
+    "claims_rejected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of claims that are explicitly rejected or not yet supported."
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of known remaining seams, deferrals, or gaps."
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Overall recommendation for the public launch readiness."
+    }
+  }
+}

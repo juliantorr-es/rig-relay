@@ -13,12 +13,35 @@ import json
 from pathlib import Path
 from typing import Any
 
+from rig_relay.core.logger import logger
 from rig_relay.identity.models import (
     IdentityProviderKind,
     IdentitySessionStatus,
     TokenBundleMetadata,
 )
 from rig_relay.identity.state_paths import identity_state_root
+
+_dev_store_allowed = False
+
+
+def enable_dev_file_token_store() -> None:
+    """Explicitly opt in to plaintext dev-only token storage.
+
+    Must be called before instantiating DevFileTokenStore.
+    Raw tokens will be stored in plaintext at ~/.rig/relay/identity/.
+    This is NOT safe for production.
+    """
+    global _dev_store_allowed
+    _dev_store_allowed = True
+    logger.warning(
+        "DevFileTokenStore enabled: raw tokens will be stored in plaintext "
+        "at ~/.rig/relay/identity/. This is NOT safe for production."
+    )
+
+
+def is_dev_store_enabled() -> bool:
+    """Return whether the dev file token store has been explicitly enabled."""
+    return _dev_store_allowed
 
 
 class TokenStore(ABC):
@@ -51,11 +74,23 @@ class DevFileTokenStore(TokenStore):
 
     WARNING: Tokens stored in plaintext. NOT for production use.
     Files live under ~/.rig/relay/identity/.
+
+    Blocked by default — call enable_dev_file_token_store() to opt in.
     """
 
     DEV_STORE_WARNING = "DevFileTokenStore: plaintext storage, do not use in production"
 
+    _BLOCKED_MESSAGE = (
+        "DevFileTokenStore is blocked by default. "
+        "Call enable_dev_file_token_store() to explicitly opt in "
+        "to plaintext dev-only token storage. "
+        "This is NOT safe for production. "
+        "Use get_credential_store() for production credential storage."
+    )
+
     def __init__(self, store_root: Path | None = None) -> None:
+        if not _dev_store_allowed:
+            raise RuntimeError(self._BLOCKED_MESSAGE)
         if store_root is None:
             store_root = identity_state_root()
         self._store_root = store_root
@@ -80,6 +115,8 @@ class DevFileTokenStore(TokenStore):
         token_bundle: dict[str, Any],
         scopes: list[str] | None = None,
     ) -> TokenBundleMetadata:
+        if not _dev_store_allowed:
+            raise RuntimeError(self._BLOCKED_MESSAGE)
         raw_token = token_bundle.get("access_token", "")
         account_id_hash = _sha256(token_bundle.get("account_id", raw_token[:16]))
         email_raw = token_bundle.get("email", "")

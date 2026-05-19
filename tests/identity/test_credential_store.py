@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -11,6 +12,8 @@ from rig_relay.identity._credential_store import (
     KeychainBackedCredentialStore,
     NoOpCredentialStore,
     _sha256,
+    assert_no_secrets_in_json,
+    scan_raw_json_for_secrets,
 )
 
 
@@ -240,3 +243,155 @@ class TestKeychainBackedCredentialStore:
         metas = store.list_metadata("github")
         assert metas[0].expires_at == "2027-01-01T00:00:00+00:00"
         assert metas[0].status == "active"
+
+
+class TestKeychainConstructorClean:
+    def test_keychain_constructor_does_not_do_redundant_imports(
+        self, tmp_path, monkeypatch
+    ):
+        import_count = 0
+
+        class FakeKeyring:
+            @staticmethod
+            def set_password(service, account, password):
+                pass
+
+            @staticmethod
+            def delete_password(service, account):
+                pass
+
+        def _fake_import(name, *args, **kwargs):
+            nonlocal import_count
+            if name == "keyring":
+                import_count += 1
+                return FakeKeyring
+            return __import__(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", _fake_import)
+
+        store = KeychainBackedCredentialStore(store_root=tmp_path)
+        assert import_count == 1
+        assert store._available
+
+    def test_keychain_probe_sets_available_correctly_when_working(
+        self, tmp_path, monkeypatch
+    ):
+        class FakeKeyring:
+            @staticmethod
+            def set_password(service, account, password):
+                pass
+
+            @staticmethod
+            def delete_password(service, account):
+                pass
+
+        monkeypatch.setitem(sys.modules, "keyring", FakeKeyring)
+
+        store = KeychainBackedCredentialStore(store_root=tmp_path)
+        assert store._available
+        assert store._keyring is not None
+
+    def test_keychain_probe_sets_available_false_when_probe_fails(
+        self, tmp_path, monkeypatch
+    ):
+        class BrokenKeyring:
+            @staticmethod
+            def set_password(service, account, password):
+                raise OSError("keychain unavailable")
+
+            @staticmethod
+            def delete_password(service, account):
+                pass
+
+        monkeypatch.setitem(sys.modules, "keyring", BrokenKeyring)
+
+        store = KeychainBackedCredentialStore(store_root=tmp_path)
+        assert not store._available
+        assert store._keyring is None
+
+    def test_keychain_import_failure_sets_available_false(self, tmp_path, monkeypatch):
+        def _fake_import(name, *args, **kwargs):
+            if name == "keyring":
+                raise ImportError("no keyring")
+            return __import__(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", _fake_import)
+
+        store = KeychainBackedCredentialStore(store_root=tmp_path)
+        assert not store._available
+        assert store._keyring is None
+
+
+class TestDevFileTokenStoreGate:
+    def test_dev_file_token_store_blocked_by_default(self, tmp_path, monkeypatch):
+        import rig_relay.identity.token_store as ts_mod
+        from rig_relay.identity.token_store import DevFileTokenStore
+
+        monkeypatch.setattr(ts_mod, "_dev_store_allowed", False)
+        with pytest.raises(RuntimeError, match="DevFileTokenStore is blocked"):
+            DevFileTokenStore(store_root=tmp_path)
+
+    def test_dev_file_token_store_allowed_after_enable(self, tmp_path, monkeypatch):
+        import rig_relay.identity.token_store as ts_mod
+        from rig_relay.identity.token_store import (
+            DevFileTokenStore,
+            enable_dev_file_token_store,
+        )
+
+        monkeypatch.setattr(ts_mod, "_dev_store_allowed", False)
+        enable_dev_file_token_store()
+        store = DevFileTokenStore(store_root=tmp_path)
+        assert store is not None
+
+    def test_is_dev_store_enabled_defaults_false(self, monkeypatch):
+        import rig_relay.identity.token_store as ts_mod
+
+        monkeypatch.setattr(ts_mod, "_dev_store_allowed", False)
+        assert not ts_mod.is_dev_store_enabled()
+
+
+class TestSecretScanner:
+    def test_scan_raw_json_for_secrets_finds_github_token(self):
+        data = {
+            "token_bundle": {"access_token": "ghp_abc123def456ghi789jkl012mno345pqr"}
+        }
+        findings = scan_raw_json_for_secrets(data)
+        assert findings
+
+    def test_scan_raw_json_for_secrets_finds_google_token(self):
+        data = {"token_bundle": {"access_token": "ya29.a0AfH6SMBx1234567890abcdef"}}
+        findings = scan_raw_json_for_secrets(data)
+        assert findings
+
+    def test_scan_raw_json_for_secrets_finds_pem(self):
+        data = {
+            "config": {
+                "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC"
+            }
+        }
+        findings = scan_raw_json_for_secrets(data)
+        assert findings
+
+    def test_scan_raw_json_for_secrets_returns_field_paths_not_values(self):
+        data = {
+            "token_bundle": {"access_token": "ghp_abc123def456ghi789jkl012mno345pqr"}
+        }
+        findings = scan_raw_json_for_secrets(data)
+        for path in findings:
+            assert "ghp_" not in path
+
+    def test_assert_no_secrets_in_json_raises_on_find(self):
+        data = {
+            "token_bundle": {"access_token": "ghp_abc123def456ghi789jkl012mno345pqr"}
+        }
+        with pytest.raises(ValueError, match="Secrets detected"):
+            assert_no_secrets_in_json(data, context="test_data")
+
+    def test_assert_no_secrets_in_json_passes_on_clean_data(self):
+        data = {
+            "schema_version": "v1",
+            "entries": [
+                {"provider": "github", "credential_hash": "abc123", "status": "active"}
+            ],
+        }
+        assert_no_secrets_in_json(data, context="clean_data")

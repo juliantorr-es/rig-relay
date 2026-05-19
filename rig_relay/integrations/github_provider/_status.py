@@ -13,6 +13,7 @@ from typing import Any
 from rig_relay.integrations.github_provider._capabilities import (
     load_github_capability_manifest,
 )
+from rig_relay.integrations.github_provider._live_auth import GitHubLiveAuthConfig
 from rig_relay.integrations.github_provider._models import (
     GitHubProviderAuthState,
     GitHubProviderCapabilityManifest,
@@ -59,6 +60,9 @@ def build_status_snapshot(
         if str(g.grant_status) == "revoked"
     ]
 
+    live_config = GitHubLiveAuthConfig.from_environment()
+    live_configured = live_config.is_configured()
+
     return {
         "schema_version": STATUS_SNAPSHOT_SCHEMA_ID,
         "provider_id": "github",
@@ -83,6 +87,8 @@ def build_status_snapshot(
         "revoked_grant_count": len(revoked_grants),
         "repository_count": len({g.repository_hash for g in active_grants}),
         "rate_limit_status": "unavailable",
-        "live_network_enabled": False,
+        "live_network_enabled": live_configured,
+        "live_configured": live_configured,
+        "live_auth_available": live_configured,
         "content_light": True,
     }

@@ -1,6 +1,8 @@
 """Google Workspace Provider v1 — local-first, credential-safe, refusal-first.
 
-No live Google API calls. No raw token/private-key/client-secret storage.
+Live auth support is available via _live_auth and _pkce modules
+when RIG_GOOGLE_CLIENT_ID and related env vars are set.
+No raw token/private-key/client-secret storage.
 No mutation operations. All identifiers are SHA-256 hashes.
 """
 
@@ -22,6 +24,16 @@ from rig_relay.integrations.google_workspace._fake_auth import (
     FakeGoogleServiceAccountAuth,
     FakeGoogleTokenEndpoint,
 )
+from rig_relay.integrations.google_workspace._live_adapter import (
+    _REQUIRED_API_SCOPES,
+    run_live_workspace_read,
+    should_skip_live_tests,
+)
+from rig_relay.integrations.google_workspace._live_auth import (
+    GoogleLiveAuthConfig,
+    GoogleLiveReadOnlySmoke,
+    GoogleLiveTokenExchanger,
+)
 from rig_relay.integrations.google_workspace._models import (
     GoogleWorkspaceAuthMode,
     GoogleWorkspaceAuthState,
@@ -39,6 +51,14 @@ from rig_relay.integrations.google_workspace._models import (
     GoogleWorkspaceScopeSensitivity,
     GoogleWorkspaceVerdict,
 )
+from rig_relay.integrations.google_workspace._pkce import (
+    PKCEParams,
+    create_pkce_params,
+    generate_code_challenge,
+    generate_code_verifier,
+    validate_code_challenge,
+    validate_verifier_length,
+)
 from rig_relay.integrations.google_workspace._receipts import (
     build_workspace_receipt,
     validate_receipt,
@@ -46,10 +66,14 @@ from rig_relay.integrations.google_workspace._receipts import (
 
 __all__ = [
     "MODULE_DOC",
+    "_REQUIRED_API_SCOPES",
     "FakeGoogleDomainWideDelegation",
     "FakeGoogleJwtSigner",
     "FakeGoogleServiceAccountAuth",
     "FakeGoogleTokenEndpoint",
+    "GoogleLiveAuthConfig",
+    "GoogleLiveReadOnlySmoke",
+    "GoogleLiveTokenExchanger",
     "GoogleWorkspaceAuthMode",
     "GoogleWorkspaceAuthState",
     "GoogleWorkspaceAuthStatus",
@@ -65,11 +89,19 @@ __all__ = [
     "GoogleWorkspaceScopeGrant",
     "GoogleWorkspaceScopeSensitivity",
     "GoogleWorkspaceVerdict",
+    "PKCEParams",
     "build_workspace_receipt",
+    "create_pkce_params",
     "evaluate_workspace_capability",
+    "generate_code_challenge",
+    "generate_code_verifier",
     "load_capability_manifest",
     "read_workspace_auth_state",
+    "run_live_workspace_read",
+    "should_skip_live_tests",
+    "validate_code_challenge",
     "validate_manifest",
     "validate_receipt",
+    "validate_verifier_length",
     "write_workspace_auth_state",
 ]

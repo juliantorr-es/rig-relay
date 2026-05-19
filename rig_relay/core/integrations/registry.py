@@ -38,9 +38,14 @@ def load_provider_manifest(provider_id: str) -> dict | None:
 def build_integration_projection() -> list[dict]:
     from rig_relay.core.integrations.models import IntegrationConnectionState
     from rig_relay.governance.service_state import get_capability_gate
-    from rig_relay.identity.token_store import DevFileTokenStore
+    from rig_relay.identity.token_store import (
+        DevFileTokenStore,
+        enable_dev_file_token_store,
+    )
 
     gate = get_capability_gate()
+    # explicitly opt in to dev-only plaintext token storage
+    enable_dev_file_token_store()
     store = DevFileTokenStore()
     statuses = store.all_statuses()
 

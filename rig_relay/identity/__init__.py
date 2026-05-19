@@ -34,7 +34,9 @@ from rig_relay.identity._credential_store import (
     InMemoryCredentialStore,
     KeychainBackedCredentialStore,
     NoOpCredentialStore,
+    assert_no_secrets_in_json,
     get_credential_store,
+    scan_raw_json_for_secrets,
 )
 from rig_relay.identity.auth_session_manager import (
     AuthSession,
@@ -52,7 +54,12 @@ from rig_relay.identity.models import (
     TokenBundleMetadata,
 )
 from rig_relay.identity.providers import IdentityProvider
-from rig_relay.identity.token_store import DevFileTokenStore, TokenStore
+from rig_relay.identity.token_store import (
+    DevFileTokenStore,
+    TokenStore,
+    enable_dev_file_token_store,
+    is_dev_store_enabled,
+)
 
 __all__ = [
     "AuthSession",
@@ -73,6 +80,10 @@ __all__ = [
     "OAuthStartResult",
     "TokenBundleMetadata",
     "TokenStore",
+    "assert_no_secrets_in_json",
+    "enable_dev_file_token_store",
     "get_auth_session_manager",
     "get_credential_store",
+    "is_dev_store_enabled",
+    "scan_raw_json_for_secrets",
 ]

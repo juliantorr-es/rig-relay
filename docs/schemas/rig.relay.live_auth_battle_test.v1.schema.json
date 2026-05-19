@@ -1,0 +1,356 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.live_auth_battle_test.v1.schema.json",
+  "title": "Live Auth Battle Test v1",
+  "description": "Machine-readable live auth battle test gate. Honestly documents which OAuth/flows are live-tested vs fake/deferred, credential storage posture, safety boundaries, and supported/rejected claims to produce a promote/promote_with_limitations/hold recommendation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "generated_at",
+    "setup_status",
+    "github_live_auth_status",
+    "google_live_auth_status",
+    "credential_storage_status",
+    "opt_in_live_test_commands",
+    "safety_boundaries",
+    "claims_supported",
+    "claims_rejected",
+    "remaining_blockers",
+    "recommendation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.live_auth_battle_test.v1",
+      "description": "Schema version identifier."
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this battle test artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this battle test artifact was generated."
+    },
+    "setup_status": {
+      "type": "object",
+      "required": [
+        "github_oauth_app_configured",
+        "google_oauth_app_configured",
+        "credential_store_available",
+        "loopback_redirect_configured",
+        "pkce_ready"
+      ],
+      "properties": {
+        "github_oauth_app_configured": {
+          "type": "boolean",
+          "description": "GitHub OAuth App is configured with client ID and client secret."
+        },
+        "google_oauth_app_configured": {
+          "type": "boolean",
+          "description": "Google OAuth App is configured with client ID and client secret."
+        },
+        "credential_store_available": {
+          "type": "boolean",
+          "description": "Credential store abstraction (KeychainBacked on macOS) is available."
+        },
+        "loopback_redirect_configured": {
+          "type": "boolean",
+          "description": "Loopback redirect server is configured for OAuth callback capture."
+        },
+        "pkce_ready": {
+          "type": "boolean",
+          "description": "PKCE code challenge/verifier implementation is available."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Pre-flight setup status for live auth battle testing."
+    },
+    "github_live_auth_status": {
+      "type": "object",
+      "required": [
+        "app_installation_token_flow",
+        "oauth_code_flow",
+        "pat_manual_import",
+        "user_app_auth",
+        "scopes_permissions_required",
+        "live_operations_allowed",
+        "live_operations_refused"
+      ],
+      "properties": {
+        "app_installation_token_flow": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of GitHub App installation token flow."
+        },
+        "oauth_code_flow": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of GitHub OAuth authorization code flow."
+        },
+        "pat_manual_import": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of GitHub PAT manual import path."
+        },
+        "user_app_auth": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of GitHub App user-to-server auth."
+        },
+        "scopes_permissions_required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scopes and permissions required for GitHub live operations."
+        },
+        "live_operations_allowed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Live operations that are allowed for GitHub integration."
+        },
+        "live_operations_refused": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Live operations that are refused for GitHub integration."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of GitHub live auth readiness."
+    },
+    "google_live_auth_status": {
+      "type": "object",
+      "required": [
+        "oauth_pkce_flow",
+        "service_account_jwt",
+        "domain_wide_delegation",
+        "marketplace_app",
+        "scopes_permissions_required",
+        "scope_sensitivity_posture",
+        "live_operations_allowed",
+        "live_operations_refused"
+      ],
+      "properties": {
+        "oauth_pkce_flow": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of Google OAuth PKCE flow."
+        },
+        "service_account_jwt": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of Google service account JWT auth."
+        },
+        "domain_wide_delegation": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of Google domain-wide delegation."
+        },
+        "marketplace_app": {
+          "type": "string",
+          "enum": [
+            "implemented_live",
+            "implemented_fake_only",
+            "opt_in_live_test",
+            "deferred",
+            "refused"
+          ],
+          "description": "Status of Google Workspace Marketplace app auth."
+        },
+        "scopes_permissions_required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scopes and permissions required for Google live operations."
+        },
+        "scope_sensitivity_posture": {
+          "type": "object",
+          "required": [
+            "restricted_scopes_verification_status",
+            "sensitive_scopes_verification_status"
+          ],
+          "properties": {
+            "restricted_scopes_verification_status": {
+              "type": "string",
+              "description": "Verification status for Google restricted scopes."
+            },
+            "sensitive_scopes_verification_status": {
+              "type": "string",
+              "description": "Verification status for Google sensitive scopes."
+            }
+          },
+          "additionalProperties": false,
+          "description": "Scope sensitivity posture for Google OAuth."
+        },
+        "live_operations_allowed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Live operations that are allowed for Google integration."
+        },
+        "live_operations_refused": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Live operations that are refused for Google integration."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of Google Workspace live auth readiness."
+    },
+    "credential_storage_status": {
+      "type": "object",
+      "required": [
+        "production_store_available",
+        "dev_store_blocked_by_default",
+        "content_light_metadata_enforced",
+        "raw_token_injection_rejected"
+      ],
+      "properties": {
+        "production_store_available": {
+          "type": "boolean",
+          "description": "Production credential store (KeychainBacked) is available."
+        },
+        "dev_store_blocked_by_default": {
+          "type": "boolean",
+          "description": "Development file token store is blocked by default."
+        },
+        "content_light_metadata_enforced": {
+          "type": "boolean",
+          "description": "Content-light metadata (SHA-256 hashes only) is enforced."
+        },
+        "raw_token_injection_rejected": {
+          "type": "boolean",
+          "description": "Raw token injection into credential store metadata is rejected."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Status of credential storage safety."
+    },
+    "opt_in_live_test_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exact CLI commands the user runs for opt-in live auth testing."
+    },
+    "safety_boundaries": {
+      "type": "object",
+      "required": [
+        "no_raw_tokens_in_json",
+        "no_raw_tokens_in_logs",
+        "no_remote_mutation",
+        "no_real_credentials_in_tests_by_default",
+        "live_tests_opt_in_only"
+      ],
+      "properties": {
+        "no_raw_tokens_in_json": {
+          "type": "boolean",
+          "description": "No raw tokens anywhere in JSON artifacts."
+        },
+        "no_raw_tokens_in_logs": {
+          "type": "boolean",
+          "description": "No raw tokens anywhere in logs."
+        },
+        "no_remote_mutation": {
+          "type": "boolean",
+          "description": "No remote mutation (write/delete/merge/push) through live-auth paths."
+        },
+        "no_real_credentials_in_tests_by_default": {
+          "type": "boolean",
+          "description": "No tests depend on real credentials by default."
+        },
+        "live_tests_opt_in_only": {
+          "type": "boolean",
+          "description": "Live tests require explicit opt-in (RIG_LIVE_AUTH_TESTS=1)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Safety boundary enforcement for live auth battle testing."
+    },
+    "claims_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Claims that Rig Relay supports for live auth."
+    },
+    "claims_rejected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Claims that Rig Relay explicitly rejects for live auth."
+    },
+    "remaining_blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Remaining blockers identified during the live auth battle test audit."
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["promote", "promote_with_limitations", "hold"],
+      "description": "Readiness recommendation: promote (all criteria met), promote_with_limitations (criteria met with honest limitations), hold (significant gaps, do not promote)."
+    }
+  },
+  "additionalProperties": false
+}

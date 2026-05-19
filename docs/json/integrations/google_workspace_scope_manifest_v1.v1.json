@@ -1,0 +1,115 @@
+{
+  "schema_version": "rig.google_workspace.scope_manifest.v1",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "provider_id": "google_workspace",
+  "scopes": [
+    {
+      "scope_id": "openid",
+      "human_label": "OpenID Connect",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "OIDC identity verification. Associates a Google account with the app."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/userinfo.email",
+      "human_label": "Email Address",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View your email address."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/userinfo.profile",
+      "human_label": "Profile Information",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View your personal info, including name and profile picture."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/gmail.readonly",
+      "human_label": "Read Gmail Messages",
+      "sensitivity": "restricted",
+      "risk_level": "high",
+      "requires_security_assessment": true,
+      "minimum_verification_level": "security_assessment",
+      "notes": "Read all Gmail messages and settings. Restricted scope — requires security assessment and yearly recertification."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/gmail.metadata",
+      "human_label": "Read Gmail Metadata",
+      "sensitivity": "restricted",
+      "risk_level": "medium",
+      "requires_security_assessment": true,
+      "minimum_verification_level": "security_assessment",
+      "notes": "Read Gmail message metadata (headers, labels) but not message body. Restricted scope — requires security assessment."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/calendar.readonly",
+      "human_label": "Read Calendars",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View your calendars."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/calendar.events.readonly",
+      "human_label": "Read Calendar Events",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View events on all your calendars."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "human_label": "Read Drive Metadata",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View metadata for files in your Google Drive."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/drive.readonly",
+      "human_label": "Read Drive Files",
+      "sensitivity": "restricted",
+      "risk_level": "high",
+      "requires_security_assessment": true,
+      "minimum_verification_level": "security_assessment",
+      "notes": "View and download all your Drive files. Restricted scope — requires security assessment."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/tasks.readonly",
+      "human_label": "Read Tasks",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View your Google Tasks."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/contacts.readonly",
+      "human_label": "Read Contacts",
+      "sensitivity": "non_sensitive",
+      "risk_level": "low",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "none",
+      "notes": "View your contacts."
+    },
+    {
+      "scope_id": "https://www.googleapis.com/auth/admin.directory.user.readonly",
+      "human_label": "Read Directory Users",
+      "sensitivity": "sensitive",
+      "risk_level": "medium",
+      "requires_security_assessment": false,
+      "minimum_verification_level": "domain_wide_delegation",
+      "notes": "Read users in your Google Workspace domain. Requires domain-wide delegation of authority."
+    }
+  ]
+}

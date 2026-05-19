@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from importlib import import_module
 from typing import Any
 from uuid import uuid4
@@ -13,6 +14,7 @@ from rig_relay.sdk._models import (
     RigAuthStatus,
     RigCapabilityDecision,
     RigClient,
+    RigProviderLiveAuthStatus,
     RigReceiptRef,
     RigRefusal,
     RigRunResult,
@@ -36,14 +38,20 @@ __all__ = [
     "RigTransportBudgets",
     "RigVerdict",
     "check_auth_capability",
+    "check_github_provider_status",
+    "check_google_workspace_status",
     "compute_sha256",
     "detect_refresh_needed",
+    "evaluate_github_capability",
+    "evaluate_google_workspace_capability",
     "evaluate_sdk_capability",
     "get_auth_receipt_ref",
     "get_auth_refusal",
     "get_auth_status",
     "get_credential_store_ref_hash",
     "get_sdk_status",
+    "run_github_live_read",
+    "run_google_workspace_live_read",
     "run_mcp_read_only",
     "send_a2a_local_task",
     "start_acp_session",
@@ -237,3 +245,310 @@ def get_auth_receipt_ref(receipt_id: str) -> RigAuthReceiptRef:
 def get_credential_store_ref_hash(provider_id: str) -> str:
     store = _get_credential_store()
     return store.compute_credential_store_ref_hash(provider_id)
+
+
+def check_github_provider_status(trace_id: str = "") -> RigRunResult:
+    return asyncio.run(RigClient().check_github_provider_status(trace_id))
+
+
+def run_github_live_read(
+    capability_id: str,
+    token: str = "",
+    repository_owner: str = "",
+    repository_name: str = "",
+    trace_id: str = "",
+) -> RigRunResult:
+    return asyncio.run(
+        RigClient().run_github_live_read(
+            capability_id, token, repository_owner, repository_name, trace_id
+        )
+    )
+
+
+def evaluate_github_capability(
+    capability_id: str, trace_id: str = ""
+) -> RigCapabilityDecision:
+    return asyncio.run(RigClient().evaluate_github_capability(capability_id, trace_id))
+
+
+def check_google_workspace_status(trace_id: str = "") -> RigRunResult:
+    return asyncio.run(RigClient().check_google_workspace_status(trace_id))
+
+
+def run_google_workspace_live_read(
+    capability_id: str, token: str = "", subject_hash: str = "", trace_id: str = ""
+) -> RigRunResult:
+    return asyncio.run(
+        RigClient().run_google_workspace_live_read(
+            capability_id, token, subject_hash, trace_id
+        )
+    )
+
+
+def evaluate_google_workspace_capability(
+    capability_id: str, trace_id: str = ""
+) -> RigCapabilityDecision:
+    return asyncio.run(
+        RigClient().evaluate_google_workspace_capability(capability_id, trace_id)
+    )
+
+
+# ── Live-Auth Provider Status ──
+
+
+_REFRESH_THRESHOLD_SECONDS_LIVE = 300
+
+
+def get_provider_live_auth_status(provider_id: str) -> RigProviderLiveAuthStatus:
+    trace_id = _uuid()
+    receipt_id = _uuid()
+    capability_id = f"provider.{provider_id}.live_auth"
+
+    if provider_id == "github":
+        return _get_github_live_auth_status(trace_id, receipt_id, capability_id)
+    if provider_id == "google_workspace":
+        return _get_google_live_auth_status(trace_id, receipt_id, capability_id)
+
+    store = _get_credential_store()
+    store_available = _is_credential_store_available(store)
+    store_ref_hash = store.compute_credential_store_ref_hash(provider_id)
+
+    return RigProviderLiveAuthStatus(
+        provider_id=provider_id,
+        configured=False,
+        auth_status="unconfigured",
+        refusal_code="unknown_provider",
+        credential_store_available=store_available,
+        credential_store_ref_hash=store_ref_hash,
+        capability_id=capability_id,
+        trace_id=trace_id,
+        receipt_id=receipt_id,
+    )
+
+
+def _get_github_live_auth_status(
+    trace_id: str, receipt_id: str, capability_id: str
+) -> RigProviderLiveAuthStatus:
+    provider_id = "github"
+    store = _get_credential_store()
+    store_available = _is_credential_store_available(store)
+    store_ref_hash = store.compute_credential_store_ref_hash(provider_id)
+
+    configured = False
+    auth_mode = "none"
+    auth_status = "unconfigured"
+    scopes_or_permissions: list[str] = []
+    token_expires_at: str | None = None
+    refresh_needed = False
+    refusal_code: str | None = "live_auth_not_configured"
+
+    try:
+        live_mod = import_module("rig_relay.integrations.github_provider._live_auth")
+        live_config = live_mod.GitHubLiveAuthConfig.from_environment()
+        configured = live_config.is_configured()
+    except (ImportError, AttributeError):
+        pass
+
+    if not configured:
+        try:
+            auth_mod = import_module(
+                "rig_relay.integrations.github_provider._auth_state_store"
+            )
+            auth_state = auth_mod.read_auth_state()
+            if str(auth_state.auth_mode) not in {"", "none"}:
+                configured = True
+                auth_mode = str(auth_state.auth_mode)
+                auth_status = str(auth_state.auth_status).lower()
+                scopes_or_permissions = list(auth_state.scopes_or_permissions)
+                token_expires_at = auth_state.expires_at or None
+                refusal_code = None
+        except (ImportError, AttributeError, FileNotFoundError, ValueError):
+            pass
+    else:
+        auth_status = "unauthenticated"
+        refusal_code = None
+
+    if not configured:
+        return RigProviderLiveAuthStatus(
+            provider_id=provider_id,
+            configured=False,
+            auth_status="unconfigured",
+            refusal_code=refusal_code,
+            credential_store_available=store_available,
+            credential_store_ref_hash=store_ref_hash,
+            capability_id=capability_id,
+            trace_id=trace_id,
+            receipt_id=receipt_id,
+        )
+
+    if token_expires_at:
+        from datetime import UTC, datetime
+
+        now = datetime.now(UTC)
+        try:
+            exp = datetime.fromisoformat(token_expires_at)
+            if exp <= now:
+                auth_status = "expired"
+                refresh_needed = True
+            elif (exp - now).total_seconds() < _REFRESH_THRESHOLD_SECONDS_LIVE:
+                refresh_needed = True
+        except (ValueError, TypeError):
+            pass
+
+    return RigProviderLiveAuthStatus(
+        provider_id=provider_id,
+        configured=True,
+        auth_mode=auth_mode,
+        auth_status=auth_status,
+        credential_store_available=store_available,
+        credential_store_ref_hash=store_ref_hash,
+        token_expires_at=token_expires_at,
+        refresh_needed=refresh_needed,
+        scopes_or_permissions=scopes_or_permissions,
+        capability_id=capability_id,
+        trace_id=trace_id,
+        receipt_id=receipt_id,
+    )
+
+
+def _get_google_live_auth_status(
+    trace_id: str, receipt_id: str, capability_id: str
+) -> RigProviderLiveAuthStatus:
+    provider_id = "google_workspace"
+    store = _get_credential_store()
+    store_available = _is_credential_store_available(store)
+    store_ref_hash = store.compute_credential_store_ref_hash(provider_id)
+
+    configured = False
+    auth_mode = "none"
+    auth_status = "unconfigured"
+    scopes_or_permissions: list[str] = []
+    refusal_code: str | None = "live_auth_not_configured"
+
+    try:
+        live_mod = import_module("rig_relay.integrations.google_workspace._live_auth")
+        live_config = live_mod.GoogleLiveAuthConfig()
+        configured = live_config.is_configured()
+    except (ImportError, AttributeError):
+        pass
+
+    if not configured:
+        try:
+            auth_mod = import_module(
+                "rig_relay.integrations.google_workspace._auth_state_store"
+            )
+            auth_state = auth_mod.read_workspace_auth_state()
+            if str(auth_state.auth_mode) not in {"", "none"}:
+                configured = True
+                auth_mode = str(auth_state.auth_mode)
+                auth_status = str(auth_state.auth_status).lower()
+                scopes_or_permissions = [g.scope_id for g in auth_state.scope_grants]
+                refusal_code = None
+        except (ImportError, AttributeError, FileNotFoundError, ValueError):
+            pass
+    else:
+        auth_status = "unauthenticated"
+        refusal_code = None
+
+    if not configured:
+        return RigProviderLiveAuthStatus(
+            provider_id=provider_id,
+            configured=False,
+            auth_status="unconfigured",
+            refusal_code=refusal_code,
+            credential_store_available=store_available,
+            credential_store_ref_hash=store_ref_hash,
+            capability_id=capability_id,
+            trace_id=trace_id,
+            receipt_id=receipt_id,
+        )
+
+    return RigProviderLiveAuthStatus(
+        provider_id=provider_id,
+        configured=True,
+        auth_mode=auth_mode,
+        auth_status=auth_status,
+        credential_store_available=store_available,
+        credential_store_ref_hash=store_ref_hash,
+        scopes_or_permissions=scopes_or_permissions,
+        capability_id=capability_id,
+        trace_id=trace_id,
+        receipt_id=receipt_id,
+    )
+
+
+def validate_live_auth_setup(provider_id: str) -> dict[str, object]:
+    issues: list[str] = []
+    if provider_id == "github":
+        return _validate_github_live_auth_setup(issues)
+    if provider_id == "google_workspace":
+        return _validate_google_live_auth_setup(issues)
+    return {
+        "ready": False,
+        "issues": [f"Unknown provider: {provider_id}"],
+        "recommendation": "Supported providers: github, google_workspace",
+    }
+
+
+def _validate_github_live_auth_setup(issues: list[str]) -> dict[str, object]:
+    from pathlib import Path
+
+    app_id: int | None = None
+    installation_id: int | None = None
+    private_key_path: str | None = None
+
+    try:
+        live_mod = import_module("rig_relay.integrations.github_provider._live_auth")
+        live_config = live_mod.GitHubLiveAuthConfig.from_environment()
+        app_id = live_config.app_id
+        installation_id = live_config.installation_id
+        private_key_path = live_config.private_key_path
+    except (ImportError, AttributeError):
+        pass
+
+    if app_id is None:
+        issues.append("Missing app_id (set RIG_GITHUB_APP_ID)")
+    if installation_id is None:
+        issues.append("Missing installation_id (set RIG_GITHUB_INSTALLATION_ID)")
+    if private_key_path is None:
+        issues.append("Missing private_key_path (set RIG_GITHUB_PRIVATE_KEY_PATH)")
+    elif not Path(private_key_path).exists():
+        issues.append(f"private_key_path does not exist: {private_key_path}")
+
+    ready = len(issues) == 0
+    recommendation = (
+        "All required fields configured"
+        if ready
+        else "Set the required environment variables for GitHub App auth"
+    )
+    return {"ready": ready, "issues": issues, "recommendation": recommendation}
+
+
+def _validate_google_live_auth_setup(issues: list[str]) -> dict[str, object]:
+    client_id: str | None = None
+    client_secret: str | None = None
+    redirect_uri: str | None = None
+
+    try:
+        live_mod = import_module("rig_relay.integrations.google_workspace._live_auth")
+        live_config = live_mod.GoogleLiveAuthConfig()
+        client_id = live_config.client_id or None
+        client_secret = live_config.client_secret or None
+        redirect_uri = live_config.redirect_uri or None
+    except (ImportError, AttributeError):
+        pass
+
+    if not client_id:
+        issues.append("Missing client_id (set RIG_GOOGLE_CLIENT_ID)")
+    if not client_secret:
+        issues.append("Missing client_secret (set RIG_GOOGLE_CLIENT_SECRET)")
+    if not redirect_uri:
+        issues.append("Missing redirect_uri (set RIG_GOOGLE_REDIRECT_URI)")
+
+    ready = len(issues) == 0
+    recommendation = (
+        "All required fields configured"
+        if ready
+        else "Set the required environment variables for Google OAuth"
+    )
+    return {"ready": ready, "issues": issues, "recommendation": recommendation}

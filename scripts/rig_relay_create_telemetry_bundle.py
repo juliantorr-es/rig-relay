@@ -254,8 +254,13 @@ def create_bundle(
     # Identity summary from state_root (only if provided)
     identity_summary: dict[str, Any] | None = None
     try:
-        from rig_relay.identity.token_store import DevFileTokenStore
+        from rig_relay.identity.token_store import (
+            DevFileTokenStore,
+            enable_dev_file_token_store,
+        )
 
+        # explicitly opt in to dev-only plaintext token storage
+        enable_dev_file_token_store()
         id_root = (state_root / "identity") if state_root else None
         id_store = (
             DevFileTokenStore(store_root=id_root) if id_root else DevFileTokenStore()

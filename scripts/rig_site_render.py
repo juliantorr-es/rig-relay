@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+import glob
 import hashlib
 import json
 import os
@@ -60,6 +61,8 @@ ASSETS_SRC = (
 )
 ASSETS_OUT = OUTPUT_DIR / "assets"
 SITE_CSS_SRC = ASSETS_SRC / "site.css"
+GITHUB_URL = "https://github.com/juliantorr-es/rig-relay"
+OG_IMAGE_SRC = REPO_ROOT / "docs" / "assets" / "og" / "rig-relay-card.svg"
 
 
 NORMALIZER_MAP: dict[str, Callable[[dict], list[dict]]] = {
@@ -110,11 +113,143 @@ def _detect_stale(manifest: dict, page_id: str, head_sha: str) -> list[dict]:
     return stale
 
 
-def _safe_relative_path(path: Path, start: Path) -> str:
+def _safe_relative_path(path: Path | str, start: Path | str) -> str:
+    """Return a safe relative path string."""
     try:
-        return str(path.relative_to(start))
+        return str(Path(path).relative_to(start))
     except ValueError:
         return str(path)
+
+
+def _build_structured_data_homepage(
+    schema_count: int, head_sha: str, description: str
+) -> str:
+    """Build JSON-LD structured data for the homepage."""
+    data = [
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Rig Relay",
+            "description": description,
+            "url": GITHUB_URL,
+        },
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "Rig Relay",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "macOS, Linux",
+            "description": description,
+            "url": GITHUB_URL,
+            "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        },
+    ]
+    res = json.dumps(data, separators=(",", ":"))
+    return res.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def _build_structured_data_evidence(title: str, description: str, route: str) -> str:
+    """Build JSON-LD structured data for an evidence page."""
+    data = {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": title,
+        "description": description or f"Evidence page: {title}",
+        "url": route,
+        "isPartOf": {"@type": "WebSite", "name": "Rig Relay"},
+    }
+    res = json.dumps(data, separators=(",", ":"))
+    return res.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def _count_schemas(repo_root: Path) -> int:
+    """Count JSON schema files in docs/schemas/."""
+    schemas_dir = repo_root / "docs" / "schemas"
+    if not schemas_dir.exists():
+        return 0
+    return len(glob.glob(str(schemas_dir / "*.schema.json")))
+
+
+def _load_governance_claims(repo_root: Path) -> tuple[list[str], list[str], list[str]]:
+    """Load public claims, rejected claims, and remaining seams from governance artifacts."""
+    supported: list[str] = []
+    rejected: list[str] = []
+    seams: list[str] = []
+
+    # Cross-surface convergence review
+    conv_path = (
+        repo_root
+        / "docs"
+        / "json"
+        / "governance"
+        / "cross_surface_v1_convergence_review.v1.json"
+    )
+    if conv_path.exists():
+        try:
+            conv = json.loads(conv_path.read_text(encoding="utf-8"))
+            supported.extend(conv.get("release_paper_claims_supported", []))
+            rejected.extend(conv.get("release_paper_claims_rejected", []))
+        except Exception:
+            pass
+
+    # Hardening artifact
+    hard_path = (
+        repo_root
+        / "docs"
+        / "json"
+        / "governance"
+        / "cross_surface_v1_1_hardening.v1.json"
+    )
+    if hard_path.exists():
+        try:
+            hard = json.loads(hard_path.read_text(encoding="utf-8"))
+            for cb in hard.get("remaining_claim_boundaries", []):
+                if isinstance(cb, str):
+                    rejected.append(cb)
+                elif isinstance(cb, dict) and "boundary" in cb:
+                    rejected.append(cb["boundary"])
+        except Exception:
+            pass
+
+    # Agent execution readiness
+    exec_path = (
+        repo_root
+        / "docs"
+        / "json"
+        / "governance"
+        / "agent_execution_readiness_v1.v1.json"
+    )
+    if exec_path.exists():
+        try:
+            ex = json.loads(exec_path.read_text(encoding="utf-8"))
+            seams.extend(ex.get("remaining_seams", []))
+        except Exception:
+            pass
+
+    # Deduplicate while preserving order
+    seen_s: set[str] = set()
+    unique_supported = []
+    for c in supported:
+        key = str(c) if isinstance(c, str) else json.dumps(c)
+        if key not in seen_s:
+            seen_s.add(key)
+            if isinstance(c, dict):
+                unique_supported.append(c.get("claim", str(c)))
+            else:
+                unique_supported.append(c)
+
+    seen_r: set[str] = set()
+    unique_rejected = []
+    for c in rejected:
+        key = str(c) if isinstance(c, str) else json.dumps(c)
+        if key not in seen_r:
+            seen_r.add(key)
+            if isinstance(c, dict):
+                unique_rejected.append(c.get("boundary", str(c)))
+            else:
+                unique_rejected.append(c)
+
+    return unique_supported, unique_rejected, seams
 
 
 def main() -> int:
@@ -403,7 +538,27 @@ def main() -> int:
             depth = route.strip("/").count("/")
             relative_root = ".." * depth if depth > 0 else "."
 
-            page = {**pm, "sections": sections, "generated_at": generated_at}
+            page_title = pm.get("title", "Untitled")
+            page_desc = pm.get("description", "")
+            page = {
+                **pm,
+                "sections": sections,
+                "generated_at": generated_at,
+                "og_title": page_title,
+                "og_description": page_desc[:200]
+                if page_desc
+                else f"Evidence: {page_title}",
+                "og_image": f"{relative_root}/assets/og/rig-relay-card.svg",
+                "og_type": "article",
+                "og_url": route,
+                "canonical_url": route,
+                "twitter_card": "summary",
+                "theme_color": "#1e3a5f",
+                "robots": "index,follow",
+                "structured_data_json": _build_structured_data_evidence(
+                    page_title, page_desc, route
+                ),
+            }
             source_artifact_paths = _artifact_source_paths(manifest, page_id)
 
             try:
@@ -457,6 +612,14 @@ def main() -> int:
     if not failure_reasons and not bypass_regeneration:
         # Index Page
         all_pages = rendered + failed
+        schema_count = _count_schemas(REPO_ROOT)
+        public_claims, rejected_claims, remaining_seams_list = _load_governance_claims(
+            REPO_ROOT
+        )
+        homepage_desc = (
+            "Rig Relay is a governed local agent platform that turns agent execution "
+            "into schema-governed, trace-correlated, content-light, refusal-first local evidence."
+        )
         site_meta = {
             "generated_at": generated_at,
             "branch": branch,
@@ -464,6 +627,24 @@ def main() -> int:
             "safety_passed": all(r["status"] == "rendered" for r in rendered),
             "release_summary": release_summary,
             "proof_summary": proof_summary,
+            "public_claims": public_claims,
+            "rejected_claims": rejected_claims,
+            "remaining_seams": remaining_seams_list,
+            "schema_count": schema_count,
+            "github_url": GITHUB_URL,
+            "og_title": "Rig Relay",
+            "og_description": homepage_desc[:200],
+            "og_image": "./assets/og/rig-relay-card.svg",
+            "og_type": "website",
+            "og_url": "./index.html",
+            "twitter_card": "summary",
+            "canonical_url": "./index.html",
+            "theme_color": "#1e3a5f",
+            "robots": "index,follow",
+            "public_description": homepage_desc,
+            "structured_data_json": _build_structured_data_homepage(
+                schema_count, head_sha, homepage_desc
+            ),
         }
 
         # Build nav_pages for index as well
@@ -490,6 +671,30 @@ def main() -> int:
         favicon_src = REPO_ROOT / "docs" / "assets" / "favicon.svg"
         if favicon_src.exists():
             shutil.copy2(favicon_src, ASSETS_OUT / "favicon.svg")
+        # Copy OG image
+        og_out_dir = ASSETS_OUT / "og"
+        og_out_dir.mkdir(parents=True, exist_ok=True)
+        if OG_IMAGE_SRC.exists():
+            shutil.copy2(OG_IMAGE_SRC, og_out_dir / "rig-relay-card.svg")
+
+        # Generate sitemap.xml
+        sitemap_lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+            "  <url><loc>./index.html</loc></url>",
+        ]
+        for p in sorted(all_pages, key=lambda x: x.get("route", "")):
+            route_val = p.get("route", "")
+            if route_val:
+                sitemap_lines.append(f"  <url><loc>.{route_val}</loc></url>")
+        sitemap_lines.append("</urlset>")
+        sitemap_path = OUTPUT_DIR / "sitemap.xml"
+        sitemap_path.write_text("\n".join(sitemap_lines), encoding="utf-8")
+
+        # Generate robots.txt
+        robots_content = "User-agent: *\nAllow: /\nSitemap: ./sitemap.xml\n"
+        robots_path = OUTPUT_DIR / "robots.txt"
+        robots_path.write_text(robots_content, encoding="utf-8")
 
         # Full Site Safety Scan
         safety_report = scan_rendered_site(OUTPUT_DIR)
@@ -596,12 +801,16 @@ def main() -> int:
             "schema_version": "rig.site.manifest.v1",
             "generated_at": generated_at,
             "head_sha": head_sha,
-            "site_title": "Rig Relay Evidence Site",
+            "site_title": "Rig Relay — Governed Local Agent Platform",
             "routes": [
                 {"route": r["route"], "title": r["title"], "page_id": r["page_id"]}
                 for r in rendered + failed
             ],
-            "assets": ["assets/site.css"],
+            "assets": [
+                "assets/site.css",
+                "assets/favicon.svg",
+                "assets/og/rig-relay-card.svg",
+            ],
         }
         manifest_out_path = OUTPUT_DIR / "site_manifest.v1.json"
         manifest_out_path.write_text(

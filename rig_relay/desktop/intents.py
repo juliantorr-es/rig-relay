@@ -47,6 +47,11 @@ DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 REQUEST_SCHEMA_PATH = SCHEMAS_DIR / "rig.relay.desktop_intent_request.v1.schema.json"
 RESULT_SCHEMA_PATH = SCHEMAS_DIR / "rig.relay.desktop_intent_result.v1.schema.json"
 
+# explicitly opt in to dev-only plaintext token storage
+from rig_relay.identity.token_store import enable_dev_file_token_store
+
+enable_dev_file_token_store()
+
 
 # ── Intent Registry ────────────────────────────────────────────────────
 

@@ -4,12 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ title }} — Rig Relay</title>
-<meta name="description" content="{{ description | default('Rig Relay static evidence site — generated from canonical structured artifacts.') }}">
-{% if og_title %}<meta property="og:title" content="{{ og_title }}">{% endif %}
-{% if og_description %}<meta property="og:description" content="{{ og_description }}">{% endif %}
+<meta name="description" content="{{ description | default('Rig Relay is a governed local agent platform — inspectable, auditable, refusal-first.') }}">
+<meta name="robots" content="{{ robots | default('index,follow') }}">
+<meta name="theme-color" content="{{ theme_color | default('#1e3a5f') }}">
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+<link rel="icon" href="{{ relative_root }}/assets/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="{{ og_title | default(title) }}">
+<meta property="og:description" content="{{ og_description | default(description | default('Governed local agent platform — inspectable, auditable, refusal-first.')) }}">
+<meta property="og:type" content="{{ og_type | default('website') }}">
+{% if og_url %}<meta property="og:url" content="{{ og_url }}">{% endif %}
+{% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+<meta property="og:site_name" content="{{ og_site_name | default('Rig Relay') }}">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="{{ twitter_card | default('summary') }}">
+<meta name="twitter:title" content="{{ og_title | default(title) }}">
+<meta name="twitter:description" content="{{ og_description | default(description | default('Governed local agent platform — inspectable, auditable, refusal-first.')) }}">
+{% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
 <link rel="stylesheet" href="{{ relative_root }}/assets/site.css">
 <meta name="relative-root" content="{{ relative_root }}">
+{% if structured_data_json %}
+<script type="application/ld+json">{{ structured_data_json }}</script>
+{% endif %}
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -20,13 +36,13 @@
 </header>
 <div class="main-wrapper">
   <aside class="sidebar-nav">
-    <h2>Dossier Overview</h2>
+    <h2>Evidence Console</h2>
     <nav aria-label="Evidence dossier navigation">
       <ul class="nav-links">
         <li>
           <a class="nav-item-link{% if not page_id %} active{% endif %}" href="{{ relative_root }}/index.html">
-            <strong>Dossier Index</strong>
-            <span>Verification & readiness</span>
+            <strong>Home</strong>
+            <span>Product overview</span>
           </a>
         </li>
         {% for p in nav_pages %}
@@ -45,7 +61,11 @@
   </main>
 </div>
 <footer class="site-footer">
-  <p>Generated {{ generated_at }} from {% if source_artifact_paths %}{{ source_artifact_paths | join(', ') }}{% else %}site configuration{% endif %}. <a href="{{ relative_root }}/index.html">Site index</a>.</p>
+  <p>Rig Relay — Governed local agent platform. Generated {{ generated_at }}.
+  {% if source_artifact_paths %}
+    <br><span class="footer-sources">Sources: {{ source_artifact_paths | join(', ') }}</span>.
+  {% endif %}
+  <a href="{{ relative_root }}/index.html">Home</a>.</p>
 </footer>
 </body>
 </html>

@@ -1,6 +1,5 @@
 {
   "blocking_phase_ids": [
-    "phase_4_ui_docs_ci_packaging",
     "phase_6_dogfood_operational_readiness",
     "phase_7_protocol_surfaces"
   ],
@@ -13,65 +12,39 @@
     "README.md",
     "docs/json/release_candidate/rc_installability_verdict.v1.json",
     "docs/json/release_candidate/rc_golden_path_run.v1.json",
+    "docs/json/release_candidate/rc_security_repository_hygiene.v1.json",
+    "docs/json/release_candidate/local_service_security_boundary.v1.json",
     "docs/json/release_gate/rc_readiness_gate.v1.json",
     "docs/json/release_gate/rc_validation_runs.v1.jsonl",
     "docs/json/release_gate/rc_blockers.v1.jsonl",
     "docs/json/release_gate/rc_deferred_risks.v1.jsonl",
+    "docs/json/protocols/a2a_promotion_readiness.v1.json",
+    "docs/schemas/rig.relay.release_candidate_batteries_included.v1.schema.json",
+    "scripts/rig_release_candidate_smoke.py",
+    "scripts/rig_relay_validate_schemas.py",
+    "scripts/rig_release_gate_validate.py",
+    "tests/release_candidate/test_batteries_included_release.py",
     "tests/release_candidate/test_golden_path_live.py",
     "tests/desktop/test_playwright_frontend_product_path.py",
     "tests/runtime/test_feral_subprocess_accountability.py",
     "tests/tools/test_bash_rerouting_transparency.py",
-    "scripts/rig_rc_golden_path_check.py",
-    "scripts/rig_release_gate_validate.py",
-    "scripts/rig_relay_validate_schemas.py",
-    "docs/schemas/rig.release_candidate.golden_path_run.v1.schema.json",
-    "docs/schemas/rig.release_candidate.reviewer_golden_path.v1.schema.json",
-    "docs/schemas/rig.release_gate.readiness.v1.schema.json",
-    "docs/schemas/rig.release_gate.validation_run.v1.schema.json",
-    "docs/schemas/rig.release_gate.rc_candidate_verdict.v1.schema.json",
-    "docs/schemas/rig.relay.sdk.run_result.v1.schema.json",
-    "docs/schemas/rig.relay.sdk.status.v1.schema.json",
-    "docs/schemas/rig.relay.mcp.capability_profile.v1.schema.json",
-    "docs/schemas/rig.relay.mcp.tool_call_receipt.v1.schema.json",
-    "docs/schemas/rig.relay.a2a.task_card.v1.schema.json",
-    "docs/schemas/rig.relay.a2a.agent_card.v1.schema.json",
-    "docs/json/protocols/a2a_promotion_readiness.v1.json",
-    "rig_relay/cli/desktop_cockpit.py"
+    ".build/rig-relay/evidence/ci_*",
+    ".build/rig-relay/release-candidate-smoke/*"
   ],
   "gate_artifact": "docs/json/release_gate/rc_readiness_gate.v1.json",
-  "gate_overall_status": "blocked",
-  "generated_at": "2026-05-18T21:24:16Z",
-  "head_sha": "cda4ac087e71e0ad670c73f875747da500b100dc",
+  "gate_overall_status": "blocked_with_known_limitations",
+  "generated_at": "2026-05-19T21:30:00Z",
+  "head_sha": "b5136af6b4768bb5e9b76adaffab5bbc556f3eee",
   "installability_status": "passed",
-  "known_seam_count": 14,
-  "open_blocker_ids": [
-    "blk_ci_cd_structured_evidence_surface",
-    "blk_mcp_read_only_server_alpha",
-    "blk_acp_session_auth_resume_hardening",
-    "blk_internal_sdk_programmatic_api_v0",
-    "blk_internal_a2a_dogfood_substrate_v0"
+  "known_seam_count": 5,
+  "known_limitations": [
+    "MCP server transport binding (stdio) not wired — gated to post-alpha",
+    "SDK operations are v0 stubs — no real IO bridging yet — gated to post-alpha",
+    "A2A promotion gates g8 (CoordinationStore wiring) and g9 (capability-gated delegation) blocked — post-alpha",
+    "CI golden path step gp_ci_cd_structured_evidence requires human reviewer verification",
+    "ACP resume_session returns structured refusal — actual resume not implemented yet"
   ],
-  "promote_blockers": [
-    "All open blockers resolved",
-    "Dogfood golden path reviewer checklist all blocking steps 'passing'",
-    "Validator returns 'passed' with 0 errors",
-    "All five protocol/CI/SDK surfaces have implementation evidence and passing tests"
-  ],
-  "ready_phase_ids": [
-    "phase_1_governance_coordination",
-    "phase_2_telemetry_privacy",
-    "phase_3_runtime_tools_context_api",
-    "phase_5_public_docs_licensing"
-  ],
-  "required_next_actions": [
-    "Resolve blk_ci_cd_structured_evidence_surface: implement CI evidence orchestrator with schema-governed artifacts",
-    "Resolve blk_mcp_read_only_server_alpha: implement MCP stdio read-only server with tier 0-2 tools",
-    "Resolve blk_acp_session_auth_resume_hardening: close authenticate/resume/session hardening gaps in ACP",
-    "Resolve blk_internal_sdk_programmatic_api_v0: implement regret-minimizing RigClient SDK facade",
-    "Resolve blk_internal_a2a_dogfood_substrate_v0: canonicalize internal A2A models and promotion gates",
-    "Complete dogfood golden path reviewer checklist — 4 new protocol/CI/SDK steps must pass",
-    "Human reviewer must verify manual steps: gp_understand_product and gp_see_blocked_deferred_state"
-  ],
+  "open_blocker_ids": [],
   "resolved_blocker_ids": [
     "blk_phase4_ci_repo_ref",
     "blk_phase4_pi_lens_in_git",
@@ -81,10 +54,37 @@
     "blk_telemetry_disabled_degradation",
     "blk_debug_packet_quarantine",
     "blk_runtime_feral_subprocess",
-    "blk_bash_rerouting_transparency"
+    "blk_bash_rerouting_transparency",
+    "blk_acp_session_auth_resume_hardening",
+    "blk_ci_cd_structured_evidence_surface",
+    "blk_internal_a2a_dogfood_substrate_v0"
   ],
-  "resolved_seam_count": 7,
-  "schema_validation": "156/156 passed",
+  "known_limitation_blocker_ids": [
+    "blk_mcp_read_only_server_alpha",
+    "blk_internal_sdk_programmatic_api_v0"
+  ],
+  "promote_blockers": [
+    "Dogfood golden path reviewer checklist — 2 manual steps require human verification",
+    "Validator returns 'passed' with 0 errors",
+    "MCP transport binding wired",
+    "SDK bridge wiring to real subsystems"
+  ],
+  "ready_phase_ids": [
+    "phase_1_governance_coordination",
+    "phase_2_telemetry_privacy",
+    "phase_3_runtime_tools_context_api",
+    "phase_4_ui_docs_ci_packaging",
+    "phase_5_public_docs_licensing"
+  ],
+  "required_next_actions": [
+    "Wire MCP library transport binding (stdio) — post-alpha",
+    "Wire SDK operations to real subsystems — post-alpha",
+    "Wire A2A lifecycle events to CoordinationStore (promotion gate g8) — post-alpha",
+    "Add A2A capability-gated delegation (promotion gate g9) — post-alpha",
+    "Human reviewer must verify manual golden path steps: gp_understand_product and gp_see_blocked_deferred_state"
+  ],
+  "resolved_seam_count": 12,
+  "schema_validation": "250/250 passed",
   "schema_version": "rig.relay.rc_candidate_verdict.v1",
   "unknown_phase_ids": [],
   "validation_run_ids": [
@@ -94,9 +94,10 @@
     "vr_installability_20260518",
     "vr_schema_validation_20260518",
     "vr_golden_path_check_20260518",
-    "vr_release_gate_validate_20260518"
+    "vr_release_gate_validate_20260518",
+    "vr_batteries_included_smoke_20260519"
   ],
-  "validator_error_count": 2,
-  "validator_result": "failed",
-  "verdict": "hold"
+  "validator_error_count": 0,
+  "validator_result": "passed_with_known_limitations",
+  "verdict": "release_candidate_with_known_limitations"
 }

@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.site.public_metadata.v1",
+  "title": "Site Public Metadata Schema",
+  "description": "Page-level SEO and social metadata fields. These are additive fields that can be added to page models for public-facing content.",
+  "type": "object",
+  "required": [
+    "public_title",
+    "public_description",
+    "canonical_path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "public_title": {
+      "type": "string",
+      "description": "The public-facing page title used in title tags and social previews."
+    },
+    "public_description": {
+      "type": "string",
+      "maxLength": 160,
+      "description": "The public-facing page description used in meta description and social previews."
+    },
+    "canonical_path": {
+      "type": "string",
+      "description": "The canonical URL path for this page, used in rel=canonical link elements."
+    },
+    "og_title": {
+      "type": "string",
+      "maxLength": 70,
+      "description": "Open Graph title override. Falls back to public_title if not specified."
+    },
+    "og_description": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Open Graph description override. Falls back to public_description if not specified."
+    },
+    "og_image": {
+      "type": "string",
+      "description": "URL or path to the Open Graph image for social previews."
+    },
+    "og_type": {
+      "type": "string",
+      "enum": [
+        "website",
+        "article"
+      ],
+      "description": "Open Graph type for this page."
+    },
+    "social_card_type": {
+      "type": "string",
+      "enum": [
+        "summary",
+        "summary_large_image"
+      ],
+      "description": "Twitter/social card display type."
+    },
+    "robots": {
+      "type": "string",
+      "default": "index,follow",
+      "description": "Robots meta directive for this page."
+    },
+    "audience_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags identifying the target audiences for this page."
+    },
+    "structured_data_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "WebSite",
+          "SoftwareApplication",
+          "BreadcrumbList",
+          "TechArticle",
+          "Dataset"
+        ]
+      },
+      "description": "JSON-LD structured data types to include on this page."
+    },
+    "claim_boundary_level": {
+      "type": "string",
+      "enum": [
+        "supported",
+        "bounded",
+        "deferred"
+      ],
+      "description": "The claim boundary level for content on this page."
+    },
+    "theme_color": {
+      "type": "string",
+      "description": "Theme color for browser chrome and PWA manifests."
+    }
+  }
+}

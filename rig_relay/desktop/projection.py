@@ -381,8 +381,13 @@ def _build_update(build_root: Path) -> dict[str, Any]:
 
 def _build_identity() -> dict[str, Any]:
     """Build content-light identity status from token store."""
-    from rig_relay.identity.token_store import DevFileTokenStore
+    from rig_relay.identity.token_store import (
+        DevFileTokenStore,
+        enable_dev_file_token_store,
+    )
 
+    # explicitly opt in to dev-only plaintext token storage
+    enable_dev_file_token_store()
     store = DevFileTokenStore()
     statuses = store.all_statuses()
     providers: dict[str, dict[str, Any]] = {}

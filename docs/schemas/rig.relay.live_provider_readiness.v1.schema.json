@@ -1,0 +1,364 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.live_provider_readiness.v1.schema.json",
+  "title": "Live Provider Readiness v1",
+  "description": "Machine-readable live provider readiness gate. Audits GitHub Provider, Google Workspace Provider, redaction, SDK facade, live operations posture, scope/permission matrix, and remaining blockers.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "assessment",
+    "github_provider",
+    "google_workspace_provider",
+    "redaction",
+    "sdk_facade",
+    "live_operations",
+    "scope_permission_matrix",
+    "remaining_blockers",
+    "evidence_artifacts",
+    "files_changed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "v1",
+      "description": "Schema version identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this readiness artifact was generated."
+    },
+    "assessment": {
+      "type": "object",
+      "required": ["verdict", "summary", "claim_supported"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["live_read_ready", "partial", "blocked", "contract_only"],
+          "description": "Overall readiness verdict."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Human-readable summary of the readiness assessment."
+        },
+        "claim_supported": {
+          "type": "boolean",
+          "description": "Whether the live-read claim can be supported unconditionally."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Overall readiness assessment."
+    },
+    "github_provider": {
+      "type": "object",
+      "required": [
+        "status",
+        "live_read_operations_available",
+        "live_read_operations_total",
+        "fake_http_tests_pass",
+        "adversarial_redaction_tests_pass",
+        "refusal_tests_pass",
+        "receipts_content_light",
+        "token_detection_patterns",
+        "implemented_capabilities",
+        "refused_capabilities",
+        "deferred_work"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["implemented", "partial", "stub", "contract_only"],
+          "description": "Implementation status of the GitHub provider."
+        },
+        "live_read_operations_available": {
+          "type": "integer",
+          "description": "Count of implemented live read operations (real HTTP calls)."
+        },
+        "live_read_operations_total": {
+          "type": "integer",
+          "description": "Count of declared read operations in the capability manifest."
+        },
+        "fake_http_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing tests against fake HTTP endpoints."
+        },
+        "adversarial_redaction_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing adversarial redaction tests."
+        },
+        "refusal_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing refusal boundary tests."
+        },
+        "receipts_content_light": {
+          "type": "boolean",
+          "description": "Whether all operation receipts are content-light."
+        },
+        "token_detection_patterns": {
+          "type": "integer",
+          "description": "Number of GitHub token detection regex patterns."
+        },
+        "implemented_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Capability IDs with full implementation (contract, models, adapter, tests)."
+        },
+        "refused_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Capability IDs that are explicitly refused."
+        },
+        "deferred_work": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Deferred work items for the GitHub provider."
+        }
+      },
+      "additionalProperties": false,
+      "description": "GitHub provider readiness status."
+    },
+    "google_workspace_provider": {
+      "type": "object",
+      "required": [
+        "status",
+        "live_read_operations_available",
+        "live_read_operations_total",
+        "fake_http_tests_pass",
+        "adversarial_redaction_tests_pass",
+        "refusal_tests_pass",
+        "receipts_content_light",
+        "token_detection_patterns",
+        "implemented_capabilities",
+        "refused_capabilities",
+        "deferred_work"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["implemented", "partial", "stub", "contract_only"],
+          "description": "Implementation status of the Google Workspace provider."
+        },
+        "live_read_operations_available": {
+          "type": "integer",
+          "description": "Count of implemented live read operations (real HTTP calls)."
+        },
+        "live_read_operations_total": {
+          "type": "integer",
+          "description": "Count of declared read operations in the capability manifest."
+        },
+        "fake_http_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing tests against fake HTTP endpoints."
+        },
+        "adversarial_redaction_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing adversarial redaction tests."
+        },
+        "refusal_tests_pass": {
+          "type": "integer",
+          "description": "Count of passing refusal boundary tests."
+        },
+        "receipts_content_light": {
+          "type": "boolean",
+          "description": "Whether all operation receipts are content-light."
+        },
+        "token_detection_patterns": {
+          "type": "integer",
+          "description": "Number of Google secret detection regex patterns."
+        },
+        "implemented_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Capability IDs with full implementation (contract, models, adapter, tests)."
+        },
+        "refused_capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Capability IDs that are explicitly refused."
+        },
+        "deferred_work": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Deferred work items for the Google Workspace provider."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Google Workspace provider readiness status."
+    },
+    "redaction": {
+      "type": "object",
+      "required": [
+        "github_token_patterns_detected",
+        "google_secret_patterns_detected",
+        "response_body_scanning_active",
+        "pii_detection_active",
+        "forbidden_field_enforcement_active"
+      ],
+      "properties": {
+        "github_token_patterns_detected": {
+          "type": "integer",
+          "description": "Number of GitHub token patterns detected and blocked."
+        },
+        "google_secret_patterns_detected": {
+          "type": "integer",
+          "description": "Number of Google secret patterns detected and blocked."
+        },
+        "response_body_scanning_active": {
+          "type": "boolean",
+          "description": "Whether response body scanning for secrets is active."
+        },
+        "pii_detection_active": {
+          "type": "boolean",
+          "description": "Whether PII detection patterns are active."
+        },
+        "forbidden_field_enforcement_active": {
+          "type": "boolean",
+          "description": "Whether forbidden field enforcement is active in receipts."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Redaction and secret detection posture for both providers."
+    },
+    "sdk_facade": {
+      "type": "object",
+      "required": [
+        "github_methods_available",
+        "google_methods_available",
+        "trace_propagation_verified",
+        "normalized_results_verified"
+      ],
+      "properties": {
+        "github_methods_available": {
+          "type": "integer",
+          "description": "Number of SDK methods available for GitHub provider operations."
+        },
+        "google_methods_available": {
+          "type": "integer",
+          "description": "Number of SDK methods available for Google Workspace operations."
+        },
+        "trace_propagation_verified": {
+          "type": "boolean",
+          "description": "Whether trace_id propagation is verified across SDK operations."
+        },
+        "normalized_results_verified": {
+          "type": "boolean",
+          "description": "Whether normalized result types are verified across providers."
+        }
+      },
+      "additionalProperties": false,
+      "description": "SDK facade readiness for provider operations."
+    },
+    "live_operations": {
+      "type": "object",
+      "required": [
+        "network_disabled_by_default",
+        "requires_env_var",
+        "requires_explicit_flag",
+        "dry_run_default",
+        "live_cli_scripts_available"
+      ],
+      "properties": {
+        "network_disabled_by_default": {
+          "type": "boolean",
+          "description": "Whether live network operations are disabled by default."
+        },
+        "requires_env_var": {
+          "type": "boolean",
+          "const": true,
+          "description": "Whether RIG_LIVE_PROVIDER_TESTS env var is required for live operations."
+        },
+        "requires_explicit_flag": {
+          "type": "boolean",
+          "const": true,
+          "description": "Whether an explicit flag is required for live operations."
+        },
+        "dry_run_default": {
+          "type": "boolean",
+          "const": true,
+          "description": "Whether dry-run is the default for live operations."
+        },
+        "live_cli_scripts_available": {
+          "type": "integer",
+          "description": "Number of live CLI provider check scripts available."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Live operations posture."
+    },
+    "scope_permission_matrix": {
+      "type": "object",
+      "required": [
+        "github_scopes_required",
+        "google_scopes_required",
+        "restricted_scopes_refused_by_default",
+        "mutation_scopes_refused",
+        "admin_directory_refused"
+      ],
+      "properties": {
+        "github_scopes_required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "OAuth scopes required for GitHub provider live operations."
+        },
+        "google_scopes_required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "OAuth scopes required for Google Workspace provider live operations."
+        },
+        "restricted_scopes_refused_by_default": {
+          "type": "boolean",
+          "description": "Whether restricted scopes (Drive content, Gmail content) are refused by default."
+        },
+        "mutation_scopes_refused": {
+          "type": "boolean",
+          "description": "Whether all mutation/credentialed/destructive scopes are refused."
+        },
+        "admin_directory_refused": {
+          "type": "boolean",
+          "description": "Whether admin directory operations are refused (requires domain-wide delegation + admin approval)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Scope and permission matrix for live provider operations."
+    },
+    "remaining_blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface", "blocker_id", "description", "severity"],
+        "properties": {
+          "surface": {
+            "type": "string",
+            "description": "Provider or infrastructure surface affected."
+          },
+          "blocker_id": {
+            "type": "string",
+            "description": "Stable identifier for the blocker."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the blocker."
+          },
+          "severity": {
+            "type": "string",
+            "description": "Blocker severity."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Remaining blockers identified during the live provider readiness audit."
+    },
+    "evidence_artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of evidence artifact paths."
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files changed or created during this readiness assessment."
+    }
+  },
+  "additionalProperties": false
+}

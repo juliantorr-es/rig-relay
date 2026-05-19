@@ -37,6 +37,14 @@ from rig_relay.integrations.github_provider._fake_auth import (
     FakeGitHubTokenEndpoint,
     is_test_token,
 )
+from rig_relay.integrations.github_provider._live_adapter import run_live_read_operation
+from rig_relay.integrations.github_provider._live_auth import (
+    GitHubLiveAuthConfig,
+    GitHubLiveAuthError,
+    GitHubLiveJwtSigner,
+    GitHubLiveReadOnlySmoke,
+    GitHubLiveTokenExchanger,
+)
 from rig_relay.integrations.github_provider._models import (
     GitHubAccessLevel,
     GitHubAuthMode,
@@ -77,6 +85,11 @@ __all__ = [
     "GitHubAuthMode",
     "GitHubAuthStatus",
     "GitHubGrantStatus",
+    "GitHubLiveAuthConfig",
+    "GitHubLiveAuthError",
+    "GitHubLiveJwtSigner",
+    "GitHubLiveReadOnlySmoke",
+    "GitHubLiveTokenExchanger",
     "GitHubOperationClass",
     "GitHubPermissionKind",
     "GitHubProviderAuthState",
@@ -101,6 +114,7 @@ __all__ = [
     "normalize_oauth_scope_to_app_permission",
     "permission_satisfies",
     "read_auth_state",
+    "run_live_read_operation",
     "scan_for_tokens",
     "validate_github_capability_manifest",
     "validate_github_operation_receipt",

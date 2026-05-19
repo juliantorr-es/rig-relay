@@ -1,0 +1,108 @@
+{
+  "schema_version": "rig.static_site.public_launch_experience.v1",
+  "artifact_id": "static_site_public_launch_experience_v1",
+  "generated_at": "2026-05-19T20:30:00Z",
+  "public_site_goal": "Transform the Rig Relay static site renderer output from an internal evidence console into a public-facing product website suitable for investors, headhunters, technical reviewers, and open-source users.",
+  "target_audiences": [
+    "investors",
+    "headhunters",
+    "hiring_managers",
+    "technical_reviewers",
+    "open_source_users",
+    "web_crawlers",
+    "social_preview_bots",
+    "in_app_browsers"
+  ],
+  "pages_improved": [
+    "index.html",
+    "/proof-chain/index.html",
+    "/release-candidate/index.html",
+    "/contracts/index.html",
+    "/protocol/index.html",
+    "/compiler/index.html",
+    "/hardening/index.html",
+    "/seams/index.html",
+    "/artifacts/index.html",
+    "/integrations/index.html",
+    "/frontend/index.html",
+    "/testing/index.html"
+  ],
+  "metadata_checks": {
+    "og_tags": "All pages emit og:title, og:type, og:description, og:site_name, og:locale via base template.",
+    "twitter_cards": "All pages emit twitter:card, twitter:title, twitter:description via base template.",
+    "canonical_urls": "All pages include rel=canonical with deterministic paths.",
+    "robots_meta": "All pages include meta robots defaulting to index,follow.",
+    "favicon": "Favicon SVG linked in base template head."
+  },
+  "mobile_checks": {
+    "responsive_breakpoints": "CSS includes @media breakpoints at 768px and 480px.",
+    "viewport_meta": "All pages include width=device-width, initial-scale=1.0 viewport meta.",
+    "touch_targets": "Interactive elements have min-height 44px in CSS.",
+    "overflow_handling": "pre/code blocks use overflow-x auto; long paths wrap."
+  },
+  "social_preview_checks": {
+    "og_image_status": "Static SVG OG card copied to output. PNG conversion deferred (no new dependencies).",
+    "og_fields_complete": "og:title, og:type, og:url, og:image, og:description, og:site_name, og:locale present.",
+    "twitter_fields_complete": "twitter:card, twitter:title, twitter:description, twitter:image present."
+  },
+  "crawler_checks": {
+    "sitemap_generated": "sitemap.xml generated with all page URLs.",
+    "robots_txt_generated": "robots.txt generated with sitemap reference.",
+    "internal_links_valid": "All internal page links resolve to generated files.",
+    "canonical_urls_unique": "Each page has a unique canonical URL."
+  },
+  "structured_data_checks": {
+    "json_ld_valid": "JSON-LD blocks parse as valid JSON.",
+    "homepage_structured_data": "Homepage includes WebSite and SoftwareApplication JSON-LD.",
+    "evidence_page_structured_data": "Evidence pages include TechArticle JSON-LD."
+  },
+  "performance_checks": {
+    "no_external_fonts": "CSS uses system fonts only, no external font loading.",
+    "no_external_scripts": "No external script tags in generated HTML.",
+    "css_local_only": "Single local CSS file, no CDN dependencies.",
+    "html_size_budget": "Homepage HTML under 50KB."
+  },
+  "accessibility_checks": {
+    "skip_links": "Skip-to-content link present on all pages.",
+    "keyboard_focus": "Focus outlines present for all interactive elements.",
+    "aria_landmarks": "Proper header, nav, main, footer landmarks.",
+    "heading_hierarchy": "Single H1 per page, no skipped heading levels."
+  },
+  "security_checks": {
+    "html_escaping": "All dynamic content escaped via Jinja2 autoescape.",
+    "csp_headers": "Content-Security-Policy meta tag restricts script/style sources.",
+    "no_unsafe_insertion": "No | safe filters, no innerHTML usage.",
+    "content_light_scrubbing": "Repository paths stripped from raw artifact payloads."
+  },
+  "claims_supported": [
+    "Schema-governed local evidence generation",
+    "Trace-correlated cross-surface events across 10 surfaces",
+    "Refusal-first capability boundaries with shared vocabulary",
+    "Content-light receipts that never leak secrets",
+    "Deterministic compiler and worktree validation",
+    "Local provider and protocol readiness with capability manifests",
+    "Public evidence artifacts validated against 246+ schemas",
+    "Mobile-responsive static site with no JavaScript dependency",
+    "Social preview metadata for link unfurling",
+    "Sitemap and robots.txt for crawler discoverability"
+  ],
+  "claims_rejected": [
+    "Agents are proven safe",
+    "Generated code is formally verified",
+    "Full live federation is complete",
+    "No remaining seams or deferrals",
+    "Complete OS-level sandboxing",
+    "Production live OAuth (not yet landed)",
+    "OG image renders as PNG on all social platforms (SVG only)",
+    "Client-side interactive search or sorting",
+    "Real-time live data on static pages"
+  ],
+  "remaining_seams": [
+    "OG image is SVG-only; Facebook/LinkedIn may not render preview. PNG conversion deferred.",
+    "92+ legacy Markdown audits in docs/audits/ not yet migrated to JSON.",
+    "Structured data types limited to WebSite, SoftwareApplication, TechArticle, BreadcrumbList.",
+    "No contact email or social media URLs available for CTA links.",
+    "Asset fingerprinting not implemented; deterministic digest used instead."
+  ],
+  "recommendation": "The static site renderer now produces a public-facing product website with evidence-backed claims, social metadata, mobile responsiveness, sitemap, robots.txt, and structured data. Ready for public deployment with noted seams."
+}

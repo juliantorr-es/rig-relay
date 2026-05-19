@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 from rig_relay.identity.state_paths import identity_state_root
@@ -195,6 +196,74 @@ class NoOpCredentialStore(CredentialStore):
         return _sha256("")
 
 
+_SECRET_PATTERNS: list[tuple[str, str]] = [
+    ("github_token", r"gh[ponsr]_[A-Za-z0-9_]{20,}"),
+    ("github_pat", r"github_pat_[A-Za-z0-9_]{20,}"),
+    ("google_oauth_token", r"ya29\.[A-Za-z0-9._-]{20,}"),
+    ("oauth_authorization_code", r"1//[A-Za-z0-9._-]{20,}"),
+    ("pem_private_key", r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----"),
+    ("jwt", r"eyJ[A-Za-z0-9_-]+\.eyJ"),
+    ("long_hex_key", r"[A-Fa-f0-9]{41,}"),
+]
+
+
+_SAFE_FIELD_SUFFIXES: frozenset[str] = frozenset({
+    "_hash",
+    "credential_hash",
+    "ref_hash",
+})
+
+
+def scan_raw_json_for_secrets(
+    data: dict | list | str | int | float | bool | None,
+) -> list[str]:
+    """Recursively scan a JSON structure for secret patterns.
+
+    Returns human-readable field paths (e.g., "token_bundle.access_token"),
+    never the secret value itself. Fields ending in ``_hash`` are excluded
+    from the long-hex-key check because they contain SHA-256 hashes.
+    """
+    findings: list[str] = []
+
+    def _scan(value: object, path: str) -> None:
+        match value:
+            case dict():
+                for k, v in value.items():
+                    _scan(v, f"{path}.{k}" if path else str(k))
+            case list():
+                for i, item in enumerate(value):
+                    _scan(item, f"{path}[{i}]")
+            case str():
+                for _label, pattern in _SECRET_PATTERNS:
+                    if _label == "long_hex_key" and any(
+                        path.endswith(suffix) for suffix in _SAFE_FIELD_SUFFIXES
+                    ):
+                        continue
+                    if re.search(pattern, value):
+                        findings.append(path)
+                        break
+            case _:
+                pass
+
+    _scan(data, "")
+    return findings
+
+
+def assert_no_secrets_in_json(data: dict, context: str = "") -> None:
+    """Raise ValueError if any secret pattern is found in the dict.
+
+    Args:
+        data: The dictionary to scan.
+        context: Human-readable context for the error message.
+    """
+    findings = scan_raw_json_for_secrets(data)
+    if findings:
+        paths_found = ", ".join(findings)
+        ctx = f" ({context})" if context else ""
+        msg = f"Secrets detected in JSON data{ctx}: {paths_found}"
+        raise ValueError(msg)
+
+
 class KeychainBackedCredentialStore(CredentialStore):
     """macOS Keychain-backed credential store.
 
@@ -219,42 +288,13 @@ class KeychainBackedCredentialStore(CredentialStore):
         try:
             import keyring as _kr
 
-            self._keyring = _kr
-            self._available = True
             probe_account = "_rig_relay_probe"
-            try:
-                self._keyring.set_password(self._SERVICE_NAME, probe_account, "probe")
-                self._keyring.delete_password(self._SERVICE_NAME, probe_account)
-            except Exception:
-                self._available = False
-        except ImportError:
-            self._available = False
-        self._keyring = None
-        try:
-            import keyring as _kr
-
+            _kr.set_password(self._SERVICE_NAME, probe_account, "probe")
+            _kr.delete_password(self._SERVICE_NAME, probe_account)
             self._keyring = _kr
-            probe_account = "_rig_relay_probe"
-            try:
-                self._keyring.set_password(self._SERVICE_NAME, probe_account, "probe")
-                self._keyring.delete_password(self._SERVICE_NAME, probe_account)
-            except Exception:
-                pass
             self._available = True
-        except ImportError:
-            self._available = False
-        self._keyring = None
-        try:
-            import keyring as _kr
-
-            self._keyring = _kr
-            try:
-                self._keyring.get_password(self._SERVICE_NAME, "_rig_relay_probe")
-            except Exception:
-                pass
-            self._available = True
-        except ImportError:
-            self._available = False
+        except Exception:
+            pass
 
     def _account(self, provider: str, credential_kind: str) -> str:
         return f"{provider}:{credential_kind}"
@@ -282,6 +322,8 @@ class KeychainBackedCredentialStore(CredentialStore):
             "schema_version": "rig.relay.credential_store.metadata.v1",
             "entries": entries,
         }
+        assert_no_secrets_in_json(payload, context="credential_store_metadata_write")
+        self._ensure_metadata_clean(payload)
         self._metadata_path.write_text(
             json.dumps(payload, indent=2) + "\n", encoding="utf-8"
         )
@@ -300,6 +342,7 @@ class KeychainBackedCredentialStore(CredentialStore):
                 if forbidden in entry:
                     msg = f"Metadata JSON contains forbidden field: {forbidden}"
                     raise ValueError(msg)
+            assert_no_secrets_in_json(entry, context="credential_store_metadata_entry")
 
     def store(
         self,

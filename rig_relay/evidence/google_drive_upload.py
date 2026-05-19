@@ -42,8 +42,13 @@ def _get_access_token() -> str:
         GoogleDriveUploadError: If no token is available.
     """
     from rig_relay.identity.models import IdentityProviderKind
-    from rig_relay.identity.token_store import DevFileTokenStore
+    from rig_relay.identity.token_store import (
+        DevFileTokenStore,
+        enable_dev_file_token_store,
+    )
 
+    # explicitly opt in to dev-only plaintext token storage
+    enable_dev_file_token_store()
     store = DevFileTokenStore()
     metadata = store.get(IdentityProviderKind.GOOGLE)
     if metadata is None:

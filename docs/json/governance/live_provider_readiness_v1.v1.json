@@ -1,0 +1,185 @@
+{
+  "schema_version": "v1",
+  "generated_at": "2026-05-19T14:00:00Z",
+  "assessment": {
+    "verdict": "partial",
+    "summary": "Provider policy/contract/receipt/redaction infrastructure is complete and well-tested. Live HTTP adapters exist but are not yet wired to existing OAuth flows. No live network calls are made by default. All mutations refused. Evidence is schema-valid and content-light.",
+    "claim_supported": false
+  },
+  "github_provider": {
+    "status": "partial",
+    "live_read_operations_available": 0,
+    "live_read_operations_total": 9,
+    "fake_http_tests_pass": 28,
+    "adversarial_redaction_tests_pass": 5,
+    "refusal_tests_pass": 18,
+    "receipts_content_light": true,
+    "token_detection_patterns": 6,
+    "implemented_capabilities": [
+      "github.repo.metadata.read",
+      "github.repo.contents.read",
+      "github.repo.branches.read",
+      "github.repo.commits.read",
+      "github.repo.issues.read",
+      "github.repo.pull_requests.read",
+      "github.actions.runs.read",
+      "github.actions.artifacts.read",
+      "github.app.installation.inspect"
+    ],
+    "refused_capabilities": [
+      "github.issues.comment.write",
+      "github.pull_requests.review.write",
+      "github.contents.write",
+      "github.refs.update",
+      "github.workflow.rerun",
+      "github.webhooks.receive"
+    ],
+    "deferred_work": [
+      "Live OAuth for repo scopes (identity OAuth only supports read:user; no repo-scoped token flow)",
+      "Live network token exchange (fake endpoints only; real exchange requires RIG_LIVE_PROVIDER_TESTS=1)",
+      "GitHub App user-to-server token issuance (modeled in auth mode enum but no implementation)",
+      "Personal access token live validation (PAT import discouraged; modeled as manual user-managed mode)",
+      "Device flow OAuth (legacy path exists in core/auth/github.py but not integrated with provider auth state)"
+    ]
+  },
+  "google_workspace_provider": {
+    "status": "partial",
+    "live_read_operations_available": 0,
+    "live_read_operations_total": 8,
+    "fake_http_tests_pass": 16,
+    "adversarial_redaction_tests_pass": 5,
+    "refusal_tests_pass": 12,
+    "receipts_content_light": true,
+    "token_detection_patterns": 6,
+    "implemented_capabilities": [
+      "google_workspace.gmail.labels.list",
+      "google_workspace.calendar.calendarList.list",
+      "google_workspace.chat.spaces.list",
+      "google_workspace.contacts.list",
+      "google_workspace.tasks.tasklists.list"
+    ],
+    "refused_capabilities": [
+      "google_workspace.gmail.profile.get",
+      "google_workspace.drive.files.list",
+      "google_workspace.admin.directory.users.list",
+      "google_workspace.gmail.send",
+      "google_workspace.admin.directory.domain_wide_impersonate"
+    ],
+    "deferred_work": [
+      "Live OAuth for Workspace scopes (identity OAuth only supports openid/email/profile; no Workspace API scopes)",
+      "Live network token exchange (fake endpoints only; real exchange requires RIG_LIVE_PROVIDER_TESTS=1)",
+      "Restricted scopes (Gmail content-read, Drive content-read) require security assessment",
+      "Admin directory domain-wide delegation requires super-admin approval (deferred)",
+      "Workspace Marketplace app auth (auth mode exists in enum but no implementation)",
+      "Desktop/web OAuth flow with PKCE live network (modeled in fake endpoint but no callback server)"
+    ]
+  },
+  "redaction": {
+    "github_token_patterns_detected": 6,
+    "google_secret_patterns_detected": 6,
+    "response_body_scanning_active": true,
+    "pii_detection_active": true,
+    "forbidden_field_enforcement_active": true
+  },
+  "sdk_facade": {
+    "github_methods_available": 8,
+    "google_methods_available": 5,
+    "trace_propagation_verified": true,
+    "normalized_results_verified": true
+  },
+  "live_operations": {
+    "network_disabled_by_default": true,
+    "requires_env_var": true,
+    "requires_explicit_flag": true,
+    "dry_run_default": true,
+    "live_cli_scripts_available": 2
+  },
+  "scope_permission_matrix": {
+    "github_scopes_required": [
+      "read:user",
+      "user:email"
+    ],
+    "google_scopes_required": [
+      "openid",
+      "email",
+      "profile"
+    ],
+    "restricted_scopes_refused_by_default": true,
+    "mutation_scopes_refused": true,
+    "admin_directory_refused": true
+  },
+  "remaining_blockers": [
+    {
+      "surface": "github",
+      "blocker_id": "github/no-live-oauth-for-repo-scopes",
+      "description": "GitHub identity OAuth only supports read:user scope; no repo-scoped token flow",
+      "severity": "high"
+    },
+    {
+      "surface": "google",
+      "blocker_id": "google/no-live-oauth-for-workspace-scopes",
+      "description": "Google identity OAuth only supports openid/email/profile; no Workspace API scopes",
+      "severity": "high"
+    },
+    {
+      "surface": "both",
+      "blocker_id": "both/no-live-network-by-default",
+      "description": "All operations are fixture-backed unless RIG_LIVE_PROVIDER_TESTS=1",
+      "severity": "high"
+    },
+    {
+      "surface": "google",
+      "blocker_id": "google/restricted-scopes-refused",
+      "description": "Drive and Gmail content-read scopes require security assessment (deferred)",
+      "severity": "medium"
+    },
+    {
+      "surface": "google",
+      "blocker_id": "google/admin-directory-refused",
+      "description": "Admin directory requires domain-wide delegation + admin approval (deferred)",
+      "severity": "medium"
+    },
+    {
+      "surface": "both",
+      "blocker_id": "both/mutation-refused",
+      "description": "All write/credentialed/destructive operations refused in v0/v1",
+      "severity": "medium"
+    },
+    {
+      "surface": "sdk",
+      "blocker_id": "sdk/sync-only-facade",
+      "description": "SDK wrapper methods use asyncio.run() internally",
+      "severity": "low"
+    }
+  ],
+  "evidence_artifacts": [
+    "docs/schemas/rig.relay.live_provider_readiness.v1.schema.json",
+    "docs/schemas/rig.github_provider.capability_manifest.v1.schema.json",
+    "docs/schemas/rig.google_workspace.capability_manifest.v1.schema.json",
+    "docs/json/integrations/github_provider_capability_manifest.v1.json",
+    "docs/json/integrations/google_workspace_capability_manifest.v1.json",
+    "tests/integrations/test_github_provider_contract.py",
+    "tests/integrations/test_github_provider_implementation.py",
+    "tests/integrations/test_google_workspace_contract.py",
+    "tests/integrations/test_google_workspace_implementation.py",
+    "tests/adversarial/test_fake_auth_endpoints.py",
+    "tests/adversarial/test_credential_injection.py",
+    "tests/adversarial/test_auth_refusal_boundaries.py",
+    "tests/adversarial/test_auth_trace_joinability.py",
+    "tests/adversarial/test_auth_schema_adversarial.py",
+    "tests/governance/test_live_provider_readiness_v1.py",
+    "scripts/rig_github_provider_check.py",
+    "scripts/rig_google_workspace_check.py",
+    "scripts/rig_github_live_read_check.py",
+    "scripts/rig_google_workspace_live_read_check.py",
+    "tests/integrations/test_provider_permission_refusal_v1.py"
+  ],
+  "files_changed": [
+    "docs/schemas/rig.relay.live_provider_readiness.v1.schema.json",
+    "docs/json/governance/live_provider_readiness_v1.v1.json",
+    "tests/governance/test_live_provider_readiness_v1.py",
+    "scripts/rig_github_live_read_check.py",
+    "scripts/rig_google_workspace_live_read_check.py",
+    "tests/integrations/test_provider_permission_refusal_v1.py"
+  ]
+}

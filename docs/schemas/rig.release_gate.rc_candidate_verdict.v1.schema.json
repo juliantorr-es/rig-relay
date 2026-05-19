@@ -31,7 +31,8 @@
       "type": "string",
       "enum": [
         "go",
-        "hold"
+        "hold",
+        "release_candidate_with_known_limitations"
       ],
       "description": "go = candidate is eligible for RC promotion; hold = not eligible."
     },
@@ -56,9 +57,52 @@
       "type": "string",
       "enum": [
         "passed",
-        "failed"
+        "failed",
+        "passed_with_known_limitations"
       ],
       "description": "Whether the validator produced a clean pass."
+    },
+    "gate_overall_status": {
+      "type": "string"
+    },
+    "deferred_seam_count": {
+      "type": "integer"
+    },
+    "installability_status": {
+      "type": "string"
+    },
+    "known_seam_count": {
+      "type": "integer"
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "known_limitation_blocker_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "promote_blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resolved_seam_count": {
+      "type": "integer"
+    },
+    "schema_validation": {
+      "type": "string"
+    },
+    "unknown_phase_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "validator_error_count": {
       "type": "integer",

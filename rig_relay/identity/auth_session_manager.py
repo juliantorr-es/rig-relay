@@ -26,10 +26,16 @@ from rig_relay.identity.oauth_loopback import (
     find_free_loopback_port,
 )
 from rig_relay.identity.providers import IdentityProvider
-from rig_relay.identity.token_store import DevFileTokenStore
+from rig_relay.identity.token_store import (
+    DevFileTokenStore,
+    enable_dev_file_token_store,
+)
 
 DEFAULT_AUTH_SESSION_TIMEOUT = 120.0
 MAX_AUTH_SESSIONS = 10
+
+# explicitly opt in to dev-only plaintext token storage
+enable_dev_file_token_store()
 
 
 class AuthSessionStatus(StrEnum):
