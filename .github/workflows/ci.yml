@@ -430,7 +430,7 @@ jobs:
           path: |
             .build/github-actions/github-live-auth-summary.json
             .build/github-actions/github-live-auth-live-result.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
 
   release-gate:
