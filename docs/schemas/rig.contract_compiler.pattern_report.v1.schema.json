@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.pattern_report.v1",
+  "title": "Contract Compiler Pattern Report v1",
+  "description": "Aggregate pattern report for one compiler run: successful and failed schema/template patterns, counterexample clusters, contract ambiguity findings, and refinement recommendations.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "successful_schema_patterns",
+    "failed_schema_patterns",
+    "successful_template_patterns",
+    "failed_template_patterns",
+    "counterexample_clusters",
+    "contract_ambiguity_findings",
+    "recommended_schema_refinements",
+    "recommended_template_refinements",
+    "recommended_validator_refinements",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.pattern_report.v1"
+    },
+    "run_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "successful_schema_patterns": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/pattern_item" }
+    },
+    "failed_schema_patterns": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/pattern_item" }
+    },
+    "successful_template_patterns": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/pattern_item" }
+    },
+    "failed_template_patterns": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/pattern_item" }
+    },
+    "counterexample_clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cluster_id",
+          "failure_class",
+          "counterexample_count",
+          "affected_candidate_count",
+          "representative_counterexample_hash"
+        ],
+        "properties": {
+          "cluster_id": { "type": "string", "minLength": 1 },
+          "failure_class": { "type": "string" },
+          "counterexample_count": { "type": "integer", "minimum": 1 },
+          "affected_candidate_count": { "type": "integer", "minimum": 1 },
+          "representative_counterexample_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "contract_ambiguity_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assertion_id", "attempt_count", "failure_rate", "affected_contract_families"],
+        "properties": {
+          "assertion_id": { "type": "string", "minLength": 1 },
+          "attempt_count": { "type": "integer", "minimum": 1 },
+          "failure_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+          "affected_contract_families": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "recommended_schema_refinements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_template_refinements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_validator_refinements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "definitions": {
+    "pattern_item": {
+      "type": "object",
+      "required": [
+        "pattern_id",
+        "pattern_kind",
+        "frequency",
+        "success_rate",
+        "affected_contract_family_ids",
+        "affected_slice_ids",
+        "evidence_candidate_ids",
+        "evidence_hashes",
+        "recommendation"
+      ],
+      "properties": {
+        "pattern_id": { "type": "string", "minLength": 1 },
+        "pattern_kind": {
+          "type": "string",
+          "enum": ["schema_constraint", "schema_structure", "template_branch", "template_import", "template_field", "template_validator"]
+        },
+        "frequency": { "type": "integer", "minimum": 1 },
+        "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "affected_contract_family_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "affected_slice_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence_candidate_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence_hashes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        },
+        "recommendation": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

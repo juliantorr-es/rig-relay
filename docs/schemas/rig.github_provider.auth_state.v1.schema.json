@@ -65,6 +65,72 @@
       "items": {"type": "string"},
       "description": "Requested and granted scopes or permissions."
     },
+    "repository_access_hashes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 64, "maxLength": 64},
+      "description": "SHA-256 hashes of repository full names (owner/repo) that this auth state can access. Never raw owner/repo names. Prefer repository_permission_grants for per-repo permission granularity."
+    },
+    "repository_permission_grants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "repository_hash",
+          "permission_id",
+          "permission_kind",
+          "access_level",
+          "source_auth_mode",
+          "grant_hash",
+          "granted_at"
+        ],
+        "properties": {
+          "repository_hash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 hash of the repository full name (owner/repo)."
+          },
+          "permission_id": {
+            "type": "string",
+            "description": "Permission identifier granted for this repository (e.g., issues:read, contents:write)."
+          },
+          "permission_kind": {
+            "type": "string",
+            "enum": ["oauth_scope", "github_app_permission", "public_access", "future"]
+          },
+          "access_level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin"]
+          },
+          "source_auth_mode": {
+            "type": "string",
+            "enum": [
+              "none", "device_flow", "oauth_web_flow",
+              "github_app_installation", "github_app_user",
+              "personal_access_token_manual_import"
+            ]
+          },
+          "grant_hash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 hash of the serialized grant record."
+          },
+          "granted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this grant was created."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this grant expires. Empty for non-expiring grants."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Per-repository permission grants. When present, authoritative for repo-scoped capability decisions. Each grant maps a repository hash to a specific permission kind and access level. Never contains raw owner/repo names, installation IDs, or token material."
+    },
     "token_storage_authority": {
       "type": "string",
       "enum": [

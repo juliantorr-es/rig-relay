@@ -6,6 +6,7 @@ No network calls. No credentials. No GitHub API. No GitHub Actions.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from rig_relay.integrations.github_provider import (
     GitHubProviderCapabilityManifest,
     GitHubProviderOperationRequest,
     GitHubProviderRequiredPermission,
+    GitHubRepositoryPermissionGrant,
     GitHubTokenStorageAuthority,
     GitHubVerdict,
     assert_content_light_mapping,
@@ -87,11 +89,15 @@ class TestDecisionEngine:
         assert decision.refusal_code == "github.auth.unauthenticated"
 
     @pytest.mark.contract
-    def test_read_only_allowed_with_matching_auth_mode(self):
+    def test_write_permission_satisfies_read(self):
         auth = GitHubProviderAuthState.authenticated_for_app_installation(
-            account_hash="a" * 64, scopes_or_permissions=["issues:read"]
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:write"],
+            repository_access_hashes=["r" * 64],
         )
-        decision = evaluate_github_capability(auth, "github.repo.issues.read")
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
         assert decision.verdict == GitHubVerdict.ALLOWED
 
     @pytest.mark.contract
@@ -143,13 +149,16 @@ class TestDecisionEngine:
     @pytest.mark.contract
     def test_mutation_with_step_up_can_be_allowed(self):
         auth = GitHubProviderAuthState.authenticated_for_app_installation(
-            account_hash="a" * 64, scopes_or_permissions=["issues:write"]
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:write"],
+            repository_access_hashes=["r" * 64],
         )
         manifest = load_github_capability_manifest()
         decision = evaluate_github_capability(
             auth,
             "github.issues.comment.write",
             step_up_satisfied=True,
+            target_repository_hash="r" * 64,
             manifest=manifest,
         )
         assert decision.verdict == GitHubVerdict.ALLOWED
@@ -447,17 +456,25 @@ class TestPermissionIntersection:
     @pytest.mark.contract
     def test_repo_read_allowed_with_matching_permission(self):
         auth = GitHubProviderAuthState.authenticated_for_app_installation(
-            account_hash="a" * 64, scopes_or_permissions=["issues:read"]
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
         )
-        decision = evaluate_github_capability(auth, "github.repo.issues.read")
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
         assert decision.verdict == GitHubVerdict.ALLOWED
 
     @pytest.mark.contract
     def test_write_permission_satisfies_read(self):
         auth = GitHubProviderAuthState.authenticated_for_app_installation(
-            account_hash="a" * 64, scopes_or_permissions=["issues:write"]
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:write"],
+            repository_access_hashes=["r" * 64],
         )
-        decision = evaluate_github_capability(auth, "github.repo.issues.read")
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
         assert decision.verdict == GitHubVerdict.ALLOWED
 
     @pytest.mark.adversarial
@@ -618,3 +635,413 @@ class TestPermissionIntersection:
         )
 
         assert normalize_oauth_scope_to_app_permission("repo") == "contents:write"
+
+
+class TestRepositoryScoping:
+    @pytest.mark.contract
+    def test_repo_read_allowed_with_correct_access(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_repository_hash_missing(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.repository.missing"
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_repository_not_authorized(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["x" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.repository.access_denied"
+
+    @pytest.mark.contract
+    def test_public_metadata_no_repo_scope_required(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        decision = evaluate_github_capability(
+            auth, "github.repo.metadata.read", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_mutation_still_requires_step_up_with_repo_access(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:write"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.issues.comment.write", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.requires_step_up is True
+
+    @pytest.mark.adversarial
+    def test_destructive_remains_refused_with_repo_access(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["actions:write"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.workflow.rerun", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+    @pytest.mark.contract
+    def test_receipt_includes_repository_hash_not_raw_name(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        request = GitHubProviderOperationRequest(
+            operation_id="op-test-repo",
+            capability_id="github.repo.issues.read",
+            operation_kind="Read issues",
+            operation_class=GitHubOperationClass.REMOTE_READ,
+            auth_state=auth,
+            repository_hash="r" * 64,
+            actor_hash=hash_identifier("test"),
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        assert receipt.repository_hash == "r" * 64
+        assert "owner/repo" not in receipt.repository_hash
+
+    @pytest.mark.contract
+    def test_app_installation_inspect_no_repo_scope_needed(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64, scopes_or_permissions=["administration:read"]
+        )
+        decision = evaluate_github_capability(
+            auth, "github.app.installation.inspect", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+
+def _make_grant(
+    repo_hash: str,
+    perm_id: str,
+    kind: str = "github_app_permission",
+    level: str = "read",
+    source: str = "github_app_installation",
+) -> GitHubRepositoryPermissionGrant:
+    return GitHubRepositoryPermissionGrant(
+        repository_hash=repo_hash,
+        permission_id=perm_id,
+        permission_kind=kind,
+        access_level=level,
+        source_auth_mode=source,
+        grant_hash="g" * 64,
+    )
+
+
+class TestPerRepoPermissionGranularity:
+    @pytest.mark.contract
+    def test_auth_state_validates_with_repository_permission_grants(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        d = auth.to_dict()
+        assert len(d["repository_permission_grants"]) == 1
+        assert d["repository_permission_grants"][0]["repository_hash"] == "r" * 64
+
+    @pytest.mark.adversarial
+    def test_auth_state_schema_rejects_invalid_repository_hash(self):
+        grant = _make_grant("s" * 63, "issues:read")
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64, repository_permission_grants=[grant]
+        )
+        data = auth.to_dict()
+        import jsonschema
+
+        schema = json.loads(
+            (SCHEMAS_DIR / "rig.github_provider.auth_state.v1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        validator = jsonschema.Draft7Validator(schema)
+        errors = list(validator.iter_errors(data))
+        assert any(
+            "repository_access_hashes" not in str(err.absolute_path)
+            and "repository_permission_grants" in str(err.absolute_path)
+            for err in errors
+        ), f"Should reject short repo hash: {[e.message for e in errors]}"
+
+    @pytest.mark.contract
+    def test_repo_read_allowed_with_matching_grant(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_target_repository_missing(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[_make_grant("r" * 64, "issues:read")],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.repository.missing"
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_no_grants_for_repo(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[_make_grant("x" * 64, "issues:read")],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.repository.access_denied"
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_grant_permission_unrelated(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[_make_grant("r" * 64, "administration:read")],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.refusal_code == "github.permission.missing"
+
+    @pytest.mark.adversarial
+    def test_repo_read_refused_when_grant_kind_mismatches(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "oauth_scope", "read")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+    @pytest.mark.adversarial
+    def test_repo_write_refused_when_grant_only_has_read(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.issues.comment.write", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+    @pytest.mark.contract
+    def test_repo_write_allowed_with_write_grant_and_step_up(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:write", "github_app_permission", "write")
+            ],
+        )
+        manifest = load_github_capability_manifest()
+        decision = evaluate_github_capability(
+            auth,
+            "github.issues.comment.write",
+            target_repository_hash="r" * 64,
+            step_up_satisfied=True,
+            manifest=manifest,
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_repo_write_refused_with_write_grant_but_no_step_up(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:write", "github_app_permission", "write")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.issues.comment.write", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+        assert decision.requires_step_up is True
+
+    @pytest.mark.adversarial
+    def test_destructive_refused_even_with_admin_grant(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "actions:write", "github_app_permission", "admin")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.workflow.rerun", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+    @pytest.mark.adversarial
+    def test_credentialed_refused_even_with_admin_grant(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant(
+                    "r" * 64, "contents:write", "github_app_permission", "admin"
+                )
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.contents.write", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.REFUSED
+
+    @pytest.mark.contract
+    def test_two_repos_can_have_different_access_levels(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "contents:read", "github_app_permission", "read"),
+                _make_grant(
+                    "s" * 64, "contents:write", "github_app_permission", "write"
+                ),
+            ],
+        )
+        assert (
+            auth.has_repository_permission(
+                "r" * 64, "contents:read", "github_app_permission", "read"
+            )
+            is True
+        )
+        assert (
+            auth.has_repository_permission(
+                "r" * 64, "contents:write", "github_app_permission", "write"
+            )
+            is False
+        )
+        assert (
+            auth.has_repository_permission(
+                "s" * 64, "contents:write", "github_app_permission", "write"
+            )
+            is True
+        )
+
+    @pytest.mark.adversarial
+    def test_repo_a_write_does_not_authorize_repo_b_write(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:write", "github_app_permission", "write")
+            ],
+        )
+        assert (
+            auth.has_repository_permission(
+                "s" * 64, "issues:write", "github_app_permission", "write"
+            )
+            is False
+        )
+
+    @pytest.mark.adversarial
+    def test_repo_b_read_does_not_authorize_repo_b_write(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        assert (
+            auth.has_repository_permission(
+                "r" * 64, "issues:write", "github_app_permission", "write"
+            )
+            is False
+        )
+
+    @pytest.mark.contract
+    def test_public_metadata_no_repo_grants_required(self):
+        auth = GitHubProviderAuthState.unauthenticated()
+        decision = evaluate_github_capability(
+            auth, "github.repo.metadata.read", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.contract
+    def test_app_install_inspect_no_repo_grants_required(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64, scopes_or_permissions=["administration:read"]
+        )
+        decision = evaluate_github_capability(
+            auth, "github.app.installation.inspect", target_repository_hash=""
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.adversarial
+    def test_legacy_flat_access_alone_insufficient_with_grants_present(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            scopes_or_permissions=["issues:read"],
+            repository_access_hashes=["r" * 64],
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        assert decision.verdict == GitHubVerdict.ALLOWED
+
+    @pytest.mark.contract
+    def test_receipt_includes_repo_hash_and_refusal_code(self):
+        auth = GitHubProviderAuthState.authenticated_for_app_installation(
+            account_hash="a" * 64,
+            repository_permission_grants=[
+                _make_grant("r" * 64, "issues:read", "github_app_permission", "read")
+            ],
+        )
+        decision = evaluate_github_capability(
+            auth, "github.repo.issues.read", target_repository_hash="r" * 64
+        )
+        request = GitHubProviderOperationRequest(
+            operation_id="op-test-per-repo",
+            capability_id="github.repo.issues.read",
+            operation_kind="Read issues",
+            operation_class=GitHubOperationClass.REMOTE_READ,
+            auth_state=auth,
+            repository_hash="r" * 64,
+            actor_hash=hash_identifier("test"),
+        )
+        receipt = build_github_operation_receipt(request, decision)
+        assert receipt.repository_hash == "r" * 64

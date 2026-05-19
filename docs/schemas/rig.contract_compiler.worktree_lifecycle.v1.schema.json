@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.worktree_lifecycle.v1",
+  "title": "Contract Compiler Worktree Lifecycle Event v1",
+  "description": "One worktree lifecycle event row in the compiler's worktree lifecycle JSONL.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "run_id",
+    "candidate_id",
+    "worktree_id",
+    "worktree_kind",
+    "lifecycle_state",
+    "previous_state",
+    "next_state",
+    "worktree_path_hash",
+    "base_head_sha",
+    "current_head_sha",
+    "dirty_state",
+    "emitted_at",
+    "event_reason",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.worktree_lifecycle.v1"
+    },
+    "event_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "worktree_id": { "type": "string", "minLength": 1 },
+    "worktree_kind": {
+      "type": "string",
+      "enum": [
+        "scratch_candidate",
+        "stage_promotion",
+        "accepted_candidate",
+        "quarantine"
+      ]
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "created",
+        "patch_applied",
+        "validation_running",
+        "failed_reset",
+        "failed_reaped",
+        "partially_satisfied",
+        "promoted_to_stage",
+        "stage_validation_passed",
+        "next_slice_search",
+        "fully_satisfied",
+        "accepted",
+        "promotion_proposal_emitted",
+        "cleaned",
+        "quarantined",
+        "orphan_pruned"
+      ]
+    },
+    "previous_state": {
+      "type": "string",
+      "description": "The lifecycle_state this worktree was in before this event."
+    },
+    "next_state": {
+      "type": "string",
+      "description": "The lifecycle_state this worktree will enter after this event."
+    },
+    "worktree_path_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the worktree path."
+    },
+    "base_head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Git commit SHA the worktree was created from."
+    },
+    "current_head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Git commit SHA at event time."
+    },
+    "dirty_state": {
+      "type": "string",
+      "enum": ["clean", "dirty_expected", "dirty_unexpected", "unknown"]
+    },
+    "emitted_at": { "type": "string", "format": "date-time" },
+    "event_reason": { "type": "string", "minLength": 1 },
+    "cleanup_action": {
+      "type": "string",
+      "enum": ["none", "reset", "reap", "retain", "quarantine", "prune_orphan"],
+      "description": "Required for cleanup lifecycle_state events (failed_reaped, cleaned, quarantined, orphan_pruned)."
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "additionalProperties": false
+}

@@ -62,6 +62,7 @@ import ssl
 from typing import Any
 
 from rig_relay.core.logger import logger
+from rig_relay.desktop.bridge_lifecycle_trace import BridgeLifecycleTraceWriter
 from rig_relay.desktop.bridge_protocol import (
     BridgeMessage,
     BridgeMessageDirection,
@@ -70,6 +71,7 @@ from rig_relay.desktop.bridge_protocol import (
 )
 from rig_relay.desktop.bridge_refusals import (
     build_bridge_refusal_envelope,
+    build_bridge_refusal_trace_event,
     enforce_intent,
 )
 from rig_relay.desktop.correlation import (
@@ -284,6 +286,7 @@ class ProjectionWebSocketServer:
         self._lock = asyncio.Lock()
         self._current_connection_id = ""
         self._evidence_recorder: Any | None = None
+        self._trace_writer: BridgeLifecycleTraceWriter | None = None
         self._per_connection_pending: dict[str, list[dict]] = {}
         self._MAX_PER_CONNECTION_QUEUE = 64
         self._NEVER_DROP_KINDS: frozenset[str] = frozenset({"error", "intent_result"})
@@ -461,9 +464,11 @@ class ProjectionWebSocketServer:
                 refusal = self._enforce_intent_bridge(msg)
                 if refusal:
                     refusal_envelope = self._wrap_envelope(
-                        "error", refusal, tracker, ack_for=msg.message_id
+                        "error", refusal["refusal"], tracker, ack_for=msg.message_id
                     )
                     await _send_json(websocket, refusal_envelope)
+                    if refusal.get("trace_event"):
+                        self._record_trace_event(websocket, refusal["trace_event"])
                     return
 
                 ack = self._wrap_envelope(
@@ -1462,7 +1467,7 @@ class ProjectionWebSocketServer:
         if result.allowed:
             return None
 
-        return build_bridge_refusal_envelope(
+        refusal_envelope = build_bridge_refusal_envelope(
             refusal_kind=result.refusal_kind,
             reason_code=result.reason_code,
             human_safe_message=result.message,
@@ -1474,6 +1479,33 @@ class ProjectionWebSocketServer:
             mutation_class=mutation_class,
             capability_required=capability_required,
         )
+
+        trace_event = build_bridge_refusal_trace_event(
+            refusal_kind=result.refusal_kind,
+            refused_intent_kind=intent_kind,
+            refusal_message_id=str(refusal_envelope.get("message_id", "")),
+            inbound_message_id=msg.message_id,
+            refusal_reason=result.message,
+            mutation_class=mutation_class,
+            capability_required=capability_required,
+            trace_id=msg.trace_id,
+            frontend_session_id=msg.frontend_session_id,
+            backend_session_id=msg.backend_session_id,
+            handshake_id=msg.handshake_id,
+            source="bridge_dispatcher",
+        )
+
+        return {"refusal": refusal_envelope, "trace_event": trace_event}
+
+    def _record_trace_event(self, websocket: Any, trace_event: dict[str, Any]) -> None:
+        if self._trace_writer is not None:
+            try:
+                self._trace_writer.write_event(trace_event)
+            except Exception:
+                pass
+
+    def set_trace_writer(self, writer: BridgeLifecycleTraceWriter | None) -> None:
+        self._trace_writer = writer
 
     async def _handle_desktop_intent(
         self,

@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.validation_matrix_result.v1",
+  "title": "Contract Compiler Validation Matrix Result v1",
+  "description": "Per-candidate validation matrix result: all gates executed, their outcomes, and aggregate statistics.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "validation_result_id",
+    "run_id",
+    "candidate_id",
+    "worktree_id",
+    "started_at",
+    "completed_at",
+    "overall_status",
+    "gates",
+    "passed_gate_count",
+    "failed_gate_count",
+    "warning_gate_count",
+    "counterexample_ids",
+    "output_artifact_hashes",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.validation_matrix_result.v1"
+    },
+    "validation_result_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "worktree_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "overall_status": {
+      "type": "string",
+      "enum": ["pass", "hold", "fail"],
+      "description": "pass = all gates passed or held; hold = warnings only, no failures; fail = at least one gate failed."
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "gate_id",
+          "gate_kind",
+          "status",
+          "started_at",
+          "completed_at",
+          "duration_ms",
+          "evidence_hash"
+        ],
+        "properties": {
+          "gate_id": { "type": "string", "minLength": 1 },
+          "gate_kind": {
+            "type": "string",
+            "enum": [
+              "json_schema_validation",
+              "python_importability",
+              "pyright_type_check",
+              "ruff_lint",
+              "ruff_format",
+              "real_artifact_round_trip",
+              "adversarial_malformed_input",
+              "deterministic_regeneration",
+              "model_schema_drift_check",
+              "content_light_redaction",
+              "trace_propagation",
+              "worktree_dirty_state",
+              "property_based_optional",
+              "mutation_testing_optional",
+              "live_app_behavior_optional"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "hold", "fail", "skipped"]
+          },
+          "started_at": { "type": "string", "format": "date-time" },
+          "completed_at": { "type": "string", "format": "date-time" },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "evidence_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA-256 of the gate's output evidence artifact."
+          },
+          "counterexample_id": {
+            "type": "string",
+            "description": "If the gate failed or held, the counterexample ID produced."
+          },
+          "notes_hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "SHA-256 of human-readable notes about this gate run."
+          }
+        }
+      }
+    },
+    "passed_gate_count": { "type": "integer", "minimum": 0 },
+    "failed_gate_count": { "type": "integer", "minimum": 0 },
+    "warning_gate_count": { "type": "integer", "minimum": 0 },
+    "counterexample_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "output_artifact_hashes": {
+      "type": "object",
+      "properties": {
+        "stdout_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "stderr_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "additionalProperties": false
+}

@@ -50,6 +50,18 @@ class GitHubRedactionStatus(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
+@dataclass
+class GitHubRepositoryPermissionGrant:
+    repository_hash: str
+    permission_id: str
+    permission_kind: GitHubPermissionKind | str
+    access_level: GitHubAccessLevel | str
+    source_auth_mode: str
+    grant_hash: str
+    granted_at: str = field(default_factory=_now_iso)
+    expires_at: str = ""
+
+
 _GITHUB_APP_AUTH_MODES = frozenset({
     GitHubAuthMode.GITHUB_APP_INSTALLATION,
     GitHubAuthMode.GITHUB_APP_USER,
@@ -64,6 +76,10 @@ class GitHubProviderAuthState:
     account_hash: str = ""
     installation_id_hash: str | None = None
     scopes_or_permissions: list[str] = field(default_factory=list)
+    repository_access_hashes: list[str] = field(default_factory=list)
+    repository_permission_grants: list[GitHubRepositoryPermissionGrant] = field(
+        default_factory=list
+    )
     token_storage_authority: GitHubTokenStorageAuthority = (
         GitHubTokenStorageAuthority.NONE
     )
@@ -93,6 +109,45 @@ class GitHubProviderAuthState:
             and self.token_material_stored is False
         )
 
+    def has_repository_access(self, target_repository_hash: str) -> bool:
+        if self.repository_permission_grants:
+            return target_repository_hash in {
+                g.repository_hash for g in self.repository_permission_grants
+            }
+        return target_repository_hash in self.repository_access_hashes
+
+    def grants_for_repository(
+        self, repository_hash: str
+    ) -> list[GitHubRepositoryPermissionGrant]:
+        return [
+            g
+            for g in self.repository_permission_grants
+            if g.repository_hash == repository_hash
+        ]
+
+    def has_repository_permission(
+        self,
+        repository_hash: str,
+        required_permission_id: str,
+        required_kind: str,
+        required_access: str,
+    ) -> bool:
+        for grant in self.grants_for_repository(repository_hash):
+            if not permission_satisfies(
+                GitHubProviderRequiredPermission(
+                    permission_id=required_permission_id,
+                    permission_kind=required_kind,
+                    access_level=required_access,
+                    required=True,
+                ),
+                grant.permission_id,
+                grant.permission_kind,
+                grant.access_level,
+            ):
+                continue
+            return True
+        return False
+
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
             "schema_version": "rig.github_provider.auth_state.v1",
@@ -102,6 +157,28 @@ class GitHubProviderAuthState:
             "account_hash": self.account_hash,
             "installation_id_hash": self.installation_id_hash or "",
             "scopes_or_permissions": list(self.scopes_or_permissions),
+            "repository_access_hashes": list(self.repository_access_hashes),
+            "repository_permission_grants": [
+                {
+                    "repository_hash": g.repository_hash,
+                    "permission_id": g.permission_id,
+                    "permission_kind": (
+                        g.permission_kind.value
+                        if isinstance(g.permission_kind, GitHubPermissionKind)
+                        else g.permission_kind
+                    ),
+                    "access_level": (
+                        g.access_level.value
+                        if isinstance(g.access_level, GitHubAccessLevel)
+                        else g.access_level
+                    ),
+                    "source_auth_mode": g.source_auth_mode,
+                    "grant_hash": g.grant_hash,
+                    "granted_at": g.granted_at,
+                    "expires_at": g.expires_at,
+                }
+                for g in self.repository_permission_grants
+            ],
             "token_storage_authority": self.token_storage_authority.value,
             "token_material_present": self.token_material_present,
             "token_material_stored": self.token_material_stored,
@@ -121,6 +198,9 @@ class GitHubProviderAuthState:
         account_hash: str,
         installation_id_hash: str | None = None,
         scopes_or_permissions: list[str] | None = None,
+        repository_access_hashes: list[str] | None = None,
+        repository_permission_grants: list[GitHubRepositoryPermissionGrant]
+        | None = None,
     ) -> GitHubProviderAuthState:
         return cls(
             auth_mode=GitHubAuthMode.GITHUB_APP_INSTALLATION,
@@ -128,6 +208,8 @@ class GitHubProviderAuthState:
             account_hash=account_hash,
             installation_id_hash=installation_id_hash,
             scopes_or_permissions=scopes_or_permissions or [],
+            repository_access_hashes=repository_access_hashes or [],
+            repository_permission_grants=repository_permission_grants or [],
             token_material_present=True,
         )
 
@@ -226,6 +308,7 @@ class GitHubProviderCapability:
     required_permissions: list[GitHubProviderRequiredPermission] = field(
         default_factory=list
     )
+    requires_repository_access: bool = False
     requires_step_up: bool = False
     requires_receipt: bool = True
     stores_raw_content: bool = False

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import hashlib
 import json
 import re
 import secrets
 from typing import Any
 
+_LIFECYCLE_SCHEMA_VERSION = "rig.relay.bridge_lifecycle_event.v1"
 _SCHEMA_VERSION = "rig.relay.bridge_envelope.v1"
 
 _REFUSAL_KINDS: frozenset[str] = frozenset({
@@ -123,6 +125,60 @@ def _new_message_id() -> str:
 
 def _new_trace_id() -> str:
     return f"trace_{secrets.token_hex(12)}"
+
+
+def _new_event_id() -> str:
+    return f"evt_{secrets.token_hex(8)}"
+
+
+def _hash_reason(reason: str) -> str:
+    return hashlib.sha256(reason.encode("utf-8")).hexdigest()[:16]
+
+
+def build_bridge_refusal_trace_event(
+    *,
+    refusal_kind: str,
+    refused_intent_kind: str,
+    refusal_message_id: str,
+    inbound_message_id: str,
+    refusal_reason: str = "",
+    mutation_class: str = "",
+    capability_required: list[str] | None = None,
+    trace_id: str = "",
+    frontend_session_id: str = "",
+    backend_session_id: str = "",
+    handshake_id: str = "",
+    payload_hash: str = "",
+    source: str = "bridge_refusal_builder",
+) -> dict[str, Any]:
+    event: dict[str, Any] = {
+        "schema_version": _LIFECYCLE_SCHEMA_VERSION,
+        "event_id": _new_event_id(),
+        "trace_id": trace_id or _new_trace_id(),
+        "handshake_id": handshake_id,
+        "frontend_session_id": frontend_session_id,
+        "backend_session_id": backend_session_id,
+        "event": "refusal_emitted",
+        "created_at": datetime.now(UTC).isoformat(),
+        "redaction_status": "content_light",
+        "content_light": True,
+        "inbound_message_id": inbound_message_id,
+        "refusal_message_id": refusal_message_id,
+        "refusal_kind": refusal_kind,
+        "refused_intent_kind": refused_intent_kind,
+        "source": source,
+    }
+
+    if mutation_class:
+        event["mutation_class"] = mutation_class
+    if capability_required:
+        event["capability_required"] = capability_required
+    if payload_hash:
+        event["payload_hash"] = payload_hash
+    if refusal_reason:
+        event["refusal_reason_hash"] = _hash_reason(refusal_reason)
+
+    return event
 
 
 # ── Content-light scanner ───────────────────────────────────────────────

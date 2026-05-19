@@ -25,6 +25,8 @@ SINGLE_OCCURRENCE_COUNT = 1
 HIGH_CONFIDENCE_RUN_COUNT = 4
 HIGH_CONFIDENCE_OCCURRENCE_COUNT = 3
 MEDIUM_CONFIDENCE_OCCURRENCE_COUNT = 2
+COMPARISON_METHOD_CHRONOLOGICAL = "chronological"
+COMPARISON_METHOD_LEXICAL_FALLBACK = "lexical_fallback"
 
 TREND_CLASS_ORDER = {
     "persistent_pain": 0,
@@ -230,6 +232,26 @@ def _sha256_json(value: Any) -> str:
     return "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _normalize_for_hash(value: Any) -> Any:
+    if isinstance(value, dict):
+        normalized = {}
+        for key, item in value.items():
+            if key in {"generated_at", "candidate_id"}:
+                normalized[key] = "<normalized>"
+            elif key.endswith("_sha256") or key == "content_light_evidence_hashes":
+                normalized[key] = "<normalized>"
+            else:
+                normalized[key] = _normalize_for_hash(item)
+        return normalized
+    if isinstance(value, list):
+        return [_normalize_for_hash(item) for item in value]
+    return value
+
+
+def _stable_json_sha256(value: Any) -> str:
+    return _sha256_json(_normalize_for_hash(value))
+
+
 def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -292,6 +314,15 @@ def _numeric_delta(latest: float | None, baseline: float | None) -> float | None
     return latest - baseline
 
 
+def _parse_generated_at(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def _discover_run_dirs(input_root: Path) -> list[Path]:
     if not input_root.exists():
         raise FileNotFoundError(f"Input root not found: {input_root}")
@@ -318,7 +349,7 @@ def _load_json_artifact(
     errors = _validate_against_schema(payload, schema_name)
     if errors:
         raise ValueError("; ".join(errors))
-    return payload, _file_sha256(path), []
+    return payload, _stable_json_sha256(payload), []
 
 
 def load_aggregate_run(run_dir: Path) -> LoadedAggregateRun:
@@ -328,24 +359,26 @@ def load_aggregate_run(run_dir: Path) -> LoadedAggregateRun:
         "shortlist": run_dir / "otel_hardening_shortlist.v1.json",
         "report": run_dir / "otel_aggregate_report.v1.json",
     }
-    manifest_artifact = _load_json_artifact(
-        paths["manifest"],
-        schema_name="rig.otel.run_manifest.v1",
-        missing_issue="missing_run_manifest",
-    )
-    shortlist_artifact = _load_json_artifact(
-        paths["shortlist"],
-        schema_name="rig.otel.hardening_shortlist.v1",
-        missing_issue="missing_hardening_shortlist",
-    )
-    report_artifact = _load_json_artifact(
-        paths["report"],
-        schema_name="rig.otel.aggregate_report.v1",
-        missing_issue="missing_aggregate_report",
-    )
-    manifest, manifest_sha256, manifest_issues = manifest_artifact
-    shortlist, shortlist_sha256, shortlist_issues = shortlist_artifact
-    report, report_sha256, report_issues = report_artifact
+    artifacts = {
+        "manifest": _load_json_artifact(
+            paths["manifest"],
+            schema_name="rig.otel.run_manifest.v1",
+            missing_issue="missing_run_manifest",
+        ),
+        "shortlist": _load_json_artifact(
+            paths["shortlist"],
+            schema_name="rig.otel.hardening_shortlist.v1",
+            missing_issue="missing_hardening_shortlist",
+        ),
+        "report": _load_json_artifact(
+            paths["report"],
+            schema_name="rig.otel.aggregate_report.v1",
+            missing_issue="missing_aggregate_report",
+        ),
+    }
+    manifest, manifest_sha256, manifest_issues = artifacts["manifest"]
+    shortlist, shortlist_sha256, shortlist_issues = artifacts["shortlist"]
+    report, report_sha256, report_issues = artifacts["report"]
     issues = [*manifest_issues, *shortlist_issues, *report_issues]
 
     return LoadedAggregateRun(
@@ -360,9 +393,9 @@ def load_aggregate_run(run_dir: Path) -> LoadedAggregateRun:
         run_manifest_sha256=manifest_sha256,
         hardening_shortlist_sha256=shortlist_sha256,
         aggregate_report_sha256=report_sha256,
-        warning_count=len(report.get("warnings", []))
-        if isinstance(report, dict)
-        else 0,
+        warning_count=(
+            len(report.get("warnings", [])) if isinstance(report, dict) else 0
+        ),
         error_count=len(report.get("errors", [])) if isinstance(report, dict) else 0,
         issues=issues,
     )
@@ -713,21 +746,43 @@ def compute_hardening_deltas(
         "trend_run_id": trend_run_id,
         "generated_at": _now(),
         "deltas": deltas,
+        "local_only": True,
+        "content_light": True,
     }
 
 
 def _ordered_runs(runs: list[LoadedAggregateRun]) -> list[LoadedAggregateRun]:
-    return sorted(runs, key=lambda run: (run.generated_at, run.run_id))
+    chronological_pairs: list[tuple[datetime, LoadedAggregateRun]] = []
+    for run in runs:
+        generated_at = _parse_generated_at(run.generated_at)
+        if generated_at is None:
+            return sorted(runs, key=lambda item: item.run_id)
+        chronological_pairs.append((generated_at, run))
+    return [
+        run
+        for _, run in sorted(
+            chronological_pairs, key=lambda item: (item[0], item[1].run_id)
+        )
+    ]
 
 
 def _comparison_window(runs: list[LoadedAggregateRun]) -> dict[str, Any]:
     ordered_runs = _ordered_runs(runs)
     run_ids = [run.run_id for run in ordered_runs]
     return {
-        "run_ids": run_ids,
-        "first_run_id": run_ids[0] if run_ids else "",
+        "baseline_run_id": run_ids[0] if run_ids else "",
         "latest_run_id": run_ids[-1] if run_ids else "",
-        "run_count": len(run_ids),
+        "run_ids": run_ids,
+        "run_order": run_ids,
+        "method": (
+            COMPARISON_METHOD_CHRONOLOGICAL
+            if run_ids
+            and all(
+                _parse_generated_at(run.generated_at) is not None
+                for run in ordered_runs
+            )
+            else COMPARISON_METHOD_LEXICAL_FALLBACK
+        ),
     }
 
 
@@ -745,6 +800,15 @@ def _trend_label(deltas: list[dict[str, Any]], signal_kind: str) -> str:
     if any(delta["trend_class"] == "insufficient_sample" for delta in signal_deltas):
         return "insufficient_sample"
     return "stable"
+
+
+def _trend_labels(deltas: list[dict[str, Any]]) -> dict[str, str]:
+    return {
+        "redaction_pressure_trend": _trend_label(deltas, "redaction_pressure"),
+        "trace_context_quality_trend": _trend_label(deltas, "missing_trace_context"),
+        "latency_trend": _trend_label(deltas, "latency"),
+        "error_rate_trend": _trend_label(deltas, "error_rate"),
+    }
 
 
 def _priority_categories(deltas: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -775,17 +839,17 @@ def _priority_categories(deltas: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _build_trend_summary(deltas: list[dict[str, Any]]) -> dict[str, Any]:
     trend_counts = Counter(delta["trend_class"] for delta in deltas)
-    return {
+    summary = {
         "persistent_pain_count": trend_counts.get("persistent_pain", 0),
         "new_regression_count": trend_counts.get("new_regression", 0),
         "improved_category_count": trend_counts.get("improved", 0),
         "one_off_noise_count": trend_counts.get("one_off_noise", 0),
         "insufficient_sample_count": trend_counts.get("insufficient_sample", 0),
         "highest_priority_categories": _priority_categories(deltas),
-        "redaction_pressure_trend": _trend_label(deltas, "redaction_pressure"),
-        "trace_context_quality_trend": _trend_label(deltas, "missing_trace_context"),
         "candidate_count": len(deltas),
     }
+    summary.update(_trend_labels(deltas))
+    return summary
 
 
 def validate_trend_outputs(
@@ -850,6 +914,7 @@ def _trend_report_core(inputs: TrendReportCoreInput) -> dict[str, Any]:
         "warnings": inputs.warnings,
         "errors": inputs.errors,
         "local_only": True,
+        "content_light": True,
         "coordination_ledger_mutated": False,
         "release_gate_mutated": False,
     }
@@ -930,9 +995,11 @@ def compare_otel_aggregate_runs(
     for run in loaded_runs:
         if run.issues:
             warnings.append(f"{run.run_id}: {'; '.join(run.issues)}")
-    if len([run for run in loaded_runs if run.complete]) < min_runs:
+    complete_run_count = len([run for run in loaded_runs if run.complete])
+    if complete_run_count < min_runs:
         warnings.append(
-            f"insufficient complete aggregate runs for trend comparison: {len([run for run in loaded_runs if run.complete])} < {min_runs}"
+            "insufficient complete aggregate runs for trend comparison: "
+            f"{complete_run_count} < {min_runs}"
         )
     if any(run.warning_count or run.error_count for run in loaded_runs):
         warnings.append("source aggregate reports contained warnings or errors")

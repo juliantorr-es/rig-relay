@@ -7,7 +7,9 @@
     "schema_version",
     "trend_run_id",
     "generated_at",
-    "deltas"
+    "deltas",
+    "local_only",
+    "content_light"
   ],
   "properties": {
     "schema_version": {
@@ -195,6 +197,15 @@
         },
         "additionalProperties": false
       }
+    }
+    ,
+    "local_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
     }
   },
   "additionalProperties": false

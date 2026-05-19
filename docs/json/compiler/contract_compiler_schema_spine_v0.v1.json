@@ -1,0 +1,85 @@
+{
+  "schema_version": "rig.contract_compiler.schema_spine_v0.v1",
+  "artifact_id": "contract_compiler_schema_spine_v0_2026-05-19",
+  "generated_at": "2026-05-19T12:00:00Z",
+  "related_artifacts": [
+    "docs/schemas/rig.contract_compiler_feasibility.v1.schema.json",
+    "docs/json/compiler/contract_compiler_feasibility.v1.json",
+    "docs/schemas/rig.contract_compiler_research_rationale.v1.schema.json",
+    "docs/json/compiler/contract_compiler_research_rationale.v1.json"
+  ],
+  "purpose": "This artifact describes the schema spine v0 for Rig Relay's Contract-Satisfaction Compiler. It introduces seven new schemas that define canonical JSON/JSONL artifacts for compiler runs, candidates, worktree lifecycle, counterexamples, validation matrix results, permutation corpus rows, and pattern reports. This is schema/data infrastructure only — no compiler runtime, no Python generation, no Jinja2 templates, no worktree creation.",
+  "schemas_introduced": [
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.run_manifest.v1.schema.json",
+      "purpose": "One compiler run manifest: inputs, outputs, budget, slice configuration, artifact paths, and aggregate statistics.",
+      "key_fields": ["run_id", "semantic_contract_sha256", "worktree_budget", "contract_slices", "artifact_hashes"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.candidate.v1.schema.json",
+      "purpose": "One schema/code candidate record: identification, status, hashes, worktree reference, and optional fit score.",
+      "key_fields": ["candidate_id", "candidate_kind", "candidate_status", "schema_candidate_sha256", "python_candidate_sha256", "candidate_patch_sha256"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.worktree_lifecycle.v1.schema.json",
+      "purpose": "One worktree lifecycle event row: state transitions, kind, dirty state, and cleanup actions.",
+      "key_fields": ["worktree_id", "worktree_kind", "lifecycle_state", "previous_state", "next_state", "cleanup_action"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.counterexample.v1.schema.json",
+      "purpose": "One compiler counterexample: source gate, failure class, spurious/genuine classification, deduplication key, pruning effect.",
+      "key_fields": ["counterexample_id", "source_gate", "failure_class", "spurious_or_genuine", "deduplication_key", "pruning_effect"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.validation_matrix_result.v1.schema.json",
+      "purpose": "Per-candidate validation matrix result: all gates executed with pass/hold/fail/skipped status, durations, evidence hashes, and aggregate counts.",
+      "key_fields": ["validation_result_id", "overall_status", "gates", "passed_gate_count", "failed_gate_count"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.permutation_corpus_row.v1.schema.json",
+      "purpose": "One permutation corpus row: aggregated statistics for a single candidate across its validation run, used for cross-run pattern analysis.",
+      "key_fields": ["row_id", "candidate_status", "fit_score", "gate_summary", "promoted_to_stage", "accepted"]
+    },
+    {
+      "schema_path": "docs/schemas/rig.contract_compiler.pattern_report.v1.schema.json",
+      "purpose": "Aggregate pattern report for one compiler run: successful/failed schema and template patterns, counterexample clusters, contract ambiguity findings, refinement recommendations.",
+      "key_fields": ["successful_schema_patterns", "counterexample_clusters", "contract_ambiguity_findings", "recommended_schema_refinements"]
+    }
+  ],
+  "compiler_flow": {
+    "description": "The compiler is a bounded, worktree-isolated, evidence-preserving contract-satisfaction loop. It borrows CEGIS's generator/verifier/counterexample loop and CEGAR's abstraction/refinement/spurious-vs-genuine distinction but does not claim formal verification.",
+    "artifact_flow": "run_manifest → candidates.jsonl → validation_results.jsonl → counterexamples.jsonl → permutation_corpus.jsonl → pattern_report → future refinement proposals",
+    "evidence_paths": ".build/rig-relay/contract-compiler/runs/<run_id>/{run_manifest.v1.json, candidates.jsonl, validation_results.jsonl, counterexamples.jsonl, permutation_corpus.jsonl, pattern_report.v1.json, worktree_lifecycle.jsonl}",
+    "worktree_paths": ".rig/relay/worktrees/compiler/<run_id>/{scratch/, stages/, accepted/, quarantine/}"
+  },
+  "worktree_lifecycle_summary": {
+    "state_machine": "created → patch_applied → validation_running → failed_reset → failed_reaped (OR partially_satisfied → promoted_to_stage → next_slice_search OR fully_satisfied → accepted → promotion_proposal_emitted → cleaned)",
+    "worktree_kinds": ["scratch_candidate (short-lived, reset/reaped after failure)", "stage_promotion (longer-lived, carries partial contract satisfaction forward)", "accepted_candidate (read-only after acceptance, retained for human review)", "quarantine (retained only for novel failures)"],
+    "cleanup_policy": "Failed scratch worktrees reaped immediately after evidence copied. Quarantined only for novel failures. Stage worktrees retain active lineage + 2 previous. Accepted retained until human checkpoint. Orphans pruned on startup."
+  },
+  "counterexample_summary": {
+    "shape": "counterexample_id + source_gate + input_artifact_hash + expected_behavior + actual_behavior_hash + failure_class + spurious_or_genuine + replay_command_hash + deduplication_key + pruning_effect",
+    "classification": "unknown → spurious (caused by imprecise validator/schema/test) or genuine (real contract violation). Classification occurs after replay analysis.",
+    "pruning": "single_candidate, candidate_family, template_branch, schema_constraint_pattern, validator_refinement, contract_refinement, or none."
+  },
+  "validation_matrix_summary": {
+    "required_gates": ["json_schema_validation", "python_importability", "pyright_type_check", "ruff_lint", "ruff_format", "real_artifact_round_trip", "adversarial_malformed_input", "deterministic_regeneration", "model_schema_drift_check", "content_light_redaction", "trace_propagation", "worktree_dirty_state"],
+    "optional_gates": ["property_based_optional (parked - Hypothesis dependency)", "mutation_testing_optional (parked - cosmic-ray dependency)", "live_app_behavior_optional (future)"],
+    "outcomes": "pass (gate succeeded), hold (non-fatal warning), fail (gate rejected candidate), skipped (gate not run for this candidate)"
+  },
+  "pattern_aggregation_summary": {
+    "data_products": ["permutation_corpus.jsonl (all candidates with outcomes)", "schema_pattern_report (successful/failed schema patterns)", "template_refinement_report (Jinja2 branch performance)", "counterexample_cluster_report (failure modality groups)", "contract_ambiguity_report (hard-to-satisfy assertions)", "worktree_lifecycle_report (resource utilization)", "candidate_promotion_report (evidence chain for promoted candidates)"]
+  },
+  "content_light_posture": "All seven schemas enforce content_light: true and redaction_status: content_light. No schema permits raw_prompt, raw_completion, raw_file_contents, raw_credentials, access_token, client_secret, private_repo_contents, or raw absolute paths. Worktree paths are stored as SHA-256 hashes. Artifact bodies are hashed by default. Content-derived data carries SHA-256 prefixes.",
+  "non_goals": [
+    "Implement compiler runtime (scripts/rig_contract_compiler.py not created)",
+    "Generate Python from schemas (no Jinja2 templates created)",
+    "Create compiler worktrees (no .rig/relay/worktrees/compiler/ directory)",
+    "Mutate coordination ledger (no coordination events emitted)",
+    "Add dependencies (no new packages in pyproject.toml)",
+    "Touch GitHub provider, GitHub Actions, release gate validator, CI evidence, OTel dataset",
+    "Touch frontend/bridge/backend, MCP, ACP, SDK, A2A",
+    "Overclaim formal verification"
+  ],
+  "next_recommended_slice": "Implement Compiler Experiment 0: generate one Pydantic model for one existing coordination event payload schema, apply in one scratch worktree, validate against the 12 required gates, emit candidate/validation/counterexample evidence using these schemas. Do not implement multi-slice promotion, pattern aggregation, or Jinja2 template infrastructure until Experiment 0 succeeds."
+}

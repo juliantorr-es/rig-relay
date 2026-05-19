@@ -71,6 +71,7 @@ def load_github_capability_manifest(
             operation_class=cap_raw["operation_class"],
             required_auth_modes=cap_raw["required_auth_modes"],
             required_permissions=perms,
+            requires_repository_access=cap_raw.get("requires_repository_access", False),
             requires_step_up=cap_raw["requires_step_up"],
             requires_receipt=cap_raw["requires_receipt"],
             stores_raw_content=cap_raw["stores_raw_content"],
@@ -175,6 +176,37 @@ def _infer_oauth_access_level(scope: str) -> str:
     return "read"
 
 
+def _check_repo_permission(
+    auth_state: GitHubProviderAuthState,
+    cap: GitHubProviderCapability,
+    target_repository_hash: str,
+    capability_id: str | None = None,
+) -> GitHubProviderCapabilityDecision | None:
+    required_perms = [p for p in cap.required_permissions if p.required]
+    if not required_perms:
+        return None
+
+    for req_perm in required_perms:
+        if str(req_perm.permission_kind) == "public_access":
+            continue
+        if auth_state.has_repository_permission(
+            target_repository_hash,
+            req_perm.permission_id,
+            str(req_perm.permission_kind),
+            str(req_perm.access_level),
+        ):
+            return None
+
+    return GitHubProviderCapabilityDecision(
+        capability_id=capability_id or cap.capability_id,
+        verdict=GitHubVerdict.REFUSED,
+        refusal_code="github.permission.missing",
+        reason=f"No repository grant satisfies required permissions for repo {target_repository_hash[:16]}...",
+        requires_step_up=cap.requires_step_up,
+        step_up_satisfied=False,
+    )
+
+
 def get_capability(
     manifest: GitHubProviderCapabilityManifest, capability_id: str
 ) -> GitHubProviderCapability | None:
@@ -187,6 +219,7 @@ def evaluate_github_capability(
     *,
     requested_operation_class: str | None = None,
     step_up_satisfied: bool = False,
+    target_repository_hash: str = "",
     manifest: GitHubProviderCapabilityManifest | None = None,
 ) -> GitHubProviderCapabilityDecision:
     if manifest is None:
@@ -287,9 +320,54 @@ def evaluate_github_capability(
             step_up_satisfied=False,
         )
 
-    permission_decision = _check_permissions(auth_state, cap)
-    if permission_decision is not None:
-        return permission_decision
+    if cap.requires_repository_access and auth_state.repository_permission_grants:
+        if not target_repository_hash:
+            return GitHubProviderCapabilityDecision(
+                capability_id=capability_id,
+                verdict=GitHubVerdict.REFUSED,
+                refusal_code="github.repository.missing",
+                reason="Target repository hash is required but not provided",
+                requires_step_up=cap.requires_step_up,
+                step_up_satisfied=False,
+            )
+        if not auth_state.has_repository_access(target_repository_hash):
+            return GitHubProviderCapabilityDecision(
+                capability_id=capability_id,
+                verdict=GitHubVerdict.REFUSED,
+                refusal_code="github.repository.access_denied",
+                reason="Target repository is not in auth state repository_permission_grants",
+                requires_step_up=cap.requires_step_up,
+                step_up_satisfied=False,
+            )
+        repo_permission_decision = _check_repo_permission(
+            auth_state, cap, target_repository_hash, capability_id
+        )
+        if repo_permission_decision is not None:
+            return repo_permission_decision
+    else:
+        permission_decision = _check_permissions(auth_state, cap)
+        if permission_decision is not None:
+            return permission_decision
+
+        if cap.requires_repository_access:
+            if not target_repository_hash:
+                return GitHubProviderCapabilityDecision(
+                    capability_id=capability_id,
+                    verdict=GitHubVerdict.REFUSED,
+                    refusal_code="github.repository.missing",
+                    reason="Target repository hash is required but not provided",
+                    requires_step_up=cap.requires_step_up,
+                    step_up_satisfied=False,
+                )
+            if not auth_state.has_repository_access(target_repository_hash):
+                return GitHubProviderCapabilityDecision(
+                    capability_id=capability_id,
+                    verdict=GitHubVerdict.REFUSED,
+                    refusal_code="github.repository.access_denied",
+                    reason="Target repository is not in auth state repository_access_hashes",
+                    requires_step_up=cap.requires_step_up,
+                    step_up_satisfied=False,
+                )
 
     if cap.is_mutation:
         if cap.requires_step_up and not step_up_satisfied:

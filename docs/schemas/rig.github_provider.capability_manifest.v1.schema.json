@@ -39,6 +39,7 @@
           "operation_class",
           "required_auth_modes",
           "required_permissions",
+          "requires_repository_access",
           "requires_step_up",
           "requires_receipt",
           "stores_raw_content",
@@ -107,6 +108,10 @@
               "additionalProperties": false
             },
             "description": "Required permissions for this capability. At least one permission entry required."
+          },
+          "requires_repository_access": {
+            "type": "boolean",
+            "description": "True if this capability requires the target repository to be in the auth state's repository_access_hashes."
           },
           "requires_step_up": {
             "type": "boolean"

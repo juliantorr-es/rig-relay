@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.candidate.v1",
+  "title": "Contract Compiler Candidate v1",
+  "description": "One schema/code candidate record within a compiler run.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "run_id",
+    "contract_family_id",
+    "contract_slice_id",
+    "parent_stage_id",
+    "candidate_kind",
+    "candidate_status",
+    "semantic_contract_sha256",
+    "schema_candidate_sha256",
+    "python_candidate_sha256",
+    "candidate_patch_sha256",
+    "generator_id",
+    "generator_version",
+    "worktree_id",
+    "worktree_path_hash",
+    "base_head_sha",
+    "created_at",
+    "updated_at",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.candidate.v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this candidate within the run."
+    },
+    "run_id": { "type": "string", "minLength": 1 },
+    "contract_family_id": { "type": "string", "minLength": 1 },
+    "contract_slice_id": { "type": "string", "minLength": 1 },
+    "parent_stage_id": {
+      "type": "string",
+      "description": "Stage worktree this candidate builds on. Nullable for first slice."
+    },
+    "candidate_kind": {
+      "type": "string",
+      "enum": ["schema_candidate", "python_candidate", "combined_candidate"]
+    },
+    "candidate_status": {
+      "type": "string",
+      "enum": [
+        "generated",
+        "patch_applied",
+        "validation_running",
+        "rejected",
+        "partially_satisfied",
+        "accepted",
+        "quarantined"
+      ]
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "schema_candidate_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the generated schema candidate file."
+    },
+    "python_candidate_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the generated Python candidate file."
+    },
+    "candidate_patch_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the patch that applies the candidate to the worktree."
+    },
+    "generator_id": { "type": "string", "minLength": 1 },
+    "generator_version": { "type": "string", "minLength": 1 },
+    "worktree_id": { "type": "string", "minLength": 1 },
+    "worktree_path_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the worktree path (content-light)."
+    },
+    "base_head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Git commit SHA of the worktree base."
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "fit_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Optional contract fit score (0-1)."
+    },
+    "failed_gate_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "satisfied_assertion_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failed_assertion_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "counterexample_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "promotion_stage_id": {
+      "type": "string",
+      "description": "Stage worktree ID if promoted."
+    },
+    "quarantine_reason": {
+      "type": "string",
+      "description": "Why the candidate was quarantined instead of rejected."
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.tool_hardening.proposal.v1.schema.json",
+  "title": "Rig Tool Hardening Proposal",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "proposal_run_id",
+    "generated_at",
+    "source_trend_run_id",
+    "source_trend_report_path",
+    "source_hardening_deltas_path",
+    "source_trend_report_sha256",
+    "source_hardening_deltas_sha256",
+    "proposal_verdict",
+    "item_count",
+    "ranked_item_ids",
+    "severity_summary",
+    "confidence_summary",
+    "recommended_next_lanes",
+    "warnings",
+    "errors",
+    "local_only",
+    "content_light",
+    "coordination_ledger_mutated",
+    "release_gate_mutated",
+    "runtime_mutated",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.tool_hardening.proposal.v1"
+    },
+    "proposal_run_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_trend_run_id": { "type": "string" },
+    "source_trend_report_path": { "type": "string" },
+    "source_hardening_deltas_path": { "type": "string" },
+    "source_trend_report_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "source_hardening_deltas_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "proposal_verdict": {
+      "type": "string",
+      "enum": ["pass", "hold", "fail"]
+    },
+    "item_count": { "type": "integer", "minimum": 0 },
+    "ranked_item_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "severity_summary": {
+      "type": "object",
+      "required": ["critical", "high", "medium", "low"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "confidence_summary": {
+      "type": "object",
+      "required": ["high", "medium", "low"],
+      "properties": {
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "recommended_next_lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lane_id",
+          "lane_title",
+          "priority",
+          "reason",
+          "related_item_ids"
+        ],
+        "properties": {
+          "lane_id": { "type": "string" },
+          "lane_title": { "type": "string" },
+          "priority": { "type": "integer", "minimum": 0 },
+          "reason": { "type": "string" },
+          "related_item_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "local_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "coordination_ledger_mutated": {
+      "type": "boolean",
+      "const": false
+    },
+    "release_gate_mutated": {
+      "type": "boolean",
+      "const": false
+    },
+    "runtime_mutated": {
+      "type": "boolean",
+      "const": false
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    }
+  },
+  "additionalProperties": false
+}

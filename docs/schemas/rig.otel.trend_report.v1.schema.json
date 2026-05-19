@@ -18,6 +18,7 @@
     "warnings",
     "errors",
     "local_only",
+    "content_light",
     "coordination_ledger_mutated",
     "release_gate_mutated"
   ],
@@ -75,15 +76,27 @@
     },
     "comparison_window": {
       "type": "object",
-      "required": ["run_ids", "first_run_id", "latest_run_id", "run_count"],
+      "required": [
+        "baseline_run_id",
+        "latest_run_id",
+        "run_order",
+        "method"
+      ],
       "properties": {
-        "run_ids": {
+        "baseline_run_id": {
+          "type": "string"
+        },
+        "latest_run_id": {
+          "type": "string"
+        },
+        "run_order": {
           "type": "array",
           "items": { "type": "string" }
         },
-        "first_run_id": { "type": "string" },
-        "latest_run_id": { "type": "string" },
-        "run_count": { "type": "integer", "minimum": 0 }
+        "method": {
+          "type": "string",
+          "enum": ["chronological", "explicit_order", "lexical_fallback"]
+        }
       },
       "additionalProperties": true
     },
@@ -101,7 +114,9 @@
         "insufficient_sample_count",
         "highest_priority_categories",
         "redaction_pressure_trend",
-        "trace_context_quality_trend"
+        "trace_context_quality_trend",
+        "latency_trend",
+        "error_rate_trend"
       ],
       "properties": {
         "persistent_pain_count": { "type": "integer", "minimum": 0 },
@@ -154,6 +169,14 @@
         "trace_context_quality_trend": {
           "type": "string",
           "enum": ["improving", "stable", "worsening", "insufficient_sample"]
+        },
+        "latency_trend": {
+          "type": "string",
+          "enum": ["improving", "stable", "worsening", "insufficient_sample"]
+        },
+        "error_rate_trend": {
+          "type": "string",
+          "enum": ["improving", "stable", "worsening", "insufficient_sample"]
         }
       },
       "additionalProperties": true
@@ -170,6 +193,10 @@
       "items": { "type": "string" }
     },
     "local_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "content_light": {
       "type": "boolean",
       "const": true
     },

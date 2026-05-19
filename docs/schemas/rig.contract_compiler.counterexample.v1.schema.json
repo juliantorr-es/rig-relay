@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.counterexample.v1",
+  "title": "Contract Compiler Counterexample v1",
+  "description": "One compiler counterexample: a validation failure classified by source gate, failure class, spurious/genuine status, and pruning effect.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "counterexample_id",
+    "run_id",
+    "candidate_id",
+    "worktree_id",
+    "contract_family_id",
+    "contract_slice_id",
+    "source_gate",
+    "input_artifact_hash",
+    "expected_behavior",
+    "actual_behavior_hash",
+    "failure_class",
+    "spurious_or_genuine",
+    "replay_command_hash",
+    "minimal_reproduction_artifact_path",
+    "redaction_status",
+    "deduplication_key",
+    "pruning_effect",
+    "discovered_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.counterexample.v1"
+    },
+    "counterexample_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "worktree_id": { "type": "string", "minLength": 1 },
+    "contract_family_id": { "type": "string", "minLength": 1 },
+    "contract_slice_id": { "type": "string", "minLength": 1 },
+    "source_gate": {
+      "type": "string",
+      "description": "Which validation gate detected the failure."
+    },
+    "input_artifact_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the input that triggered the failure."
+    },
+    "expected_behavior": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the contract says should happen."
+    },
+    "actual_behavior_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of the actual behavior output."
+    },
+    "failure_class": {
+      "type": "string",
+      "enum": [
+        "constraint_violation",
+        "schema_drift",
+        "redaction_leak",
+        "type_error",
+        "import_error",
+        "trace_failure",
+        "format_error",
+        "regeneration_mismatch",
+        "worktree_dirty_state",
+        "contract_ambiguity",
+        "validation_harness_error",
+        "unknown"
+      ]
+    },
+    "spurious_or_genuine": {
+      "type": "string",
+      "enum": ["unknown", "spurious", "genuine"],
+      "description": "unknown = not yet classified; spurious = failure caused by imprecise validator/schema/test, not real contract violation; genuine = real contract violation."
+    },
+    "replay_command_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of deterministic command to reproduce the failure."
+    },
+    "minimal_reproduction_artifact_path": {
+      "type": "string",
+      "description": "Relative path to minimal reproduction artifact under .build/."
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light",
+      "description": "All counterexample bodies are content-light. Raw payloads are hashed."
+    },
+    "deduplication_key": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 of input_hash + failure_gate + candidate_id for deduplication."
+    },
+    "pruning_effect": {
+      "type": "string",
+      "enum": [
+        "single_candidate",
+        "candidate_family",
+        "template_branch",
+        "schema_constraint_pattern",
+        "validator_refinement",
+        "contract_refinement",
+        "none"
+      ],
+      "description": "Scope of candidates this counterexample eliminates."
+    },
+    "discovered_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false,
+  "not": {
+    "anyOf": [
+      { "properties": { "raw_prompt": {} }, "required": ["raw_prompt"] },
+      { "properties": { "raw_completion": {} }, "required": ["raw_completion"] },
+      { "properties": { "raw_file_contents": {} }, "required": ["raw_file_contents"] },
+      { "properties": { "raw_credentials": {} }, "required": ["raw_credentials"] },
+      { "properties": { "access_token": {} }, "required": ["access_token"] },
+      { "properties": { "client_secret": {} }, "required": ["client_secret"] },
+      { "properties": { "private_repo_contents": {} }, "required": ["private_repo_contents"] }
+    ]
+  }
+}

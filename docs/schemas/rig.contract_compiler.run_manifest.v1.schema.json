@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.contract_compiler.run_manifest.v1",
+  "title": "Contract Compiler Run Manifest v1",
+  "description": "Manifest for one compiler run: inputs, outputs, budget, slice configuration, artifact paths, and aggregate statistics.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "repo_head_sha",
+    "repo_branch_hash",
+    "semantic_contract_id",
+    "semantic_contract_sha256",
+    "compiler_version",
+    "generator_id",
+    "generator_version",
+    "base_worktree_path_hash",
+    "evidence_root",
+    "worktree_root_hash",
+    "worktree_budget",
+    "contract_slices",
+    "candidate_count",
+    "accepted_candidate_count",
+    "rejected_candidate_count",
+    "quarantined_candidate_count",
+    "counterexample_count",
+    "validation_matrix_summary",
+    "artifact_paths",
+    "artifact_hashes",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.contract_compiler.run_manifest.v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this compiler run."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "repo_head_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Full git commit SHA of repository HEAD at run start."
+    },
+    "repo_branch_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the branch name (content-light)."
+    },
+    "semantic_contract_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier for the semantic contract family being compiled."
+    },
+    "semantic_contract_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "compiler_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generator_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier for the generator used (e.g., jinja2_template_v0)."
+    },
+    "generator_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_worktree_path_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the base worktree root path."
+    },
+    "evidence_root": {
+      "type": "string",
+      "description": "Relative path to the evidence root under .build/, e.g., contract-compiler/runs/<run_id>/."
+    },
+    "worktree_root_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the worktree root path."
+    },
+    "worktree_budget": {
+      "type": "object",
+      "required": [
+        "max_scratch_worktrees",
+        "max_retained_failed_worktrees",
+        "max_stage_depth",
+        "max_candidates_per_slice",
+        "max_runtime_seconds_per_candidate"
+      ],
+      "properties": {
+        "max_scratch_worktrees": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_retained_failed_worktrees": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_stage_depth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_candidates_per_slice": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_runtime_seconds_per_candidate": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "contract_slices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contract_slice_id",
+          "slice_order",
+          "acceptance_threshold",
+          "assertion_count",
+          "required_gate_ids"
+        ],
+        "properties": {
+          "contract_slice_id": { "type": "string", "minLength": 1 },
+          "slice_order": { "type": "integer", "minimum": 0 },
+          "acceptance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+          "assertion_count": { "type": "integer", "minimum": 1 },
+          "required_gate_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "candidate_count": { "type": "integer", "minimum": 0 },
+    "accepted_candidate_count": { "type": "integer", "minimum": 0 },
+    "rejected_candidate_count": { "type": "integer", "minimum": 0 },
+    "quarantined_candidate_count": { "type": "integer", "minimum": 0 },
+    "counterexample_count": { "type": "integer", "minimum": 0 },
+    "validation_matrix_summary": {
+      "type": "object",
+      "required": ["total_gates", "passing_gates", "failing_gates", "held_gates", "skipped_gates", "total_validations_run", "average_duration_ms"],
+      "properties": {
+        "total_gates": { "type": "integer", "minimum": 0 },
+        "passing_gates": { "type": "integer", "minimum": 0 },
+        "failing_gates": { "type": "integer", "minimum": 0 },
+        "held_gates": { "type": "integer", "minimum": 0 },
+        "skipped_gates": { "type": "integer", "minimum": 0 },
+        "total_validations_run": { "type": "integer", "minimum": 0 },
+        "average_duration_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "artifact_paths": {
+      "type": "object",
+      "required": [
+        "candidates_jsonl",
+        "validation_results_jsonl",
+        "counterexamples_jsonl",
+        "permutation_corpus_jsonl",
+        "pattern_report_path",
+        "worktree_lifecycle_jsonl"
+      ],
+      "properties": {
+        "candidates_jsonl": { "type": "string" },
+        "validation_results_jsonl": { "type": "string" },
+        "counterexamples_jsonl": { "type": "string" },
+        "permutation_corpus_jsonl": { "type": "string" },
+        "pattern_report_path": { "type": "string" },
+        "worktree_lifecycle_jsonl": { "type": "string" }
+      }
+    },
+    "artifact_hashes": {
+      "type": "object",
+      "required": [
+        "candidates_jsonl_sha256",
+        "validation_results_jsonl_sha256",
+        "counterexamples_jsonl_sha256",
+        "permutation_corpus_jsonl_sha256",
+        "pattern_report_sha256",
+        "worktree_lifecycle_jsonl_sha256",
+        "run_manifest_sha256"
+      ],
+      "properties": {
+        "candidates_jsonl_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "validation_results_jsonl_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "counterexamples_jsonl_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "permutation_corpus_jsonl_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "pattern_report_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "worktree_lifecycle_jsonl_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "run_manifest_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "additionalProperties": false
+}

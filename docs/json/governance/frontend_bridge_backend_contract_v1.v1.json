@@ -7,7 +7,7 @@
   "status": "active",
   "created_at": "2026-05-19",
   "updated_at": "2026-05-19",
-  "source_commit": "65039aac5fb0b482c417006d2f773e25248dfc3d",
+  "source_commit": "1d28f27b21ac6c0584064e77c601a469d16984ad",
   "owners": ["maintainer"],
   "tags": ["frontend", "bridge", "backend", "contract", "desktop", "cockpit", "projection", "envelope", "lifecycle"],
   "audience": ["contributor", "maintainer"],
@@ -62,6 +62,29 @@
       "Release-affecting mutation still refused — release-gate refactor pending.",
       "Dangerous local mutation refused — capability gate must explicitly permit it.",
       "Safe local mutation accepted only when capability is declared.",
+      "GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched."
+    ], "disclosure": {"level": "standard"}},
+    {"block_id": "h2-15", "type": "heading", "level": 2, "content": "Bridge Refusal Runtime Trace Correlation (v1.2)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-14", "type": "paragraph", "content": "Bridge Refusal Runtime Trace Correlation v1 was implemented. Every dispatcher refusal now produces a schema-valid lifecycle event (refusal_emitted) alongside the refusal envelope. The trace event carries: inbound_message_id, refusal_message_id, refusal_kind, refused_intent_kind, mutation_class, capability_required, payload_hash, refusal_reason_hash (content-light), trace_id, session IDs, and source. Trace correlation rules: trace_id matches across inbound/refusal/trace, inbound_message_id is the original message, refusal_message_id is the generated refusal, parent_message_id links refusal to inbound. All trace events are content_light with raw reasons hashed, never stored in plaintext.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-16", "type": "heading", "level": 2, "content": "Remaining Seams (v1.2)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "list-4", "type": "list", "style": "bullet", "items": [
+      "Bridge refusal runtime trace correlation implemented — every refusal path produces schema-valid trace events with message/session/trace linkage.",
+      "Credentialed provider mutation still refused pending GitHub Provider Contract v0.",
+      "External network mutation still refused — no network capability gate defined.",
+      "Release-affecting mutation still refused — release-gate refactor pending.",
+      "Dangerous local mutation refused — capability gate must explicitly permit.",
+      "GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched."
+    ], "disclosure": {"level": "standard"}},
+    {"block_id": "h2-17", "type": "heading", "level": 2, "content": "Bridge Refusal Persistence (v1.3)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "p-15", "type": "paragraph", "content": "Bridge Refusal Persistence v1 was implemented. Refusal_emitted lifecycle events are now persisted to an append-only JSONL file via BridgeLifecycleTraceWriter (rig_relay/desktop/bridge_lifecycle_trace.py) when a trace writer is configured on the WebSocket server. Each persisted event is schema-validated before write. Persistence is local-only and content-light: no raw tokens, paths, prompts, or private content are persisted. The writer is injected via set_trace_writer() for test configurability. Persistence failure never crashes the dispatcher or causes a refused intent to execute. The existing bridge_state_machine.py lifecycle log covers bridge state transitions only; refusal events use a separate trace writer. No release-gate evidence, coordination ledger, OTel dataset, or GitHub provider code is touched.", "disclosure": {"level": "standard"}},
+    {"block_id": "h2-18", "type": "heading", "level": 2, "content": "Remaining Seams (v1.3)", "disclosure": {"level": "standard", "initially_visible": true}},
+    {"block_id": "list-5", "type": "list", "style": "bullet", "items": [
+      "Bridge refusal persistence implemented — refusal_emitted events are schema-validated and appended to lifecycle trace JSONL.",
+      "Credentialed provider mutation still refused pending GitHub Provider Contract v0.",
+      "External network mutation still refused.",
+      "Release-affecting mutation still refused.",
+      "Dangerous local mutation refused.",
+      "Durable session-level lifecycle trace retention policy not yet defined — current write is flush-only, no fsync guarantee.",
       "GitHub Actions, MCP/ACP/A2A/SDK/OTel/compiler/coordination store untouched."
     ], "disclosure": {"level": "standard"}}
   ]

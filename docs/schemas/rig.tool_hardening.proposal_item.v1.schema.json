@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.tool_hardening.proposal_item.v1.schema.json",
+  "title": "Rig Tool Hardening Proposal Item",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "proposal_item_id",
+    "proposal_run_id",
+    "source_delta_id",
+    "affected_tool_category",
+    "signal_kind",
+    "trend_class",
+    "severity",
+    "confidence",
+    "priority_score",
+    "affected_event_count",
+    "evidence_run_ids",
+    "content_light_evidence_hashes",
+    "recommended_hardening_action",
+    "recommended_lane",
+    "implementation_scope",
+    "expected_payoff",
+    "risk_if_ignored",
+    "non_goals",
+    "generated_at",
+    "local_only",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.tool_hardening.proposal_item.v1"
+    },
+    "proposal_item_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "proposal_run_id": { "type": "string" },
+    "source_delta_id": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "affected_tool_category": { "type": "string" },
+    "signal_kind": {
+      "type": "string",
+      "enum": [
+        "latency",
+        "error_rate",
+        "retry_loop",
+        "cancellation",
+        "timeout",
+        "missing_trace_context",
+        "redaction_pressure",
+        "malformed_input",
+        "excessive_attributes",
+        "unknown_tool_category"
+      ]
+    },
+    "trend_class": {
+      "type": "string",
+      "enum": [
+        "persistent_pain",
+        "new_regression",
+        "improved",
+        "one_off_noise",
+        "insufficient_sample"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "priority_score": { "type": "integer", "minimum": 0 },
+    "affected_event_count": { "type": "integer", "minimum": 0 },
+    "evidence_run_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "content_light_evidence_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    },
+    "recommended_hardening_action": { "type": "string" },
+    "recommended_lane": {
+      "type": "string",
+      "enum": [
+        "tool_runtime_hardening",
+        "trace_context_hardening",
+        "redaction_policy_hardening",
+        "retry_policy_hardening",
+        "timeout_policy_hardening",
+        "cancellation_policy_hardening",
+        "schema_contract_hardening",
+        "observability_quality_hardening",
+        "unknown_tool_classification",
+        "tool_invocation_boundary",
+        "defer_insufficient_sample"
+      ]
+    },
+    "implementation_scope": {
+      "type": "string",
+      "enum": [
+        "docs_data_only",
+        "tests_only",
+        "runtime_policy",
+        "schema_contract",
+        "adapter_boundary",
+        "provider_boundary",
+        "tool_invocation_boundary",
+        "unknown"
+      ]
+    },
+    "expected_payoff": {
+      "type": "string",
+      "enum": [
+        "reduced_retries",
+        "reduced_latency",
+        "improved_traceability",
+        "reduced_redaction_pressure",
+        "fewer_failed_tool_calls",
+        "improved_tool_classification",
+        "reduced_human_review_load",
+        "unknown"
+      ]
+    },
+    "risk_if_ignored": { "type": "string" },
+    "non_goals": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "local_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    }
+  },
+  "additionalProperties": false
+}

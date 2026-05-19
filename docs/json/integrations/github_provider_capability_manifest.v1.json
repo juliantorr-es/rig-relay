@@ -11,6 +11,7 @@
       "required_permissions": [
         {"permission_id": "metadata:read", "permission_kind": "public_access", "access_level": "read", "required": false}
       ],
+      "requires_repository_access": false,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -26,6 +27,7 @@
       "required_permissions": [
         {"permission_id": "contents:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -41,6 +43,7 @@
       "required_permissions": [
         {"permission_id": "metadata:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -56,6 +59,7 @@
       "required_permissions": [
         {"permission_id": "contents:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -71,6 +75,7 @@
       "required_permissions": [
         {"permission_id": "issues:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -86,6 +91,7 @@
       "required_permissions": [
         {"permission_id": "pull_requests:read", "permission_kind": "github_app_permission", "access_level": "read", "required": false}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -101,6 +107,7 @@
       "required_permissions": [
         {"permission_id": "actions:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -116,6 +123,7 @@
       "required_permissions": [
         {"permission_id": "actions:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -131,6 +139,7 @@
       "required_permissions": [
         {"permission_id": "issues:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -146,6 +155,7 @@
       "required_permissions": [
         {"permission_id": "pull_requests:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -161,6 +171,7 @@
       "required_permissions": [
         {"permission_id": "contents:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -176,6 +187,7 @@
       "required_permissions": [
         {"permission_id": "contents:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -191,6 +203,7 @@
       "required_permissions": [
         {"permission_id": "actions:write", "permission_kind": "github_app_permission", "access_level": "write", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -206,6 +219,7 @@
       "required_permissions": [
         {"permission_id": "administration:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
       ],
+      "requires_repository_access": true,
       "requires_step_up": true,
       "requires_receipt": true,
       "stores_raw_content": false,
@@ -221,6 +235,7 @@
       "required_permissions": [
         {"permission_id": "administration:read", "permission_kind": "github_app_permission", "access_level": "read", "required": true}
       ],
+      "requires_repository_access": false,
       "requires_step_up": false,
       "requires_receipt": true,
       "stores_raw_content": false,

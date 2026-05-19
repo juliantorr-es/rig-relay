@@ -130,6 +130,12 @@ def _read_json(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _canonicalize(value: dict[str, object]) -> dict[str, object]:
+    canonical = json.loads(json.dumps(value, sort_keys=True))
+    canonical["generated_at"] = "<normalized>"
+    return canonical
+
+
 def _load_trend_artifacts(
     report: dict[str, object],
 ) -> tuple[dict[str, object], dict[str, object]]:
@@ -222,8 +228,15 @@ def test_trend_report_schema_validates(tmp_path: Path) -> None:
 
     jsonschema.validate(trend_report, _schema("rig.otel.trend_report.v1"))
     assert trend_report["local_only"] is True
+    assert trend_report["content_light"] is True
     assert trend_report["coordination_ledger_mutated"] is False
     assert trend_report["release_gate_mutated"] is False
+    assert trend_report["comparison_window"]["baseline_run_id"] == "agg-1"
+    assert trend_report["comparison_window"]["latest_run_id"] == "agg-2"
+    assert trend_report["comparison_window"]["method"] in {
+        "chronological",
+        "lexical_fallback",
+    }
 
 
 def test_hardening_delta_schema_validates(tmp_path: Path) -> None:
@@ -239,6 +252,8 @@ def test_hardening_delta_schema_validates(tmp_path: Path) -> None:
 
     jsonschema.validate(deltas, _schema("rig.otel.hardening_delta.v1"))
     assert deltas["trend_run_id"] == "trend-2"
+    assert deltas["local_only"] is True
+    assert deltas["content_light"] is True
 
 
 def test_comparator_reads_two_real_aggregate_run_directories(tmp_path: Path) -> None:
@@ -253,6 +268,8 @@ def test_comparator_reads_two_real_aggregate_run_directories(tmp_path: Path) -> 
 
     assert report["input_aggregate_count"] == 2
     assert report["trend_verdict"] == "pass"
+    assert report["comparison_window"]["baseline_run_id"] == "agg-1"
+    assert report["comparison_window"]["latest_run_id"] == "agg-2"
 
 
 def test_fewer_than_two_runs_produces_hold_and_insufficient_sample(
@@ -519,3 +536,29 @@ def test_no_raw_absolute_paths_or_secret_values_in_trend_outputs(
     assert "/Users/user" not in raw_payload
     assert "do private thing" not in raw_payload
     assert "sk-test-123" not in raw_payload
+
+
+def test_repeated_same_inputs_produce_deterministic_outputs_except_generated_at(
+    tmp_path: Path,
+) -> None:
+    for suffix in ("a", "b"):
+        (tmp_path / suffix).mkdir(parents=True, exist_ok=True)
+        _make_high_latency_run(tmp_path / suffix, "agg-1")
+        _make_low_latency_run(tmp_path / suffix, "agg-2")
+
+    report_a = compare_otel_aggregate_runs(
+        input_root=tmp_path / "a" / "aggregate",
+        trend_run_id="trend-19",
+        output_root=tmp_path / "a" / "trends",
+    )
+    report_b = compare_otel_aggregate_runs(
+        input_root=tmp_path / "b" / "aggregate",
+        trend_run_id="trend-19",
+        output_root=tmp_path / "b" / "trends",
+    )
+
+    trend_report_a, deltas_a = _load_trend_artifacts(report_a)
+    trend_report_b, deltas_b = _load_trend_artifacts(report_b)
+
+    assert _canonicalize(trend_report_a) == _canonicalize(trend_report_b)
+    assert _canonicalize(deltas_a) == _canonicalize(deltas_b)

@@ -57,7 +57,8 @@
         "connection_closed",
         "bridge_error",
         "bridge_failed",
-        "bridge_closed"
+        "bridge_closed",
+        "refusal_emitted"
       ],
       "description": "Lifecycle event type."
     },
@@ -95,6 +96,49 @@
         "refusal_code": { "type": "string" }
       },
       "additionalProperties": false
+    },
+    "inbound_message_id": {
+      "type": "string",
+      "description": "Original inbound envelope message_id that triggered the refusal."
+    },
+    "refusal_message_id": {
+      "type": "string",
+      "description": "Message_id of the generated refusal envelope."
+    },
+    "refusal_kind": {
+      "type": "string",
+      "description": "Canonical refusal kind from the bridge envelope refusal object."
+    },
+    "refused_intent_kind": {
+      "type": "string",
+      "description": "The intent_kind that was refused."
+    },
+    "mutation_class": {
+      "type": "string",
+      "description": "Mutation class of the refused intent, if declared."
+    },
+    "capability_required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Capabilities required by the refused intent."
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true,
+      "description": "Hard invariant: refusal trace events are content_light."
+    },
+    "payload_hash": {
+      "type": "string",
+      "description": "Hash of the refused intent payload, if available."
+    },
+    "refusal_reason_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the refusal reason text for content-light evidence."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["bridge_dispatcher", "websocket_server", "bridge_refusal_builder"],
+      "description": "Which component emitted the refusal trace event."
     }
   },
   "additionalProperties": false
