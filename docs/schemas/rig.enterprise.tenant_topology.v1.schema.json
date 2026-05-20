@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.enterprise.tenant_topology.v1.schema.json",
+  "title": "Rig Enterprise Tenant Topology v1",
+  "description": "Per-tenant spiderweb topology projection. Each tenant sees only its own strands. Content-light aggregate view across tenants.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "tenant_id", "nodes", "edges", "strand_states"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.enterprise.tenant_topology.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "scope": { "type": "string", "enum": ["isolated", "shared_read", "public"] },
+    "status": { "type": "string", "enum": ["live", "degraded", "empty", "no_input"] },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "node_type", "label", "strand_state"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "node_type": { "type": "string" },
+          "label": { "type": "string" },
+          "strand_state": { "type": "string" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "details": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["edge_id", "from_node_id", "to_node_id", "edge_type"],
+        "properties": {
+          "edge_id": { "type": "string" },
+          "from_node_id": { "type": "string" },
+          "to_node_id": { "type": "string" },
+          "edge_type": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["observed", "derived"] },
+          "label": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "strand_states": {
+      "type": "object",
+      "properties": {
+        "total_nodes": { "type": "integer", "minimum": 0 },
+        "active_count": { "type": "integer", "minimum": 0 },
+        "no_input_count": { "type": "integer", "minimum": 0 },
+        "degraded_count": { "type": "integer", "minimum": 0 },
+        "unknown_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "resource_pressure": {
+      "type": "object",
+      "properties": {
+        "reconnect_pressure": { "type": "string" },
+        "queue_pressure": { "type": "string" },
+        "consumer_errors": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "cross_tenant_summary": {
+      "type": "object",
+      "properties": {
+        "total_tenants": { "type": "integer", "minimum": 0 },
+        "healthy_tenants": { "type": "integer", "minimum": 0 },
+        "degraded_tenants": { "type": "integer", "minimum": 0 },
+        "tenant_health_map": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "required": ["total_tenants", "healthy_tenants", "degraded_tenants", "tenant_health_map"]
+    },
+    "redaction_summary": {
+      "type": "object",
+      "properties": {
+        "raw_event_payloads_exposed": { "type": "boolean", "const": false },
+        "envelope_level_only": { "type": "boolean", "const": true },
+        "cross_tenant_data_exposed": { "type": "boolean", "const": false }
+      },
+      "additionalProperties": false
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "read_side_only": { "type": "boolean", "const": true },
+    "mutation_authority": { "type": "boolean", "const": false }
+  },
+  "additionalProperties": false
+}

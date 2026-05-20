@@ -1,7 +1,8 @@
-"""Manual local inference execution CLI.
+"""Manual local inference execution CLI — hardened.
 
-Evaluates and optionally executes a manual local inference request.
-Never auto-starts servers, downloads models, or persists raw prompts/completions.
+--execute alone is not sufficient. Execution requires --approval-file.
+Fixture approval is a separate explicit action (--create-fixture-approval).
+Selection evidence is required (--probe-receipt or explicit fixture).
 """
 
 from __future__ import annotations
@@ -25,7 +26,9 @@ from rig_relay.providers.local_inference.execution_gate import (
     evaluate_execution_gate,
 )
 from rig_relay.providers.local_inference.models import (
+    ApprovedByMode,
     ExecutionStatusKind,
+    ManualExecutionApproval,
     ManualExecutionRequest,
     ManualExecutionResponseReceipt,
     RequestClass,
@@ -36,30 +39,70 @@ from rig_relay.providers.local_inference.selection_policy import (
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Manual local inference execution.")
-    parser.add_argument("--config-root", type=Path, default=None)
-    parser.add_argument(
-        "--prompt-file", type=Path, default=None, help="Read prompt text from file"
-    )
-    parser.add_argument("--prompt", type=str, default=None, help="Prompt text")
-    parser.add_argument("--task-profile", type=str, default="chat_light")
-    parser.add_argument("--max-output-tokens", type=int, default=512)
-    parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--execute", action="store_true", help="Execute request")
-    parser.add_argument("--print-output", action="store_true")
-    parser.add_argument(
-        "--output-dir", type=Path, default=Path(".build/rig-relay/derived")
-    )
-    parser.add_argument("--json", action="store_true")
-    return parser.parse_args(argv)
+    p = argparse.ArgumentParser(description="Manual local inference execution")
+    p.add_argument("--config-root", type=Path, default=None)
+    p.add_argument("--prompt-file", type=Path, default=None)
+    p.add_argument("--prompt", type=str, default=None)
+    p.add_argument("--task-profile", type=str, default="chat_light")
+    p.add_argument("--max-output-tokens", type=int, default=512)
+    p.add_argument("--temperature", type=float, default=0.0)
+    p.add_argument("--execute", action="store_true")
+    p.add_argument("--approval-file", type=Path, default=None)
+    p.add_argument("--create-fixture-approval", action="store_true")
+    p.add_argument("--fixture-approval-output", type=Path, default=None)
+    p.add_argument("--probe-receipt", type=Path, default=None)
+    p.add_argument("--selection-policy-receipt", type=Path, default=None)
+    p.add_argument("--print-output", action="store_true")
+    p.add_argument("--output-dir", type=Path, default=Path(".build/rig-relay/derived"))
+    p.add_argument("--json", action="store_true")
+    return p.parse_args(argv)
 
 
 def _read_prompt(args: argparse.Namespace) -> str:
-    if args.prompt_file:
-        return args.prompt_file.read_text(encoding="utf-8")
-    if args.prompt:
-        return args.prompt
-    return "Hello, this is a manual test prompt."
+    return (
+        args.prompt_file.read_text(encoding="utf-8")
+        if args.prompt_file
+        else args.prompt
+        if args.prompt
+        else "Hello, this is a manual test prompt."
+    )
+
+
+def _load_approval(path: Path) -> ManualExecutionApproval | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return ManualExecutionApproval(**data)
+    except Exception:
+        return None
+
+
+def _build_blocked_stdout(
+    receipt: ManualExecutionResponseReceipt, args: argparse.Namespace
+) -> int:
+    receipt_data = json.loads(receipt.model_dump_json())
+    _write(receipt_data, args)
+    return 0
+
+
+def _write(data: dict, args: argparse.Namespace) -> None:
+    if args.output_dir:
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        out = args.output_dir / "local_inference_manual_execution_receipt.v1.json"
+        out.write_text(
+            json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        msg = f"Receipt written to {out}"
+        print(msg, file=sys.stderr if args.json else sys.stdout)
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+    else:
+        print(f"Status: {data['status']}")
+        if data.get("blocked_reasons"):
+            for r in data["blocked_reasons"]:
+                print(f"  Blocked: {r}")
+        print(f"  Raw prompt persisted: {data['raw_prompt_persisted']}")
+        print(f"  Raw completion persisted: {data['raw_completion_persisted']}")
+        print(f"  Auto execution: {data['automatic_agent_execution']}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,7 +110,6 @@ def main(argv: list[str] | None = None) -> int:
     prompt_text = _read_prompt(args)
     prompt_bytes = prompt_text.encode("utf-8")
     prompt_sha = hashlib.sha256(prompt_bytes).hexdigest()
-    prompt_line_count = prompt_text.count("\n") + 1
 
     airlock = (
         get_airlock()
@@ -78,16 +120,64 @@ def main(argv: list[str] | None = None) -> int:
     config = airlock.get_config() if configured else None
     endpoint_hash = config.endpoint_sha256 if config else ""
 
+    if args.create_fixture_approval:
+        approval = build_approval(
+            approved_by=ApprovedByMode.FIXTURE,
+            scope_endpoint_hash=endpoint_hash,
+            scope_task_profile=args.task_profile,
+            scope_max_prompt_bytes=max(4096, len(prompt_bytes) + 1),
+            scope_max_output_tokens=args.max_output_tokens,
+            ttl_seconds=300,
+        )
+        out_path = args.fixture_approval_output or Path(
+            ".build/rig-relay/derived/local_inference_manual_execution_approval.v1.json"
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(approval.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        print(f"Fixture approval written to {out_path}")
+        if not args.execute:
+            return 0
+
     if not configured:
         receipt = ManualExecutionResponseReceipt(
-            execution_id=f"exec_cli_{secrets.token_hex(4)}",
+            execution_id=f"exec_{secrets.token_hex(4)}",
             request_id="",
             generated_at=datetime.now(UTC).isoformat(),
             status=ExecutionStatusKind.BLOCKED,
             blocked_reasons=["endpoint_not_configured"],
         )
-        _write_output(receipt, args)
-        return 0
+        return _build_blocked_stdout(receipt, args)
+
+    selection_result = None
+    if args.selection_policy_receipt:
+        try:
+            selection_result = json.loads(
+                args.selection_policy_receipt.read_text(encoding="utf-8")
+            )
+        except Exception:
+            pass
+    elif args.probe_receipt:
+        selection_result = evaluate_selection_policy(
+            endpoint_configured=True, endpoint_sha256=endpoint_hash, probe_result=None
+        )
+    else:
+        selection_result = evaluate_selection_policy(
+            endpoint_configured=True, endpoint_sha256=endpoint_hash
+        )
+
+    approval = None
+    if args.approval_file:
+        approval = _load_approval(args.approval_file)
+
+    if args.execute and approval is None:
+        receipt = ManualExecutionResponseReceipt(
+            execution_id=f"exec_{secrets.token_hex(4)}",
+            request_id="",
+            generated_at=datetime.now(UTC).isoformat(),
+            status=ExecutionStatusKind.BLOCKED,
+            blocked_reasons=["approval_missing"],
+        )
+        return _build_blocked_stdout(receipt, args)
 
     request = ManualExecutionRequest(
         request_id=f"req_{secrets.token_hex(8)}",
@@ -96,37 +186,23 @@ def main(argv: list[str] | None = None) -> int:
         endpoint_hash=endpoint_hash,
         prompt_sha256=prompt_sha,
         prompt_byte_count=len(prompt_bytes),
-        prompt_line_count=prompt_line_count,
         max_output_tokens=args.max_output_tokens,
         temperature=args.temperature,
         created_at=datetime.now(UTC).isoformat(),
     )
 
-    selection = evaluate_selection_policy(
-        endpoint_configured=True, endpoint_sha256=endpoint_hash
-    )
-
-    approval = None
-    if args.execute:
-        approval = build_approval(
-            scope_endpoint_hash=endpoint_hash,
-            scope_task_profile=args.task_profile,
-            scope_max_prompt_bytes=max(4096, len(prompt_bytes) + 1),
-            scope_max_output_tokens=args.max_output_tokens,
-            ttl_seconds=300,
-        )
-        request.approval_id = approval.approval_id
-
     gate_result = evaluate_execution_gate(
         endpoint_configured=True,
         endpoint_hash=endpoint_hash,
-        selection_policy_result=selection,
+        selection_policy_result=selection_result,
         approval=approval,
         request=request,
     )
 
-    if gate_result.status == ExecutionStatusKind.EXECUTED and args.execute:
-        assert config is not None
+    if gate_result.status != ExecutionStatusKind.EXECUTED:
+        return _build_blocked_stdout(gate_result, args)
+
+    if args.execute and config and approval:
         from rig_relay.providers.local_inference.execution_client import (
             execute_chat_completion,
         )
@@ -139,14 +215,15 @@ def main(argv: list[str] | None = None) -> int:
                 temperature=args.temperature,
             )
         )
+        status = (
+            ExecutionStatusKind(result["status"])
+            if result["status"]
+            in {"executed", "failed", "timed_out", "malformed_response"}
+            else ExecutionStatusKind.FAILED
+        )
         gate_result = build_executed_receipt(
             request=request,
-            status=(
-                ExecutionStatusKind(result["status"])
-                if result["status"]
-                in {"executed", "failed", "timed_out", "malformed_response"}
-                else ExecutionStatusKind.FAILED
-            ),
+            status=status,
             completion_sha256=result["completion_sha256"],
             completion_byte_count=result["completion_byte_count"],
             output_token_count=result["output_token_count"],
@@ -154,43 +231,17 @@ def main(argv: list[str] | None = None) -> int:
             latency_ms=result["latency_ms"],
             error_class=result.get("error_class", ""),
             model_safe_id=result.get("model_safe_id", ""),
-            selection_policy_status=selection.get("result_kind", ""),
+            selection_policy_status=selection_result.get("result_kind", "")
+            if selection_result
+            else "",
         )
-        gate_result.approval_id = request.approval_id
-        if args.print_output and result.get("content"):
-            print(f"COMPLETION: {result['content']}")
+        gate_result.approval_id = approval.approval_id if approval else ""
+        if args.print_output and result.get("ephemeral_content"):
+            print(f"COMPLETION: {result['ephemeral_content']}")
 
-    _write_output(gate_result, args)
+    receipt_data = json.loads(gate_result.model_dump_json())
+    _write(receipt_data, args)
     return 0
-
-
-def _write_output(
-    receipt: ManualExecutionResponseReceipt, args: argparse.Namespace
-) -> None:
-    receipt_data = json.loads(receipt.model_dump_json())
-    if args.output_dir:
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        out = args.output_dir / "local_inference_manual_execution_receipt.v1.json"
-        out.write_text(
-            json.dumps(receipt_data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
-        msg = f"Receipt written to {out}"
-        if args.json:
-            print(msg, file=sys.stderr)
-        else:
-            print(msg)
-
-    if args.json:
-        print(json.dumps(receipt_data, indent=2, sort_keys=True))
-    else:
-        print(f"Status: {receipt_data['status']}")
-        if receipt_data.get("blocked_reasons"):
-            for r in receipt_data["blocked_reasons"]:
-                print(f"  Blocked: {r}")
-        print(f"  Prompt SHA256: {receipt_data['prompt_sha256'][:16]}...")
-        print(f"  Raw prompt persisted: {receipt_data['raw_prompt_persisted']}")
-        print(f"  Raw completion persisted: {receipt_data['raw_completion_persisted']}")
-        print(f"  Auto execution: {receipt_data['automatic_agent_execution']}")
 
 
 if __name__ == "__main__":

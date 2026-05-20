@@ -26,9 +26,21 @@ from rig_relay.governance.decisions import (
 )
 from rig_relay.runtime.models import (
     RuntimeCapabilityKind,
+    RuntimeProviderKind,
     RuntimeProviderStatus,
     RuntimeProviderTrustTier,
 )
+
+# ── Provider trust tier defaults ──────────────────────────────────────
+
+_PROVIDER_TRUST_TIER_DEFAULTS: dict[str, RuntimeProviderTrustTier] = {
+    RuntimeProviderKind.LOCAL: RuntimeProviderTrustTier.EXECUTOR_CANDIDATE,
+    RuntimeProviderKind.CLI: RuntimeProviderTrustTier.EXECUTOR_CANDIDATE,
+    RuntimeProviderKind.CUSTOM: RuntimeProviderTrustTier.ADVISORY,
+    RuntimeProviderKind.DRY_RUN: RuntimeProviderTrustTier.REVIEWER,
+    RuntimeProviderKind.STUB: RuntimeProviderTrustTier.ADVISORY,
+    RuntimeProviderKind.LOCAL_INFERENCE: RuntimeProviderTrustTier.EXECUTOR_CANDIDATE,
+}
 
 # ── Capability classification ──────────────────────────────────────────
 
@@ -75,6 +87,12 @@ class GovernanceEngine:
     evaluate_action_legality() and a GateDecision is returned
     without side effects.
     """
+
+    @staticmethod
+    def default_trust_tier_for_provider(provider_kind: str) -> RuntimeProviderTrustTier:
+        return _PROVIDER_TRUST_TIER_DEFAULTS.get(
+            provider_kind, RuntimeProviderTrustTier.ADVISORY
+        )
 
     @staticmethod
     def evaluate_action_legality(
@@ -270,4 +288,4 @@ class GovernanceEngine:
         )
 
 
-__all__ = ["GovernanceEngine"]
+__all__ = ["GovernanceEngine", "_is_mutation_capability"]

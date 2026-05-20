@@ -1,0 +1,26 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_chaos_manifest.v1",
+  "content_light": true,
+  "seed": 42,
+  "scenarios_generated": 5,
+  "dimensions": [
+    "branch_outcome",
+    "file_outcome",
+    "pr_outcome",
+    "check_observation",
+    "alert_state",
+    "rate_limit_mode",
+    "approval",
+    "ledger_integrity"
+  ],
+  "dimension_values": {
+    "branch_outcome": 7,
+    "file_outcome": 8,
+    "pr_outcome": 7,
+    "check_observation": 6,
+    "alert_state": 6,
+    "rate_limit_mode": 5,
+    "approval": 6,
+    "ledger_integrity": 7
+  }
+}

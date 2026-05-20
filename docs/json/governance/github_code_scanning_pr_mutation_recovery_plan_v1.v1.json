@@ -1,0 +1,9 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_recovery_plan.v1",
+  "transaction_id": "a1d2abb444b16be26043969120d11227f9e84a275eedcb3439e045689f5267fa",
+  "safe_to_resume": true,
+  "resume_from_step": null,
+  "manual_review_required": false,
+  "no_auto_rollback": true,
+  "alert_update_deferred": true
+}

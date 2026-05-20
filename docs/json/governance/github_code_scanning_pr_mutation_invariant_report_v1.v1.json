@@ -1,0 +1,177 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_invariant_report.v1",
+  "content_light": true,
+  "invariant_count": 20,
+  "results": [
+    {
+      "invariant_id": "no_remote_mutation",
+      "description": "No real remote mutation occurs",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "no_live_network",
+      "description": "No live network call occurs",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "alert_deferred",
+      "description": "Alert update remains deferred",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "pr_not_alert_resolution",
+      "description": "PR creation does not imply alert resolution",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": false,
+      "failures": [
+        "df9270998b8e3a21799058c9921abc40859001109e0674a134be915f1e125295: pr_created + alert_dismissed_elsewhere"
+      ]
+    },
+    {
+      "invariant_id": "rate_limit_no_retry",
+      "description": "Rate-limited scenarios never immediately retry",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": false,
+      "failures": [
+        "0e400877d49c678f456d63478feef224e742916fe0d7737937759fe30f7f09a5: rate_limited but branch_created implies retry"
+      ]
+    },
+    {
+      "invariant_id": "permission_denied_no_success",
+      "description": "Permission-denied never advances to success",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "unknown_requires_reconciliation",
+      "description": "Unknown/timeout requires reconciliation or manual review",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "ledger_corruption_no_success",
+      "description": "Ledger corruption never finalizes success",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": false,
+      "failures": [
+        "df9270998b8e3a21799058c9921abc40859001109e0674a134be915f1e125295: ledger corrupted but pr created"
+      ]
+    },
+    {
+      "invariant_id": "idempotency_respected",
+      "description": "Duplicate idempotency key blocks or reconciles",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": false,
+      "failures": [
+        "0e400877d49c678f456d63478feef224e742916fe0d7737937759fe30f7f09a5: idempotency already succeeded but branch created"
+      ]
+    },
+    {
+      "invariant_id": "rollback_no_mutation",
+      "description": "Rollback guidance never performs mutation",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "branch_not_file",
+      "description": "Branch exists alone never implies file written",
+      "severity": "medium",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "file_not_pr",
+      "description": "File written alone never implies PR created",
+      "severity": "medium",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "pr_not_checks",
+      "description": "PR exists alone never implies checks passed",
+      "severity": "medium",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "checks_not_alert",
+      "description": "Checks passed alone never implies alert closure",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": false,
+      "failures": [
+        "48aa2b40aed88fd38dc2e477146f0008a321528f86282ef9aaea0c601c937b9b: checks passed + alert resolved"
+      ]
+    },
+    {
+      "invariant_id": "approval_gate",
+      "description": "Missing/denied approval never mutates",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "path_safety",
+      "description": "Unsafe/workflow paths block before remote write",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "raw_payloads_blocked",
+      "description": "Raw payloads/response bodies never appear in artifacts",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "event_fabric_safe",
+      "description": "Event fabric events never trigger commands",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "destructive_repair_forbidden",
+      "description": "Destructive ledger rewrite is forbidden",
+      "severity": "critical",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    },
+    {
+      "invariant_id": "reconcile_no_fabrication",
+      "description": "Reconciliation never fabricates remote truth",
+      "severity": "high",
+      "scenarios_checked": 5,
+      "passed": true,
+      "failures": []
+    }
+  ]
+}

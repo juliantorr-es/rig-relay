@@ -942,3 +942,33 @@ class TelemetryClient:
         self.send_telemetry_event(
             EventName.SHADOW_REQUEST_ASSEMBLED, payload, receipt_candidate=False
         )
+
+    def send_context_envelope_governed_compiled(
+        self,
+        *,
+        session_id: str,
+        packet_id: str,
+        source_ref_count: int,
+        dirty_file_count: int,
+        blocker_count: int,
+        warning_count: int,
+    ) -> None:
+        payload = {
+            "session_id": session_id,
+            "packet_id": packet_id,
+            "source_ref_count": source_ref_count,
+            "dirty_file_count": dirty_file_count,
+            "blocker_count": blocker_count,
+            "warning_count": warning_count,
+        }
+        self.send_telemetry_event(
+            EventName.CONTEXT_ENVELOPE_GOVERNED_COMPILED,
+            payload,
+            receipt_candidate=False,
+        )
+
+    def send_context_envelope_governed_ad_hoc(self, *, session_id: str) -> None:
+        payload = {"session_id": session_id}
+        self.send_telemetry_event(
+            EventName.CONTEXT_ENVELOPE_GOVERNED_AD_HOC, payload, receipt_candidate=False
+        )

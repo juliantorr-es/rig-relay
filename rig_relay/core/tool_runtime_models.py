@@ -77,6 +77,7 @@ class RefusalCode(StrEnum):
     MALFORMED_TOOL_ARGS = "malformed_tool_args"
     UNSUPPORTED_EXECUTION_MODE = "unsupported_execution_mode"
     CAPABILITY_GATED = "capability_gated"
+    LOCAL_ACTION_ENVELOPE_REQUIRED = "local_action_envelope_required"
 
 
 class ToolRuntimeRequest(BaseModel):
@@ -100,6 +101,7 @@ class ToolRuntimeRequest(BaseModel):
     actor: str | None = None
     execution_mode: ToolRuntimeExecutionMode = ToolRuntimeExecutionMode.UNKNOWN
     context_envelope_id: str | None = None
+    local_action_envelope: dict[str, Any] | None = None
     bypass_permissions: bool = False
     audit_context: dict[str, Any] = Field(default_factory=dict)
     runtime_envelope_sha256: str | None = None

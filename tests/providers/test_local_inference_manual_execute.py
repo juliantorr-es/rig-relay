@@ -6,30 +6,23 @@ Classifications: contract, unit, integration, real-artifact, adversarial, substr
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 import httpx
 import pytest
 import respx  # noqa: I202
 
 from rig_relay.providers.local_inference import (
-    ApprovalStatus,
-    ApprovedByMode,
     ExecutionStatusKind,
-    ManualExecutionApproval,
     ManualExecutionRequest,
-    ManualExecutionResponseReceipt,
-    PersistencePolicy,
     RequestClass,
     build_approval,
     build_blocked_receipt,
     build_executed_receipt,
-    compute_approval_hash,
     evaluate_execution_gate,
     evaluate_selection_policy,
     execute_chat_completion,
@@ -371,7 +364,7 @@ class TestSubstrateRedaction:
         receipt = build_executed_receipt(
             req,
             status=ExecutionStatusKind.EXECUTED,
-            completion_sha256=hashlib.sha256("2".encode()).hexdigest(),
+            completion_sha256=hashlib.sha256(b"2").hexdigest(),
             completion_byte_count=1,
             output_token_count=1,
             latency_ms=100,

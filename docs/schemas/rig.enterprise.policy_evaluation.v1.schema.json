@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.enterprise.policy_evaluation.v1.schema.json",
+  "title": "Enterprise Policy Evaluation v1",
+  "description": "Canonical policy evaluation produced by the Rig Relay enterprise policy engine. Contains results for all 12 pre-defined readiness gates, operator acknowledgement references, and the computed next-safe-action verdict.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "policy_id",
+    "all_passed",
+    "passed_count",
+    "failed_count",
+    "blocked_count",
+    "next_action",
+    "gates",
+    "operator_acknowledgements_required"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.enterprise.policy_evaluation.v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "Policy identifier, e.g. rig.enterprise.policy.v1"
+    },
+    "all_passed": {
+      "type": "boolean",
+      "description": "True when all gates pass"
+    },
+    "passed_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failed_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocked_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Gates that did not pass due to a blocked_reason"
+    },
+    "next_action": {
+      "type": "string",
+      "enum": ["execute", "blocked", "needs_human_review"],
+      "description": "Computed verdict: execute (all passed), blocked (blocked_count > 0), needs_human_review (failures without block reasons)"
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "gate_id",
+          "passed",
+          "current_value",
+          "required_value",
+          "evidence",
+          "blocked_reason"
+        ],
+        "properties": {
+          "gate_id": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "current_value": { "type": "string" },
+          "required_value": { "type": "string" },
+          "evidence": { "type": "string" },
+          "blocked_reason": { "type": "string" }
+        }
+      },
+      "minItems": 1
+    },
+    "operator_acknowledgements_required": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of operator acknowledgement strings from the operator checklist"
+    }
+  },
+  "additionalProperties": false
+}

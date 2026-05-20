@@ -1,0 +1,61 @@
+{
+  "schema_version": "rig.github.carte_blanche_surface_report.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "content_light": true,
+  "boundary_available": true,
+  "surfaces": {
+    "proven_live (branch/file/PR)": {
+      "count": 3,
+      "status": "implemented"
+    },
+    "probed_read_only (issues, releases, actions, pages, webhooks, collaborators)": {
+      "count": 6,
+      "status": "read_only_verified"
+    },
+    "modeled_alert_management (dismissal/reopen)": {
+      "count": 2,
+      "status": "modeled_blocked_by_default"
+    },
+    "forbidden (pr_merge, workflow_edit)": {
+      "count": 2,
+      "status": "forbidden"
+    },
+    "total_surfaces": 13
+  },
+  "probes": {
+    "issues": {
+      "probed": true,
+      "status_code": 200,
+      "count": 1
+    },
+    "releases": {
+      "probed": true,
+      "status_code": 200,
+      "count": 0
+    },
+    "actions": {
+      "probed": true,
+      "status_code": 200,
+      "count": 10
+    },
+    "pages": {
+      "probed": true,
+      "status_code": 200,
+      "has_pages": false
+    },
+    "webhooks": {
+      "probed": true,
+      "status_code": 200,
+      "count": 0
+    },
+    "collaborators": {
+      "probed": true,
+      "status_code": 200,
+      "count": 1
+    }
+  },
+  "redaction_summary": {
+    "content_light": true
+  },
+  "recommended_next": "enable gated writes for issues + releases"
+}

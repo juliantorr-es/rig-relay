@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_mutation_runbook.v1.schema.json",
+  "title": "Live Mutation Runbook v1",
+  "description": "Step-by-step runbook for preparing and executing a governed live GitHub pull request mutation for a code scanning alert fix.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "purpose",
+    "prerequisites",
+    "environment_variables",
+    "cli_commands",
+    "gate_checklist",
+    "expected_artifacts",
+    "expected_github_operations",
+    "expected_blocked_states",
+    "success_criteria",
+    "rollback_steps",
+    "post_review_steps",
+    "alert_deferred_explanation",
+    "troubleshooting",
+    "rate_limit_handling",
+    "privacy_posture",
+    "stop_conditions"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.live_mutation_runbook.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "purpose": { "type": "string" },
+    "prerequisites": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "environment_variables": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/env_var_entry" }
+    },
+    "cli_commands": {
+      "type": "object",
+      "required": ["dry_run", "simulate", "live_execution", "verify"],
+      "properties": {
+        "dry_run": { "type": "string" },
+        "simulate": { "type": "string" },
+        "live_execution": { "type": "string" },
+        "verify": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "gate_checklist": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gate_check_entry" }
+    },
+    "expected_artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/artifact_entry" }
+    },
+    "expected_github_operations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected_blocked_states": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/blocked_state_entry" }
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rollback_steps": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/rollback_step_entry" }
+    },
+    "post_review_steps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "alert_deferred_explanation": { "type": "string" },
+    "troubleshooting": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/troubleshooting_entry" }
+    },
+    "rate_limit_handling": { "type": "string" },
+    "privacy_posture": { "type": "string" },
+    "stop_conditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "env_var_entry": {
+      "type": "object",
+      "required": ["name", "description", "required", "example"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "required": { "type": "boolean" },
+        "example": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "gate_check_entry": {
+      "type": "object",
+      "required": ["gate", "command_to_verify", "expected_result"],
+      "properties": {
+        "gate": { "type": "string" },
+        "command_to_verify": { "type": "string" },
+        "expected_result": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "artifact_entry": {
+      "type": "object",
+      "required": ["artifact_path", "purpose", "required"],
+      "properties": {
+        "artifact_path": { "type": "string" },
+        "purpose": { "type": "string" },
+        "required": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "blocked_state_entry": {
+      "type": "object",
+      "required": ["state", "reason", "resolution"],
+      "properties": {
+        "state": { "type": "string" },
+        "reason": { "type": "string" },
+        "resolution": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "rollback_step_entry": {
+      "type": "object",
+      "required": ["step", "command", "description"],
+      "properties": {
+        "step": { "type": "integer", "minimum": 1 },
+        "command": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "troubleshooting_entry": {
+      "type": "object",
+      "required": ["issue", "cause", "resolution"],
+      "properties": {
+        "issue": { "type": "string" },
+        "cause": { "type": "string" },
+        "resolution": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

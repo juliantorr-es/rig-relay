@@ -22,9 +22,10 @@
     "warnings",
     "read_only_actions",
     "service_state",
-    "profile_readme_lane",
     "resources",
-    "spiderweb_topology"
+    "spiderweb_topology",
+    "security_lifecycle_program",
+    "live_mutation_readiness"
   ],
   "properties": {
     "schema_version": {
@@ -599,6 +600,136 @@
         "source_artifacts": {"type": "object"},
         "publish_disabled": {"type": "boolean"},
         "publish_disabled_reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": ["available"]
+    },
+    "security_lifecycle_program": {
+      "type": "object",
+      "description": "Content-light GitHub security lifecycle program projection from governance artifacts. No raw source contents, diffs, or API payloads.",
+      "properties": {
+        "available": { "type": "boolean" },
+        "status": { "type": "string" },
+        "phase_status": { "type": "string" },
+        "queue_summary": {
+          "type": "object",
+          "properties": {
+            "total_artifacts": { "type": "integer", "minimum": 0 },
+            "present_count": { "type": "integer", "minimum": 0 },
+            "missing_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "selected_alert_summary": {
+          "type": "object",
+          "properties": {
+            "total_stages": { "type": "integer", "minimum": 0 },
+            "stages_present": { "type": "integer", "minimum": 0 },
+            "current_stage_count": { "type": "integer", "minimum": 0 },
+            "blocked_stage_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "current_stage": { "type": "string" },
+        "next_safe_action": { "type": "string" },
+        "mutation_status": {
+          "type": "object",
+          "properties": {
+            "remote_mutation": { "type": "boolean" },
+            "local_mutation": { "type": "boolean" }
+          }
+        },
+        "approval_status": { "type": "string" },
+        "pr_lifecycle_state": { "type": "string" },
+        "alert_lifecycle_state": { "type": "string" },
+        "blocked_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "permission_summary": {
+          "type": "object",
+          "properties": {
+            "gates_passed": { "type": "integer", "minimum": 0 },
+            "gates_total": { "type": "integer", "minimum": 0 },
+            "verdict": { "type": "string" },
+            "read_permissions": { "type": "array", "items": { "type": "string" } },
+            "mutation_permissions": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "evidence_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "sha256": { "type": "string" }
+            }
+          }
+        },
+        "event_fabric_summary": {
+          "type": "object",
+          "properties": {
+            "event_count": { "type": "integer", "minimum": 0 },
+            "active_strands": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "spiderweb_topology_summary": {
+          "type": "object",
+          "properties": {
+            "node_count": { "type": "integer", "minimum": 0 },
+            "edge_count": { "type": "integer", "minimum": 0 },
+            "active_strands": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "raw_payloads_exposed": { "type": "boolean" },
+        "redaction_status": { "type": "string" }
+      },
+      "required": ["available"]
+    },
+    "live_mutation_readiness": {
+      "type": "object",
+      "description": "Content-light live mutation readiness projection from governance artifacts. No raw source contents, tokens, or API payloads.",
+      "properties": {
+        "available": { "type": "boolean" },
+        "live_mutation_readiness_status": { "type": "string" },
+        "operator_checklist_status": { "type": "string" },
+        "runbook_status": { "type": "string" },
+        "required_flags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "required_permissions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "readiness_gates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "blocked_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "next_safe_action": { "type": "string" },
+        "expected_live_operations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "deferred_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rollback_guidance_summary": { "type": "string" },
+        "evidence_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "present": { "type": "boolean" },
+              "sha256": { "type": "string" }
+            }
+          }
+        },
+        "raw_payloads_exposed": { "type": "boolean" },
+        "redaction_status": { "type": "string" }
       },
       "required": ["available"]
     },

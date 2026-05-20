@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.shadow_safety_policy.v1",
+  "title": "Shadow Safety Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_id", "generated_at", "automatic_agent_execution", "agent_state_mutated", "tool_execution_allowed", "file_mutation_allowed", "raw_prompt_persisted", "raw_completion_persisted"],
+  "properties": {
+    "schema_version": {"const": "rig.local_inference.shadow_safety_policy.v1"},
+    "policy_id": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "automatic_agent_execution": {"const": false},
+    "agent_state_mutated": {"const": false},
+    "tool_execution_allowed": {"const": false},
+    "file_mutation_allowed": {"const": false},
+    "provider_fallback_execution_allowed": {"type": "boolean"},
+    "shadow_output_promotable_to_user": {"type": "boolean"},
+    "shadow_output_promotable_to_training": {"type": "boolean"},
+    "raw_prompt_persisted": {"const": false},
+    "raw_completion_persisted": {"const": false}
+  }
+}

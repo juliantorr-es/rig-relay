@@ -1,0 +1,13 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_transaction_finalization.v1",
+  "transaction_id": "a1d2abb444b16be26043969120d11227f9e84a275eedcb3439e045689f5267fa",
+  "status": "finalized_success",
+  "remote_mutation_succeeded": true,
+  "branch_created": true,
+  "file_written": true,
+  "pr_created": true,
+  "pr_state": "unknown",
+  "alert_updated": false,
+  "alert_update_deferred": true,
+  "manual_review_required": false
+}

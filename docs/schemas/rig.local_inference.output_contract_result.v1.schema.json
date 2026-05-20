@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.output_contract_result.v1",
+  "title": "Output Contract Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "result_id", "scenario_id", "contract", "status"],
+  "properties": {
+    "schema_version": {"const": "rig.local_inference.output_contract_result.v1"},
+    "result_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string"},
+    "contract": {"type": "string"},
+    "status": {"type": "string", "enum": ["passed", "failed", "unsupported", "execution_failed", "blocked_before_execution"]},
+    "failure_codes": {"type": "array", "items": {"type": "string"}},
+    "completion_sha256": {"type": "string"},
+    "completion_byte_count": {"type": "integer"},
+    "completion_is_json": {"type": "boolean"},
+    "completion_top_level_type": {"type": "string"},
+    "completion_required_keys_found": {"type": "array", "items": {"type": "string"}},
+    "completion_required_keys_missing": {"type": "array", "items": {"type": "string"}},
+    "completion_char_count": {"type": "integer"},
+    "max_length_exceeded": {"type": "boolean"}
+  }
+}

@@ -1,38 +1,167 @@
 {
   "schema_version": "rig.github.security_lifecycle_phase2_rc_report.v1",
-  "generated_at": "2026-05-20T18:42:59.804388+00:00",
+  "generated_at": "2026-05-20T21:02:41.021456+00:00",
+  "content_light": true,
   "branch": "main",
-  "head": "6ed7fbc",
+  "head_before": "309a86db",
+  "head_after": "309a86db",
+  "dirty_state_before": [],
+  "dirty_state_after": [],
   "phase_name": "Phase 2 — Security Lifecycle Program",
-  "phase_status": "release_candidate",
+  "phase_status": "rc_convergence_complete",
   "slices_completed": 10,
-  "artifacts_inventory_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_program_inventory_v1.v1.json",
+  "slice_names": [
+    "Slice 0 — Security Intake",
+    "Slice 1 — Queue Ranking",
+    "Slice 2 — Remediation Plan",
+    "Slice 3 — Patch Proposal",
+    "Slice 4 — Patch Preview",
+    "Slice 5 — Source Context",
+    "Slice 6 — Candidate Diff",
+    "Slice 7 — PR Creation Plan",
+    "Slice 8 — Mutation Readiness",
+    "Slice 9 — PR Mutation Executor (Slice 10 — Post-PR Lifecycle)"
+  ],
+  "artifact_inventory_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_program_inventory_v1.v1.json",
   "replay_artifact_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_replay_v1.v1.json",
   "causal_report_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_causal_report_v1.v1.json",
   "permission_boundary_audit_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_permission_boundary_audit_v1.v1.json",
-  "cockpit_projection_summary": "security_lifecycle_program projection available; read-only; no raw payloads",
-  "queue_summary": "45 items, 3 blocked, 27 open",
-  "remediation_summary": "top 3 code_scanning items selected; source-aware strategies",
-  "patch_summary": "content-light proposal; no raw snippets; no mutation",
-  "source_context_summary": "blocked by default; live API gated",
-  "pr_plan_summary": "branch safety; deterministic naming; approval chain; dry-run default",
-  "mutation_readiness_summary": "simulation passed with approval; temp repo only; 32 tests",
-  "mutation_executor_summary": "7-step pipeline; fake boundary; 41 tests; remote disabled",
-  "post_pr_lifecycle_summary": "PR+alert states; 5 alert paths; 32 tests; alert deferred",
-  "permission_model_summary": "read/write/PR/alert permissions separated; no planning-stage mutation",
-  "mutation_model_summary": "all remote mutation disabled by default; gated behind execute-remote-mutation",
-  "approval_model_summary": "human_required by default; config_policy_allowed; denied supported",
-  "idempotency_model_summary": "deterministic per-stage; repo+alert+diff+plan+branch",
-  "fake_boundary_summary": "simulates refget, branchcreate, filewrite, PRcreate, alertstate, alertdismissal; records trace",
-  "event_fabric_summary": "causal chain mapped; events content-light; no mutation triggers",
-  "cockpit_readiness_summary": "projection available; read-only widget registered (Slice 5); backend authority preserved",
+  "cockpit_projection_summary": {
+    "status": "available",
+    "detail": "security_lifecycle_program projection registered in build_projection(); widget in operator mode; read-only",
+    "read_only": true,
+    "raw_payloads_exposed": false,
+    "tests": 4
+  },
+  "spiderweb_topology_summary": {
+    "status": "derived_from_causal_report",
+    "detail": "15 nodes, 16 edges mapped via event_fabric seed; spiderweb manifest and HTML generated; remote assets: 0; raw payloads exposed: 0",
+    "read_only": true,
+    "raw_payloads_exposed": false,
+    "tests": 4
+  },
+  "queue_summary": {
+    "status": "complete",
+    "detail": "45 items, 3 blocked, 27 open; 5 surfaces scanned",
+    "stage_slice": 1,
+    "tests": 23,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "remediation_summary": {
+    "status": "complete",
+    "detail": "top 3 code_scanning items selected; source-aware strategies; rest rejected",
+    "stage_slice": 2,
+    "tests": 19,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "patch_summary": {
+    "status": "complete",
+    "detail": "content-light proposal; no raw snippets; no mutation; strategy-level",
+    "stage_slice": 3,
+    "tests": 21,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "source_context_summary": {
+    "status": "complete",
+    "detail": "blocked by default; live API gated; file resolution deferred",
+    "stage_slice": 5,
+    "tests": 18,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "candidate_diff_summary": {
+    "status": "complete",
+    "detail": "dry-run diff classification; gated on source context hash",
+    "stage_slice": 6,
+    "tests": 16,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "pr_plan_summary": {
+    "status": "complete",
+    "detail": "branch safety; deterministic naming; approval chain; dry-run default",
+    "stage_slice": 7,
+    "tests": 18,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "mutation_readiness_summary": {
+    "status": "complete",
+    "detail": "simulation passed with approval; temp repo only; preflight gating",
+    "stage_slice": 8,
+    "tests": 32,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "mutation_executor_summary": {
+    "status": "complete",
+    "detail": "7-step pipeline; fake boundary; remote disabled; simulation only",
+    "stage_slice": 9,
+    "tests": 41,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "post_pr_lifecycle_summary": {
+    "status": "complete",
+    "detail": "PR+alert states; 5 alert paths; alert deferred; no PR created",
+    "stage_slice": 10,
+    "tests": 32,
+    "remote_mutation": false,
+    "content_light": true
+  },
+  "permission_model_summary": {
+    "status": "proved",
+    "detail": "read/write/PR/alert permissions separated; no planning-stage mutation; 15 gates proved",
+    "tests": 15
+  },
+  "mutation_model_summary": {
+    "status": "disabled_by_default",
+    "detail": "all remote mutation disabled by default; gated behind execute-remote-mutation; actual_project_mutation: false",
+    "tests": 15
+  },
+  "approval_model_summary": {
+    "status": "governed",
+    "detail": "human_required by default; config_policy_allowed; denied supported; approval receipts tracked",
+    "tests": 15
+  },
+  "idempotency_model_summary": {
+    "status": "deterministic",
+    "detail": "deterministic per-stage; repo+alert+diff+plan+branch key determinants",
+    "tests": 6
+  },
+  "fake_boundary_summary": {
+    "status": "active_simulation",
+    "detail": "simulates refget, branchcreate, filewrite, PRcreate, alertstate, alertdismissal; records trace; temp_repo_local_mutation: true",
+    "tests": 12
+  },
+  "event_fabric_summary": {
+    "status": "mapped",
+    "detail": "causal chain mapped; 12 events content-light; no mutation triggers; observability only",
+    "tests": 12
+  },
+  "cockpit_readiness_summary": {
+    "status": "widget_registered",
+    "detail": "projection available; read-only widget registered (operator mode); backend authority preserved; frontend is dumb renderer",
+    "tests": 4
+  },
   "redaction_summary": {
+    "content_light": true,
+    "no_raw_payloads": true,
     "matches_found": 0,
     "artifacts_scanned": 12,
     "all_clean": true
   },
   "schema_validation_summary": {
-    "schemas_valid": true
+    "schemas_valid": true,
+    "schemas_validated": 5
+  },
+  "static_validation_summary": {
+    "static_checks_passed": true,
+    "linter_clean": "ruff check --fix passes on consolidation module and tests",
+    "type_check_clean": "pyright passes on consolidation module"
   },
   "tests_summary": {
     "total_tests_phase2": 239,
@@ -45,27 +174,42 @@
     "real_artifact": true,
     "substrate": true
   },
-  "telemetry_redaction_implications": "all artifacts content-light; no tokens, no auth headers, no raw bodies, no vulnerable snippets",
+  "telemetry_redaction_implications": "all artifacts content-light; no tokens, no auth headers, no raw bodies, no vulnerable snippets; observability events use SHA256 hashes",
   "dependency_changes": [],
   "completed_work": [
-    "all_10_slices",
-    "inventory",
-    "replay",
-    "causal_report",
-    "permission_audit",
-    "rc_report"
+    "all 10 slices",
+    "artifact inventory (Workstream A)",
+    "end-to-end replay (Workstream B)",
+    "cockpit projection (Workstream C as part of E)",
+    "causal/spiderweb report (Workstream D)",
+    "permission boundary audit (Workstream C)",
+    "RC convergence report (Workstream F)",
+    "comprehensive tests (Workstream F tests)"
   ],
   "intentionally_deferred": [
     "live_remote_mutation",
     "live_alert_update",
     "live_pr_merge",
-    "cockpit_full_ui"
+    "cockpit_full_ui",
+    "secret_scanning_surface",
+    "dependabot_surface"
   ],
   "discovered_out_of_scope_risks": [
     "rate_limit_ledger_needed_for_multi_repo",
     "secret_scanning_still_refused",
-    "dependabot_still_refused"
+    "dependabot_still_refused",
+    "live_mutation_preflight_needs_provider_token"
   ],
   "recommended_next_phase": "Phase 3 — live gated mutation with RIG_LIVE_AUTH_TESTS",
-  "recommended_next_slice": "Phase 3 Slice 1 — live permission verification + actual PR creation test"
+  "recommended_next_slice": "Phase 3 Slice 1 — live permission verification + actual PR creation test",
+  "governance_statements": {
+    "dry_run_first": true,
+    "real_mutation_disabled_by_default": true,
+    "fake_mutation_separate_from_real": true,
+    "pr_creation_does_not_imply_alert_resolution": true,
+    "alert_dismissal_requires_separate_gate": true,
+    "planning_only_no_mutation": true,
+    "raw_payloads_excluded": true,
+    "event_fabric_signals_are_observability_not_triggers": true
+  }
 }

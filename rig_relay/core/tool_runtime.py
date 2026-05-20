@@ -25,6 +25,7 @@ from rig_relay.core.tool_runtime_models import (
     RefusalCode,
     ToolRuntimeApprovalStatus,
     ToolRuntimeCacheStatus,
+    ToolRuntimeExecutionMode,
     ToolRuntimeRefusal,
     ToolRuntimeRequest,
     ToolRuntimeResult,
@@ -32,7 +33,21 @@ from rig_relay.core.tool_runtime_models import (
 )
 from rig_relay.core.tool_subprocess import ToolSubprocessRunner
 from rig_relay.core.tools.base import ToolPermissionError
+from rig_relay.governance.decisions import GovernanceDecisionKind
+from rig_relay.governance.governance_engine import GovernanceEngine
+from rig_relay.runtime.models import RuntimeCapabilityKind
 from rig_relay.runtime.supervisor_result import RuntimeSupervisorResultClassification
+
+_TOOL_CAPABILITY_KINDS: dict[str, list[RuntimeCapabilityKind]] = {
+    "bash": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+    "write_file": [RuntimeCapabilityKind.FILE_WRITE_PROPOSAL],
+    "search_replace": [RuntimeCapabilityKind.PATCH_PROPOSAL],
+    "checkpoint": [RuntimeCapabilityKind.COORDINATION_WRITE],
+    "coordination": [RuntimeCapabilityKind.COORDINATION_WRITE],
+    "behavior_patch": [RuntimeCapabilityKind.PATCH_PROPOSAL],
+    "task": [RuntimeCapabilityKind.SHELL_PROPOSAL],
+    "worktree": [RuntimeCapabilityKind.WORKTREE_WRITE],
+}
 
 
 def _get_profile_gate() -> Any | None:
@@ -274,6 +289,94 @@ class ToolRuntime:
                         message=f"Profile gate: {reason}",
                         recoverable=True,
                         suggested_next_action="Unlock the profile to enable mutation tools",
+                    ),
+                    approval_status=ToolRuntimeApprovalStatus.DENIED,
+                ).model_copy(
+                    update={
+                        "source_kind": request.source_kind,
+                        "source_id": request.source_id,
+                        "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                    }
+                )
+
+        # ── 1.6. Governance engine check for mutation tools ────
+        if request.execution_mode in {
+            ToolRuntimeExecutionMode.MUTATION_EXECUTION,
+            ToolRuntimeExecutionMode.MUTATION_PROPOSAL,
+        }:
+            caps = _TOOL_CAPABILITY_KINDS.get(tn.lower(), [])
+            decision = GovernanceEngine.evaluate_action_legality(
+                workspace_id=request.workspace_root,
+                intent_id=cid,
+                intent_kind="tool_execution",
+                requested_capabilities=caps,
+                allow_mutation=True,
+            )
+            if decision.decision == GovernanceDecisionKind.BLOCKED:
+                self._stats_delta("tool_calls_rejected", 1)
+                _finalize_span(
+                    status_str="refused",
+                    attrs={
+                        "tool.status": "refused",
+                        "tool.refusal_code": "governance_blocked",
+                    },
+                )
+                block_msg = (
+                    decision.blocked_intents[0].reason
+                    if decision.blocked_intents
+                    else "Governance blocked"
+                )
+                return ToolRuntimeResult.refused(
+                    tool_name=tn,
+                    tool_call_id=cid,
+                    refusal=ToolRuntimeRefusal(
+                        refusal_code=RefusalCode.CAPABILITY_GATED,
+                        message=f"Governance blocked: {block_msg}",
+                        recoverable=True,
+                        suggested_next_action="Resolve governance gates before retrying",
+                    ),
+                    approval_status=ToolRuntimeApprovalStatus.DENIED,
+                ).model_copy(
+                    update={
+                        "source_kind": request.source_kind,
+                        "source_id": request.source_id,
+                        "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                    }
+                )
+
+        # ── 1.7. Local action envelope gate ────────────────────
+        if request.execution_mode == ToolRuntimeExecutionMode.MUTATION_EXECUTION:
+            from rig_relay.governance.local_action_gate import require_signed_envelope
+
+            capability = f"tool:{tn}"
+            decision = require_signed_envelope(
+                action=tn,
+                payload=request.tool_args,
+                required_capability=capability,
+                envelope=request.local_action_envelope,
+            )
+            if decision.decision != GovernanceDecisionKind.ALLOWED:
+                reason_msg = (
+                    decision.reasons[0].message if decision.reasons else "blocked"
+                )
+                self._stats_delta("tool_calls_rejected", 1)
+                _finalize_span(
+                    status_str="refused",
+                    attrs={
+                        "tool.status": "refused",
+                        "tool.refusal_code": "local_action_envelope_required",
+                    },
+                )
+                return ToolRuntimeResult.refused(
+                    tool_name=tn,
+                    tool_call_id=cid,
+                    refusal=ToolRuntimeRefusal(
+                        refusal_code=RefusalCode.LOCAL_ACTION_ENVELOPE_REQUIRED,
+                        message=f"Local action envelope required: {reason_msg}",
+                        recoverable=True,
+                        suggested_next_action=(
+                            "Provide a valid signed local action envelope"
+                        ),
                     ),
                     approval_status=ToolRuntimeApprovalStatus.DENIED,
                 ).model_copy(

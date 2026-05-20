@@ -4,6 +4,9 @@ Extracted from agent_loop.py. Builds context envelopes from workspace
 state (AGENTS.md, git state, dirty files) and injects them into the
 message list. Also reports context assembly telemetry for layout
 planning and prefix caching. Best-effort: failures are logged.
+
+When ``governed_context_enabled`` is True, delegates to the governed
+MissionContextCompiler instead of ad-hoc ContextCompiler assembly.
 """
 
 from __future__ import annotations
@@ -23,6 +26,42 @@ class ContextEnvelopeMixin:
     """Mixin providing context envelope construction and assembly telemetry."""
 
     async def _build_context_envelope(self, user_msg: str) -> None:
+        if self.config.governed_context_enabled:
+            await self._build_context_envelope_governed()
+            return
+        await self._build_context_envelope_ad_hoc(user_msg)
+
+    async def _build_context_envelope_governed(self) -> None:
+        try:
+            from rig_relay.governance.context_envelope_bridge import (
+                compile_governed_context,
+            )
+
+            packet, receipt, issues = compile_governed_context(
+                repo_root=self._workspace_root,
+                mission_id=self.session_id,
+                title=f"AgentLoop session {self.session_id[:8]}",
+            )
+
+            self._governed_context_packet = packet
+            self._governed_context_receipt = receipt
+
+            if self.config.enable_local_observability:
+                try:
+                    self.telemetry_client.send_context_envelope_governed_compiled(
+                        session_id=self.session_id,
+                        packet_id=packet.packet_id,
+                        source_ref_count=len(packet.source_refs),
+                        dirty_file_count=len(packet.dirty_file_states),
+                        blocker_count=len(packet.blockers),
+                        warning_count=len(packet.warnings),
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            logger.warning("Failed to build governed context envelope", exc_info=True)
+
+    async def _build_context_envelope_ad_hoc(self, user_msg: str) -> None:
         compiler = self._context_compiler
         if compiler is None:
             return
@@ -41,6 +80,14 @@ class ContextEnvelopeMixin:
                     self.messages.insert(-1, context_block)
                 else:
                     self.messages.append(context_block)
+
+            if self.config.enable_local_observability:
+                try:
+                    self.telemetry_client.send_context_envelope_governed_ad_hoc(
+                        session_id=self.session_id
+                    )
+                except Exception:
+                    pass
         except Exception:
             logger.warning("Failed to build context envelope", exc_info=True)
 

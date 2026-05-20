@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.enterprise.attestation.v1.schema.json",
+  "title": "Enterprise Attestation v1",
+  "description": "Cryptographically signed attestation that binds a policy evaluation to an operator identity. Uses HKDF-derived HMAC-SHA256 for local attestation. Designed for later OIDC-based key exchange.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "attestation_id",
+    "policy_evaluation_id",
+    "signed_by",
+    "signed_at",
+    "signature_hash",
+    "acknowledged_gates",
+    "acknowledged_checks",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.enterprise.attestation.v1"
+    },
+    "attestation_id": {
+      "type": "string",
+      "description": "Attestation identifier, derived from policy_evaluation_id prefix"
+    },
+    "policy_evaluation_id": {
+      "type": "string",
+      "description": "SHA-256 hash of the canonicalized policy evaluation this attestation covers"
+    },
+    "signed_by": {
+      "type": "string",
+      "description": "Operator identity (placeholder for OIDC subject)"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of signature"
+    },
+    "signature_hash": {
+      "type": "string",
+      "description": "HMAC-SHA256 signature over canonical evaluation + operator_id + signed_at"
+    },
+    "acknowledged_gates": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Gate IDs that passed and are acknowledged by operator"
+    },
+    "acknowledged_checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Operator acknowledgement strings that were checked"
+    },
+    "content_light": {
+      "type": "boolean",
+      "description": "Always true — no raw secrets, tokens, or vulnerable code"
+    }
+  },
+  "additionalProperties": false
+}

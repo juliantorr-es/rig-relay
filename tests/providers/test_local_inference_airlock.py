@@ -23,15 +23,9 @@ from rig_relay.providers.local_inference import (
     build_config_receipt,
     build_probe_receipt,
     build_routing_receipt,
-    get_airlock,
-    is_local_inference_available,
     is_local_inference_configured,
     probe_local_endpoint,
     select_runtime,
-)
-from rig_relay.providers.local_inference.airlock import DEFAULT_CONFIG_ROOT
-from rig_relay.providers.local_inference.receipts import (
-    build_config_receipt as _build_config_receipt,
 )
 
 
@@ -222,12 +216,11 @@ class TestAirlockSchemaValidation:
         assert Provider.LOCAL_INFERENCE.value == "local_inference"
 
     def test_provider_registry_includes_local_inference(self) -> None:
+        from rig_relay.providers.models import Provider
         from rig_relay.providers.registry import (
-            PROVIDER_REGISTRY,
             get_provider_info,
             is_supported_provider,
         )
-        from rig_relay.providers.models import Provider
 
         info = get_provider_info(Provider.LOCAL_INFERENCE)
         assert info is not None

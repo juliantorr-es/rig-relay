@@ -32,8 +32,11 @@ TELEMETRY_CONSENT_STATUS = "TelemetryConsentStatus"
 LOCAL_AUTHORITY_STATUS = "LocalAuthorityStatus"
 MODEL_OBSERVATION_SUMMARY = "ModelObservationSummary"
 
+CARTE_BLANCHE_DASHBOARD = "CarteBlancheDashboard"
+
 PROFILE_README_LANE = "ProfileReadmeLane"
 SPIDERWEB_TOPOLOGY = "SpiderwebTopology"
+SECURITY_LIFECYCLE = "SecurityLifecycle"
 
 # ── All Canonical Widgets ──────────────────────────────────────────────
 
@@ -56,6 +59,7 @@ ALL_WIDGETS = frozenset({
     MODEL_OBSERVATION_SUMMARY,
     PROFILE_README_LANE,
     SPIDERWEB_TOPOLOGY,
+    SECURITY_LIFECYCLE,
 })
 
 # ── Mode to Widget Mapping ─────────────────────────────────────────────
@@ -69,6 +73,7 @@ OPERATE_WIDGETS = frozenset({
     LATEST_INTENT_RESULT,
     PROFILE_README_LANE,
     SPIDERWEB_TOPOLOGY,
+    SECURITY_LIFECYCLE,
 })
 
 REVIEW_WIDGETS = frozenset({
@@ -173,7 +178,9 @@ PROJECTION_FIELD_TO_WIDGET: dict[str, str] = {
     "telemetry_consent": TELEMETRY_CONSENT_STATUS,
     "source_status": LOCAL_AUTHORITY_STATUS,
     "profile_readme_lane": PROFILE_README_LANE,
+    "carte_blanche_dashboard": CARTE_BLANCHE_DASHBOARD,
     "spiderweb_topology": SPIDERWEB_TOPOLOGY,
+    "security_lifecycle_program": SECURITY_LIFECYCLE,
 }
 
 

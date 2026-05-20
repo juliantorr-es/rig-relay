@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_mutation_operator_evidence_map.v1.schema.json",
+  "title": "Live Mutation Operator Evidence Map v1",
+  "description": "Evidence map linking live mutation artifacts to their schemas, hashes, validation status, and operational purpose.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_before",
+    "head_after",
+    "content_light",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.live_mutation_operator_evidence_map.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head_before": {
+      "type": "string",
+      "minLength": 7
+    },
+    "head_after": {
+      "type": "string",
+      "minLength": 7
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "path",
+          "sha256",
+          "exists",
+          "validates",
+          "purpose",
+          "consumed_by",
+          "proves",
+          "missing_or_degraded_behavior"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "description": "Stable identifier for this artifact in the evidence map."
+          },
+          "path": {
+            "type": "string",
+            "description": "Filesystem path relative to repo root."
+          },
+          "sha256": {
+            "type": "string",
+            "description": "SHA-256 hash of file contents. Empty string if missing."
+          },
+          "exists": {
+            "type": "boolean",
+            "description": "Whether the artifact file exists on disk."
+          },
+          "validates": {
+            "type": "boolean",
+            "description": "Whether the artifact validates against its declared or inferred schema."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "What this artifact provides to the operator."
+          },
+          "consumed_by": {
+            "type": "string",
+            "description": "Which subsystem or role consumes this artifact."
+          },
+          "proves": {
+            "type": "string",
+            "description": "What operational property this artifact proves."
+          },
+          "missing_or_degraded_behavior": {
+            "type": "string",
+            "description": "What happens if this artifact is missing or invalid."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

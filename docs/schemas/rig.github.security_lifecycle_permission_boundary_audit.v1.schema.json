@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_permission_boundary_audit.v1.schema.json",
+  "title": "GitHub Security Lifecycle Permission Boundary Audit v1",
+  "description": "Permission and mutation boundary audit proving read/write separation across Phase 2 security lifecycle stages.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "gates",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_lifecycle_permission_boundary_audit.v1"
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "permission_by_stage": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/permission_stage" }
+    },
+    "mutation_by_stage": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/mutation_stage" }
+    },
+    "endpoint_family_by_stage": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/endpoint_family_stage" }
+    },
+    "explicitly_not_used_permissions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/permission_entry" }
+    },
+    "planned_future_permissions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/permission_entry" }
+    },
+    "blocked_or_deferred_permissions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/permission_entry" }
+    },
+    "permission_conflicts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/conflict_entry" }
+    },
+    "unresolved_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "actual_project_mutation": { "type": "boolean", "const": false },
+    "gates": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gate_entry" }
+    },
+    "verdict": { "type": "string" }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "permission_stage": {
+      "type": "object",
+      "required": ["stage", "permissions"],
+      "properties": {
+        "stage": { "type": "string" },
+        "permissions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/permission_detail" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "permission_detail": {
+      "type": "object",
+      "required": ["name", "category", "required", "used_in_fake_boundary_only", "planned_future"],
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "required": { "type": "boolean" },
+        "used_in_fake_boundary_only": { "type": "boolean" },
+        "planned_future": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "permission_entry": {
+      "type": "object",
+      "required": ["name", "category", "reason"],
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "reason": { "type": "string" },
+        "stage_relevant": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "mutation_stage": {
+      "type": "object",
+      "required": ["stage", "real_mutation_performed", "fake_mutation_performed", "mutation_type"],
+      "properties": {
+        "stage": { "type": "string" },
+        "real_mutation_performed": { "type": "boolean" },
+        "fake_mutation_performed": { "type": "boolean" },
+        "mutation_type": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "endpoint_family_stage": {
+      "type": "object",
+      "required": ["stage", "endpoint_families"],
+      "properties": {
+        "stage": { "type": "string" },
+        "endpoint_families": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "conflict_entry": {
+      "type": "object",
+      "required": ["permission_a", "permission_b", "conflict_description", "resolved"],
+      "properties": {
+        "permission_a": { "type": "string" },
+        "permission_b": { "type": "string" },
+        "conflict_description": { "type": "string" },
+        "resolved": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "gate_entry": {
+      "type": "object",
+      "required": ["gate", "proved", "detail"],
+      "properties": {
+        "gate": { "type": "string" },
+        "proved": { "type": "boolean" },
+        "detail": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

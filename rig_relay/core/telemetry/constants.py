@@ -64,3 +64,6 @@ class EventName(StrEnum):
     INTEGRATION_MUTATION_GATED = "rig.relay.integration.mutation_gated"
     INTEGRATION_MUTATION_APPROVED = "rig.relay.integration.mutation_approved"
     INTEGRATION_MUTATION_REFUSED = "rig.relay.integration.mutation_refused"
+    # Context envelope governance events
+    CONTEXT_ENVELOPE_GOVERNED_COMPILED = "rig.relay.context_envelope.governed_compiled"
+    CONTEXT_ENVELOPE_GOVERNED_AD_HOC = "rig.relay.context_envelope.governed_ad_hoc"

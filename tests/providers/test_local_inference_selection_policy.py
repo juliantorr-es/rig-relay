@@ -7,28 +7,19 @@ Test classifications: contract, unit, integration, real-artifact, adversarial, s
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
-
-import pytest
 
 from rig_relay.providers.local_inference import (
     BenchmarkEvidenceSummary,
-    BenchmarkSample,
-    CapabilityMatchResult,
     CapabilityProbeCapabilities,
     CapabilityProbeResult,
     CapabilityStatus,
     ExplanationCode,
     LocalRuntimeKind,
-    PlatformClass,
     PolicyResultKind,
     ProbeStatus,
-    ProviderFallbackDecision,
-    RoutingConfidence,
-    TaskProfile,
-    TaskProfileSpec,
     build_benchmark_sample,
     decide_fallback,
     evaluate_selection_policy,

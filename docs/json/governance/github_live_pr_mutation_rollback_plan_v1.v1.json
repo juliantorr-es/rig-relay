@@ -1,0 +1,11 @@
+{
+  "branch_cleanup": "git push origin --delete rig/security/fix-5 (if remote exists)",
+  "pr_close": "no PR to close",
+  "file_revert": "no file to revert",
+  "alert_state_unchanged": true,
+  "manual_review_required": true,
+  "required_permissions": [
+    "contents:write"
+  ],
+  "idempotency_key": "bcebfb4dc7c49c3062a3f2960f6ef2643c8a68d2d4431a9001a38000623e4152"
+}

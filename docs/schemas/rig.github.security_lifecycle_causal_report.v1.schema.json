@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_causal_report.v1.schema.json",
+  "title": "GitHub Security Lifecycle Causal Report v1",
+  "description": "Causal/event fabric/spiderweb consolidation report mapping Phase 2 security lifecycle events and artifacts using relationship classifications.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "causal_nodes",
+    "causal_edges",
+    "relationship_counts",
+    "observed_links",
+    "derived_links",
+    "inferred_links",
+    "correlated_only_links",
+    "rejected_links",
+    "total_links",
+    "missing_causation_reasons",
+    "artifact_hashes",
+    "event_fabric_events_referenced",
+    "event_fabric_event_count",
+    "topology_nodes_impacted",
+    "topology_edges_impacted",
+    "spiderweb_projection_contribution_summary",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.security_lifecycle_causal_report.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "causal_nodes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/causal_node" }
+    },
+    "causal_edges": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/causal_edge" }
+    },
+    "relationship_counts": {
+      "type": "object",
+      "required": ["observed", "derived", "inferred", "correlated_only", "rejected"],
+      "properties": {
+        "observed": { "type": "integer", "minimum": 0 },
+        "derived": { "type": "integer", "minimum": 0 },
+        "inferred": { "type": "integer", "minimum": 0 },
+        "correlated_only": { "type": "integer", "minimum": 0 },
+        "rejected": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "observed_links": { "type": "integer", "minimum": 0 },
+    "derived_links": { "type": "integer", "minimum": 0 },
+    "inferred_links": { "type": "integer", "minimum": 0 },
+    "correlated_only_links": { "type": "integer", "minimum": 0 },
+    "rejected_links": { "type": "integer", "minimum": 0 },
+    "total_links": { "type": "integer", "minimum": 0 },
+    "missing_causation_reasons": { "type": "array", "items": { "type": "string" } },
+    "artifact_hashes": { "type": "object", "additionalProperties": { "type": "string" } },
+    "event_fabric_events_referenced": { "type": "array", "items": { "type": "string" } },
+    "event_fabric_event_count": { "type": "integer", "minimum": 0 },
+    "topology_nodes_impacted": { "type": "array", "items": { "type": "string" } },
+    "topology_edges_impacted": { "type": "array", "items": { "type": "string" } },
+    "spiderweb_projection_contribution_summary": {
+      "type": "object",
+      "required": ["pipeline_dag_constructed", "all_10_stages_mapped", "causal_chain_integrity", "simulation_boundary_clear", "alert_pr_separation_governed"],
+      "properties": {
+        "pipeline_dag_constructed": { "type": "boolean" },
+        "all_10_stages_mapped": { "type": "boolean" },
+        "causal_chain_integrity": { "type": "string" },
+        "simulation_boundary_clear": { "type": "boolean" },
+        "alert_pr_separation_governed": { "type": "string" },
+        "evidence_preserved": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": ["content_light", "forbidden_fields_present"],
+      "properties": {
+        "content_light": { "type": "boolean" },
+        "forbidden_fields_present": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "causal_node": {
+      "type": "object",
+      "required": ["node_id", "node_type", "stage", "stage_slice", "description"],
+      "properties": {
+        "node_id": { "type": "string" },
+        "node_type": {
+          "type": "string",
+          "enum": [
+            "input_collection",
+            "pipeline_queue",
+            "selection_plan",
+            "strategy_proposal",
+            "preview_snapshot",
+            "context_resolution",
+            "diff_classification",
+            "execution_plan",
+            "preflight_gate",
+            "simulation_execution",
+            "lifecycle_planning",
+            "governance_artifact",
+            "evidence_bundle",
+            "report_store"
+          ]
+        },
+        "artifact_path": { "type": ["string", "null"] },
+        "stage": { "type": "string" },
+        "stage_slice": { "type": "integer", "minimum": 0 },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "causal_edge": {
+      "type": "object",
+      "required": ["from_node_id", "to_node_id", "relationship", "confidence", "evidence"],
+      "properties": {
+        "from_node_id": { "type": "string" },
+        "to_node_id": { "type": "string" },
+        "relationship": {
+          "type": "string",
+          "enum": ["observed", "derived", "inferred", "correlated_only", "rejected"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "none"]
+        },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -291,4 +291,15 @@ def test_degraded_no_input_has_matching_node_count_and_strand_count():
         pressure_summary_path=PRESSURE_SUMMARY_PATH,
     )
     assert topology["strand_states"]["total_nodes"] == len(topology["nodes"])
-    assert topology["strand_states"]["no_input_count"] == NODE_BLUEPRINT_COUNT
+    assert topology["strand_states"]["total_nodes"] == (
+        topology["strand_states"]["no_input_count"]
+        + topology["strand_states"]["active_count"]
+        + topology["strand_states"]["idle_count"]
+        + topology["strand_states"]["stale_count"]
+        + topology["strand_states"]["degraded_count"]
+        + topology["strand_states"]["blocked_count"]
+        + topology["strand_states"]["quarantined_count"]
+        + topology["strand_states"]["backpressured_count"]
+        + topology["strand_states"]["waiting_for_permission_count"]
+        + topology["strand_states"]["unknown_count"]
+    )

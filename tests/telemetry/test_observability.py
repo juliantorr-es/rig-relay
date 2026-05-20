@@ -9,8 +9,11 @@ from jsonschema import validate
 import pytest
 
 from rig_relay.core.config import VibeConfig
+import rig_relay.core.paths._vibe_home as _vibe_home_mod
 from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 from rig_relay.core.telemetry.constants import EventName
+import rig_relay.core.telemetry.local as local_mod
+import rig_relay.core.telemetry.send as send_mod
 from rig_relay.core.types import LLMMessage, Role
 
 SCHEMA_PATH = (
@@ -44,19 +47,18 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    importlib.reload(vibe.core.paths._vibe_home)
-    importlib.reload(vibe.core.telemetry.local)
-    importlib.reload(vibe.core.telemetry.send)
+    importlib.reload(_vibe_home_mod)
+    importlib.reload(local_mod)
+    importlib.reload(send_mod)
 
-    # Re-apply the real method to the class just in case the reload didn't fully clean it
     from rig_relay.core.telemetry.send import TelemetryClient as RealClient
 
     monkeypatch.setattr(
-        "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
+        "rig_relay.core.telemetry.send.TelemetryClient.send_telemetry_event",
         RealClient.send_telemetry_event,
     )
 
-    return vibe.core.telemetry.send.TelemetryClient
+    return send_mod.TelemetryClient
 
 
 @pytest.mark.asyncio
@@ -141,11 +143,11 @@ async def test_local_observability_hash_stability(
     # Send identical event twice (wiping file in between to keep sequence=0)
     log_file = SESSIONS_ROOT.path / sid / "observability.jsonl"
 
-    with patch("vibe.core.telemetry.local.datetime") as mock_datetime:
+    with patch("rig_relay.core.telemetry.local.datetime") as mock_datetime:
         fixed_now = "2024-01-01T00:00:00+00:00"
         mock_datetime.now.return_value.isoformat.return_value = fixed_now
 
-        with patch("vibe.core.telemetry.local.uuid.uuid4") as mock_uuid:
+        with patch("rig_relay.core.telemetry.local.uuid.uuid4") as mock_uuid:
             mock_uuid.return_value = "00000000-0000-0000-0000-000000000000"
 
             client.send_telemetry_event("stable.event", {"data": 1})

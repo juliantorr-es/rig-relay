@@ -1,7 +1,9 @@
-from rig_relay.integrations.github_provider._redaction import safe_summary
 #!/usr/bin/env python3
 
 from __future__ import annotations
+
+from rig_relay.integrations.github_provider._redaction import safe_summary
+
 
 import argparse
 from datetime import UTC, datetime

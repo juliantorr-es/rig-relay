@@ -68,6 +68,7 @@ const modeDefaults = {
     ralphLifecycle: 'standard',
     profileReadmeLane: 'standard',
     spiderwebTopology: 'standard',
+    securityLifecycle: 'standard',
     validationSummary: 'compact',
     storageBudget: 'compact',
     intentResult: 'compact',

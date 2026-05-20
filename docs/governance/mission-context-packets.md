@@ -54,10 +54,14 @@ The receipt captures packet and mission envelope fingerprints, counts, and the d
 - source refs are emitted in lexicographic path order
 - explicit mission-envelope ordering is preserved for the envelope-owned path/check lists
 
-## Deferred Runtime Integration
+## Runtime Integration
 
-This compiler is a prototype. Runtime execution should not consume it yet.
-The runtime adapter and execution layer remain separate until the packet contract stabilizes.
+Runtime integration is active. Set ``governed_context_enabled = true`` in
+``VibeConfig`` to route context envelope construction through
+``compile_governed_context()`` instead of the ad-hoc ``ContextCompiler``
+assembly. When enabled, the AgentLoop builds a ``MissionContextPacket``
+with governed source refs, dirty-file states, blockers, and warnings.
+When disabled, the legacy ad-hoc path is used (backward compatible).
 
 ## Relationship To Mission Envelope
 

@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_program_inventory.v1.schema.json",
+  "title": "GitHub Security Lifecycle Program Inventory v1",
+  "description": "Filesystem-scanned inventory of all Phase 2 security lifecycle artifacts across all artifact categories.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "total_artifacts",
+    "present_count",
+    "missing_count",
+    "missing_ids",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_lifecycle_program_inventory.v1"
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "total_artifacts": { "type": "integer", "minimum": 0 },
+    "present_count": { "type": "integer", "minimum": 0 },
+    "missing_count": { "type": "integer", "minimum": 0 },
+    "missing_ids": { "type": "array", "items": { "type": "string" } },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/artifact_entry" }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "required": ["content_light", "forbidden_fields_present"],
+      "properties": {
+        "content_light": { "type": "boolean" },
+        "forbidden_fields_present": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "scan_summary": {
+      "type": "object",
+      "required": ["categories_scanned", "source_modules", "scripts", "schemas", "governance_artifacts", "build_artifacts", "evidence_artifacts", "test_files", "frontend_or_projection_files"],
+      "properties": {
+        "categories_scanned": { "type": "integer", "minimum": 0 },
+        "source_modules": { "type": "integer", "minimum": 0 },
+        "scripts": { "type": "integer", "minimum": 0 },
+        "schemas": { "type": "integer", "minimum": 0 },
+        "governance_artifacts": { "type": "integer", "minimum": 0 },
+        "build_artifacts": { "type": "integer", "minimum": 0 },
+        "evidence_artifacts": { "type": "integer", "minimum": 0 },
+        "test_files": { "type": "integer", "minimum": 0 },
+        "frontend_or_projection_files": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "artifact_entry": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "path",
+        "exists"
+      ],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "path": { "type": "string" },
+        "path_type": {
+          "type": "string",
+          "enum": [
+            "source_module",
+            "script",
+            "schema",
+            "governance_artifact",
+            "build_artifact",
+            "evidence_artifact",
+            "test_file",
+            "frontend_or_projection_file"
+          ]
+        },
+        "exists": { "type": "boolean" },
+        "sha256": { "type": ["string", "null"] },
+        "generated_at": { "type": ["string", "null"], "format": "date-time" },
+        "source_slice": { "type": ["integer", "null"] },
+        "slice": { "type": ["integer", "null"] },
+        "schema_version": { "type": "string" },
+        "content_light": { "type": "boolean" },
+        "remote_mutation": { "type": "boolean" },
+        "permission_categories": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "produced_by": { "type": ["string", "null"] },
+        "consumed_by": { "type": ["string", "null"] },
+        "schema_path": { "type": ["string", "null"] },
+        "validates_against_schema": { "type": "boolean" },
+        "content_light_status": { "type": "string" },
+        "redaction_status": { "type": "string" },
+        "remote_mutation_status": { "type": "boolean" },
+        "local_mutation_status": { "type": "boolean" },
+        "missing_or_degraded_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

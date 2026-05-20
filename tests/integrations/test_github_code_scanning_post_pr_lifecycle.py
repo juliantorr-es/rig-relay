@@ -5,14 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import jsonschema
 import pytest
 
 from rig_relay.integrations.github_provider._code_scanning_post_pr_lifecycle import (
-    build_post_pr_lifecycle,
-    _determine_pr_state,
-    _determine_alert_state,
     _ALERT_PATHS,
+    _determine_alert_state,
+    _determine_pr_state,
+    build_post_pr_lifecycle,
 )
 from rig_relay.integrations.github_provider._fake_github_boundary import (
     FakeGitHubBoundary,

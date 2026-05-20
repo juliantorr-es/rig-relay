@@ -223,6 +223,24 @@ def execute(  # noqa: PLR0914, PLR0915
             request, root, repo, request_sha256, _context_warnings, receipts
         )
 
+    # ── Handoff mode: cross-agent coordination snapshot ────
+    if request.mode == ContextMode.HANDOFF:
+        return _build_handoff_packet(
+            request, root, repo, request_sha256, _context_warnings
+        )
+
+    # ── Collision mode: path conflict detection ────
+    if request.mode == ContextMode.COLLISION:
+        return _build_collision_packet(
+            request, root, repo, request_sha256, _context_warnings
+        )
+
+    # ── Symbols mode: symbol substitution compression ────
+    if request.mode == ContextMode.SYMBOLS:
+        return _build_symbols_packet(
+            request, root, repo, request_sha256, _context_warnings
+        )
+
     # Build subsystem map (always for map mode)
     subsystems = build_subsystem_map(root)
 
@@ -868,6 +886,216 @@ def _build_packet_from_projection(
         do_not_touch=do_not_touch,
         receipts=receipts,
         summary_text=summary,
+        warnings=warnings,
+    )
+
+
+def _build_handoff_packet(
+    request: ContextRequest,
+    root: Path,
+    repo: Any,
+    request_sha256: str,
+    warnings: list[dict[str, Any]],
+) -> ContextPacket:
+    store_root = root / ".build" / "rig-relay" / "coordination"
+    session_id = getattr(request, "session_id", "") or ""
+    try:
+        from rig_relay.compiler.context.handoff import compile_handoff_packet
+
+        handoff = compile_handoff_packet(session_id, store_root)
+    except Exception as e:
+        warnings.append(
+            build_warning(
+                ContextWarningCode.REPO_SCAN_FAILED,
+                detail=f"{exception_class_name(e)}: handoff compile failed",
+                source="compiler._build_handoff_packet",
+            )
+        )
+        handoff = {}
+
+    active_agents = handoff.get("active_agents", [])
+    file_leases = handoff.get("file_leases", [])
+    collision_warnings_list = handoff.get("collision_warnings", [])
+    do_not_touch_paths = handoff.get("do_not_touch_paths", [])
+    recommended_paths = handoff.get("recommended_next_paths", [])
+
+    active_work: dict[str, Any] = {
+        "lanes": [
+            {
+                "agent_id": a.get("agent_id", ""),
+                "mission_id": "",
+                "worktree_path": "",
+                "claimed_paths": a.get("claimed_paths", []),
+                "dirty_paths": [],
+                "status": a.get("status", "unknown"),
+            }
+            for a in active_agents
+        ],
+        "collision_warnings": collision_warnings_list,
+    }
+
+    do_not_touch = [
+        PathRecommendation(path=p, reason="Active lease") for p in do_not_touch_paths
+    ]
+    recommended_context = [
+        PathRecommendation(path=p, reason="Recommended next path")
+        for p in recommended_paths
+    ]
+
+    summary_lines = [
+        "Handoff mode: cross-agent coordination snapshot",
+        f"Active agents: {len(active_agents)}",
+        f"File leases: {len(file_leases)}",
+        f"Collision warnings: {len(collision_warnings_list)}",
+        f"Do-not-touch paths: {len(do_not_touch_paths)}",
+        f"Recommended next paths: {len(recommended_paths)}",
+    ]
+    if handoff.get("pending_handoffs"):
+        pending = handoff["pending_handoffs"]
+        summary_lines.append(f"Pending handoffs: {len(pending)}")
+    if handoff.get("published_artifacts"):
+        artifacts = handoff["published_artifacts"]
+        summary_lines.append(f"Published artifacts: {len(artifacts)}")
+
+    return ContextPacket(
+        mode=ContextMode.HANDOFF,
+        repo=repo,
+        request_sha256=request_sha256,
+        subsystems=[],
+        active_work=active_work,
+        recommended_context=recommended_context,
+        do_not_touch=do_not_touch,
+        summary_text="\n".join(summary_lines),
+        warnings=warnings,
+    )
+
+
+def _build_collision_packet(
+    request: ContextRequest,
+    root: Path,
+    repo: Any,
+    request_sha256: str,
+    warnings: list[dict[str, Any]],
+) -> ContextPacket:
+    store_root = root / ".build" / "rig-relay" / "coordination"
+    requesting_paths = request.scope.paths if request.scope.paths else []
+    try:
+        from rig_relay.compiler.context.collision import compile_collision_report
+
+        collision = compile_collision_report(requesting_paths, store_root)
+    except Exception as e:
+        warnings.append(
+            build_warning(
+                ContextWarningCode.REPO_SCAN_FAILED,
+                detail=f"{exception_class_name(e)}: collision compile failed",
+                source="compiler._build_collision_packet",
+            )
+        )
+        collision = {
+            "requested_paths": requesting_paths,
+            "conflicting_paths": [],
+            "conflict_detail": [],
+            "safe_paths": requesting_paths,
+            "recommended_actions": [],
+            "overall_risk": "none",
+        }
+
+    conflicting = collision.get("conflicting_paths", [])
+    conflict_detail = collision.get("conflict_detail", [])
+    safe_paths = collision.get("safe_paths", [])
+
+    collision_warnings_list: list[dict[str, Any]] = [
+        {
+            "path": cd.get("path", ""),
+            "claimed_by": cd.get("current_holder", ""),
+            "reason": (
+                f"severity={cd.get('conflict_severity', '?')}"
+                f" expiry={cd.get('lease_expiry', '?')}"
+            ),
+        }
+        for cd in conflict_detail
+    ]
+
+    active_work: dict[str, Any] = {
+        "lanes": [],
+        "collision_warnings": collision_warnings_list,
+    }
+
+    do_not_touch = [
+        PathRecommendation(path=p, reason="Path conflict detected") for p in conflicting
+    ]
+    recommended_context = [
+        PathRecommendation(path=p, reason="Safe path") for p in safe_paths
+    ]
+
+    overall_risk = collision.get("overall_risk", "none")
+    summary_lines = [
+        "Collision mode: path conflict detection",
+        f"Requested paths: {len(requesting_paths)}",
+        f"Conflicting paths: {len(conflicting)}",
+        f"Safe paths: {len(safe_paths)}",
+        f"Overall risk: {overall_risk}",
+    ]
+
+    return ContextPacket(
+        mode=ContextMode.COLLISION,
+        repo=repo,
+        request_sha256=request_sha256,
+        subsystems=[],
+        active_work=active_work,
+        recommended_context=recommended_context,
+        do_not_touch=do_not_touch,
+        summary_text="\n".join(summary_lines),
+        warnings=warnings,
+    )
+
+
+def _build_symbols_packet(
+    request: ContextRequest,
+    root: Path,
+    repo: Any,
+    request_sha256: str,
+    warnings: list[dict[str, Any]],
+) -> ContextPacket:
+    source_paths = request.scope.paths if request.scope.paths else None
+    try:
+        from rig_relay.compiler.context.symbols import compile_symbol_packet
+
+        symbols = compile_symbol_packet(source_paths)
+    except Exception as e:
+        warnings.append(
+            build_warning(
+                ContextWarningCode.SYMBOL_DIGEST_FAILED,
+                detail=f"{exception_class_name(e)}: symbols compile failed",
+                source="compiler._build_symbols_packet",
+            )
+        )
+        symbols = {
+            "symbol_map": {"aliases": {}, "symbols": []},
+            "manifest_hash": "",
+            "estimated_token_savings": 0,
+            "manifest_entry_count": 0,
+        }
+
+    symbol_map = symbols.get("symbol_map", {})
+    estimated_token_savings = symbols.get("estimated_token_savings", 0)
+    manifest_hash = symbols.get("manifest_hash", "")
+
+    summary_lines = [
+        "Symbols mode: symbol substitution compression",
+        f"Manifest entries: {symbols.get('manifest_entry_count', 0)}",
+        f"Estimated token savings: {estimated_token_savings}",
+        f"Manifest hash: {manifest_hash[:16] if manifest_hash else 'N/A'}",
+    ]
+
+    return ContextPacket(
+        mode=ContextMode.SYMBOLS,
+        repo=repo,
+        request_sha256=request_sha256,
+        subsystems=[],
+        active_work={},
+        symbol_map=symbol_map,
+        summary_text="\n".join(summary_lines),
         warnings=warnings,
     )
 

@@ -47,7 +47,7 @@ DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 REQUEST_SCHEMA_PATH = SCHEMAS_DIR / "rig.relay.desktop_intent_request.v1.schema.json"
 RESULT_SCHEMA_PATH = SCHEMAS_DIR / "rig.relay.desktop_intent_result.v1.schema.json"
 
-# explicitly opt in to dev-only plaintext token storage
+from rig_relay.governance.decisions import GovernanceDecisionKind
 from rig_relay.identity.token_store import enable_dev_file_token_store
 
 enable_dev_file_token_store()
@@ -577,6 +577,7 @@ def execute_desktop_intent(
                 intent_id,
                 request.get("parameters", {}),
                 request.get("authorization_receipt"),
+                request.get("local_action_envelope"),
             )
             status = result.get("status", "failed")
             lifecycle_event_type = (
@@ -619,14 +620,38 @@ def execute_desktop_intent(
             return result
 
         case "protected":
-            result = _build_result(
-                intent_name,
-                intent_id,
-                "refused",
-                authorization_required=True,
-                error_code=PROTECTED_INTENTS.get(intent_name, "unknown"),
-                summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
+            from rig_relay.governance.local_action_gate import require_signed_envelope
+
+            params = request.get("parameters", {})
+            gate_decision = require_signed_envelope(
+                action=intent_name,
+                payload=params,
+                required_capability=intent_name,
+                envelope=request.get("local_action_envelope"),
             )
+            if not gate_decision.decision == GovernanceDecisionKind.ALLOWED:
+                reason_msg = (
+                    gate_decision.reasons[0].message
+                    if gate_decision.reasons
+                    else "blocked"
+                )
+                result = _build_result(
+                    intent_name,
+                    intent_id,
+                    "refused",
+                    authorization_required=True,
+                    error_code="local_action_envelope_required",
+                    summary=f"Protected intent '{intent_name}' requires signed envelope: {reason_msg}",
+                )
+            else:
+                result = _build_result(
+                    intent_name,
+                    intent_id,
+                    "refused",
+                    authorization_required=True,
+                    error_code=PROTECTED_INTENTS.get(intent_name, "unknown"),
+                    summary=f"Protected intent '{intent_name}' refused. Not enabled for receipt-gated execution.",
+                )
             _emit_progress(
                 EVENT_OPERATION_REFUSED,
                 phase="protected_check",
@@ -767,6 +792,7 @@ def _handle_phase_1_protected_intent(
     intent_id: str,
     params: dict[str, Any],
     receipt: dict[str, Any] | None,
+    envelope: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Handle a Phase 1 protected intent with authorization gate."""
     valid, reason, receipt_meta = validate_protected_intent_authorization(
@@ -780,6 +806,33 @@ def _handle_phase_1_protected_intent(
             authorization_required=True,
             error_code="authorization_failed",
             summary=f"Protected intent '{intent_name}' refused: {reason}",
+        )
+        from rig_relay.desktop.intent_audit import emit_result
+
+        emit_result(result)
+        return result
+
+    from rig_relay.governance.local_action_gate import require_signed_envelope
+
+    gate_decision = require_signed_envelope(
+        action=intent_name,
+        payload=params,
+        required_capability=intent_name,
+        envelope=envelope,
+    )
+    if gate_decision.decision != GovernanceDecisionKind.ALLOWED:
+        reason_msg = (
+            gate_decision.reasons[0].message
+            if gate_decision.reasons
+            else "local action envelope required"
+        )
+        result = _build_result(
+            intent_name,
+            intent_id,
+            "refused",
+            authorization_required=True,
+            error_code="local_action_envelope_required",
+            summary=f"Protected intent '{intent_name}' refused: {reason_msg}",
         )
         from rig_relay.desktop.intent_audit import emit_result
 

@@ -1,0 +1,21 @@
+{
+  "available": true,
+  "phase_status": "release_candidate",
+  "live_mutation_status": "blocked_by_default",
+  "preflight_status": "ready",
+  "transaction_status": "finalized",
+  "chaos_invariant_status": "needs_review",
+  "approval_status": "gated",
+  "branch_status": "not_created",
+  "pr_status": "not_created",
+  "alert_update_status": "deferred",
+  "rollback_guidance_status": "available",
+  "next_safe_action": "verify_all_phase3_gates_before_live_mutation",
+  "blocked_reasons": [
+    "explicit_mutation_flag_absent",
+    "live_gate_not_activated",
+    "approval_missing"
+  ],
+  "required_human_action": "review RC report, approve mutation lane, provide live credentials",
+  "raw_payloads_exposed": false
+}

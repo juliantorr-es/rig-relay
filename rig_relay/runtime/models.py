@@ -27,6 +27,7 @@ class RuntimeProviderKind(StrEnum):
     CUSTOM = "custom"
     DRY_RUN = "dry_run"
     STUB = "stub"
+    LOCAL_INFERENCE = "local_inference"
 
 
 class RuntimeProviderTrustTier(StrEnum):

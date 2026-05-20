@@ -1,0 +1,240 @@
+{
+  "schema_version": "rig.enterprise_procurement_architectural_blueprint.v1",
+  "generated_at": "2026-05-20T14:00:00Z",
+  "title": "Enterprise Procurement Architectural Blueprint — Rig Relay",
+  "description": "Maps industry best practices (SPDX 3.0, CycloneDX 1.7/ECMA-424, SLSA 1.0, OWASP Threat Modeling, OWASP ASVS) to Rig Relay's architecture. Defines implementation waves for enterprise procurement readiness.",
+  "research_sources": [
+    {"source": "SPDX 3.0", "url": "https://spdx.dev/use/specifications/", "iso_standard": "ISO/IEC 5962:2021", "relevance": "SBOM standard for license compliance and software inventory"},
+    {"source": "CycloneDX 1.7", "url": "https://cyclonedx.org/specification/overview/", "ecma_standard": "ECMA-424", "relevance": "Full-stack BOM (SBOM, SaaSBOM, VDR, VEX, CDXA attestations). Best fit for Rig's governance/receipt/redaction model"},
+    {"source": "SLSA 1.0", "url": "https://slsa.dev/spec/v1.0/about", "relevance": "Supply-chain integrity framework. Build provenance, tamper-evident artifacts, verification"},
+    {"source": "OWASP Threat Modeling", "url": "https://owasp.org/www-community/Threat_Modeling", "relevance": "Four Question Framework + STRIDE. Continuous threat modeling across software lifecycle"}
+  ],
+
+  "workstreams": [
+    {
+      "id": "P0-SBOM",
+      "title": "SBOM Generator + Release Provenance",
+      "priority": "P0",
+      "industry_standard": "CycloneDX 1.7 (ECMA-424) + SLSA Build Level 2",
+      "why_cyclonedx_over_spdx": "CycloneDX supports SBOM + SaaSBOM + VDR (vulnerability disclosure) + VEX (exploitability exchange) + CDXA (attestations). Rig's governance model (receipts, redaction, content-light evidence) maps directly to CycloneDX's Declarations (compliance-as-code) and Attestations models. SPDX 3.0 is better for license-only compliance; CycloneDX is better for full supply-chain security transparency.",
+      "rig_architecture_mapping": {
+        "existing_capability": "Rig already produces schema-validated JSON artifacts with SHA256 hashes, content-light governance, and redaction denylists. The pyproject.toml contains the full dependency tree with versions and licenses.",
+        "gap": "No CycloneDX-formatted SBOM artifact. No SLSA provenance attestation for build artifacts. No signed release pipeline.",
+        "implementation": {
+          "files_to_create": [
+            "rig_relay/enterprise/sbom.py — SBOM generator reading pyproject.toml + uv.lock, producing CycloneDX 1.7 JSON",
+            "rig_relay/enterprise/provenance.py — SLSA provenance attestation generator for build artifacts",
+            "scripts/rig_enterprise_generate_sbom.py — CLI to produce .build/rig-relay/enterprise/sbom.cdx.json",
+            "docs/schemas/rig.enterprise.sbom_generation_report.v1.schema.json",
+            ".build/rig-relay/enterprise/sbom.cdx.v1.json",
+            ".build/rig-relay/enterprise/slsa_provenance.v1.json"
+          ],
+          "cyclonedx_fields": [
+            "metadata.component (rig-relay, v0.1.0a1, AGPL-3.0-or-later)",
+            "components[] — each Python dependency with name, version, purl, licenses, hashes",
+            "dependencies[] — dependency graph from uv.lock",
+            "vulnerabilities[] — placeholder for future Trivy integration",
+            "declarations.attestations[] — Rig's existing content-light governance assertions"
+          ]
+        }
+      }
+    },
+    {
+      "id": "P0-THREAT",
+      "title": "Threat Model Artifact (STRIDE over Event Fabric + Bridge + Mutation Path)",
+      "priority": "P0",
+      "industry_standard": "OWASP Threat Modeling (Four Question Framework + STRIDE) + OWASP ASVS V1 (Architecture)",
+      "rig_architecture_mapping": {
+        "trust_boundaries": [
+          {"boundary": "Event Fabric JSONL → DuckDB", "stride_category": "Tampering, Information_Disclosure", "rig_mitigation": "Content-light validation rejects forbidden fields before JSONL append. DuckDB is in-memory read-side only — never writes back."},
+          {"boundary": "Bridge WebSocket → Frontend", "stride_category": "Spoofing, Tampering, Information_Disclosure", "rig_mitigation": "WebSocket is localhost-only. Frontend is dumb renderer — no direct file reads, no unsafe innerHTML. Projection data is content-light."},
+          {"boundary": "Live Mutation Executor → GitHub API", "stride_category": "Spoofing, Tampering, Repudiation, Elevation_of_Privilege", "rig_mitigation": "--execute-remote requires explicit flag, operator checklist acknowledgement, gates-approved. Operation receipts provide non-repudiation. Permission boundary audit proves separation of read/write/alert/PR/file permissions."},
+          {"boundary": "Bridge Runtime State → Supervisor", "stride_category": "Denial_of_Service, Elevation_of_Privilege", "rig_mitigation": "Three-clock bridge (heartbeat, status, projection). Backend stale detection triggers degradation, not crash. No event triggers direct mutation."},
+          {"boundary": "DuckDB read_json(JSONL) → Analytics", "stride_category": "Tampering, Information_Disclosure", "rig_mitigation": "DuckDB reads read-side only. Queries extract envelope-level fields only. Raw payloads never projected into analytical artifacts."},
+          {"boundary": "Coordination Store → Subagents", "stride_category": "Tampering, Elevation_of_Privilege", "rig_mitigation": "File-backed coordination with lease IDs, heartbeat TTL, and conflict detection. Stale leases are reclaimed only after confirmed heartbeat miss."}
+        ],
+        "implementation": {
+          "files_to_create": [
+            "docs/json/governance/rig_enterprise_threat_model_v1.v1.json",
+            "docs/schemas/rig.enterprise.threat_model.v1.schema.json",
+            "docs/json/governance/rig_enterprise_stride_matrix_v1.v1.json"
+          ],
+          "stride_matrix_fields": [
+            "threat_id, stride_category, trust_boundary, threat_description, affected_components, impact_severity, likelihood, risk_level, existing_mitigations, residual_risk, evidence_refs, recommended_additional_controls"
+          ]
+        }
+      }
+    },
+    {
+      "id": "P1-CONTAINER",
+      "title": "Container Hardening + Deployment Packaging",
+      "priority": "P1",
+      "industry_standard": "CIS Docker Benchmark + Kubernetes Pod Security Standards (Restricted) + OWASP ASVS V9 (Communications)",
+      "rig_architecture_mapping": {
+        "existing_capability": "Rig has --server-only mode for headless operation. Desktop mode uses pywebview.",
+        "gap": "No Dockerfile, Helm chart, distroless base image, non-root container, read-only filesystem, seccomp profile, or air-gapped install support.",
+        "implementation": {
+          "files_to_create": [
+            "Dockerfile (distroless Python 3.12, non-root user 1000:1000, read-only rootfs, WORKDIR /app)",
+            "docker-compose.yml (optional local dev)",
+            "helm/rig-relay/Chart.yaml, values.yaml, templates/deployment.yaml, templates/service.yaml, templates/configmap.yaml",
+            ".build/rig-relay/enterprise/deployment_manifest.v1.json",
+            "docs/json/governance/rig_enterprise_container_hardening_report.v1.json"
+          ],
+          "hardening_checklist": [
+            "Base image: gcr.io/distroless/python3-debian12 (no shell, no package manager)",
+            "USER 1000:1000 (non-root)",
+            "Read-only root filesystem (except /tmp and writable volume mounts for .build/, .rig/)",
+            "seccomp: runtime/default or custom profile denying mount, ptrace, reboot",
+            "AppArmor: deny /proc/sys write, deny capability sys_admin",
+            "no_new_privs: true",
+            "Resource limits: CPU 2, memory 4Gi, ephemeral-storage 10Gi",
+            "Readiness probe: HTTP GET /healthz (if exposed) or exec check on bridge status",
+            "Liveness probe: TCP socket on WebSocket port",
+            "SecurityContext: allowPrivilegeEscalation: false, runAsNonRoot: true"
+          ]
+        }
+      }
+    },
+    {
+      "id": "P1-MERKLE",
+      "title": "Merkle Chain over Artifact Receipts (Immutable Audit Trail Proof)",
+      "priority": "P1",
+      "industry_standard": "SLSA provenance attestations + Certificate Transparency (RFC 6962) — Merkle tree over artifact hashes",
+      "rig_architecture_mapping": {
+        "existing_capability": "Every governed artifact carries SHA256 hashes. Operation receipts are append-only JSONL. The replay engine reconstructs pipeline state from artifacts.",
+        "gap": "No merkle tree linking artifact hashes into an immutable chain. No cryptographic proof that the audit trail hasn't been retroactively modified. No root hash that can be published to a transparency log.",
+        "implementation": {
+          "files_to_create": [
+            "rig_relay/enterprise/merkle_chain.py — Merkle tree over artifact hashes",
+            "scripts/rig_enterprise_verify_merkle_chain.py — CLI to verify integrity",
+            "docs/schemas/rig.enterprise.merkle_chain.v1.schema.json",
+            ".build/rig-relay/enterprise/merkle_chain.v1.json"
+          ],
+          "design": "Each governed artifact (inventory, replay, permission audit, causal report, RC report, checklist, runbook) has a SHA256. A merkle tree is built over the sorted list of (artifact_path, sha256) pairs. The root hash is the integrity anchor. A JSON artifact records the tree structure with leaf hashes, sibling hashes, and the root. Periodically (or on release), the root hash is published to a verifiable location.",
+          "merkle_fields": [
+            "chain_id, generated_at, leaf_count, leaves[] (artifact_path, sha256, sequence), root_hash, tree_structure (binary merkle tree with sibling hashes for verification)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "P2-SCAN",
+      "title": "Dependency Vulnerability Scanner Integration",
+      "priority": "P2",
+      "industry_standard": "CycloneDX VDR (Vulnerability Disclosure Report) + VEX (Vulnerability Exploitability eXchange). Tools: Trivy, Grype.",
+      "rig_architecture_mapping": {
+        "existing_capability": "pyproject.toml has full dependency tree. uv.lock has pinned versions and hashes.",
+        "gap": "No vulnerability scan in CI. No VDR/VEX artifact. No dependency freshness check.",
+        "implementation": {
+          "files_to_create": [
+            ".github/workflows/dependency-scan.yml — CI job running Trivy on sbom.cdx.json",
+            "scripts/rig_enterprise_dependency_scan.py — CLI wrapping Trivy/Grype",
+            "docs/json/governance/rig_enterprise_dependency_vdr_v1.v1.json",
+            "docs/schemas/rig.enterprise.dependency_vdr.v1.schema.json"
+          ],
+          "ci_integration": "On push to main and on PR: generate SBOM → run Trivy → produce VDR artifact → fail CI if CRITICAL vulnerabilities with known fixes exist → produce VEX if vulnerabilities are not exploitable in Rig's context"
+        }
+      }
+    },
+    {
+      "id": "P2-RBAC",
+      "title": "RBAC Policy Engine (Evaluable Permission Model)",
+      "priority": "P2",
+      "industry_standard": "OWASP ASVS V4 (Access Control) + OPA/Rego policy-as-code",
+      "rig_architecture_mapping": {
+        "existing_capability": "Rig's permission boundary audit proves separation of read/write/alert/PR/file permissions. Operator checklist has explicit operator acknowledgements.",
+        "gap": "No evaluable RBAC policy. Permissions are documented in JSON artifacts but not enforced by a policy engine. No OIDC/SAML group mapping.",
+        "implementation": {
+          "files_to_create": [
+            "rig_relay/enterprise/rbac_policy.py — RBAC policy evaluator",
+            "docs/schemas/rig.enterprise.rbac_policy.v1.schema.json",
+            ".build/rig-relay/enterprise/rbac_policy.v1.json"
+          ],
+          "rbac_design": "Model: subject (user/OIDC group) → role (operator, reviewer, auditor, admin) → permission (read_event_fabric, publish_event, execute_live_mutation, view_spiderweb, modify_alert_rules, approve_gates). Each permission maps to a Rig operation. Policy evaluation: given (subject, role, operation, resource), return {allowed: true/false, reason: string, required_role: string}. Integrates with operator checklist — the 'gates-approved' flag is only true when the subject's role permits the operation.",
+          "rbac_fields": [
+            "policy_id, version, roles[] (role_name, description, permissions[]), subjects[] (subject_id, provider, roles[]), operations[] (operation_id, description, required_permissions[], gate_ids[])"
+          ]
+        }
+      }
+    }
+  ],
+
+  "implementation_waves": [
+    {
+      "wave": 1,
+      "title": "P0 Foundation — SBOM + Threat Model",
+      "workstreams": ["P0-SBOM", "P0-THREAT"],
+      "estimated_files": 10,
+      "dependencies": "None (reads pyproject.toml + existing architecture)",
+      "acceptance_criteria": [
+        "CycloneDX 1.7 SBOM artifact validates against ECMA-424 schema",
+        "SBOM includes all pyproject.toml dependencies with purl, version, license, hash",
+        "SLSA Build Level 2 provenance attestation for the Rig Relay wheel",
+        "STRIDE threat model covers 6 trust boundaries with mitigations mapped to existing Rig subsystems",
+        "Threat model artifact validates against schema"
+      ]
+    },
+    {
+      "wave": 2,
+      "title": "P1 Security — Container Hardening + Merkle Chain",
+      "workstreams": ["P1-CONTAINER", "P1-MERKLE"],
+      "estimated_files": 10,
+      "dependencies": "Wave 1 (SBOM needed for container scanning)",
+      "acceptance_criteria": [
+        "Distroless Dockerfile builds and runs rig-relay --server-only",
+        "Container passes Kubernetes Restricted Pod Security Standard",
+        "Helm chart deploys to minikube/kind without errors",
+        "Merkle chain covers all Phase 2 governance artifacts",
+        "Merkle verification CLI detects a tampered artifact hash",
+        "Root hash is deterministic for unchanged artifacts"
+      ]
+    },
+    {
+      "wave": 3,
+      "title": "P2 Compliance — Dependency Scan + RBAC",
+      "workstreams": ["P2-SCAN", "P2-RBAC"],
+      "estimated_files": 8,
+      "dependencies": "Wave 1 (SBOM needed for Trivy), Wave 2 (container for CI integration)",
+      "acceptance_criteria": [
+        "CI workflow runs Trivy on SBOM, produces VDR artifact",
+        "CI fails on CRITICAL vulnerabilities with known fixes",
+        "RBAC policy evaluator denies execute_live_mutation for reviewer role",
+        "Policy evaluation is deterministic and content-light",
+        "OIDC group mapping is configurable via environment"
+      ]
+    }
+  ],
+
+  "enterprise_procurement_checklist_mapping": {
+    "vendor_security_questionnaire": "P0-SBOM (CycloneDX with component inventory) + P0-THREAT (STRIDE threat model) + P2-SCAN (VDR showing known vulnerabilities)",
+    "penetration_test_scope": "P0-THREAT (trust boundaries define pen test targets: WebSocket channel, mutation executor, DuckDB read path, event fabric JSONL)",
+    "deployment_security_review": "P1-CONTAINER (hardened Dockerfile, Helm chart, seccomp/AppArmor, non-root, read-only FS)",
+    "compliance_audit": "P1-MERKLE (immutable audit trail proof) + P2-RBAC (evaluable access control)",
+    "third_party_risk_assessment": "P0-SBOM (dependency inventory with licenses) + P2-SCAN (vulnerability scan on every dependency)",
+    "access_control_review": "P2-RBAC (role-based policy engine, OIDC/SAML group mapping)"
+  },
+
+  "dependencies_already_satisfied_by_existing_stack": [
+    "duckdb>=1.5.0 — read-side analytics (used, not extended)",
+    "cryptography>=44.0.0 — for merkle tree hashing and artifact signing",
+    "opentelemetry-api>=1.39.1 — for metrics export (metrics.py already uses it optionally)",
+    "pydantic>=2.12.4 — for schema validation (used, not extended)",
+    "jsonschema>=4.23.0 — for artifact validation (used, not extended)",
+    "httpx>=0.28.1 — for SBOM dependency resolution if needed"
+  ],
+
+  "dependencies_to_consider": [
+    {"package": "cyclonedx-python-lib", "purpose": "Generate CycloneDX 1.7 SBOM programmatically. Lightweight, official OWASP library.", "necessity": "nice_to_have", "alternative": "Generate JSON directly from pyproject.toml + uv.lock without dependency"},
+    {"package": "trivy (binary, not pip)", "purpose": "Vulnerability scanner. Runs as CI step, not Python dependency.", "necessity": "required_for_P2", "alternative": "grype (same pattern)"}
+  ],
+
+  "risks_and_mitigations": [
+    {"risk": "CycloneDX 1.7 is ECMA-424 — a very new standard. Some procurement teams may still expect SPDX.", "mitigation": "Support both. Generate SPDX 3.0 (JSON) for license compliance and CycloneDX 1.7 for security transparency. The SBOM.py module can produce both formats."},
+    {"risk": "Merkle chain root hash publication requires a transparency log or verifiable location. Without it, the chain is locally verifiable but not publicly auditable.", "mitigation": "Publish root hash in the release GitHub Release notes (immutable once published). For enterprise, integrate with Sigstore/rekor transparency log."},
+    {"risk": "Container hardening requires ongoing maintenance — distroless images update, CVEs are patched, base image tags rot.", "mitigation": "CI workflow rebuilds container on every push to main. Dependabot/renovate watches base image tags. SBOM regeneration on every build captures updated component inventory."},
+    {"risk": "RBAC policy engine without OPA/Rego may not satisfy enterprise customers who expect industry-standard policy-as-code.", "mitigation": "Phase 1 uses a native Python evaluator (lightweight, no new dependency). Phase 2 can add OPA sidecar with Rego policies. The RBAC model is designed to be translatable to Rego."}
+  ],
+
+  "recommended_execution_sequence": "Execute Wave 1 (P0) immediately — produces procurement-readable SBOM and threat model. Wave 2 (P1) after first real live mutation succeeds. Wave 3 (P2) as part of first enterprise pilot deployment."
+}

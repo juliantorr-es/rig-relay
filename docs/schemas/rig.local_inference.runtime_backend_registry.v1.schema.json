@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-07/schema#","$id":"https://json-schema.org/rig.local_inference.runtime_backend_registry.v1","type":"object","additionalProperties":false,"required":["schema_version"],"properties":{"schema_version":{"const":"rig.local_inference.runtime_backend_registry.v1"}}}

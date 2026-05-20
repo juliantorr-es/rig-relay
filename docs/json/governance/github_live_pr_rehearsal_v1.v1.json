@@ -1,0 +1,220 @@
+{
+  "schema_version": "rig.github.live_pr_rehearsal.v1",
+  "content_light": true,
+  "status": "rehearsal_blocked",
+  "gates": [
+    {
+      "gate": "phase2_rc_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "phase3_rc_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_ready",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "execute_flag",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "operator_acknowledged",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "allow_live_writes",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "approval_ok",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "boundary_present",
+      "passed": false,
+      "detail": ""
+    }
+  ],
+  "gates_passed": false,
+  "blocked_reasons": [
+    "execute_flag",
+    "operator_acknowledged",
+    "allow_live_writes",
+    "approval_ok",
+    "boundary_present"
+  ],
+  "steps": [
+    {
+      "step_name": "load_phase2_rc",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "load_phase3_rc",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "load_preflight",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_approval",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_operator_checklist",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_candidate_diff",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_branch_safety",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_path_safety",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_rate_limit",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "verify_idempotency",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "read_base_ref",
+      "operation_class": "read_only",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "create_branch_ref",
+      "operation_class": "remote_mutation",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "write_file_contents",
+      "operation_class": "remote_mutation",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "create_pull_request",
+      "operation_class": "remote_mutation",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "write_receipt",
+      "operation_class": "local_artifact_write",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "write_rollback_guidance",
+      "operation_class": "local_artifact_write",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_name": "alert_update_deferred",
+      "operation_class": "deferred",
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    }
+  ],
+  "branch_created": false,
+  "file_written": false,
+  "pr_created": false,
+  "remote_mutation_succeeded": false,
+  "alert_updated": false,
+  "alert_update_deferred": true,
+  "pr_merged": false,
+  "operator_checklist": {
+    "repository": "OWNER/REPO",
+    "base_branch": "main",
+    "proposed_branch": "rig/security/governed-fix-5",
+    "target_file_paths": [
+      "RIG_RELAY_GOVERNED.md"
+    ],
+    "candidate_diff_hash": "478de46283adb0161bc81e2e1607a111a3d341b315f6f93b6ea47eb6dc5c3984",
+    "operation_idempotency_key": "a3a2a3afb28c445c493f2dc30179dd467cd30167119d537a4b8f10aff4d68092",
+    "expected_operations": [
+      "create_branch",
+      "write_file",
+      "create_pr"
+    ],
+    "permissions_required": [
+      "contents:write",
+      "pull_requests:write"
+    ],
+    "permissions_verified": false,
+    "alert_update_deferred": true,
+    "pr_merge_deferred": true,
+    "rollback_guidance": "close PR if rejected; delete branch if unmerged",
+    "no_default_branch_write": true,
+    "no_workflow_paths": true,
+    "no_raw_vulnerable_content": true
+  },
+  "rollback_guidance": "close PR; delete branch",
+  "redaction_summary": {
+    "content_light": true,
+    "raw_response_bodies": false
+  },
+  "next_safe_action": "review_rehearsal_receipt"
+}

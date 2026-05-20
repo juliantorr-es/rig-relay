@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.shadow_scenario.v1",
+  "title": "Shadow Evaluation Scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenario_id", "task_profile", "expected_output_contract", "prompt_source"],
+  "properties": {
+    "schema_version": {"const": "rig.local_inference.shadow_scenario.v1"},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "task_profile": {"type": "string"},
+    "request_class": {"type": "string", "enum": ["chat", "completion", "embedding", "tool_use", "structured_output", "vision"]},
+    "endpoint_hash": {"type": "string"},
+    "prompt_source": {"type": "string", "enum": ["inline_ephemeral", "prompt_file_ephemeral", "hashed_fixture"]},
+    "prompt_sha256": {"type": "string", "pattern": "^(|[a-f0-9]{64})$"},
+    "prompt_byte_count": {"type": "integer"},
+    "prompt_text_synthetic_safe": {"type": "string"},
+    "expected_output_contract": {"type": "string", "enum": ["none", "non_empty_text", "valid_json", "json_object", "json_schema", "contains_required_keys", "max_length", "tool_call_shape", "refusal_or_blocked_allowed"]},
+    "required_keys": {"type": "array", "items": {"type": "string"}},
+    "max_length_chars": {"type": "integer"},
+    "max_output_tokens": {"type": "integer"},
+    "temperature": {"type": "number"},
+    "structured_output_required": {"type": "boolean"},
+    "tool_calling_required": {"type": "boolean"},
+    "streaming_allowed": {"type": "boolean"},
+    "reference_evidence_hash": {"type": "string"},
+    "persistence_policy": {"type": "string"},
+    "redaction_summary": {"type": "string"}
+  }
+}

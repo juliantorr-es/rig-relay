@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.live_mutation_operator_readiness_report.v1.schema.json",
+  "title": "Live Mutation Operator Readiness Report v1",
+  "description": "Final readiness report aggregating evidence map, checklist, runbook, and cockpit projection status for live mutation operator readiness.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_before",
+    "head_after",
+    "dirty_state_before",
+    "dirty_state_after",
+    "files_changed",
+    "checklist_artifact_path",
+    "runbook_artifact_path",
+    "evidence_map_path",
+    "cockpit_projection_status",
+    "frontend_widget_status",
+    "required_flags",
+    "required_permissions",
+    "readiness_gate_summary",
+    "deferred_actions",
+    "forbidden_actions",
+    "rollback_guidance_summary",
+    "live_mutation_attempted",
+    "remote_mutation_attempted",
+    "alert_update_attempted",
+    "redaction_results",
+    "schema_validation_results",
+    "tests_run",
+    "tests_intentionally_skipped",
+    "test_classifications",
+    "ruff_result",
+    "pyright_result",
+    "telemetry_redaction_implications",
+    "dependency_changes",
+    "completed_work",
+    "intentionally_deferred",
+    "discovered_out_of_scope_risks",
+    "recommended_next_action",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.live_mutation_operator_readiness_report.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head_before": {
+      "type": "string",
+      "minLength": 7
+    },
+    "head_after": {
+      "type": "string",
+      "minLength": 7
+    },
+    "dirty_state_before": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "dirty_state_after": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files_changed": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checklist_artifact_path": {
+      "type": "string"
+    },
+    "runbook_artifact_path": {
+      "type": "string"
+    },
+    "evidence_map_path": {
+      "type": "string"
+    },
+    "cockpit_projection_status": {
+      "type": "string",
+      "enum": ["active", "missing", "blocked"]
+    },
+    "frontend_widget_status": {
+      "type": "string",
+      "enum": ["active", "missing"]
+    },
+    "required_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_permissions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "readiness_gate_summary": {
+      "type": "object",
+      "required": ["gates_checked", "gates_passed", "gates_failed", "gates_blocked"],
+      "properties": {
+        "gates_checked": { "type": "integer", "minimum": 0 },
+        "gates_passed": { "type": "integer", "minimum": 0 },
+        "gates_failed": { "type": "integer", "minimum": 0 },
+        "gates_blocked": { "type": "integer", "minimum": 0 },
+        "detail": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "deferred_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rollback_guidance_summary": {
+      "type": "object",
+      "required": ["branch_cleanup", "pr_close", "alert_state_unchanged", "manual_review_required"],
+      "properties": {
+        "branch_cleanup": { "type": "string" },
+        "pr_close": { "type": "string" },
+        "file_revert": { "type": "string" },
+        "alert_state_unchanged": { "type": "boolean" },
+        "manual_review_required": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "live_mutation_attempted": {
+      "type": "boolean"
+    },
+    "remote_mutation_attempted": {
+      "type": "boolean"
+    },
+    "alert_update_attempted": {
+      "type": "boolean"
+    },
+    "redaction_results": {
+      "type": "object",
+      "required": ["all_artifacts_content_light", "no_tokens_found"],
+      "properties": {
+        "all_artifacts_content_light": { "type": "boolean" },
+        "no_tokens_found": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "schema_validation_results": {
+      "type": "object",
+      "required": ["all_schemas_valid"],
+      "properties": {
+        "all_schemas_valid": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "tests_run": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests_intentionally_skipped": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "test_classifications": {
+      "type": "object",
+      "required": ["contract", "integration", "adversarial", "real_artifact", "substrate"],
+      "properties": {
+        "contract": { "type": "boolean" },
+        "integration": { "type": "boolean" },
+        "adversarial": { "type": "boolean" },
+        "real_artifact": { "type": "boolean" },
+        "substrate": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ruff_result": {
+      "type": "string",
+      "enum": ["clean", "warnings", "errors", "not_run"]
+    },
+    "pyright_result": {
+      "type": "string",
+      "enum": ["clean", "warnings", "errors", "not_run"]
+    },
+    "telemetry_redaction_implications": {
+      "type": "string"
+    },
+    "dependency_changes": {
+      "type": "string"
+    },
+    "completed_work": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "intentionally_deferred": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "discovered_out_of_scope_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_next_action": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "rig.github.live_mutation_phase3_inventory.v1",
+  "content_light": true,
+  "total": 14,
+  "present": 14,
+  "missing": 0,
+  "artifacts": [
+    {
+      "artifact_id": "live_mutation_preflight",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_live_mutation_preflight_v1.v1.json",
+      "exists": true,
+      "sha256": "2ec6241d4ef139dfaac3d333e935778d660fa3c872b38f0f784e168176a79871",
+      "slice": 1
+    },
+    {
+      "artifact_id": "live_pr_mutation_attempt",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_live_pr_mutation_attempt_v1.v1.json",
+      "exists": true,
+      "sha256": "93d5f1c95fca72c2202f0e808dbf1d9914f3b22372544a249f15371521a8c369",
+      "slice": 2
+    },
+    {
+      "artifact_id": "pr_mutation_transaction",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_transaction_v1.v1.json",
+      "exists": true,
+      "sha256": "9ffc8999fe340967fec8de3f2dd57ae5971421bc4942df1c2f39950d82da179f",
+      "slice": 3
+    },
+    {
+      "artifact_id": "pr_mutation_recovery",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_recovery_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "892761fcfb863ef214d50d3f03640337d5e6184526989d076165929cce5e8f12",
+      "slice": 3
+    },
+    {
+      "artifact_id": "pr_mutation_reconciliation",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_reconciliation_v1.v1.json",
+      "exists": true,
+      "sha256": "3be65b158af83ae12b31ba7fda56304944d659160f0a11072e90c64a51445008",
+      "slice": 3
+    },
+    {
+      "artifact_id": "pr_status_observation",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_status_observation_v1.v1.json",
+      "exists": true,
+      "sha256": "e1b81c164034c6ce053a230c05bd7751009b5474abe822446c62b12884595de9",
+      "slice": 3
+    },
+    {
+      "artifact_id": "pr_transaction_finalization",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_transaction_finalization_v1.v1.json",
+      "exists": true,
+      "sha256": "2c641d74d493d5a3dadfbe6e10e3eac24ad72f1458862972e90d6d5cda8d00cb",
+      "slice": 3
+    },
+    {
+      "artifact_id": "chaos_manifest",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_chaos_manifest_v1.v1.json",
+      "exists": true,
+      "sha256": "6427f9f8d1be4a6544ed76ec5cdece039da72fb1afb13ed9f8332ce99b62b14c",
+      "slice": 4
+    },
+    {
+      "artifact_id": "replay_verifier",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_replay_verifier_v1.v1.json",
+      "exists": true,
+      "sha256": "338a7daf9154d4076cd93a3011652c30668fcc911a64d6fc87b9cecc92dfd3e2",
+      "slice": 4
+    },
+    {
+      "artifact_id": "ledger_repair",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_ledger_repair_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "acdf6706cfb6c56e70a2cc7650d840d3dfcc7fee78e34b1d52e2a396ba942547",
+      "slice": 4
+    },
+    {
+      "artifact_id": "invariant_report",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_invariant_report_v1.v1.json",
+      "exists": true,
+      "sha256": "06bf2ccdace72c18b2dd8c58b5a4ea3b219093585ebc53e653b31505ec742ea8",
+      "slice": 4
+    },
+    {
+      "artifact_id": "transaction_projection",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_transaction_projection_v1.v1.json",
+      "exists": true,
+      "sha256": "7c59c60be807f9558818a2ac8e02495b1a7aacefa166ba15de13e6687e6f0589",
+      "slice": 3
+    },
+    {
+      "artifact_id": "rollback_plan",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_live_pr_mutation_rollback_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "c9c4811efc7bfbb02106ad57c8178c5231b13a1412a9f07ec907b925f44f45cb",
+      "slice": 2
+    },
+    {
+      "artifact_id": "rate_limit_snapshot",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_live_mutation_rate_limit_snapshot_v1.v1.json",
+      "exists": true,
+      "sha256": "34756ee610e04238421f72e80aa48eaff4666311d4a2ed43854cb2910ea33f58",
+      "slice": 1
+    }
+  ]
+}

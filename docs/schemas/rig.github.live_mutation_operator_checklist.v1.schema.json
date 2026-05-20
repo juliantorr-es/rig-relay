@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_mutation_operator_checklist.v1.schema.json",
+  "title": "Live Mutation Operator Checklist v1",
+  "description": "Pre-flight operator checklist for executing a governed live GitHub PR mutation. Must be reviewed and acknowledged before any remote mutation.",
+  "type": "object",
+  "required": [
+    "checklist_id",
+    "schema_version",
+    "generated_at",
+    "target_repository_safe_id",
+    "base_branch",
+    "proposed_branch",
+    "branch_prefix_requirement",
+    "target_paths_summary",
+    "target_paths_hashes",
+    "candidate_diff_hash",
+    "operation_idempotency_key",
+    "required_env_flags",
+    "required_cli_flags",
+    "required_permissions",
+    "readiness_gates",
+    "operator_acknowledgements",
+    "explicitly_deferred_actions",
+    "forbidden_actions",
+    "rollback_guidance_summary",
+    "next_safe_action",
+    "redaction_status",
+    "raw_payloads_exposed"
+  ],
+  "properties": {
+    "checklist_id": { "type": "string" },
+    "schema_version": { "type": "string", "const": "rig.github.live_mutation_operator_checklist.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "target_repository_safe_id": { "type": "string" },
+    "base_branch": { "type": "string" },
+    "proposed_branch": { "type": "string" },
+    "branch_prefix_requirement": { "type": "string" },
+    "target_paths_summary": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "target_paths_hashes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "candidate_diff_hash": { "type": "string" },
+    "candidate_diff_source_artifact": { "type": "string" },
+    "operation_idempotency_key": { "type": "string" },
+    "required_env_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_cli_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_permissions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/permission_entry" }
+    },
+    "readiness_gates": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/gate_entry" }
+    },
+    "operator_acknowledgements": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "type": "string" }
+    },
+    "explicitly_deferred_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rollback_guidance_summary": { "type": "string" },
+    "next_safe_action": { "type": "string" },
+    "redaction_status": { "type": "string", "const": "content_light" },
+    "raw_payloads_exposed": { "type": "boolean", "const": false }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "permission_entry": {
+      "type": "object",
+      "required": ["permission", "scope", "required_for", "status"],
+      "properties": {
+        "permission": { "type": "string" },
+        "scope": { "type": "string", "enum": ["repository", "organization", "account"] },
+        "required_for": { "type": "string" },
+        "status": { "type": "string", "enum": ["not_granted", "granted_via_app", "granted_via_token"] }
+      },
+      "additionalProperties": false
+    },
+    "gate_entry": {
+      "type": "object",
+      "required": ["gate_id", "description", "status"],
+      "properties": {
+        "gate_id": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["passed", "blocked", "pending"] },
+        "evidence_path": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

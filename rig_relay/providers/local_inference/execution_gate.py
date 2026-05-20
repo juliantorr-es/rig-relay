@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import hashlib
+import json
 import secrets
 from typing import Any
 
@@ -60,12 +61,20 @@ def build_approval(
 
 
 def compute_approval_hash(approval: ManualExecutionApproval) -> str:
-    canonical = (
-        f"{approval.scope_endpoint_hash}"
-        f"{approval.scope_task_profile}"
-        f"{approval.scope_request_class.value}"
-        f"{approval.approved_by.value}"
-    )
+    payload = {
+        "scope_endpoint_hash": approval.scope_endpoint_hash,
+        "scope_task_profile": approval.scope_task_profile,
+        "scope_request_class": approval.scope_request_class.value,
+        "scope_max_prompt_bytes": approval.scope_max_prompt_bytes,
+        "scope_max_output_tokens": approval.scope_max_output_tokens,
+        "scope_streaming_allowed": approval.scope_streaming_allowed,
+        "scope_tool_calling_allowed": approval.scope_tool_calling_allowed,
+        "scope_structured_output_allowed": approval.scope_structured_output_allowed,
+        "persistence_policy": approval.persistence_policy.value,
+        "approved_by": approval.approved_by.value,
+        "ttl_seconds": approval.ttl_seconds,
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 

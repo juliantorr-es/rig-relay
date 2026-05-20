@@ -338,8 +338,8 @@ def write_post_pr_lifecycle(
 
 __all__ = [
     "_ALERT_PATHS",
+    "_determine_alert_state",
+    "_determine_pr_state",
     "build_post_pr_lifecycle",
     "write_post_pr_lifecycle",
-    "_determine_pr_state",
-    "_determine_alert_state",
 ]

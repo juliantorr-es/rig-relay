@@ -1,0 +1,9 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_reconciliation.v1",
+  "transaction_id": "a1d2abb444b16be26043969120d11227f9e84a275eedcb3439e045689f5267fa",
+  "branch_exists": true,
+  "file_written": true,
+  "pr_exists": true,
+  "alert_state_unchanged": true,
+  "divergent": false
+}

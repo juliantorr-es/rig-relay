@@ -7,11 +7,16 @@ from pathlib import Path
 from jsonschema import validate
 import pytest
 
+import rig_relay.core.agent_loop as agent_loop_mod
 from rig_relay.core.config import VibeConfig
+import rig_relay.core.paths._vibe_home as _vibe_home_mod
 from rig_relay.core.paths._vibe_home import SESSIONS_ROOT
 from rig_relay.core.telemetry.constants import EventName
+import rig_relay.core.telemetry.duckdb_projection as duckdb_proj_mod
 from rig_relay.core.telemetry.duckdb_projection import HAS_DUCKDB, DuckDBProjection
+import rig_relay.core.telemetry.local as local_mod
 from rig_relay.core.telemetry.local import log_local_event
+import rig_relay.core.telemetry.send as send_mod
 from rig_relay.core.telemetry.validation import validate_evidence_session
 
 SCHEMA_PATH = (
@@ -51,21 +56,20 @@ def mock_config():
 @pytest.fixture
 def real_telemetry_client(monkeypatch):
     """Force reload of telemetry modules to ensure we use the real implementation."""
-    importlib.reload(vibe.core.paths._vibe_home)
-    importlib.reload(vibe.core.telemetry.local)
-    importlib.reload(vibe.core.telemetry.send)
-    importlib.reload(vibe.core.telemetry.duckdb_projection)
-    importlib.reload(vibe.core.agent_loop)
+    importlib.reload(_vibe_home_mod)
+    importlib.reload(local_mod)
+    importlib.reload(send_mod)
+    importlib.reload(duckdb_proj_mod)
+    importlib.reload(agent_loop_mod)
 
-    # Re-apply the real method to the class just in case the reload didn't fully clean it
     from rig_relay.core.telemetry.send import TelemetryClient as RealClient
 
     monkeypatch.setattr(
-        "vibe.core.telemetry.send.TelemetryClient.send_telemetry_event",
+        "rig_relay.core.telemetry.send.TelemetryClient.send_telemetry_event",
         RealClient.send_telemetry_event,
     )
 
-    return vibe.core.telemetry.send.TelemetryClient
+    return send_mod.TelemetryClient
 
 
 @pytest.mark.asyncio
@@ -423,8 +427,8 @@ async def test_shadow_request_assembly_failure_does_not_fail_model_request(
 ):
     monkeypatch.chdir(tmp_path)
 
+    from rig_relay.context import assembler as assembler_mod
     from rig_relay.core.agent_loop import AgentLoop
-    from rig_relay.core.context import assembler as assembler_mod
     from rig_relay.core.types import LLMMessage, Role
 
     session_id = "e2e-session-shadow-failure"
@@ -644,7 +648,7 @@ async def test_evidence_isolation_from_stale_sessions(
     global_home = tmp_path / "global_home"
     global_home.mkdir()
     monkeypatch.setattr(
-        "vibe.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", global_home
+        "rig_relay.core.paths._vibe_home._DEFAULT_RIG_RELAY_HOME", global_home
     )
 
     # Create a stale session in the global home

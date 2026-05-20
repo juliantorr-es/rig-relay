@@ -1,0 +1,75 @@
+{
+  "schema_version": "rig.github.live_pr_write_execution.v1",
+  "generated_at": "2026-05-20T21:06:20.182079+00:00",
+  "content_light": true,
+  "status": "rehearsal_success",
+  "gates": [
+    {
+      "gate": "phase2_rc_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "phase3_rc_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_ready",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "execute_flag",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "operator_acknowledged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "allow_live_writes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "approval_ok",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "boundary_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "contents_write_available",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "pull_requests_write_available",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "rate_limit_ok",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "branch_not_collision",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "blocked_reasons": [],
+  "remote_mutation_attempted": true
+}

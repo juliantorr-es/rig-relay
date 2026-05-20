@@ -103,7 +103,7 @@ def test_secret_scanner_catches_fake_api_key(tmp_path: Path) -> None:
         ["git", "init", "-b", "main"], cwd=tmp_path, check=True, capture_output=True
     )
     (tmp_path / "danger.py").write_text(
-        'token = "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"\n', encoding="utf-8"
+        'token = "ghp_abcdefghijklmnopqrstuvwxyz1234567890"\n', encoding="utf-8"
     )
     subprocess.run(
         ["git", "add", "danger.py"], cwd=tmp_path, check=True, capture_output=True

@@ -26,9 +26,9 @@ def _load_workflow() -> dict:
 
 
 def _load_all_workflows() -> dict[str, dict]:
-    workflow_paths = sorted(
-        {path for pattern in ("*.yml", "*.yaml") for path in WORKFLOWS_DIR.glob(pattern)}
-    )
+    workflow_paths = sorted({
+        path for pattern in ("*.yml", "*.yaml") for path in WORKFLOWS_DIR.glob(pattern)
+    })
     return {
         workflow_path.name: yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
         for workflow_path in workflow_paths

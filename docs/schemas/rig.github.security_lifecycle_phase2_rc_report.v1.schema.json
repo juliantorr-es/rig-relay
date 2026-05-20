@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_phase2_rc_report.v1.schema.json",
+  "title": "GitHub Security Lifecycle Phase 2 RC Report v1",
+  "description": "Release Candidate convergence report for Phase 2 — Security Lifecycle Program. Includes structural evidence from all four subordinates (inventory, replay, permission audit, causal report), governance statements, and phase gate status.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head_before",
+    "head_after",
+    "dirty_state_before",
+    "dirty_state_after",
+    "phase_name",
+    "phase_status",
+    "slices_completed",
+    "slice_names",
+    "artifact_inventory_path",
+    "replay_artifact_path",
+    "permission_boundary_audit_path",
+    "causal_report_path",
+    "cockpit_projection_summary",
+    "spiderweb_topology_summary",
+    "queue_summary",
+    "remediation_summary",
+    "patch_summary",
+    "source_context_summary",
+    "candidate_diff_summary",
+    "pr_plan_summary",
+    "mutation_readiness_summary",
+    "mutation_executor_summary",
+    "post_pr_lifecycle_summary",
+    "permission_model_summary",
+    "mutation_model_summary",
+    "approval_model_summary",
+    "idempotency_model_summary",
+    "fake_boundary_summary",
+    "event_fabric_summary",
+    "cockpit_readiness_summary",
+    "redaction_summary",
+    "schema_validation_summary",
+    "static_validation_summary",
+    "tests_summary",
+    "test_classifications_summary",
+    "telemetry_redaction_implications",
+    "dependency_changes",
+    "completed_work",
+    "intentionally_deferred",
+    "discovered_out_of_scope_risks",
+    "recommended_next_phase",
+    "recommended_next_slice",
+    "governance_statements",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.security_lifecycle_phase2_rc_report.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "branch": { "type": "string" },
+    "head_before": { "type": "string", "minLength": 7 },
+    "head_after": { "type": "string", "minLength": 7 },
+    "dirty_state_before": { "type": "array", "items": { "type": "string" } },
+    "dirty_state_after": { "type": "array", "items": { "type": "string" } },
+    "phase_name": { "type": "string", "const": "Phase 2 — Security Lifecycle Program" },
+    "phase_status": { "type": "string", "const": "rc_convergence_complete" },
+    "slices_completed": { "type": "integer", "minimum": 10, "maximum": 10 },
+    "slice_names": { "type": "array", "items": { "type": "string" }, "minItems": 10, "maxItems": 10 },
+    "artifact_inventory_path": { "type": "string" },
+    "replay_artifact_path": { "type": "string" },
+    "permission_boundary_audit_path": { "type": "string" },
+    "causal_report_path": { "type": "string" },
+    "cockpit_projection_summary": { "$ref": "#/definitions/summary_object" },
+    "spiderweb_topology_summary": { "$ref": "#/definitions/summary_object" },
+    "queue_summary": { "$ref": "#/definitions/stage_summary" },
+    "remediation_summary": { "$ref": "#/definitions/stage_summary" },
+    "patch_summary": { "$ref": "#/definitions/stage_summary" },
+    "source_context_summary": { "$ref": "#/definitions/stage_summary" },
+    "candidate_diff_summary": { "$ref": "#/definitions/stage_summary" },
+    "pr_plan_summary": { "$ref": "#/definitions/stage_summary" },
+    "mutation_readiness_summary": { "$ref": "#/definitions/stage_summary" },
+    "mutation_executor_summary": { "$ref": "#/definitions/stage_summary" },
+    "post_pr_lifecycle_summary": { "$ref": "#/definitions/stage_summary" },
+    "permission_model_summary": { "$ref": "#/definitions/model_summary" },
+    "mutation_model_summary": { "$ref": "#/definitions/model_summary" },
+    "approval_model_summary": { "$ref": "#/definitions/model_summary" },
+    "idempotency_model_summary": { "$ref": "#/definitions/model_summary" },
+    "fake_boundary_summary": { "$ref": "#/definitions/model_summary" },
+    "event_fabric_summary": { "$ref": "#/definitions/model_summary" },
+    "cockpit_readiness_summary": { "$ref": "#/definitions/model_summary" },
+    "redaction_summary": {
+      "type": "object",
+      "required": ["content_light", "no_raw_payloads", "matches_found", "artifacts_scanned", "all_clean"],
+      "properties": {
+        "content_light": { "type": "boolean", "const": true },
+        "no_raw_payloads": { "type": "boolean", "const": true },
+        "matches_found": { "type": "integer", "minimum": 0 },
+        "artifacts_scanned": { "type": "integer", "minimum": 0 },
+        "all_clean": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "schema_validation_summary": {
+      "type": "object",
+      "required": ["schemas_valid", "schemas_validated"],
+      "properties": {
+        "schemas_valid": { "type": "boolean", "const": true },
+        "schemas_validated": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "static_validation_summary": {
+      "type": "object",
+      "required": ["static_checks_passed", "linter_clean", "type_check_clean"],
+      "properties": {
+        "static_checks_passed": { "type": "boolean" },
+        "linter_clean": { "type": "string" },
+        "type_check_clean": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "tests_summary": {
+      "type": "object",
+      "required": ["total_tests_phase2", "all_passing"],
+      "properties": {
+        "total_tests_phase2": { "type": "integer", "minimum": 1 },
+        "all_passing": { "type": "boolean", "const": true }
+      },
+      "additionalProperties": false
+    },
+    "test_classifications_summary": {
+      "type": "object",
+      "required": ["contract", "integration", "adversarial", "real_artifact", "substrate"],
+      "properties": {
+        "contract": { "type": "boolean" },
+        "integration": { "type": "boolean" },
+        "adversarial": { "type": "boolean" },
+        "real_artifact": { "type": "boolean" },
+        "substrate": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "telemetry_redaction_implications": { "type": "string" },
+    "dependency_changes": { "type": "array", "items": { "type": "string" } },
+    "completed_work": { "type": "array", "items": { "type": "string" } },
+    "intentionally_deferred": { "type": "array", "items": { "type": "string" } },
+    "discovered_out_of_scope_risks": { "type": "array", "items": { "type": "string" } },
+    "recommended_next_phase": { "type": "string" },
+    "recommended_next_slice": { "type": "string" },
+    "governance_statements": {
+      "type": "object",
+      "required": [
+        "dry_run_first",
+        "real_mutation_disabled_by_default",
+        "fake_mutation_separate_from_real",
+        "pr_creation_does_not_imply_alert_resolution",
+        "alert_dismissal_requires_separate_gate",
+        "planning_only_no_mutation",
+        "raw_payloads_excluded",
+        "event_fabric_signals_are_observability_not_triggers"
+      ],
+      "properties": {
+        "dry_run_first": { "type": "boolean", "const": true },
+        "real_mutation_disabled_by_default": { "type": "boolean", "const": true },
+        "fake_mutation_separate_from_real": { "type": "boolean", "const": true },
+        "pr_creation_does_not_imply_alert_resolution": { "type": "boolean", "const": true },
+        "alert_dismissal_requires_separate_gate": { "type": "boolean", "const": true },
+        "planning_only_no_mutation": { "type": "boolean", "const": true },
+        "raw_payloads_excluded": { "type": "boolean", "const": true },
+        "event_fabric_signals_are_observability_not_triggers": { "type": "boolean", "const": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "summary_object": {
+      "type": "object",
+      "required": ["status", "detail"],
+      "properties": {
+        "status": { "type": "string" },
+        "detail": { "type": "string" },
+        "tests": { "type": "integer", "minimum": 0 },
+        "read_only": { "type": "boolean" },
+        "raw_payloads_exposed": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "stage_summary": {
+      "type": "object",
+      "required": ["status", "detail", "stage_slice"],
+      "properties": {
+        "status": { "type": "string", "enum": ["complete", "blocked", "simulated", "deferred", "missing"] },
+        "detail": { "type": "string" },
+        "stage_slice": { "type": "integer", "minimum": 0 },
+        "tests": { "type": "integer", "minimum": 0 },
+        "remote_mutation": { "type": "boolean" },
+        "content_light": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "model_summary": {
+      "type": "object",
+      "required": ["status", "detail"],
+      "properties": {
+        "status": { "type": "string" },
+        "detail": { "type": "string" },
+        "tests": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

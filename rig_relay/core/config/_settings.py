@@ -490,6 +490,13 @@ DEFAULT_PROVIDERS = [
         name="llamacpp",
         api_base="http://127.0.0.1:8080/v1",
         api_key_env_var="",  # NOTE: if you wish to use --api-key in llama-server, change this value
+        backend=Backend.GENERIC,
+    ),
+    ProviderConfig(
+        name="local_inference",
+        api_base="http://127.0.0.1:8080/v1",
+        api_key_env_var="",
+        backend=Backend.GENERIC,
     ),
 ]
 
@@ -548,6 +555,13 @@ DEFAULT_MODELS = [
         input_price=0.0,
         output_price=0.0,
     ),
+    ModelConfig(
+        name="local-inference-default",
+        provider="local_inference",
+        alias="local-inference",
+        input_price=0.0,
+        output_price=0.0,
+    ),
 ]
 
 DEFAULT_ACTIVE_MODEL = DEFAULT_MODELS[0].alias
@@ -599,6 +613,7 @@ class VibeConfig(BaseSettings):
     enable_telemetry: bool = False  # Legacy alias for enable_remote_telemetry
     enable_local_observability: bool = True
     enable_remote_telemetry: bool = False
+    local_inference_enabled: bool = False
     system_prompt_id: str = "cli"
     include_commit_signature: bool = False
     include_model_info: bool = False
@@ -624,6 +639,7 @@ class VibeConfig(BaseSettings):
     enable_otel: bool = Field(default=False, exclude=True)
     otel_endpoint: str = Field(default="", exclude=True)
 
+    governed_context_enabled: bool = False
     enable_experimental_hooks: bool = Field(default=False, exclude=True)
 
     providers: list[ProviderConfig] = Field(

@@ -1,0 +1,34 @@
+{
+  "schema_version": "rig.github.live_mutation_phase3_permission_boundary_audit.v1",
+  "content_light": true,
+  "gates": [
+    {
+      "gate": "contents_write_separate",
+      "proved": true
+    },
+    {
+      "gate": "pull_requests_write_separate",
+      "proved": true
+    },
+    {
+      "gate": "security_events_write_separate_and_deferred",
+      "proved": true
+    },
+    {
+      "gate": "alert_update_separate_from_pr_creation",
+      "proved": true
+    },
+    {
+      "gate": "no_live_mutation_by_default",
+      "proved": true
+    },
+    {
+      "gate": "rollback_is_guidance_not_auto_mutation",
+      "proved": true
+    },
+    {
+      "gate": "destructive_ledger_rewrite_forbidden",
+      "proved": true
+    }
+  ]
+}

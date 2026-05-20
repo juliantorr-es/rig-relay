@@ -1,0 +1,131 @@
+{
+  "schema_version": "rig.github.live_mutation_operator_evidence_map.v1",
+  "generated_at": "2026-05-20T19:50:56.580447+00:00",
+  "branch": "main",
+  "head_before": "309a86db",
+  "head_after": "309a86db",
+  "content_light": true,
+  "entries": [
+    {
+      "artifact_id": "phase2_rc_report",
+      "path": "docs/json/governance/github_security_lifecycle_phase2_rc_report_v1.v1.json",
+      "sha256": "3116c0d3634d5fa740663fb0437cb3fd6a0eefcc27400d0c16302703aeed66eb",
+      "exists": true,
+      "validates": true,
+      "purpose": "Phase 2 convergence report proving 10-slice security lifecycle program is rc_convergence_complete",
+      "consumed_by": "Operator, ralph scanner, cockpit projection",
+      "proves": "All Phase 2 planning/simulation slices completed with passing tests and valid schemas",
+      "missing_or_degraded_behavior": "Phase 3 live mutation cannot proceed; Phase 2 planning foundation is missing"
+    },
+    {
+      "artifact_id": "phase3_rc_report",
+      "path": "docs/json/governance/github_live_mutation_phase3_rc_report_v1.v1.json",
+      "sha256": "537e74bfdf330a220dff50a96cf1494fff0f6a44a82e275e5259ac1df0cb9a82",
+      "exists": true,
+      "validates": true,
+      "purpose": "Phase 3 convergence report proving live mutation readiness across 4 slices",
+      "consumed_by": "Operator, ralph scanner, cockpit projection",
+      "proves": "All Phase 3 preflight/mutation/recovery slices completed with passing tests",
+      "missing_or_degraded_behavior": "Live mutation cannot proceed; Phase 3 readiness is unproven"
+    },
+    {
+      "artifact_id": "live_mutation_preflight",
+      "path": "docs/json/governance/github_live_mutation_preflight_v1.v1.json",
+      "sha256": "6e541a4ea2c187a6b98cc9e0720cad0ee44f0dfab78bb1d4b7729839046722ce",
+      "exists": true,
+      "validates": true,
+      "purpose": "Preflight gate check: permissions, rate limits, branch collision, all passed",
+      "consumed_by": "Preflight executor, operator, cockpit projection",
+      "proves": "All mandatory preflight gates passed; token and permissions verified",
+      "missing_or_degraded_behavior": "Live mutation gate is not proven safe; operator cannot proceed"
+    },
+    {
+      "artifact_id": "pr_mutation_transaction",
+      "path": "docs/json/governance/github_code_scanning_pr_mutation_transaction_v1.v1.json",
+      "sha256": "104347a735faf4bd762b25a979f1e2532bdb0df01b7b5cf48117096e761249f2",
+      "exists": true,
+      "validates": true,
+      "purpose": "Transaction harness receipt for gated PR mutation execution",
+      "consumed_by": "Transaction finalizer, operator, cockpit projection",
+      "proves": "PR mutation transaction respects all gates and is safe for --execute-remote-mutation",
+      "missing_or_degraded_behavior": "No trusted transaction harness; live execution gate cannot be trusted"
+    },
+    {
+      "artifact_id": "chaos_invariant_report",
+      "path": "docs/json/governance/github_code_scanning_pr_mutation_invariant_report_v1.v1.json",
+      "sha256": "192ea8f538b6bab0c111abf053b4a86e0be7088d41887c0e7b689dbb31ed6f98",
+      "exists": true,
+      "validates": true,
+      "purpose": "20 invariants across 75 scenarios proving no remote mutation, no live network, alert deferred, approval gate, etc.",
+      "consumed_by": "Operator, chaos lab runner, cockpit projection",
+      "proves": "Safety invariants hold across all chaos scenarios; system cannot be tricked into live mutation",
+      "missing_or_degraded_behavior": "Safety invariants are unproven; chaos scenarios could expose hidden mutation paths"
+    },
+    {
+      "artifact_id": "permission_boundary_audit",
+      "path": "docs/json/governance/github_security_lifecycle_permission_boundary_audit_v1.v1.json",
+      "sha256": "de501d675cc7cffbd5691a3eb235ad989774a93846582d0525235cd5f0318679",
+      "exists": true,
+      "validates": true,
+      "purpose": "Permission boundary audit proving read/mutation separation across all gates",
+      "consumed_by": "Operator, governance, ralph scanner",
+      "proves": "All permission boundaries are proven; no mutation permission leaks into planning stages",
+      "missing_or_degraded_behavior": "Permission boundaries unproven; mutation permissions could leak into read-only stages"
+    },
+    {
+      "artifact_id": "github_operation_receipt_schema",
+      "path": "docs/schemas/rig.github_provider.operation_receipt.v1.schema.json",
+      "sha256": "942870402e18eb003acee5b5256084732aa32387715c06f8cab4c9df176e35f0",
+      "exists": true,
+      "validates": true,
+      "purpose": "Schema defining content-light operation receipts with hashed payloads, never raw content",
+      "consumed_by": "GitHub provider, transaction harness, telemetry pipeline",
+      "proves": "All GitHub operations produce content-light hashed receipts; no raw payloads leak",
+      "missing_or_degraded_behavior": "GitHub receipts have no format governance; raw payloads could leak into artifacts"
+    },
+    {
+      "artifact_id": "live_pr_mutation_rollback_plan",
+      "path": "docs/json/governance/github_live_pr_mutation_rollback_plan_v1.v1.json",
+      "sha256": "a3271f305505f5b17ba940a898216eb49a7d9ae380a98b050876fd991b8b20e5",
+      "exists": true,
+      "validates": true,
+      "purpose": "Rollback plan: close PR, delete branch, alert state unchanged; no auto-mutation",
+      "consumed_by": "Operator, transaction harness rollback path",
+      "proves": "Rollback is guidance-only, never auto-mutates; alert state is preserved",
+      "missing_or_degraded_behavior": "No rollback plan; operator has no safe undo path for live mutation"
+    },
+    {
+      "artifact_id": "cockpit_projection_schema",
+      "path": "docs/schemas/rig.relay.desktop_projection.v1.schema.json",
+      "sha256": "4904b1074a157d24cdbfde6b7bd82402886a77976930744f8c448aa625abba2f",
+      "exists": true,
+      "validates": true,
+      "purpose": "Desktop cockpit projection schema defining live mutation widget fields",
+      "consumed_by": "Cockpit backend, frontend widgets, operator review panel",
+      "proves": "Cockpit projections follow a governed schema; frontend receives typed, bounded fields",
+      "missing_or_degraded_behavior": "Cockpit widget may display untyped or unsafe data; operator decisions could be misinformed"
+    },
+    {
+      "artifact_id": "operator_checklist",
+      "path": "docs/json/governance/github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+      "sha256": "6692c2e3793e2fadf0ae05edac06fae4cc0065cf107f4e67ede9e33f372c052e",
+      "exists": true,
+      "validates": true,
+      "purpose": "Operator checklist: repository, branch, target files, required permissions, rollback guidance",
+      "consumed_by": "Operator, preflight executor, rehearsal runner",
+      "proves": "All manual operator gates are documented; permissions and rollback are explicit",
+      "missing_or_degraded_behavior": "Operator lacks a checklist; manual gates are undocumented and unverifiable"
+    },
+    {
+      "artifact_id": "live_pr_rehearsal_runbook",
+      "path": "docs/json/governance/github_live_pr_rehearsal_v1.v1.json",
+      "sha256": "696e341ed53bdb6d90fce2ab942601fa493bf253a14dd92fb4254df376713e52",
+      "exists": true,
+      "validates": true,
+      "purpose": "Rehearsal runbook with 16 steps including read-only checks, remote mutations, and deferred alert update",
+      "consumed_by": "Operator, rehearsal runner, cockpit projection",
+      "proves": "All runbook steps executed; branch created, file written, PR created, alert deferred",
+      "missing_or_degraded_behavior": "No runbook; operator has no step-by-step execution path for live mutation"
+    }
+  ]
+}

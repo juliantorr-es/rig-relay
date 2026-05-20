@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.github.security_lifecycle_permission_boundary_audit.v1",
-  "generated_at": "2026-05-20T18:42:59.804233+00:00",
+  "generated_at": "2026-05-20T21:02:40.989905+00:00",
   "content_light": true,
   "gates": [
     {

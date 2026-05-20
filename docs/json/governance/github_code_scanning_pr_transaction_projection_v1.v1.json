@@ -1,0 +1,11 @@
+{
+  "available": true,
+  "transaction_status": "finalized_success",
+  "recovery_status": "none",
+  "pr_status": "unknown",
+  "alert_update_status": "deferred",
+  "rate_limit_status": "none",
+  "next_safe_action": "review_transaction",
+  "human_review_required": false,
+  "raw_payloads_exposed": false
+}

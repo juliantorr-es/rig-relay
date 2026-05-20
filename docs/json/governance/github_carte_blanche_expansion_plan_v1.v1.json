@@ -1,0 +1,803 @@
+{
+  "schema_version": "rig.github.carte_blanche_expansion_plan.v1",
+  "generated_at": "2026-05-20T21:52:08.441143+00:00",
+  "branch": "main",
+  "head": "309a86d",
+  "content_light": true,
+  "current_live_write_status": "live_proven — PR #7 created via governed branch/file/PR lane on juliantorr-es/rig-relay",
+  "live_proven_lanes": [
+    "branch_create_for_pr",
+    "file_write_from_candidate",
+    "pr_create_governed"
+  ],
+  "surfaces": [
+    {
+      "surface_id": "repository_metadata",
+      "api_family": "Git REST / repo metadata",
+      "read_ops": [
+        "get_repo",
+        "list_repos",
+        "get_topics"
+      ],
+      "mutation_ops": [
+        "update_description",
+        "update_homepage",
+        "update_topics"
+      ],
+      "required_perms": {
+        "read": [
+          "metadata:read"
+        ],
+        "mutation": [
+          "administration:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "medium",
+      "safe_first_slice": "repo_metadata_read_only_audit"
+    },
+    {
+      "surface_id": "contents_files",
+      "api_family": "Contents API",
+      "read_ops": [
+        "get_contents",
+        "get_readme"
+      ],
+      "mutation_ops": [
+        "create_or_update_file"
+      ],
+      "required_perms": {
+        "read": [
+          "contents:read"
+        ],
+        "mutation": [
+          "contents:write"
+        ]
+      },
+      "current_status": "implemented",
+      "risk": "high",
+      "safe_first_slice": "rehearsal_pr_creation"
+    },
+    {
+      "surface_id": "branches_refs",
+      "api_family": "Git refs API",
+      "read_ops": [
+        "get_ref",
+        "list_branches"
+      ],
+      "mutation_ops": [
+        "create_ref",
+        "update_ref",
+        "delete_ref"
+      ],
+      "required_perms": {
+        "read": [
+          "contents:read"
+        ],
+        "mutation": [
+          "contents:write"
+        ]
+      },
+      "current_status": "implemented",
+      "risk": "high",
+      "safe_first_slice": "branch_creation_for_pr"
+    },
+    {
+      "surface_id": "pull_requests",
+      "api_family": "Pulls API",
+      "read_ops": [
+        "list_prs",
+        "get_pr",
+        "get_reviews"
+      ],
+      "mutation_ops": [
+        "create_pr",
+        "update_pr",
+        "merge_pr"
+      ],
+      "required_perms": {
+        "read": [
+          "pull_requests:read"
+        ],
+        "mutation": [
+          "pull_requests:write"
+        ]
+      },
+      "current_status": "implemented",
+      "risk": "high",
+      "safe_first_slice": "governed_pr_creation"
+    },
+    {
+      "surface_id": "issues",
+      "api_family": "Issues API",
+      "read_ops": [
+        "list_issues",
+        "get_issue"
+      ],
+      "mutation_ops": [
+        "create_issue",
+        "update_issue",
+        "close_issue"
+      ],
+      "required_perms": {
+        "read": [
+          "issues:read"
+        ],
+        "mutation": [
+          "issues:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "medium",
+      "safe_first_slice": "issue_triage_read_only"
+    },
+    {
+      "surface_id": "code_scanning",
+      "api_family": "Code Scanning API",
+      "read_ops": [
+        "list_alerts",
+        "get_alert"
+      ],
+      "mutation_ops": [
+        "update_alert",
+        "dismiss_alert"
+      ],
+      "required_perms": {
+        "read": [
+          "security_events:read"
+        ],
+        "mutation": [
+          "security_events:write"
+        ]
+      },
+      "current_status": "implemented_read_only",
+      "risk": "high",
+      "safe_first_slice": "alert_state_management_planning"
+    },
+    {
+      "surface_id": "code_scanning_dismissal",
+      "api_family": "Code Scanning Dismissal API",
+      "read_ops": [],
+      "mutation_ops": [
+        "create_dismissal_request",
+        "update_dismissal"
+      ],
+      "required_perms": {
+        "read": [],
+        "mutation": [
+          "security_events:write"
+        ]
+      },
+      "current_status": "deferred",
+      "risk": "high",
+      "safe_first_slice": "dismissal_request_with_approval"
+    },
+    {
+      "surface_id": "secret_scanning",
+      "api_family": "Secret Scanning API",
+      "read_ops": [
+        "list_alerts"
+      ],
+      "mutation_ops": [
+        "update_alert"
+      ],
+      "required_perms": {
+        "read": [
+          "security_events:read"
+        ],
+        "mutation": [
+          "security_events:write"
+        ]
+      },
+      "current_status": "refused",
+      "risk": "extreme",
+      "safe_first_slice": "read_only_secret_alert_no_values"
+    },
+    {
+      "surface_id": "dependabot_alerts",
+      "api_family": "Dependabot Alerts API",
+      "read_ops": [
+        "list_alerts",
+        "get_alert"
+      ],
+      "mutation_ops": [
+        "update_alert",
+        "dismiss_alert"
+      ],
+      "required_perms": {
+        "read": [
+          "dependabot_alerts:read"
+        ],
+        "mutation": [
+          "dependabot_alerts:write"
+        ]
+      },
+      "current_status": "refused",
+      "risk": "high",
+      "safe_first_slice": "read_only_dependabot_inventory"
+    },
+    {
+      "surface_id": "security_advisories",
+      "api_family": "Security Advisories API",
+      "read_ops": [
+        "list_advisories",
+        "get_advisory"
+      ],
+      "mutation_ops": [
+        "create_advisory",
+        "update_advisory"
+      ],
+      "required_perms": {
+        "read": [
+          "security_events:read"
+        ],
+        "mutation": [
+          "security_events:write"
+        ]
+      },
+      "current_status": "not_available",
+      "risk": "high",
+      "safe_first_slice": "advisory_read_only_audit"
+    },
+    {
+      "surface_id": "actions_workflows",
+      "api_family": "Actions API",
+      "read_ops": [
+        "list_workflows",
+        "get_workflow_run",
+        "get_logs"
+      ],
+      "mutation_ops": [
+        "dispatch_workflow",
+        "cancel_run",
+        "rerun_run"
+      ],
+      "required_perms": {
+        "read": [
+          "actions:read"
+        ],
+        "mutation": [
+          "actions:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "high",
+      "safe_first_slice": "ci_health_read_only"
+    },
+    {
+      "surface_id": "releases",
+      "api_family": "Releases API",
+      "read_ops": [
+        "list_releases",
+        "get_release"
+      ],
+      "mutation_ops": [
+        "create_release",
+        "update_release",
+        "upload_asset"
+      ],
+      "required_perms": {
+        "read": [
+          "contents:read"
+        ],
+        "mutation": [
+          "contents:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "high",
+      "safe_first_slice": "release_draft_read_only"
+    },
+    {
+      "surface_id": "pages",
+      "api_family": "Pages API",
+      "read_ops": [
+        "get_pages",
+        "get_build"
+      ],
+      "mutation_ops": [
+        "update_pages",
+        "publish"
+      ],
+      "required_perms": {
+        "read": [
+          "pages:read"
+        ],
+        "mutation": [
+          "pages:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "medium",
+      "safe_first_slice": "pages_status_read_only"
+    },
+    {
+      "surface_id": "discussions",
+      "api_family": "Discussions API",
+      "read_ops": [
+        "list_discussions",
+        "get_discussion"
+      ],
+      "mutation_ops": [
+        "create_discussion",
+        "update_discussion"
+      ],
+      "required_perms": {
+        "read": [
+          "discussions:read"
+        ],
+        "mutation": [
+          "discussions:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "low",
+      "safe_first_slice": "discussion_read_only"
+    },
+    {
+      "surface_id": "projects",
+      "api_family": "Projects v2 API",
+      "read_ops": [
+        "list_projects",
+        "get_project"
+      ],
+      "mutation_ops": [
+        "create_item",
+        "update_item"
+      ],
+      "required_perms": {
+        "read": [
+          "projects:read"
+        ],
+        "mutation": [
+          "projects:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "low",
+      "safe_first_slice": "project_board_read_only"
+    },
+    {
+      "surface_id": "webhooks",
+      "api_family": "Webhooks API",
+      "read_ops": [
+        "list_hooks",
+        "get_hook"
+      ],
+      "mutation_ops": [
+        "create_hook",
+        "update_hook"
+      ],
+      "required_perms": {
+        "read": [
+          "webhooks:read"
+        ],
+        "mutation": [
+          "administration:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "high",
+      "safe_first_slice": "webhook_read_only_observation"
+    },
+    {
+      "surface_id": "repository_rulesets",
+      "api_family": "Rulesets API",
+      "read_ops": [
+        "list_rulesets"
+      ],
+      "mutation_ops": [
+        "create_ruleset",
+        "update_ruleset"
+      ],
+      "required_perms": {
+        "read": [
+          "administration:read"
+        ],
+        "mutation": [
+          "administration:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "high",
+      "safe_first_slice": "ruleset_read_only_audit"
+    },
+    {
+      "surface_id": "checks_statuses",
+      "api_family": "Checks API",
+      "read_ops": [
+        "list_check_runs",
+        "get_check_suite"
+      ],
+      "mutation_ops": [
+        "create_check_run"
+      ],
+      "required_perms": {
+        "read": [
+          "checks:read"
+        ],
+        "mutation": [
+          "checks:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "medium",
+      "safe_first_slice": "checks_status_read_only"
+    },
+    {
+      "surface_id": "collaborators_teams",
+      "api_family": "Collaborators / Org API",
+      "read_ops": [
+        "list_collaborators",
+        "list_teams"
+      ],
+      "mutation_ops": [
+        "add_collaborator",
+        "remove_collaborator"
+      ],
+      "required_perms": {
+        "read": [
+          "members:read"
+        ],
+        "mutation": [
+          "members:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "high",
+      "safe_first_slice": "membership_read_only_audit"
+    },
+    {
+      "surface_id": "community_health",
+      "api_family": "Community / Contents API",
+      "read_ops": [
+        "get_community_files"
+      ],
+      "mutation_ops": [
+        "update_security_policy",
+        "update_code_of_conduct"
+      ],
+      "required_perms": {
+        "read": [
+          "contents:read"
+        ],
+        "mutation": [
+          "contents:write"
+        ]
+      },
+      "current_status": "planned",
+      "risk": "low",
+      "safe_first_slice": "community_file_read_only_audit"
+    },
+    {
+      "surface_id": "rate_limits",
+      "api_family": "Rate Limit API",
+      "read_ops": [
+        "get_rate_limit"
+      ],
+      "mutation_ops": [],
+      "required_perms": {
+        "read": [],
+        "mutation": []
+      },
+      "current_status": "planned",
+      "risk": "low",
+      "safe_first_slice": "rate_limit_read_only_snapshot"
+    }
+  ],
+  "surface_count": 21,
+  "mutation_lanes": [
+    {
+      "lane_id": "branch_create_for_pr",
+      "op_type": "create_ref",
+      "source_surface": "branches_refs",
+      "read_perms": [
+        "contents:read"
+      ],
+      "mutation_perms": [
+        "contents:write"
+      ],
+      "approval_required": true,
+      "default_status": "gated_with_receipts",
+      "implemented": true,
+      "tested": true,
+      "live_proven": true,
+      "receipt_artifact": "github_live_pr_write_receipt_v1.v1.json"
+    },
+    {
+      "lane_id": "file_write_from_candidate",
+      "op_type": "create_or_update_file",
+      "source_surface": "contents_files",
+      "read_perms": [
+        "contents:read"
+      ],
+      "mutation_perms": [
+        "contents:write"
+      ],
+      "approval_required": true,
+      "default_status": "gated_with_receipts",
+      "implemented": true,
+      "tested": true,
+      "live_proven": true,
+      "receipt_artifact": "github_live_pr_write_receipt_v1.v1.json"
+    },
+    {
+      "lane_id": "pr_create_governed",
+      "op_type": "create_pr",
+      "source_surface": "pull_requests",
+      "read_perms": [
+        "pull_requests:read"
+      ],
+      "mutation_perms": [
+        "pull_requests:write"
+      ],
+      "approval_required": true,
+      "default_status": "gated_with_receipts",
+      "implemented": true,
+      "tested": true,
+      "live_proven": true,
+      "receipt_artifact": "github_live_pr_write_receipt_v1.v1.json"
+    },
+    {
+      "lane_id": "alert_dismissal_governed",
+      "op_type": "dismiss_alert",
+      "source_surface": "code_scanning",
+      "read_perms": [
+        "security_events:read"
+      ],
+      "mutation_perms": [
+        "security_events:write"
+      ],
+      "approval_required": true,
+      "default_status": "blocked",
+      "implemented": true,
+      "tested": false,
+      "live_proven": false,
+      "receipt_artifact": "github_code_scanning_alert_state_management_v1.v1.json"
+    },
+    {
+      "lane_id": "alert_reopen_governed",
+      "op_type": "reopen_alert",
+      "source_surface": "code_scanning",
+      "read_perms": [
+        "security_events:read"
+      ],
+      "mutation_perms": [
+        "security_events:write"
+      ],
+      "approval_required": true,
+      "default_status": "blocked",
+      "implemented": true,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "pr_merge_governed",
+      "op_type": "merge_pr",
+      "source_surface": "pull_requests",
+      "read_perms": [],
+      "mutation_perms": [
+        "pull_requests:write",
+        "contents:write"
+      ],
+      "approval_required": true,
+      "default_status": "forbidden",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "issue_create_from_finding",
+      "op_type": "create_issue",
+      "source_surface": "issues",
+      "read_perms": [
+        "issues:read"
+      ],
+      "mutation_perms": [
+        "issues:write"
+      ],
+      "approval_required": true,
+      "default_status": "dry_run_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "issue_triage_auto_label",
+      "op_type": "update_issue_labels",
+      "source_surface": "issues",
+      "read_perms": [
+        "issues:read"
+      ],
+      "mutation_perms": [
+        "issues:write"
+      ],
+      "approval_required": false,
+      "default_status": "policy_gated",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "workflow_file_edit",
+      "op_type": "create_or_update_file",
+      "source_surface": "contents_files",
+      "read_perms": [],
+      "mutation_perms": [
+        "contents:write",
+        "workflows:write"
+      ],
+      "approval_required": true,
+      "default_status": "forbidden",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "release_draft",
+      "op_type": "create_release",
+      "source_surface": "releases",
+      "read_perms": [
+        "contents:read"
+      ],
+      "mutation_perms": [
+        "contents:write"
+      ],
+      "approval_required": true,
+      "default_status": "dry_run_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "release_publish",
+      "op_type": "create_release",
+      "source_surface": "releases",
+      "read_perms": [
+        "contents:read"
+      ],
+      "mutation_perms": [
+        "contents:write"
+      ],
+      "approval_required": true,
+      "default_status": "blocked",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "pages_status_read",
+      "op_type": "get_pages",
+      "source_surface": "pages",
+      "read_perms": [
+        "pages:read"
+      ],
+      "mutation_perms": [],
+      "approval_required": false,
+      "default_status": "read_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "pages_publish",
+      "op_type": "update_pages",
+      "source_surface": "pages",
+      "read_perms": [
+        "pages:read"
+      ],
+      "mutation_perms": [
+        "pages:write"
+      ],
+      "approval_required": true,
+      "default_status": "blocked",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "ci_health_read",
+      "op_type": "list_workflow_runs",
+      "source_surface": "actions_workflows",
+      "read_perms": [
+        "actions:read"
+      ],
+      "mutation_perms": [],
+      "approval_required": false,
+      "default_status": "read_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "ci_rerun_job",
+      "op_type": "rerun_workflow",
+      "source_surface": "actions_workflows",
+      "read_perms": [
+        "actions:read"
+      ],
+      "mutation_perms": [
+        "actions:write"
+      ],
+      "approval_required": true,
+      "default_status": "blocked",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "webhook_observe",
+      "op_type": "list_hooks",
+      "source_surface": "webhooks",
+      "read_perms": [
+        "webhooks:read"
+      ],
+      "mutation_perms": [],
+      "approval_required": false,
+      "default_status": "read_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    },
+    {
+      "lane_id": "collaborator_audit",
+      "op_type": "list_collaborators",
+      "source_surface": "collaborators_teams",
+      "read_perms": [
+        "members:read"
+      ],
+      "mutation_perms": [],
+      "approval_required": false,
+      "default_status": "read_only",
+      "implemented": false,
+      "tested": false,
+      "live_proven": false
+    }
+  ],
+  "mutation_lane_count": 17,
+  "sequencing_plan": [
+    "Slice 1: branch_create_for_pr — DONE (live PR #7)",
+    "Slice 2: file_write_from_candidate — DONE (live PR #7)",
+    "Slice 3: pr_create_governed — DONE (live PR #7)",
+    "Slice 4: alert_dismissal_governed + alert_reopen_governed — modeled, behind separate gate",
+    "Slice 5: cockpit live mutation visibility for all proven lanes",
+    "Slice 6: issue_create_from_finding + issue_triage_auto_label",
+    "Slice 7: release_draft + release_publish governed lanes",
+    "Slice 8: ci_health_read + ci_rerun_job gated lanes",
+    "Slice 9: pages_status_read + pages_publish governed lanes",
+    "Slice 10: webhook_observe + collaborator_audit read-only lanes"
+  ],
+  "forbidden_actions": [
+    "merge_pr",
+    "alert_dismissal_without_evidence",
+    "workflow_file_mutation",
+    "default_branch_direct_write",
+    "secret_value_persistence",
+    "raw_source_in_canonical_json"
+  ],
+  "intentionally_deferred": [
+    "live_alert_dismissal",
+    "live_pr_merge",
+    "live_workflow_edits"
+  ],
+  "risk_register": [
+    {
+      "risk": "contents_write_blast_radius",
+      "mitigation": "target_path_security_gates"
+    },
+    {
+      "risk": "security_events_write_misuse",
+      "mitigation": "separate_alert_update_lane"
+    },
+    {
+      "risk": "rate_limit_exhaustion",
+      "mitigation": "preflight_rate_limit_gate"
+    }
+  ],
+  "redaction_summary": {
+    "content_light": true,
+    "raw_tokens": false,
+    "raw_source": false
+  },
+  "recommended_next_slice": "Phase 3 Slice 7 — verify live write status and promote cockpit visibility"
+}

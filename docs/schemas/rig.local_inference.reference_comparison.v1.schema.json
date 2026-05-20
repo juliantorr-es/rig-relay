@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.reference_comparison.v1",
+  "title": "Reference Comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "comparison_id", "scenario_id"],
+  "properties": {
+    "schema_version": {"const": "rig.local_inference.reference_comparison.v1"},
+    "comparison_id": {"type": "string", "minLength": 1},
+    "scenario_id": {"type": "string"},
+    "reference_hash": {"type": "string"},
+    "reference_contract_result": {"type": "string"},
+    "comparison_status": {"type": "string", "enum": ["no_reference", "comparable", "comparison_passed", "comparison_failed", "comparison_unavailable"]},
+    "completion_hash_match": {"type": "boolean"},
+    "contract_result_match": {"type": "boolean"},
+    "latency_class_match": {"type": "boolean"},
+    "token_count_class_match": {"type": "boolean"},
+    "comparison_details": {"type": "string"}
+  }
+}

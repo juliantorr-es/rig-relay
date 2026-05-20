@@ -97,7 +97,7 @@
   <td><code>docs/schemas/rig.release_gate.validation_run.v1.schema.json</code></td>
   <td><code>rig.release_gate.validation_run</code></td>
   <td>Validation Run</td>
-</tr></tbody></table></section><section><h3>Rig Relay Core (147)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
+</tr></tbody></table></section><section><h3>Rig Relay Core (149)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
   <td><code>docs/schemas/rig.relay.a2a.agent_card.v1.schema.json</code></td>
   <td><code>rig.relay.a2a.agent_card</code></td>
   <td>Agent Card</td>
@@ -458,6 +458,11 @@
   <td>Local Action Envelope</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.relay.local_inference.endpoint_config.v1.schema.json</code></td>
+  <td><code>rig.relay.local_inference.endpoint_config</code></td>
+  <td>Endpoint Config</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.relay.local_model_comfort_score.v1.schema.json</code></td>
   <td><code>rig.relay.local_model_comfort_score</code></td>
   <td>Local Model Comfort Score</td>
@@ -491,6 +496,11 @@
   <td><code>docs/schemas/rig.relay.mission_report.v1.schema.json</code></td>
   <td><code>rig.relay.mission_report</code></td>
   <td>Mission Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.relay.mission_topology_projection.v1.schema.json</code></td>
+  <td><code>rig.relay.mission_topology_projection</code></td>
+  <td>Mission Topology Projection</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.relay.model_observation.v1.schema.json</code></td>
@@ -959,7 +969,7 @@
   <td><code>docs/schemas/rig.audit.release_candidate_coherence.v1.schema.json</code></td>
   <td><code>rig.audit.release_candidate_coherence</code></td>
   <td>Release Candidate Coherence</td>
-</tr></tbody></table></section><section><h3>Other (81)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
+</tr></tbody></table></section><section><h3>Other (188)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
   <td><code>docs/schemas/rig.architecture.decision_record.v1.schema.json</code></td>
   <td><code>rig.architecture.decision_record</code></td>
   <td>Decision Record</td>
@@ -1110,9 +1120,329 @@
   <td>Diagram</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.distribution.release_api_matrix.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_api_matrix</code></td>
+  <td>Release Api Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_channel_matrix.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_channel_matrix</code></td>
+  <td>Release Channel Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_credential_matrix.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_credential_matrix</code></td>
+  <td>Release Credential Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_mutation_lane_matrix.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_mutation_lane_matrix</code></td>
+  <td>Release Mutation Lane Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_research.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_research</code></td>
+  <td>Release Research</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_risk_register.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_risk_register</code></td>
+  <td>Release Risk Register</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_roadmap.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_roadmap</code></td>
+  <td>Release Roadmap</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.distribution.release_validation_matrix.v1.schema.json</code></td>
+  <td><code>rig.distribution.release_validation_matrix</code></td>
+  <td>Release Validation Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.attestation.v1.schema.json</code></td>
+  <td><code>rig.enterprise.attestation</code></td>
+  <td>Attestation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.fleet_status.v1.schema.json</code></td>
+  <td><code>rig.enterprise.fleet_status</code></td>
+  <td>Fleet Status</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.policy_evaluation.v1.schema.json</code></td>
+  <td><code>rig.enterprise.policy_evaluation</code></td>
+  <td>Policy Evaluation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.secrets_config.v1.schema.json</code></td>
+  <td><code>rig.enterprise.secrets_config</code></td>
+  <td>Secrets Config</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.tenant_registry.v1.schema.json</code></td>
+  <td><code>rig.enterprise.tenant_registry</code></td>
+  <td>Tenant Registry</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.enterprise.tenant_topology.v1.schema.json</code></td>
+  <td><code>rig.enterprise.tenant_topology</code></td>
+  <td>Tenant Topology</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.event.duckdb_projection_report.v1.schema.json</code></td>
+  <td><code>rig.event.duckdb_projection_report</code></td>
+  <td>Duckdb Projection Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.event.envelope.v1.schema.json</code></td>
+  <td><code>rig.event.envelope</code></td>
+  <td>Envelope</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.event.resource_projection_snapshot.v1.schema.json</code></td>
+  <td><code>rig.event.resource_projection_snapshot</code></td>
+  <td>Resource Projection Snapshot</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.event_propagation_resource_allocation_audit.v1.schema.json</code></td>
+  <td><code>rig.event_propagation_resource_allocation_audit</code></td>
+  <td>Event Propagation Resource Allocation Audit</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.file_coordination.v1.schema.json</code></td>
   <td><code>rig.file_coordination</code></td>
   <td>File Coordination</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_endpoint_matrix.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_endpoint_matrix</code></td>
+  <td>Carte Blanche Endpoint Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_mutation_lanes.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_mutation_lanes</code></td>
+  <td>Carte Blanche Mutation Lanes</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_permission_value_matrix.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_permission_value_matrix</code></td>
+  <td>Carte Blanche Permission Value Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_product_modes.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_product_modes</code></td>
+  <td>Carte Blanche Product Modes</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_product_roadmap.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_product_roadmap</code></td>
+  <td>Carte Blanche Product Roadmap</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_research.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_research</code></td>
+  <td>Carte Blanche Research</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_risk_register.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_risk_register</code></td>
+  <td>Carte Blanche Risk Register</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_surface_lane_matrix.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_surface_lane_matrix</code></td>
+  <td>Carte Blanche Surface Lane Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.carte_blanche_webhook_matrix.v1.schema.json</code></td>
+  <td><code>rig.github.carte_blanche_webhook_matrix</code></td>
+  <td>Carte Blanche Webhook Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_dry_run_candidate_diff.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_dry_run_candidate_diff</code></td>
+  <td>Code Scanning Dry Run Candidate Diff</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_patch_preview.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_patch_preview</code></td>
+  <td>Code Scanning Patch Preview</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_patch_proposal.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_patch_proposal</code></td>
+  <td>Code Scanning Patch Proposal</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_permission_matrix.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_permission_matrix</code></td>
+  <td>Code Scanning Permission Matrix</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_creation_plan.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_creation_plan</code></td>
+  <td>Code Scanning Pr Creation Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_execution.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_mutation_execution</code></td>
+  <td>Code Scanning Pr Mutation Execution</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_readiness.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_mutation_readiness</code></td>
+  <td>Code Scanning Pr Mutation Readiness</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_simulation.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_mutation_simulation</code></td>
+  <td>Code Scanning Pr Mutation Simulation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_source_context.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_source_context</code></td>
+  <td>Code Scanning Source Context</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.evidence_backed_claims_index.v1.schema.json</code></td>
+  <td><code>rig.github.evidence_backed_claims_index</code></td>
+  <td>Evidence Backed Claims Index</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_mutation_operator_checklist.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_operator_checklist</code></td>
+  <td>Live Mutation Operator Checklist</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_mutation_operator_evidence_map.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_operator_evidence_map</code></td>
+  <td>Live Mutation Operator Evidence Map</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_mutation_runbook.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_runbook</code></td>
+  <td>Live Mutation Runbook</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.operating_picture.v1.schema.json</code></td>
+  <td><code>rig.github.operating_picture</code></td>
+  <td>Operating Picture</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.profile_readme_permission_audit.v1.schema.json</code></td>
+  <td><code>rig.github.profile_readme_permission_audit</code></td>
+  <td>Profile Readme Permission Audit</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.profile_readme_pr_plan.v1.schema.json</code></td>
+  <td><code>rig.github.profile_readme_pr_plan</code></td>
+  <td>Profile Readme Pr Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.profile_readme_preview.v1.schema.json</code></td>
+  <td><code>rig.github.profile_readme_preview</code></td>
+  <td>Profile Readme Preview</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.profile_readme_program_report.v1.schema.json</code></td>
+  <td><code>rig.github.profile_readme_program_report</code></td>
+  <td>Profile Readme Program Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.public_surface_audit.v1.schema.json</code></td>
+  <td><code>rig.github.public_surface_audit</code></td>
+  <td>Public Surface Audit</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.publish_pr.v1.schema.json</code></td>
+  <td><code>rig.github.publish_pr</code></td>
+  <td>Publish Pr</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_intake.v1.schema.json</code></td>
+  <td><code>rig.github.security_intake</code></td>
+  <td>Security Intake</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_causal_report.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_causal_report</code></td>
+  <td>Security Lifecycle Causal Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_permission_boundary_audit.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_permission_boundary_audit</code></td>
+  <td>Security Lifecycle Permission Boundary Audit</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_phase2_rc_report.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_phase2_rc_report</code></td>
+  <td>Security Lifecycle Phase2 Rc Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_program_inventory.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_program_inventory</code></td>
+  <td>Security Lifecycle Program Inventory</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_replay.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_replay</code></td>
+  <td>Security Lifecycle Replay</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_mission_candidates.v1.schema.json</code></td>
+  <td><code>rig.github.security_mission_candidates</code></td>
+  <td>Security Mission Candidates</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_mission_packets.v1.schema.json</code></td>
+  <td><code>rig.github.security_mission_packets</code></td>
+  <td>Security Mission Packets</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_packet_execution.v1.schema.json</code></td>
+  <td><code>rig.github.security_packet_execution</code></td>
+  <td>Security Packet Execution</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_packet_runner_plan.v1.schema.json</code></td>
+  <td><code>rig.github.security_packet_runner_plan</code></td>
+  <td>Security Packet Runner Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_queue.v1.schema.json</code></td>
+  <td><code>rig.github.security_queue</code></td>
+  <td>Security Queue</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_remediation_plan.v1.schema.json</code></td>
+  <td><code>rig.github.security_remediation_plan</code></td>
+  <td>Security Remediation Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_work_items.v1.schema.json</code></td>
+  <td><code>rig.github.security_work_items</code></td>
+  <td>Security Work Items</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.surface_audit.v1.schema.json</code></td>
+  <td><code>rig.github.surface_audit</code></td>
+  <td>Surface Audit</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.surface_packets.v1.schema.json</code></td>
+  <td><code>rig.github.surface_packets</code></td>
+  <td>Surface Packets</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.surface_preview.v1.schema.json</code></td>
+  <td><code>rig.github.surface_preview</code></td>
+  <td>Surface Preview</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github_app_permission_posture.v1.schema.json</code></td>
+  <td><code>rig.github_app_permission_posture</code></td>
+  <td>Github App Permission Posture</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.github_ci_cd_reliability.v1.schema.json</code></td>
@@ -1160,14 +1490,29 @@
   <td>Contract</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.google_workspace.operating_picture.v1.schema.json</code></td>
+  <td><code>rig.google_workspace.operating_picture</code></td>
+  <td>Operating Picture</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.google_workspace.operation_receipt.v1.schema.json</code></td>
   <td><code>rig.google_workspace.operation_receipt</code></td>
   <td>Operation Receipt</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.google_workspace.read_intake.v1.schema.json</code></td>
+  <td><code>rig.google_workspace.read_intake</code></td>
+  <td>Read Intake</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.google_workspace.status_snapshot.v1.schema.json</code></td>
   <td><code>rig.google_workspace.status_snapshot</code></td>
   <td>Status Snapshot</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.google_workspace.surface_packets.v1.schema.json</code></td>
+  <td><code>rig.google_workspace.surface_packets</code></td>
+  <td>Surface Packets</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.google_workspace.v1_readiness.v1.schema.json</code></td>
@@ -1183,6 +1528,196 @@
   <td><code>docs/schemas/rig.integration.provider_manifest.v1.schema.json</code></td>
   <td><code>rig.integration.provider_manifest</code></td>
   <td>Provider Manifest</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.live_mutation_operator_readiness_report.v1.schema.json</code></td>
+  <td><code>rig.live_mutation_operator_readiness_report</code></td>
+  <td>Live Mutation Operator Readiness Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.auto_routing_decision.v1.schema.json</code></td>
+  <td><code>rig.local_inference.auto_routing_decision</code></td>
+  <td>Auto Routing Decision</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.benchmark_run.v1.schema.json</code></td>
+  <td><code>rig.local_inference.benchmark_run</code></td>
+  <td>Benchmark Run</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.benchmark_sample.v1.schema.json</code></td>
+  <td><code>rig.local_inference.benchmark_sample</code></td>
+  <td>Benchmark Sample</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.benchmark_summary.v1.schema.json</code></td>
+  <td><code>rig.local_inference.benchmark_summary</code></td>
+  <td>Benchmark Summary</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capability_evidence_report.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capability_evidence_report</code></td>
+  <td>Capability Evidence Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capability_evidence_row.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capability_evidence_row</code></td>
+  <td>Capability Evidence Row</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capability_recommendation.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capability_recommendation</code></td>
+  <td>Capability Recommendation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capacity_benchmark_plan.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capacity_benchmark_plan</code></td>
+  <td>Capacity Benchmark Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capacity_benchmark_sample.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capacity_benchmark_sample</code></td>
+  <td>Capacity Benchmark Sample</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.capacity_scan.v1.schema.json</code></td>
+  <td><code>rig.local_inference.capacity_scan</code></td>
+  <td>Capacity Scan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.correlated_trace_event.v1.schema.json</code></td>
+  <td><code>rig.local_inference.correlated_trace_event</code></td>
+  <td>Correlated Trace Event</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.dataset_export_policy.v1.schema.json</code></td>
+  <td><code>rig.local_inference.dataset_export_policy</code></td>
+  <td>Dataset Export Policy</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.local_output_proposal.v1.schema.json</code></td>
+  <td><code>rig.local_inference.local_output_proposal</code></td>
+  <td>Local Output Proposal</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.manual_execution_approval.v1.schema.json</code></td>
+  <td><code>rig.local_inference.manual_execution_approval</code></td>
+  <td>Manual Execution Approval</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.manual_execution_receipt.v1.schema.json</code></td>
+  <td><code>rig.local_inference.manual_execution_receipt</code></td>
+  <td>Manual Execution Receipt</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.manual_execution_request.v1.schema.json</code></td>
+  <td><code>rig.local_inference.manual_execution_request</code></td>
+  <td>Manual Execution Request</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.model_acquisition_plan.v1.schema.json</code></td>
+  <td><code>rig.local_inference.model_acquisition_plan</code></td>
+  <td>Model Acquisition Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.model_fit_plan.v1.schema.json</code></td>
+  <td><code>rig.local_inference.model_fit_plan</code></td>
+  <td>Model Fit Plan</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.output_contract_result.v1.schema.json</code></td>
+  <td><code>rig.local_inference.output_contract_result</code></td>
+  <td>Output Contract Result</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.provider_fallback_decision.v1.schema.json</code></td>
+  <td><code>rig.local_inference.provider_fallback_decision</code></td>
+  <td>Provider Fallback Decision</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.raw_retention_policy.v1.schema.json</code></td>
+  <td><code>rig.local_inference.raw_retention_policy</code></td>
+  <td>Raw Retention Policy</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.reference_comparison.v1.schema.json</code></td>
+  <td><code>rig.local_inference.reference_comparison</code></td>
+  <td>Reference Comparison</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.routing_decision.v1.schema.json</code></td>
+  <td><code>rig.local_inference.routing_decision</code></td>
+  <td>Routing Decision</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.runtime_backend_registry.v1.schema.json</code></td>
+  <td><code>rig.local_inference.runtime_backend_registry</code></td>
+  <td>Runtime Backend Registry</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.runtime_capability_probe.v1.schema.json</code></td>
+  <td><code>rig.local_inference.runtime_capability_probe</code></td>
+  <td>Runtime Capability Probe</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.scientific_comparison_report.v1.schema.json</code></td>
+  <td><code>rig.local_inference.scientific_comparison_report</code></td>
+  <td>Scientific Comparison Report</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.selection_policy.v1.schema.json</code></td>
+  <td><code>rig.local_inference.selection_policy</code></td>
+  <td>Selection Policy</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.server_lifecycle_receipt.v1.schema.json</code></td>
+  <td><code>rig.local_inference.server_lifecycle_receipt</code></td>
+  <td>Server Lifecycle Receipt</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.shadow_run_receipt.v1.schema.json</code></td>
+  <td><code>rig.local_inference.shadow_run_receipt</code></td>
+  <td>Shadow Run Receipt</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.shadow_safety_policy.v1.schema.json</code></td>
+  <td><code>rig.local_inference.shadow_safety_policy</code></td>
+  <td>Shadow Safety Policy</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.shadow_scenario.v1.schema.json</code></td>
+  <td><code>rig.local_inference.shadow_scenario</code></td>
+  <td>Shadow Scenario</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.task_profile.v1.schema.json</code></td>
+  <td><code>rig.local_inference.task_profile</code></td>
+  <td>Task Profile</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference.telemetry_summary.v1.schema.json</code></td>
+  <td><code>rig.local_inference.telemetry_summary</code></td>
+  <td>Telemetry Summary</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.local_inference_runtime_evaluation.v1.schema.json</code></td>
+  <td><code>rig.local_inference_runtime_evaluation</code></td>
+  <td>Local Inference Runtime Evaluation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.meta.operating_picture.v1.schema.json</code></td>
+  <td><code>rig.meta.operating_picture</code></td>
+  <td>Operating Picture</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.meta.permissions_inventory.v1.schema.json</code></td>
+  <td><code>rig.meta.permissions_inventory</code></td>
+  <td>Permissions Inventory</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.meta.surface_audit.v1.schema.json</code></td>
+  <td><code>rig.meta.surface_audit</code></td>
+  <td>Surface Audit</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.mission_context_packet.v1.schema.json</code></td>
@@ -1248,6 +1783,16 @@
   <td><code>docs/schemas/rig.pr_reconciliation_review.v1.schema.json</code></td>
   <td><code>rig.pr_reconciliation_review</code></td>
   <td>Pr Reconciliation Review</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.provider.operating_picture_registry.v1.schema.json</code></td>
+  <td><code>rig.provider.operating_picture_registry</code></td>
+  <td>Operating Picture Registry</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.provider_api_research.google_meta.v1.schema.json</code></td>
+  <td><code>rig.provider_api_research.google_meta</code></td>
+  <td>Google Meta</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.ralph_scan.v1.schema.json</code></td>

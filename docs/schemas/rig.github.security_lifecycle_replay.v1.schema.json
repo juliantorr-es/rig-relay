@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_replay.v1.schema.json",
+  "title": "GitHub Security Lifecycle Replay v1",
+  "description": "End-to-end dry-run replay of Phase 2 security lifecycle pipeline stages. Reconstructs state from existing artifacts without live mutation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation_detected",
+    "lifecycle_stages",
+    "stages_present",
+    "stages_missing",
+    "permission_chain",
+    "mutation_chain",
+    "approval_chain",
+    "idempotency_chain",
+    "next_safe_action"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.security_lifecycle_replay.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "fake_boundary_mutation": { "type": "string", "const": "simulation_only" },
+    "remote_mutation_detected": { "type": "boolean", "const": false },
+    "lifecycle_stages": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/lifecycle_stage" }
+    },
+    "stages_present": { "type": "integer", "minimum": 0 },
+    "stages_missing": { "type": "integer", "minimum": 0 },
+    "stages_complete": { "type": "integer", "minimum": 0 },
+    "stages_simulated": { "type": "integer", "minimum": 0 },
+    "stages_blocked": { "type": "integer", "minimum": 0 },
+    "pr_lifecycle_state": { "type": "string", "enum": ["no_pr", "plan_only", "planned_simulated_only", "created", "merged"] },
+    "alert_lifecycle_state": { "type": "string", "enum": ["alert_unknown", "alert_deferred", "alert_open", "alert_dismissed", "alert_fixed"] },
+    "pr_to_alert_causal_chain": {
+      "type": "object",
+      "required": ["pr_created", "alert_updated", "relationship", "detail"],
+      "properties": {
+        "pr_created": { "type": "boolean" },
+        "alert_updated": { "type": "boolean" },
+        "relationship": { "type": "string", "enum": ["correlated_only", "causal", "observed", "none"] },
+        "detail": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "permission_chain": {
+      "type": "object",
+      "required": ["read_permissions_used", "mutation_permissions_used"],
+      "properties": {
+        "read_permissions_used": { "type": "array", "items": { "type": "string" } },
+        "mutation_permissions_used": { "type": "array", "items": { "type": "string" } },
+        "planning_stages_no_mutation": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "mutation_chain": {
+      "type": "object",
+      "required": ["stages_with_remote_mutation"],
+      "properties": {
+        "stages_with_remote_mutation": { "type": "integer", "minimum": 0 },
+        "remote_mutation_detected": { "type": "boolean" },
+        "simulation_only_mutations": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "approval_chain": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "model": { "type": "string" },
+            "approval_receipts_collected": { "type": "integer", "minimum": 0 },
+            "next_approval_required": { "type": ["string", "null"] }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "idempotency_chain": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "strategy": { "type": "string" },
+            "key_determinants": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "next_safe_action": { "type": "string" },
+    "evidence_artifacts": { "type": "object" },
+    "reports_present": { "type": "boolean" },
+    "report_paths": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "lifecycle_stage": {
+      "type": "object",
+      "required": ["stage_id", "slice", "artifact_present", "status"],
+      "properties": {
+        "stage_id": { "type": "string" },
+        "slice": { "type": "integer", "minimum": 0 },
+        "kind": { "type": "string", "enum": ["intake", "queue", "planning", "gate", "simulation", "lifecycle", "governance"] },
+        "source_artifact_path": { "type": "string" },
+        "artifact_present": { "type": "boolean" },
+        "artifact_sha256": { "type": ["string", "null"] },
+        "status": {
+          "type": "string",
+          "enum": ["complete", "blocked", "degraded", "deferred", "missing", "invalid", "simulated", "disabled", "present"]
+        },
+        "schema_version": { "type": "string" },
+        "remote_mutation": { "type": "boolean" },
+        "fake_boundary_mutation": { "type": "string", "const": "simulation_only" },
+        "content_light": { "type": "boolean" },
+        "blocked_reasons": { "type": "array", "items": { "type": "string" } },
+        "deferred_reasons": { "type": "array", "items": { "type": "string" } },
+        "remote_mutation_detected": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

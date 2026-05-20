@@ -1,0 +1,25 @@
+{
+  "rate_limited": false,
+  "probes": [
+    {
+      "endpoint": "GET /repos/OWNER/REPO/git/ref/heads/main",
+      "operation": "read_ref",
+      "status_code": 200,
+      "write_endpoint": false
+    },
+    {
+      "endpoint": "permission_check",
+      "write_endpoint": false,
+      "contents_write": true,
+      "pull_requests_write": true,
+      "security_events_write": false,
+      "note": "permissions_verified_via_boundary"
+    },
+    {
+      "endpoint": "rate_limit_check",
+      "rate_limited": false,
+      "remaining": 4999,
+      "reset_at": "N/A"
+    }
+  ]
+}

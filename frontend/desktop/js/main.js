@@ -230,6 +230,8 @@ function _renderPanelColumn() {
                'ralphScout', 'ralphLifecycle',
                 'profileReadmeLane',
                 'spiderwebTopology',
+                'securityLifecycle',
+                'carteBlancheDashboard',
                 'validationSummary', 'releaseGate', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
                'workspaceStatus', 'fleetStatus',

@@ -6,12 +6,11 @@ logic are tested against realistic HTTP responses (success, malformed, server er
 
 from __future__ import annotations
 
-import json
 from collections.abc import Generator
+import json
 from pathlib import Path
 from typing import Any
 
-import httpx
 import pytest
 import respx  # noqa: I202
 
@@ -118,8 +117,9 @@ class TestProbeAdversarial:
 
 class TestBenchmarkRunRealArtifact:
     def test_benchmark_run_schema_validates(self) -> None:
-        from rig_relay.providers.local_inference.models import BenchmarkRun
         import jsonschema
+
+        from rig_relay.providers.local_inference.models import BenchmarkRun
 
         SCHEMA_DIR = Path(__file__).resolve().parents[2] / "docs" / "schemas"
 
@@ -148,10 +148,6 @@ class TestBenchmarkRunRealArtifact:
 
 class TestBenchmarkSampleJSONLOutput:
     def test_jsonl_output_writes_valid_json(self, tmp_path: Path) -> None:
-        from rig_relay.providers.local_inference import (
-            build_benchmark_sample,
-            write_sample_to_jsonl,
-        )
 
         sample = build_benchmark_sample(
             run_id="bench_jsonl_test",
@@ -168,10 +164,6 @@ class TestBenchmarkSampleJSONLOutput:
         assert parsed["schema_version"] == "rig.local_inference.benchmark_sample.v1"
 
     def test_jsonl_multiple_samples(self, tmp_path: Path) -> None:
-        from rig_relay.providers.local_inference import (
-            build_benchmark_sample,
-            write_sample_to_jsonl,
-        )
 
         for i in range(5):
             sample = build_benchmark_sample(

@@ -172,8 +172,7 @@ def test_real_intake_projects_code_scanning_alerts_into_work_items():
     assert report["summary"]["source_alert_count"] == 42
     assert report["summary"]["by_surface"]["code_scanning"] == 42
     assert any(
-        group["group_kind"] == "code_scanning"
-        for group in report["candidate_groups"]
+        group["group_kind"] == "code_scanning" for group in report["candidate_groups"]
     )
 
 

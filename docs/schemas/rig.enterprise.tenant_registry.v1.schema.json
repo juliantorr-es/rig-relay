@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.enterprise.tenant_registry.v1.schema.json",
+  "title": "Rig Enterprise Tenant Registry v1",
+  "description": "Canonical tenant registry — content-light list of registered tenants with scopes and directory paths.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "tenants"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.enterprise.tenant_registry.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "tenants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["tenant_id", "scope", "active"],
+        "properties": {
+          "tenant_id": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "enum": ["isolated", "shared_read", "public"] },
+          "event_log_path": { "type": "string" },
+          "topology_path": { "type": "string" },
+          "permissions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "active": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "mutation_authority": { "type": "boolean", "const": false }
+  },
+  "additionalProperties": false
+}

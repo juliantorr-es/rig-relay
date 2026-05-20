@@ -1,32 +1,32 @@
 # Test Quality Audit Summary
 
-**Generated**: 2026-05-16T04:45:48Z
+**Generated**: 2026-05-20T21:43:39Z
 **Doctrine**: docs/governance/test-suite-doctrine.md
 
 ## Statistics
 
 | Metric | Value |
 |---|---|
-| Total test files | 327 |
-| Total findings | 239 |
+| Total test files | 701 |
+| Total findings | 445 |
 | conftest.py exists | True |
-| __pycache__/conftest*.pyc | 1 |
+| __pycache__/conftest*.pyc | 4 |
 
 ## Findings by Severity
 
 - **critical**: 0
-- **high**: 11
+- **high**: 45
 - **medium**: 20
-- **low**: 64
-- **info**: 144
+- **low**: 109
+- **info**: 271
 
 ## Findings by Rule
 
-- **DETERM_HARDCODED_PATH**: 11
-- **DETERM_SLEEP**: 7
+- **DETERM_HARDCODED_PATH**: 45
+- **DETERM_SLEEP**: 16
 - **DUPLICATE_KNOWN_PAIR**: 2
-- **DUPLICATE_SAME_MODULE**: 144
-- **DUPLICATE_SAME_NAME_CROSS_DIR**: 55
+- **DUPLICATE_SAME_MODULE**: 271
+- **DUPLICATE_SAME_NAME_CROSS_DIR**: 91
 - **LAYOUT_MIS_SCOPED_SCRIPTS**: 3
 - **LAYOUT_ROOT_LEVEL**: 15
 - **NAMING_VAGUE**: 2
@@ -35,10 +35,11 @@
 
 | Marker | Count |
 |---|---|
-| contract | 3 |
-| integration | 7 |
-| slow | 8 |
-| smoke | 11 |
+| contract | 252 |
+| e2e | 23 |
+| integration | 79 |
+| slow | 9 |
+| smoke | 10 |
 
 ## Commands
 

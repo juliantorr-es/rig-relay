@@ -1,0 +1,233 @@
+{
+  "schema_version": "rig.github.live_pr_mutation_attempt.v1",
+  "attempt_id": "bf5ef9ea554e5d48181bc94739696520d72101900704da2962db3ee63325d52b",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "content_light": true,
+  "status": "blocked",
+  "gates": [
+    {
+      "gate": "rc_report_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "preflight_ready",
+      "passed": false,
+      "detail": "preflight must be ready for live mutation review"
+    },
+    {
+      "gate": "execute_flag_set",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "live_gate_active",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "approval_ok",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "boundary_present",
+      "passed": false,
+      "detail": ""
+    }
+  ],
+  "gates_passed": false,
+  "blocked_reasons": [
+    "preflight_ready",
+    "execute_flag_set",
+    "live_gate_active",
+    "approval_ok",
+    "boundary_present"
+  ],
+  "steps": [
+    {
+      "step_id": "load_phase2_rc",
+      "step_name": "load RC report",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "load_live_preflight",
+      "step_name": "load preflight",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_approval",
+      "step_name": "verify approval",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_idempotency",
+      "step_name": "verify idempotency",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_candidate_diff",
+      "step_name": "verify candidate diff",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_branch_safety",
+      "step_name": "verify branch safety",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_path_safety",
+      "step_name": "verify path safety",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "verify_rate_limit",
+      "step_name": "verify rate limit",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "read_base_ref",
+      "step_name": "read base ref",
+      "operation_class": "read_only",
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "create_branch",
+      "step_name": "create branch ref",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "contents:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "write_file",
+      "step_name": "write file contents",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "contents:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "create_pr",
+      "step_name": "create pull request",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "pull_requests:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "write_receipt",
+      "step_name": "write operation receipt",
+      "operation_class": "local_artifact_write",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "write_rollback",
+      "step_name": "write rollback plan",
+      "operation_class": "local_artifact_write",
+      "required_permissions": [
+        "none"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    },
+    {
+      "step_id": "alert_deferred",
+      "step_name": "alert update deferred",
+      "operation_class": "deferred",
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false,
+      "remote_mutation_succeeded": false
+    }
+  ],
+  "branch_created": false,
+  "file_written": false,
+  "pr_created": false,
+  "remote_mutation_succeeded": false,
+  "alert_updated": false,
+  "alert_update_deferred": true,
+  "rollback_plan_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_live_pr_mutation_rollback_plan_v1.v1.json",
+  "permissions_used": [],
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "raw_response_bodies": false
+  },
+  "recommended_next_slice": "Phase 3 Slice 2 — pass all live gates first"
+}

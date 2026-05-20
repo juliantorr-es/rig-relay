@@ -27,6 +27,11 @@ import jsonschema
 
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.desktop.projection_integrity import build_projection_integrity_assessment
+from rig_relay.enterprise.policy_engine import (
+    PolicyEngine,
+    build_policy_context,
+    evaluate_all_gates,
+)
 from rig_relay.evidence.receipt_index import build_receipt_index
 from rig_relay.evidence.storage_lifecycle import compute_storage_summary
 
@@ -51,6 +56,9 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "execution_progress",
     "resources",
     "spiderweb_topology",
+    "security_lifecycle_program",
+    "live_mutation_readiness",
+    "carte_blanche_dashboard",
 })
 
 
@@ -514,6 +522,441 @@ def _build_spiderweb_topology() -> dict[str, Any]:
         return {"available": False, "status": "invalid_artifact"}
 
 
+def _build_carte_blanche_dashboard() -> dict[str, Any]:
+    governance_root = REPO_ROOT / "docs" / "json" / "governance"
+    expansion = _load_json(
+        governance_root / "github_carte_blanche_expansion_plan_v1.v1.json"
+    )
+    surface_report = _load_json(
+        governance_root / "github_carte_blanche_surface_report_v1.v1.json"
+    )
+    probes = surface_report.get("probes", {}) if surface_report else {}
+    lanes = expansion.get("mutation_lanes", []) if expansion else []
+
+    surface_status = {}
+    for name, probe in probes.items():
+        surface_status[name] = {
+            "probed": probe.get("probed", False),
+            "status_code": probe.get("status_code", 0),
+        }
+
+    lane_status = {
+        "live_proven": len([l for l in lanes if l.get("live_proven")]),
+        "read_verified": sum(
+            1 for v in surface_status.values() if v["status_code"] == 200
+        ),
+        "write_wired": sum(1 for l in lanes if l.get("implemented")),
+        "total": len(lanes),
+    }
+
+    return {
+        "available": bool(expansion or surface_report),
+        "surface_count": 13,
+        "live_proven_write_lanes": lane_status["live_proven"],
+        "read_verified_surfaces": lane_status["read_verified"],
+        "gated_write_lanes": lane_status["write_wired"],
+        "total_mutation_lanes": lane_status["total"],
+        "surface_probes": surface_status,
+        "content_light": True,
+        "raw_payloads_exposed": False,
+    }
+
+
+def _build_security_lifecycle_program() -> dict[str, Any]:
+    governance_root = REPO_ROOT / "docs" / "json" / "governance"
+    inventory = _load_json(
+        governance_root / "github_security_lifecycle_program_inventory_v1.v1.json"
+    )
+    replay = _load_json(governance_root / "github_security_lifecycle_replay_v1.v1.json")
+    permission = _load_json(
+        governance_root
+        / "github_security_lifecycle_permission_boundary_audit_v1.v1.json"
+    )
+
+    if not inventory and not replay and not permission:
+        return {"available": False, "status": "missing_artifacts"}
+
+    artifacts = inventory.get("artifacts", []) if inventory else []
+    stages = replay.get("lifecycle_stages", []) if replay else []
+    gates = permission.get("gates", []) if permission else []
+
+    has_remote_mutation = any(a.get("remote_mutation", False) for a in artifacts)
+
+    all_blocked: list[str] = []
+    for stage in stages:
+        for r in stage.get("blocked_reasons", []):
+            if r not in all_blocked:
+                all_blocked.append(r)
+
+    evidence_artifacts: list[dict[str, str]] = [
+        {
+            "path": str(governance_root / Path(a["path"]).name),
+            "sha256": a["sha256"][:16],
+        }
+        for a in artifacts
+    ]
+
+    current_stage_count = sum(
+        1
+        for s in stages
+        if s.get("status") == "present" and not s.get("blocked_reasons")
+    )
+    blocked_stage_count = sum(1 for s in stages if s.get("blocked_reasons"))
+
+    return {
+        "available": True,
+        "phase_status": "active" if inventory else "unknown",
+        "queue_summary": {
+            "total_artifacts": inventory.get("total_artifacts", 0) if inventory else 0,
+            "present_count": inventory.get("present_count", 0) if inventory else 0,
+            "missing_count": inventory.get("missing_count", 0) if inventory else 0,
+        },
+        "selected_alert_summary": {
+            "total_stages": len(stages),
+            "stages_present": replay.get("stages_present", 0) if replay else 0,
+            "current_stage_count": current_stage_count,
+            "blocked_stage_count": blocked_stage_count,
+        },
+        "current_stage": next(
+            (
+                s["stage_id"]
+                for s in stages
+                if s.get("status") == "present" and not s.get("blocked_reasons")
+            ),
+            "none",
+        )
+        if stages
+        else "none",
+        "next_safe_action": (replay.get("next_safe_action", "") if replay else ""),
+        "mutation_status": {
+            "remote_mutation": has_remote_mutation,
+            "local_mutation": False,
+        },
+        "approval_status": (replay.get("approval_chain", "") if replay else ""),
+        "pr_lifecycle_state": "simulation_only"
+        if (replay and replay.get("simulation_only"))
+        else "unknown",
+        "alert_lifecycle_state": "simulation"
+        if (replay and replay.get("simulation_only"))
+        else "unknown",
+        "blocked_reasons": all_blocked[:20],
+        "permission_summary": {
+            "gates_passed": sum(1 for g in gates if g.get("proved", False)),
+            "gates_total": len(gates),
+            "verdict": (permission.get("verdict", "") if permission else ""),
+            "read_permissions": (
+                replay.get("permission_chain", {}).get("read_permissions_used", [])
+                if replay
+                else []
+            ),
+            "mutation_permissions": (
+                replay.get("permission_chain", {}).get("mutation_permissions_used", [])
+                if replay
+                else []
+            ),
+        },
+        "evidence_artifacts": evidence_artifacts,
+        "event_fabric_summary": {
+            "event_count": len(stages),
+            "active_strands": current_stage_count,
+        },
+        "spiderweb_topology_summary": {
+            "node_count": len(artifacts),
+            "edge_count": max(0, len(artifacts) - 1),
+            "active_strands": current_stage_count,
+        },
+        "raw_payloads_exposed": False,
+        "redaction_status": "content_light",
+    }
+
+
+def _build_live_mutation_readiness() -> dict[str, Any]:
+    governance_root = REPO_ROOT / "docs" / "json" / "governance"
+    checklist = _load_json(
+        governance_root / "github_live_mutation_operator_checklist_v1.v1.json"
+    )
+    if not checklist:
+        checklist = _load_json(
+            governance_root / "github_live_pr_rehearsal_operator_checklist_v1.v1.json"
+        )
+    runbook = _load_json(governance_root / "github_live_mutation_runbook_v1.v1.json")
+    if not runbook:
+        runbook = _load_json(governance_root / "github_live_pr_rehearsal_v1.v1.json")
+    preflight = _load_json(
+        governance_root / "github_live_mutation_preflight_v1.v1.json"
+    )
+    permission_audit = _load_json(
+        governance_root
+        / "github_live_mutation_phase3_permission_boundary_audit_v1.v1.json"
+    )
+
+    has_checklist = checklist is not None
+    has_runbook = runbook is not None
+    has_preflight = preflight is not None
+    has_audit = permission_audit is not None
+
+    if not has_checklist and not has_runbook:
+        return {
+            "available": False,
+            "live_mutation_readiness_status": "missing_artifacts",
+        }
+
+    gates: list[dict[str, bool | str]] = []
+    blocked_reasons: list[str] = []
+    required_permissions: list[str] = []
+    expected_live_operations: list[str] = []
+    deferred_actions: list[str] = []
+    rollback_guidance_summary = ""
+    next_safe_action = ""
+
+    if has_checklist:
+        required_permissions = checklist.get("permissions_required", [])  # type: ignore[union-attr]
+        expected_live_operations = checklist.get("expected_operations", [])  # type: ignore[union-attr]
+        if checklist.get("alert_update_deferred"):  # type: ignore[union-attr]
+            deferred_actions.append("alert_dismissal")
+        if checklist.get("pr_merge_deferred"):  # type: ignore[union-attr]
+            deferred_actions.append("pr_merge")
+        rollback_guidance_summary = checklist.get("rollback_guidance", "")  # type: ignore[union-attr]
+
+    if has_runbook:
+        for g in runbook.get("gates", []) or []:  # type: ignore[union-attr]
+            if isinstance(g, dict):
+                gates.append({
+                    "gate_id": g.get("gate", ""),
+                    "passed": g.get("passed", False),
+                    "detail": g.get("detail", ""),
+                })
+        for r in runbook.get("blocked_reasons", []) or []:  # type: ignore[union-attr]
+            if r not in blocked_reasons:
+                blocked_reasons.append(r)
+        next_safe_action = runbook.get("next_safe_action", "")  # type: ignore[union-attr]
+        if not rollback_guidance_summary:
+            rollback_guidance_summary = runbook.get("rollback_guidance", "")  # type: ignore[union-attr]
+        if not gates:
+            gates.append({
+                "gate_id": "gates_passed",
+                "passed": runbook.get("gates_passed", False),  # type: ignore[union-attr]
+                "detail": "",
+            })
+
+    if has_preflight:
+        preflight_has_rs: bool = preflight.get("gates_passed", False)  # type: ignore[union-attr]
+        for g in preflight.get("gates", []) or []:  # type: ignore[union-attr]
+            gate_id = g.get("gate", "")
+            if isinstance(gate_id, str) and not any(
+                ex.get("gate_id") == gate_id for ex in gates
+            ):
+                gates.append({
+                    "gate_id": gate_id,
+                    "passed": g.get("passed", preflight_has_rs),
+                    "detail": g.get("detail", ""),
+                })
+        for r in preflight.get("blocked_reasons", []) or []:  # type: ignore[union-attr]
+            if r not in blocked_reasons:
+                blocked_reasons.append(r)
+        if not next_safe_action:
+            next_safe_action = preflight.get("next_safe_action", "")  # type: ignore[union-attr]
+        if not required_permissions:
+            ps = preflight.get("permission_summary", {})  # type: ignore[union-attr]
+            if ps.get("contents_write"):
+                required_permissions.append("contents:write")
+            if ps.get("pull_requests_write"):
+                required_permissions.append("pull_requests:write")
+            if ps.get("security_events_write_deferred"):
+                required_permissions.append("security_events:write (deferred)")
+
+    all_gates_passed = len(gates) > 0 and all(g.get("passed", False) for g in gates)
+    all_perm_ready = len(required_permissions) > 0 and has_audit
+
+    if not has_preflight:
+        readiness_status = "not_configured"
+    elif blocked_reasons:
+        readiness_status = "blocked"
+    elif all_gates_passed and all_perm_ready:
+        readiness_status = "ready"
+    else:
+        readiness_status = "blocked"
+
+    evidence_artifacts: list[dict[str, str | bool]] = []
+    for name, present, path_suffix in [
+        (
+            "github_live_mutation_operator_checklist_v1.v1.json",
+            has_checklist,
+            "github_live_mutation_operator_checklist_v1.v1.json",
+        ),
+        (
+            "github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+            not has_checklist and checklist is not None,
+            "github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+        ),
+        (
+            "github_live_pr_rehearsal_v1.v1.json",
+            has_runbook,
+            "github_live_pr_rehearsal_v1.v1.json",
+        ),
+        (
+            "github_live_mutation_preflight_v1.v1.json",
+            has_preflight,
+            "github_live_mutation_preflight_v1.v1.json",
+        ),
+        (
+            "github_live_mutation_phase3_permission_boundary_audit_v1.v1.json",
+            has_audit,
+            "github_live_mutation_phase3_permission_boundary_audit_v1.v1.json",
+        ),
+    ]:
+        if not present:
+            continue
+        a_path = governance_root / path_suffix
+        item: dict[str, str | bool] = {"path": name, "present": True, "sha256": ""}
+        if a_path.is_file():
+            try:
+                item["sha256"] = hashlib.sha256(a_path.read_bytes()).hexdigest()[:16]
+            except OSError:
+                pass
+        evidence_artifacts.append(item)
+
+    return {
+        "available": True,
+        "live_mutation_readiness_status": readiness_status,
+        "operator_checklist_status": "present" if has_checklist else "missing",
+        "runbook_status": "present" if has_runbook else "missing",
+        "required_flags": ["--execute-remote", "--gates-approved"],
+        "required_permissions": required_permissions,
+        "readiness_gates": [
+            g.get("gate_id", "") for g in gates if isinstance(g.get("gate_id"), str)
+        ],
+        "blocked_reasons": blocked_reasons[:20],
+        "next_safe_action": next_safe_action,
+        "expected_live_operations": expected_live_operations
+        or ["create_branch", "commit_file", "create_pr"],
+        "deferred_actions": deferred_actions
+        or ["alert_dismissal", "alert_state_update", "pr_merge"],
+        "rollback_guidance_summary": rollback_guidance_summary,
+        "evidence_artifacts": evidence_artifacts,
+        "raw_payloads_exposed": False,
+        "redaction_status": "content_light",
+    }
+
+    gates: list[dict[str, bool | str]] = []
+    blocked_reasons: list[str] = []
+    required_permissions: list[str] = []
+    expected_live_operations: list[str] = []
+    deferred_actions: list[str] = []
+    rollback_guidance_summary = ""
+    next_safe_action = ""
+    readiness_status: str
+
+    if has_checklist:
+        required_permissions = checklist.get("permissions_required", [])
+        expected_live_operations = checklist.get("expected_operations", [])
+        deferred_actions = []
+        if checklist.get("alert_update_deferred"):
+            deferred_actions.append("alert_dismissal")
+        if checklist.get("pr_merge_deferred"):
+            deferred_actions.append("pr_merge")
+        rollback_guidance_summary = checklist.get("rollback_guidance", "")
+
+    if has_runbook:
+        runbook_gates = runbook.get("gates", [])
+        if isinstance(runbook_gates, list):
+            for g in runbook_gates:
+                gates.append({
+                    "gate_id": g.get("gate", ""),
+                    "passed": g.get("passed", False),
+                    "detail": g.get("detail", ""),
+                })
+        for r in runbook.get("blocked_reasons", []):
+            if r not in blocked_reasons:
+                blocked_reasons.append(r)
+        if not next_safe_action:
+            next_safe_action = runbook.get("next_safe_action", "")
+        if not rollback_guidance_summary:
+            rollback_guidance_summary = runbook.get("rollback_guidance", "")
+        if not gates:
+            gates.append({
+                "gate_id": "gates_passed",
+                "passed": runbook.get("gates_passed", False),
+                "detail": "",
+            })
+
+    if has_preflight:
+        preflight_gates = preflight.get("gates", [])
+        if isinstance(preflight_gates, list):
+            for g in preflight_gates:
+                gate_id = g.get("gate", "")
+                if not any(existing.get("gate_id") == gate_id for existing in gates):
+                    gates.append({
+                        "gate_id": gate_id,
+                        "passed": g.get("passed", False),
+                        "detail": g.get("detail", ""),
+                    })
+        for r in preflight.get("blocked_reasons", []):
+            if r not in blocked_reasons:
+                blocked_reasons.append(r)
+        if not next_safe_action:
+            next_safe_action = preflight.get("next_safe_action", "")
+        if not required_permissions:
+            ps = preflight.get("permission_summary", {})
+            if ps.get("contents_write"):
+                required_permissions.append("contents:write")
+            if ps.get("pull_requests_write"):
+                required_permissions.append("pull_requests:write")
+            if ps.get("security_events_write_deferred"):
+                required_permissions.append("security_events:write (deferred)")
+
+    all_gates_passed = len(gates) > 0 and all(g.get("passed", False) for g in gates)
+    all_perm_ready = len(required_permissions) > 0 and has_audit
+
+    if not has_preflight:
+        readiness_status = "not_configured"
+    elif blocked_reasons:
+        readiness_status = "blocked"
+    elif all_gates_passed and all_perm_ready:
+        readiness_status = "ready"
+    else:
+        readiness_status = "blocked"
+
+    evidence_artifacts: list[dict[str, str | bool]] = []
+    for name, present in [
+        ("github_live_pr_rehearsal_operator_checklist_v1.v1.json", has_checklist),
+        ("github_live_pr_rehearsal_v1.v1.json", has_runbook),
+        ("github_live_mutation_preflight_v1.v1.json", has_preflight),
+        ("github_live_mutation_phase3_permission_boundary_audit_v1.v1.json", has_audit),
+    ]:
+        a_path = governance_root / name
+        item: dict[str, str | bool] = {"path": name, "present": present, "sha256": ""}
+        if present and a_path.is_file():
+            try:
+                raw = a_path.read_bytes()
+                item["sha256"] = hashlib.sha256(raw).hexdigest()[:16]
+            except OSError:
+                pass
+        evidence_artifacts.append(item)
+
+    return {
+        "available": True,
+        "live_mutation_readiness_status": readiness_status,
+        "operator_checklist_status": "present" if has_checklist else "missing",
+        "runbook_status": "present" if has_runbook else "missing",
+        "required_flags": ["--execute-remote", "--gates-approved"],
+        "required_permissions": required_permissions,
+        "readiness_gates": [
+            g.get("gate_id", "") for g in gates if isinstance(g.get("gate_id"), str)
+        ],
+        "blocked_reasons": blocked_reasons[:20],
+        "next_safe_action": next_safe_action,
+        "expected_live_operations": expected_live_operations
+        or ["create_branch", "commit_file", "create_pr"],
+        "deferred_actions": deferred_actions
+        or ["alert_dismissal", "alert_state_update", "pr_merge"],
+        "rollback_guidance_summary": rollback_guidance_summary,
+        "evidence_artifacts": evidence_artifacts,
+        "raw_payloads_exposed": False,
+        "redaction_status": "content_light",
+    }
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -640,7 +1083,7 @@ def _validate_against_schema(projection: dict[str, Any]) -> list[str]:
     return [e.message for e in validator.iter_errors(projection)]
 
 
-def build_projection(  # noqa: PLR0914
+def build_projection(
     build_root: Path | None = None, runtime_events: Sequence[Any] | None = None
 ) -> dict[str, Any]:
     """Build a content-light desktop projection from available artifacts.
@@ -676,6 +1119,53 @@ def build_projection(  # noqa: PLR0914
     service_state = _build_service_state()
     resources = _build_resources()
     spiderweb_topology = _build_spiderweb_topology()
+    security_lifecycle_program = _build_security_lifecycle_program()
+    live_mutation_readiness = _build_live_mutation_readiness()
+    carte_blanche_dashboard = _build_carte_blanche_dashboard()
+
+    policy_evaluation: dict[str, Any] | None = None
+    try:
+        ctx = build_policy_context(
+            lifecycle_state=security_lifecycle_program,
+            permission_audit=_load_json(
+                REPO_ROOT
+                / "docs"
+                / "json"
+                / "governance"
+                / "github_live_mutation_phase3_permission_boundary_audit_v1.v1.json"
+            )
+            or {},
+            metrics={
+                "bridge_backend_health": resources.get(
+                    "bridge_backend_health", "unknown"
+                ),
+                "projection_freshness": resources.get(
+                    "projection_freshness", "unknown"
+                ),
+                "reconnect_pressure": resources.get("reconnect_pressure", "none"),
+                "event_queue_pressure": resources.get("event_queue_pressure", "none"),
+                "consumer_error_count": resources.get("consumer_error_count", 0),
+                "wal_uncommitted_count": resources.get("wal_uncommitted_count", 0),
+            },
+            spiderweb_topology=spiderweb_topology,
+        )
+        evaluation = evaluate_all_gates(ctx)
+        engine = PolicyEngine()
+        policy_evaluation = engine.summary(evaluation)
+        policy_evaluation["gates"] = [
+            {
+                "gate_id": r.gate_id,
+                "passed": r.passed,
+                "current_value": r.current_value,
+                "required_value": r.required_value,
+                "evidence": r.evidence,
+                "blocked_reason": r.blocked_reason,
+            }
+            for r in evaluation.gates
+        ]
+        live_mutation_readiness["policy_evaluation"] = policy_evaluation
+    except Exception:
+        pass
 
     source_status = {
         "current_state": current_state["available"],
@@ -694,6 +1184,9 @@ def build_projection(  # noqa: PLR0914
         "service_state": service_state["available"],
         "resources": resources["available"],
         "spiderweb_topology": spiderweb_topology["available"],
+        "security_lifecycle_program": security_lifecycle_program["available"],
+        "live_mutation_readiness": live_mutation_readiness["available"],
+        "carte_blanche_dashboard": carte_blanche_dashboard["available"],
     }
 
     warnings: list[str] = []
@@ -731,6 +1224,9 @@ def build_projection(  # noqa: PLR0914
         "service_state": service_state,
         "resources": resources,
         "spiderweb_topology": spiderweb_topology,
+        "security_lifecycle_program": security_lifecycle_program,
+        "live_mutation_readiness": live_mutation_readiness,
+        "carte_blanche_dashboard": carte_blanche_dashboard,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

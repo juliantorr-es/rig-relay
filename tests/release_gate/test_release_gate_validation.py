@@ -110,7 +110,9 @@ def _write_mock_ci_evidence(repo_root: Path) -> None:
         ],
         "generated_at": "2026-05-18T00:00:00Z",
     }
-    (evidence_dir / "ci_mock_artifact_index.v1.json").write_text(json.dumps(index_data, indent=2))
+    (evidence_dir / "ci_mock_artifact_index.v1.json").write_text(
+        json.dumps(index_data, indent=2)
+    )
 
     verdict_data = {
         "schema_version": "rig.ci.verdict.v1",
@@ -129,7 +131,9 @@ def _write_mock_ci_evidence(repo_root: Path) -> None:
         "evidence_paths": [],
         "telemetry_redaction_notes": "None",
     }
-    (evidence_dir / "ci_mock_verdict.v1.json").write_text(json.dumps(verdict_data, indent=2))
+    (evidence_dir / "ci_mock_verdict.v1.json").write_text(
+        json.dumps(verdict_data, indent=2)
+    )
 
 
 def _write_gate(repo_root: Path, gate: dict) -> Path:
@@ -202,7 +206,9 @@ def _vruns_path(repo_root: Path) -> str:
     )
 
 
-def _run(repo_root: Path, expect_pass: bool = False, write_ci_evidence: bool = True) -> dict:
+def _run(
+    repo_root: Path, expect_pass: bool = False, write_ci_evidence: bool = True
+) -> dict:
     if write_ci_evidence:
         _write_mock_ci_evidence(repo_root)
     proc = subprocess.run(
@@ -242,8 +248,9 @@ class TestValidGatePasses:
     def test_mock_ci_evidence_validates(self, tmp_path: Path):
         _copy_schemas(tmp_path)
         _write_mock_ci_evidence(tmp_path)
-        
+
         import importlib.util
+
         validator_path = SCRIPTS_DIR / "rig_release_gate_validate.py"
         spec = importlib.util.spec_from_file_location(
             "rig_release_gate_validate", validator_path
@@ -251,7 +258,7 @@ class TestValidGatePasses:
         assert spec is not None
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        
+
         errors = mod.check_ci_evidence_surface(tmp_path, tmp_path / "docs" / "schemas")
         assert not errors, f"Mock CI evidence validation errors: {errors}"
 
@@ -491,7 +498,9 @@ class TestSchemaGovernedArtifacts:
         assert any("schema validation" in e.lower() for e in result["errors"])
 
 
-def _run_with_exit_code(repo_root: Path, write_ci_evidence: bool = True) -> tuple[int, dict]:
+def _run_with_exit_code(
+    repo_root: Path, write_ci_evidence: bool = True
+) -> tuple[int, dict]:
     if write_ci_evidence:
         _write_mock_ci_evidence(repo_root)
     proc = subprocess.run(

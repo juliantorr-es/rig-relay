@@ -101,14 +101,15 @@ def test_generated_projection_validates():
 
 def test_causal_report_has_events():
     causal = build_causal_report(generated_at_utc="2026-05-20T00:00:00Z")
-    assert causal["total_events"] >= 10
+    assert causal["total_links"] >= 10
+    assert len(causal["causal_nodes"]) >= 10
 
 
 def test_causal_distinguishes_observed_derived():
     causal = build_causal_report()
-    relationships = {e["relationship"] for e in causal["events"]}
-    assert "observed" in relationships
-    assert "derived" in relationships
+    rels = {e["relationship"] for e in causal["causal_edges"]}
+    assert "observed" in rels
+    assert "derived" in rels
 
 
 def test_generated_causal_validates():
@@ -152,12 +153,12 @@ def test_rc_report_validates():
     rc = build_rc_report(generated_at_utc="2026-05-20T00:00:00Z")
     assert rc["schema_version"] is not None
     assert rc["slices_completed"] == 10
-    assert rc["phase_status"] == "release_candidate"
+    assert rc["phase_status"] == "rc_convergence_complete"
 
 
 def test_rc_report_references_all_artifacts():
     rc = build_rc_report()
-    assert "inventory" in rc["artifacts_inventory_path"]
+    assert "inventory" in rc["artifact_inventory_path"]
     assert "replay" in rc["replay_artifact_path"]
     assert "causal" in rc["causal_report_path"]
     assert "permission" in rc["permission_boundary_audit_path"]

@@ -1,0 +1,127 @@
+{
+  "checklist_id": "001f582a-1579-5802-a883-6be2568ab73e",
+  "schema_version": "rig.github.live_mutation_operator_checklist.v1",
+  "generated_at": "2026-05-20T19:42:22.325378+00:00",
+  "target_repository_safe_id": "rig-relay",
+  "base_branch": "main",
+  "proposed_branch": "rig/security/code-scanning-fix-001",
+  "branch_prefix_requirement": "rig/security/",
+  "target_paths_summary": [
+    "[file_path_unknown]",
+    "file_path_hash=080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26"
+  ],
+  "target_paths_hashes": {
+    "[file_path_unknown]": "",
+    "file_path_hash=080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26": ""
+  },
+  "candidate_diff_hash": "d442c36d8b66c621bfd998bedc3abeca7c0761fba6e8f13764d60d269d01ff22",
+  "candidate_diff_source_artifact": "docs/json/governance/code_scanning_dry_run_candidate_diff_v1.v1.json",
+  "operation_idempotency_key": "0249c35b-cf63-5536-b030-9885ae17609a",
+  "required_env_flags": [
+    "RIG_LIVE_MUTATION=1",
+    "RIG_GITHUB_AUTH_TOKEN=<from-token-store>"
+  ],
+  "required_cli_flags": [
+    "--execute-remote",
+    "--branch",
+    "rig/security/code-scanning-fix-001",
+    "--gates-approved"
+  ],
+  "required_permissions": [
+    {
+      "permission": "pull_requests:write",
+      "scope": "repository",
+      "required_for": "PR creation",
+      "status": "not_granted"
+    },
+    {
+      "permission": "contents:write",
+      "scope": "repository",
+      "required_for": "file write on new branch",
+      "status": "not_granted"
+    }
+  ],
+  "readiness_gates": [
+    {
+      "gate_id": "phase2_rc_gates_passed",
+      "description": "Phase 2 RC gates are all passed",
+      "status": "pending",
+      "evidence_path": "docs/json/release_gate/rc_readiness_gate.v1.json"
+    },
+    {
+      "gate_id": "phase3_rc_gates_passed",
+      "description": "Phase 3 RC gates are all passed",
+      "status": "pending",
+      "evidence_path": "docs/json/release_gate/rc_readiness_gate.v1.json"
+    },
+    {
+      "gate_id": "preflight_completed",
+      "description": "Live mutation preflight has completed successfully",
+      "status": "pending",
+      "evidence_path": "docs/json/governance/github_live_mutation_preflight_v1.v1.json"
+    },
+    {
+      "gate_id": "permissions_verified",
+      "description": "Required GitHub App permissions are verified active",
+      "status": "pending",
+      "evidence_path": "docs/json/governance/github_live_mutation_phase3_permission_boundary_audit_v1.v1.json"
+    },
+    {
+      "gate_id": "branch_safety_check",
+      "description": "Proposed branch does not collide with existing branches",
+      "status": "pending",
+      "evidence_path": ""
+    },
+    {
+      "gate_id": "path_safety_check",
+      "description": "Target paths are safe (no workflow files, no default branch overwrite)",
+      "status": "pending",
+      "evidence_path": ""
+    },
+    {
+      "gate_id": "rate_limit_check",
+      "description": "GitHub API rate limits are not near exhaustion",
+      "status": "pending",
+      "evidence_path": "docs/json/governance/github_live_mutation_rate_limit_snapshot_v1.v1.json"
+    },
+    {
+      "gate_id": "idempotency_check",
+      "description": "Operation idempotency key has not been previously executed",
+      "status": "pending",
+      "evidence_path": ""
+    },
+    {
+      "gate_id": "approval_gate",
+      "description": "Human operator approval is recorded",
+      "status": "pending",
+      "evidence_path": ""
+    }
+  ],
+  "operator_acknowledgements": [
+    "I acknowledge this operation will create a real branch on the remote repository.",
+    "I acknowledge this operation will commit file changes to a remote branch via --execute-remote.",
+    "I acknowledge this operation will create a real pull request with a visible diff.",
+    "I acknowledge this operation requires `contents:write` and `pull_requests:write` GitHub App permissions.",
+    "I acknowledge rate limits are monitored and the operation degrades gracefully on exhaustion.",
+    "I acknowledge the alert state update/dismissal is explicitly deferred to post-merge validation.",
+    "I acknowledge this operation produces a content-light attestation receipt with no raw secrets, tokens, or vulnerable code.",
+    "I acknowledge the rollback path is: delete the created branch, close the PR without merging. Operation receipt remains as canonical evidence."
+  ],
+  "explicitly_deferred_actions": [
+    "alert_dismissal",
+    "alert_state_update",
+    "pr_merge",
+    "workflow_file_edit",
+    "branch_deletion"
+  ],
+  "forbidden_actions": [
+    "force_push",
+    "direct_main_write",
+    "skip_approval",
+    "skip_idempotency_check"
+  ],
+  "rollback_guidance_summary": "Delete the created branch (rig/security/code-scanning-fix-001). Close the PR without merging. Operation receipt remains as canonical evidence.",
+  "next_safe_action": "Review operator checklist, confirm all gates pass, then execute with --execute-remote --gates-approved",
+  "redaction_status": "content_light",
+  "raw_payloads_exposed": false
+}

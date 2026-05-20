@@ -1,0 +1,42 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_ledger_repair_plan.v1",
+  "content_light": true,
+  "corruption_cases": [
+    {
+      "corruption_case": "malformed_line",
+      "detected": true,
+      "repair_action": "quarantine_ledger",
+      "destructive_rewrite_forbidden": true,
+      "manual_review_required": true
+    },
+    {
+      "corruption_case": "duplicate_event",
+      "detected": true,
+      "repair_action": "require_reconciliation",
+      "destructive_rewrite_forbidden": true,
+      "manual_review_required": true
+    },
+    {
+      "corruption_case": "out_of_order",
+      "detected": true,
+      "repair_action": "require_reconciliation",
+      "destructive_rewrite_forbidden": true,
+      "manual_review_required": true
+    },
+    {
+      "corruption_case": "missing_finalization",
+      "detected": true,
+      "repair_action": "require_reconciliation",
+      "destructive_rewrite_forbidden": true,
+      "manual_review_required": true
+    },
+    {
+      "corruption_case": "hash_mismatch",
+      "detected": true,
+      "repair_action": "require_reconciliation",
+      "destructive_rewrite_forbidden": true,
+      "manual_review_required": true
+    }
+  ],
+  "destructive_rewrite_allowed": false
+}

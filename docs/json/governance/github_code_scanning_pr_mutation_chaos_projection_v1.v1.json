@@ -1,0 +1,9 @@
+{
+  "available": true,
+  "scenario_count": 5,
+  "pass_count": 15,
+  "fail_count": 5,
+  "invariant_count": 20,
+  "corruption_cases": 5,
+  "raw_payloads_exposed": false
+}

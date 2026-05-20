@@ -9,14 +9,10 @@ import pytest
 
 from rig_relay.providers.local_inference import (
     BenchmarkRun,
-    BenchmarkSample,
-    CapabilityProbeResult,
     CapabilityStatus,
     LocalRuntimeKind,
-    PlatformClass,
     ProbeStatus,
     RoutingConfidence,
-    RoutingDecision,
     TaskProfile,
     TaskType,
     build_benchmark_sample,

@@ -113,6 +113,13 @@ from rig_relay.core.tool_runtime_models import (
     ToolRuntimeStatus,
 )
 
+_COUNCIL_MUTATION_TOOLS = frozenset({
+    "BashTool",
+    "WriteFileTool",
+    "SearchReplaceTool",
+    "CheckpointTool",
+})
+
 
 class AgentLoop(
     LLMCallMixin,
@@ -627,6 +634,34 @@ class AgentLoop(
     def _select_backend(self) -> BackendLike:
         provider = self.config.get_active_provider()
         timeout = self.config.api_timeout
+        if (
+            provider.name == "local_inference"
+            and not self.config.local_inference_enabled
+        ):
+            from rig_relay.core.logger import logger
+
+            logger.warning(
+                "local_inference provider selected but local_inference_enabled=False"
+            )
+            msg = "Local inference is not enabled. Set local_inference_enabled=True in config."
+            raise RuntimeError(msg)
+        if provider.name == "local_inference":
+            from rig_relay.providers.local_inference.airlock import (
+                get_airlock,
+                is_local_inference_available,
+                is_local_inference_configured,
+            )
+
+            if not is_local_inference_configured():
+                msg = "Local inference endpoint not configured. Configure via airlock."
+                raise RuntimeError(msg)
+            if not is_local_inference_available():
+                msg = "Local inference blocked by capability gate."
+                raise RuntimeError(msg)
+            airlock = get_airlock()
+            config = airlock.get_config()
+            if config and config.endpoint_url:
+                provider.api_base = config.endpoint_url.rstrip("/") + "/v1"
         return BACKEND_FACTORY[provider.backend](provider=provider, timeout=timeout)
 
     async def _save_messages(self) -> None:
@@ -965,6 +1000,54 @@ class AgentLoop(
             tool_call_id=tool_call.call_id,
         )
 
+    async def _consult_council_before_mutation(
+        self, tn: str, tool_args: dict[str, Any], tool_class: type[BaseTool] | None
+    ) -> str:
+        """Consult the council before executing a mutation tool.
+
+        Checks the capability gate and configured providers. Returns
+        "ALLOW", "BLOCK", or "REVIEW".
+        """
+        if tool_class is None:
+            return "ALLOW"
+        if tool_class.__name__ not in _COUNCIL_MUTATION_TOOLS:
+            return "ALLOW"
+
+        try:
+            from rig_relay.governance.service_state import get_capability_gate
+
+            gate = get_capability_gate()
+            allowed, _ = gate.is_allowed("council_consult")
+            if not allowed:
+                return "ALLOW"
+        except Exception:
+            return "ALLOW"
+
+        configured_providers = [p.name for p in getattr(self.config, "providers", [])]
+        if len(configured_providers) <= 1:
+            return "ALLOW"
+
+        try:
+            from rig_relay.coordination.council_invoker import (
+                consult_council_before_mutation,
+                determine_council_recommendation,
+            )
+
+            context_summary = (
+                f"Tool: {tn}. Turn: {self._current_user_message_id or 'unknown'}."
+            )
+            receipt = await consult_council_before_mutation(
+                tool_name=tn,
+                tool_args=tool_args,
+                context_summary=context_summary,
+                providers=configured_providers,
+                redaction="standard",
+            )
+            return determine_council_recommendation(receipt)
+        except Exception as exc:
+            logger.warning("Council consultation failed for tool=%s: %s", tn, exc)
+            return "ALLOW"
+
     async def _execute_tool_call(
         self, span: trace.Span, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
@@ -1020,6 +1103,41 @@ class AgentLoop(
                 self.rewind_manager.add_snapshot(snapshot)
         except Exception:
             pass
+
+        # ── Council consultation (pre-mutation) ──────────────────
+        recommendation = await self._consult_council_before_mutation(
+            tn, tool_call.args_dict, tool_call.tool_class
+        )
+        if recommendation == "BLOCK":
+            if (turn := getattr(self, "_current_turn", None)) is not None:
+                turn.tool_skip_count += 1
+            yield ToolResultEvent(
+                tool_name=tn,
+                tool_class=tool_call.tool_class,
+                skipped=True,
+                skip_reason="Council consultation blocked this mutation",
+                cancelled=False,
+                tool_call_id=cid,
+            )
+            return
+        if recommendation == "REVIEW" and self.approval_callback is not None:
+            from rig_relay.core.types import ApprovalResponse
+
+            response, feedback = await self.approval_callback(
+                tn, tool_call.validated_args, cid, []
+            )
+            if response != ApprovalResponse.YES:
+                if (turn := getattr(self, "_current_turn", None)) is not None:
+                    turn.tool_skip_count += 1
+                yield ToolResultEvent(
+                    tool_name=tn,
+                    tool_class=tool_call.tool_class,
+                    skipped=True,
+                    skip_reason=feedback or "Council review not approved by user",
+                    cancelled=False,
+                    tool_call_id=cid,
+                )
+                return
 
         # ── Governed execution ───────────────────────────────────
         try:

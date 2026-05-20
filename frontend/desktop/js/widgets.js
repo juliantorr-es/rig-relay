@@ -2193,3 +2193,315 @@ registerWidget('spiderwebTopology', (container, level) => {
 
   renderStandardCard(container, 'Spiderweb Topology', html, 'spiderwebTopology', statusCls);
 });
+
+// ── Security Lifecycle Program widget ──
+registerWidget('securityLifecycle', (container, level) => {
+  const p = state.projection;
+  const sl = (p && p.security_lifecycle_program) || {};
+
+  if (!sl.available) {
+    if (level === 'compact') return;
+    const reason = sl.status === 'missing_artifacts'
+      ? 'No security lifecycle artifacts found.'
+      : 'Security lifecycle data not available.';
+    renderStandardCard(container, 'Security Lifecycle',
+      '<span class="widget-missing" style="color:var(--text-dimmed)">' + escapeHtml(reason) + '</span>',
+      'securityLifecycle', 'dimmed');
+    return;
+  }
+
+  const blockedCount = (sl.blocked_reasons || []).length;
+  const statusCls = sl.mutation_status && sl.mutation_status.remote_mutation ? 'warn'
+    : blockedCount > 0 ? 'warn'
+    : 'ok';
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'Sec Lifecycle', () => ({
+      text: (sl.current_stage || 'none') + ' | ' + (sl.next_safe_action || 'idle'),
+      cls: statusCls
+    }));
+    var _lmrc = p && p.live_mutation_readiness;
+    if (_lmrc && _lmrc.available) {
+      var _lmStat = _lmrc.live_mutation_readiness_status || 'unknown';
+      var _lmCls = _lmStat === 'ready' ? 'ok' : 'warn';
+      renderCompactChip(container, 'Live Mutation', () => ({
+        text: _lmStat,
+        cls: _lmCls
+      }));
+    }
+    return;
+  }
+
+  if (level === 'expanded') {
+    renderSecurityLifecycleExpanded(container, sl);
+    var _lmre = p && p.live_mutation_readiness;
+    if (_lmre && _lmre.available) {
+      renderLiveMutationExpanded(container, _lmre);
+    }
+    return;
+  }
+
+  var html = '<div style="font-size:0.9em">';
+
+  html += '<div style="margin-bottom:8px"><strong>Phase:</strong> '
+    + escapeHtml(sl.phase_status || 'unknown')
+    + ' &middot <strong>Stage:</strong> ' + escapeHtml(sl.current_stage || 'none')
+    + ' &middot <strong>Next:</strong> ' + escapeHtml(sl.next_safe_action || 'idle')
+    + '</div>';
+
+  const qs = sl.queue_summary || {};
+  html += '<div style="margin-bottom:8px"><strong>Queue:</strong> '
+    + (qs.present_count || 0) + '/' + (qs.total_artifacts || 0) + ' present'
+    + (qs.missing_count ? ' (' + qs.missing_count + ' missing)' : '')
+    + '</div>';
+
+  const sel = sl.selected_alert_summary || {};
+  html += '<div style="margin-bottom:8px"><strong>Stages:</strong> '
+    + (sel.current_stage_count || 0) + ' active'
+    + (sel.blocked_stage_count ? ', ' + sel.blocked_stage_count + ' blocked' : '')
+    + '</div>';
+
+  html += '<div style="margin-bottom:8px"><strong>PR:</strong> ' + escapeHtml(sl.pr_lifecycle_state || '—')
+    + ' &middot <strong>Alert:</strong> ' + escapeHtml(sl.alert_lifecycle_state || '—')
+    + ' &middot <strong>Approval:</strong> ' + escapeHtml(sl.approval_status || '—')
+    + '</div>';
+
+  const mut = sl.mutation_status || {};
+  html += '<div style="margin-bottom:8px"><strong>Mutation:</strong> '
+    + 'remote: <span class="badge ' + (mut.remote_mutation ? 'warn' : 'ok') + '">' + (mut.remote_mutation ? 'true' : 'false') + '</span>'
+    + ' &middot local: <span class="badge ok">false</span>'
+    + '</div>';
+
+  if (blockedCount > 0) {
+    html += '<div style="margin-bottom:8px;color:var(--clr-warn)"><strong>Blocked:</strong> ';
+    html += (sl.blocked_reasons || []).slice(0, 5).map(function(r) {
+      return '<span class="badge warn">' + escapeHtml(r) + '</span>';
+    }).join(' ');
+    if (blockedCount > 5) html += ' +' + (blockedCount - 5) + ' more';
+    html += '</div>';
+  }
+
+  var _lmrs = p && p.live_mutation_readiness;
+  if (_lmrs && _lmrs.available) {
+    html += '<hr style="border:none;border-top:1px solid var(--border-dimmed);margin:10px 0">';
+    html += '<div style="margin-bottom:8px"><strong>Live Mutation Readiness</strong>'
+      + ' <span class="badge ' + (_lmrs.live_mutation_readiness_status === 'ready' ? 'ok' : 'warn') + '">'
+      + escapeHtml(_lmrs.live_mutation_readiness_status || 'unknown')
+      + '</span></div>';
+    html += '<div style="margin-bottom:8px">'
+      + '<strong>Flags:</strong> ' + (_lmrs.required_flags || []).map(function(f) { return escapeHtml(f); }).join(', ')
+      + ' &middot <strong>Ops:</strong> ' + (_lmrs.expected_live_operations || []).map(function(o) { return escapeHtml(o); }).join(', ')
+      + '</div>';
+    html += '<div style="margin-bottom:8px"><strong>Perms:</strong> '
+      + (_lmrs.required_permissions || []).map(function(p) { return '<span class="badge dimmed">' + escapeHtml(p) + '</span>'; }).join(' ')
+      + '</div>';
+    html += '<div style="margin-bottom:8px"><strong>Deferred:</strong> '
+      + (_lmrs.deferred_actions || []).map(function(a) { return '<span class="badge dimmed">' + escapeHtml(a) + '</span>'; }).join(' ')
+      + '</div>';
+    var _lmGates = _lmrs.readiness_gates || [];
+    if (_lmGates.length > 0) {
+      html += '<div style="margin-bottom:8px;font-size:0.8em;color:var(--text-dimmed)"><strong>Gates:</strong> '
+        + _lmGates.slice(0, 8).map(function(g) { return escapeHtml(g); }).join(', ')
+        + (_lmGates.length > 8 ? ' +' + (_lmGates.length - 8) + ' more' : '')
+        + '</div>';
+    }
+    if (_lmrs.rollback_guidance_summary) {
+      html += '<div style="margin-bottom:8px;font-size:0.8em;color:var(--text-dimmed)"><strong>Rollback:</strong> '
+        + escapeHtml(_lmrs.rollback_guidance_summary) + '</div>';
+    }
+  }
+
+  html += '</div>';
+
+  renderStandardCard(container, 'Security Lifecycle', html, 'securityLifecycle', statusCls);
+});
+
+function renderSecurityLifecycleExpanded(container, sl) {
+  var html = '<div style="max-width:700px;margin:0 auto;font-size:0.9em">';
+  html += '<h3 style="margin:0 0 12px 0">Security Lifecycle Program</h3>';
+
+  html += '<table class="kv-table">'
+    + '<tr><td>Phase status</td><td>' + escapeHtml(sl.phase_status || '—') + '</td></tr>'
+    + '<tr><td>Current stage</td><td>' + escapeHtml(sl.current_stage || '—') + '</td></tr>'
+    + '<tr><td>Next safe action</td><td>' + escapeHtml(sl.next_safe_action || '—') + '</td></tr>'
+    + '<tr><td>PR lifecycle</td><td>' + escapeHtml(sl.pr_lifecycle_state || '—') + '</td></tr>'
+    + '<tr><td>Alert lifecycle</td><td>' + escapeHtml(sl.alert_lifecycle_state || '—') + '</td></tr>'
+    + '<tr><td>Approval</td><td>' + escapeHtml(sl.approval_status || '—') + '</td></tr>'
+    + '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Queue Summary</h4>';
+  const qs = sl.queue_summary || {};
+  html += '<table class="kv-table">'
+    + '<tr><td>Total artifacts</td><td>' + (qs.total_artifacts || 0) + '</td></tr>'
+    + '<tr><td>Present</td><td>' + (qs.present_count || 0) + '</td></tr>'
+    + '<tr><td>Missing</td><td>' + (qs.missing_count || 0) + '</td></tr>'
+    + '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Alert Summary</h4>';
+  const sel = sl.selected_alert_summary || {};
+  html += '<table class="kv-table">'
+    + '<tr><td>Total stages</td><td>' + (sel.total_stages || 0) + '</td></tr>'
+    + '<tr><td>Active stages</td><td>' + (sel.current_stage_count || 0) + '</td></tr>'
+    + '<tr><td>Blocked stages</td><td>' + (sel.blocked_stage_count || 0) + '</td></tr>'
+    + '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Mutation Status</h4>';
+  const mut = sl.mutation_status || {};
+  html += '<table class="kv-table">'
+    + '<tr><td>Remote mutation</td><td><span class="badge ' + (mut.remote_mutation ? 'warn' : 'ok') + '">' + (mut.remote_mutation ? 'true' : 'false') + '</span></td></tr>'
+    + '<tr><td>Local mutation</td><td><span class="badge ok">false</span></td></tr>'
+    + '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Permission Boundary Audit</h4>';
+  const perm = sl.permission_summary || {};
+  html += '<table class="kv-table">'
+    + '<tr><td>Gates passed</td><td>' + (perm.gates_passed || 0) + '/' + (perm.gates_total || 0) + '</td></tr>'
+    + '<tr><td>Verdict</td><td>' + escapeHtml(perm.verdict || '—') + '</td></tr>'
+    + '<tr><td>Read perms</td><td>' + (perm.read_permissions || []).map(function(r) { return escapeHtml(r); }).join(', ') + '</td></tr>'
+    + '<tr><td>Mutation perms</td><td>' + (perm.mutation_permissions || []).length === 0 ? 'none' : (perm.mutation_permissions || []).map(function(r) { return escapeHtml(r); }).join(', ') + '</td></tr>'
+    + '</table>';
+
+  const reasons = sl.blocked_reasons || [];
+  if (reasons.length > 0) {
+    html += '<h4 style="margin:16px 0 8px 0">Blocked Reasons (' + reasons.length + ')</h4>';
+    html += '<ul style="margin:0;padding-left:20px;color:var(--clr-warn)">';
+    reasons.forEach(function(r) {
+      html += '<li>' + escapeHtml(r) + '</li>';
+    });
+    html += '</ul>';
+  }
+
+  html += '<h4 style="margin:16px 0 8px 0">Evidence Artifacts (' + (sl.evidence_artifacts || []).length + ')</h4>';
+  html += '<table class="kv-table">';
+  (sl.evidence_artifacts || []).forEach(function(a) {
+    html += '<tr><td style="font-family:monospace;font-size:0.75em">' + escapeHtml(a.path.split('/').pop() || a.path) + '</td>'
+      + '<td style="font-family:monospace;font-size:0.75em;color:var(--text-dimmed)">' + escapeHtml(a.sha256 || '—') + '</td></tr>';
+  });
+  html += '</table>';
+
+  html += '<h4 style="margin:16px 0 8px 0">Event Fabric & Topology</h4>';
+  const ef = sl.event_fabric_summary || {};
+  const sts = sl.spiderweb_topology_summary || {};
+  html += '<table class="kv-table">'
+    + '<tr><td>Event count</td><td>' + (ef.event_count || 0) + '</td></tr>'
+    + '<tr><td>Active strands (fabric)</td><td>' + (ef.active_strands || 0) + '</td></tr>'
+    + '<tr><td>Node count</td><td>' + (sts.node_count || 0) + '</td></tr>'
+    + '<tr><td>Edge count</td><td>' + (sts.edge_count || 0) + '</td></tr>'
+    + '<tr><td>Active strands (topology)</td><td>' + (sts.active_strands || 0) + '</td></tr>'
+    + '</table>';
+
+  html += '<div style="margin-top:12px;font-size:0.75em;color:var(--text-dimmed)">'
+    + '<strong>Redaction:</strong> ' + escapeHtml(sl.redaction_status || '—')
+    + ' &middot <strong>Raw payloads:</strong> ' + (sl.raw_payloads_exposed ? 'exposed' : 'not exposed')
+    + '</div>';
+
+  html += '</div>';
+  renderExpandedWidget(container, 'Security Lifecycle Program', html);
+}
+
+function renderLiveMutationExpanded(container, lm) {
+  if (!lm || !lm.available) return;
+  var h = '<div style="max-width:700px;margin:20px auto 0 auto;font-size:0.9em">';
+  h += '<h3 style="margin:0 0 12px 0;color:var(--clr-warn)">Live Mutation Readiness</h3>';
+
+  h += '<table class="kv-table">'
+    + '<tr><td>Status</td><td><span class="badge ' + (lm.live_mutation_readiness_status === 'ready' ? 'ok' : 'warn') + '">' + escapeHtml(lm.live_mutation_readiness_status || '—') + '</span></td></tr>'
+    + '<tr><td>Checklist</td><td>' + escapeHtml(lm.operator_checklist_status || '—') + '</td></tr>'
+    + '<tr><td>Runbook</td><td>' + escapeHtml(lm.runbook_status || '—') + '</td></tr>'
+    + '<tr><td>Next safe action</td><td>' + escapeHtml(lm.next_safe_action || '—') + '</td></tr>'
+    + '<tr><td>Rollback</td><td style="font-size:0.85em">' + escapeHtml(lm.rollback_guidance_summary || '—') + '</td></tr>'
+    + '</table>';
+
+  h += '<h4 style="margin:16px 0 8px 0">Required Flags</h4>';
+  h += '<p style="font-family:monospace;font-size:0.85em">' + (lm.required_flags || []).map(function(f) { return escapeHtml(f); }).join(' ') + '</p>';
+
+  h += '<h4 style="margin:16px 0 8px 0">Required Permissions</h4>';
+  h += '<ul style="margin:0;padding-left:20px">';
+  (lm.required_permissions || []).forEach(function(p) {
+    h += '<li>' + escapeHtml(p) + '</li>';
+  });
+  h += '</ul>';
+
+  var gates = lm.readiness_gates || [];
+  if (gates.length > 0) {
+    h += '<h4 style="margin:16px 0 8px 0">Readiness Gates (' + gates.length + ')</h4>';
+    h += '<ul style="margin:0;padding-left:20px">';
+    gates.forEach(function(g) {
+      h += '<li>' + escapeHtml(g) + '</li>';
+    });
+    h += '</ul>';
+  }
+
+  h += '<h4 style="margin:16px 0 8px 0">Expected Live Operations</h4>';
+  h += '<ul style="margin:0;padding-left:20px">';
+  (lm.expected_live_operations || []).forEach(function(o) {
+    h += '<li>' + escapeHtml(o) + '</li>';
+  });
+  h += '</ul>';
+
+  h += '<h4 style="margin:16px 0 8px 0">Deferred Actions</h4>';
+  h += '<ul style="margin:0;padding-left:20px">';
+  (lm.deferred_actions || []).forEach(function(a) {
+    h += '<li>' + escapeHtml(a) + '</li>';
+  });
+  h += '</ul>';
+
+  var reasons = lm.blocked_reasons || [];
+  if (reasons.length > 0) {
+    h += '<h4 style="margin:16px 0 8px 0;color:var(--clr-warn)">Blocked Reasons (' + reasons.length + ')</h4>';
+    h += '<ul style="margin:0;padding-left:20px;color:var(--clr-warn)">';
+    reasons.forEach(function(r) {
+      h += '<li>' + escapeHtml(r) + '</li>';
+    });
+    h += '</ul>';
+  }
+
+  h += '<h4 style="margin:16px 0 8px 0">Evidence Artifacts (' + (lm.evidence_artifacts || []).length + ')</h4>';
+  h += '<table class="kv-table">';
+  (lm.evidence_artifacts || []).forEach(function(a) {
+    h += '<tr><td style="font-family:monospace;font-size:0.75em">' + escapeHtml(a.path || '—') + '</td>'
+      + '<td style="font-family:monospace;font-size:0.75em;color:var(--text-dimmed)">'
+      + (a.present ? '<span class="badge ok">present</span>' : '<span class="badge warn">missing</span>')
+      + '</td></tr>';
+  });
+  h += '</table>';
+
+  h += '<div style="margin-top:12px;font-size:0.75em;color:var(--text-dimmed)">'
+    + '<strong>Redaction:</strong> ' + escapeHtml(lm.redaction_status || '—')
+    + ' &middot <strong>Raw payloads:</strong> ' + (lm.raw_payloads_exposed ? 'exposed' : 'not exposed')
+    + '</div>';
+
+  h += '</div>';
+  renderExpandedWidget(container, 'Live Mutation Readiness', h);
+}
+
+// ── Carte Blanche Dashboard widget ──
+registerWidget('carteBlancheDashboard', (container, level) => {
+  const p = state.projection;
+  if (!p || !p.carte_blanche_dashboard || !p.carte_blanche_dashboard.available) return;
+
+  const d = p.carte_blanche_dashboard;
+  const probes = d.surface_probes || {};
+  let h = '<div style="font-size:0.85em">';
+
+  h += `<div style="margin-bottom:6px"><strong>13 GitHub surfaces</strong> | ${d.live_proven_write_lanes} live-proven | ${d.read_verified_surfaces} read-verified | ${d.gated_write_lanes} write-lanes wired</div>`;
+
+  h += '<table style="font-size:0.85em;width:100%"><tr><th>Surface</th><th>Status</th><th>API</th></tr>';
+  for (const [name, probe] of Object.entries(probes)) {
+    const sc = probe.status_code || '—';
+    const cls = sc === 200 ? 'success' : sc > 0 ? 'warn' : 'dimmed';
+    h += `<tr><td>${name}</td><td class="${cls}">${sc}</td><td>${probe.probed ? 'live' : 'not probed'}</td></tr>`;
+  }
+  h += '<tr><td>branch/file/PR</td><td class="success">201</td><td>live-proven</td></tr>';
+  h += '<tr><td>release/create</td><td class="success">201</td><td>live-proven</td></tr>';
+  h += '<tr><td>alert/update</td><td class="warn">gated</td><td>wired</td></tr>';
+  h += '<tr><td>issue/create</td><td class="warn">410</td><td>repo config</td></tr>';
+  h += '</table>';
+  h += '</div>';
+
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Carte Blanche Dashboard', h);
+    return;
+  }
+  renderStandardCard(container, 'Carte Blanche Dashboard', h, 'carteBlancheDashboard', 'success');
+});

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from rig_relay.desktop.bridge_runtime_state import (
     BridgeRuntimeState,
     BridgeRuntimeStateTracker,

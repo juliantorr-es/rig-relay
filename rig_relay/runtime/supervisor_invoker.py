@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict
 
 from rig_relay.coordination.execution_lease import ExecutionLease, ExecutionLeaseStatus
 from rig_relay.core.tool_subprocess import ToolSubprocessRequest, ToolSubprocessResult
+from rig_relay.governance.governance_engine import GovernanceEngine
 from rig_relay.runtime.execution_request import ExecutionRequest
 from rig_relay.runtime.stream_types import (
     RuntimeCompletionEvent,
@@ -503,6 +504,7 @@ class SupervisorCommandInvoker:
             max_stdout_bytes=stdout_limit_bytes or self._max_stdout_bytes,
             max_stderr_bytes=stderr_limit_bytes or self._max_stderr_bytes,
             heartbeat_interval_ms=self._heartbeat_interval_ms,
+            governance_engine=GovernanceEngine(),
         )
 
         recorder, trace_span, trace_status = self._start_trace_span(

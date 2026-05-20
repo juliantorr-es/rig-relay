@@ -1,0 +1,113 @@
+{
+  "schema_version": "rig.github.live_mutation_preflight.v1",
+  "preflight_id": "bbd7259879416dfb18379dbe1e5812014ca470cacc36123b1e4f8e9b318c8db8",
+  "generated_at": "2026-05-20T21:02:41.398045+00:00",
+  "content_light": true,
+  "operation_kind": "live_mutation_preflight",
+  "status": "ready_for_live_mutation_review",
+  "live_api_attempted": true,
+  "live_mutation_attempted": false,
+  "remote_mutation_attempted": false,
+  "gates": [
+    {
+      "gate": "phase2_rc_report_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "permission_boundary_audit_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "replay_artifact_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "live_preflight_flag_set",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "RIG_LIVE_AUTH_TESTS_set",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "token_provided",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "permission_contents_write_available",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "permission_pull_requests_write_available",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "security_events_write_deferred",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "rate_limit_ok",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "branch_not_collision",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "gates_passed": true,
+  "probes": [
+    {
+      "endpoint": "GET /repos/OWNER/REPO/git/ref/heads/main",
+      "operation": "read_ref",
+      "status_code": 200,
+      "write_endpoint": false
+    },
+    {
+      "endpoint": "permission_check",
+      "write_endpoint": false,
+      "contents_write": true,
+      "pull_requests_write": true,
+      "security_events_write": false,
+      "note": "permissions_verified_via_boundary"
+    },
+    {
+      "endpoint": "rate_limit_check",
+      "rate_limited": false,
+      "remaining": 4999,
+      "reset_at": "N/A"
+    }
+  ],
+  "permission_summary": {
+    "contents_write": true,
+    "pull_requests_write": true,
+    "security_events_write_deferred": true
+  },
+  "rate_limit_summary": {
+    "rate_limited": false
+  },
+  "artifact_chain_summary": {
+    "rc_present": true,
+    "permission_audit_present": true,
+    "replay_present": true
+  },
+  "idempotency_summary": "preflight_idempotent",
+  "blocked_reasons": [],
+  "next_safe_action": "proceed_to_mutation_review",
+  "redaction_summary": {
+    "content_light": true,
+    "raw_response_bodies": false,
+    "raw_tokens": false
+  },
+  "recommended_next_slice": "Phase 3 Slice 2 — actual live PR creation (gated)"
+}

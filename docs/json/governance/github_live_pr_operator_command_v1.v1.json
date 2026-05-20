@@ -1,0 +1,37 @@
+{
+  "schema_version": "rig.github.live_pr_operator_command.v1",
+  "generated_at": "2026-05-20T21:06:20.182079+00:00",
+  "content_light": true,
+  "canonical_script": "scripts/rig_github_execute_live_pr_write.py",
+  "dry_summary_command": "uv run python scripts/rig_github_execute_live_pr_write.py --summary",
+  "live_readiness_command": "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_execute_live_pr_write.py --execute-remote-mutation --i-understand-this-creates-a-real-pr --allow-live-writes --summary",
+  "live_execution_command": "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_execute_live_pr_write.py --execute-remote-mutation --i-understand-this-creates-a-real-pr --allow-live-writes",
+  "required_env": [
+    "RIG_LIVE_AUTH_TESTS"
+  ],
+  "required_flags": [
+    "--execute-remote-mutation",
+    "--i-understand-this-creates-a-real-pr",
+    "--allow-live-writes"
+  ],
+  "required_artifacts": [
+    "{'repository': 'OWNER/REPO', 'base_branch': 'main', 'proposed_branch': 'rig/security/fix-5', 'target_file_paths': ['README.md'], 'candidate_diff_hash': 'candidate-hash', 'operation_idempotency_key': '24fad8a29d2d4cffd7ac5a6280b242af2ad230cf84c74dcd143d9d28d23ad044', 'expected_operations': ['create_branch', 'write_file', 'create_pr'], 'permissions_required': ['contents:write', 'pull_requests:write'], 'permissions_verified': False, 'alert_update_deferred': True, 'pr_merge_deferred': True, 'rollback_guidance': 'close PR if rejected; delete branch if unmerged', 'no_default_branch_write': True, 'no_workflow_paths': True, 'no_raw_vulnerable_content': True}"
+  ],
+  "expected_operations": [
+    "create_branch",
+    "write_file",
+    "create_pr"
+  ],
+  "forbidden_operations": [
+    "alert_update",
+    "pr_merge",
+    "default_branch_write",
+    "workflow_path_write"
+  ],
+  "redaction_status": {
+    "content_light": true
+  },
+  "live_mutation_attempted": false,
+  "remote_mutation_attempted": false,
+  "result_status": "ready"
+}

@@ -69,7 +69,9 @@
           "read_only_actions",
           "execution_progress",
           "resources",
-          "spiderweb_topology"
+          "spiderweb_topology",
+          "security_lifecycle_program",
+          "live_mutation_readiness"
         ]
       },
       "minItems": 1,

@@ -1,0 +1,221 @@
+{
+  "schema_version": "rig.github.live_mutation_runbook.v1",
+  "generated_at": "2026-05-20T19:42:22.326240+00:00",
+  "purpose": "Prepare and execute the first real rig-relay live pull request mutation for a code scanning alert fix.",
+  "prerequisites": [
+    "Phase 2 RC gates passed (ref: docs/json/release_gate/rc_readiness_gate.v1.json)",
+    "Phase 3 RC gates passed (ref: docs/json/release_gate/rc_readiness_gate.v1.json)",
+    "GitHub App installed on target repository with contents:write and pull_requests:write permissions",
+    "Live mutation preflight completed successfully",
+    "Operator checklist reviewed and all gates passed",
+    "API token stored in ~/.rig/relay/.env",
+    "Rate limit snapshot confirms headroom"
+  ],
+  "environment_variables": [
+    {
+      "name": "RIG_LIVE_MUTATION",
+      "description": "Master gate flag; must be set to 1 to enable any remote mutation",
+      "required": true,
+      "example": "1"
+    },
+    {
+      "name": "RIG_GITHUB_AUTH_TOKEN",
+      "description": "GitHub personal access token or installation token",
+      "required": true,
+      "example": "<from-token-store>"
+    },
+    {
+      "name": "RIG_LIVE_AUTH_TESTS",
+      "description": "Enables live auth verification probes",
+      "required": true,
+      "example": "1"
+    },
+    {
+      "name": "RIG_GITHUB_PERMISSION_MODE",
+      "description": "Permission mode (read_only, write, admin)",
+      "required": false,
+      "example": "write"
+    }
+  ],
+  "cli_commands": {
+    "dry_run": "uv run python scripts/rig_github_security_packet_execution.py   --plan-json docs/json/governance/github_security_packet_runner_plan_v1.v1.json   --output-json docs/json/governance/github_security_packet_execution_v1.v1.json   --limit 1 --summary",
+    "simulate": "uv run python scripts/rig_github_security_packet_execution.py   --plan-json docs/json/governance/github_security_packet_runner_plan_v1.v1.json   --output-json docs/json/governance/github_security_packet_execution_v1.v1.json   --limit 1",
+    "live_execution": "RIG_LIVE_MUTATION=1 RIG_LIVE_AUTH_TESTS=1 RIG_GITHUB_PERMISSION_MODE=write uv run python scripts/rig_github_security_packet_execution.py   --plan-json docs/json/governance/github_security_packet_runner_plan_v1.v1.json   --output-json docs/json/governance/github_security_packet_execution_v1.v1.json   --limit 1 --summary",
+    "verify": "uv run python scripts/rig_github_security_lifecycle_replay.py --summary"
+  },
+  "gate_checklist": [
+    {
+      "gate": "RC Phase 2 gates passed",
+      "command_to_verify": "uv run python scripts/rig_release_gate_validate.py",
+      "expected_result": "All Phase 2 gates PASSED"
+    },
+    {
+      "gate": "RC Phase 3 gates passed",
+      "command_to_verify": "uv run python scripts/rig_release_gate_validate.py",
+      "expected_result": "All Phase 3 gates PASSED"
+    },
+    {
+      "gate": "Preflight ready",
+      "command_to_verify": "cat docs/json/governance/github_live_mutation_preflight_v1.v1.json | uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('status',''))\"",
+      "expected_result": "ready_for_live_mutation_review"
+    },
+    {
+      "gate": "Permissions verified",
+      "command_to_verify": "cat docs/json/governance/github_live_mutation_phase3_permission_boundary_audit_v1.v1.json | uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('gates_passed',''))\"",
+      "expected_result": "True"
+    },
+    {
+      "gate": "Rate limit headroom",
+      "command_to_verify": "cat docs/json/governance/github_live_mutation_rate_limit_snapshot_v1.v1.json | uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('rate_limited',''))\"",
+      "expected_result": "False"
+    },
+    {
+      "gate": "Operator checklist signed",
+      "command_to_verify": "cat docs/json/governance/github_live_mutation_operator_checklist_v1.v1.json | uv run python -c \"import json,sys; d=json.load(sys.stdin); acks=d.get('operator_acknowledgements',[]); print(len(acks)==8)\"",
+      "expected_result": "True"
+    },
+    {
+      "gate": "Dry-run candidate diff exists",
+      "command_to_verify": "cat docs/json/governance/code_scanning_dry_run_candidate_diff_v1.v1.json | uv run python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('diff_sha256','')[:8])\"",
+      "expected_result": "Non-empty hash prefix"
+    }
+  ],
+  "expected_artifacts": [
+    {
+      "artifact_path": "docs/json/governance/github_live_mutation_operator_checklist_v1.v1.json",
+      "purpose": "Operator checklist — must be reviewed before execution",
+      "required": true
+    },
+    {
+      "artifact_path": "docs/json/governance/github_live_mutation_preflight_v1.v1.json",
+      "purpose": "Preflight probe results — gates permission and rate limit status",
+      "required": true
+    },
+    {
+      "artifact_path": "docs/json/governance/github_live_mutation_phase3_permission_boundary_audit_v1.v1.json",
+      "purpose": "Permission boundary audit — verifies required scopes are active",
+      "required": true
+    },
+    {
+      "artifact_path": "docs/json/governance/code_scanning_dry_run_candidate_diff_v1.v1.json",
+      "purpose": "Dry-run candidate diff — the proposed change being promoted to live",
+      "required": true
+    },
+    {
+      "artifact_path": "docs/json/governance/github_live_mutation_rate_limit_snapshot_v1.v1.json",
+      "purpose": "Rate limit snapshot — confirms headroom before mutation",
+      "required": true
+    },
+    {
+      "artifact_path": "docs/json/governance/github_security_lifecycle_replay_v1.v1.json",
+      "purpose": "Lifecycle replay — end-to-end dry-run before live promotion",
+      "required": true
+    }
+  ],
+  "expected_github_operations": [
+    "create_branch",
+    "commit_file_change",
+    "create_pull_request"
+  ],
+  "expected_blocked_states": [
+    {
+      "state": "preflight_blocked",
+      "reason": "One or more preflight gates failed (permissions, rate limit, branch collision)",
+      "resolution": "Resolve the failing gate and re-run preflight before proceeding"
+    },
+    {
+      "state": "rate_limit_exhaustion",
+      "reason": "GitHub API rate limit near or at exhaustion",
+      "resolution": "Wait for rate limit reset window. Re-run rate limit snapshot."
+    },
+    {
+      "state": "permission_denied",
+      "reason": "Required GitHub App permissions not granted or token expired",
+      "resolution": "Re-install GitHub App or refresh token. Re-run permission boundary audit."
+    },
+    {
+      "state": "branch_collision",
+      "reason": "Proposed branch name already exists on remote",
+      "resolution": "Choose a new branch name or delete the stale branch if safe."
+    },
+    {
+      "state": "idempotency_collision",
+      "reason": "Operation idempotency key already recorded as executed",
+      "resolution": "Review the previous execution receipt. If intentional re-execution, generate new idempotency key."
+    }
+  ],
+  "success_criteria": [
+    "Remote branch rig/security/code-scanning-fix-001 created on the target repository",
+    "File change committed to the remote branch with correct diff contents",
+    "Pull request opened with title referencing code scanning alert fix",
+    "Operation receipt generated and persisted to docs/json/governance/",
+    "No secrets, tokens, or raw vulnerable code present in any persisted artifact",
+    "Rate limits not exhausted by the operation",
+    "Alert state explicitly documented as deferred (not dismissed, not fixed)"
+  ],
+  "rollback_steps": [
+    {
+      "step": 1,
+      "command": "gh pr close <PR_NUMBER> --comment \"Rollback: per operator checklist rollback procedure.\"",
+      "description": "Close the pull request without merging"
+    },
+    {
+      "step": 2,
+      "command": "git push origin --delete rig/security/code-scanning-fix-001",
+      "description": "Delete the created remote branch"
+    },
+    {
+      "step": 3,
+      "command": "Ensure operation receipt at docs/json/governance/github_code_scanning_pr_operation_receipt_v1.v1.json is preserved with rollback annotation",
+      "description": "Preserve operation receipt as canonical evidence"
+    }
+  ],
+  "post_review_steps": [
+    "Review the pull request diff for correctness and unintended changes",
+    "Confirm the branch prefix matches rig/security/",
+    "Verify no workflow files (.github/workflows/) were modified",
+    "Verify no default branch write occurred",
+    "Check that the operation receipt is content-light (no secrets, tokens, raw code)",
+    "Document the alert state deferral reason in the PR body",
+    "Schedule alert state update for post-merge validation lane"
+  ],
+  "alert_deferred_explanation": "Code scanning alert state update/dismissal requires separate security_events:write permission and is deferred to post-merge validation.",
+  "troubleshooting": [
+    {
+      "issue": "RIG_LIVE_MUTATION=1 not recognized",
+      "cause": "Environment variable not exported or shell session not refreshed",
+      "resolution": "Re-export: export RIG_LIVE_MUTATION=1. Verify: echo $RIG_LIVE_MUTATION."
+    },
+    {
+      "issue": "HTTP 401 or 403 on API calls",
+      "cause": "Token expired, invalid, or missing required permissions",
+      "resolution": "Refresh token. Re-run permission boundary audit. Check GitHub App installation."
+    },
+    {
+      "issue": "HTTP 429 rate limit exceeded",
+      "cause": "API rate limit exhausted",
+      "resolution": "Check X-RateLimit-Reset header. Wait for reset window. Re-run rate limit snapshot."
+    },
+    {
+      "issue": "Branch already exists (HTTP 422)",
+      "cause": "Proposed branch name collision with existing remote branch",
+      "resolution": "Verify branch safety. Delete stale branch if safe, or choose new branch name."
+    },
+    {
+      "issue": "Diff does not apply cleanly",
+      "cause": "Base branch has diverged from the expected SHA",
+      "resolution": "Re-run dry-run candidate diff generation against current base branch HEAD."
+    }
+  ],
+  "rate_limit_handling": "GitHub API rate limits are monitored via event fabric. Near-exhaustion triggers polling cadence reduction. Exhaustion triggers graceful degradation.",
+  "privacy_posture": "No raw file contents, tokens, or secrets in operation receipts. Content-light evidence only.",
+  "stop_conditions": [
+    "Any readiness gate returns 'blocked'",
+    "Rate limit snapshot shows rate_limited=True",
+    "Permission boundary audit shows required permission not_granted",
+    "Preflight status is not ready_for_live_mutation_review",
+    "Operator checklist has not been fully acknowledged",
+    "Idempotency key collision detected (operation already executed)",
+    "Branch safety check fails (proposed branch exists on remote)"
+  ]
+}

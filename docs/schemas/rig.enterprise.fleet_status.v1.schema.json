@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.enterprise.fleet_status.v1.schema.json",
+  "title": "Rig Enterprise Fleet Status v1",
+  "description": "Fleet controller status projection — content-light health summary across all bridge instances per tenant.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "total_instances", "tenants"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.enterprise.fleet_status.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "total_instances": { "type": "integer", "minimum": 0 },
+    "healthy": { "type": "integer", "minimum": 0 },
+    "degraded": { "type": "integer", "minimum": 0 },
+    "disconnected": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 },
+    "health_summary": {
+      "type": "string",
+      "enum": [
+        "ALL_HEALTHY",
+        "DEGRADED_PRESENT",
+        "DISCONNECTED_PRESENT",
+        "FAILED_PRESENT",
+        "NO_INSTANCES"
+      ]
+    },
+    "tenants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["state", "port"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["starting", "healthy", "degraded", "disconnected", "failed", "stopped"]
+          },
+          "port": { "type": "integer", "minimum": 0 },
+          "uptime_seconds": { "type": "string" },
+          "active_strands": { "type": "integer", "minimum": 0 },
+          "event_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "raw_payloads_exposed": { "type": "boolean", "const": false },
+    "mutation_authority": { "type": "boolean", "const": false }
+  },
+  "additionalProperties": false
+}

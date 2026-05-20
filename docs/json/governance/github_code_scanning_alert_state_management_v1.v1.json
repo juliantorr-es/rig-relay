@@ -1,0 +1,121 @@
+{
+  "schema_version": "rig.github.code_scanning_alert_state_management.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "content_light": true,
+  "status": "blocked_alert_update",
+  "alert_number": 5,
+  "available_operations": [
+    "dismiss",
+    "reopen"
+  ],
+  "operations": {
+    "dismiss": {
+      "operation": "dismiss_alert",
+      "endpoint": "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{number}",
+      "permission": "security_events:write",
+      "requires_evidence": true,
+      "forbidden_without": [
+        "fix_evidence",
+        "false_positive_analysis",
+        "risk_acceptance"
+      ],
+      "default_gate_status": "blocked"
+    },
+    "reopen": {
+      "operation": "reopen_alert",
+      "endpoint": "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{number}",
+      "permission": "security_events:write",
+      "requires_evidence": true,
+      "forbidden_without": [
+        "reopen_reason",
+        "new_evidence"
+      ],
+      "default_gate_status": "blocked"
+    }
+  },
+  "evidence_requirements": {
+    "fix_verified": "PR merged or fix commit verified in target branch",
+    "false_positive": "Code review / security analysis confirming alert is false positive",
+    "wont_fix": "Risk acceptance documentation with rationale",
+    "used_in_tests": "Alert is triggered by test code only, documented in SECURITY.md"
+  },
+  "gates": [
+    {
+      "gate": "alert_state_read",
+      "passed": true,
+      "detail": "alert state can be read via security_events:read"
+    },
+    {
+      "gate": "security_events_write_available",
+      "passed": true,
+      "detail": "requires explicit execute flag and token with code_scanning_alerts:write"
+    },
+    {
+      "gate": "approval_receipt_present",
+      "passed": false,
+      "detail": "human or security-team approval required for alert state change"
+    },
+    {
+      "gate": "evidence_provided",
+      "passed": false,
+      "detail": "evidence_type="
+    },
+    {
+      "gate": "pr_created_for_fix",
+      "passed": false,
+      "detail": "PR must exist and be associated with this alert"
+    },
+    {
+      "gate": "pr_not_merged_auto",
+      "passed": true,
+      "detail": "PR merge does not auto-dismiss alert"
+    },
+    {
+      "gate": "alert_not_already_resolved",
+      "passed": true,
+      "detail": "alert state verified as open via preflight read"
+    },
+    {
+      "gate": "explicit_alert_mutation_flag",
+      "passed": false,
+      "detail": "requires --execute-alert-update flag"
+    },
+    {
+      "gate": "rate_limit_healthy",
+      "passed": true,
+      "detail": "rate-limit gate passes"
+    },
+    {
+      "gate": "idempotency_not_succeeded",
+      "passed": true,
+      "detail": "idempotency check passes"
+    }
+  ],
+  "gates_passed": false,
+  "blocked_reasons": [
+    "approval_receipt_present",
+    "evidence_provided",
+    "pr_created_for_fix",
+    "explicit_alert_mutation_flag"
+  ],
+  "approval_chain": [
+    "1. Evidence artifact exists and validates",
+    "2. Alert state plan artifact exists and validates",
+    "3. Human or security-team approval receipt present",
+    "4. Alert read confirms current state (not already resolved)",
+    "5. security_events:write permission verified",
+    "6. Rate-limit gate healthy",
+    "7. Idempotency key not previously succeeded",
+    "8. Alert state update executed",
+    "9. Operation receipt written",
+    "10. PR lifecycle unaffected"
+  ],
+  "pr_lifecycle_unaffected": true,
+  "remote_mutation": false,
+  "alert_update_deferred": true,
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false
+  },
+  "recommended_next_slice": "Phase 3 Slice 10 — live alert state mutation with security_events:write"
+}

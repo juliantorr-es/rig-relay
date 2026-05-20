@@ -228,6 +228,10 @@ class CapabilityGate:
         "worktree_create",
         "worktree_remove",
         "fleet_orchestrate",
+        "local_inference_tool_proposal",
+        "local_inference_file_mutation",
+        "local_inference_shell_execution",
+        "local_action_envelope_required",
     })
 
     # ACP commands that require unlocked profile
@@ -279,6 +283,8 @@ class CapabilityGate:
         "sign_in_google_manual_code",
         "local_inference_probe",
         "local_inference_health_check",
+        "local_inference_chat",
+        "local_inference_execute",
         "sign_out_provider",
     })
 
