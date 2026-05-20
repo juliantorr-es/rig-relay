@@ -1,0 +1,138 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_research.v1",
+  "summary": {
+    "channel_count": 27,
+    "credential_count": 21,
+    "api_count": 10,
+    "validation_count": 22,
+    "mutation_lane_count": 9,
+    "risk_count": 10,
+    "phase_count": 12,
+    "public_metadata_count": 4,
+    "artifact_concept_count": 7
+  },
+  "metadata_matrix": [
+    {
+      "metadata_id": "dist-meta:app_name",
+      "channel_ids": [
+        "dist-channel:apple_app_store",
+        "dist-channel:google_play_production",
+        "dist-channel:microsoft_store"
+      ],
+      "source_of_truth_candidates": [
+        "Cargo.toml",
+        "package.json",
+        "pyproject.toml",
+        "Xcode project"
+      ],
+      "public_claim_risk": "high",
+      "stale_surface_risk": "low",
+      "recommended_rig_policy": "Source-of-truth from canonical metadata file. Cross-check all channels."
+    },
+    {
+      "metadata_id": "dist-meta:version",
+      "channel_ids": [
+        "*"
+      ],
+      "source_of_truth_candidates": [
+        "git tag",
+        "Cargo.toml",
+        "package.json",
+        "pyproject.toml"
+      ],
+      "public_claim_risk": "high",
+      "stale_surface_risk": "high",
+      "recommended_rig_policy": "Single source of truth (git tag or canonical file). Cross-check across all surfaces."
+    },
+    {
+      "metadata_id": "dist-meta:release_notes",
+      "channel_ids": [
+        "dist-channel:github_releases",
+        "dist-channel:apple_app_store",
+        "dist-channel:google_play_production"
+      ],
+      "source_of_truth_candidates": [
+        "CHANGELOG.md",
+        "RELEASE_NOTES.md"
+      ],
+      "public_claim_risk": "medium",
+      "stale_surface_risk": "medium",
+      "recommended_rig_policy": "Prefer single canonical CHANGELOG.md. Auto-copy to store/release."
+    },
+    {
+      "metadata_id": "dist-meta:privacy_policy",
+      "channel_ids": [
+        "dist-channel:apple_app_store",
+        "dist-channel:google_play_production",
+        "dist-channel:microsoft_store"
+      ],
+      "source_of_truth_candidates": [
+        "PRIVACY.md",
+        "website/docs/privacy"
+      ],
+      "public_claim_risk": "critical",
+      "stale_surface_risk": "high",
+      "recommended_rig_policy": "Audit divergence between privacy policy URL and app data practices."
+    }
+  ],
+  "artifact_concepts": [
+    {
+      "artifact_id": "dist-concept:distribution_operating_picture",
+      "purpose": "Snapshot of which channels are configured, safe, or refused",
+      "content_light_constraints": "No raw credentials. Boolean config flags only.",
+      "mutation_status_fields": [
+        "channel_state (unconfigured/configured/refused/deferred)"
+      ]
+    },
+    {
+      "artifact_id": "dist-concept:release_channel_inventory",
+      "purpose": "Complete channel matrix with metadata surfaces, risk levels, and support",
+      "content_light_constraints": "Channel metadata only. No real app data.",
+      "mutation_status_fields": []
+    },
+    {
+      "artifact_id": "dist-concept:release_credential_ledger",
+      "purpose": "Inventory of all credential/signing/provisioning concepts",
+      "content_light_constraints": "Credential types, storage sensitivity, rotation model. Never raw values.",
+      "mutation_status_fields": []
+    },
+    {
+      "artifact_id": "dist-concept:release_preflight_report",
+      "purpose": "Results of all validation checks (pass/fail/warn)",
+      "content_light_constraints": "Check IDs, pass/fail/warn, timestamps. No file contents.",
+      "mutation_status_fields": [
+        "preflight_status (passed/failed/warning)"
+      ]
+    },
+    {
+      "artifact_id": "dist-concept:release_evidence_bundle",
+      "purpose": "Bundle of preflight evidence, signing receipts, provenance for a release",
+      "content_light_constraints": "Artifact hashes, check results. No raw binaries or source.",
+      "mutation_status_fields": []
+    },
+    {
+      "artifact_id": "dist-concept:release_submission_packet",
+      "purpose": "Prepared submission data for store/registry publish",
+      "content_light_constraints": "Metadata, hashes, approval flags. No raw tokens or binaries.",
+      "mutation_status_fields": [
+        "submission_state (draft/ready/submitted/approved/rejected)"
+      ]
+    },
+    {
+      "artifact_id": "dist-concept:release_mutation_receipt",
+      "purpose": "Proof that a publish/mutation action completed",
+      "content_light_constraints": "Request IDs, timestamps, response summaries, hashes. No raw auth.",
+      "mutation_status_fields": [
+        "mutation_status (success/failed/rolled_back)",
+        "receipt_sha256"
+      ]
+    }
+  ]
+}

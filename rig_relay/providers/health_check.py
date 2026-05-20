@@ -100,7 +100,7 @@ def check_provider_status(
 
 # Registry of implemented network check providers.
 # Only providers listed here have real network checks.
-_IMPLEMENTED_NETWORK_CHECKS: set[Provider] = set()
+_IMPLEMENTED_NETWORK_CHECKS: set[Provider] = {Provider.LOCAL_INFERENCE}
 
 
 def _run_network_check(provider: Provider, key_store: ProviderKeyStore) -> str:
@@ -109,16 +109,59 @@ def _run_network_check(provider: Provider, key_store: ProviderKeyStore) -> str:
     Must not print raw keys or return raw responses.
 
     Returns:
-        "valid" if the check succeeded, "unknown" if not implemented.
+        "valid" if the check succeeded, "error" if failed.
 
     Raises:
-        Exception subclass if the check is implemented but fails.
+        NotImplementedError: If the provider's network check is not implemented.
     """
+    if provider == Provider.LOCAL_INFERENCE:
+        return _run_local_inference_check()
+
     if provider not in _IMPLEMENTED_NETWORK_CHECKS:
         msg = f"Network check not implemented for {provider.value}"
         raise NotImplementedError(msg)
-    # Future: provider-specific HTTP calls go here.
     return "valid"
+
+
+def _run_local_inference_check() -> str:
+    from rig_relay.providers.local_inference.airlock import get_airlock
+
+    airlock = get_airlock()
+    if not airlock.is_configured:
+        raise NotImplementedError("No local inference endpoint configured")
+
+    config = airlock.get_config()
+    if config is None or not config.endpoint_url:
+        raise NotImplementedError("Local inference endpoint URL not set")
+
+    import asyncio
+
+    from rig_relay.providers.local_inference.probe import probe_local_endpoint
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(
+                    asyncio.run,
+                    probe_local_endpoint(
+                        config.endpoint_url, dry_run=False, timeout_sec=5.0
+                    ),
+                )
+                result = future.result(timeout=10)
+        else:
+            result = asyncio.run(
+                probe_local_endpoint(
+                    config.endpoint_url, dry_run=False, timeout_sec=5.0
+                )
+            )
+        if result.reachable:
+            return "valid"
+        return "error"
+    except Exception:
+        return "error"
 
 
 # Import at module level for the type hint used in check_provider_status

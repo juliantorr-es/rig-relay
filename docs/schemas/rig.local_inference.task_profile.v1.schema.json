@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.task_profile.v1",
+  "title": "Local Inference Task Profile",
+  "type": "object",
+  "required": ["schema_version", "profile_name"],
+  "properties": {
+    "schema_version": { "const": "rig.local_inference.task_profile.v1" },
+    "profile_name": { "type": "string" },
+    "display_name": { "type": "string" },
+    "required_capabilities": { "type": "array", "items": { "type": "string" } },
+    "preferred_capabilities": { "type": "array", "items": { "type": "string" } },
+    "min_context_window_tokens": { "type": "integer" },
+    "structured_output_required": { "type": "boolean" },
+    "tool_call_required": { "type": "boolean" },
+    "streaming_preferred": { "type": "boolean" },
+    "latency_sensitive": { "type": "boolean" },
+    "manual_selection_allowed": { "type": "boolean" },
+    "policy_selection_allowed": { "type": "boolean" },
+    "fallback_behavior": { "type": "string" },
+    "description": { "type": "string" }
+  }
+}

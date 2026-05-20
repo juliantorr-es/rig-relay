@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.event.resource_projection_snapshot.v1.schema.json",
+  "title": "Rig Resource Projection Snapshot v1",
+  "description": "Content-light snapshot of event-fabric-derived resource signals. Read-side only. Fed to backend projection, not mutation authority.",
+  "type": "object",
+  "required": [
+    "schema_version", "generated_at", "snapshot_id",
+    "bridge_backend_health", "projection_freshness",
+    "reconnect_pressure", "event_queue_pressure",
+    "consumer_error_count", "redaction_status"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.event.resource_projection_snapshot.v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "snapshot_id": { "type": "string", "minLength": 1 },
+    "event_count": { "type": "integer", "minimum": 0 },
+    "bridge_backend_health": {
+      "type": "string",
+      "enum": ["unknown", "ready", "idle", "active", "degraded", "disconnected", "stale", "failed"]
+    },
+    "bridge_status_age_ms": { "type": "integer", "minimum": 0 },
+    "projection_freshness": {
+      "type": "string",
+      "enum": ["unknown", "fresh", "stale"]
+    },
+    "reconnect_pressure": {
+      "type": "string",
+      "enum": ["none", "moderate", "high"]
+    },
+    "event_queue_pressure": {
+      "type": "string",
+      "enum": ["none", "normal", "high"]
+    },
+    "consumer_error_count": { "type": "integer", "minimum": 0 },
+    "github_rate_limit_health": {
+      "type": "string",
+      "enum": ["unknown", "healthy", "degraded", "near_exhausted", "exhausted"]
+    },
+    "test_validation_pressure": {
+      "type": "string",
+      "enum": ["none", "pending", "justified", "deferred"]
+    },
+    "command_boundary_summary": { "type": "object" },
+    "recommended_scheduling_hints": { "type": "array", "items": { "type": "string" } },
+    "degraded_reasons": { "type": "array", "items": { "type": "string" } },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "additionalProperties": false
+}

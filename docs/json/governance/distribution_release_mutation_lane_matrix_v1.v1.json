@@ -1,0 +1,145 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_mutation_lane_matrix.v1",
+  "mutation_lanes": [
+    {
+      "mutation_lane_id": "dist-mut:create_release_packet",
+      "channel_ids": [
+        "dist-channel:github_releases"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Public mutation. Tag is permanent signal."
+    },
+    {
+      "mutation_lane_id": "dist-mut:create_store_submission",
+      "channel_ids": [
+        "dist-channel:apple_app_store"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Human review triggered. Rejection is public record."
+    },
+    {
+      "mutation_lane_id": "dist-mut:npm_publish",
+      "channel_ids": [
+        "dist-channel:npm_registry"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Public registry mutation. Version permanent.",
+      "dangerous_failure_modes": [
+        "Wrong version published.",
+        "Private data leaked in package.",
+        "Version number permanently reserved."
+      ],
+      "rollback_or_recovery_strategy": "npm unpublish (within 72h). npm deprecate. Dist-tag redirect.",
+      "receipts_required": [
+        "package_name",
+        "version",
+        "tar_sha",
+        "publish_timestamp"
+      ]
+    },
+    {
+      "mutation_lane_id": "dist-mut:pypi_upload",
+      "channel_ids": [
+        "dist-channel:pypi"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Irreversible registry mutation. Version is permanent.",
+      "dangerous_failure_modes": [
+        "Wrong version published.",
+        "Files cannot be modified after upload.",
+        "Version number permanently reserved."
+      ],
+      "rollback_or_recovery_strategy": "PyPI yank (soft). Delete within 72h.",
+      "receipts_required": [
+        "package_name",
+        "version",
+        "wheel_hash",
+        "upload_timestamp"
+      ]
+    },
+    {
+      "mutation_lane_id": "dist-mut:crates_publish",
+      "channel_ids": [
+        "dist-channel:crates_io"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Permanent registry mutation. No OIDC keyless yet.",
+      "dangerous_failure_modes": [
+        "Wrong version published.",
+        "Cannot be deleted.",
+        "Crate name permanently reserved."
+      ],
+      "rollback_or_recovery_strategy": "cargo yank. Crate version cannot be deleted."
+    },
+    {
+      "mutation_lane_id": "dist-mut:create_github_release",
+      "channel_ids": [
+        "dist-channel:github_releases"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": false,
+      "reason": "Public notification. Tag namespace is permanent signal.",
+      "rollback_or_recovery_strategy": "Delete release, delete tag (notifications already sent)."
+    },
+    {
+      "mutation_lane_id": "dist-mut:generate_sbom",
+      "channel_ids": [
+        "dist-channel:ghcr",
+        "dist-channel:docker_hub",
+        "dist-channel:generic_oci",
+        "dist-channel:github_releases"
+      ],
+      "recommended_initial_state": "automatic_under_policy",
+      "remote_mutation": false,
+      "local_mutation": true,
+      "reason": "Read-only generation. No remote mutation."
+    },
+    {
+      "mutation_lane_id": "dist-mut:notarize_macos",
+      "channel_ids": [
+        "dist-channel:apple_notarization"
+      ],
+      "recommended_initial_state": "approval_required",
+      "remote_mutation": true,
+      "local_mutation": true,
+      "reason": "Remote notarization service call. Local signing prep.",
+      "rollback_or_recovery_strategy": "Notarization submission can be deleted."
+    },
+    {
+      "mutation_lane_id": "dist-mut:sign_artifact",
+      "channel_ids": [
+        "dist-channel:direct_download",
+        "dist-channel:self_update"
+      ],
+      "recommended_initial_state": "automatic_under_policy",
+      "remote_mutation": false,
+      "local_mutation": true,
+      "reason": "Local signing only. Must have certificate access.",
+      "dangerous_failure_modes": [
+        "Wrong cert used.",
+        "Expired cert not caught.",
+        "Private key exposure in CI logs."
+      ]
+    }
+  ],
+  "mutation_lane_count": 9,
+  "remote_mutation_performed": false
+}

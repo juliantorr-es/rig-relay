@@ -1,0 +1,91 @@
+{
+  "schema_version": "rig.github.code_scanning_patch_preview.v1",
+  "generated_at": "2026-05-20T17:40:32.877897+00:00",
+  "content_light": true,
+  "source_queue_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_queue_v1.v1.json",
+  "source_remediation_plan_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_remediation_plan_v1.v1.json",
+  "source_patch_proposal_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_proposal_v1.v1.json",
+  "selected_queue_item_id": "008356ed5416be8f0bff21418b7b1210115fb8ae30496e2e09c830fd8809bc98",
+  "selected_plan_id": "bd0bd3765f53b76d532a76301dce4fc7fc51e4cf66e6e124f49e41008bf8c0cf",
+  "selected_alert_identifier_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "alert_number": 5,
+  "severity": "warning",
+  "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+  "patch_preview_status": "blocked_source_unavailable",
+  "diff_preview_path": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/code_scanning_patch_preview.diff",
+  "diff_preview_sha256": "aef284c360d90a23e94dbe5e60e69ba085a169719cfa359636a0b3cf411d2ada",
+  "diff_preview_bytes": 600,
+  "diff_preview_line_count": 13,
+  "diff_content_classification": "blocked_explanation_only",
+  "proposed_operations": [
+    {
+      "operation_type": "inspect",
+      "target_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+      "mutation_required_later": false,
+      "permission_required_later": "contents:read",
+      "blocked_reason": "source_context_unavailable"
+    },
+    {
+      "operation_type": "modify_candidate",
+      "target_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+      "mutation_required_later": true,
+      "permission_required_later": "contents:write",
+      "blocked_reason": "source_context_unavailable"
+    },
+    {
+      "operation_type": "test_candidate",
+      "target_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+      "mutation_required_later": false,
+      "permission_required_later": "none",
+      "blocked_reason": "patch_not_generated"
+    }
+  ],
+  "affected_file_summaries": [
+    "file_hash=080e04a484e9a0f6..."
+  ],
+  "verification_plan": [
+    "source_context_acquisition (live API or safe local mirror)",
+    "rule context review from CodeQL alert metadata",
+    "targeted unit/integration test for affected area once source available",
+    "static analysis relevant to CodeQL rule category",
+    "redaction scan on generated patch artifacts",
+    "schema validation on any generated artifacts",
+    "do_not_run_full_pytest"
+  ],
+  "permission_audit": {
+    "read_for_context": [
+      "security_events:read",
+      "metadata:read",
+      "contents:read"
+    ],
+    "mutation_later": [
+      "contents:write",
+      "pull_requests:write",
+      "security_events:write"
+    ],
+    "none_used_in_this_slice": true
+  },
+  "local_mutation_status": "disabled",
+  "remote_mutation_status": "disabled",
+  "pr_creation_status": "disabled",
+  "alert_update_status": "disabled",
+  "blocked_reasons": [
+    "source_context_unavailable",
+    "raw_source_file_not_accessible",
+    "unsafe_to_generate_diff",
+    "live_repo_access_deferred",
+    "code_fix_generation_requires_live_API_or_safe_local_mirror"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 17,
+    "raw_code_snippets_present": false,
+    "source_content_present": false,
+    "diff_preview_redaction_clean": true
+  },
+  "content_light_status": "preview_content_light",
+  "human_review_required": true,
+  "recommended_next_slice": "Phase 2 Slice 5 — acquire source context (live API or local mirror), generate actual candidate diff, then proceed to PR plan"
+}

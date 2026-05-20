@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.code_scanning_patch_preview.v1.schema.json",
+  "title": "GitHub Code Scanning Patch Preview v1",
+  "description": "Governed dry-run candidate diff preview for top code scanning alert. Blocks honestly if source is unavailable.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "patch_preview_status", "local_mutation_status", "remote_mutation_status", "pr_creation_status", "alert_update_status"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.code_scanning_patch_preview.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "source_queue_artifact": {"type": "string"},
+    "source_remediation_plan_artifact": {"type": "string"},
+    "source_patch_proposal_artifact": {"type": "string"},
+    "selected_queue_item_id": {"type": ["string", "null"]},
+    "selected_plan_id": {"type": ["string", "null"]},
+    "selected_alert_identifier_hash": {"type": ["string", "null"]},
+    "alert_number": {"type": ["integer", "null"]},
+    "severity": {"type": "string"},
+    "rule_id_hash": {"type": ["string", "null"]},
+    "file_path_hash": {"type": ["string", "null"]},
+    "patch_preview_status": {"type": "string"},
+    "diff_preview_path": {"type": ["string", "null"]},
+    "diff_preview_sha256": {"type": ["string", "null"]},
+    "diff_preview_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "diff_preview_line_count": {"type": ["integer", "null"], "minimum": 0},
+    "diff_content_classification": {"type": "string"},
+    "proposed_operations": {"type": "array", "items": {"$ref": "#/definitions/proposed_op"}},
+    "affected_file_summaries": {"type": "array", "items": {"type": "string"}},
+    "verification_plan": {"type": "array", "items": {"type": "string"}},
+    "permission_audit": {"type": "object"},
+    "local_mutation_status": {"type": "string", "const": "disabled"},
+    "remote_mutation_status": {"type": "string", "const": "disabled"},
+    "pr_creation_status": {"type": "string", "const": "disabled"},
+    "alert_update_status": {"type": "string", "const": "disabled"},
+    "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "redaction_status": {"type": "object"},
+    "content_light_status": {"type": "string"},
+    "human_review_required": {"type": "boolean"},
+    "recommended_next_slice": {"type": "string"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "proposed_op": {
+      "type": "object",
+      "required": ["operation_type", "mutation_required_later"],
+      "properties": {
+        "operation_type": {"type": "string", "enum": ["inspect", "modify_candidate", "test_candidate", "no_op"]},
+        "target_path_hash": {"type": ["string", "null"]},
+        "mutation_required_later": {"type": "boolean"},
+        "permission_required_later": {"type": "string"},
+        "blocked_reason": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

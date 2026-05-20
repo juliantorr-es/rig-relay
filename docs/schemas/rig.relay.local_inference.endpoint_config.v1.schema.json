@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.local_inference.endpoint_config.v1",
+  "title": "Local Inference Endpoint Configuration",
+  "description": "Configuration for a local inference endpoint. Content-light: stores endpoint URL and metadata only. No API keys, tokens, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "endpoint_url",
+    "endpoint_sha256",
+    "configured_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.relay.local_inference.endpoint_config.v1"
+    },
+    "endpoint_url": {
+      "type": "string",
+      "description": "Base URL of the local inference server (e.g. http://localhost:8080)"
+    },
+    "runtime_kind": {
+      "type": "string",
+      "enum": ["vllm", "llama_cpp", "mlx_lm", "unknown"]
+    },
+    "api_protocol": {
+      "type": "string",
+      "enum": ["openai_compatible", "cli_subprocess", "python_module"]
+    },
+    "platform_class": {
+      "type": "string",
+      "enum": ["cpu", "cuda", "metal", "vulkan", "rocm", "unknown"]
+    },
+    "endpoint_sha256": {
+      "type": "string",
+      "description": "SHA256 of the endpoint URL"
+    },
+    "configured_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "configured_by": {
+      "type": "string",
+      "default": "manual"
+    }
+  }
+}

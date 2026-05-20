@@ -1,0 +1,149 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_mutation_execution.v1",
+  "operation_id": "d9129c0f1ad95b72",
+  "idempotency_key": "d9129c0f1ad95b72b55cf0f639d3a8079fe669227357e98d53518ad9ae5485a7",
+  "generated_at": "2026-05-20T18:17:52.041785+00:00",
+  "content_light": true,
+  "operation_status": "blocked",
+  "dry_run": true,
+  "remote_mutation_attempted": false,
+  "remote_mutation_succeeded": false,
+  "pr_created": false,
+  "alert_updated": false,
+  "alert_update_deferred": true,
+  "gates": [
+    {
+      "gate": "readiness_artifact_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "readiness_simulation_passed",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "candidate_diff_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "candidate_not_blocked_explanation",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "candidate_has_real_diff",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "approval_no_approval_receipt",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "path_safety",
+      "passed": false,
+      "detail": "['path_traversal_unsafe']"
+    },
+    {
+      "gate": "branch_safety",
+      "passed": false,
+      "detail": "['branch_name_empty', 'branch_prefix_unsafe']"
+    },
+    {
+      "gate": "explicit_remote_flag",
+      "passed": false,
+      "detail": "requires --execute-remote-mutation"
+    }
+  ],
+  "gates_passed": false,
+  "blocked_reasons": [
+    "readiness_simulation_passed",
+    "candidate_not_blocked_explanation",
+    "candidate_has_real_diff",
+    "approval_no_approval_receipt",
+    "path_safety",
+    "branch_safety",
+    "explicit_remote_flag"
+  ],
+  "steps": [
+    {
+      "step_id": "preflight_readiness_load",
+      "step_name": "load readiness",
+      "operation_class": "read_only",
+      "required_permissions": [],
+      "status": "passed",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "approval_receipt_verify",
+      "step_name": "verify approval",
+      "operation_class": "read_only",
+      "required_permissions": [],
+      "status": "blocked",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "branch_ref_create",
+      "step_name": "create branch ref",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "contents:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "file_write",
+      "step_name": "write candidate file",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "contents:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "pr_create",
+      "step_name": "create pull request",
+      "operation_class": "remote_mutation",
+      "required_permissions": [
+        "pull_requests:write"
+      ],
+      "status": "blocked",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "operation_receipt_write",
+      "step_name": "write operation receipt",
+      "operation_class": "local_artifact_write",
+      "required_permissions": [],
+      "status": "blocked",
+      "remote_mutation_attempted": false
+    },
+    {
+      "step_id": "alert_update_deferred",
+      "step_name": "alert update deferred",
+      "operation_class": "deferred",
+      "required_permissions": [],
+      "status": "deferred",
+      "remote_mutation_attempted": false
+    }
+  ],
+  "permissions_used": [],
+  "simulation_type": "none",
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "raw_response_bodies_persisted": false
+  },
+  "rollback_or_cleanup": "delete branch if PR failed; close PR if rejected",
+  "intentionally_deferred": [
+    "alert_update",
+    "pr_merge",
+    "default_branch_push"
+  ],
+  "recommended_next_slice": "Phase 2 Slice 9 — pass all readiness gates first"
+}

@@ -73,6 +73,19 @@ PROVIDER_REGISTRY: list[ProviderInfo] = [
             "Use DEEPSEEK_API_KEY for the standard endpoint."
         ),
     ),
+    ProviderInfo(
+        provider=Provider.LOCAL_INFERENCE,
+        display_name="Local Inference",
+        env_var="",
+        docs_hint="Local inference requires an explicitly configured endpoint URL.",
+        supports_base_url=True,
+        supports_alt_endpoint=True,
+        alt_endpoint_note=(
+            "vLLM, llama.cpp, and other local servers expose an OpenAI-compatible API. "
+            "Set base_url to the server URL (e.g. http://localhost:8080). "
+            "No API key required for local servers."
+        ),
+    ),
 ]
 
 

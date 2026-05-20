@@ -1,0 +1,230 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_validation_matrix.v1",
+  "validations": [
+    {
+      "validation_id": "dist-valid:build_reproducibility",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Identical hashes from independent builds",
+      "can_block_publish": true,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:artifact_hashing",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "SHA256 computed and stored",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:semver_check",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Version > previous AND valid semver",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:changelog_check",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Current version appears in changelog",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:release_notes_check",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Release notes present and valid",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:license_check",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Valid LICENSE file present",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:provenance_check",
+      "applies_to_channels": [
+        "dist-channel:npm_registry",
+        "dist-channel:pypi",
+        "dist-channel:ghcr"
+      ],
+      "pass_condition": "Attestation verifies against package hash",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:sbom_check",
+      "applies_to_channels": [
+        "dist-channel:ghcr",
+        "dist-channel:docker_hub",
+        "dist-channel:generic_oci"
+      ],
+      "pass_condition": "SBOM valid and includes all dependencies",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:vulnerability_scan",
+      "applies_to_channels": [
+        "dist-channel:ghcr",
+        "dist-channel:docker_hub"
+      ],
+      "pass_condition": "No critical/high CVE in image",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:secret_scan",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "No secrets detected in source/artifacts",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:dependency_audit",
+      "applies_to_channels": [
+        "dist-channel:npm_registry",
+        "dist-channel:pypi",
+        "dist-channel:crates_io"
+      ],
+      "pass_condition": "No known vulnerabilities in dependencies",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:test_result",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "All tests pass",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:schema_validation",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "Data validates against schema",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:code_signing",
+      "applies_to_channels": [
+        "dist-channel:apple_app_store",
+        "dist-channel:apple_notarization",
+        "dist-channel:apple_dev_id_distribution",
+        "dist-channel:microsoft_store"
+      ],
+      "pass_condition": "Valid signature with trusted certificate",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:notarization",
+      "applies_to_channels": [
+        "dist-channel:apple_notarization",
+        "dist-channel:apple_dev_id_distribution"
+      ],
+      "pass_condition": "Notarization ticket present and valid",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:entitlement",
+      "applies_to_channels": [
+        "dist-channel:apple_app_store",
+        "dist-channel:apple_testflight"
+      ],
+      "pass_condition": "Entitlements match provisioning profile",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:provisioning_profile",
+      "applies_to_channels": [
+        "dist-channel:apple_app_store",
+        "dist-channel:apple_testflight"
+      ],
+      "pass_condition": "Profile valid, not expired, matches certificate",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:package_metadata",
+      "applies_to_channels": [
+        "dist-channel:npm_registry",
+        "dist-channel:pypi",
+        "dist-channel:crates_io"
+      ],
+      "pass_condition": "All required metadata fields present and valid",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:package_file_manifest",
+      "applies_to_channels": [
+        "dist-channel:npm_registry",
+        "dist-channel:pypi",
+        "dist-channel:crates_io"
+      ],
+      "pass_condition": "Expected files present, no unexpected files",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    },
+    {
+      "validation_id": "dist-valid:store_metadata",
+      "applies_to_channels": [
+        "dist-channel:apple_app_store",
+        "dist-channel:google_play_production",
+        "dist-channel:microsoft_store"
+      ],
+      "pass_condition": "All required store listing fields present",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:privacy_manifest",
+      "applies_to_channels": [
+        "dist-channel:apple_app_store"
+      ],
+      "pass_condition": "Privacy manifest present and valid",
+      "can_block_publish": true,
+      "recommended_default_severity": "error"
+    },
+    {
+      "validation_id": "dist-valid:public_claims",
+      "applies_to_channels": [
+        "*"
+      ],
+      "pass_condition": "All public claims consistent across surfaces",
+      "can_block_publish": false,
+      "recommended_default_severity": "warning"
+    }
+  ],
+  "validation_count": 22
+}

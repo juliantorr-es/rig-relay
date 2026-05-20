@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_remediation_plan.v1.schema.json",
+  "title": "GitHub Security Remediation Plan v1",
+  "description": "Governed, planning-only remediation plans for top 3 actionable security queue items.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "selection_policy", "selected_queue_item_ids", "remediation_plans", "permission_requirements", "redaction_summary", "remote_mutation_status"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.security_remediation_plan.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "source_queue_artifact": {"type": "string"},
+    "source_queue_hash": {"type": ["string", "null"]},
+    "selection_policy": {"$ref": "#/definitions/selection_policy"},
+    "selected_queue_item_ids": {"type": "array", "items": {"type": "string"}},
+    "rejected_queue_items_summary": {"type": "object"},
+    "remediation_plans": {"type": "array", "items": {"$ref": "#/definitions/remediation_plan"}},
+    "permission_requirements": {"type": "object"},
+    "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "redaction_summary": {"type": "object"},
+    "content_light_status": {"type": "string"},
+    "remote_mutation_status": {"type": "string", "enum": ["disabled"]},
+    "local_mutation_status": {"type": "string"},
+    "event_fabric_events_emitted": {"type": "boolean"},
+    "telemetry_redaction_implications": {"type": "string"},
+    "intentionally_deferred": {"type": "array", "items": {"type": "string"}},
+    "recommended_next_slice": {"type": "string"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "selection_policy": {
+      "type": "object",
+      "required": ["max_items", "total_queue_items", "items_selected"],
+      "properties": {
+        "max_items": {"type": "integer", "minimum": 1},
+        "selection_criteria": {"type": "array", "items": {"type": "string"}},
+        "total_queue_items": {"type": "integer", "minimum": 0},
+        "actionable_items": {"type": "integer", "minimum": 0},
+        "items_selected": {"type": "integer", "minimum": 0},
+        "items_rejected": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "remediation_plan": {
+      "type": "object",
+      "required": ["plan_id", "queue_item_id", "source_surface", "severity", "priority_rank", "issue_summary_safe", "remediation_strategy", "mutation_required", "remote_mutation_status", "human_review_required"],
+      "properties": {
+        "plan_id": {"type": "string"}, "queue_item_id": {"type": "string"},
+        "source_surface": {"type": "string"}, "security_domain": {"type": "string"},
+        "severity": {"type": "string"}, "priority_rank": {"type": "integer", "minimum": 1},
+        "priority_score": {"type": "integer"},
+        "source_identifier_hash": {"type": ["string", "null"]},
+        "issue_summary_safe": {"type": "string"},
+        "evidence_available": {"type": "boolean"},
+        "evidence_missing": {"type": "array", "items": {"type": "string"}},
+        "remediation_strategy": {"type": "string"},
+        "allowed_next_actions": {"type": "array", "items": {"type": "string"}},
+        "forbidden_actions": {"type": "array", "items": {"type": "string"}},
+        "required_permissions": {"type": "object"},
+        "mutation_required": {"type": "boolean", "const": false},
+        "remote_mutation_status": {"type": "string", "enum": ["disabled"]},
+        "local_mutation_status": {"type": "string"},
+        "confidence": {"type": "string"},
+        "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+        "human_review_required": {"type": "boolean"},
+        "proposed_followup_slice": {"type": "string"},
+        "redaction_status": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.event_propagation_resource_allocation_audit.v1.schema.json",
+  "title": "Event Propagation & Resource Allocation Audit v1",
+  "description": "Structured audit of how a governed event propagation fabric would improve resource allocation across Rig Relay subsystems.",
+  "type": "object",
+  "required": [
+    "schema_version", "generated_at", "branch", "head",
+    "audited_subsystems", "existing_event_like_surfaces",
+    "resource_allocation_opportunities", "proposed_event_taxonomy",
+    "proposed_control_loops", "event_command_boundary_findings",
+    "frontend_bridge_backend_findings", "github_integration_findings",
+    "test_release_gate_findings", "telemetry_redaction_findings",
+    "anti_patterns", "recommended_v1_architecture",
+    "recommended_next_slice", "intentionally_deferred", "out_of_scope_risks"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.event_propagation_resource_allocation_audit.v1" },
+    "generated_at": { "type": "string" },
+    "branch": { "type": "string" },
+    "head": { "type": "string" },
+    "dirty_state_before": { "type": "string" },
+    "dirty_state_after": { "type": "string" },
+    "audited_subsystems": { "type": "array", "items": { "$ref": "#/definitions/audited_subsystem" } },
+    "existing_event_like_surfaces": { "type": "array", "items": { "$ref": "#/definitions/event_like_surface" } },
+    "resource_allocation_opportunities": { "type": "array", "items": { "$ref": "#/definitions/resource_opportunity" } },
+    "proposed_event_taxonomy": { "$ref": "#/definitions/event_taxonomy" },
+    "proposed_control_loops": { "type": "array", "items": { "$ref": "#/definitions/control_loop" } },
+    "event_command_boundary_findings": { "type": "array", "items": { "$ref": "#/definitions/boundary_finding" } },
+    "frontend_bridge_backend_findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+    "github_integration_findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+    "test_release_gate_findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+    "telemetry_redaction_findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+    "anti_patterns": { "type": "array", "items": { "type": "string" } },
+    "recommended_v1_architecture": { "$ref": "#/definitions/v1_architecture" },
+    "recommended_next_slice": { "type": "string" },
+    "intentionally_deferred": { "type": "array", "items": { "type": "string" } },
+    "out_of_scope_risks": { "type": "array", "items": { "type": "string" } },
+    "spiderweb_ux_metaphor": { "$ref": "#/definitions/spiderweb_ux" }
+  },
+  "definitions": {
+    "audited_subsystem": {
+      "type": "object",
+      "required": ["name", "existing_mechanism", "push_poll", "correlation", "schema_governed"],
+      "properties": {
+        "name": { "type": "string" },
+        "existing_mechanism": { "type": "string" },
+        "push_poll": { "type": "string" },
+        "correlation": { "type": "string" },
+        "schema_governed": { "type": "boolean" },
+        "resource_cost": { "type": "string" },
+        "gap": { "type": "string" },
+        "source_files": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "event_like_surface": {
+      "type": "object",
+      "required": ["surface", "count", "mechanism", "currently_polling"],
+      "properties": {
+        "surface": { "type": "string" },
+        "count": { "type": ["integer", "null"] },
+        "mechanism": { "type": "string" },
+        "currently_polling": { "type": "boolean" },
+        "sample_event": { "type": "string" }
+      }
+    },
+    "resource_opportunity": {
+      "type": "object",
+      "required": ["domain", "current_behavior", "proposed_event_driven_behavior", "resource_saved"],
+      "properties": {
+        "domain": { "type": "string" },
+        "current_behavior": { "type": "string" },
+        "proposed_event_driven_behavior": { "type": "string" },
+        "resource_saved": { "type": "string" },
+        "impact": { "type": "string" }
+      }
+    },
+    "event_taxonomy": {
+      "type": "object",
+      "required": ["categories", "envelope_spec", "existing_events_total", "proposed_new_categories"],
+      "properties": {
+        "categories": { "type": "array", "items": { "$ref": "#/definitions/taxonomy_category" } },
+        "envelope_spec": { "type": "object" },
+        "existing_events_total": { "type": "integer" },
+        "proposed_new_categories": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "taxonomy_category": {
+      "type": "object",
+      "required": ["prefix", "examples", "existing", "ux_strand"],
+      "properties": {
+        "prefix": { "type": "string" },
+        "examples": { "type": "array", "items": { "type": "string" } },
+        "existing": { "type": "boolean" },
+        "ux_strand": { "type": "string" }
+      }
+    },
+    "control_loop": {
+      "type": "object",
+      "required": ["name", "input_events", "derived_signal", "decision", "affected_subsystem", "resource_conserved", "failure_mode_avoided", "safety_gate", "telemetry_implication", "reaction_timing", "ux_visibility"],
+      "properties": {
+        "name": { "type": "string" },
+        "input_events": { "type": "array", "items": { "type": "string" } },
+        "derived_signal": { "type": "string" },
+        "decision": { "type": "string" },
+        "affected_subsystem": { "type": "string" },
+        "resource_conserved": { "type": "string" },
+        "failure_mode_avoided": { "type": "string" },
+        "safety_gate": { "type": "string" },
+        "telemetry_implication": { "type": "string" },
+        "reaction_timing": { "type": "string" },
+        "ux_visibility": { "type": "string" }
+      }
+    },
+    "boundary_finding": {
+      "type": "object",
+      "required": ["event_type", "is_command", "boundary_rule"],
+      "properties": {
+        "event_type": { "type": "string" },
+        "is_command": { "type": "boolean" },
+        "boundary_rule": { "type": "string" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["area", "finding", "severity", "recommendation"],
+      "properties": {
+        "area": { "type": "string" },
+        "finding": { "type": "string" },
+        "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "advisory"] },
+        "recommendation": { "type": "string" }
+      }
+    },
+    "v1_architecture": {
+      "type": "object",
+      "required": ["transport", "subscription_policy", "envelope", "redaction_rules", "consumers"],
+      "properties": {
+        "transport": { "type": "object" },
+        "subscription_policy": { "type": "string" },
+        "envelope": { "type": "object" },
+        "redaction_rules": { "type": "array", "items": { "type": "string" } },
+        "consumers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "spiderweb_ux": {
+      "type": "object",
+      "required": ["metaphor", "strand_states", "ux_projections", "derived_tension_rule"],
+      "properties": {
+        "metaphor": { "type": "string" },
+        "strand_states": { "type": "array", "items": { "type": "string" } },
+        "ux_projections": { "type": "array", "items": { "type": "string" } },
+        "derived_tension_rule": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

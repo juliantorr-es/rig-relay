@@ -1,0 +1,130 @@
+{
+  "schema_version": "rig.github.profile_readme_pr_plan.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "owner": "juliantorr-es",
+  "repo": "juliantorr-es/juliantorr-es",
+  "base_branch": "main",
+  "proposed_branch": "relay/profile-readme-update",
+  "target_path": "README.md",
+  "preview_path": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/profile_readme_preview.md",
+  "preview_sha256": "2913479f2209878fc0ca1a5f0d5091f601d869008f949c79d4818527127bdf45",
+  "preview_bytes": 1987,
+  "preview_line_count": 53,
+  "operation_mode": "dry_run",
+  "requested_remote_mutation": false,
+  "remote_mutation": false,
+  "content_light": true,
+  "mutation_lane_id": "profile_readme_publish_pr",
+  "required_permissions": {
+    "read": [
+      "contents:read",
+      "metadata:read"
+    ],
+    "write_content": [
+      "contents:write"
+    ],
+    "write_pr": [
+      "pull_requests:write"
+    ],
+    "explicitly_not_required": [
+      "workflows:write",
+      "actions:write"
+    ]
+  },
+  "live_permission_verification_summary": {
+    "verified": false,
+    "source": "embedded_from_preview_artifact"
+  },
+  "publish_gate_status": "dry_run_blocked",
+  "blocked_reasons": [
+    "explicit_publish_flag_not_set",
+    "live_permission_not_verified"
+  ],
+  "gate_details": [
+    {
+      "gate": "explicit_publish_flag",
+      "passed": false,
+      "detail": "Publish flag must be explicitly supplied"
+    },
+    {
+      "gate": "preview_file_exists",
+      "passed": true,
+      "detail": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/profile_readme_preview.md"
+    },
+    {
+      "gate": "preview_hash_match",
+      "passed": true,
+      "detail": "expected=2913479f2209878f... actual=2913479f2209878f..."
+    },
+    {
+      "gate": "redaction_scan",
+      "passed": true,
+      "detail": "redaction_matches=0"
+    },
+    {
+      "gate": "target_path_safe",
+      "passed": true,
+      "detail": "target_path=README.md"
+    },
+    {
+      "gate": "non_default_branch",
+      "passed": true,
+      "detail": "base=main proposed=relay/profile-readme-update"
+    },
+    {
+      "gate": "live_permission_verified",
+      "passed": false,
+      "detail": "Live API permission truth must be observed or explicitly waived"
+    },
+    {
+      "gate": "workflows_not_required",
+      "passed": true,
+      "detail": "workflows:write confirmed not needed for README.md path"
+    },
+    {
+      "gate": "actions_not_required",
+      "passed": true,
+      "detail": "actions:write confirmed not needed for README.md path"
+    }
+  ],
+  "planned_steps": [
+    {
+      "step": 1,
+      "operation": "read_repo_metadata",
+      "permission": "metadata:read",
+      "description": "Verify profile repo exists and fetch base branch"
+    },
+    {
+      "step": 2,
+      "operation": "prepare_branch",
+      "permission": "contents:write",
+      "description": "Create branch relay/profile-readme-update from main"
+    },
+    {
+      "step": 3,
+      "operation": "write_file",
+      "permission": "contents:write",
+      "description": "Write README.md from preview 2913479f2209878f..."
+    },
+    {
+      "step": 4,
+      "operation": "create_pull_request",
+      "permission": "pull_requests:write",
+      "description": "Create PR from relay/profile-readme-update to main"
+    },
+    {
+      "step": 5,
+      "operation": "emit_operation_receipt",
+      "permission": "none",
+      "description": "Record mutation receipt with before/after SHAs"
+    }
+  ],
+  "idempotency_key": "132f646641d1fb6a6d1638db2c277ec54a8f82cb307fbaf5d7351958714db78e",
+  "expected_artifacts": [
+    "profile_readme_pr_operation_receipt"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.benchmark_sample.v1",
+  "title": "Local Inference Benchmark Sample",
+  "description": "A single benchmark sample from a local inference run. Contains SHA256 hashes of prompt and completion, timing metrics, and quality flags. Never contains raw prompt or completion text.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "sample_id",
+    "run_id",
+    "prompt_sha256",
+    "prompt_token_count",
+    "status",
+    "duration_ms"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.local_inference.benchmark_sample.v1"
+    },
+    "sample_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "prompt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "prompt_token_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "completion_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 of the completion text. Present only if status is completed."
+    },
+    "completion_token_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tool_calls_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled", "timed_out", "refused"]
+    },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "time_to_first_token_ms": { "type": ["number", "null"] },
+    "tokens_per_sec_decode": { "type": ["number", "null"] },
+    "streaming_chunk_count": { "type": ["integer", "null"] },
+    "streaming_chunk_interval_ms_p50": { "type": ["number", "null"] },
+    "tool_call_correct": {
+      "type": ["boolean", "null"],
+      "description": "Whether the tool call output conforms to the expected JSON schema"
+    },
+    "structured_output_complies": {
+      "type": ["boolean", "null"],
+      "description": "Whether the output matches the requested json_schema"
+    },
+    "temperature_zero_deterministic": {
+      "type": ["boolean", "null"],
+      "description": "Whether the output is deterministic at temp=0 (same prompt_sha256 yields same completion_sha256)"
+    },
+    "cancellation_requested_at_ms": { "type": ["integer", "null"] },
+    "cancellation_effective_ms": { "type": ["integer", "null"] },
+    "error_class": { "type": ["string", "null"] },
+    "error_safe_message": { "type": ["string", "null"] },
+    "token_accounting_discrepancy": {
+      "type": ["string", "null"],
+      "description": "If token counts appear wrong, a content-light description of the discrepancy"
+    }
+  }
+}

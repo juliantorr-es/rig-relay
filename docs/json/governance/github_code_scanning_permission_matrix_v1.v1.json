@@ -1,0 +1,112 @@
+{
+  "schema_version": "rig.github.code_scanning_permission_matrix.v1",
+  "generated_at": "2026-05-20T18:07:18.270282+00:00",
+  "content_light": true,
+  "lifecycle_phases": [
+    {
+      "phase": "source_context_acquisition",
+      "required": [
+        "metadata:read",
+        "security_events:read",
+        "contents:read"
+      ],
+      "used": [
+        "metadata:read",
+        "security_events:read",
+        "contents:read"
+      ],
+      "remote_mutation": false,
+      "local_mutation": false,
+      "alert_mutation": false,
+      "content_exposure": "hashes_only"
+    },
+    {
+      "phase": "dry_run_candidate_diff",
+      "required": [
+        "metadata:read",
+        "security_events:read",
+        "contents:read"
+      ],
+      "used": [],
+      "remote_mutation": false,
+      "local_mutation": false,
+      "alert_mutation": false,
+      "content_exposure": "diff_file_only"
+    },
+    {
+      "phase": "pr_creation_planning",
+      "required": [
+        "metadata:read",
+        "contents:read",
+        "pull_requests:write"
+      ],
+      "used": [],
+      "remote_mutation": false,
+      "local_mutation": false,
+      "alert_mutation": false,
+      "content_exposure": "metadata_only"
+    },
+    {
+      "phase": "mutation_readiness",
+      "required": [
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "used": [],
+      "remote_mutation": false,
+      "local_mutation": true,
+      "alert_mutation": false,
+      "content_exposure": "temp_repo_only"
+    },
+    {
+      "phase": "future_branch_creation",
+      "required": [
+        "contents:write"
+      ],
+      "used": [],
+      "remote_mutation": true,
+      "local_mutation": false,
+      "alert_mutation": false,
+      "content_exposure": "metadata_only"
+    },
+    {
+      "phase": "future_pr_creation",
+      "required": [
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "used": [],
+      "remote_mutation": true,
+      "local_mutation": false,
+      "alert_mutation": false,
+      "content_exposure": "metadata_only"
+    },
+    {
+      "phase": "future_alert_update",
+      "required": [
+        "security_events:write"
+      ],
+      "used": [],
+      "remote_mutation": true,
+      "local_mutation": false,
+      "alert_mutation": true,
+      "content_exposure": "metadata_only"
+    }
+  ],
+  "permission_summary": {
+    "all_read": [
+      "metadata:read",
+      "security_events:read",
+      "contents:read"
+    ],
+    "all_write": [
+      "contents:write",
+      "pull_requests:write"
+    ],
+    "alert_specific": [
+      "security_events:write"
+    ],
+    "this_slice_uses": [],
+    "this_slice_remote_mutation": false
+  }
+}

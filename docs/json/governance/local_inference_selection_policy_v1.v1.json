@@ -1,0 +1,38 @@
+{
+  "schema_version": "rig.local_inference.selection_policy.v1",
+  "selection_id": "sel_canonical",
+  "decided_at": "2026-05-20T00:00:00Z",
+  "result_kind": "not_configured",
+  "confidence": "low",
+  "explanation_codes": ["endpoint_unconfigured"],
+  "risk_flags": [],
+  "diagnostics_enabled": true,
+  "manual_selection_allowed": false,
+  "policy_selection_allowed": false,
+  "available_states": [
+    "not_configured",
+    "configured_but_unprobed",
+    "probed_but_not_benchmarked",
+    "eligible_for_manual_selection",
+    "eligible_for_policy_selection",
+    "blocked_by_missing_capability",
+    "blocked_by_missing_approval",
+    "blocked_by_degraded_diagnostics",
+    "blocked_by_failed_probe",
+    "blocked_by_stale_evidence",
+    "blocked_by_policy"
+  ],
+  "gate_sequence": [
+    "1. Endpoint configured check",
+    "2. Probe result availability check",
+    "3. Probe reachability check",
+    "4. Probe staleness check (7 days)",
+    "5. Diagnostics enabled check",
+    "6. Capability match check (if task profile provided)",
+    "7. Benchmark evidence check (match endpoint SHA256)",
+    "8. Explicit approval check",
+    "9. Policy selection eligibility"
+  ],
+  "diagnostics_disabled_behavior": "When diagnostics_enabled=False, policy selection degrades to BLOCKED_BY_DEGRADED_DIAGNOSTICS regardless of probe/benchmark evidence. Manual selection remains unavailable.",
+  "content_light_guarantee": "No prompts, completions, API keys, secrets, or raw content in any selection policy artifact."
+}

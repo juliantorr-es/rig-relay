@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.runtime_capability_probe.v1",
+  "title": "Local Inference Runtime Capability Probe Result",
+  "description": "Result of probing a local inference endpoint for capabilities. Content-light: contains booleans and strings, no raw prompts, completions, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "probe_id",
+    "runtime_url",
+    "probed_at",
+    "probe_duration_ms",
+    "reachable",
+    "capabilities",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.local_inference.runtime_capability_probe.v1"
+    },
+    "probe_id": {
+      "type": "string"
+    },
+    "runtime_url": {
+      "type": "string",
+      "description": "Base URL of the local inference endpoint (no secrets, no paths with model names)"
+    },
+    "runtime_engine": {
+      "type": "string",
+      "description": "Detected or configured engine: vllm, llama_cpp, mlx_lm, unknown",
+      "enum": ["vllm", "llama_cpp", "mlx_lm", "unknown"]
+    },
+    "probed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "probe_duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reachable": {
+      "type": "boolean"
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "chat_completions",
+        "completions",
+        "embeddings",
+        "models_list",
+        "health_endpoint",
+        "streaming",
+        "tool_calling",
+        "structured_json_output"
+      ],
+      "properties": {
+        "chat_completions": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "completions": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "embeddings": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "models_list": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "health_endpoint": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "streaming": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "tool_calling": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "structured_json_output": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "vision": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "reranking": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        },
+        "metrics_endpoint": {
+          "type": "string",
+          "enum": ["supported", "partial", "unsupported", "error", "not_tested"]
+        }
+      }
+    },
+    "health_summary": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "model_count": { "type": "integer" },
+        "active_model_id_hash": { "type": "string" },
+        "uptime_estimated_sec": { "type": "integer" }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["probe_target", "error_class"],
+        "properties": {
+          "probe_target": { "type": "string" },
+          "error_class": { "type": "string" },
+          "error_safe_message": { "type": "string" }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

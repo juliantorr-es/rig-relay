@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.routing_decision.v1",
+  "title": "Local Inference Routing Decision",
+  "description": "Record of a routing decision: which local inference runtime was selected, why, which dimensions matched, and what evidence receipts back the decision. Content-light.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "decision_id",
+    "decided_at",
+    "selected_runtime_url",
+    "decision_rationale",
+    "matched_dimensions",
+    "evidence_receipts",
+    "alternatives_considered"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.local_inference.routing_decision.v1"
+    },
+    "decision_id": {
+      "type": "string"
+    },
+    "decided_at": { "type": "string", "format": "date-time" },
+    "task_profile": {
+      "type": "object",
+      "properties": {
+        "task_type": {
+          "type": "string",
+          "enum": ["chat", "tool_use", "structured_output", "embedding", "rerank", "vision"]
+        },
+        "context_size_tokens": { "type": "integer" },
+        "latency_target_ms": { "type": "integer" },
+        "privacy_locality": {
+          "type": "string",
+          "enum": ["must_be_local", "prefer_local", "remote_ok"]
+        },
+        "tool_call_required": { "type": "boolean" },
+        "structured_output_required": { "type": "boolean" }
+      }
+    },
+    "selected_runtime_url": { "type": "string" },
+    "selected_runtime_engine": { "type": "string" },
+    "decision_rationale": { "type": "string" },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "fallback"]
+    },
+    "matched_dimensions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unmatched_dimensions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidence_receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["receipt_kind", "receipt_id"],
+        "properties": {
+          "receipt_kind": {
+            "type": "string",
+            "enum": ["capability_probe", "benchmark_run", "health_check"]
+          },
+          "receipt_id": { "type": "string" }
+        }
+      }
+    },
+    "alternatives_considered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["runtime_url", "excluded_reason"],
+        "properties": {
+          "runtime_url": { "type": "string" },
+          "runtime_engine": { "type": "string" },
+          "excluded_reason": { "type": "string" },
+          "matched_dimensions": { "type": "array", "items": { "type": "string" } },
+          "failed_dimensions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

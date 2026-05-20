@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.profile_readme_pr_plan.v1.schema.json",
+  "title": "GitHub Profile README PR Plan v1",
+  "description": "Governed PR publish plan for Profile README. Dry-run by default with multi-gate publish.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "owner", "operation_mode", "remote_mutation", "content_light", "mutation_lane_id", "required_permissions", "publish_gate_status", "blocked_reasons", "planned_steps", "idempotency_key"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.profile_readme_pr_plan.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "owner": {"type": "string"}, "repo": {"type": "string"},
+    "base_branch": {"type": "string"}, "proposed_branch": {"type": "string"},
+    "target_path": {"type": "string"},
+    "preview_path": {"type": ["string", "null"]},
+    "preview_sha256": {"type": ["string", "null"]},
+    "preview_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "preview_line_count": {"type": ["integer", "null"], "minimum": 0},
+    "operation_mode": {"type": "string", "enum": ["dry_run", "publish_requested"]},
+    "requested_remote_mutation": {"type": "boolean"},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "content_light": {"type": "boolean", "const": true},
+    "mutation_lane_id": {"type": "string"},
+    "required_permissions": {"$ref": "#/definitions/required_permissions"},
+    "live_permission_verification_summary": {"type": "object"},
+    "publish_gate_status": {"type": "string", "enum": ["dry_run_blocked", "publish_blocked", "publish_ready"]},
+    "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "gate_details": {"type": "array", "items": {"$ref": "#/definitions/gate_detail"}},
+    "planned_steps": {"type": "array", "items": {"$ref": "#/definitions/planned_step"}},
+    "idempotency_key": {"type": "string"},
+    "expected_artifacts": {"type": "array", "items": {"type": "string"}},
+    "redaction_status": {"$ref": "#/definitions/redaction"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "required_permissions": {
+      "type": "object",
+      "required": ["read", "write_content", "write_pr", "explicitly_not_required"],
+      "properties": {
+        "read": {"type": "array", "items": {"type": "string"}},
+        "write_content": {"type": "array", "items": {"type": "string"}},
+        "write_pr": {"type": "array", "items": {"type": "string"}},
+        "explicitly_not_required": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "gate_detail": {
+      "type": "object",
+      "required": ["gate", "passed"],
+      "properties": {
+        "gate": {"type": "string"}, "passed": {"type": "boolean"}, "detail": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "planned_step": {
+      "type": "object",
+      "required": ["step", "operation", "permission", "description"],
+      "properties": {
+        "step": {"type": "integer", "minimum": 1},
+        "operation": {"type": "string"},
+        "permission": {"type": "string"},
+        "description": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "redaction": {
+      "type": "object",
+      "required": ["content_light", "forbidden_fields_present"],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_fields_present": {"type": "boolean", "const": false}
+      },
+      "additionalProperties": false
+    }
+  }
+}

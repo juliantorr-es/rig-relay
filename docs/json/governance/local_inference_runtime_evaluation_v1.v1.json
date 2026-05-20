@@ -1,0 +1,267 @@
+{
+  "schema_version": "rig.local_inference_runtime_evaluation.v1",
+  "report_id": "eval_6f4a2b9c1d3e5f78",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "evaluation_summary": {
+    "recommendation": "HOLD",
+    "confidence": "high",
+    "key_findings": [
+      "vLLM and llama.cpp both expose production-quality OpenAI-compatible servers with comprehensive capability coverage. They can share a single generic local provider adapter.",
+      "MLX-LM has NO HTTP server. The mzbac/mlx-omni-server repo returned 404. MLX-LM cannot fit behind an OpenAI-compatible adapter without a wrapper server which does not exist publicly. It must either be CLI-wrapped or deferred.",
+      "The canonical abstraction should be LocalInferenceEndpoint (URL + API protocol + capability probe receipt) — not runtime-specific integration branches.",
+      "Rig Relay already owns LocalModelComfortScore, ModelCapabilities, RigTraceEvent, ReceiptEnvelope, ArtifactEnvelope, and report_store.py — all suitable for local inference evidence.",
+      "No new dependencies are needed. httpx, duckdb, jsonschema, pydantic, and cryptography already cover HTTP probing, analytical queries, schema validation, data modeling, and hashing.",
+      "A dry-run / probe-only mode is essential — no model downloads or server starts without explicit user configuration.",
+      "The benchmark strategy should target tool-call competence, structured output compliance, and token-accounting accuracy — not raw tokens/sec leaderboards."
+    ],
+    "gating_factors": [
+      "MLX-family server maturity — no public OpenAI-compatible MLX server exists. This blocks Apple-Silicon-native local inference without a CLI wrapper or custom server.",
+      "Tool-call grammar behavior differs across runtimes: vLLM uses native OpenAI tool format, llama.cpp uses GBNF grammar-based tool use. Structured JSON output differs similarly (json_schema vs. GBNF json_schema). Rig Relay must detect these differences at probe time.",
+      "Cancellation behavior is runtime- and subprocess-dependent. The RuntimeSupervisor already provides subprocess cancellation, but local inference servers expose cancellation via HTTP disconnect semantics which differ across runtimes.",
+      "Cold-start model load time varies from seconds (llama.cpp with quantized GGUF) to minutes (vLLM with unquantized HF models on CPU). This dimension must be measured, not assumed.",
+      "Token accounting accuracy is not guaranteed by any runtime's /v1/chat/completions response. OpenRouter and other proxies have known token-count discrepancies. Local runtimes may vary similarly."
+    ]
+  },
+  "runtime_research": {
+    "vllm": {
+      "canonical_name": "vLLM",
+      "version_researched": "latest stable (May 2026)",
+      "openai_compatible": true,
+      "platform_primary": "CUDA (NVIDIA), ROCm (AMD), Intel XPU",
+      "capability_matrix": {
+        "/v1/chat/completions": "supported",
+        "/v1/completions": "supported",
+        "/v1/embeddings": "supported",
+        "/v1/models": "supported",
+        "/v1/audio/transcriptions": "supported",
+        "/v1/audio/translations": "supported",
+        "/v1/responses": "supported",
+        "tool_calling": "supported",
+        "structured_json_output": "supported",
+        "streaming": "supported",
+        "vision": "supported",
+        "reranking": "supported",
+        "prompt_caching": "supported",
+        "kv_caching": "supported",
+        "speculative_decoding": "supported",
+        "lora": "supported",
+        "health_endpoint": "supported",
+        "metrics": "supported",
+        "benchmark_tooling": "supported"
+      },
+      "maturity_assessment": "Production-grade. Most capable and well-documented local inference server. De facto reference implementation for high-throughput GPU serving. Suitable as the primary local inference server for CUDA workstations. Not suitable for CPU-only or Apple Silicon machines.",
+      "docs_urls": [
+        "https://docs.vllm.ai/en/stable/serving/openai_compatible_server.html",
+        "https://docs.vllm.ai/en/stable/benchmarking/"
+      ]
+    },
+    "llama_cpp": {
+      "canonical_name": "llama.cpp",
+      "version_researched": "latest master (May 2026)",
+      "openai_compatible": true,
+      "platform_primary": "CPU (x86, ARM, Apple Silicon), CUDA, Metal, Vulkan, ROCm",
+      "capability_matrix": {
+        "/v1/chat/completions": "supported",
+        "/v1/completions": "supported",
+        "/v1/embeddings": "supported",
+        "/v1/models": "supported",
+        "/v1/responses": "supported",
+        "tool_calling": "supported",
+        "structured_json_output": "supported",
+        "streaming": "supported",
+        "vision": "supported",
+        "reranking": "supported",
+        "prompt_caching": "supported",
+        "kv_caching": "supported",
+        "speculative_decoding": "supported",
+        "lora": "supported",
+        "health_endpoint": "supported",
+        "metrics": "supported",
+        "benchmark_tooling": "supported"
+      },
+      "maturity_assessment": "Production-grade. Broadest platform coverage — runs on CPU, Metal (Apple Silicon), CUDA, Vulkan. GGUF model format is the ecosystem standard for quantized models. Continuous batching with multi-slot parallel decoding. Best default for portable local inference. Suitable as the primary local inference server for all platforms, especially CPU/Metal/Apple Silicon.",
+      "docs_urls": [
+        "https://github.com/ggml-org/llama.cpp/tree/master/tools/server"
+      ]
+    },
+    "mlx_family": {
+      "canonical_name": "MLX-LM (mlx-omni-server not found)",
+      "openai_compatible": false,
+      "platform_primary": "Apple Silicon only (M1/M2/M3/M4/M5)",
+      "server_status": "mlx-omni-server (mzbac/mlx-omni-server) returned 404 — no public OpenAI-compatible MLX server exists. MLX-LM is a CLI tool and Python library with no built-in HTTP server or OpenAI-compatible API surface.",
+      "capability_matrix": {
+        "/v1/chat/completions": "unsupported",
+        "/v1/completions": "unsupported",
+        "/v1/embeddings": "unsupported",
+        "/v1/models": "unsupported",
+        "tool_calling": "unsupported",
+        "structured_json_output": "unsupported",
+        "streaming": "unsupported",
+        "vision": "unsupported",
+        "reranking": "unsupported",
+        "prompt_caching": "unsupported",
+        "kv_caching": "unsupported",
+        "speculative_decoding": "unsupported",
+        "lora": "unsupported",
+        "health_endpoint": "unsupported",
+        "metrics": "unsupported",
+        "benchmark_tooling": "unsupported"
+      },
+      "maturity_assessment": "Library/CLI only. No server component. MLX-LM provides generate(), stream_generate(), and chat() functions in Python, plus a CLI. It has safetensors-based prompt caching and batched generation. Distributed inference is macOS 15+ only. Cannot be integrated as an OpenAI-compatible endpoint without either a custom wrapper server or a subprocess-CLI adapter. Both approaches add significant fragility. Defer MLX family support until a public OpenAI-compatible MLX server exists or Rig Relay implements its own MLX Python adapter (future slice).",
+      "docs_urls": [
+        "https://github.com/ml-explore/mlx-lm"
+      ]
+    }
+  },
+  "recommended_abstraction": {
+    "canonical_interface": "A generic OpenAI-compatible local endpoint adapter with capability probing. The adapter should implement: (1) health check via /health or /v1/models, (2) capability probe via /v1/chat/completions smoke test with known parameters, (3) model listing via /v1/models, (4) benchmark sample collection via structured prompt/test pairs, (5) routing decision based on capability probe receipts.",
+    "runtime_descriptor_model": {
+      "schema_name": "rig.local_inference.runtime_descriptor.v1",
+      "key_fields": [
+        "runtime_id",
+        "runtime_name",
+        "runtime_version",
+        "endpoint_url",
+        "api_protocol (openai_compatible | cli_subprocess | python_module)",
+        "platform_class (cpu | cuda | metal | vulkan | rocm)",
+        "backend_engine (vllm | llama_cpp | mlx_lm | other)",
+        "model_format (gguf | safetensors | hf_transformers | mlx)"
+      ],
+      "enum_values": [
+        "api_protocol: openai_compatible",
+        "api_protocol: cli_subprocess",
+        "api_protocol: python_module",
+        "platform_class: cpu",
+        "platform_class: cuda",
+        "platform_class: metal",
+        "platform_class: vulkan",
+        "platform_class: rocm",
+        "backend_engine: vllm",
+        "backend_engine: llama_cpp",
+        "backend_engine: mlx_lm"
+      ]
+    },
+    "capability_probe_contract": {
+      "schema_name": "rig.local_inference.runtime_capability_probe.v1",
+      "probe_dimensions": [
+        "chat_completions_available",
+        "completions_available",
+        "embeddings_available",
+        "models_list_available",
+        "tool_calling_available",
+        "structured_json_output_available",
+        "streaming_available",
+        "vision_available",
+        "reranking_available",
+        "health_endpoint_available",
+        "metrics_endpoint_available",
+        "context_window_tested",
+        "max_output_tokens_tested",
+        "prompt_caching_observed",
+        "token_accounting_accuracy",
+        "cancellation_behavior",
+        "concurrent_request_cap",
+        "model_load_time_sec",
+        "cold_start_to_first_token_sec"
+      ]
+    },
+    "routing_policy_dimensions": [
+      "task_type (chat | tool_use | structured_output | embedding | rerank | vision)",
+      "context_size (tokens)",
+      "latency_target (time_to_first_token_ms, inter_token_ms)",
+      "privacy_locality (must_be_local | prefer_local | remote_ok)",
+      "tool_call_required",
+      "structured_output_required",
+      "available_hardware (cuda_available | metal_available | cpu_only)",
+      "prior_benchmark_evidence (benchmark_run_receipts)",
+      "current_runtime_health (last_health_probe_age < threshold)",
+      "telemetry_opt_out (degraded routing when local telemetry disabled)"
+    ],
+    "what_remains_runtime_specific": [
+      "model loading and management (paths, quantization, offloading)",
+      "subprocess invocation args (--port, --model, --n-gpu-layers, etc.)",
+      "tokenizer configuration",
+      "sampling parameter translation (runtime-specific fields beyond OpenAI spec)",
+      "error code and error message normalization",
+      "metrics endpoint scraping and aggregation",
+      "model format conversion (GGUF ← → HF ← → MLX)"
+    ]
+  },
+  "proposed_schemas": [
+    {
+      "schema_name": "rig.local_inference.runtime_descriptor.v1.schema.json",
+      "purpose": "Content-light descriptor for a local inference runtime instance. Captures runtime identity, endpoint, protocol, platform, engine, and model format. Does not capture prompts, completions, tokens, or private content.",
+      "implementation_status": "planned"
+    },
+    {
+      "schema_name": "rig.local_inference.runtime_capability_probe.v1.schema.json",
+      "purpose": "Result of probing a local inference endpoint for capabilities. Boolean/string fields for each tested capability dimension. Contains probe duration, errors, and content-light health summary.",
+      "implementation_status": "implemented"
+    },
+    {
+      "schema_name": "rig.local_inference.benchmark_run.v1.schema.json",
+      "purpose": "Metadata for a complete benchmark run: runtime descriptor, benchmark parameters, aggregate statistics, sample count, hardware context, and content-light summary. Does not contain raw prompt/completion pairs.",
+      "implementation_status": "implemented"
+    },
+    {
+      "schema_name": "rig.local_inference.benchmark_sample.v1.schema.json",
+      "purpose": "A single benchmark sample: prompt SHA256, 12 content-light timing/quality metrics, tool-call JSON schema compliance, and error classification. No raw prompt or completion content.",
+      "implementation_status": "implemented"
+    },
+    {
+      "schema_name": "rig.local_inference.routing_decision.v1.schema.json",
+      "purpose": "Record of a routing decision: which runtime was selected, why, which dimensions matched, and what evidence receipts back the decision.",
+      "implementation_status": "implemented"
+    },
+    {
+      "schema_name": "rig.local_inference_runtime_evaluation.v1.schema.json",
+      "purpose": "This architecture evaluation report schema. Self-documenting.",
+      "implementation_status": "implemented"
+    }
+  ],
+  "proposed_code_artifacts": [
+    {
+      "artifact_path": "rig_relay/providers/local_inference/models.py",
+      "purpose": "Data models: LocalRuntimeKind, RuntimeDescriptor, CapabilityProbeResult, BenchmarkRun, BenchmarkSample, RoutingDecision. Pydantic models with content-light field constraints.",
+      "implementation_status": "implemented"
+    },
+    {
+      "artifact_path": "rig_relay/providers/local_inference/probe.py",
+      "purpose": "OpenAI-compatible endpoint capability probe. Sends /v1/models, /health, and /v1/chat/completions smoke tests. Returns CapabilityProbeResult. Uses httpx.AsyncClient. Dry-run mode returns simulated probe data without network calls.",
+      "implementation_status": "implemented"
+    },
+    {
+      "artifact_path": "rig_relay/providers/local_inference/benchmark_writer.py",
+      "purpose": "Benchmark sample writer. Produces BenchmarkSample JSON objects and appends to JSONL output. Computes prompt_sha256, completion_sha256, and content-light timing metrics. Never writes raw prompts/completions.",
+      "implementation_status": "implemented"
+    },
+    {
+      "artifact_path": "rig_relay/providers/local_inference/routing.py",
+      "purpose": "Routing decision engine skeleton. Takes a list of probed runtimes, a task profile, and returns a ranked selection with rationale and evidence references. Dry-run mode returns default routing without real probes.",
+      "implementation_status": "implemented"
+    },
+    {
+      "artifact_path": "rig_relay/providers/local_inference/__init__.py",
+      "purpose": "Package public API. Exports models, probe, benchmark writer, and routing decision functions.",
+      "implementation_status": "implemented"
+    }
+  ],
+  "deferred_work": [
+    "MLX-LM / MLX-family server integration: deferred until a public OpenAI-compatible MLX server exists or Rig Relay builds its own. MLX-LM is a CLI/library, not a server. Wrapping it as a subprocess with stdout parsing is fragile and not recommended. The CLISubprocessRuntime provider kind remains available for CLI-based runtimes but is not prioritized.",
+    "Auto-model-download: deferred indefinitely. Model downloads must be user-controlled. The capability probe discovers what is already running; it does not bootstrap servers.",
+    "Live benchmark harness: deferred. This slice implements the schema, writer, and dry-run probe. A live benchmark that runs against real model servers requires model weights, hardware, and per-runtime server startup scripts — all out of scope for an architecture evaluation.",
+    "Multi-runtime auto-routing: deferred until benchmark receipts exist. The routing skeleton is implemented but the decision engine requires real benchmark evidence to weight dimensions.",
+    "UI projection lane: deferred. The LocalModelComfortScore already produces a projection field. Extending it with runtime health and benchmark confidence is a future frontend slice.",
+    "Token accounting verification: deferred. Requires cross-referencing server-reported token counts with server-side tokenizer output. Accurate token accounting is runtime-specific and requires the tokenizer library to be available.",
+    "Continuous batching / concurrency benchmarking: deferred. Requires multi-client load generation infrastructure and realistic agent workloads. Out of scope for an evaluation slice."
+  ],
+  "out_of_scope_risks": [
+    "MLX ecosystem velocity risk: Apple MLX is actively developing. A public server may appear within months. If it does, the existing OpenAI-compatible adapter works immediately. This is a watch item, not a blocker.",
+    "GGUF model format risk: llama.cpp GGUF is the de facto local model format. If this changes or fractures, the model management abstraction will need updating. Low probability, high impact.",
+    "OpenAI API version drift: All three runtimes target the OpenAI /v1/chat/completions API surface. If OpenAI introduces breaking changes, all local runtimes will lag. This risk is shared with the remote provider adapters.",
+    "Tool-call format divergence: vLLM uses native OpenAI tool format. llama.cpp uses GBNF grammar-based tool calling. These produce different response shapes for the same logical operation. Rig Relay's tool-call digestion pipeline must handle both formats — this is a separate convergence lane.",
+    "Tokenizer mismatch risk: Server-reported token counts may not match any single tokenizer when the server uses a different tokenization backend. This affects context-window management and budget enforcement. Mitigation: always measure, never assume.",
+    "Subprocess lifecycle risk for MLX-LM adapter: If Rig Relay wraps MLX-LM as a subprocess (to bridge the server gap), it inherits all subprocess lifecycle problems: startup races, stdout buffering, SIGTERM handling, and orphaned server processes. The RuntimeSupervisor infrastructure exists but has not been battle-tested for ML model servers.",
+    "No existing tests gate this evaluation: there are zero existing local-inference tests in the test suite. All new tests must be written from scratch and may depend on fake HTTP endpoints (respx) at the boundary."
+  ]
+}

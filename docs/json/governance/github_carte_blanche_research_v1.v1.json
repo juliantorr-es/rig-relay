@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.github.carte_blanche_research.v1",
-  "generated_at": "2026-05-20T09:00:02.833649+00:00",
+  "generated_at": "2026-05-20T09:36:47.094892+00:00",
   "branch": "main",
-  "head": "635244d78188db3c39197d1da93d382c2f76465c",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
   "content_light": true,
   "remote_mutation": false,
   "research_scope": "Maximum practical GitHub App permissions and user trust (carte blanche). Maps every meaningful GitHub permission, surface, mutation, webhook event, product mode, user journey, platform limit, and roadmap phase to Relay product value.",
@@ -17,12 +17,12 @@
     "https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens",
     "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions"
   ],
-  "permission_count": 20,
+  "permission_count": 21,
   "surface_lane_count": 25,
-  "mutation_lane_count": 12,
+  "mutation_lane_count": 49,
   "webhook_event_count": 19,
-  "product_mode_count": 0,
-  "user_journey_count": 0,
+  "product_mode_count": 24,
+  "user_journey_count": 19,
   "platform_limit_count": 14,
   "roadmap_phase_count": 9,
   "competitive_positioning": [
@@ -346,6 +346,123 @@
         "event_sha256",
         "artifact_hashes"
       ]
+    },
+    {
+      "artifact_id": "GitHubPermissionLedger",
+      "purpose": "Immutable ledger of all permission grants, token scopes, narrowing events, and posture changes over time",
+      "canonical_path_suggestion": "docs/json/governance/github_permission_ledger_v1.v1.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "installation_token_exchange",
+        "app_permission_grants",
+        "token_narrowing_requests",
+        "permission_posture_report"
+      ],
+      "downstream_consumers": [
+        "operating_picture",
+        "release_gate",
+        "permission_audit"
+      ],
+      "content_light_constraints": "permission names and levels as strings; NEVER token values, private key, or grant secrets",
+      "mutation_status_fields": [
+        "grant_id",
+        "grant_status",
+        "permission_set_hash"
+      ]
+    },
+    {
+      "artifact_id": "GitHubRateLimitLedger",
+      "purpose": "Track REST/GraphQL rate limit consumption, remaining budget, throttling events, and cost governance across all repos",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/github_rate_limit_ledger.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "x-ratelimit-remaining headers",
+        "x-ratelimit-reset headers",
+        "x-ratelimit-resource headers",
+        "graphql cost headers"
+      ],
+      "downstream_consumers": [
+        "throttle_controller",
+        "telemetry_dashboard",
+        "multi_repo_chief_of_staff"
+      ],
+      "content_light_constraints": "rate limit counts, categories, reset timestamps only; NEVER API key, token, or auth header",
+      "mutation_status_fields": [
+        "limit_category",
+        "remaining",
+        "reset_at_iso",
+        "throttled_until"
+      ]
+    },
+    {
+      "artifact_id": "GitHubWebhookEventEnvelope",
+      "purpose": "Content-light envelope for received webhook events with signature validation, deduplication, and replay metadata",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/github_webhook_events.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "webhook_payload",
+        "x-hub-signature-256 header",
+        "x-github-event header",
+        "x-github-delivery header"
+      ],
+      "downstream_consumers": [
+        "event_observer",
+        "event_to_artifact_projector",
+        "telemetry_pipeline"
+      ],
+      "content_light_constraints": "event type, action, resource IDs hashed, delivery ID, signature validation status; NEVER raw payload body, NEVER secret values or PII, NEVER webhook secret",
+      "mutation_status_fields": [
+        "delivery_id",
+        "event_type",
+        "signature_valid",
+        "replayed",
+        "processed",
+        "dedupe_key"
+      ]
+    },
+    {
+      "artifact_id": "GitHubWebhookQueue",
+      "purpose": "Durable JSONL queue for webhook events with idempotency keys, replay markers, and dead-letter routing",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/github_webhook_queue.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "webhook_event_envelopes",
+        "replay_requests",
+        "dead_letter_routing_rules"
+      ],
+      "downstream_consumers": [
+        "event_reactor",
+        "replay_engine"
+      ],
+      "content_light_constraints": "delivery IDs, event type hash, queue status, retry count; NEVER payload body or webhook secret",
+      "mutation_status_fields": [
+        "envelope_id",
+        "queue_status",
+        "retry_count",
+        "dead_letter_reason"
+      ]
+    },
+    {
+      "artifact_id": "GitHubWebhookReplayDeadLetter",
+      "purpose": "Dead-letter and replay ledger for failed, unprocessed, or replayed webhook events",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/github_webhook_deadletter.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "failed_webhook_envelopes",
+        "replay_attempts",
+        "dead_letter_routing_decisions"
+      ],
+      "downstream_consumers": [
+        "replay_engine",
+        "event_observer_health_dashboard"
+      ],
+      "content_light_constraints": "delivery IDs, failure reason, retry count, replay status; NEVER payload body or webhook secret",
+      "mutation_status_fields": [
+        "dead_letter_id",
+        "failure_reason",
+        "replay_attempts",
+        "resolution"
+      ]
     }
   ],
   "redaction_status": {
@@ -354,12 +471,12 @@
     "redaction_rule_count": 15
   },
   "summary": {
-    "total_permissions_mapped": 20,
+    "total_permissions_mapped": 21,
     "total_surface_lanes": 25,
-    "total_mutation_lanes": 12,
+    "total_mutation_lanes": 49,
     "total_webhook_events": 19,
-    "total_product_modes": 0,
-    "total_user_journeys": 0,
+    "total_product_modes": 24,
+    "total_user_journeys": 19,
     "total_platform_limits": 14,
     "total_roadmap_phases": 9,
     "next_recommended_slice": "phase_1_public_surface_program"

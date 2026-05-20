@@ -1,0 +1,66 @@
+{
+  "schema_version": "rig.github.code_scanning_patch_proposal.v1",
+  "generated_at": "2026-05-20T17:25:45.379603+00:00",
+  "content_light": true,
+  "source_queue_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_queue_v1.v1.json",
+  "source_remediation_plan_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_remediation_plan_v1.v1.json",
+  "selected_plan_id": "bd0bd3765f53b76d532a76301dce4fc7fc51e4cf66e6e124f49e41008bf8c0cf",
+  "selected_queue_item_id": "008356ed5416be8f0bff21418b7b1210115fb8ae30496e2e09c830fd8809bc98",
+  "source_surface": "code_scanning",
+  "alert_identifier_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "alert_number": 5,
+  "severity": "warning",
+  "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "rule_category": "codeql_security",
+  "location_summary_safe": "rule_hash=e798d9cf7207da94; path_hash=080e04a484e9a0f6",
+  "affected_path_hashes": [
+    "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26"
+  ],
+  "evidence_available": true,
+  "evidence_missing": [
+    "raw_source_content_not_available_by_policy",
+    "live_repo_access_deferred"
+  ],
+  "patch_strategy": "Investigate the identified CodeQL alert in its repository context. Review the CodeQL rule that triggered the alert to understand the vulnerability class. Determine whether the alert is a true positive requiring a fix, or a false positive requiring dismissal with evidence. If a fix is needed, plan a minimal code change addressing the vulnerability root cause. The fix should be accompanied by a targeted test verifying the vulnerability is no longer reachable.",
+  "patch_summary_safe": "Remediation proposal for CodeQL security alert: investigate vulnerability class, determine true positive vs false positive, plan minimal fix with targeted test. Actual code diff deferred to later dry-run patch-preview lane.",
+  "proposed_file_operations": [
+    "read_alert_context (security_events:read)",
+    "read_affected_file (contents:read)",
+    "write_fix_file (contents:write — later lane)",
+    "create_pull_request (pull_requests:write — later lane)"
+  ],
+  "proposed_diff_summary": "Diff generation deferred to dry-run patch-preview lane (Phase 2 Slice 4)",
+  "proposed_test_strategy": [
+    "targeted unit/integration test relevant to affected path",
+    "static analysis check relevant to CodeQL rule category",
+    "redaction scan on any generated patch artifacts",
+    "schema validation on any generated patch artifacts",
+    "do_not_run_full_pytest"
+  ],
+  "required_read_permissions": [
+    "security_events:read",
+    "metadata:read",
+    "contents:read"
+  ],
+  "required_mutation_permissions_later": [
+    "contents:write",
+    "pull_requests:write",
+    "security_events:write"
+  ],
+  "remote_mutation_status": "disabled",
+  "local_mutation_status": "disabled",
+  "pr_creation_status": "disabled",
+  "alert_update_status": "disabled",
+  "confidence": "medium",
+  "blocked_reasons": [],
+  "human_review_required": true,
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 17,
+    "raw_code_snippets_present": false,
+    "raw_source_content_present": false
+  },
+  "content_light_status": "proposal_content_light",
+  "recommended_next_slice": "Phase 2 Slice 4 — generate dry-run patch preview with evidence, permission verification, and PR plan readiness"
+}

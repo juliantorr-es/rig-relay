@@ -258,6 +258,9 @@ async function boot() {
     }
   });
 
+  // Wire transport authority into kernel for bridge freshness checks
+  runtime.setTransportAuthority(authority);
+
   // Initialize the notification system with kernel wiring
   setupNotifications(runtime);
 

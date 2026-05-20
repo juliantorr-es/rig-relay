@@ -1,0 +1,1655 @@
+{
+  "schema_version": "rig.github.security_queue.v1",
+  "generated_at": "2026-05-20T17:10:26.388246+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_artifacts": [
+    {
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_intake_result.v1.json",
+      "present": true,
+      "source_surface": "security_intake"
+    },
+    {
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_work_items_v1.v1.json",
+      "present": true,
+      "source_surface": "security_work_items"
+    }
+  ],
+  "input_surfaces": [
+    {
+      "surface": "code_scanning",
+      "status": "collected",
+      "item_count": 42,
+      "live_fetch_status": "completed",
+      "blocked_reason": null
+    },
+    {
+      "surface": "dependabot",
+      "status": "refused",
+      "item_count": 0,
+      "live_fetch_status": "not_attempted",
+      "blocked_reason": "source_artifact_missing_or_dry_run"
+    },
+    {
+      "surface": "secret_scanning",
+      "status": "refused",
+      "item_count": 1,
+      "live_fetch_status": "not_attempted",
+      "blocked_reason": "source_surface_refused: missing_permission_or_not_enabled"
+    },
+    {
+      "surface": "repository_security_advisory",
+      "status": "not_available",
+      "item_count": 1,
+      "live_fetch_status": "not_attempted",
+      "blocked_reason": "source_artifact_missing"
+    },
+    {
+      "surface": "security_policy_gap",
+      "status": "not_available",
+      "item_count": 1,
+      "live_fetch_status": "not_attempted",
+      "blocked_reason": "source_artifact_missing"
+    }
+  ],
+  "queue_items": [
+    {
+      "queue_item_id": "da80e61a58321f2c1f2c89b97e9071a985526d5e3d4c3573f69749b3c71ee513",
+      "source_surface": "security_policy_gap",
+      "source_kind": "not_available",
+      "severity": "medium",
+      "state": "not_available",
+      "security_domain": "security_policy",
+      "remediation_lane": "policy_documentation",
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 2,
+      "priority_reason": "severity=medium:w2;permission_unavailable",
+      "blocked_reasons": [
+        "source_artifact_missing"
+      ],
+      "recommended_next_action": "audit_security_policy_gap"
+    },
+    {
+      "queue_item_id": "c07a36868185d64d2a6054bf5747673442610154e1632ab53f867a0219537566",
+      "source_surface": "secret_scanning",
+      "source_kind": "refusal",
+      "severity": "unknown",
+      "state": "refused",
+      "security_domain": "credential_leak",
+      "secret_type": "unknown_refused",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "permission_required",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 3,
+      "priority_reason": "severity=unknown:w4;permission_unavailable",
+      "blocked_reasons": [
+        "source_surface_refused"
+      ],
+      "recommended_next_action": "request_secret_scanning_permission"
+    },
+    {
+      "queue_item_id": "3466d215de6445a54d0c98bdb96a2ff314c99889a74815f19310d6dc1916b634",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 42,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "ed555d378894aed3f06b4f8305ab72eed39ccfc5be6c03e971ccdfefa81c7e53",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "f554fbbce5fd7e96ec2b69711e9fcc1970fdb8d56128cb5ccbe8e5c378014545",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 41,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "2ab1595d320edff65565f02c6a14a83d622e2d83512832d732ed6a5441ed8242",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 38,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "0cf343a8a48bee9d8e4ba5aea23d0cb3dbf859c5184221ea8f5c4e3391f03da8",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 36,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "0f069d206f84127927dc41ca59c8b11b9b5beb1fcd6db9bfdc8467da8b5b0807",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 34,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "15ca57883078f23726dbedd74c1020e191f0d80cf9456c1b7ae1bca88df0d2f8",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 33,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "7a5a724c3956d87ebadba53c2dec657a29e9f401086ae5a1e1285e261f3bea88",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 32,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "b5aec770e2d830e8f777b846672e7ede05a0d885665fd26b6ee6960de9d6681e",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 31,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "544467ef808202385a2ba9c7d170b64caea6f935f372e13289cfdf2bd7ba0a44",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 30,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "4494417464ef5781cca8cb815f335b580cd4ccf9a3317527ca66f50b04a73600",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 29,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "1cac1fc3fd3689c38036c47cb05513c7782d665929783138f3f1b69cf4b3c0d4",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 28,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "f548feeba8899cc18edac5552d5b7cc78d30396fdc7c89f3f35ced633e161aab",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 26,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "61d77e5d526e5238bf00d9df177c11ff4530c25a2835bc8ef4d877daa06ee3ad",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 25,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "57ef36af9c8c54596e47bab8bc138079b55677e3d0c9b26839366af723806490",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 24,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "d208dbe732cc0ab8fee984b81b02a8412d6ec1e52ed2e7e3a81e1cdd97ba09df",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "a77393a031ddddd80886d4095098dbb69b7c9f11807b39bfdd5366b997f33f4d",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 23,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "3abe22e586ad96bb209ddd041340e0166cbdc743af433b1a5cead148e096d0f4",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "c7da8d61ddd77edd11034a2d454df6b867b73c35b05b703abeab0f60d7dd3286",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 19,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "1214d9db1c3dd11a59da9d5409470536d7e9426a5bd61bc1f9492350d95c8942",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 18,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "35c982d6d4e3b0e2aadcee19082502fcab8e04c06d84737c033e07873fab133c",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 13,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+      "file_path_hash": "5ec06d515bce3feb913036df739b4656f721a3747cbb25485aaeb9fca299ddb4",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "a4f3bf3be4f5b181c698d0c180047b965e56e8e381a9041e5dec6a07175587f7",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 9,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "4ff5672f4482dc88129ba538713a74159b12e08457a43a5906c3014cc0e14627",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "e69ca3657f3747de5240730209349143a21676c4a367850a414e58413a3a863a",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 8,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "4ff5672f4482dc88129ba538713a74159b12e08457a43a5906c3014cc0e14627",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "fe51388b5ac9b396033aa1c79a1411d6e6e069814de7db793daad5bba23334d1",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 7,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "9f77d3ae4492bd720628559cbdf61be259f59e4ea4feeaf1fa239be308284cba",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "6d0cc375d90308da29154b04b6df1e49df72d9738ba66e0e76ce7904fb860711",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 6,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "9f77d3ae4492bd720628559cbdf61be259f59e4ea4feeaf1fa239be308284cba",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "008356ed5416be8f0bff21418b7b1210115fb8ae30496e2e09c830fd8809bc98",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 5,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+      "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "149506e00735ab0f34db51fa09a660a342998376af0715f0753611f2033df80a",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 4,
+      "severity": "error",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "716997e6c0e1140f5139726ff01ff92e3c5c026bd60c2d9156bef8297cadaea5",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=error:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "089581dc0beecccc9e1272be1e7c1d909a0ad9487368bb1444bfcc9608c10df2",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 3,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "7c21c1a6fa35744f680ecc83d265173925c2ae6dd725f1281010d9733f426f26",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "70b4ed3e835759926ec9a9948358a380cb0fe8d161a23ec088d9e2afd22602ed",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 2,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "47022005745bc5a506d6f23b0de11c2a6577503538b6cc1248d5ada11d982339",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "f6e21b347c0277d61b1fdd461a4b8f78db596918a9d3b7b1db9219304c47478c",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 1,
+      "severity": "warning",
+      "state": "open",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "c863010ea2edee500bfd29ed732b3e638c6884e9d5ccc60140bd44f68366d1e0",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=warning:w4;state=open",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "ebc76403566f3dd3a5e090aaf3a480834d651761d6167fc89a92bc8783d348fd",
+      "source_surface": "repository_security_advisory",
+      "source_kind": "not_available",
+      "severity": "unknown",
+      "state": "not_available",
+      "security_domain": "vulnerability_disclosure",
+      "remediation_lane": "permission_required",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 4,
+      "priority_reason": "severity=unknown:w4;source_unavailable",
+      "blocked_reasons": [
+        "source_artifact_missing"
+      ],
+      "recommended_next_action": "enable_advisory_access"
+    },
+    {
+      "queue_item_id": "a54ce047045d80cbc9b3c09915f707b16a439b3154a9c7add835f65bd662a6f8",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 40,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "8a3e522249758fafdd34c67f5225ff28455715a19987dc5a60005a4e1473bddb",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 39,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+      "file_path_hash": "322153f5390061a47c5d92241b3e3bdc0d0a17ab6e0b270f6e20a05c141aa825",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "638240f8b232da240f4610b3e90ed81674d6a45ca7044624d051778d7f4e40df",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 37,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "0dd3d59b472bad9583ad1bdc7e08fa9a5ea7b3fb81799c7c87d692a18da55b31",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 35,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "e93ba10e3e26c653f9d11994e0f11cb0281a6338a1286a7d0bd5d1881c1e2e8d",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 27,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "322153f5390061a47c5d92241b3e3bdc0d0a17ab6e0b270f6e20a05c141aa825",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "336d98dc9133a013ab8ed43035af42def4c8a40aa86a06d8d4f0cd91fc4fe76f",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 22,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "e791924189f1549e8f9ec53d8877c3b002321b4126c3adba6ea3c8dd75dbe80b",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 21,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "854d4d402ef6cbfc3c8bf02505ffd451a5479d3c2f73f71f116afe1f8ffb253d",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 20,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "c88a151b558a0d58acbba729d754b8318ed7366732ab4a456b78209d49155219",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 17,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "26617df025fe4e01ebb7af2b6795b69b8458fed8b97fe10f96c5df74b18ec998",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 16,
+      "severity": "warning",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "file_path_hash": "d208dbe732cc0ab8fee984b81b02a8412d6ec1e52ed2e7e3a81e1cdd97ba09df",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=warning:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "75a2798821dda4f4b10a2a0740338658efc15633d9bb74190dc9ecde745d66a2",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 15,
+      "severity": "warning",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "3c2442ee7e3b34ff8ff4bc86689e13568ec81674c9d7906e85ccd88dc60de520",
+      "file_path_hash": "c59c1a4632aa103cec0c82a04d72eb7b4b285eba2c6b7e17009b1fc7e5cc618c",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=warning:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "fdc944042d40bdaf08c7ed95c097704c10218feef29b5b4f8c9849d147113c76",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 14,
+      "severity": "warning",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "72c39a3fc7b51c4d072bff2730dea8f6433f52e0151785a6c47d708c9f36a442",
+      "file_path_hash": "ed891b0dde91a9faa00c9bebfe1168b3e35bdacc06efc8582ed050ef132bf215",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=warning:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "74120cc60fbb4857afcfdcf6e3325ccaa608c1ffbc89bcf67791edf7493dcd49",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 12,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+      "file_path_hash": "48ea491b4dd4d210645a85bdc955a43409fa95a31e9a50ad044c068de6d327d5",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "b70b95e133f93780988d07c055b2d87b6cd0b8aabf967d40d0e7a049aec9f87d",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 11,
+      "severity": "error",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "file_path_hash": "48ea491b4dd4d210645a85bdc955a43409fa95a31e9a50ad044c068de6d327d5",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=error:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    },
+    {
+      "queue_item_id": "42351c6d075e1e78b0d3bc292ca899630e41c27456a33ae72e0b0c8d10c9cb42",
+      "source_surface": "code_scanning",
+      "source_kind": "alert",
+      "alert_number": 10,
+      "severity": "warning",
+      "state": "fixed",
+      "security_domain": "code_vulnerability",
+      "rule_id_hash": "3c2442ee7e3b34ff8ff4bc86689e13568ec81674c9d7906e85ccd88dc60de520",
+      "file_path_hash": "57db4ee3b64d58bf29b1f2a9b1e7f6be966c63c6bfc58c7b08ee04bbc9a783e7",
+      "suggested_group_kind": "codeql_security_fix_needed",
+      "public_or_private_surface": "repository_surface",
+      "remediation_lane": "codeql_security_fix_needed",
+      "required_permissions": [
+        "security_events:read",
+        "metadata:read"
+      ],
+      "remediation_permissions": [
+        "security_events:write",
+        "contents:write",
+        "pull_requests:write"
+      ],
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "not_attempted",
+      "content_light": true,
+      "redaction_status": {
+        "clean": true
+      },
+      "priority_score": 7,
+      "priority_reason": "severity=warning:w4;state=resolved",
+      "blocked_reasons": [],
+      "recommended_next_action": "inspect_in_intake_viewer"
+    }
+  ],
+  "queue_summary": {
+    "total_queue_items": 45,
+    "severity_breakdown": {
+      "medium": 1,
+      "unknown": 2,
+      "error": 29,
+      "warning": 13
+    },
+    "surface_breakdown": {
+      "security_policy_gap": 1,
+      "secret_scanning": 1,
+      "code_scanning": 42,
+      "repository_security_advisory": 1
+    },
+    "remediation_lane_breakdown": {
+      "policy_documentation": 1,
+      "permission_required": 2,
+      "codeql_security_fix_needed": 42
+    },
+    "blocked_item_count": 3,
+    "unblocked_item_count": 42,
+    "blocked_reasons": [
+      "source_artifact_missing",
+      "source_surface_refused"
+    ]
+  },
+  "permission_summary": {
+    "read_permissions": [
+      "metadata:read",
+      "security_events:read",
+      "dependabot_alerts:read"
+    ],
+    "remediation_permissions": [
+      "security_events:write",
+      "pull_requests:write",
+      "contents:write",
+      "dependabot_alerts:write"
+    ],
+    "permission_gaps": [
+      "contents:write",
+      "dependabot_alerts:read",
+      "dependabot_alerts:write",
+      "metadata:read",
+      "pull_requests:write",
+      "security_events:read",
+      "security_events:write"
+    ]
+  },
+  "risk_summary": {
+    "highest_severity_present": "medium",
+    "open_items": 27,
+    "resolved_items": 15,
+    "refused_or_unavailable_items": 3
+  },
+  "remediation_readiness_summary": {
+    "items_ready_for_remediation": 0,
+    "items_blocked_by_permissions": 3,
+    "items_blocked_by_content_light": 0,
+    "remote_mutation_required": false,
+    "remediation_possible": false
+  },
+  "blocked_reasons": [
+    "source_artifact_missing",
+    "source_surface_refused"
+  ],
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 17,
+    "secret_values_present": false,
+    "raw_code_snippets_present": false
+  },
+  "content_light_status": "all_items_content_light",
+  "intentionally_deferred": [
+    "remediation_execution",
+    "live_alert_dismissal",
+    "secret_value_revocation",
+    "PR_creation_for_fixes",
+    "cross_surface_deduplication",
+    "webhook_ingestion"
+  ],
+  "recommended_next_slice": "Phase 2 Slice 2 — prioritize top 3 queue items and generate remediation plan"
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "rig.github.security_lifecycle_permission_boundary_audit.v1",
+  "generated_at": "2026-05-20T18:42:59.804233+00:00",
+  "content_light": true,
+  "gates": [
+    {
+      "gate": "read_mutation_separated",
+      "proved": true,
+      "detail": "metadata:read, security_events:read, contents:read are read-only stages; write permissions only appear in mutation stages"
+    },
+    {
+      "gate": "contents_write_scoped",
+      "proved": true,
+      "detail": "contents:write modeled only for future file/branch mutation lanes"
+    },
+    {
+      "gate": "pull_requests_write_scoped",
+      "proved": true,
+      "detail": "pull_requests:write modeled only for PR creation/update lanes"
+    },
+    {
+      "gate": "security_events_write_scoped",
+      "proved": true,
+      "detail": "security_events:write modeled only for alert state update/dismissal lanes"
+    },
+    {
+      "gate": "dismissal_request_separated",
+      "proved": true,
+      "detail": "alert dismissal is a separate path from direct alert update in the alert state plan"
+    },
+    {
+      "gate": "planning_stages_no_mutation",
+      "proved": true,
+      "detail": "stages 1-7 are planning-only; no mutation permissions used"
+    },
+    {
+      "gate": "no_live_mutation",
+      "proved": true,
+      "detail": "all artifacts show remote_mutation=false or simulation_only"
+    },
+    {
+      "gate": "no_real_pr_created",
+      "proved": true,
+      "detail": "pr_created=false in all non-simulation artifacts"
+    },
+    {
+      "gate": "no_real_alert_updated",
+      "proved": true,
+      "detail": "alert_update=false, alert_update_deferred=true in all execution artifacts"
+    },
+    {
+      "gate": "fake_boundary_labeled_simulation",
+      "proved": true,
+      "detail": "simulation traces are marked simulation_only, temp_repo_local_mutation=true, actual_project_mutation=false"
+    }
+  ],
+  "verdict": "all_gates_passed"
+}

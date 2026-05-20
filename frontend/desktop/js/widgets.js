@@ -2016,3 +2016,180 @@ function renderRoleModelExpanded(container, rm) {
   html += '</div>';
   renderExpandedWidget(container, 'Role Model', html);
 }
+
+// ── Profile README Publish Lane widget ──
+registerWidget('profileReadmeLane', (container, level) => {
+  const p = state.projection;
+  if (!p || !p.profile_readme_lane || !p.profile_readme_lane.available) return;
+
+  const lane = p.profile_readme_lane;
+  const statusCls = lane.publish_gate_status === 'dry_run_blocked' ? 'warn'
+    : lane.publish_gate_status === 'publish_blocked' ? 'warn'
+    : lane.publish_gate_status === 'publish_ready' ? 'success'
+    : 'dimmed';
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'Profile README', () => ({
+      text: `${lane.operation_mode} — ${lane.publish_gate_status}`,
+      cls: statusCls
+    }));
+    return;
+  }
+
+  const gatesHtml = (lane.gates || []).map(g =>
+    `<tr><td style="color:${g.passed ? '#4caf50' : '#f44336'}">${g.passed ? '\u2713' : '\u2717'}</td><td>${escapeHtml(g.gate)}</td><td style="font-size:0.85em;color:var(--text-dimmed)">${escapeHtml(g.detail)}</td></tr>`
+  ).join('');
+
+  const stepsHtml = (lane.planned_steps || []).map(s =>
+    `<tr><td>${s.step}</td><td>${escapeHtml(s.operation)}</td><td style="color:var(--text-dimmed)">${escapeHtml(s.permission)}</td></tr>`
+  ).join('');
+
+  const blockedHtml = (lane.blocked_reasons || []).map(r =>
+    `<span class="badge warn">${escapeHtml(r)}</span>`
+  ).join(' ');
+
+  const disabledReasons = (lane.publish_disabled_reasons || []).map(r =>
+    `<li>${escapeHtml(r)}</li>`
+  ).join('');
+
+  let html = '<div style="font-size:0.9em">';
+
+  // Status bar
+  html += `<div style="margin-bottom:8px"><strong>Mode:</strong> ${escapeHtml(lane.operation_mode)} &middot; <strong>Gate:</strong> ${escapeHtml(lane.publish_gate_status)}</div>`;
+
+  // Blocked reasons
+  if (blockedHtml) html += `<div style="margin-bottom:8px"><strong>Blocked:</strong> ${blockedHtml}</div>`;
+
+  // Gates table
+  if (gatesHtml) {
+    html += '<div style="margin-bottom:8px"><strong>Publish Gates</strong>';
+    html += '<table style="font-size:0.85em;width:100%">';
+    html += '<tr><th></th><th>Gate</th><th>Detail</th></tr>';
+    html += gatesHtml;
+    html += '</table></div>';
+  }
+
+  // Planned steps
+  if (stepsHtml) {
+    html += '<div style="margin-bottom:8px"><strong>Planned Steps</strong>';
+    html += '<table style="font-size:0.85em;width:100%">';
+    html += '<tr><th>#</th><th>Operation</th><th>Permission</th></tr>';
+    html += stepsHtml;
+    html += '</table></div>';
+  }
+
+  // Preview metadata
+  if (lane.preview) {
+    html += '<div style="margin-bottom:8px"><strong>Preview:</strong> ';
+    html += `${escapeHtml(String(lane.preview.path || ''))}<br>`;
+    html += `SHA256: ${escapeHtml(String(lane.preview.sha256 || '').substring(0, 16))}... &middot; `;
+    html += `${lane.preview.line_count || 0} lines &middot; `;
+    html += `${lane.preview.included_claim_count || 0} claims`;
+    html += '</div>';
+  }
+
+  // Publish disabled CTA
+  html += '<div style="margin-top:8px;padding:8px;border:1px solid var(--warn-border);border-radius:4px;background:var(--warn-bg)">';
+  html += '<strong>Publish disabled</strong>';
+  if (disabledReasons) html += `<ul style="margin:4px 0 0 16px;font-size:0.85em">${disabledReasons}</ul>`;
+  html += '</div>';
+
+  html += '</div>';
+
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Profile README Publish Lane', html);
+    return;
+  }
+
+  renderStandardCard(container, 'Profile README Publish Lane', html, 'profileReadmeLane', statusCls);
+});
+
+// ── Spiderweb Topology widget ──
+registerWidget('spiderwebTopology', (container, level) => {
+  const p = state.projection;
+  const topo = (p && p.spiderweb_topology) || {};
+
+  if (!topo.available) {
+    if (level === 'compact') return;
+    const reason = topo.status === 'invalid_artifact'
+      ? 'Topology artifact is invalid or unreadable.'
+      : 'No topology data available.';
+    renderStandardCard(container, 'Spiderweb Topology',
+      '<span class="widget-missing" style="color:var(--text-dimmed)">' + escapeHtml(reason) + '</span>',
+      'spiderwebTopology', 'dimmed');
+    return;
+  }
+
+  const statusCls = topo.status === 'live' || topo.status === 'live_seeded' ? 'ok'
+    : topo.status === 'degraded_no_input' ? 'warn'
+    : topo.status === 'empty' ? 'dimmed'
+    : 'dimmed';
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'Topology', () => ({
+      text: topo.node_count + ' nodes, ' + topo.active_strand_count + ' active',
+      cls: (topo.active_strand_count || 0) > 0 ? 'ok' : 'dimmed'
+    }));
+    return;
+  }
+
+  let html = '<div style="font-size:0.9em">';
+
+  // Status line
+  html += '<div style="margin-bottom:8px"><strong>Status:</strong> '
+    + escapeHtml(topo.status || 'unknown')
+    + ' &middot <strong>Nodes:</strong> ' + (topo.node_count || 0)
+    + ' &middot <strong>Edges:</strong> ' + (topo.edge_count || 0)
+    + ' &middot <strong>Active strands:</strong> ' + (topo.active_strand_count || 0)
+    + '</div>';
+
+  // Strand state summary
+  const strand = topo.strand_state_summary || {};
+  html += '<div style="margin-bottom:8px"><strong>Strands:</strong> ';
+  html += '<span style="color:var(--clr-success)">active: ' + (strand.active_count || 0) + '</span>';
+  html += ' &middot <span style="color:var(--clr-info)">idle: ' + (strand.idle_count || 0) + '</span>';
+  html += ' &middot <span style="color:var(--text-dimmed)">no input: ' + (strand.no_input_count || 0) + '</span>';
+  if (strand.degraded_count) html += ' &middot <span style="color:var(--clr-warn)">degraded: ' + strand.degraded_count + '</span>';
+  if (strand.blocked_count) html += ' &middot <span style="color:var(--clr-error)">blocked: ' + strand.blocked_count + '</span>';
+  html += '</div>';
+
+  // Pressure summary
+  const pressure = topo.resource_pressure_summary || {};
+  html += '<div style="margin-bottom:8px"><strong>Pressure:</strong> ';
+  html += 'reconnect: <span class="badge ' + (pressure.reconnect_pressure === 'none' ? 'ok' : pressure.reconnect_pressure === 'moderate' ? 'warn' : 'error') + '">' + escapeHtml(pressure.reconnect_pressure || 'none') + '</span>';
+  html += ' &middot queue: <span class="badge ' + (pressure.queue_pressure === 'none' ? 'ok' : 'warn') + '">' + escapeHtml(pressure.queue_pressure || 'none') + '</span>';
+  html += ' &middot consumer errors: <span class="badge ' + (pressure.consumer_errors === 'none' ? 'ok' : 'warn') + '">' + escapeHtml(pressure.consumer_errors || 'none') + (pressure.consumer_error_count ? ' (' + pressure.consumer_error_count + ')' : '') + '</span>';
+  html += ' &middot bridge: ' + escapeHtml(pressure.bridge_health || 'unknown');
+  html += '</div>';
+
+  // Causal summary
+  const causal = topo.causal_summary || {};
+  html += '<div style="margin-bottom:8px"><strong>Causal:</strong> ';
+  html += 'observed: ' + (causal.observed_links || 0) + ' &middot correlated: ' + (causal.correlated_only_links || 0);
+  html += '</div>';
+
+  // Degraded reasons
+  const reasons = topo.degraded_reasons || [];
+  if (reasons.length) {
+    html += '<div style="margin-bottom:8px;color:var(--clr-warn)"><strong>Degraded:</strong> ';
+    html += reasons.map(function(r) { return escapeHtml(String(r)); }).join(' &middot ');
+    html += '</div>';
+  }
+
+  // Source hashes
+  const hashes = topo.source_artifact_hashes || {};
+  if (Object.keys(hashes).length) {
+    html += '<div style="font-size:0.75em;color:var(--text-dimmed)"><strong>Source hashes:</strong> ';
+    html += Object.keys(hashes).map(function(k) { return escapeHtml(k) + '=' + escapeHtml(hashes[k]); }).join(', ');
+    html += '</div>';
+  }
+
+  html += '</div>';
+
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'Spiderweb Topology', html);
+    return;
+  }
+
+  renderStandardCard(container, 'Spiderweb Topology', html, 'spiderwebTopology', statusCls);
+});

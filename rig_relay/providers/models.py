@@ -20,6 +20,7 @@ class Provider(StrEnum):
     GOOGLE = "google"
     OPENROUTER = "openrouter"
     DEEPSEEK = "deepseek"
+    LOCAL_INFERENCE = "local_inference"
 
 
 class KeySource(StrEnum):

@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.selection_policy.v1",
+  "title": "Local Inference Selection Policy Result",
+  "description": "Result of evaluating a local inference endpoint against selection policy criteria.",
+  "type": "object",
+  "required": ["schema_version", "selection_id", "result_kind", "confidence"],
+  "properties": {
+    "schema_version": { "const": "rig.local_inference.selection_policy.v1" },
+    "selection_id": { "type": "string" },
+    "decided_at": { "type": "string", "format": "date-time" },
+    "result_kind": {
+      "type": "string",
+      "enum": [
+        "not_configured", "configured_but_unprobed", "probed_but_not_benchmarked",
+        "eligible_for_manual_selection", "eligible_for_policy_selection",
+        "blocked_by_missing_capability", "blocked_by_missing_approval",
+        "blocked_by_degraded_diagnostics", "blocked_by_failed_probe",
+        "blocked_by_stale_evidence", "blocked_by_policy"
+      ]
+    },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "explanation_codes": { "type": "array", "items": { "type": "string" } },
+    "risk_flags": { "type": "array", "items": { "type": "string" } },
+    "diagnostics_enabled": { "type": "boolean" },
+    "manual_selection_allowed": { "type": "boolean" },
+    "policy_selection_allowed": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "mission": "Local Inference Airlock v1 — Architecture",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "PROMOTE",
+  "airlock_path": "rig_relay/providers/local_inference/airlock.py",
+  "receipts_path": "rig_relay/providers/local_inference/receipts.py",
+  "provider_integration": {
+    "Provider_enum": "Provider.LOCAL_INFERENCE = 'local_inference'",
+    "ProviderInfo": "env_var='', supports_base_url=True, no API key required",
+    "health_check": "Network probe via probe_local_endpoint(), returns valid/error",
+    "capability_gate": "local_inference_probe + local_inference_health_check are ALWAYS_ALLOWED"
+  },
+  "gating_model": {
+    "unconfigured": "is_local_inference_configured() returns False; health check raises NotImplementedError",
+    "configured": "Endpoint URL stored in ~/.rig/relay/local_inference/endpoint_config.json with SHA256 hash",
+    "probe_gated": "Probing is always allowed (read-only). Actual agent use is deferred and gated behind profile state.",
+    "routing_deferred": "Routing decisions produce explanatory receipts but do not select local inference automatically"
+  },
+  "receipt_kinds": [
+    "local_inference_probe",
+    "local_inference_routing",
+    "local_inference_config"
+  ],
+  "schemas": [
+    "rig.relay.local_inference.endpoint_config.v1.schema.json"
+  ],
+  "tests": {
+    "total": 104,
+    "new_airlock_tests": 19,
+    "modified_existing_tests": 2,
+    "classifications": "contract, unit, adversarial, real-artifact"
+  }
+}

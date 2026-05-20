@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_roadmap.v1",
+  "phases": [
+    {
+      "phase_id": "dist-roadmap:phase_0_research",
+      "goal": "Research all distribution channels, credentials, APIs, validations, risks.",
+      "mutation_policy": "none",
+      "success_definition": "Rig has a schema-governed research packet for distribution and release governance."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_1_operating_picture",
+      "goal": "Distribution Operating Picture: document which channels are configured, safe, or refused.",
+      "mutation_policy": "none",
+      "success_definition": "Cockpit shows honest operating picture of all distribution channels."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_2_preflight",
+      "goal": "Release Preflight: run all validation checks without any publish attempt.",
+      "mutation_policy": "none",
+      "success_definition": "Rig can audit release readiness across all channels without mutation."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_3_notarization",
+      "goal": "macOS Notarization Captain: submit for notarization, poll status, staple ticket.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can notarize macOS apps with receipt-backed evidence."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_4_packages",
+      "goal": "Package Registry Packets: npm, PyPI, crates.io publish in dry-run/approval-required mode.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can publish packages with preflight checks across JS/Python/Rust."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_5_github",
+      "goal": "GitHub Release & Pages Operator: create releases, upload assets, deploy Pages.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can manage GitHub Releases and Pages with evidence."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_6_app_store",
+      "goal": "App Store & TestFlight Packets: manage TestFlight builds and App Store submissions.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can upload TestFlight builds and submit for review."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_7_google_play",
+      "goal": "Google Play Packets: manage tracks, upload bundles, update listings.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can manage Google Play tracks and submissions."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_8_microsoft",
+      "goal": "Microsoft Store Packets: manage submissions, package flights, certifications.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can manage Microsoft Store submissions."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_9_provenance",
+      "goal": "Provenance, SBOM & Attestation: sign with cosign, generate SBOMs, publish attestations.",
+      "mutation_policy": "automatic_under_policy",
+      "success_definition": "Rig produces SLSA-compliant provenance and SBOMs."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_10_mutation",
+      "goal": "Release Mutation Operator: automated publish decisions with approval gates and dry-runs.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig can execute publish actions with rollback plans."
+    },
+    {
+      "phase_id": "dist-roadmap:phase_11_chief_of_staff",
+      "goal": "Multi-Channel Release Chief of Staff: coordinate releases across all channels.",
+      "mutation_policy": "approval_required",
+      "success_definition": "Rig orchestrates multi-channel releases with unified evidence."
+    }
+  ],
+  "phase_count": 12
+}

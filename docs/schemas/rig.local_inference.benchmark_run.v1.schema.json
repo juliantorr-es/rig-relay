@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.benchmark_run.v1",
+  "title": "Local Inference Benchmark Run",
+  "description": "Metadata for a complete local inference benchmark run. Content-light: contains aggregate statistics and SHA256 hashes, no raw prompts or completions.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "runtime_url",
+    "started_at",
+    "ended_at",
+    "duration_ms",
+    "sample_count",
+    "aggregate_stats",
+    "hardware_context"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.local_inference.benchmark_run.v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "runtime_url": {
+      "type": "string"
+    },
+    "runtime_engine": {
+      "type": "string",
+      "enum": ["vllm", "llama_cpp", "mlx_lm", "unknown"]
+    },
+    "model_id_hash": {
+      "type": "string",
+      "description": "SHA256 of model identifier, or empty if unknown"
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "sample_count": { "type": "integer", "minimum": 0 },
+    "aggregate_stats": {
+      "type": "object",
+      "required": [
+        "time_to_first_token_ms_p50",
+        "time_to_first_token_ms_p95",
+        "tokens_per_sec_decode_p50",
+        "tokens_per_sec_decode_p95",
+        "end_to_end_latency_ms_p50",
+        "end_to_end_latency_ms_p95",
+        "tool_call_correctness_rate",
+        "structured_output_compliance_rate"
+      ],
+      "properties": {
+        "time_to_first_token_ms_p50": { "type": "number" },
+        "time_to_first_token_ms_p95": { "type": "number" },
+        "tokens_per_sec_decode_p50": { "type": "number" },
+        "tokens_per_sec_decode_p95": { "type": "number" },
+        "end_to_end_latency_ms_p50": { "type": "number" },
+        "end_to_end_latency_ms_p95": { "type": "number" },
+        "prompt_ingestion_tokens_per_sec_p50": { "type": ["number", "null"] },
+        "streaming_chunk_cadence_ms_p50": { "type": ["number", "null"] },
+        "tool_call_correctness_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "structured_output_compliance_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cancellation_success_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "memory_peak_mb": { "type": ["integer", "null"] },
+        "cold_start_sec": { "type": ["number", "null"] },
+        "model_load_time_sec": { "type": ["number", "null"] }
+      }
+    },
+    "hardware_context": {
+      "type": "object",
+      "required": ["platform_class"],
+      "properties": {
+        "platform_class": {
+          "type": "string",
+          "enum": ["cpu", "cuda", "metal", "vulkan", "rocm", "unknown"]
+        },
+        "gpu_name_safe": { "type": "string" },
+        "cpu_core_count": { "type": "integer" },
+        "ram_gb": { "type": "number" }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["error_class"],
+        "properties": {
+          "error_class": { "type": "string" },
+          "error_safe_message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

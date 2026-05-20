@@ -1,0 +1,215 @@
+{
+  "schema_version": "rig.github.security_remediation_plan.v1",
+  "generated_at": "2026-05-20T17:18:34.739820+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_queue_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_queue_v1.v1.json",
+  "source_queue_hash": "7d1d87ff25430af8997d072871cbc034f5d25b6c4e24a9126d71790b1291fd33",
+  "selection_policy": {
+    "max_items": 3,
+    "selection_criteria": [
+      "item must be open/actionable (not fixed, dismissed, refused, or not_available)",
+      "selected by lowest priority_score first",
+      "stable tiebreaker by queue_item_id",
+      "up to max_items selected"
+    ],
+    "total_queue_items": 45,
+    "actionable_items": 27,
+    "items_selected": 3,
+    "items_rejected": 42
+  },
+  "selected_queue_item_ids": [
+    "008356ed5416be8f0bff21418b7b1210115fb8ae30496e2e09c830fd8809bc98",
+    "089581dc0beecccc9e1272be1e7c1d909a0ad9487368bb1444bfcc9608c10df2",
+    "0cf343a8a48bee9d8e4ba5aea23d0cb3dbf859c5184221ea8f5c4e3391f03da8"
+  ],
+  "rejected_queue_items_summary": {
+    "total_rejected": 42,
+    "rejected_by_source_surface": {
+      "security_policy_gap": 1,
+      "secret_scanning": 1,
+      "repository_security_advisory": 1,
+      "code_scanning": 39
+    },
+    "common_rejected_reasons": [
+      "source_artifact_missing",
+      "source_surface_refused"
+    ]
+  },
+  "remediation_plans": [
+    {
+      "plan_id": "bd0bd3765f53b76d532a76301dce4fc7fc51e4cf66e6e124f49e41008bf8c0cf",
+      "queue_item_id": "008356ed5416be8f0bff21418b7b1210115fb8ae30496e2e09c830fd8809bc98",
+      "source_surface": "code_scanning",
+      "security_domain": "code_vulnerability",
+      "severity": "warning",
+      "priority_rank": 1,
+      "priority_score": 4,
+      "source_identifier_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+      "issue_summary_safe": "[warning] code_vulnerability; lane=codeql_security_fix_needed; alert#5",
+      "evidence_available": true,
+      "evidence_missing": [],
+      "remediation_strategy": "Investigate alert context, review rule/query, plan local patch if evidence exists. No raw code snippets in artifacts.",
+      "allowed_next_actions": [
+        "inspect_alert_context",
+        "review_codeql_rule",
+        "plan_local_patch",
+        "classify_false_positive"
+      ],
+      "forbidden_actions": [
+        "dismiss_alert_without_evidence",
+        "auto_close_alert",
+        "publish_patch_without_review"
+      ],
+      "required_permissions": {
+        "read": [
+          "security_events:read",
+          "metadata:read"
+        ],
+        "mutation": [
+          "security_events:write",
+          "contents:write",
+          "pull_requests:write"
+        ]
+      },
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "disabled",
+      "confidence": "medium",
+      "blocked_reasons": [],
+      "human_review_required": true,
+      "proposed_followup_slice": "Phase 2 Slice 3 — generate code scanning fix patch proposal with evidence",
+      "redaction_status": {
+        "content_light": true,
+        "forbidden_fields_present": false
+      }
+    },
+    {
+      "plan_id": "fa10669dc3dfe563b49d7fb2ea95bf05c51142fe5344f181604625389fabc10b",
+      "queue_item_id": "089581dc0beecccc9e1272be1e7c1d909a0ad9487368bb1444bfcc9608c10df2",
+      "source_surface": "code_scanning",
+      "security_domain": "code_vulnerability",
+      "severity": "warning",
+      "priority_rank": 2,
+      "priority_score": 4,
+      "source_identifier_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "issue_summary_safe": "[warning] code_vulnerability; lane=codeql_security_fix_needed; alert#3",
+      "evidence_available": true,
+      "evidence_missing": [],
+      "remediation_strategy": "Investigate alert context, review rule/query, plan local patch if evidence exists. No raw code snippets in artifacts.",
+      "allowed_next_actions": [
+        "inspect_alert_context",
+        "review_codeql_rule",
+        "plan_local_patch",
+        "classify_false_positive"
+      ],
+      "forbidden_actions": [
+        "dismiss_alert_without_evidence",
+        "auto_close_alert",
+        "publish_patch_without_review"
+      ],
+      "required_permissions": {
+        "read": [
+          "security_events:read",
+          "metadata:read"
+        ],
+        "mutation": [
+          "security_events:write",
+          "contents:write",
+          "pull_requests:write"
+        ]
+      },
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "disabled",
+      "confidence": "medium",
+      "blocked_reasons": [],
+      "human_review_required": true,
+      "proposed_followup_slice": "Phase 2 Slice 3 — generate code scanning fix patch proposal with evidence",
+      "redaction_status": {
+        "content_light": true,
+        "forbidden_fields_present": false
+      }
+    },
+    {
+      "plan_id": "a36aa3e8db6b410db6fabcc3f9bd312150c63b30294b0234a2e1283743cacd7f",
+      "queue_item_id": "0cf343a8a48bee9d8e4ba5aea23d0cb3dbf859c5184221ea8f5c4e3391f03da8",
+      "source_surface": "code_scanning",
+      "security_domain": "code_vulnerability",
+      "severity": "error",
+      "priority_rank": 3,
+      "priority_score": 4,
+      "source_identifier_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "issue_summary_safe": "[error] code_vulnerability; lane=codeql_security_fix_needed; alert#36",
+      "evidence_available": true,
+      "evidence_missing": [],
+      "remediation_strategy": "Investigate alert context, review rule/query, plan local patch if evidence exists. No raw code snippets in artifacts.",
+      "allowed_next_actions": [
+        "inspect_alert_context",
+        "review_codeql_rule",
+        "plan_local_patch",
+        "classify_false_positive"
+      ],
+      "forbidden_actions": [
+        "dismiss_alert_without_evidence",
+        "auto_close_alert",
+        "publish_patch_without_review"
+      ],
+      "required_permissions": {
+        "read": [
+          "security_events:read",
+          "metadata:read"
+        ],
+        "mutation": [
+          "security_events:write",
+          "contents:write",
+          "pull_requests:write"
+        ]
+      },
+      "mutation_required": false,
+      "remote_mutation_status": "disabled",
+      "local_mutation_status": "disabled",
+      "confidence": "medium",
+      "blocked_reasons": [],
+      "human_review_required": true,
+      "proposed_followup_slice": "Phase 2 Slice 3 — generate code scanning fix patch proposal with evidence",
+      "redaction_status": {
+        "content_light": true,
+        "forbidden_fields_present": false
+      }
+    }
+  ],
+  "permission_requirements": {
+    "read_permissions_needed": [
+      "metadata:read",
+      "security_events:read"
+    ],
+    "mutation_permissions_deferred": [
+      "contents:write",
+      "pull_requests:write",
+      "security_events:write"
+    ]
+  },
+  "blocked_reasons": [],
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 17,
+    "secret_values_present": false,
+    "raw_code_snippets_present": false
+  },
+  "content_light_status": "all_plans_content_light",
+  "remote_mutation_status": "disabled",
+  "local_mutation_status": "disabled",
+  "event_fabric_events_emitted": false,
+  "telemetry_redaction_implications": "All plan data is content-light: no tokens, auth headers, raw response bodies, code snippets, secret values, or private file contents.",
+  "intentionally_deferred": [
+    "patch_generation",
+    "PR_creation",
+    "alert_dismissal",
+    "secret_revocation_execution",
+    "dependency_update_execution",
+    "security_policy_file_write"
+  ],
+  "recommended_next_slice": "Phase 2 Slice 3 — generate code scanning fix patch proposal with evidence"
+}

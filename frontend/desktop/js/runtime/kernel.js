@@ -255,7 +255,7 @@ function _registerEffects(effectRunner, getState, dispatch, loopSupervisor) {
   // On TRANSPORT_STATUS_CHANGE: manage freshness loop
   effectRunner.register(AT.TRANSPORT_STATUS_CHANGE, (state) => {
     if (isTransportConnected(state)) {
-      startFreshnessLoop(getState, effectRunner.dispatch, loopSupervisor);
+      startFreshnessLoop(getState, effectRunner.dispatch, loopSupervisor, _transportAuthority);
     } else {
       loopSupervisor.cancelLoop(LoopType.PROJECTION_FRESHNESS);
     }
@@ -273,6 +273,7 @@ export function createRuntime(config) {
   const _pendingActions = [];
   let _intentSendFn = null;
   var _typedSubscribers = Object.create(null);
+  var _transportAuthority = config.transportAuthority || null;
 
   // ── Evidence recorder (from evidence.js — pywebview + HTTP + ring buffer) ─
   const evidence = createEvidenceRecorder({
@@ -432,7 +433,7 @@ export function createRuntime(config) {
     bootFSM.transition('boot:config_loading', {});
 
     // Start all loop supervisors
-    startFreshnessLoop(() => _state, _dispatch, loopSupervisor);
+    startFreshnessLoop(() => _state, _dispatch, loopSupervisor, _transportAuthority);
     startIntentFlushLoop(() => _state, _dispatch, loopSupervisor, _intentSendFn);
     startNotificationDrainLoop(() => _state, _dispatch, loopSupervisor);
     startEvidenceFlushLoop(() => _state, evidence, loopSupervisor);
@@ -441,8 +442,12 @@ export function createRuntime(config) {
   }
 
   // ── Intent send bridge — set by transport integration ────────────────
-  function setIntentSend(fn) {
+  function setIntenSend(fn) {
     _intentSendFn = typeof fn === 'function' ? fn : null;
+  }
+
+  function setTransportAuthority(ta) {
+    _transportAuthority = ta || null;
   }
 
   // ── Destroy ──────────────────────────────────────────────────────────
@@ -478,6 +483,7 @@ export function createRuntime(config) {
     effects: effectRunner,
     loopSupervisor,
     setIntentSend,
+    setTransportAuthority,
     destroy,
   };
 

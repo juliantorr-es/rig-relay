@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.profile_readme_program_report.v1.schema.json",
+  "title": "GitHub Profile README Program Report v1",
+  "description": "Canonical structured report proving the Phase 1 Profile README public-surface lane is complete as a dry-run, governed, permission-aware, cockpit-visible workflow.",
+  "type": "object",
+  "required": [
+    "schema_version", "generated_at", "branch", "head",
+    "program_name", "program_phase", "phase_status", "slices_completed",
+    "slice_artifacts", "source_files", "schemas_added_or_modified",
+    "generated_artifacts", "frontend_projection_fields", "cockpit_widgets",
+    "gate_model", "permission_model", "pr_plan_summary",
+    "ux_projection_summary", "disabled_publish_reasons",
+    "live_publish_status", "remote_mutation_status",
+    "redaction_summary", "schema_validation_summary",
+    "tests_summary", "telemetry_redaction_implications",
+    "dependency_changes", "completed_work", "intentionally_deferred",
+    "discovered_out_of_scope_risks", "recommended_next_phase"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.profile_readme_program_report.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "branch": {"type": "string"}, "head": {"type": "string"},
+    "dirty_state_before": {"type": "array", "items": {"type": "string"}},
+    "dirty_state_after": {"type": "array", "items": {"type": "string"}},
+    "program_name": {"type": "string"}, "program_phase": {"type": "string"},
+    "phase_status": {"type": "string", "enum": ["complete", "in_progress", "blocked", "deferred"]},
+    "slices_completed": {"type": "array", "items": {"$ref": "#/definitions/slice_entry"}},
+    "slice_artifacts": {"type": "array", "items": {"type": "string"}},
+    "source_files": {"type": "array", "items": {"type": "string"}},
+    "schemas_added_or_modified": {"type": "array", "items": {"type": "string"}},
+    "generated_artifacts": {"type": "array", "items": {"$ref": "#/definitions/artifact_ref"}},
+    "frontend_projection_fields": {"type": "array", "items": {"type": "string"}},
+    "cockpit_widgets": {"type": "array", "items": {"type": "string"}},
+    "gate_model": {"$ref": "#/definitions/gate_model"},
+    "permission_model": {"$ref": "#/definitions/permission_model"},
+    "live_permission_verification_summary": {"type": "object"},
+    "preview_generation_summary": {"type": "object"},
+    "pr_plan_summary": {"type": "object"},
+    "ux_projection_summary": {"type": "object"},
+    "disabled_publish_reasons": {"type": "array", "items": {"type": "string"}},
+    "live_publish_status": {"type": "string"},
+    "remote_mutation_status": {"type": "string"},
+    "redaction_summary": {"type": "object"},
+    "schema_validation_summary": {"type": "object"},
+    "static_validation_summary": {"type": "object"},
+    "tests_summary": {"type": "object"},
+    "test_classifications_summary": {"type": "object"},
+    "telemetry_redaction_implications": {"type": "string"},
+    "dependency_changes": {"type": "array", "items": {"type": "string"}},
+    "completed_work": {"type": "array", "items": {"type": "string"}},
+    "intentionally_deferred": {"type": "array", "items": {"type": "string"}},
+    "discovered_out_of_scope_risks": {"type": "array", "items": {"type": "string"}},
+    "recommended_next_phase": {"type": "string"},
+    "recommended_next_slice": {"type": "string"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "slice_entry": {
+      "type": "object",
+      "required": ["slice_id", "slice_title", "status", "tests_passing", "artifacts_produced"],
+      "properties": {
+        "slice_id": {"type": "string"}, "slice_title": {"type": "string"},
+        "status": {"type": "string", "enum": ["complete", "in_progress"]},
+        "tests_passing": {"type": "integer", "minimum": 0},
+        "artifacts_produced": {"type": "array", "items": {"type": "string"}},
+        "summary": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "artifact_ref": {
+      "type": "object",
+      "required": ["path", "present", "sha256"],
+      "properties": {
+        "path": {"type": "string"}, "present": {"type": "boolean"},
+        "sha256": {"type": ["string", "null"]}, "bytes": {"type": ["integer", "null"]},
+        "purpose": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "gate_model": {
+      "type": "object",
+      "required": ["gate_count", "gates"],
+      "properties": {
+        "gate_count": {"type": "integer", "minimum": 0},
+        "gates": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "permission_model": {
+      "type": "object",
+      "required": ["read", "write_content", "write_pr", "explicitly_not_required"],
+      "properties": {
+        "read": {"type": "array", "items": {"type": "string"}},
+        "write_content": {"type": "array", "items": {"type": "string"}},
+        "write_pr": {"type": "array", "items": {"type": "string"}},
+        "explicitly_not_required": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

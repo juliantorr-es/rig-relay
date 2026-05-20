@@ -1,9 +1,9 @@
 {
   "schema_version": "rig.github.carte_blanche_permission_value_matrix.v1",
-  "generated_at": "2026-05-20T09:00:02.885270+00:00",
+  "generated_at": "2026-05-20T09:36:47.152619+00:00",
   "content_light": true,
   "remote_mutation": false,
-  "total_permissions": 20,
+  "total_permissions": 21,
   "permissions": [
     {
       "permission_id": "contents",
@@ -845,11 +845,44 @@
         "https://docs.github.com/en/rest/codespaces"
       ],
       "remaining_unknowns": []
+    },
+    {
+      "permission_id": "workflows",
+      "permission_name": "Workflows",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "write"
+      ],
+      "enabled_read_lanes": [],
+      "enabled_write_lanes": [
+        "workflow_file_edit"
+      ],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [
+        "workflow_security_audit"
+      ],
+      "enabled_ci_lanes": [
+        "workflow_file_management"
+      ],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "high",
+      "supply_chain_risk": "extreme",
+      "governance_required": "extreme",
+      "implementation_priority": 4,
+      "recommended_policy": "Explicitly separate from Contents and Actions. Workflow file edits require Workflows permission. Installation tokens with Contents can authenticate HTTP Git, but editing .github/workflows/ requires Workflows permission per GitHub docs. Always verify this permission is explicitly granted before any workflow file mutation.",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/actions/workflows",
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app"
+      ],
+      "remaining_unknowns": [
+        "workflow file edit scope: all workflow files or only app-owned workflows"
+      ]
     }
   ],
   "summary": {
-    "high_value_permissions": 9,
-    "mutation_permissions": 16,
+    "high_value_permissions": 10,
+    "mutation_permissions": 17,
     "read_only_permissions": 4,
     "org_level_permissions": 3
   }

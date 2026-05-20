@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.mission_topology_projection.v1.schema.json",
+  "title": "Spiderweb Mission Topology Projection v1",
+  "description": "Governed topology projection consuming derived event-fabric analytical artifacts. Nodes, edges, strand states, resource pressure, and causal links derived from DuckDB projection reports and resource summaries. Never exposes raw event payloads.",
+  "type": "object",
+  "required": [
+    "schema_version", "generated_at",
+    "content_light", "read_side_only", "mutation_authority",
+    "status", "nodes", "edges",
+    "source_artifacts", "strand_states",
+    "degraded_reasons", "recommended_next_slice"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.mission_topology_projection.v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string" },
+    "head": { "type": "string" },
+    "content_light": { "type": "boolean", "const": true },
+    "read_side_only": { "type": "boolean", "const": true },
+    "mutation_authority": { "type": "boolean", "const": false },
+    "status": {
+      "type": "string",
+      "enum": ["live", "degraded_no_input", "empty", "partial"]
+    },
+    "nodes": { "type": "array", "items": { "$ref": "#/definitions/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/definitions/edge" } },
+    "source_artifacts": { "type": "array", "items": { "$ref": "#/definitions/source_artifact" } },
+    "strand_states": { "$ref": "#/definitions/strand_states" },
+    "resource_pressure": { "$ref": "#/definitions/resource_pressure" },
+    "causal_links": { "type": "array", "items": { "$ref": "#/definitions/causal_link" } },
+    "degraded_reasons": { "type": "array", "items": { "type": "string" } },
+    "redaction_summary": { "$ref": "#/definitions/redaction_summary" },
+    "recommended_next_slice": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["node_id", "node_type", "label", "strand_state"],
+      "properties": {
+        "node_id": { "type": "string", "minLength": 1 },
+        "node_type": {
+          "type": "string",
+          "enum": ["event_fabric", "duckdb_projection", "derived_artifact", "bridge", "projection", "runtime", "worker", "supervisor", "tool", "github", "test", "release_gate", "telemetry", "redaction", "coordination", "resource", "unknown"]
+        },
+        "label": { "type": "string" },
+        "strand_state": {
+          "type": "string",
+          "enum": ["healthy", "idle", "active", "stale", "degraded", "blocked", "quarantined", "backpressured", "waiting_for_permission", "no_input", "unknown"]
+        },
+        "event_count": { "type": "integer", "minimum": 0 },
+        "details": { "type": "string" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["edge_id", "from_node_id", "to_node_id", "edge_type"],
+      "properties": {
+        "edge_id": { "type": "string", "minLength": 1 },
+        "from_node_id": { "type": "string" },
+        "to_node_id": { "type": "string" },
+        "edge_type": {
+          "type": "string",
+          "enum": ["produced", "consumed_by", "correlated_with", "caused", "blocked_by", "degraded_by", "recovered_by", "reports_to", "derived_from", "observes"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["observed", "derived", "inferred", "correlated_only", "rejected"]
+        },
+        "label": { "type": "string" }
+      }
+    },
+    "source_artifact": {
+      "type": "object",
+      "required": ["artifact_id", "path", "present"],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "path": { "type": "string" },
+        "present": { "type": "boolean" },
+        "artifact_hash": { "type": "string" },
+        "schema_version": { "type": "string" },
+        "summary": { "type": "string" }
+      }
+    },
+    "strand_states": {
+      "type": "object",
+      "required": ["total_nodes", "healthy_count", "degraded_count", "blocked_count", "no_input_count"],
+      "properties": {
+        "total_nodes": { "type": "integer", "minimum": 0 },
+        "healthy_count": { "type": "integer", "minimum": 0 },
+        "idle_count": { "type": "integer", "minimum": 0 },
+        "active_count": { "type": "integer", "minimum": 0 },
+        "stale_count": { "type": "integer", "minimum": 0 },
+        "degraded_count": { "type": "integer", "minimum": 0 },
+        "blocked_count": { "type": "integer", "minimum": 0 },
+        "quarantined_count": { "type": "integer", "minimum": 0 },
+        "backpressured_count": { "type": "integer", "minimum": 0 },
+        "waiting_for_permission_count": { "type": "integer", "minimum": 0 },
+        "no_input_count": { "type": "integer", "minimum": 0 },
+        "unknown_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "resource_pressure": {
+      "type": "object",
+      "required": ["reconnect_pressure", "queue_pressure", "consumer_errors"],
+      "properties": {
+        "reconnect_pressure": { "type": "string", "enum": ["none", "moderate", "high"] },
+        "reconnect_failed_count": { "type": "integer", "minimum": 0 },
+        "queue_pressure": { "type": "string", "enum": ["none", "normal", "high"] },
+        "queue_pressure_high_count": { "type": "integer", "minimum": 0 },
+        "consumer_errors": { "type": "string", "enum": ["none", "low", "elevated", "high"] },
+        "consumer_error_count": { "type": "integer", "minimum": 0 },
+        "bridge_health": { "type": "string", "enum": ["unknown", "healthy", "degraded", "disconnected", "stale"] },
+        "github_rate_limit_health": { "type": "string", "enum": ["unknown", "healthy", "degraded", "near_exhausted"] }
+      }
+    },
+    "causal_link": {
+      "type": "object",
+      "required": ["from_node_id", "to_node_id", "relationship", "confidence"],
+      "properties": {
+        "from_node_id": { "type": "string" },
+        "to_node_id": { "type": "string" },
+        "relationship": { "type": "string" },
+        "confidence": { "type": "string", "enum": ["observed", "derived", "inferred", "correlated_only", "rejected"] }
+      }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "required": ["raw_event_payloads_exposed", "envelope_level_only"],
+      "properties": {
+        "raw_event_payloads_exposed": { "type": "boolean", "const": false },
+        "envelope_level_only": { "type": "boolean", "const": true },
+        "source_artifact_hashes_used": { "type": "boolean" }
+      }
+    }
+  }
+}

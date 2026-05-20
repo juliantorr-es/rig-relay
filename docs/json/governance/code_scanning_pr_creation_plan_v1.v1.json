@@ -1,0 +1,52 @@
+{
+  "schema_version": "rig.github.code_scanning_pr_creation_plan.v1",
+  "plan_id": "eed23574e92299fb2abf9fb327918750e88a5e6e1123241a3cd0f725b990dc64",
+  "generated_at": "2026-05-20T17:56:43.209419+00:00",
+  "content_light": true,
+  "status": "blocked_pr_creation_plan",
+  "source_candidate_diff_receipt_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/code_scanning_dry_run_candidate_diff_v1.v1.json",
+  "source_candidate_diff_receipt_sha256": "3730acc571268d409d56d00f5b0878b36ff6c402a6ba891a62305b3b16ffbef4",
+  "diff_artifact_path": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/code_scanning_dry_run_candidate.diff",
+  "diff_artifact_sha256": "d442c36d8b66c621bfd998bedc3abeca7c0761fba6e8f13764d60d269d01ff22",
+  "diff_classification": "blocked_explanation",
+  "source_context_hash": null,
+  "alert_identity": 5,
+  "severity": "warning",
+  "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "repository_identity": "from_source_context",
+  "proposed_branch_name": "",
+  "proposed_commit_title": "",
+  "proposed_pr_title": "",
+  "proposed_pr_body_summary": "",
+  "required_permissions_future": [
+    "contents:write",
+    "pull_requests:write"
+  ],
+  "permissions_used_this_slice": [],
+  "remote_mutation": false,
+  "local_mutation": false,
+  "alert_update_deferred": true,
+  "approval_chain": [
+    "1. candidate diff receipt verified",
+    "2. PR plan receipt verified",
+    "3. human approval or configured policy approval",
+    "4. branch creation allowed",
+    "5. commit allowed",
+    "6. PR creation allowed",
+    "7. alert update remains separate (later gate)"
+  ],
+  "rollback_strategy": "close PR if rejected; delete branch if unmerged",
+  "blocked_reasons": [
+    "diff_classification_not_dry_run_candidate",
+    "no_real_candidate_diff",
+    "candidate_diff_policy_gate_failed",
+    "source_context_hash_missing"
+  ],
+  "pr_body_content_light": true,
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "raw_source_in_plan": false
+  },
+  "recommended_next_slice": "Phase 2 Slice 6 — produce real candidate diff first"
+}

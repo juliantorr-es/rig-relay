@@ -1,0 +1,126 @@
+{
+  "schema_version": "rig.github.code_scanning_post_pr_lifecycle.v1",
+  "generated_at": "2026-05-20T18:29:56.299540+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "alert_update": false,
+  "alert_update_deferred": true,
+  "pr_lifecycle_state": "no_pr",
+  "alert_lifecycle_state": "alert_unknown",
+  "alert_state_plan": {
+    "alert_number": 5,
+    "current_state": "alert_unknown",
+    "paths": [
+      {
+        "path_id": "fix_verification",
+        "description": "Verify the PR fix resolves the vulnerability",
+        "required_evidence": [
+          "pr_receipt",
+          "test_results",
+          "fix_analysis"
+        ],
+        "required_permissions": [],
+        "required_approval": "human_or_security_team",
+        "remote_mutation": false
+      },
+      {
+        "path_id": "false_positive",
+        "description": "Document why the alert is a false positive",
+        "required_evidence": [
+          "false_positive_analysis",
+          "code_review_context"
+        ],
+        "required_permissions": [
+          "security_events:write"
+        ],
+        "required_approval": "human_or_security_team",
+        "remote_mutation": true
+      },
+      {
+        "path_id": "wont_fix",
+        "description": "Accept the risk, document rationale",
+        "required_evidence": [
+          "risk_acceptance_documentation"
+        ],
+        "required_permissions": [
+          "security_events:write"
+        ],
+        "required_approval": "human_or_security_team",
+        "remote_mutation": true
+      },
+      {
+        "path_id": "dismissal_request",
+        "description": "Request alert dismissal through approval chain",
+        "required_evidence": [
+          "fix_evidence_or_fp_analysis"
+        ],
+        "required_permissions": [
+          "security_events:write"
+        ],
+        "required_approval": "human_or_security_team",
+        "remote_mutation": true
+      },
+      {
+        "path_id": "direct_update",
+        "description": "Directly update alert state (gated)",
+        "required_evidence": [
+          "pr_receipt",
+          "approval_receipt",
+          "permission_verification"
+        ],
+        "required_permissions": [
+          "security_events:write"
+        ],
+        "required_approval": "human_or_security_team",
+        "remote_mutation": true
+      }
+    ],
+    "gates_passed": false,
+    "blocked_reasons": [
+      "alert_update_disabled_by_default",
+      "no_explicit_alert_mutation_flag"
+    ],
+    "recommended_path": "fix_verification",
+    "recommended_action": "wait_for_alert_mutation_gate"
+  },
+  "causal_chain": [
+    {
+      "event": "patch_proposal_generated",
+      "relationship": "observed"
+    },
+    {
+      "event": "patch_preview_generated",
+      "relationship": "observed"
+    },
+    {
+      "event": "mutation_readiness_passed",
+      "relationship": "observed"
+    },
+    {
+      "event": "pr_simulated",
+      "relationship": "correlated_only"
+    },
+    {
+      "event": "post_pr_lifecycle_checked",
+      "relationship": "observed"
+    }
+  ],
+  "projection": {
+    "alert_number": 5,
+    "pr_state": "no_pr",
+    "alert_state": "alert_unknown",
+    "pending_gates": [
+      "alert_update_gate",
+      "approval_gate"
+    ],
+    "next_safe_action": "verify_fix_or_document_false_positive",
+    "human_review_required": true
+  },
+  "blocked_reasons": [],
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "raw_response_bodies": false
+  },
+  "recommended_next_slice": "Phase 3 — actual alert state mutation (gated)"
+}

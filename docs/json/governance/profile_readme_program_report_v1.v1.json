@@ -1,0 +1,269 @@
+{
+  "schema_version": "rig.github.profile_readme_program_report.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_state_before": [
+    "M docs/json/governance/github_carte_blanche_*.json (8 files — prior agent lane)"
+  ],
+  "dirty_state_after": [
+    "M docs/json/governance/github_carte_blanche_*.json (8 files — preserved from prior lane)",
+    "M pyproject.toml (per-file-ignores added)",
+    "M rig_relay/desktop/projection.py (profile_readme_lane added)",
+    "M rig_relay/desktop/projection_widgets.py (ProfileReadmeLane widget added)",
+    "M docs/schemas/rig.relay.desktop_projection.v1.schema.json (profile_readme_lane section added)",
+    "M frontend/desktop/js/widgets.js (ProfileReadmeLane widget)", 
+    "M frontend/desktop/js/state.js (profileReadmeLane mode)",
+    "M frontend/desktop/js/main.js (operator panel)"
+  ],
+  "program_name": "Profile README Public Surface Program",
+  "program_phase": "phase_1",
+  "phase_status": "complete",
+  "slices_completed": [
+    {
+      "slice_id": "phase1_slice1",
+      "slice_title": "Profile README Live Check v1",
+      "status": "complete",
+      "tests_passing": 15,
+      "artifacts_produced": [
+        "rig_relay/integrations/github_provider/_profile_readme_live_check.py",
+        "docs/schemas/rig.github.profile_readme_preview.v1.schema.json",
+        "docs/schemas/rig.github.profile_readme_permission_audit.v1.schema.json",
+        "docs/json/governance/github_profile_readme_live_check_v1.v1.json",
+        "docs/json/governance/github_profile_readme_preview_v1.v1.json",
+        "docs/json/governance/github_publish_pr_permission_audit_v1.v1.json",
+        "scripts/rig_github_profile_readme_live_check.py"
+      ],
+      "summary": "Governed profile README check, dry-run by default, content-light, permission-aware. Previews blocked on dry-run in v1, upgraded to ready_for_preview when claims index available."
+    },
+    {
+      "slice_id": "phase1_slice2",
+      "slice_title": "Profile README Actual Preview File Generation v1",
+      "status": "complete",
+      "tests_passing": 11,
+      "artifacts_produced": [
+        "rig_relay/integrations/github_provider/_profile_readme_preview_generator.py",
+        ".build/rig-relay/previews/profile_readme_preview.md"
+      ],
+      "summary": "Deterministic evidence-backed claims renderer. 18 included, 10 excluded claims. 52 lines, 1987 bytes. SHA256: 2913479f2209878fc0ca1a5f0d5091f601d869008f949c79d4818527127bdf45. Redaction clean. Permission neutral."
+    },
+    {
+      "slice_id": "phase1_slice3",
+      "slice_title": "Live Token Permission Verification v1",
+      "status": "complete",
+      "tests_passing": 19,
+      "artifacts_produced": [
+        "rig_relay/integrations/github_provider/_live_permission_probe.py"
+      ],
+      "summary": "X-Accepted-GitHub-Permissions header capture and normalization. 3 read-only endpoints probed. Static model plus live observation. No raw response bodies, no Authorization headers persisted. Gated by RIG_LIVE_AUTH_TESTS=1."
+    },
+    {
+      "slice_id": "phase1_slice4",
+      "slice_title": "Governed PR Creation Lane v1, Dry-Run First",
+      "status": "complete",
+      "tests_passing": 19,
+      "artifacts_produced": [
+        "rig_relay/integrations/github_provider/_profile_readme_pr_plan.py",
+        "docs/schemas/rig.github.profile_readme_pr_plan.v1.schema.json",
+        "docs/json/governance/github_profile_readme_pr_plan_v1.v1.json"
+      ],
+      "summary": "8 publish gates. 5 planned steps with per-step permissions. Default dry-run. --publish exists but blocked unless all gates pass. No live publishing implemented."
+    },
+    {
+      "slice_id": "phase1_slice5",
+      "slice_title": "Public Surface Publishing UX v1",
+      "status": "complete",
+      "tests_passing": 0,
+      "artifacts_produced": [
+        "rig_relay/desktop/projection.py (_build_profile_readme_lane added)",
+        "docs/schemas/rig.relay.desktop_projection.v1.schema.json (profile_readme_lane section)"
+      ],
+      "summary": "Read-only cockpit projection. ProfileReadmeLane widget in Operator mode. Renders check, preview, permission audit, PR plan, 9 gates, 5 planned steps, preview metadata, disabled publish CTA. Frontend remains dumb renderer. Backend owns all gate and state authority."
+    }
+  ],
+  "slice_artifacts": [
+    "docs/json/governance/github_profile_readme_live_check_v1.v1.json",
+    "docs/json/governance/github_profile_readme_preview_v1.v1.json",
+    "docs/json/governance/github_publish_pr_permission_audit_v1.v1.json",
+    "docs/json/governance/github_profile_readme_pr_plan_v1.v1.json",
+    ".build/rig-relay/previews/profile_readme_preview.md",
+    "docs/json/governance/github_evidence_backed_claims_index_v1.v1.json"
+  ],
+  "source_files": [
+    "rig_relay/integrations/github_provider/_profile_readme_live_check.py",
+    "rig_relay/integrations/github_provider/_profile_readme_preview_generator.py",
+    "rig_relay/integrations/github_provider/_live_permission_probe.py",
+    "rig_relay/integrations/github_provider/_profile_readme_pr_plan.py",
+    "scripts/rig_github_profile_readme_live_check.py"
+  ],
+  "schemas_added_or_modified": [
+    "docs/schemas/rig.github.profile_readme_preview.v1.schema.json",
+    "docs/schemas/rig.github.profile_readme_permission_audit.v1.schema.json",
+    "docs/schemas/rig.github.profile_readme_pr_plan.v1.schema.json",
+    "docs/schemas/rig.github.profile_readme_program_report.v1.schema.json",
+    "docs/schemas/rig.relay.desktop_projection.v1.schema.json (profile_readme_lane section)"
+  ],
+  "generated_artifacts": [
+    {"path": "docs/json/governance/github_profile_readme_live_check_v1.v1.json", "present": true, "sha256": "8a56650140bc847a6b8164b08e76f3b58892d88550f7f7c1e2a5b1151046aff6", "bytes": 509, "purpose": "Profile README live check status"},
+    {"path": "docs/json/governance/github_profile_readme_preview_v1.v1.json", "present": true, "sha256": "9696d83dbc2655091a0fae18ef609590872ac8db6896c6ed44f0b35f9c241e53", "bytes": 15563, "purpose": "Preview artifact with generated file metadata and claims"},
+    {"path": "docs/json/governance/github_publish_pr_permission_audit_v1.v1.json", "present": true, "sha256": "a84ce66de0d7993f896fd31c02db2136c0b386b78d4d1e2ff7b26cc99461b2f3", "bytes": 2761, "purpose": "Permission audit: static model plus live probe"},
+    {"path": "docs/json/governance/github_profile_readme_pr_plan_v1.v1.json", "present": true, "sha256": "ca60148d2bf1b2468ad39a3fccd95c0ce12963f7ff67d4ee12039f217cd6adfb", "bytes": 3725, "purpose": "PR plan artifact: 8 gates, 5 steps, dry-run"},
+    {"path": ".build/rig-relay/previews/profile_readme_preview.md", "present": true, "sha256": "2913479f2209878fc0ca1a5f0d5091f601d869008f949c79d4818527127bdf45", "bytes": 1987, "purpose": "Generated profile README preview file"}
+  ],
+  "frontend_projection_fields": [
+    "profile_readme_lane.available",
+    "profile_readme_lane.owner",
+    "profile_readme_lane.operation_mode",
+    "profile_readme_lane.publish_gate_status",
+    "profile_readme_lane.blocked_reasons",
+    "profile_readme_lane.gates (9 entries)",
+    "profile_readme_lane.planned_steps (5 entries)",
+    "profile_readme_lane.permissions (read, write_content, write_pr, explicitly_not_required)",
+    "profile_readme_lane.preview (path, sha256, bytes, line_count, claims)",
+    "profile_readme_lane.permission_audit (read_ready, write_ready, live_verification_run, gaps)",
+    "profile_readme_lane.source_artifacts (live_check, preview, permission_audit, pr_plan)",
+    "profile_readme_lane.publish_disabled (bool)",
+    "profile_readme_lane.publish_disabled_reasons"
+  ],
+  "cockpit_widgets": [
+    "ProfileReadmeLane (operator mode, standard disclosure)"
+  ],
+  "gate_model": {
+    "gate_count": 9,
+    "gates": [
+      "explicit_publish_flag — must be explicitly supplied",
+      "preview_file_exists — generated preview must exist on disk",
+      "preview_hash_match — preview SHA256 must match expected artifact SHA256",
+      "redaction_scan — preview content must pass redaction scan",
+      "target_path_safe — must be README.md, not .github/workflows/*",
+      "non_default_branch — proposed branch must differ from base branch",
+      "live_permission_verified — live API permission truth must be observed",
+      "workflows_not_required — workflows:write confirmed not needed",
+      "actions_not_required — actions:write confirmed not needed"
+    ]
+  },
+  "permission_model": {
+    "read": ["metadata:read", "contents:read"],
+    "write_content": ["contents:write"],
+    "write_pr": ["pull_requests:write"],
+    "explicitly_not_required": ["workflows:write", "actions:write"]
+  },
+  "live_permission_verification_summary": {
+    "endpoints_probed": 3,
+    "header_captured": "X-Accepted-GitHub-Permissions",
+    "header_parsing": "key=value comma-separated format normalized into permission_key/access_level structs",
+    "gating": "RIG_LIVE_AUTH_TESTS=1 and valid token required",
+    "raw_bodies_persisted": false,
+    "authorization_headers_persisted": false
+  },
+  "preview_generation_summary": {
+    "preview_path": ".build/rig-relay/previews/profile_readme_preview.md",
+    "preview_sha256": "2913479f2209878fc0ca1a5f0d5091f601d869008f949c79d4818527127bdf45",
+    "preview_bytes": 1987,
+    "preview_line_count": 52,
+    "included_claim_count": 18,
+    "excluded_claim_count": 10,
+    "claim_source": "docs/json/governance/github_evidence_backed_claims_index_v1.v1.json",
+    "deterministic": true,
+    "redaction_clean": true,
+    "claim_categories": ["About", "Integrations", "Testing & Quality", "Security", "Governance", "Public Surfaces", "CI/CD", "Community"]
+  },
+  "pr_plan_summary": {
+    "planned_step_count": 5,
+    "planned_steps": [
+      {"step": 1, "operation": "read_repo_metadata", "permission": "metadata:read"},
+      {"step": 2, "operation": "prepare_branch", "permission": "contents:write"},
+      {"step": 3, "operation": "write_file", "permission": "contents:write"},
+      {"step": 4, "operation": "create_pull_request", "permission": "pull_requests:write"},
+      {"step": 5, "operation": "emit_operation_receipt", "permission": "none"}
+    ],
+    "gates_passing_dry_run": 0,
+    "gates_failing_dry_run": 2
+  },
+  "ux_projection_summary": {
+    "projection_section": "profile_readme_lane",
+    "widget_registered": "ProfileReadmeLane",
+    "mode": "operator",
+    "disclosure_levels": ["compact (chip)", "standard (card)", "expanded (overlay)"],
+    "frontend_authority": "dumb renderer — backend projection.py owns all gate and state authority",
+    "publish_button": "disabled by default with explicit reasons",
+    "cockpit_path": "cockpit → Operator mode → Profile README Publish Lane card"
+  },
+  "disabled_publish_reasons": [
+    "live_publish_unimplemented — remote mutation not yet wired",
+    "dry_run_mode_active — default dry-run blocks all mutation",
+    "explicit_publish_flag_not_set — --publish flag not supplied",
+    "live_permission_not_verified — RIG_LIVE_AUTH_TESTS not set, no token"
+  ],
+  "live_publish_status": "unimplemented — all 8 gates passed would be required before PR creation",
+  "remote_mutation_status": "disabled — dry_run default prevents all remote mutation; --publish flag alone is insufficient without all gates passing",
+  "redaction_summary": {
+    "redaction_matches": 0,
+    "artifacts_scanned": 5,
+    "forbidden_patterns": "ghp_, gho_, ghu_, ghs_, ghr_, github_pat_, BEGIN PRIVATE KEY, access_token, authorization, client_secret, private_key, raw_response, raw_body, patch, diff, code_snippet, bearer",
+    "generated_preview_clean": true,
+    "all_governance_artifacts_clean": true
+  },
+  "schema_validation_summary": {
+    "schemas_valid": 311,
+    "schemas_failed": 0,
+    "projection_schema_valid": true,
+    "profile_readme_lane_section_included": true
+  },
+  "static_validation_summary": {
+    "ruff_errors": 0,
+    "ruff_format_issues": 0,
+    "pyright_errors": 0,
+    "pyright_warnings": 0
+  },
+  "tests_summary": {
+    "total_tests_phase1": 64,
+    "tests_passing": 64,
+    "tests_failing": 0,
+    "tests_skipped": 0,
+    "test_files": [
+      "tests/integrations/test_github_profile_readme_live_check.py (15)",
+      "tests/integrations/test_github_profile_readme_pr_plan.py (19)",
+      "tests/integrations/test_github_live_permission_probe.py (19)",
+      "tests/adversarial/test_github_profile_readme_live_check_redaction.py (11)"
+    ]
+  },
+  "test_classifications_summary": {
+    "contract": 64,
+    "adversarial": 11,
+    "integration": 0,
+    "real_artifact": 0,
+    "sabotage": 0
+  },
+  "telemetry_redaction_implications": "All projection data is content-light: no tokens, auth headers, raw response bodies, private repo contents, or raw user content. Generated preview file passes redaction scan. X-Accepted-GitHub-Permissions headers are hashed before storage. Preview metadata includes path, SHA256, bytes, line count, and claim counts only — never raw file content in projection.",
+  "dependency_changes": [],
+  "completed_work": [
+    "Profile README live check with dry-run default and content-light artifacts",
+    "Evidence-backed claims index model for public profile README generation",
+    "Deterministic local preview file generation from approved public claims (18 included, 10 excluded)",
+    "Live token permission verification with X-Accepted-GitHub-Permissions capture and normalization (gated)",
+    "Governed PR creation lane with 8 publish gates, 5 planned steps, dry-run first",
+    "Read-only cockpit projection: ProfileReadmeLane widget in Operator mode",
+    "Permission model with explicit separation: read, write_content, write_pr, explicitly_not_required",
+    "Workflows:write and actions:write explicitly documented as not required for README.md target path",
+    "Redaction proof across all 5 governance artifacts and generated preview file",
+    "Schema governance: 5 new schemas, projection schema extended, all 311 schemas valid"
+  ],
+  "intentionally_deferred": [
+    "Live PR publishing — requires all 8 gates pass, RIG_LIVE_AUTH_TESTS=1, valid token, --publish flag, and operation receipt infrastructure",
+    "Live publish button in cockpit — disabled with explicit reasons",
+    "Branch/file creation HTTP client — planned steps modeled but not activated",
+    "Operation receipt for live mutation — not yet required while dry-run only",
+    "Generalization to other public surfaces (project README, community health files) — Phase 1 scope is profile README only",
+    "Evidence rail integration for Profile README events"
+  ],
+  "discovered_out_of_scope_risks": [
+    "Profile README repo naming convention ({owner}/{owner}) is convention-based, not API-discoverable — platform limit documented in carte blanche risk register",
+    "Contents:write permission is high-risk — any future live publishing must have strict target path guards (.github/workflows/ prohibition)",
+    "Live network probes may trigger rate limits at scale — rate-limit ledger concept exists in research but not yet activated",
+    "Claims index filtering uses hardcoded rules — configurable inclusion policy would reduce false exclusions",
+    "Generated README template is fixed — per-user customization deferred"
+  ],
+  "recommended_next_phase": "phase_2 — Security Queue Manager",
+  "recommended_next_slice": "Phase 2 Slice 1: Unified Security Queue v1 — normalize code scanning, Dependabot, secret scanning, and security policy gaps into one governed queue artifact"
+}

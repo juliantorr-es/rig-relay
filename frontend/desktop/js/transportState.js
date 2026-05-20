@@ -14,6 +14,7 @@ const TransportStatus = Object.freeze({
   PROJECTION_WAITING: 'projection_waiting',
   READY: 'ready',
   DEGRADED: 'degraded',
+  BACKEND_STALE: 'backend_stale',
   DISCONNECTED: 'disconnected',
   FAILED: 'failed',
 });
@@ -49,6 +50,7 @@ const TransportEvent = Object.freeze({
   WEBSOCKET_CLOSE: 'websocket_close',
   WEBSOCKET_ERROR: 'websocket_error',
   FRONTEND_FATAL: 'frontend_fatal',
+  BRIDGE_BACKEND_STALE: 'bridge_backend_stale',
 });
 
 // Legacy event aliases — old code emits these; map them to canonical events.
@@ -83,6 +85,7 @@ const EVENT_TO_STATUS = Object.freeze({
   [TransportEvent.WEBSOCKET_CLOSE]: TransportStatus.DISCONNECTED,
   [TransportEvent.WEBSOCKET_ERROR]: TransportStatus.DEGRADED,
   [TransportEvent.FRONTEND_FATAL]: TransportStatus.FAILED,
+  [TransportEvent.BRIDGE_BACKEND_STALE]: TransportStatus.BACKEND_STALE,
 });
 
 // ── Human-readable labels ───────────────────────────────────────────
@@ -96,6 +99,7 @@ const STATUS_LABELS = Object.freeze({
   [TransportStatus.PROJECTION_WAITING]: 'Projection Waiting…',
   [TransportStatus.READY]: 'Ready',
   [TransportStatus.DEGRADED]: 'Degraded',
+  [TransportStatus.BACKEND_STALE]: 'Backend Stale',
   [TransportStatus.DISCONNECTED]: 'Disconnected',
   [TransportStatus.FAILED]: 'Failed',
 });
@@ -111,6 +115,7 @@ const STATUS_CHIP_CLASS = Object.freeze({
   [TransportStatus.PROJECTION_WAITING]: 'ok',
   [TransportStatus.READY]: 'ok',
   [TransportStatus.DEGRADED]: 'warn',
+  [TransportStatus.BACKEND_STALE]: 'warn',
   [TransportStatus.DISCONNECTED]: 'warn',
   [TransportStatus.FAILED]: 'warn',
 });
@@ -159,12 +164,19 @@ const ALLOWED_TRANSITIONS = Object.freeze({
   ]),
   [TransportStatus.READY]: new Set([
     TransportStatus.PROJECTION_WAITING,
+    TransportStatus.BACKEND_STALE,
     TransportStatus.DISCONNECTED,
     TransportStatus.DEGRADED,
     TransportStatus.FAILED,
   ]),
   [TransportStatus.DEGRADED]: new Set([
     TransportStatus.CONNECTING,
+    TransportStatus.DISCONNECTED,
+    TransportStatus.FAILED,
+  ]),
+  [TransportStatus.BACKEND_STALE]: new Set([
+    TransportStatus.READY,
+    TransportStatus.DEGRADED,
     TransportStatus.DISCONNECTED,
     TransportStatus.FAILED,
   ]),
@@ -229,6 +241,19 @@ export function createTransportStateAuthority(options = {}) {
   let _transitionCount = 0;
   let _lastBreadcrumbResult = null;
   let _lastProjectionTimestamp = null;
+  let _backendState = {
+    state: '',
+    lastAt: null,
+    sessionId: '',
+    idleSequence: 0,
+    activeWorkCount: 0,
+    isStale: false,
+  };
+  let _closeInfo = {
+    code: null,
+    reason: '',
+    wasClean: false,
+  };
   let _onTransition = typeof options.onTransition === 'function' ? options.onTransition : null;
   let _onGlobalStateChange = typeof options.onGlobalStateChange === 'function' ? options.onGlobalStateChange : null;
 
@@ -279,6 +304,13 @@ export function createTransportStateAuthority(options = {}) {
     // Error tracking
     if (event === TransportEvent.WEBSOCKET_ERROR || event === TransportEvent.AUTH_FAILED || event === TransportEvent.FRONTEND_FATAL) {
       _state.transport.lastError = detail.reason || detail.message || event;
+    }
+
+    // Close code/reason tracking from websocket_close event
+    if (event === TransportEvent.WEBSOCKET_CLOSE) {
+      if (detail.close_code !== undefined) _closeInfo.code = detail.close_code;
+      if (detail.close_reason !== undefined) _closeInfo.reason = detail.close_reason;
+      if (detail.was_clean !== undefined) _closeInfo.wasClean = detail.was_clean;
     }
 
     // Handshake ID forwarding
@@ -337,6 +369,8 @@ export function createTransportStateAuthority(options = {}) {
       transitionCount: _transitionCount,
       lastBreadcrumbResult: _lastBreadcrumbResult,
       lastProjectionTimestamp: _lastProjectionTimestamp,
+      backendState: { ..._backendState },
+      closeInfo: { ..._closeInfo },
     };
   }
 
@@ -360,6 +394,25 @@ export function createTransportStateAuthority(options = {}) {
     _onGlobalStateChange = typeof callback === 'function' ? callback : null;
   }
 
+  function setBackendState(info) {
+    if (info) {
+      _backendState.state = info.state || '';
+      _backendState.lastAt = info.last_at || null;
+      _backendState.sessionId = info.session_id || '';
+      if (typeof info.idle_sequence === 'number') _backendState.idleSequence = info.idle_sequence;
+      if (typeof info.active_work_count === 'number') _backendState.activeWorkCount = info.active_work_count;
+      _backendState.isStale = _backendState.lastAt ? (Date.now() - _backendState.lastAt > 30000) : false;
+    }
+  }
+
+  function getBackendState() {
+    return { ..._backendState };
+  }
+
+  function getCloseInfo() {
+    return { ..._closeInfo };
+  }
+
   // Legacy compat: the old machine exposed .transition() — alias to dispatch
   function transition(event, detail) {
     return dispatch(event, detail);
@@ -374,6 +427,9 @@ export function createTransportStateAuthority(options = {}) {
     setHandshakeId,
     setOnTransition,
     setOnGlobalStateChange,
+    setBackendState,
+    getBackendState,
+    getCloseInfo,
   };
 }
 

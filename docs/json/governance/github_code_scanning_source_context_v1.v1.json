@@ -1,0 +1,101 @@
+{
+  "schema_version": "rig.github.code_scanning_source_context.v1",
+  "generated_at": "2026-05-20T17:45:43.058597+00:00",
+  "content_light": true,
+  "source_queue_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_queue_v1.v1.json",
+  "source_remediation_plan_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_remediation_plan_v1.v1.json",
+  "source_patch_proposal_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_proposal_v1.v1.json",
+  "source_patch_preview_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_preview_v1.v1.json",
+  "selected_alert_number": 5,
+  "selected_alert_identifier_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+  "source_context_status": "blocked_source_context_unavailable",
+  "acquisition_mode": "no_live_access",
+  "live_api_attempted": false,
+  "live_api_gate_status": {
+    "RIG_LIVE_AUTH_TESTS_set": false,
+    "token_provided": false,
+    "live_allowed": false,
+    "live_skipped_reason": "default_no_live_access"
+  },
+  "endpoints_modeled_or_called": [
+    {
+      "endpoint_family": "code_scanning_alert",
+      "method": "GET",
+      "permission": "security_events:read",
+      "called": false,
+      "purpose": "retrieve alert context including most_recent_instance"
+    },
+    {
+      "endpoint_family": "code_scanning_alert_instances",
+      "method": "GET",
+      "permission": "security_events:read",
+      "called": false,
+      "purpose": "retrieve alert instance details"
+    },
+    {
+      "endpoint_family": "repo_contents",
+      "method": "GET",
+      "permission": "contents:read",
+      "called": false,
+      "purpose": "retrieve affected source file content"
+    }
+  ],
+  "permissions_required": {
+    "read": [
+      "security_events:read",
+      "metadata:read",
+      "contents:read"
+    ],
+    "mutation_later": [
+      "contents:write",
+      "pull_requests:write",
+      "security_events:write"
+    ]
+  },
+  "alert_instance_summary": {
+    "alert_number": 5,
+    "severity": "warning",
+    "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+    "has_most_recent_instance_data": false,
+    "instance_accessible": false
+  },
+  "source_file_summary": {
+    "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+    "file_accessible": false,
+    "contents_read_permission_needed": true,
+    "contents_read_granted": false
+  },
+  "source_slice_summary": {
+    "slice_available": false,
+    "slice_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+    "slice_sha256": null,
+    "slice_byte_count": null,
+    "slice_line_count": null,
+    "slice_redaction_scan": null,
+    "raw_slice_persisted": false
+  },
+  "context_hashes": {
+    "alert_instance_hash": null,
+    "file_content_hash": null,
+    "source_slice_hash": null
+  },
+  "safe_context_available": false,
+  "unsafe_context_reasons": [
+    "no_live_api_access",
+    "RIG_LIVE_AUTH_TESTS_not_set",
+    "source_file_not_locally_accessible"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 16,
+    "raw_source_content_present": false,
+    "raw_response_body_present": false
+  },
+  "content_light_status": "context_content_light",
+  "local_mutation_status": "disabled",
+  "remote_mutation_status": "disabled",
+  "recommended_next_slice": "Phase 2 Slice 6 — generate actual dry-run candidate diff from acquired source context"
+}

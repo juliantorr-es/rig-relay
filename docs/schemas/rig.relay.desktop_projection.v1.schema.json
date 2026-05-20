@@ -21,7 +21,10 @@
     "integrations",
     "warnings",
     "read_only_actions",
-    "service_state"
+    "service_state",
+    "profile_readme_lane",
+    "resources",
+    "spiderweb_topology"
   ],
   "properties": {
     "schema_version": {
@@ -533,10 +536,28 @@
     },
     "warnings": {
       "type": "array",
-      "items": {
-        "type": "string"
+      "description": "Non-blocking warnings about missing or degraded data sources.",
+      "items": { "type": "string" }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource projection snapshot from event fabric. Read-side only.",
+      "properties": {
+        "available": {"type": "boolean"},
+        "schema_version": {"type": "string"},
+        "bridge_backend_health": {"type": "string"},
+        "bridge_status_age_ms": {"type": "integer"},
+        "projection_freshness": {"type": "string"},
+        "reconnect_pressure": {"type": "string"},
+        "event_queue_pressure": {"type": "string"},
+        "consumer_error_count": {"type": "integer"},
+        "github_rate_limit_health": {"type": "string"},
+        "test_validation_pressure": {"type": "string"},
+        "recommended_scheduling_hints": {"type": "array", "items": {"type": "string"}},
+        "degraded_reasons": {"type": "array", "items": {"type": "string"}},
+        "redaction_status": {"type": "string"}
       },
-      "description": "Non-blocking warnings about missing or degraded data sources."
+      "required": ["available"]
     },
     "read_only_actions": {
       "type": "array",
@@ -557,6 +578,27 @@
         "local_auth_enabled": { "type": "boolean" },
         "passkey_registered": { "type": "boolean" },
         "telemetry_mode": { "type": "string" }
+      },
+      "required": ["available"]
+    },
+    "profile_readme_lane": {
+      "type": "object",
+      "description": "Profile README publish lane projection. Content-light summary of 4 governance artifacts.",
+      "properties": {
+        "available": {"type": "boolean"},
+        "owner": {"type": "string"},
+        "mutation_lane_id": {"type": "string"},
+        "operation_mode": {"type": "string"},
+        "publish_gate_status": {"type": "string"},
+        "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+        "gates": {"type": "array", "items": {"type": "object", "properties": {"gate": {"type": "string"}, "passed": {"type": "boolean"}, "detail": {"type": "string"}}}},
+        "planned_steps": {"type": "array", "items": {"type": "object", "properties": {"step": {"type": "integer"}, "operation": {"type": "string"}, "permission": {"type": "string"}, "description": {"type": "string"}}}},
+        "permissions": {"type": "object"},
+        "preview": {"type": "object"},
+        "permission_audit": {"type": "object"},
+        "source_artifacts": {"type": "object"},
+        "publish_disabled": {"type": "boolean"},
+        "publish_disabled_reasons": {"type": "array", "items": {"type": "string"}}
       },
       "required": ["available"]
     },

@@ -1,0 +1,147 @@
+{
+  "schema_version": "rig.github.security_lifecycle_program_inventory.v1",
+  "generated_at": "2026-05-20T18:42:59.797386+00:00",
+  "content_light": true,
+  "total_artifacts": 12,
+  "present_count": 12,
+  "missing_count": 0,
+  "missing_ids": [],
+  "artifacts": [
+    {
+      "artifact_id": "security_queue",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_queue_v1.v1.json",
+      "exists": true,
+      "sha256": "7d1d87ff25430af8997d072871cbc034f5d25b6c4e24a9126d71790b1291fd33",
+      "slice": 1,
+      "schema_version": "rig.github.security_queue.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "remediation_plan",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_remediation_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "d2b48dfd060b1925b4030e1fa0fe96c45424dc3c4aa3e98f0016f64778b0ca8d",
+      "slice": 2,
+      "schema_version": "rig.github.security_remediation_plan.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "patch_proposal",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_proposal_v1.v1.json",
+      "exists": true,
+      "sha256": "2eb129922d96f8fa42ebb7208cc34db302ffc0b9b9d9f8688f5e8c0823fbf3e9",
+      "slice": 3,
+      "schema_version": "rig.github.code_scanning_patch_proposal.v1",
+      "content_light": true,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "patch_preview",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_preview_v1.v1.json",
+      "exists": true,
+      "sha256": "86994932821a9cbc8eb2420d8e5ad25f49b3b1b391d911564fe389d5d230cabe",
+      "slice": 4,
+      "schema_version": "rig.github.code_scanning_patch_preview.v1",
+      "content_light": true,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "source_context",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_source_context_v1.v1.json",
+      "exists": true,
+      "sha256": "586d56296ade8c7b5b4fffd4704588510a558314eba72b42bd40f67997730681",
+      "slice": 5,
+      "schema_version": "rig.github.code_scanning_source_context.v1",
+      "content_light": true,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "candidate_diff",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/code_scanning_dry_run_candidate_diff_v1.v1.json",
+      "exists": true,
+      "sha256": "3730acc571268d409d56d00f5b0878b36ff6c402a6ba891a62305b3b16ffbef4",
+      "slice": 6,
+      "schema_version": "rig.github.code_scanning_dry_run_candidate_diff.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "pr_plan",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/code_scanning_pr_creation_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "18118452f092e5fe814a83a89ec497e5931cc0853eb258e4ec9e05754d9cd1df",
+      "slice": 7,
+      "schema_version": "rig.github.code_scanning_pr_creation_plan.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "mutation_readiness",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/code_scanning_pr_mutation_readiness_v1.v1.json",
+      "exists": true,
+      "sha256": "4d0bee16912a0b0ca0d8d0fa3aa8dc814f4ffd52faacacae2601f13f11415a46",
+      "slice": 8,
+      "schema_version": "rig.github.code_scanning_pr_mutation_readiness.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "mutation_execution",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_pr_mutation_execution_v1.v1.json",
+      "exists": true,
+      "sha256": "1bdecff562635ccc5bab94091e8d8536586a94320b034b11d732669ecc0a6af5",
+      "slice": 9,
+      "schema_version": "rig.github.code_scanning_pr_mutation_execution.v1",
+      "content_light": true,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "post_pr_lifecycle",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_post_pr_lifecycle_v1.v1.json",
+      "exists": true,
+      "sha256": "b076efe8e19b72980bd16c9f7749736a7423859a1f357548e618908d5d2159a1",
+      "slice": 10,
+      "schema_version": "rig.github.code_scanning_post_pr_lifecycle.v1",
+      "content_light": true,
+      "remote_mutation": false,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "permission_matrix",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_permission_matrix_v1.v1.json",
+      "exists": true,
+      "sha256": "f70a0b94513723523c001349e49277493a6fd69234bbff2833fb657aa06c26df",
+      "slice": 8,
+      "schema_version": "rig.github.code_scanning_permission_matrix.v1",
+      "content_light": true,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    },
+    {
+      "artifact_id": "alert_state_plan",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_alert_state_plan_v1.v1.json",
+      "exists": true,
+      "sha256": "50377e2c76b64c817045c40100cdb27f44f299475309be6bfc612fbcc4e74455",
+      "slice": 10,
+      "schema_version": "not_loaded",
+      "content_light": false,
+      "remote_mutation": true,
+      "permission_categories": "various"
+    }
+  ],
+  "redaction_summary": {
+    "content_light": true,
+    "forbidden_fields_present": false
+  }
+}

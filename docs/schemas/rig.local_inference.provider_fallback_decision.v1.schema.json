@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.provider_fallback_decision.v1",
+  "title": "Local Inference Provider Fallback Decision",
+  "type": "object",
+  "required": ["schema_version", "decision_id", "decided_at", "local_inference_selected", "local_inference_blocked"],
+  "properties": {
+    "schema_version": { "const": "rig.local_inference.provider_fallback_decision.v1" },
+    "decision_id": { "type": "string" },
+    "decided_at": { "type": "string", "format": "date-time" },
+    "local_inference_selected": { "type": "boolean" },
+    "local_inference_blocked": { "type": "boolean" },
+    "block_reasons": { "type": "array", "items": { "type": "string" } },
+    "fallback_provider_class": { "type": "string" },
+    "fallback_rationale": { "type": "string" },
+    "requires_fallback_for_missing_capability": { "type": "boolean" },
+    "requires_fallback_for_missing_benchmark": { "type": "boolean" },
+    "requires_fallback_for_failed_probe": { "type": "boolean" },
+    "requires_fallback_for_degraded_diagnostics": { "type": "boolean" },
+    "requires_fallback_for_missing_approval": { "type": "boolean" },
+    "evidence_receipts": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

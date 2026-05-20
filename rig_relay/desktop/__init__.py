@@ -5,3 +5,12 @@ Target package for migrating:
   scripts/rig_relay_desktop_cockpit.py
   frontend/desktop/
 """
+
+from __future__ import annotations
+
+from rig_relay.desktop.bridge_runtime_state import (
+    BridgeRuntimeState,
+    BridgeRuntimeStateTracker,
+)
+
+__all__ = ["BridgeRuntimeState", "BridgeRuntimeStateTracker"]

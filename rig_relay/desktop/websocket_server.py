@@ -75,6 +75,7 @@ from rig_relay.desktop.bridge_refusals import (
     build_bridge_refusal_trace_event,
     enforce_intent,
 )
+from rig_relay.desktop.bridge_runtime_state import BridgeRuntimeStateTracker
 from rig_relay.desktop.correlation import (
     DesktopCorrelation,
     hash_dict_payload,
@@ -269,6 +270,11 @@ class ProjectionWebSocketServer:
         self._protocol_trackers: dict[str, ProtocolTracker] = {}
         self._ws_handshake_id: dict[int, str] = {}
         self._first_projection_sent = False
+        self._first_bridge_status_sent = False
+        self._event_store: Any = None
+        self._runtime_trackers: dict[str, BridgeRuntimeStateTracker] = {}
+        self._bridge_status_interval: float = 10.0
+        self._bridge_status_never_drop: bool = True
         self._progress_buffer = ProgressEventBuffer()
         self._seq = 0
         self._server: Any = None
@@ -298,10 +304,7 @@ class ProjectionWebSocketServer:
         self._per_connection_pending: dict[str, list[dict]] = {}
         self._MAX_PER_CONNECTION_QUEUE = 64
         self._NEVER_DROP_KINDS: frozenset[str] = frozenset({"error", "intent_result"})
-        self._COALESCE_KINDS: frozenset[str] = frozenset({
-            "lifecycle_event",
-            "heartbeat",
-        })
+        self._COALESCE_KINDS: frozenset[str] = frozenset({"heartbeat"})
         self._handler_tasks: set[asyncio.Task[Any]] = set()
         self._DRAIN_TIMEOUT = 10.0
 
@@ -398,6 +401,16 @@ class ProjectionWebSocketServer:
                 return self._protocol_trackers.get(handshake_id)
             return None
 
+    async def _get_runtime_tracker(
+        self, websocket: Any
+    ) -> BridgeRuntimeStateTracker | None:
+        ws_id = id(websocket)
+        async with self._tracker_lock:
+            handshake_id = self._ws_handshake_id.get(ws_id)
+            if handshake_id:
+                return self._runtime_trackers.get(handshake_id)
+            return None
+
     def _wrap_envelope(
         self,
         kind: str,
@@ -424,7 +437,7 @@ class ProjectionWebSocketServer:
             safe_summary=safe_summary or {},
             trace_id=trace_id,
         )
-        envelope = msg.model_dump()
+        envelope = msg.model_dump(mode="json")
         serialized_bytes = len(
             json.dumps(envelope, sort_keys=True, ensure_ascii=False).encode("utf-8")
         )
@@ -619,6 +632,12 @@ class ProjectionWebSocketServer:
             pass
 
     async def _start_heartbeat(self, websocket: Any, tracker: ProtocolTracker) -> None:
+        """Protocol/transport liveness heartbeat — 15s interval.
+
+        Separate from bridge_status (application liveness) and content
+        projection (data freshness). Uses protocol heartbeat envelopes
+        (BridgeMessageKind.HEARTBEAT), not projection payloads.
+        """
         try:
             while True:
                 await asyncio.sleep(15)
@@ -633,6 +652,190 @@ class ProjectionWebSocketServer:
                 )
         except asyncio.CancelledError:
             pass
+        except Exception:
+            pass
+
+    async def _start_idle_projection_loop(
+        self,
+        websocket: Any,
+        tracker: ProtocolTracker,
+        runtime_tracker: BridgeRuntimeStateTracker,
+    ) -> None:
+        """Backend bridge_status projection loop — 10s interval.
+
+        Emits a content-light bridge_status payload immediately on connect,
+        then periodically while the connection is alive. This proves backend
+        liveness even when no agent work is active.
+
+        Bridge_status is NEVER digest-deduped — the sequence and timestamp
+        always advance. This is distinct from:
+        - protocol heartbeat (transport liveness, 15s)
+        - content projection (data freshness, on-request or subscribe)
+        - subscription polling (digest-deduped, on-request)
+        """
+        self._emit_bridge_lifecycle_event(
+            websocket,
+            runtime_tracker,
+            "bridge.backend_loop_started",
+            {"handshake_id": runtime_tracker.handshake_id},
+        )
+        first_sent = False
+        try:
+            while True:
+                closed = bool(getattr(websocket, "closed", False))
+                if closed:
+                    break
+                if not first_sent:
+                    first_sent = True
+                    if not self._first_bridge_status_sent:
+                        self._first_bridge_status_sent = True
+                        self._emit_probe(
+                            "bridge:18",
+                            "first bridge_status sent",
+                            {"handshake_id": runtime_tracker.handshake_id},
+                        )
+                status_payload = runtime_tracker.build_bridge_status()
+                status_payload["event_type"] = "bridge.status"
+                self._emit_bridge_lifecycle_event(
+                    websocket,
+                    runtime_tracker,
+                    "bridge.first_bridge_status_built",
+                    {
+                        "keys": sorted(status_payload.keys()),
+                        "bridge_runtime_state": status_payload.get(
+                            "bridge_runtime_state"
+                        ),
+                    },
+                )
+                envelope = self._wrap_envelope(
+                    kind="lifecycle_event", payload=status_payload, tracker=tracker
+                )
+                if envelope is not None:
+                    envelope_kind = envelope.get("kind")
+                    envelope_keys = sorted(envelope.keys()) if envelope else []
+                    self._emit_bridge_lifecycle_event(
+                        websocket,
+                        runtime_tracker,
+                        "bridge.first_bridge_status_envelope_built",
+                        {"kind": envelope_kind, "keys": envelope_keys},
+                    )
+                    self._emit_bridge_lifecycle_event(
+                        websocket,
+                        runtime_tracker,
+                        "bridge.first_bridge_status_send_attempt",
+                        {"kind": envelope_kind},
+                    )
+                    await self._send_with_flow_control(
+                        websocket, envelope, tracker, "lifecycle_event"
+                    )
+                    self._emit_bridge_lifecycle_event(
+                        websocket,
+                        runtime_tracker,
+                        "bridge.first_bridge_status_send_completed",
+                        {},
+                    )
+                self._emit_bridge_lifecycle_event(
+                    websocket,
+                    runtime_tracker,
+                    "bridge.heartbeat_sent",
+                    {"idle_sequence": runtime_tracker.idle_sequence},
+                )
+                await asyncio.sleep(self._bridge_status_interval)
+                if bool(getattr(websocket, "closed", False)):
+                    break
+                runtime_tracker.next_idle_sequence()
+        except asyncio.CancelledError:
+            self._emit_bridge_lifecycle_event(
+                websocket,
+                runtime_tracker,
+                "bridge.backend_loop_stopped",
+                {"reason": "cancelled"},
+            )
+        except ConnectionError:
+            self._emit_bridge_lifecycle_event(
+                websocket,
+                runtime_tracker,
+                "bridge.backend_loop_stopped",
+                {"reason": "connection_error"},
+            )
+        except Exception as exc:
+            self._emit_bridge_lifecycle_event(
+                websocket,
+                runtime_tracker,
+                "bridge.projection_loop_error",
+                {"error": str(exc)[:200]},
+            )
+
+    def _emit_bridge_lifecycle_event(
+        self,
+        websocket: Any,
+        runtime_tracker: BridgeRuntimeStateTracker | None,
+        event_name: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        if runtime_tracker is None:
+            return
+        from rig_relay.tracing.models import (
+            RigTraceEvent,
+            TraceEventKind,
+            TraceStatus,
+            new_span_id,
+            new_trace_id,
+        )
+
+        event = RigTraceEvent(
+            trace_id=new_trace_id(),
+            span_id=new_span_id(),
+            event_kind=TraceEventKind.span_event,
+            name=event_name,
+            status=TraceStatus.ok,
+            payload={
+                "handshake_id": runtime_tracker.handshake_id,
+                "backend_session_id": runtime_tracker.backend_session_id,
+                "bridge_runtime_state": runtime_tracker.state.value,
+                "idle_sequence": runtime_tracker.idle_sequence,
+                **(details or {}),
+            },
+        )
+        if self._trace_recorder is not None:
+            try:
+                self._trace_recorder.store.write(event)
+            except Exception:
+                pass
+        self._publish_event_fabric(
+            event_name=event_name,
+            handshake_id=runtime_tracker.handshake_id,
+            backend_session_id=runtime_tracker.backend_session_id,
+            bridge_runtime_state=runtime_tracker.state.value,
+            idle_sequence=runtime_tracker.idle_sequence,
+            details=details,
+        )
+
+    def _publish_event_fabric(
+        self,
+        *,
+        event_name: str,
+        handshake_id: str,
+        backend_session_id: str = "",
+        bridge_runtime_state: str = "",
+        idle_sequence: int = 0,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        try:
+            from rig_relay.events.bridge_integration import bridge_event_from_lifecycle
+
+            fabric_event = bridge_event_from_lifecycle(
+                event_name=event_name,
+                handshake_id=handshake_id,
+                correlation_id=getattr(self, "_correlation_id", ""),
+                backend_session_id=backend_session_id,
+                bridge_runtime_state=bridge_runtime_state,
+                idle_sequence=idle_sequence,
+                details=details,
+            )
+            store = getattr(self, "_event_store", None)
+            if store is not None:
+                store.append(fabric_event)
         except Exception:
             pass
 
@@ -961,6 +1164,30 @@ class ProjectionWebSocketServer:
                             _heartbeat_task = _spawn(
                                 self._start_heartbeat(websocket, tracker)
                             )
+                            runtime_tracker = BridgeRuntimeStateTracker(
+                                handshake_id=handshake_id,
+                                backend_session_id=f"backend_{secrets.token_hex(8)}",
+                            )
+                            async with self._tracker_lock:
+                                self._runtime_trackers[handshake_id] = runtime_tracker
+                            runtime_tracker.set_ready()
+                            self._emit_bridge_lifecycle_event(
+                                websocket,
+                                runtime_tracker,
+                                "bridge.connection_begin",
+                                {"transport_id": transport_id},
+                            )
+                            self._emit_bridge_lifecycle_event(
+                                websocket,
+                                runtime_tracker,
+                                "bridge.first_projection_sent",
+                                {"state": runtime_tracker.state.value},
+                            )
+                            _idle_loop_task = _spawn(
+                                self._start_idle_projection_loop(
+                                    websocket, tracker, runtime_tracker
+                                )
+                            )
                     continue
 
                 # Check for v1 bridge protocol envelope
@@ -1083,6 +1310,18 @@ class ProjectionWebSocketServer:
                 if handshake_id:
                     self._protocol_trackers.pop(handshake_id, None)
                     self._per_connection_pending.pop(handshake_id, None)
+                    rt = self._runtime_trackers.pop(handshake_id, None)
+                    if rt is not None:
+                        rt.set_disconnected()
+                        self._emit_bridge_lifecycle_event(
+                            websocket,
+                            rt,
+                            "bridge.disconnect",
+                            {
+                                "state": rt.state.value,
+                                "idle_sequence": rt.idle_sequence,
+                            },
+                        )
             async with self._lock:
                 self._connections.discard(websocket)
                 if subscribe_task is not None and self._active_subscriptions > 0:
@@ -1608,6 +1847,28 @@ class ProjectionWebSocketServer:
         self._trace_writer = writer
 
     async def _handle_desktop_intent(
+        self,
+        websocket: Any,
+        message: dict[str, Any],
+        subscribe_task: asyncio.Task[None] | None = None,
+        tracker: ProtocolTracker | None = None,
+        trace_id: str = "",
+    ) -> asyncio.Task[None] | None:
+        intent_msg = {k: v for k, v in message.items() if k != "type"}
+        if trace_id:
+            intent_msg["trace_id"] = trace_id
+        rt = await self._get_runtime_tracker(websocket)
+        if rt is not None:
+            rt.record_work_started()
+        try:
+            return await self._handle_desktop_intent_core(
+                websocket, message, subscribe_task, tracker, trace_id
+            )
+        finally:
+            if rt is not None:
+                rt.record_work_finished()
+
+    async def _handle_desktop_intent_core(
         self,
         websocket: Any,
         message: dict[str, Any],

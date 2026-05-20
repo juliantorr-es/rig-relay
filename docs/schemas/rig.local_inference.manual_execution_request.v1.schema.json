@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.local_inference.manual_execution_request.v1",
+  "title": "Manual Execution Request",
+  "type": "object",
+  "required": ["schema_version", "request_id", "prompt_sha256", "prompt_byte_count"],
+  "properties": {
+    "schema_version": { "const": "rig.local_inference.manual_execution_request.v1" },
+    "request_id": { "type": "string" },
+    "task_profile": { "type": "string" },
+    "request_class": { "type": "string", "enum": ["chat", "completion", "embedding", "tool_use", "structured_output", "vision"] },
+    "endpoint_hash": { "type": "string" },
+    "model_safe_id": { "type": "string" },
+    "prompt_sha256": { "type": "string" },
+    "prompt_byte_count": { "type": "integer" },
+    "prompt_line_count": { "type": "integer" },
+    "prompt_redaction_status": { "type": "string" },
+    "max_output_tokens": { "type": "integer" },
+    "temperature": { "type": "number" },
+    "streaming_requested": { "type": "boolean" },
+    "structured_output_requested": { "type": "boolean" },
+    "tool_calling_requested": { "type": "boolean" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "approval_id": { "type": "string" },
+    "selection_policy_receipt_hash": { "type": "string" },
+    "benchmark_summary_hash": { "type": "string" }
+  }
+}

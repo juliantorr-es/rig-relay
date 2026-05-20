@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.profile_readme_preview.v1.schema.json",
+  "title": "GitHub Profile README Preview v1",
+  "description": "Content-light local preview artifact for profile README changes. No raw content stored.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "owner", "content_light", "remote_mutation", "source_readme_present", "preview_status", "files", "safety_checks"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.profile_readme_preview.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "owner": {"type": "string"},
+    "profile_repo": {"type": "string"},
+    "profile_repo_hash": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "dry_run": {"type": "boolean"},
+    "live_network": {"type": "boolean"},
+    "source_readme_present": {"type": "boolean"},
+    "source_readme_sha256": {"type": ["string", "null"]},
+    "preview_status": {"type": "string", "enum": ["ready_for_preview", "blocked_no_source", "blocked_dry_run"]},
+    "files": {"type": "array", "items": {"$ref": "#/definitions/preview_file"}},
+    "safety_checks": {"$ref": "#/definitions/safety_checks"},
+    "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "generated_preview_path": {"type": ["string", "null"]},
+    "generated_preview_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "generated_preview_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "generated_preview_line_count": {"type": ["integer", "null"], "minimum": 0},
+    "source_claim_count": {"type": ["integer", "null"], "minimum": 0},
+    "included_claim_count": {"type": ["integer", "null"], "minimum": 0},
+    "excluded_claim_count": {"type": ["integer", "null"], "minimum": 0},
+    "excluded_claim_reasons": {"type": "array", "items": {"type": "string"}},
+    "public_surface_classification": {"type": ["string", "null"]},
+    "permission_neutrality_status": {"type": ["string", "null"]},
+    "publish_blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "redaction_scan": {"$ref": "#/definitions/redaction"},
+    "included_claims": {"type": "array", "items": {"$ref": "#/definitions/claim_entry"}},
+    "excluded_claims": {"type": "array", "items": {"$ref": "#/definitions/claim_entry"}},
+    "redaction_status": {"$ref": "#/definitions/redaction"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "preview_file": {
+      "type": "object",
+      "required": ["file_path", "operation", "content_light"],
+      "properties": {
+        "file_path": {"type": "string"},
+        "file_path_hash": {"type": "string"},
+        "surface_type": {"type": "string", "const": "profile_readme"},
+        "operation": {"type": "string", "enum": ["create_new", "update_existing"]},
+        "source_sha256": {"type": ["string", "null"]},
+        "source_size_bytes": {"type": ["integer", "null"]},
+        "source_line_count": {"type": ["integer", "null"]},
+        "content_light": {"type": "boolean", "const": true}
+      },
+      "additionalProperties": true
+    },
+    "safety_checks": {
+      "type": "object",
+      "required": ["no_private_content", "no_credentials", "no_raw_markdown_stored", "content_light_enforced"],
+      "properties": {
+        "no_private_content": {"type": "boolean", "const": true},
+        "no_credentials": {"type": "boolean", "const": true},
+        "no_raw_markdown_stored": {"type": "boolean", "const": true},
+        "content_light_enforced": {"type": "boolean", "const": true}
+      },
+      "additionalProperties": false
+    },
+    "redaction": {
+      "type": "object",
+      "required": ["content_light", "forbidden_fields_present"],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_fields_present": {"type": "boolean", "const": false}
+      },
+      "additionalProperties": false
+    },
+    "claim_entry": {
+      "type": "object",
+      "required": ["claim_id", "inclusion_decision"],
+      "properties": {
+        "claim_id": {"type": "string"},
+        "claim_category": {"type": "string"},
+        "claim_summary": {"type": "string"},
+        "evidence_refs": {"type": "array", "items": {"type": "string"}},
+        "support_status": {"type": "string"},
+        "confidence": {"type": "string"},
+        "public_wording_risk": {"type": "string"},
+        "inclusion_decision": {"type": "string", "enum": ["included", "excluded"]},
+        "disabled_reason": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

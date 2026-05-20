@@ -62,7 +62,7 @@ export function createLoopSupervisor(dispatch) {
   return Object.freeze({ startLoop, cancelLoop, cancelAllLoops, isLoopRunning });
 }
 
-export function startFreshnessLoop(getState, dispatch, loopSupervisor) {
+export function startFreshnessLoop(getState, dispatch, loopSupervisor, transportAuthority) {
   loopSupervisor.startLoop(
     LoopType.PROJECTION_FRESHNESS,
     () => {
@@ -73,6 +73,25 @@ export function startFreshnessLoop(getState, dispatch, loopSupervisor) {
       }
     },
     15000,
+  );
+
+  loopSupervisor.startLoop(
+    'bridgeBackendFreshness',
+    () => {
+      if (!transportAuthority) return;
+      const backend = transportAuthority.getBackendState ? transportAuthority.getBackendState() : null;
+      const isConnected = transportAuthority.isConnected ? transportAuthority.isConnected() : false;
+      if (!isConnected) return;
+      if (!backend || !backend.lastAt) return;
+      const age = Date.now() - backend.lastAt;
+      if (age > 30000) {
+        transportAuthority.dispatch('bridge_backend_stale', {
+          reason: 'No bridge_status received in ' + Math.round(age / 1000) + 's',
+          last_at: backend.lastAt,
+        });
+      }
+    },
+    10000,
   );
 }
 

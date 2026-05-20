@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_queue.v1.schema.json",
+  "title": "GitHub Security Queue v1",
+  "description": "Unified governed security queue normalizing code scanning, Dependabot, secret scanning, advisories, and policy gaps.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "source_artifacts", "input_surfaces", "queue_items", "queue_summary", "permission_summary", "risk_summary", "remediation_readiness_summary", "blocked_reasons", "redaction_summary", "content_light_status", "intentionally_deferred", "recommended_next_slice"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.security_queue.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "source_artifacts": {"type": "array", "items": {"$ref": "#/definitions/artifact_ref"}},
+    "input_surfaces": {"type": "array", "items": {"$ref": "#/definitions/input_surface"}},
+    "queue_items": {"type": "array", "items": {"$ref": "#/definitions/queue_item"}},
+    "queue_summary": {"$ref": "#/definitions/queue_summary"},
+    "permission_summary": {"type": "object"},
+    "risk_summary": {"type": "object"},
+    "remediation_readiness_summary": {"type": "object"},
+    "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+    "redaction_summary": {"type": "object"},
+    "content_light_status": {"type": "string"},
+    "intentionally_deferred": {"type": "array", "items": {"type": "string"}},
+    "recommended_next_slice": {"type": "string"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "artifact_ref": {
+      "type": "object",
+      "required": ["path", "present"],
+      "properties": {
+        "path": {"type": "string"}, "present": {"type": "boolean"}, "source_surface": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "input_surface": {
+      "type": "object",
+      "required": ["surface", "status"],
+      "properties": {
+        "surface": {"type": "string"},
+        "status": {"type": "string", "enum": ["collected", "not_available", "refused", "missing"]},
+        "item_count": {"type": "integer", "minimum": 0},
+        "live_fetch_status": {"type": "string"},
+        "blocked_reason": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "queue_item": {
+      "type": "object",
+      "required": ["queue_item_id", "source_surface", "severity", "state", "security_domain", "priority_score"],
+      "properties": {
+        "queue_item_id": {"type": "string"},
+        "source_surface": {"type": "string"},
+        "source_kind": {"type": "string", "enum": ["alert", "refusal", "advisory", "not_available", "policy_gap"]},
+        "alert_number": {"type": ["integer", "null"]},
+        "severity": {"type": "string"},
+        "state": {"type": "string"},
+        "security_domain": {"type": "string"},
+        "rule_id_hash": {"type": "string"}, "package_ecosystem": {"type": "string"},
+        "package_name_hash": {"type": "string"}, "ghsa_id_hash": {"type": "string"},
+        "secret_type": {"type": "string"},
+        "remediation_lane": {"type": "string"},
+        "required_permissions": {"type": "array", "items": {"type": "string"}},
+        "remediation_permissions": {"type": "array", "items": {"type": "string"}},
+        "mutation_required": {"type": "boolean"},
+        "remote_mutation_status": {"type": "string", "enum": ["disabled", "gated", "allowed_under_policy"]},
+        "local_mutation_status": {"type": "string"},
+        "content_light": {"type": "boolean", "const": true},
+        "redaction_status": {"type": "object"},
+        "priority_score": {"type": "integer", "minimum": 0},
+        "priority_reason": {"type": "string"},
+        "blocked_reasons": {"type": "array", "items": {"type": "string"}},
+        "recommended_next_action": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "queue_summary": {
+      "type": "object",
+      "required": ["total_queue_items", "severity_breakdown", "surface_breakdown", "blocked_item_count"],
+      "properties": {
+        "total_queue_items": {"type": "integer", "minimum": 0},
+        "severity_breakdown": {"type": "object"},
+        "surface_breakdown": {"type": "object"},
+        "remediation_lane_breakdown": {"type": "object"},
+        "blocked_item_count": {"type": "integer", "minimum": 0},
+        "unblocked_item_count": {"type": "integer", "minimum": 0},
+        "blocked_reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}

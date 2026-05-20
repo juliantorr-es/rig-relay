@@ -1,0 +1,17 @@
+{
+  "owner": "juliantorr-es",
+  "profile_repo_name": "github.com/juliantorr-es/juliantorr-es",
+  "profile_repo_hash": "a913de668ac0ac9f63aa54b58d74ce221240ef9fa46d42431891f4828d3ac44d",
+  "profile_repo_exists": "unknown_dry_run",
+  "readme_exists": "unknown_dry_run",
+  "readme_sha256": null,
+  "readme_size_bytes": null,
+  "readme_line_count": null,
+  "live_network": false,
+  "dry_run": true,
+  "status": "dry_run_available",
+  "issues_found": [
+    "needs_live_network_check"
+  ],
+  "evidence_paths": []
+}

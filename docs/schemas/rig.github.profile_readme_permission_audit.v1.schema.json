@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.profile_readme_permission_audit.v1.schema.json",
+  "title": "GitHub Profile README Permission Audit v1",
+  "description": "Publish PR permission audit for profile README changes. Compares required vs effective permissions.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "owner", "content_light", "remote_mutation", "proposed_operation", "required_read_permissions", "required_write_permissions", "explicitly_not_required", "permission_classification", "permission_gaps", "recommended_action"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.profile_readme_permission_audit.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "owner": {"type": "string"},
+    "profile_repo": {"type": "string"},
+    "profile_repo_hash": {"type": ["string", "null"]},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "dry_run": {"type": "boolean"},
+    "live_network": {"type": "boolean"},
+    "proposed_operation": {"type": "string", "const": "publish_profile_readme_via_pull_request"},
+    "required_read_permissions": {"type": "array", "items": {"$ref": "#/definitions/permission_entry"}},
+    "required_write_permissions": {"type": "array", "items": {"$ref": "#/definitions/permission_entry"}},
+    "explicitly_not_required": {"type": "array", "items": {"$ref": "#/definitions/not_required_entry"}},
+    "permission_classification": {"$ref": "#/definitions/classification"},
+    "permission_gaps": {"type": "array", "items": {"type": "string"}},
+    "recommended_action": {"type": "string", "enum": ["request_permissions", "ready_for_pr_creation_lane", "blocked_dry_run"]},
+    "live_permission_verification": {"$ref": "#/definitions/live_probe"},
+    "redaction_status": {"$ref": "#/definitions/redaction"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "permission_entry": {
+      "type": "object",
+      "required": ["permission_id", "access_level", "required", "status"],
+      "properties": {
+        "permission_id": {"type": "string"},
+        "permission_kind": {"type": "string"},
+        "access_level": {"type": "string"},
+        "required": {"type": "boolean"},
+        "purpose": {"type": "string"},
+        "status": {"type": "string", "enum": ["granted", "missing", "unknown"]},
+        "github_api_header": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "not_required_entry": {
+      "type": "object",
+      "required": ["permission_id", "reason"],
+      "properties": {
+        "permission_id": {"type": "string"},
+        "permission_kind": {"type": "string"},
+        "reason": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "classification": {
+      "type": "object",
+      "required": ["read_ready", "write_ready", "publish_possible", "workflows_write_needed", "actions_write_needed", "minimum_permission_set"],
+      "properties": {
+        "read_ready": {"type": "boolean"},
+        "write_ready": {"type": "boolean"},
+        "publish_possible": {"type": "string"},
+        "workflows_write_needed": {"type": "boolean", "const": false},
+        "actions_write_needed": {"type": "boolean", "const": false},
+        "contents_write_sufficient": {"type": "boolean"},
+        "pull_requests_write_sufficient": {"type": "boolean"},
+        "minimum_permission_set": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "redaction": {
+      "type": "object",
+      "required": ["content_light", "forbidden_fields_present"],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_fields_present": {"type": "boolean", "const": false}
+      },
+      "additionalProperties": false
+    },
+    "live_probe": {
+      "type": "object",
+      "required": ["live_verification_run", "probes", "summary"],
+      "properties": {
+        "live_verification_run": {"type": "boolean"},
+        "skipped_reason": {"type": ["string", "null"]},
+        "probes": {"type": "array", "items": {"$ref": "#/definitions/probe_entry"}},
+        "summary": {"$ref": "#/definitions/probe_summary"}
+      },
+      "additionalProperties": true
+    },
+    "probe_entry": {
+      "type": "object",
+      "required": ["endpoint_family", "method", "status_code", "accessible", "live_verification"],
+      "properties": {
+        "endpoint_family": {"type": "string"},
+        "method": {"type": "string"},
+        "route_pattern": {"type": "string"},
+        "expected_permission": {"type": "string"},
+        "status_code": {"type": "integer"},
+        "accessible": {"type": "boolean"},
+        "accepted_permissions_header": {"$ref": "#/definitions/accepted_header"},
+        "live_verification": {"type": "string"},
+        "redaction_status": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "accepted_header": {
+      "type": "object",
+      "required": ["raw_header_hash", "parse_success", "permission_count", "observed_permissions"],
+      "properties": {
+        "raw_header_hash": {"type": "string"},
+        "parse_success": {"type": "boolean"},
+        "parse_error": {"type": ["string", "null"]},
+        "permission_count": {"type": "integer", "minimum": 0},
+        "observed_permissions": {"type": "array", "items": {"$ref": "#/definitions/observed_perm"}}
+      },
+      "additionalProperties": true
+    },
+    "observed_perm": {
+      "type": "object",
+      "required": ["observed_key", "observed_level", "matched_static_id", "match_type", "classification"],
+      "properties": {
+        "observed_key": {"type": "string"},
+        "observed_level": {"type": "string"},
+        "matched_static_id": {"type": ["string", "null"]},
+        "matched_static_level": {"type": ["string", "null"]},
+        "match_type": {"type": "string", "enum": ["exact", "partial_level_mismatch", "unmodeled"]},
+        "classification": {"type": "string", "enum": ["sufficient", "ambiguous", "unmodeled"]}
+      },
+      "additionalProperties": true
+    },
+    "probe_summary": {
+      "type": "object",
+      "required": ["endpoints_probed", "endpoints_accessible", "accepted_headers_captured", "permissions_observed"],
+      "properties": {
+        "endpoints_probed": {"type": "integer", "minimum": 0},
+        "endpoints_accessible": {"type": "integer", "minimum": 0},
+        "accepted_headers_captured": {"type": "integer", "minimum": 0},
+        "permissions_observed": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}

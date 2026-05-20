@@ -66,6 +66,8 @@ const modeDefaults = {
     missionBoard: 'standard',
     ralphScout: 'standard',
     ralphLifecycle: 'standard',
+    profileReadmeLane: 'standard',
+    spiderwebTopology: 'standard',
     validationSummary: 'compact',
     storageBudget: 'compact',
     intentResult: 'compact',

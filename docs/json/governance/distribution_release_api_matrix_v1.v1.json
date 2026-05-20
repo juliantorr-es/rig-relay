@@ -1,0 +1,236 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_api_matrix.v1",
+  "apis": [
+    {
+      "surface_id": "dist-api:app_store_connect",
+      "vendor": "apple",
+      "channel_ids": [
+        "dist-channel:apple_app_store",
+        "dist-channel:apple_testflight"
+      ],
+      "auth_model": "JWT signed with App Store Connect API key (ES256)",
+      "best_auth_boundary_for_rig": "API key + JWT, stored encrypted",
+      "supported_reads": [
+        "apps",
+        "builds",
+        "beta_groups",
+        "review_submissions",
+        "sales_reports"
+      ],
+      "supported_writes": [
+        "submit_for_review",
+        "beta_tester_invitations",
+        "beta_group_assignments",
+        "metadata_updates"
+      ],
+      "rate_limits_or_quota_notes": "3600 req/hour (sandbox), 7200 req/hour (production)",
+      "test_strategy": "Read-only: list apps/builds.",
+      "remaining_unknowns": "App Review submission API stability."
+    },
+    {
+      "surface_id": "dist-api:apple_notary_api",
+      "vendor": "apple",
+      "channel_ids": [
+        "dist-channel:apple_notarization"
+      ],
+      "auth_model": "JWT signed with App Store Connect API key",
+      "best_auth_boundary_for_rig": "API key. No app-specific passwords.",
+      "supported_reads": [
+        "notarization_status",
+        "notarization_log"
+      ],
+      "supported_writes": [
+        "submit_for_notarization"
+      ],
+      "rate_limits_or_quota_notes": "75 uploads per hour (standard limit)",
+      "test_strategy": "Submit known-good signed DMG. Check status.",
+      "remaining_unknowns": "None."
+    },
+    {
+      "surface_id": "dist-api:notarytool",
+      "vendor": "apple",
+      "channel_ids": [
+        "dist-channel:apple_notarization",
+        "dist-channel:apple_dev_id_distribution"
+      ],
+      "auth_model": "App Store Connect API key or app-specific password",
+      "best_auth_boundary_for_rig": "API key stored in keychain (notarytool --keychain-profile)",
+      "supported_reads": [
+        "notarytool history",
+        "notarytool info",
+        "notarytool log"
+      ],
+      "supported_writes": [
+        "notarytool submit",
+        "notarytool notarize (auto-wait)"
+      ],
+      "rate_limits_or_quota_notes": "Same as Notary API",
+      "test_strategy": "notarytool submit dry-run.",
+      "remaining_unknowns": "None."
+    },
+    {
+      "surface_id": "dist-api:google_play",
+      "vendor": "google",
+      "channel_ids": [
+        "dist-channel:google_play_production",
+        "dist-channel:google_play_internal",
+        "dist-channel:google_play_closed",
+        "dist-channel:google_play_open"
+      ],
+      "auth_model": "Service account JSON key + OAuth 2.0 (JWT bearer)",
+      "best_auth_boundary_for_rig": "Service account with minimal role. Separate per-pipeline accounts.",
+      "supported_reads": [
+        "edits",
+        "tracks",
+        "listings",
+        "reviews",
+        "stats"
+      ],
+      "supported_writes": [
+        "create_edit",
+        "upload_bundle",
+        "update_track",
+        "commit_edit"
+      ],
+      "rate_limits_or_quota_notes": "200,000 queries per day",
+      "test_strategy": "Create edit, upload, assign internal track, DO NOT COMMIT, discard edit.",
+      "remaining_unknowns": "Edits API deprecation timeline."
+    },
+    {
+      "surface_id": "dist-api:msft_store",
+      "vendor": "microsoft",
+      "channel_ids": [
+        "dist-channel:microsoft_store",
+        "dist-channel:microsoft_partner_center"
+      ],
+      "auth_model": "Azure AD app registration + client credentials",
+      "best_auth_boundary_for_rig": "Azure AD app with minimal Partner Center permissions.",
+      "supported_reads": [
+        "submissions",
+        "app_listings",
+        "flight_submissions",
+        "analytics"
+      ],
+      "supported_writes": [
+        "create_submission",
+        "update_submission",
+        "commit_submission"
+      ],
+      "rate_limits_or_quota_notes": "60 req/min, 5000 req/day",
+      "test_strategy": "Read submissions, create draft, DO NOT COMMIT, delete draft.",
+      "remaining_unknowns": "Azure AD auth model evolution toward MS Graph."
+    },
+    {
+      "surface_id": "dist-api:gh_releases",
+      "vendor": "github",
+      "channel_ids": [
+        "dist-channel:github_releases"
+      ],
+      "auth_model": "GitHub App installation token or fine-grained PAT",
+      "best_auth_boundary_for_rig": "GitHub App installation token. Fine-grained PAT as fallback.",
+      "supported_reads": [
+        "releases",
+        "release_assets"
+      ],
+      "supported_writes": [
+        "create_release",
+        "update_release",
+        "upload_asset"
+      ],
+      "rate_limits_or_quota_notes": "5000 req/hour",
+      "test_strategy": "Create draft release, validate, delete draft.",
+      "remaining_unknowns": "GitHub Attestations API (beta) integration."
+    },
+    {
+      "surface_id": "dist-api:npm_publish",
+      "vendor": "npm",
+      "channel_ids": [
+        "dist-channel:npm_registry",
+        "dist-channel:bun_publish"
+      ],
+      "auth_model": "npm access token (Bearer). OIDC for trusted publishing.",
+      "best_auth_boundary_for_rig": "Granular token (publish scope for specific package). OIDC preferred.",
+      "supported_reads": [
+        "npm view",
+        "npm info",
+        "npm search"
+      ],
+      "supported_writes": [
+        "npm publish",
+        "npm deprecate",
+        "npm dist-tag"
+      ],
+      "rate_limits_or_quota_notes": "Reasonable. Per IP/token.",
+      "test_strategy": "npm publish --dry-run. Publish to private registry for integration test.",
+      "remaining_unknowns": "Classic token phase-out timeline."
+    },
+    {
+      "surface_id": "dist-api:twine",
+      "vendor": "pypa",
+      "channel_ids": [
+        "dist-channel:pypi",
+        "dist-channel:testpypi"
+      ],
+      "auth_model": "PyPI API token or Trusted Publisher (OIDC)",
+      "best_auth_boundary_for_rig": "Project-scoped PyPI token. Trusted Publisher preferred.",
+      "supported_reads": [],
+      "supported_writes": [
+        "twine upload"
+      ],
+      "rate_limits_or_quota_notes": "Generous. Not publicly documented per-endpoint.",
+      "test_strategy": "twine check. twine upload --repository testpypi.",
+      "remaining_unknowns": "uv publish replacing twine timeline."
+    },
+    {
+      "surface_id": "dist-api:cargo_publish",
+      "vendor": "rust",
+      "channel_ids": [
+        "dist-channel:crates_io"
+      ],
+      "auth_model": "crates.io API token via cargo login",
+      "best_auth_boundary_for_rig": "publish-update token for existing crates. Minimal scope.",
+      "supported_reads": [
+        "cargo search"
+      ],
+      "supported_writes": [
+        "cargo publish",
+        "cargo yank",
+        "cargo unyank"
+      ],
+      "rate_limits_or_quota_notes": "1 new crate per 5 minutes. Updates less restrictive.",
+      "test_strategy": "cargo publish --dry-run. cargo package.",
+      "remaining_unknowns": "crates.io OIDC support."
+    },
+    {
+      "surface_id": "dist-api:homebrew",
+      "vendor": "homebrew",
+      "channel_ids": [
+        "dist-channel:homebrew_formula",
+        "dist-channel:homebrew_cask",
+        "dist-channel:private_homebrew_tap"
+      ],
+      "auth_model": "GitHub token or SSH",
+      "best_auth_boundary_for_rig": "GitHub App token for tap. Fork + PR for homebrew/core.",
+      "supported_reads": [
+        "brew audit",
+        "brew info",
+        "brew search"
+      ],
+      "supported_writes": [
+        "brew create",
+        "brew bump-formula-pr"
+      ],
+      "rate_limits_or_quota_notes": "GitHub rate limits apply.",
+      "test_strategy": "brew audit, brew test. Push to private tap first.",
+      "remaining_unknowns": "Homebrew core maintainer review timeline."
+    }
+  ],
+  "api_count": 10
+}

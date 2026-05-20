@@ -277,6 +277,8 @@ class CapabilityGate:
         "sign_in_google_cancel",
         "sign_in_github_manual_code",
         "sign_in_google_manual_code",
+        "local_inference_probe",
+        "local_inference_health_check",
         "sign_out_provider",
     })
 

@@ -1,0 +1,40 @@
+{
+  "available": true,
+  "phase_status": "release_candidate",
+  "queue_summary": {
+    "total_items": 45,
+    "blocked_items": 3
+  },
+  "selected_alert_summary": {
+    "alert_number": 5,
+    "severity": "warning",
+    "surface": "code_scanning"
+  },
+  "current_stage": "post_pr_lifecycle",
+  "next_safe_action": "alert_state_mutation_gated",
+  "mutation_status": "disabled",
+  "approval_status": "gated",
+  "pr_lifecycle_state": "no_pr",
+  "alert_lifecycle_state": "alert_unknown",
+  "blocked_reasons": [
+    "alert_update_disabled_by_default"
+  ],
+  "permission_summary": {
+    "read": [
+      "metadata:read",
+      "security_events:read",
+      "contents:read"
+    ],
+    "mutation": [
+      "contents:write",
+      "pull_requests:write",
+      "security_events:write"
+    ],
+    "mutation_used": []
+  },
+  "evidence_artifacts": 12,
+  "redaction_status": {
+    "content_light": true
+  },
+  "raw_payloads_exposed": false
+}

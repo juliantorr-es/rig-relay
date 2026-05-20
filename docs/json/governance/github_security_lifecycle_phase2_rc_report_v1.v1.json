@@ -1,0 +1,71 @@
+{
+  "schema_version": "rig.github.security_lifecycle_phase2_rc_report.v1",
+  "generated_at": "2026-05-20T18:42:59.804388+00:00",
+  "branch": "main",
+  "head": "6ed7fbc",
+  "phase_name": "Phase 2 — Security Lifecycle Program",
+  "phase_status": "release_candidate",
+  "slices_completed": 10,
+  "artifacts_inventory_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_program_inventory_v1.v1.json",
+  "replay_artifact_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_replay_v1.v1.json",
+  "causal_report_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_causal_report_v1.v1.json",
+  "permission_boundary_audit_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_lifecycle_permission_boundary_audit_v1.v1.json",
+  "cockpit_projection_summary": "security_lifecycle_program projection available; read-only; no raw payloads",
+  "queue_summary": "45 items, 3 blocked, 27 open",
+  "remediation_summary": "top 3 code_scanning items selected; source-aware strategies",
+  "patch_summary": "content-light proposal; no raw snippets; no mutation",
+  "source_context_summary": "blocked by default; live API gated",
+  "pr_plan_summary": "branch safety; deterministic naming; approval chain; dry-run default",
+  "mutation_readiness_summary": "simulation passed with approval; temp repo only; 32 tests",
+  "mutation_executor_summary": "7-step pipeline; fake boundary; 41 tests; remote disabled",
+  "post_pr_lifecycle_summary": "PR+alert states; 5 alert paths; 32 tests; alert deferred",
+  "permission_model_summary": "read/write/PR/alert permissions separated; no planning-stage mutation",
+  "mutation_model_summary": "all remote mutation disabled by default; gated behind execute-remote-mutation",
+  "approval_model_summary": "human_required by default; config_policy_allowed; denied supported",
+  "idempotency_model_summary": "deterministic per-stage; repo+alert+diff+plan+branch",
+  "fake_boundary_summary": "simulates refget, branchcreate, filewrite, PRcreate, alertstate, alertdismissal; records trace",
+  "event_fabric_summary": "causal chain mapped; events content-light; no mutation triggers",
+  "cockpit_readiness_summary": "projection available; read-only widget registered (Slice 5); backend authority preserved",
+  "redaction_summary": {
+    "matches_found": 0,
+    "artifacts_scanned": 12,
+    "all_clean": true
+  },
+  "schema_validation_summary": {
+    "schemas_valid": true
+  },
+  "tests_summary": {
+    "total_tests_phase2": 239,
+    "all_passing": true
+  },
+  "test_classifications_summary": {
+    "contract": true,
+    "integration": true,
+    "adversarial": true,
+    "real_artifact": true,
+    "substrate": true
+  },
+  "telemetry_redaction_implications": "all artifacts content-light; no tokens, no auth headers, no raw bodies, no vulnerable snippets",
+  "dependency_changes": [],
+  "completed_work": [
+    "all_10_slices",
+    "inventory",
+    "replay",
+    "causal_report",
+    "permission_audit",
+    "rc_report"
+  ],
+  "intentionally_deferred": [
+    "live_remote_mutation",
+    "live_alert_update",
+    "live_pr_merge",
+    "cockpit_full_ui"
+  ],
+  "discovered_out_of_scope_risks": [
+    "rate_limit_ledger_needed_for_multi_repo",
+    "secret_scanning_still_refused",
+    "dependabot_still_refused"
+  ],
+  "recommended_next_phase": "Phase 3 — live gated mutation with RIG_LIVE_AUTH_TESTS",
+  "recommended_next_slice": "Phase 3 Slice 1 — live permission verification + actual PR creation test"
+}

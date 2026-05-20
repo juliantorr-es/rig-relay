@@ -1,0 +1,152 @@
+{
+  "schema_version": "rig.github.security_lifecycle_replay.v1",
+  "generated_at": "2026-05-20T18:42:59.801633+00:00",
+  "content_light": true,
+  "lifecycle_stages": [
+    {
+      "stage_id": "security_queue",
+      "slice": 1,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "source_artifact_missing",
+        "source_surface_refused"
+      ],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "remediation_plan",
+      "slice": 2,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "patch_proposal",
+      "slice": 3,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "patch_preview",
+      "slice": 4,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "source_context_unavailable",
+        "raw_source_file_not_accessible",
+        "unsafe_to_generate_diff",
+        "live_repo_access_deferred",
+        "code_fix_generation_requires_live_API_or_safe_local_mirror"
+      ],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "source_context",
+      "slice": 5,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "candidate_diff",
+      "slice": 6,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "pr_plan",
+      "slice": 7,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "diff_classification_not_dry_run_candidate",
+        "no_real_candidate_diff",
+        "candidate_diff_policy_gate_failed",
+        "source_context_hash_missing"
+      ],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "mutation_readiness",
+      "slice": 8,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "pr_plan_not_ready",
+        "diff_not_dry_run_candidate",
+        "no_real_diff",
+        "branch_name_empty",
+        "no_approval_receipt"
+      ],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "mutation_execution",
+      "slice": 9,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "readiness_simulation_passed",
+        "candidate_not_blocked_explanation",
+        "candidate_has_real_diff",
+        "approval_no_approval_receipt",
+        "path_safety",
+        "branch_safety",
+        "explicit_remote_flag"
+      ],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "post_pr_lifecycle",
+      "slice": 10,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "permission_matrix",
+      "slice": 8,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [],
+      "remote_mutation_detected": false
+    },
+    {
+      "stage_id": "alert_state_plan",
+      "slice": 10,
+      "artifact_present": true,
+      "status": "present",
+      "blocked_reasons": [
+        "alert_update_disabled_by_default",
+        "no_explicit_alert_mutation_flag"
+      ],
+      "remote_mutation_detected": false
+    }
+  ],
+  "stages_present": 12,
+  "stages_missing": 0,
+  "remote_mutation_detected": false,
+  "simulation_only": true,
+  "next_safe_action": "promote_to_cockpit",
+  "permission_chain": {
+    "read_permissions_used": [
+      "metadata:read",
+      "security_events:read",
+      "contents:read"
+    ],
+    "mutation_permissions_used": []
+  },
+  "mutation_chain": {
+    "stages_with_remote_mutation": 0
+  },
+  "approval_chain": "approval_gated_across_execution_stages",
+  "idempotency_chain": "deterministic_per_stage"
+}

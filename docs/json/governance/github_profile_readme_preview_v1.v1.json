@@ -1,0 +1,418 @@
+{
+  "schema_version": "rig.github.profile_readme_preview.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "owner": "juliantorr-es",
+  "profile_repo": "github.com/juliantorr-es/juliantorr-es",
+  "profile_repo_hash": "a913de668ac0ac9f63aa54b58d74ce221240ef9fa46d42431891f4828d3ac44d",
+  "content_light": true,
+  "remote_mutation": false,
+  "dry_run": true,
+  "live_network": false,
+  "source_readme_present": false,
+  "source_readme_sha256": null,
+  "preview_status": "ready_for_preview",
+  "files": [
+    {
+      "file_path": "README.md",
+      "file_path_hash": "b335630551682c19a781afebcf4d07bf978fb1f8ac04c6bf87428ed5106870f5",
+      "surface_type": "profile_readme",
+      "operation": "create_new",
+      "source_sha256": null,
+      "source_size_bytes": null,
+      "source_line_count": null,
+      "content_light": true
+    }
+  ],
+  "safety_checks": {
+    "no_private_content": true,
+    "no_credentials": true,
+    "no_raw_markdown_stored": true,
+    "content_light_enforced": true
+  },
+  "blocked_reasons": [
+    "live_network_required",
+    "no_readme_source"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "redaction_rules": 13
+  },
+  "generated_preview_path": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/profile_readme_preview.md",
+  "generated_preview_sha256": "2913479f2209878fc0ca1a5f0d5091f601d869008f949c79d4818527127bdf45",
+  "generated_preview_bytes": 1987,
+  "generated_preview_line_count": 53,
+  "source_claim_count": 28,
+  "included_claim_count": 18,
+  "excluded_claim_count": 10,
+  "excluded_claim_reasons": [
+    "confidence_low",
+    "high_public_wording_risk"
+  ],
+  "public_surface_classification": "public_profile_readme",
+  "permission_neutrality_status": "permission_neutral",
+  "publish_blocked_reasons": [],
+  "redaction_scan": {
+    "content_clean": true,
+    "redaction_matches": [],
+    "forbidden_patterns_checked": 10
+  },
+  "included_claims": [
+    {
+      "claim_id": "07d5bf7279214bbfb105730b83b20320995a0dd68710028a2142612f924e2ca1",
+      "claim_category": "integration_claim",
+      "claim_summary": "Interactive provider onboarding for DeepSeek, OpenAI, Anthropic, Google, Mistral, OpenRouter",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "08d3b94dbd839baaa98ee9ee7fa4df263cf5405b2999b32121001d8bbb9403fc",
+      "claim_category": "test_coverage_claim",
+      "claim_summary": "Full test suite via pytest with parallel execution",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "0b5e50fd94c1f1de6dc4d6fbf018ace430aba8c2e2ca8f566e4ce5f828ef3b05",
+      "claim_category": "platform_support_claim",
+      "claim_summary": "Requires Python 3.12+ runtime",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "1b946c4b9fe047de0651fc6162198e55cb095bca936ad41cecd5df498928ff9a",
+      "claim_category": "telemetry_privacy_claim",
+      "claim_summary": "No raw file contents, secrets, or private code emitted in telemetry",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "3287accb1b8347ba40ed531e1fed1db622b09affd7fd0b8103c3acbfd1041da0",
+      "claim_category": "installation_claim",
+      "claim_summary": "Clone and uv sync provides a working installation",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "medium",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "41fab0ab1c811e1a2eb046817f5b867a606dc0cada5ca99bd4001d4c0500806b",
+      "claim_category": "documentation_claim",
+      "claim_summary": "Project-specific and user-global TOML configuration with onboarding wizard",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "4c7031c3efca26888b9b8c29db2198e018748b82ece3b8faf247a63e9cd008ad",
+      "claim_category": "integration_claim",
+      "claim_summary": "Four protocol surfaces: ACP Agent, MCP Client, MCP Server, WebSocket",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "4f20219ba997d2acba52c4a294599d1df7f1d7e3d662911b7e554d09a8e61648",
+      "claim_category": "governance_claim",
+      "claim_summary": "Every tool call, checkpoint, and consultation produces a receipt",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json",
+        "github_surface_audit_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "medium",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "5eaaec0f7d4a582cb77737bef6e53476548afb2b6cc9e7cd2833b4fe43c8ad32",
+      "claim_category": "telemetry_privacy_claim",
+      "claim_summary": "Telemetry is local-first and opt-out only",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "7ea344c05e686a56b932b19dd4e03946178c0b0524c443788bdc8e5d3a9c4050",
+      "claim_category": "documentation_claim",
+      "claim_summary": "Licensed under AGPL-3.0-or-later",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "9ee47df36d1f504020fdf8b303b3356239021b1ee957cdfab29514111e7d8e6e",
+      "claim_category": "integration_claim",
+      "claim_summary": "Exposes MCP server with 16 governed tools across 5 tiers",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "a084f79bb0f023afa7cab7702d9a9f9eb74203793c008916c566def89911514c",
+      "claim_category": "governance_claim",
+      "claim_summary": "Communicates bounded autonomy with four-tier safety scope",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json",
+        "github_surface_audit_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "medium",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "a1d01e9da7c25823dda55108bb17b2beaabb720ff458840bc35d11bbe59eae5d",
+      "claim_category": "test_coverage_claim",
+      "claim_summary": "Strict type checking via pyright",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "bfb57b0208cea3eca269d1e3f15b3a381277531b8b81b6eeade455befad89918",
+      "claim_category": "security_claim",
+      "claim_summary": "Safety gates align with OWASP agent security best practices",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_security_intake_result.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "c1472008e750097e4d5aa79f80fa86309b8cea4df7bc894ca50b556c6d8fc6c7",
+      "claim_category": "security_claim",
+      "claim_summary": "Frontend is a dumb renderer; backend owns all policy transitions",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_security_intake_result.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "e2f398b702a378fbc40ba39a1f1f5602c1f87cd89735b70765dec29fe763f81e",
+      "claim_category": "security_claim",
+      "claim_summary": "Agents operate in git worktrees under .rig/relay/worktrees",
+      "evidence_refs": [
+        "github_surface_audit_v1.v1.json",
+        "github_security_intake_result.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "medium",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "eeb0f303482c9dd5ce5620b9c3f4de857c3ed894dd33faf33f2cc5c1b2aa8bac",
+      "claim_category": "installation_claim",
+      "claim_summary": "Installable via uv tool install from git",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "medium",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    },
+    {
+      "claim_id": "f404914d84197f73f285591b50adbf315ba6128313f0ccf7b3c7949afb09922f",
+      "claim_category": "test_coverage_claim",
+      "claim_summary": "Linting and formatting via ruff",
+      "evidence_refs": [
+        "github_ci_cd_reliability_v1.v1.json"
+      ],
+      "support_status": "supported",
+      "confidence": "high",
+      "public_wording_risk": "low",
+      "inclusion_decision": "included"
+    }
+  ],
+  "excluded_claims": [
+    {
+      "claim_id": "18fe1f5b53e213939e9e538aa511fa4cfaa4d6d9f6e9ecc7da1c77623170cc83",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Multi-provider adversarial review (Council) with structured opinions",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "1b3379a74fa7595bbd692af352d683d03eea5eb14a33b5be3adc015b1e69a9ad",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Starts in dry-run mode without API key, full projection available",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "4bccdbc752a9bd95fbf31985d9078ddc4989ff91e7d65ce99b503fa25e56e7e5",
+      "claim_category": "release_readiness_claim",
+      "claim_summary": "Release readiness validation scripts available",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "contradicted",
+      "confidence": "high",
+      "public_wording_risk": "high",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "high_public_wording_risk"
+    },
+    {
+      "claim_id": "8e638ea1334e55f44d7f07a1e4790829963f1719855ccdb0b7c7fca65bfd8723",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Ships with 7 built-in agent profiles",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "ae7d43b6d93b653cc3c3508a7a386fd5ff209a71ccc08fd4c07ebfc3c44c177c",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Can launch headlessly for review, browser validation, and live exercise",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "ca8d6aad4ad8c739eae3b7cccd2805b0534ba4f5daf49b383bd0cf75dfeafbd6",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Fleet orchestration for roadmap planning, sprint scoping, mission tasking",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "d5b514b1396e47223609e2b58acaab1917e6749329912399405a10480f39cf41",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Retains legacy vibe CLI and Textual TUI for compatibility during migration",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "eb097de7422f4f609ab1051c7db0bbb18c905be3f75e9a172a2ea442f8e9a1d0",
+      "claim_category": "release_readiness_claim",
+      "claim_summary": "Release candidate in alpha (v0.1.0a1), gate is HOLD",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "contradicted",
+      "confidence": "high",
+      "public_wording_risk": "high",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "high_public_wording_risk"
+    },
+    {
+      "claim_id": "ec7d3d7529085e02e3e2dfabdf55a4b7f09372774e5f2c5cc4724d80abd61920",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Provides a governed local server/control-plane with desktop cockpit",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    },
+    {
+      "claim_id": "fc141c2d8d36ca63e83f5fe363d31812ac7def53d672089e2a61056301965d01",
+      "claim_category": "functionality_claim",
+      "claim_summary": "Desktop cockpit with Operator, Review, System, and Technical layout modes",
+      "evidence_refs": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "support_status": "partially_supported",
+      "confidence": "low",
+      "public_wording_risk": "medium",
+      "inclusion_decision": "excluded",
+      "disabled_reason": "confidence_low"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "alert_number": 5,
+  "current_state": "alert_unknown",
+  "paths": [
+    {
+      "path_id": "fix_verification",
+      "description": "Verify the PR fix resolves the vulnerability",
+      "required_evidence": [
+        "pr_receipt",
+        "test_results",
+        "fix_analysis"
+      ],
+      "required_permissions": [],
+      "required_approval": "human_or_security_team",
+      "remote_mutation": false
+    },
+    {
+      "path_id": "false_positive",
+      "description": "Document why the alert is a false positive",
+      "required_evidence": [
+        "false_positive_analysis",
+        "code_review_context"
+      ],
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "required_approval": "human_or_security_team",
+      "remote_mutation": true
+    },
+    {
+      "path_id": "wont_fix",
+      "description": "Accept the risk, document rationale",
+      "required_evidence": [
+        "risk_acceptance_documentation"
+      ],
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "required_approval": "human_or_security_team",
+      "remote_mutation": true
+    },
+    {
+      "path_id": "dismissal_request",
+      "description": "Request alert dismissal through approval chain",
+      "required_evidence": [
+        "fix_evidence_or_fp_analysis"
+      ],
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "required_approval": "human_or_security_team",
+      "remote_mutation": true
+    },
+    {
+      "path_id": "direct_update",
+      "description": "Directly update alert state (gated)",
+      "required_evidence": [
+        "pr_receipt",
+        "approval_receipt",
+        "permission_verification"
+      ],
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "required_approval": "human_or_security_team",
+      "remote_mutation": true
+    }
+  ],
+  "gates_passed": false,
+  "blocked_reasons": [
+    "alert_update_disabled_by_default",
+    "no_explicit_alert_mutation_flag"
+  ],
+  "recommended_path": "fix_verification",
+  "recommended_action": "wait_for_alert_mutation_gate",
+  "generated_at": "2026-05-20T18:29:56.299540+00:00"
+}

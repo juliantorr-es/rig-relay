@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_risk_register.v1",
+  "risks": [
+    {
+      "risk_id": "dist-risk:credential_leakage",
+      "category": "security",
+      "affected_channels": [
+        "*"
+      ],
+      "severity": "critical",
+      "likelihood": "medium",
+      "description": "Distribution credentials leaked via logs, version control, CI output, or artifact metadata.",
+      "mitigation": "Secret scanning in CI. Never log raw credentials. Hash credential fingerprints for evidence.",
+      "test_or_gate": "Pre-publish secret scan gate."
+    },
+    {
+      "risk_id": "dist-risk:signing_key_leakage",
+      "category": "security",
+      "severity": "critical",
+      "likelihood": "low",
+      "description": "Code signing private key exposed. Attacker can sign malware as developer identity.",
+      "mitigation": "HSM or hardware token. Keyless signing where possible (OIDC). Never commit private keys.",
+      "test_or_gate": "Certificate fingerprint audit. Key storage audit."
+    },
+    {
+      "risk_id": "dist-risk:irreversible_publish",
+      "category": "mutation",
+      "severity": "high",
+      "likelihood": "medium",
+      "description": "Package version published cannot be deleted or modified. npm (72h), PyPI (72h), crates.io (never), App Store (never).",
+      "mitigation": "Dry-run publish to test channel first. Multi-stage approval. SHA check before publish.",
+      "test_or_gate": "Test channel publish succeeded before production."
+    },
+    {
+      "risk_id": "dist-risk:malicious_publish",
+      "category": "supply_chain",
+      "severity": "critical",
+      "likelihood": "low",
+      "description": "Compromised CI or credential allows attacker to publish malicious package version.",
+      "mitigation": "OIDC trusted publishers. 2FA enforcement. Sigstore/cosign signing.",
+      "test_or_gate": "Provenance attestation verification. Publish log audit."
+    },
+    {
+      "risk_id": "dist-risk:notarization_failure",
+      "category": "signing",
+      "severity": "high",
+      "likelihood": "medium",
+      "description": "macOS notarization fails due to entitlements or malware scan rejection. Gatekeeper blocks app.",
+      "mitigation": "Pre-flight notarization check. Test notarization early in CI.",
+      "test_or_gate": "notarytool submit + status check in CI. spctl -a verify."
+    },
+    {
+      "risk_id": "dist-risk:codesigning_failure",
+      "category": "signing",
+      "severity": "high",
+      "likelihood": "medium",
+      "description": "Code signing fails due to expired certificate, wrong provisioning profile, or missing entitlement.",
+      "mitigation": "Monitor certificate expiry with 30-day alerts. Validate signing chain in CI.",
+      "test_or_gate": "codesign -dvvv / signtool verify in CI."
+    },
+    {
+      "risk_id": "dist-risk:registry_immutability",
+      "category": "mutation",
+      "severity": "high",
+      "likelihood": "low",
+      "description": "Developer assumes they can delete published package. Cannot. Version permanently burned.",
+      "mitigation": "Document immutability in Rig operating picture. Gate publish with explicit warning.",
+      "test_or_gate": "Registry policy education gate."
+    },
+    {
+      "risk_id": "dist-risk:privacy_label_mismatch",
+      "category": "compliance",
+      "severity": "high",
+      "likelihood": "medium",
+      "description": "App privacy nutrition label does not match actual data practices. App Review rejection.",
+      "mitigation": "Generated privacy manifest from code analysis. Pre-submission privacy label check.",
+      "test_or_gate": "Privacy manifest validation gate."
+    },
+    {
+      "risk_id": "dist-risk:supply_chain_attestation_gap",
+      "category": "provenance",
+      "severity": "medium",
+      "likelihood": "high",
+      "description": "Release lacks verifiable attestation linking build to source. Fails SLSA Level 1+.",
+      "mitigation": "Generate provenance attestation in CI. sigstore/cosign signing. SBOM.",
+      "test_or_gate": "Provenance attestation verification gate."
+    },
+    {
+      "risk_id": "dist-risk:fake_green_tests",
+      "category": "quality",
+      "severity": "high",
+      "likelihood": "medium",
+      "description": "Tests pass but don't cover release-critical paths. False confidence from green CI.",
+      "mitigation": "Release-specific test suite. Integration tests covering distribution paths.",
+      "test_or_gate": "Release-blocking test suite distinct from dev test suite."
+    }
+  ],
+  "risk_count": 10
+}

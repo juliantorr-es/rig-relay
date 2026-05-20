@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.distribution.release_api_matrix.v1.schema.json",
+  "title": "Distribution Release API Matrix v1",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "live_network_used_for_product", "apis", "api_count"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.distribution.release_api_matrix.v1" },
+    "generated_at": { "type": "string" },
+    "branch": { "type": ["string", "null"] },
+    "head": { "type": ["string", "null"] },
+    "dirty_files_count": { "type": "integer" },
+    "content_light": { "type": "boolean", "const": true },
+    "remote_mutation": { "type": "boolean", "const": false },
+    "live_network_used_for_product": { "type": "boolean", "const": false },
+    "apis": { "type": "array", "items": { "type": "object", "required": ["surface_id", "vendor"] } },
+    "api_count": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": true
+}

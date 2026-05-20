@@ -1,0 +1,205 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_files_count": 10,
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network_used_for_product": false,
+  "schema_version": "rig.distribution.release_channel_matrix.v1",
+  "channels": [
+    {
+      "channel_id": "dist-channel:apple_app_store",
+      "channel_family": "apple_app_store",
+      "ecosystem": "apple",
+      "official_docs_refs": [
+        "https://developer.apple.com/app-store-connect/api/"
+      ],
+      "developer_value": "Primary macOS/iOS distribution surface",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:apple_testflight",
+      "channel_family": "apple_testflight",
+      "ecosystem": "apple",
+      "developer_value": "Beta distribution to testers before App Store",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:apple_notarization",
+      "channel_family": "apple_macos_notarization",
+      "ecosystem": "apple",
+      "developer_value": "Gatekeeper trust for macOS apps outside App Store",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:apple_dev_id_distribution",
+      "channel_family": "apple_developer_id_direct_distribution",
+      "ecosystem": "apple",
+      "developer_value": "Direct macOS distribution (website, third-party stores)",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:google_play_production",
+      "channel_family": "google_play_production",
+      "ecosystem": "google",
+      "developer_value": "Primary Android distribution to billions of devices",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:google_play_internal",
+      "channel_family": "google_play_internal_testing",
+      "ecosystem": "google",
+      "developer_value": "Quick internal distribution (up to 100 testers)",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:google_play_closed",
+      "channel_family": "google_play_closed_testing",
+      "ecosystem": "google",
+      "developer_value": "Alpha testing to trusted groups",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:google_play_open",
+      "channel_family": "google_play_open_testing",
+      "ecosystem": "google",
+      "developer_value": "Public beta testing on Play Store",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:microsoft_store",
+      "channel_family": "microsoft_store",
+      "ecosystem": "microsoft",
+      "developer_value": "Windows desktop distribution via Microsoft Store",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:microsoft_partner_center",
+      "channel_family": "microsoft_partner_center_marketplace",
+      "ecosystem": "microsoft",
+      "developer_value": "Azure Marketplace distribution",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:github_releases",
+      "channel_family": "github_releases",
+      "ecosystem": "github",
+      "developer_value": "Primary OSS release distribution with assets",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:github_pages",
+      "channel_family": "github_pages",
+      "ecosystem": "github",
+      "developer_value": "Static site hosting for docs and changelogs",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:npm_registry",
+      "channel_family": "npm_registry",
+      "ecosystem": "javascript",
+      "developer_value": "Primary JavaScript package registry",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:bun_publish",
+      "channel_family": "bun_publish_npm_registry",
+      "ecosystem": "javascript",
+      "developer_value": "Bun-native npm-compatible publishing",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:pypi",
+      "channel_family": "pypi",
+      "ecosystem": "python",
+      "developer_value": "Python Package Index",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:testpypi",
+      "channel_family": "testpypi",
+      "ecosystem": "python",
+      "developer_value": "Pre-production PyPI testing",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:crates_io",
+      "channel_family": "crates_io",
+      "ecosystem": "rust",
+      "developer_value": "Rust crate registry",
+      "risk_level": "high"
+    },
+    {
+      "channel_id": "dist-channel:docs_rs",
+      "channel_family": "docs_rs",
+      "ecosystem": "rust",
+      "developer_value": "Automatic Rust documentation hosting",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:homebrew_formula",
+      "channel_family": "homebrew_formula",
+      "ecosystem": "homebrew",
+      "developer_value": "macOS/Linux package manager distribution",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:homebrew_cask",
+      "channel_family": "homebrew_cask",
+      "ecosystem": "homebrew",
+      "developer_value": "GUI macOS application distribution via Homebrew",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:private_homebrew_tap",
+      "channel_family": "private_homebrew_tap",
+      "ecosystem": "homebrew",
+      "developer_value": "Private/internal Homebrew distribution",
+      "risk_level": "low"
+    },
+    {
+      "channel_id": "dist-channel:ghcr",
+      "channel_family": "github_container_registry",
+      "ecosystem": "containers",
+      "developer_value": "GitHub-hosted OCI container registry",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:docker_hub",
+      "channel_family": "docker_hub",
+      "ecosystem": "containers",
+      "developer_value": "Primary public container image registry",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:generic_oci",
+      "channel_family": "generic_oci_registry",
+      "ecosystem": "containers",
+      "developer_value": "Any OCI-compliant registry (ECR, GCR, ACR, etc.)",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:direct_download",
+      "channel_family": "direct_download_static_site",
+      "ecosystem": "direct",
+      "developer_value": "Direct download from project website/CDN",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:enterprise_internal",
+      "channel_family": "enterprise_internal_distribution",
+      "ecosystem": "enterprise",
+      "developer_value": "Enterprise distribution via MDM, private stores",
+      "risk_level": "medium"
+    },
+    {
+      "channel_id": "dist-channel:self_update",
+      "channel_family": "self_update_channel",
+      "ecosystem": "direct",
+      "developer_value": "In-app auto-update (Sparkle, Squirrel, electron-updater)",
+      "risk_level": "medium"
+    }
+  ],
+  "channel_count": 27
+}

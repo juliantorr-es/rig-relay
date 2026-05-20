@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.event.envelope.v1.schema.json",
+  "title": "Rig Event Envelope v1",
+  "description": "CloudEvents-inspired canonical event envelope for the Rig Event Fabric. Events may cross boundaries; private state stays home.",
+  "type": "object",
+  "required": [
+    "schema_version", "event_id", "event_type", "occurred_at",
+    "producer", "correlation_id", "payload_hash",
+    "sensitivity_class", "redaction_status", "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.event.envelope.v1" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "event_type": { "type": "string", "minLength": 1 },
+    "source": { "type": "string" },
+    "occurred_at": { "type": "string", "minLength": 1 },
+    "producer": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "causation_id": { "type": "string" },
+    "command_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "span_id": { "type": "string" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "subject": { "type": "string" },
+    "payload_schema": { "type": "string" },
+    "payload_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sensitivity_class": {
+      "type": "string",
+      "enum": ["public", "internal_operational", "telemetry_opt_in", "redaction_required", "never_emit"]
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["passed", "quarantined", "needs_review"]
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "resource_tags": { "type": "array", "items": { "type": "string" } },
+    "policy_tags": { "type": "array", "items": { "type": "string" } },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

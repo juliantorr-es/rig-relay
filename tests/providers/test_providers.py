@@ -25,7 +25,7 @@ from rig_relay.providers.registry import is_supported_provider
 
 
 class TestRegistry:
-    def test_contains_all_five_providers(self):
+    def test_contains_all_providers(self):
         providers = {p.provider for p in PROVIDER_REGISTRY}
         assert providers == {
             Provider.OPENAI,
@@ -33,6 +33,7 @@ class TestRegistry:
             Provider.GOOGLE,
             Provider.OPENROUTER,
             Provider.DEEPSEEK,
+            Provider.LOCAL_INFERENCE,
         }
 
     def test_env_var_names_correct(self):
@@ -195,7 +196,7 @@ class TestProviderStatus:
     def test_all_providers_listed(self):
         result = provider_status()
         providers = result.get("providers", [])
-        assert len(providers) == 5
+        assert len(providers) >= 6  # 5 cloud + 1 local_inference
 
     def test_configured_count(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-key")

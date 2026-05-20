@@ -49,6 +49,8 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "warnings",
     "read_only_actions",
     "execution_progress",
+    "resources",
+    "spiderweb_topology",
 })
 
 
@@ -427,6 +429,91 @@ def _build_integrations() -> dict[str, Any]:
         return {"available": False}
 
 
+def _build_resources() -> dict[str, Any]:
+    """Derive resource projection snapshot from event fabric events."""
+    try:
+        from rig_relay.events.resource_projection_feed import ResourceProjectionFeed
+
+        feed = ResourceProjectionFeed()
+        snapshot = feed.snapshot()
+        return {"available": True, **snapshot}
+    except Exception:
+        return {
+            "available": False,
+            "bridge_backend_health": "unknown",
+            "projection_freshness": "unknown",
+            "reconnect_pressure": "none",
+            "event_queue_pressure": "none",
+            "consumer_error_count": 0,
+            "redaction_status": "content_light",
+        }
+
+
+def _build_spiderweb_topology() -> dict[str, Any]:
+    """Read mission topology projection from event fabric derived artifact."""
+    topo_path = (
+        REPO_ROOT
+        / ".build"
+        / "rig-relay"
+        / "derived"
+        / "mission_topology_projection.v1.json"
+    )
+    data = _load_json(topo_path)
+    if not data:
+        return {"available": False, "status": "missing_artifact"}
+    try:
+        nodes = data.get("nodes", [])
+        edges = data.get("edges", [])
+        strand = data.get("strand_states", {})
+        pressure = data.get("resource_pressure", {})
+        source_arts = data.get("source_artifacts", [])
+        causal = data.get("causal_links", [])
+        return {
+            "available": True,
+            "status": data.get("status", "unknown"),
+            "generated_at": data.get("generated_at", ""),
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "active_strand_count": strand.get("active_count", 0),
+            "strand_state_summary": {
+                "total_nodes": strand.get("total_nodes", 0),
+                "healthy_count": strand.get("healthy_count", 0),
+                "active_count": strand.get("active_count", 0),
+                "idle_count": strand.get("idle_count", 0),
+                "stale_count": strand.get("stale_count", 0),
+                "degraded_count": strand.get("degraded_count", 0),
+                "blocked_count": strand.get("blocked_count", 0),
+                "no_input_count": strand.get("no_input_count", 0),
+            },
+            "resource_pressure_summary": {
+                "reconnect_pressure": pressure.get("reconnect_pressure", "none"),
+                "queue_pressure": pressure.get("queue_pressure", "none"),
+                "consumer_errors": pressure.get("consumer_errors", "none"),
+                "consumer_error_count": pressure.get("consumer_error_count", 0),
+                "bridge_health": pressure.get("bridge_health", "unknown"),
+            },
+            "causal_summary": {
+                "observed_links": sum(
+                    1 for link in causal if link.get("confidence") == "observed"
+                ),
+                "correlated_only_links": sum(
+                    1 for link in causal if link.get("confidence") == "correlated_only"
+                ),
+                "total_links": len(causal),
+            },
+            "degraded_reasons": data.get("degraded_reasons", []),
+            "source_artifact_hashes": {
+                a.get("artifact_id", ""): a.get("artifact_hash", "")[:16]
+                for a in source_arts
+            },
+            "renderer_mode": "deterministic_svg",
+            "raw_payloads_exposed": False,
+            "redaction_status": "content_light",
+        }
+    except Exception:
+        return {"available": False, "status": "invalid_artifact"}
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -587,6 +674,8 @@ def build_projection(  # noqa: PLR0914
     tool_runtime_summary = _build_tool_runtime_summary()
     release_gate = _build_release_gate()
     service_state = _build_service_state()
+    resources = _build_resources()
+    spiderweb_topology = _build_spiderweb_topology()
 
     source_status = {
         "current_state": current_state["available"],
@@ -603,6 +692,8 @@ def build_projection(  # noqa: PLR0914
         "tool_runtime_summary": tool_runtime_summary.get("available", False),
         "release_gate": release_gate["available"],
         "service_state": service_state["available"],
+        "resources": resources["available"],
+        "spiderweb_topology": spiderweb_topology["available"],
     }
 
     warnings: list[str] = []
@@ -638,6 +729,8 @@ def build_projection(  # noqa: PLR0914
         "tool_runtime_summary": tool_runtime_summary,
         "_release_gate": release_gate,
         "service_state": service_state,
+        "resources": resources,
+        "spiderweb_topology": spiderweb_topology,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

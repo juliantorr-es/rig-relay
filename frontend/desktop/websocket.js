@@ -31,6 +31,14 @@ class ProjectionWebSocketClient {
     this._firstProjectionReceived = false;
     this._connectTimeout = null;
     this._connectTimeoutMs = options.connectTimeout || 15000;
+    this.closeCode = null;
+    this.closeReason = '';
+    this.wasClean = false;
+    this.lastBridgeStatusAt = null;
+    this.backendState = '';
+    this.backendSessionId = '';
+    this._bridgeStatusStaleMs = options.bridgeStatusStaleMs || 30000;
+    this.onBridgeStale = options.onBridgeStale || (() => {});
 
     if (this.token) {
       this.connect();
@@ -100,6 +108,21 @@ class ProjectionWebSocketClient {
           this.transportMachine.transition('projection_received', {
             ws_url: this.wsUrl,
           });
+        }
+        // Track bridge_status lifecycle events for backend liveness
+        if (message.kind === 'lifecycle_event' && message.payload && message.payload.bridge_runtime_state) {
+          this.lastBridgeStatusAt = Date.now();
+          this.backendState = message.payload.bridge_runtime_state || '';
+          this.backendSessionId = message.payload.backend_session_id || '';
+          if (this.transportMachine) {
+            this.transportMachine.setBackendState({
+              state: this.backendState,
+              last_at: this.lastBridgeStatusAt,
+              session_id: this.backendSessionId,
+              idle_sequence: message.payload.idle_sequence,
+              active_work_count: message.payload.active_work_count,
+            });
+          }
         }
         this.onMessage(message);
         if (message.kind === 'projection' && this.transportMachine) {
@@ -243,15 +266,25 @@ class ProjectionWebSocketClient {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this._clearConnectTimeout();
       this.connected = false;
       this.authenticated = false;
+      this.closeCode = event ? event.code : null;
+      this.closeReason = event ? (event.reason || '') : '';
+      this.wasClean = event ? !!event.wasClean : false;
       this.transportMachine && this.transportMachine.transition('websocket_closed', {
         reason: 'socket closed',
         ws_url: this.wsUrl,
+        close_code: this.closeCode,
+        close_reason: this.closeReason,
+        was_clean: this.wasClean,
       });
-      this.onStatusChange('disconnected');
+      this.onStatusChange('disconnected', {
+        close_code: this.closeCode,
+        close_reason: this.closeReason,
+        was_clean: this.wasClean,
+      });
       if (!this._intentionalClose) {
         this._scheduleReconnect();
       }
@@ -299,11 +332,25 @@ class ProjectionWebSocketClient {
     this._subscriptionActive = false;
     this.authenticated = false;
     if (this.ws) {
-      this.ws.close();
+      this.ws.close(1000, 'Client closing');
       this.ws = null;
     }
     this.connected = false;
     this.onStatusChange('closed');
+  }
+
+  isBackendStale() {
+    if (!this.lastBridgeStatusAt) return false;
+    return Date.now() - this.lastBridgeStatusAt > this._bridgeStatusStaleMs;
+  }
+
+  getBackendStatus() {
+    return {
+      state: this.backendState,
+      last_status_at: this.lastBridgeStatusAt,
+      session_id: this.backendSessionId,
+      is_stale: this.isBackendStale(),
+    };
   }
 
   _startConnectTimeout() {

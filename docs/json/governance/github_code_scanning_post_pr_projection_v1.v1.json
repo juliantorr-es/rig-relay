@@ -1,0 +1,12 @@
+{
+  "alert_number": 5,
+  "pr_state": "no_pr",
+  "alert_state": "alert_unknown",
+  "pending_gates": [
+    "alert_update_gate",
+    "approval_gate"
+  ],
+  "next_safe_action": "verify_fix_or_document_false_positive",
+  "human_review_required": true,
+  "generated_at": "2026-05-20T18:29:56.299540+00:00"
+}

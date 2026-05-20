@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.event.duckdb_projection_report.v1.schema.json",
+  "title": "Rig Event DuckDB Projection Report v1",
+  "description": "Read-side DuckDB projection over the event fabric JSONL. Extracts envelope-level counts only — never exposes raw payloads.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_event_logs",
+    "duckdb_available",
+    "read_side_only",
+    "mutation_authority",
+    "event_count",
+    "event_type_counts",
+    "event_category_counts",
+    "producer_counts",
+    "sensitivity_class_counts",
+    "redaction_status_counts",
+    "bridge_lifecycle_summary",
+    "resource_pressure_summary",
+    "consumer_error_summary",
+    "reconnect_pressure_summary",
+    "causal_chain_summary",
+    "query_manifest",
+    "redaction_summary",
+    "recommended_next_slice",
+    "status",
+    "malformed_lines",
+    "intentionally_deferred",
+    "telemetry_redaction_implications"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.event.duckdb_projection_report.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "partial", "no_input_logs", "duckdb_not_available", "read_failed"]
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head": {
+      "type": "string"
+    },
+    "source_event_logs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "duckdb_available": {
+      "type": "boolean"
+    },
+    "duckdb_version": {
+      "type": ["string", "null"]
+    },
+    "read_side_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "mutation_authority": {
+      "type": "boolean",
+      "const": false
+    },
+    "event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "event_category_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "producer_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "sensitivity_class_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "redaction_status_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "bridge_lifecycle_summary": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "resource_pressure_summary": {
+      "type": "object",
+      "properties": {
+        "reconnect_failed_count": { "type": "integer", "minimum": 0 },
+        "queue_pressure_high_count": { "type": "integer", "minimum": 0 },
+        "consumer_error_count": { "type": "integer", "minimum": 0 }
+      },
+      "required": [
+        "reconnect_failed_count",
+        "queue_pressure_high_count",
+        "consumer_error_count"
+      ]
+    },
+    "consumer_error_summary": {
+      "type": "object",
+      "properties": {
+        "consumer_error_count": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["consumer_error_count"]
+    },
+    "reconnect_pressure_summary": {
+      "type": "object",
+      "properties": {
+        "reconnect_failed_count": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["reconnect_failed_count"]
+    },
+    "causal_chain_summary": {
+      "type": "object",
+      "properties": {
+        "observed_count": { "type": "integer", "minimum": 0 },
+        "correlated_only_count": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["observed_count", "correlated_only_count"]
+    },
+    "query_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "query_id": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string" },
+          "input_relation": { "type": "string" },
+          "output_field": { "type": "string" },
+          "read_side_only": { "type": "boolean", "const": true },
+          "mutation_risk": { "type": "string", "enum": ["none"] },
+          "redaction_risk": { "type": "string", "enum": ["none", "low"] },
+          "status": { "type": "string", "enum": ["succeeded", "skipped"] }
+        },
+        "required": [
+          "query_id", "purpose", "input_relation", "output_field",
+          "read_side_only", "mutation_risk", "redaction_risk", "status"
+        ]
+      }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "properties": {
+        "raw_payloads_exposed": { "type": "boolean", "const": false },
+        "envelope_only": { "type": "boolean", "const": true },
+        "payload_hash_only": { "type": "boolean" }
+      },
+      "required": ["raw_payloads_exposed", "envelope_only", "payload_hash_only"]
+    },
+    "telemetry_redaction_implications": {
+      "type": "object"
+    },
+    "intentionally_deferred": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_next_slice": {
+      "type": "string"
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "status": { "type": "string" },
+    "malformed_lines": { "type": "integer", "minimum": 0 },
+    "intentionally_deferred": { "type": "array", "items": { "type": "string" } },
+    "telemetry_redaction_implications": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

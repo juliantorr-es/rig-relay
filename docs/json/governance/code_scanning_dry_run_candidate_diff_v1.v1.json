@@ -1,0 +1,39 @@
+{
+  "schema_version": "rig.github.code_scanning_dry_run_candidate_diff.v1",
+  "generated_at": "2026-05-20T17:50:58.218762+00:00",
+  "content_light": true,
+  "source_proposal_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_code_scanning_patch_proposal_v1.v1.json",
+  "selected_alert_number": 5,
+  "severity": "warning",
+  "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+  "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+  "source_context_available": false,
+  "source_context_hash": null,
+  "source_path": null,
+  "policy_gate_passed": false,
+  "policy_gate_blocked_reasons": [
+    "safe_context_not_available",
+    "source_context_hash_missing",
+    "source_path_missing"
+  ],
+  "has_real_diff": false,
+  "diff_path": "/Users/user/Developer/GitHub/rig-relay/.build/rig-relay/previews/code_scanning_dry_run_candidate.diff",
+  "diff_sha256": "d442c36d8b66c621bfd998bedc3abeca7c0761fba6e8f13764d60d269d01ff22",
+  "diff_bytes": 291,
+  "diff_line_count": 8,
+  "diff_classification": "blocked_explanation",
+  "diff_operations_applied": 0,
+  "diff_operations_planned": 0,
+  "raw_source_embedded_in_json": false,
+  "remote_mutation": false,
+  "local_mutation": false,
+  "pr_creation_status": "disabled",
+  "alert_update_status": "disabled",
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false,
+    "diff_redaction_scan_clean": true,
+    "raw_source_in_json": false
+  },
+  "recommended_next_slice": "Phase 2 Slice 5 — acquire source context first"
+}

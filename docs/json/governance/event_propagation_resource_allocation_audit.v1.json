@@ -1,0 +1,418 @@
+{
+  "schema_version": "rig.event_propagation_resource_allocation_audit.v1",
+  "generated_at": "2026-05-20T09:00:00Z",
+  "branch": "main",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "dirty_state_before": "modified_files_from_parallel_agents_present",
+  "dirty_state_after": "audit_artifact_and_schema_created",
+
+  "audited_subsystems": [
+    {
+      "name": "Telemetry Pipeline",
+      "existing_mechanism": "40 EventName values via log_local_event() → JSONL append with fsync. DuckDB read-side analytical queries.",
+      "push_poll": "push",
+      "correlation": "session_id, tool_call_id",
+      "schema_governed": true,
+      "resource_cost": "File I/O per event (flush+fsync). No subscription model — consumers poll JSONL.",
+      "gap": "No live pub/sub. Consumers cannot subscribe to event streams; they poll static files. No backpressure. No deduplication across consumers.",
+      "source_files": ["rig_relay/core/telemetry/constants.py", "rig_relay/core/telemetry/local.py"]
+    },
+    {
+      "name": "Tracing Subsystem",
+      "existing_mechanism": "RigTraceEvent with trace_id/span_id/parent_span_id. Span start/end/event/error. TraceStore write. Context propagation via async contextvars.",
+      "push_poll": "push",
+      "correlation": "trace_id + span_id hierarchy",
+      "schema_governed": true,
+      "resource_cost": "File I/O (trace store write). No live fanout.",
+      "gap": "Traces are stored but not livestreamed to consumers. Frontend cannot watch spans live. No span-to-projection bridge.",
+      "source_files": ["rig_relay/tracing/"]
+    },
+    {
+      "name": "Desktop WebSocket Server",
+      "existing_mechanism": "20+ message types over WebSocket. Subscribe/push projection. Rate-limited per-message-type. Flow control (max 64 outbound queue). Priority-based coalescing.",
+      "push_poll": "both_push_and_poll",
+      "correlation": "transport_session_id, handshake_id",
+      "schema_governed": true,
+      "resource_cost": "Network (localhost WS) + CPU + memory (coalescing buffers). Polling for projection state.",
+      "gap": "Projection refresh is periodic-poll-based, not event-driven. Frontend polls backend for state rather than receiving lifecycle events. Push exists for some message types but not for backend/bridge lifecycle.",
+      "source_files": ["rig_relay/desktop/websocket_server.py"]
+    },
+    {
+      "name": "Bridge Protocol & Runtime State",
+      "existing_mechanism": "BridgeMessage v1 envelope with 9 kinds. BridgeRuntimeState tracker (8 states per-connection). BridgeStateMachine (16 states). LifecycleStep probe ladder (36 steps).",
+      "push_poll": "push",
+      "correlation": "handshake_id, backend_session_id, trace_id",
+      "schema_governed": true,
+      "resource_cost": "File I/O (lifecycle JSONL) + CPU (state transitions) + WebSocket push.",
+      "gap": "Bridge lifecycle events are disjoint from other subsystem events. Bridge state changes don't propagate to GitHub rate-limiting, worker scheduling, or test-pressure assessment.",
+      "source_files": ["rig_relay/desktop/bridge_runtime_state.py", "rig_relay/desktop/bridge_state_machine.py"]
+    },
+    {
+      "name": "Runtime Supervisor & Tool Execution",
+      "existing_mechanism": "RuntimeStreamEvent (6 kinds) via AsyncIterator. RuntimeAuditEvent → JSONL. Heartbeat every 1s. SupervisorStateMachine (10 states x 12 events). Stall detection.",
+      "push_poll": "push",
+      "correlation": "lease_id, mission_id, agent_id, parent_event_id",
+      "schema_governed": true,
+      "resource_cost": "CPU (asyncio loop) + File I/O (audit JSONL) + Memory (stream chunks). No queue-pressure visibility.",
+      "gap": "Supervisor events are consumed only by their invoker. Queue depth, backpressure, cancellation storms, and orphaned loops are not visible to other subsystems. No adaptive throttling.",
+      "source_files": ["rig_relay/runtime/supervisor.py", "rig_relay/runtime/supervisor_state_machine.py"]
+    },
+    {
+      "name": "Coordination & Fleet",
+      "existing_mechanism": "15+ coordination event types (session/claim/reservation/artifact/conflict/handoff). FleetCoordinationEvent and FleetAgentMessage. File-backed store.",
+      "push_poll": "push",
+      "correlation": "session_id, task_id, mission_id, agent_id",
+      "schema_governed": true,
+      "resource_cost": "File I/O (coordination store). File-based rather than pub/sub.",
+      "gap": "Coordination events are written to file store only. No live notification when a lease conflicts, an artifact is published, or a handoff is requested. Agents poll.",
+      "source_files": ["rig_relay/coordination/"]
+    },
+    {
+      "name": "GitHub Integration",
+      "existing_mechanism": "GitHubProviderOperationReceipt (content-light). Integration telemetry events (status_checked, connection_state_changed, mutation_gated/approved/refused). Operating picture reads static artifacts.",
+      "push_poll": "poll",
+      "correlation": "minimal",
+      "schema_governed": true,
+      "resource_cost": "File I/O (artifact reads) + CPU. No live GitHub API polling rate adaptation.",
+      "gap": "No adaptive polling. No rate-limit events. No permission-denied event propagation. GitHub state changes don't feed other subsystems.",
+      "source_files": ["rig_relay/integrations/github_provider/_operating_picture.py"]
+    },
+    {
+      "name": "Release Gates & Tests",
+      "existing_mechanism": "CheckResult/Finding models. CheckSeverity (BLOCKER/HIGH/MEDIUM/LOW/INFO). On-demand polling via CLI. Targeted tests run manually.",
+      "push_poll": "poll",
+      "correlation": "none",
+      "schema_governed": true,
+      "resource_cost": "CPU (on-demand checks) + File I/O. No test-pressure signals.",
+      "gap": "No test-intent events. No test-churn detection. No adaptive final-validation gating. Tests run on developer demand or full-suite, not based on evidence convergence.",
+      "source_files": ["rig_relay/release_gate/"]
+    },
+    {
+      "name": "Analytics & Ralph Scanner",
+      "existing_mechanism": "DuckDB queries over observability JSONL. Ralph scan_projections() — observe-only, max 30s, max 20 candidates. Batch processing.",
+      "push_poll": "poll",
+      "correlation": "event_name grouping",
+      "schema_governed": true,
+      "resource_cost": "CPU (DuckDB queries) + Memory. No incremental refresh.",
+      "gap": "Ralph runs on explicit demand. No trigger when projection becomes stale, new reports appear, or evidence changes. DuckDB projections are full-scan, not incremental.",
+      "source_files": ["rig_relay/analytics/", "rig_relay/ralph/"]
+    },
+    {
+      "name": "Receipts, Evidence & Audit Trail",
+      "existing_mechanism": "ReceiptEnvelope, AuditEvent → JSONL, Report Store (14 kinds), ModelObservation, SessionLifecycle with compaction/rollup.",
+      "push_poll": "push",
+      "correlation": "envelope_id, workspace_id, session_id",
+      "schema_governed": true,
+      "resource_cost": "File I/O (JSONL append) + CPU (SHA256). No live evidence consumption.",
+      "gap": "Audit events are written but not propagated. No consumer can trigger a reaction when a receipt is created, a redaction match occurs, or a lifecycle event fires.",
+      "source_files": ["rig_relay/evidence/", "rig_relay/reports/"]
+    }
+  ],
+
+  "existing_event_like_surfaces": [
+    { "surface": "Telemetry EventName constants", "count": 40, "mechanism": "log_local_event() → JSONL", "currently_polling": true, "sample_event": "rig.relay.tool.call_completed" },
+    { "surface": "Tracing spans", "count": null, "mechanism": "TraceRecorder → TraceStore", "currently_polling": false, "sample_event": "runtime.subprocess.spawn.start" },
+    { "surface": "WebSocket message types", "count": 25, "mechanism": "WebSocket push + poll (projection)", "currently_polling": true, "sample_event": "projection: {...}" },
+    { "surface": "Bridge Runtime State transitions", "count": 8, "mechanism": "BridgeRuntimeStateTracker → WS push", "currently_polling": false, "sample_event": "bridge_status: {state, active_work_count, ...}" },
+    { "surface": "LifecycleStep events", "count": 36, "mechanism": "LifecycleArtifactWriter → JSONL", "currently_polling": false, "sample_event": "bridge:12:projection_loop_started" },
+    { "surface": "RuntimeStreamEvent", "count": 6, "mechanism": "AsyncIterator yield", "currently_polling": false, "sample_event": "RuntimeCompletionEvent" },
+    { "surface": "RuntimeAuditEvent", "count": null, "mechanism": "RuntimeAuditPersistenceStore → JSONL", "currently_polling": true, "sample_event": "runtime_audit_event with parent_event_id" },
+    { "surface": "Coordination events", "count": 15, "mechanism": "log_local_event() → file store", "currently_polling": true, "sample_event": "coord.task.claimed" },
+    { "surface": "Fleet agent messages", "count": 5, "mechanism": "FleetQueueEvent", "currently_polling": true, "sample_event": "FleetAgentMessage {kind: handoff_requested}" },
+    { "surface": "Integration telemetry", "count": 7, "mechanism": "log_local_event() → JSONL", "currently_polling": true, "sample_event": "rig.relay.integration.mutation_gated" },
+    { "surface": "ProgressEvents", "count": 6, "mechanism": "ProgressEventBuffer → WS push", "currently_polling": false, "sample_event": "operation.completed" },
+    { "surface": "DesktopEventRecord", "count": null, "mechanism": "InMemoryDesktopEventSink", "currently_polling": false, "sample_event": "desktop.intent.dispatched" },
+    { "surface": "AuditTrailStore JSONL", "count": 8, "mechanism": "append() with flush+fsync", "currently_polling": true, "sample_event": "receipt_created" },
+    { "surface": "Report Store JSONL", "count": 14, "mechanism": "append() to .rig/reports/reports.jsonl", "currently_polling": true, "sample_event": "out_of_scope_finding" }
+  ],
+
+  "resource_allocation_opportunities": [
+    { "domain": "Backend loop management", "current_behavior": "Backend runs continuous projection loop even when idle. No adaptive cadence.", "proposed_event_driven_behavior": "bridge.idle event → reduce projection cadence. bridge.active event → restore normal cadence. projection.unchanged_for_interval → increase interval.", "resource_saved": "CPU cycles during idle periods", "impact": "high" },
+    { "domain": "Frontend refresh cadence", "current_behavior": "Frontend polls projection at fixed interval regardless of backend state.", "proposed_event_driven_behavior": "projection.changed event → immediate push. projection.unchanged_for_interval → degrade frontend poll frequency. backend_stale event → show stalled indicator without polling.", "resource_saved": "CPU + WebSocket bandwidth", "impact": "high" },
+    { "domain": "GitHub API rate limiting", "current_behavior": "Status returns rate_limit_status: 'unavailable' — no adaptive polling.", "proposed_event_driven_behavior": "github.rate_limit.near_exhausted event → reduce polling cadence, defer noncritical calls. github.rate_limit.restored event → resume normal cadence.", "resource_saved": "API quota preservation", "impact": "high" },
+    { "domain": "Tool invocation scheduling", "current_behavior": "Tools execute immediately if lease available. No queue-pressure backoff.", "proposed_event_driven_behavior": "runtime.queue_pressure.high event → serialize tool invocations, pause non-critical tools. worker.capacity.available event → resume parallelism.", "resource_saved": "CPU cores + memory during pressure", "impact": "high" },
+    { "domain": "Subagent work deduplication", "current_behavior": "Coordination file store checked only on explicit poll.", "proposed_event_driven_behavior": "worker.file_lease_conflict event → reassign or serialize subagent. coord.artifact.published event → notify dependents. coord.handoff.requested event → immediate notification rather than polling.", "resource_saved": "Subagent CPU + I/O", "impact": "medium" },
+    { "domain": "Test execution throttling", "current_behavior": "Tests run on developer demand or full-suite. No evidence-convergence gate.", "proposed_event_driven_behavior": "test.targeted_passed + files_changed_stable events → allow final validation once. test.pressure.high event → suppress repeated full-suite runs. release_gate.evidence_converged event → allow promotion.", "resource_saved": "CPU (reduced test execution)", "impact": "high" },
+    { "domain": "Reconnect backoff", "current_behavior": "Hardcoded reconnect logic in bridge state machine.", "proposed_event_driven_behavior": "bridge.reconnect_failed event → escalate backoff window. bridge.backend_stale event → trigger backend health check before reconnect. bridge.restored event → reset backoff state.", "resource_saved": "Network + CPU retry storms", "impact": "medium" },
+    { "domain": "Log compaction and rotation", "current_behavior": "Observability JSONL files append without bounds. GC rules static.", "proposed_event_driven_behavior": "telemetry.file_size_threshold_reached event → trigger compaction. session.closed event → compact session logs. artifact_gc.ready event → prune eligible artifacts.", "resource_saved": "Disk space", "impact": "low" },
+    { "domain": "DuckDB read-side refresh", "current_behavior": "Full-scan queries on demand.", "proposed_event_driven_behavior": "telemetry.event_batch_appended event → incremental DuckDB refresh. analytics.new_projection_available event → trigger analytical query.", "resource_saved": "CPU (incremental vs full-scan)", "impact": "medium" },
+    { "domain": "Redaction quarantine", "current_behavior": "Redaction checks at artifact generation time only.", "proposed_event_driven_behavior": "redaction.match_detected event → immediately quarantine artifact, block release gate promotion, notify UI. redaction.quarantine_cleared event → unblock.", "resource_saved": "Prevents release of tainted artifacts", "impact": "high" },
+    { "domain": "Telemetry degradation", "current_behavior": "Telemetry enabled/disabled toggle; degradation.json marker written.", "proposed_event_driven_behavior": "telemetry.opt_out_detected event → reduce adaptive diagnostics, mark degraded optimization mode, suppress detailed event emission. telemetry.consent_restored event → resume normal detail.", "resource_saved": "Privacy compliance + disk I/O", "impact": "medium" },
+    { "domain": "Bridge health monitoring", "current_behavior": "Bridge lifecycle events written to JSONL; frontend polls for state.", "proposed_event_driven_behavior": "bridge.health events → frontend sees live topology. bridge.degraded event → frontend shows amber indicator with reason. bridge.restored event → clear degradation.", "resource_saved": "Debugging time + fake-green state avoidance", "impact": "high" }
+  ],
+
+  "proposed_event_taxonomy": {
+    "existing_events_total": 40,
+    "proposed_new_categories": ["bridge.*", "frontend.*", "projection.*", "runtime.*", "supervisor.*", "worker.*", "github.*", "redaction.*", "release_gate.*", "test.*", "resource.*", "policy.*", "evidence.*", "telemetry.*"],
+    "envelope_spec": {
+      "cloud_events_inspired": true,
+      "fields": ["event_id", "event_type", "occurred_at", "producer", "correlation_id", "causation_id", "trace_id", "span_id", "sequence", "sensitivity_class", "redaction_status", "payload_schema", "payload_hash", "content_light", "data"],
+      "idempotency": "event_id as dedup key",
+      "sensitivity_classes": ["public", "internal_operational", "telemetry_opt_in", "redaction_required", "never_emit"]
+    },
+    "categories": [
+      { "prefix": "bridge", "examples": ["bridge.transport.opened", "bridge.authenticated", "bridge.backend_loop_started", "bridge.backend_stale", "bridge.reconnect_attempt", "bridge.restored", "bridge.disconnect", "bridge.health"], "existing": false, "ux_strand": "Bridge" },
+      { "prefix": "projection", "examples": ["projection.first_content_sent", "projection.changed", "projection.unchanged_for_interval", "projection.stale", "projection.fresh"], "existing": false, "ux_strand": "Projection View" },
+      { "prefix": "runtime", "examples": ["runtime.queue_pressure.high", "runtime.queue_pressure.normal", "runtime.backpressure.threshold_reached"], "existing": false, "ux_strand": "Runtime" },
+      { "prefix": "supervisor", "examples": ["supervisor.spawn.started", "supervisor.spawn.completed", "supervisor.cancelled", "supervisor.timeout", "supervisor.stall_detected", "supervisor.orphaned_loop_detected"], "existing": true, "ux_strand": "Runtime Supervisor" },
+      { "prefix": "worker", "examples": ["worker.claimed", "worker.completed", "worker.failed", "worker.file_lease_conflict", "worker.capacity.available"], "existing": false, "ux_strand": "Workers" },
+      { "prefix": "tool", "examples": ["tool.invocation.started", "tool.invocation.completed", "tool.invocation.failed", "tool.invocation.blocked_by_policy", "tool.receipt.emitted"], "existing": true, "ux_strand": "Tools" },
+      { "prefix": "github", "examples": ["github.permission.audit.completed", "github.rate_limit.near_exhausted", "github.rate_limit.restored", "github.webhook.delivery_failed", "github.webhook.dead_lettered", "github.public_surface.preview_ready", "github.pr_publish.blocked_by_permission"], "existing": true, "ux_strand": "GitHub Provider" },
+      { "prefix": "redaction", "examples": ["redaction.match_detected", "redaction.quarantine_triggered", "redaction.quarantine_cleared"], "existing": false, "ux_strand": "Redaction" },
+      { "prefix": "release_gate", "examples": ["release_gate.check_passed", "release_gate.check_failed", "release_gate.blocked", "release_gate.evidence_converged"], "existing": true, "ux_strand": "Release Gate" },
+      { "prefix": "test", "examples": ["test.intent.declared", "test.targeted_passed", "test.pressure.high", "test.final_validation_justified"], "existing": false, "ux_strand": "Tests" },
+      { "prefix": "resource", "examples": ["resource.cpu_pressure.high", "resource.test_budget.exhausted", "resource.github_budget.degraded", "resource.worker_capacity.available", "resource.frontend_refresh.degraded"], "existing": false, "ux_strand": "Resource Allocator" },
+      { "prefix": "telemetry", "examples": ["telemetry.event_batch_appended", "telemetry.file_size_threshold_reached", "telemetry.opt_out_detected", "telemetry.consent_restored"], "existing": true, "ux_strand": "Telemetry" },
+      { "prefix": "evidence", "examples": ["evidence.receipt.created", "evidence.receipt_policy_violation_detected", "evidence.artifact_quarantined", "evidence.artifact_gc.ready"], "existing": false, "ux_strand": "Evidence Rail" },
+      { "prefix": "user", "examples": ["user.ready", "user.cancelled_action", "user.slash_command_used"], "existing": true, "ux_strand": "Frontend" }
+    ]
+  },
+
+  "proposed_control_loops": [
+    {
+      "name": "Backend stale → degrade projection cadence",
+      "input_events": ["bridge.backend_stale"],
+      "derived_signal": "BackendStaleSignal {stale_since, last_known_state}",
+      "decision": "Increase projection refresh interval to spare_cadence. Mark frontend bridge-status as degraded.",
+      "affected_subsystem": "Desktop WebSocket server, projection builder, frontend transport state",
+      "resource_conserved": "CPU cycles from idle polling + frontend WS bandwidth",
+      "failure_mode_avoided": "Fake-green projection state in frontend; frontend hammering stale backend",
+      "safety_gate": "Must first attempt status_refresh. Only degrade if still stale after 3 attempts over 15s. Must emit bridge.degraded telemetry event.",
+      "telemetry_implication": "Emit bridge.degraded with stale_since, last_known_state, attempt_count. Content-light. No raw backend state.",
+      "reaction_timing": "delayed (15s threshold with 3 retries)",
+      "ux_visibility": "Frontend shows amber 'Backend stale' with degraded cadence indicator"
+    },
+    {
+      "name": "GitHub rate limit near exhaustion → reduce polling + defer noncritical calls",
+      "input_events": ["github.rate_limit.near_exhausted"],
+      "derived_signal": "RateLimitSignal {remaining, reset_at, window}",
+      "decision": "Reduce polling cadence. Defer noncritical API calls (scheduled reads, public surface checks). Prioritize mutation-intent validation only.",
+      "affected_subsystem": "GitHub provider security intake, public surface audit, profile readme check",
+      "resource_conserved": "GitHub API quota",
+      "failure_mode_avoided": "Lockout from critical GitHub operations due to exhausted rate limit",
+      "safety_gate": "Mutation-intent validation must proceed even at degraded rate. Must emit github.rate_limit.near_exhausted telemetry event. No mutation throttling — only read throttling.",
+      "telemetry_implication": "Emit github.rate_limit.near_exhausted with remaining count only. No raw API response headers.",
+      "reaction_timing": "immediate for noncritical reads; unaffected for mutation intents",
+      "ux_visibility": "Frontend shows amber 'GitHub rate limit degraded' with estimated reset time"
+    },
+    {
+      "name": "Tool queue pressure high → serialize non-critical invocations",
+      "input_events": ["runtime.queue_pressure.high"],
+      "derived_signal": "QueuePressureSignal {active_count, queued_count, memory_mb}",
+      "decision": "Serialize non-mutation tool invocations. Pause batch tool runs. Maintain mutation throughput.",
+      "affected_subsystem": "Tool runtime, supervisor invoker, worker pool",
+      "resource_conserved": "CPU cores + memory during tool invocation storms",
+      "failure_mode_avoided": "Exhaustion killing critical mutation tool; OOM from unbounded tool parallelism",
+      "safety_gate": "Must preserve mutation tool priority. Must emit runtime.queue_pressure.high telemetry event. Serialization must be reversible — resume parallelism when pressure drops below threshold.",
+      "telemetry_implication": "Emit runtime.queue_pressure.high with active_count, queued_count. No raw tool output.",
+      "reaction_timing": "immediate",
+      "ux_visibility": "Frontend shows 'Tool queue pressure: N active, M queued'"
+    },
+    {
+      "name": "Test targeted passed + files stable → suppress full-suite runs",
+      "input_events": ["test.targeted_passed", "test.files.stable"],
+      "derived_signal": "TestConvergenceSignal {targeted_passed, files_changed_since, time_since_last_full_suite}",
+      "decision": "Suppress repeated full-suite runs. Allow single final validation pass. Notify UI that 'final validation justified'.",
+      "affected_subsystem": "Release gate runner, test execution, developer CLI",
+      "resource_conserved": "CPU (avoided full pytest runs on constrained machine)",
+      "failure_mode_avoided": "Test-churn fatigue; false sense of coverage from repeated full-suite passes",
+      "safety_gate": "Must only suppress if: (a) targeted tests all passed, (b) no files changed since last test run, (c) developer hasn't requested explicit full suite. Must emit test.final_validation_justified event.",
+      "telemetry_implication": "Emit test.targeted_passed with test_names_sha256, passed_count. No raw test output.",
+      "reaction_timing": "delayed (wait for stable file state)",
+      "ux_visibility": "Frontend shows 'Final validation justified — not yet run' badge"
+    },
+    {
+      "name": "Redaction match detected → quarantine artifact + block release gate",
+      "input_events": ["redaction.match_detected"],
+      "derived_signal": "RedactionMatchSignal {artifact_path, matched_pattern, match_location}",
+      "decision": "Quarantine the artifact. Block release gate promotion. Notify UI with redaction details (no raw content). Prevent artifact from being committed.",
+      "affected_subsystem": "Redaction layer, release gate, evidence store, operating picture",
+      "resource_conserved": "Prevents propagation of tainted artifacts",
+      "failure_mode_avoided": "Release candidate containing credential material; evidence artifact with raw code snippets",
+      "safety_gate": "Quarantine must be immediate. Must record matched_pattern and artifact path. Must NOT record raw content in telemetry. Must emit redaction.match_detected with artifact_sha256 and pattern_name only.",
+      "telemetry_implication": "Emit redaction.match_detected with artifact_sha256, pattern_name, sensitivity_class. No raw content. No matched substring.",
+      "reaction_timing": "immediate",
+      "ux_visibility": "Frontend shows red 'Redaction quarantine triggered' with artifact reference"
+    },
+    {
+      "name": "Projection unchanged for interval → reduce refresh cadence",
+      "input_events": ["projection.unchanged_for_interval"],
+      "derived_signal": "ProjectionStalenessSignal {intervals_unchanged, current_cadence_ms}",
+      "decision": "Stepwise increase refresh interval. Down to spare_cadence minimum. Stop after max_degrade_level reached.",
+      "affected_subsystem": "Projection builder, WebSocket push loop, frontend polling",
+      "resource_conserved": "CPU cycles from redundant projection rebuilds",
+      "failure_mode_avoided": "Polling storm when no data has changed; frontend rendering work for stale projections",
+      "safety_gate": "Stepwise degradation: 1x → 2x → 4x → max 30s interval. Must restore immediately on next projection.changed event. Must emit projection.refresh_cadence_reduced telemetry event.",
+      "telemetry_implication": "Emit projection.refresh_cadence_reduced with new_interval_ms, unchanged_count. No projection content.",
+      "reaction_timing": "delayed (stepwise over 3 intervals)",
+      "ux_visibility": "Frontend shows 'Refresh cadence reduced' subtle indicator"
+    },
+    {
+      "name": "Worker file lease conflict → reroute or serialize subagent",
+      "input_events": ["worker.file_lease_conflict", "coord.lease.expired"],
+      "derived_signal": "LeaseConflictSignal {conflicting_path, current_holder, conflicted_agent}",
+      "decision": "If lease holder is active: serialize work (wait for release). If lease holder is stale: reclaim lease and reassign. If lease expired: reassign immediately.",
+      "affected_subsystem": "Worker pool, coordination store, lease manager",
+      "resource_conserved": "Subagent CPU (prevents competing subagents on same file) + disk I/O",
+      "failure_mode_avoided": "Concurrent mutation on same file by different subagents; merge conflict storms",
+      "safety_gate": "Reassignment only if (a) lease expired, or (b) lease holder is confirmed stale (no heartbeat > 2x TTL). Must emit coord.lease.reclaimed telemetry event. Must record causation chain.",
+      "telemetry_implication": "Emit coord.lease.reclaimed with lease_id, previous_holder_hash, path_hash. No raw file paths.",
+      "reaction_timing": "immediate for expired; delayed for contested (wait for heartbeat confirmation)",
+      "ux_visibility": "Frontend shows 'Lease conflict resolved' with agent assignment"
+    },
+    {
+      "name": "Telemetry opt-out → degrade adaptive diagnostics + mark degraded mode",
+      "input_events": ["telemetry.opt_out_detected"],
+      "derived_signal": "ConsentDegradedSignal {opt_out_at, previous_detail_level}",
+      "decision": "Reduce adaptive diagnostic detail. Mark optimization mode as 'degraded'. Preserve basic function. Do NOT degrade security, governance, or redaction.",
+      "affected_subsystem": "Telemetry pipeline, DuckDB analytics, Ralph scanner, diagnostics",
+      "resource_conserved": "Disk I/O (reduced telemetry detail) + privacy compliance",
+      "failure_mode_avoided": "Emission of telemetry data against user consent; privacy violation",
+      "safety_gate": "Degradation must preserve: security checks, governance gates, redaction, bridge health. Only degrade: analytics, diagnostic detail, optimization hints. Must emit telemetry.opt_out_detected with degraded_level and downgraded_components.",
+      "telemetry_implication": "Emit telemetry.opt_out_detected with degraded_level, downgraded_components. No PII. No session data.",
+      "reaction_timing": "immediate",
+      "ux_visibility": "Frontend shows 'Telemetry: degraded mode (opt-out active)' indicator"
+    }
+  ],
+
+  "event_command_boundary_findings": [
+    { "event_type": "bridge.backend_stale", "is_command": false, "boundary_rule": "Event says: backend appears stale. Command would be: restart_backend_loop. Event must not auto-restart. Event may trigger governed: bridge.status_refresh.requested (read-only, no mutation)." },
+    { "event_type": "github.rate_limit.near_exhausted", "is_command": false, "boundary_rule": "Event says: rate limit low. Command would be: pause_all_github_calls. Event may trigger governed: github.polling_cadence.reduced (degradation, not mutation)." },
+    { "event_type": "redaction.match_detected", "is_command": false, "boundary_rule": "Event says: forbidden pattern found. Command would be: delete_artifact. Event must trigger governed: redaction.quarantine_triggered (defensive, no deletion). Event must block release_gate promotion." },
+    { "event_type": "test.final_validation_justified", "is_command": false, "boundary_rule": "Event says: evidence sufficient for final validation. Command would be: run_full_pytest. Event notifies UI and release gate. Developer must initiate final validation explicitly." },
+    { "event_type": "worker.file_lease_conflict", "is_command": false, "boundary_rule": "Event says: two agents want same path. Command would be: force_reassign. Event triggers governed: coord.lease.conflict_resolution_requested. Resolution must check lease state and heartbeat before reassignment." },
+    { "event_type": "runtime.queue_pressure.high", "is_command": false, "boundary_rule": "Event says: tool pressure rising. Command would be: kill_tools. Event triggers governed: runtime.serialization_mode.activated (throttle, not terminate)." },
+    { "event_type": "projection.changed", "is_command": false, "boundary_rule": "Event says: projection data updated. Command would be: force_refresh_frontend. Event triggers governed: projection.push_to_subscribers (broadcast, not mutation)." },
+    { "event_type": "coord.lease.expired", "is_command": false, "boundary_rule": "Event says: lease time elapsed. Command would be: reclaim_and_reassign. Event triggers governed: coord.lease.reclamation_evaluation before any reassignment." }
+  ],
+
+  "frontend_bridge_backend_findings": [
+    { "area": "fake-green state", "finding": "Frontend currently polls projection at fixed interval. When backend is stale or disconnected, frontend continues showing last-known state without degradation indicator. User sees 'connected' when bridge is actually degraded.", "severity": "high", "recommendation": "Propagate bridge lifecycle events → frontend derives live bridge health state (connected, alive, idle, stale, degraded, failed). Show degradation reason. Never show fake-green." },
+    { "area": "bridge runtime state isolation", "finding": "BridgeRuntimeStateTracker exists (8 states per-connection) but its events don't feed other subsystems. GitHub rate-limiting, test pressure, and worker scheduling are unaware of bridge state.", "severity": "medium", "recommendation": "Publish bridge.bridge_runtime.transition events to event fabric. Let resource allocator subscribe to bridge degradation to adjust other subsystem cadences." },
+    { "area": "duplicate loops", "finding": "Backend projection loop, frontend polling loop, and bridge heartbeat loop operate independently. When bridge disconnects and reconnects, backend may start duplicate projection loop per connection.", "severity": "high", "recommendation": "Propagate bridge.session.{started,closed} events. Backend must check for existing loop before spawning. Bridge must emit connection identity events for deduplication." },
+    { "area": "reconnect escalation", "finding": "Reconnect logic is hardcoded in bridge state machine. No adaptive backoff based on failure frequency or backend health signals.", "severity": "medium", "recommendation": "Emit bridge.reconnect.failed events with attempt count. Reconnect policy subscribes and adapts backoff window. Emit bridge.reconnect.exhausted when max attempts reached." },
+    { "area": "projection freshness visibility", "finding": "Projection freshness is not surfaced to other subsystems. GitHub operating picture doesn't know if projection is stale before consuming it. Ralph scanner doesn't know if evidence is current.", "severity": "medium", "recommendation": "Emit projection.fresh and projection.stale events with sequence numbers. Consumers check projection freshness before consuming stale data." },
+    { "area": "spiderweb UX", "finding": "No live mission topology view exists. Bridge is first strand — the bridge lifecycle events are the first visible vibration in the web. Once bridge events feed a live topology projection, all other subsystems can be shown on the same fabric.", "severity": "advisory", "recommendation": "Build MissionTopologyProjection as first event-fabric consumer. Show bridge strand first. Add workers, tools, GitHub, tests, release gate as additional strands. Show derived tension, not raw event streams." }
+  ],
+
+  "github_integration_findings": [
+    { "area": "rate limit", "finding": "GitHub rate limit status is hardcoded as 'unavailable'. No live polling adaptation. No event when rate limit changes.", "severity": "high", "recommendation": "Emit github.rate_limit.{healthy, near_exhausted, exhausted, restored} events. Security intake and public surface audit subscribe to adapt polling cadence." },
+    { "area": "permission denial", "finding": "Dependabot and secret_scanning refusals are recorded in intake artifacts but not propagated as events. Other subsystems don't know permissions are insufficient.", "severity": "medium", "recommendation": "Emit github.permission.denied events with required_permission_sha256. Operating picture and release gate subscribe to show permission posture." },
+    { "area": "webhook handling", "finding": "No webhook event handling exists. Future webhook delivery failures (retry budget exhaustion, dead-letter) would be invisible.", "severity": "low", "recommendation": "When webhooks are implemented, emit github.webhook.{received, delivery_failed, dead_lettered} events with retry_count and delivery_age. No raw webhook payload." },
+    { "area": "public surface pipeline", "finding": "Public surface program (audit → claims → packets → preview → publish PR) is artifact-driven but not event-driven. Each step reads static artifacts rather than subscribing to completion events.", "severity": "medium", "recommendation": "Emit github.public_surface.{audit_completed, claims_indexed, packets_generated, preview_ready, pr_proposed} events. Each step subscribes to previous step's completion event rather than polling." }
+  ],
+
+  "test_release_gate_findings": [
+    { "area": "test churn", "finding": "Tests run on developer demand or full-suite. No mechanism detects that running the full suite again would produce no new information (no files changed, targeted tests passed).", "severity": "high", "recommendation": "Emit test.targeted_passed and test.files.changed events. Coordinator subscribes to detect 'test churn' — repeated full-suite runs with no change. Suppress with 'final validation justified' event instead." },
+    { "area": "evidence convergence", "finding": "Release gate checks run on demand. No event signals that all pre-conditions are satisfied for promotion. Developer must manually know when to run release gate.", "severity": "medium", "recommendation": "Emit release_gate.evidence_converged when all blocking checks have passed evidence. Notify UI that promotion is eligible. Developer still explicitly initiates promotion." },
+    { "area": "fake-green tests", "finding": "No mechanism detects tests that always pass regardless of code changes (fake-green).", "severity": "high", "recommendation": "Emit test.classification.suspected_fake_green when a test passes across N consecutive code changes without any variance. Flag for human review. Do not auto-delete." }
+  ],
+
+  "telemetry_redaction_findings": [
+    { "area": "event payload creep", "finding": "Telemetry events currently carry bounded properties, but a pub/sub fabric risks payload creep — consumers requesting more detail than necessary.", "severity": "high", "recommendation": "Every event must declare sensitivity_class. Events classified as 'telemetry_opt_in' or 'redaction_required' must never carry raw prompts, secrets, private repo contents, credentials, or private file contents. Detail level degrades with consent opt-out." },
+    { "area": "event log as content leak", "finding": "Append-only JSONL event log could become a durable record of sensitive content if payloads are not bounded.", "severity": "critical", "recommendation": "Event log must be content-light by default. Payloads must pass through safe_summary() before emission. Raw code snippets, patches, diffs, and file contents must never appear in event payloads. Use SHA256 hashes for content-derived fields." },
+    { "area": "synthetic event theater", "finding": "Tests that validate event fabric behavior must test real events, not synthetic loops. Fake-green event tests would undermine trust.", "severity": "medium", "recommendation": "Event fabric tests must use real artifacts and real subsystem transitions. Tests cannot be 'did the bus emit?' — they must be 'did the bus emit at the right time with the right content-light payload after the right real condition?'" },
+    { "area": "commercialization boundary", "finding": "Some events (tool usage patterns, model observation, code quality signals) could feed commercial derived datasets. Others (private code, credentials, session content) must never be commercialized.", "severity": "high", "recommendation": "All events must carry sensitivity_class. Only 'public' and 'internal_operational' events may be aggregated for commercial use. 'telemetry_opt_in' requires explicit consent. 'redaction_required' and 'never_emit' must never leave local machine." }
+  ],
+
+  "anti_patterns": [
+    "Everything listens to everything: without subscription policy, every consumer subscribes to every event, creating N*M message storms.",
+    "Event storms: high-frequency events (heartbeat, chunk) flood the bus and drown signal events (degradation, quota exhausted).",
+    "Duplicate consumers: same consumer subscribes multiple times, processing same event redundantly.",
+    "Hidden command side effects: an 'event' triggers a chain of commands that mutate state without governance gate. Every mutation must pass through an explicit command gate.",
+    "Event-order dependency: consumers assume events arrive in specific order across producers, creating fragile temporal coupling.",
+    "Unbounded retries: failed event delivery retries without backoff or dead-letter queue, creating retry storms.",
+    "Frontend fake-green state: frontend shows derived state from stale events or fills in missing state with 'probably fine' defaults.",
+    "Telemetry payload creep: events start content-light but grow to include raw tool output, file snippets, or model responses over time.",
+    "Event logs becoming content leaks: append-only JSONL log accumulates sensitive payloads that can't be redacted retroactively.",
+    "DuckDB accidentally becoming mutation authority: read-side analytics query influences write-side behavior without command gate.",
+    "Tests that only validate synthetic event theater: tests confirm event emission but never validate that the event reflects real subsystem state transitions.",
+    "Bridge.STALE becomes bridge.DISCONNECTED without intermediate state: false-positive disconnections from transient backend blips."
+  ],
+
+  "recommended_v1_architecture": {
+    "transport": {
+      "primary": "append-only JSONL event log as first durable substrate",
+      "live": "in-process async pub/sub for live local consumers (asyncio.Queue per topic)",
+      "frontend": "WebSocket fanout only for frontend-safe bridge/projection status events",
+      "analytics": "DuckDB as read-side analytical projection only — never mutation authority"
+    },
+    "subscription_policy": "Consumers declare subscriptions by event_type prefix. No wildcard 'everything' subscriptions. Each subscription is registered, bounded (max event rate per consumer), and audited. Unauthorized subscriptions are refused.",
+    "envelope": {
+      "event_id": "UUIDv7 or SHA256-based deterministic ID",
+      "event_type": "dotted namespace: <subsystem>.<signal>",
+      "occurred_at": "ISO 8601 UTC",
+      "producer": "subsystem identifier",
+      "correlation_id": "links events in same causal chain",
+      "causation_id": "parent event ID that caused this event",
+      "trace_id": "OpenTelemetry-compatible trace ID",
+      "span_id": "OpenTelemetry-compatible span ID",
+      "sequence": "monotonic per-producer",
+      "sensitivity_class": "public | internal_operational | telemetry_opt_in | redaction_required | never_emit",
+      "redaction_status": "passed | quarantined | needs_review",
+      "payload_schema": "schema version reference",
+      "payload_hash": "SHA256 of payload",
+      "content_light": "boolean",
+      "data": "content-light payload"
+    },
+    "redaction_rules": [
+      "Every event data field must pass through safe_summary() before emission",
+      "SHA256 all content-derived fields (file contents, code snippets, prompts, responses)",
+      "Never emit raw credential material, private keys, auth headers, or bearer tokens",
+      "Never emit raw repo file contents or code snippets as event data",
+      "Event data fields must not contain credential-like patterns or raw content fields as defined in the global redaction denylist.",
+    "Event data must not contain: credential field prefixes, auth header values, raw API responses, raw file bodies, diffs, code snippets, or secret material.",
+      "Artifact quarantine triggered by redaction.match_detected event"
+    ],
+    "consumers": [
+      "MissionTopologyProjection (frontend live topology view — bridge + workers + tools + GitHub + tests + release gate)",
+      "BridgeHealthProjection (bridge runtime state, connection health, degradation reasons)",
+      "WorkerResourceProjection (active workers, queue depth, lease conflicts)",
+      "GitHubIntegrationProjection (rate limit health, permission posture, webhook queue)",
+      "TestPressureProjection (test churn detection, final-validation eligibility)",
+      "ReleaseGateProjection (evidence convergence, blocker status)",
+      "TelemetryConsentProjection (consent state, degradation indicators)",
+      "ResourceAllocator (backpressure, throttling, cadence adaptation)",
+      "DuckDB read-side analytics (incremental refresh on batch events)"
+    ]
+  },
+
+  "recommended_next_slice": "Implement Event Fabric v1 / Local Propagation Bus v1 immediately after bridge liveness landing. The bridge is the first concrete producer/consumer pair: bridge emits lifecycle/status events, frontend consumes projection state, observability consumes lifecycle events, tests prove no duplicate loops. The event fabric then generalizes that pattern across all subsystems. Start with: bridge.* events → MissionTopologyProjection → spiderweb UX. Add resource.* and test.* control loops second. Add github.* events third.",
+
+  "intentionally_deferred": [
+    "Remote event propagation (HTTP/WebSocket beyond localhost)",
+    "Multi-machine coordination via event bus",
+    "CloudEvents SDK adoption (use spec concepts, not dependency)",
+    "OpenTelemetry SDK integration (use propagation concepts, not dependency)",
+    "Event sourcing with replay capability (v1 is notification + projection; v2 can add replay)",
+    "Dead-letter queues for event delivery failures",
+    "Event version migration/backward compatibility",
+    "Event schema registry as separate service",
+    "Commercialization of aggregated event data",
+    "GitHub webhook event ingestion (wait for webhook implementation)"
+  ],
+
+  "out_of_scope_risks": [
+    "Event fabric adds indirection that makes control flow harder to statically analyze; must preserve explicit governance gates on all mutations",
+    "JSONL event log growth may exceed disk budget if event cadence is not bounded; must enforce per-event-type rate limits and total log size caps",
+    "In-process pub/sub may cause deadlocks if consumers synchronously call back into the producer's event loop; must enforce async-only consumers",
+    "DuckDB incremental refresh may become stale if event batches are lost; must validate projection freshness against event log sequence numbers",
+    "Spiderweb UX may mislead if derived tension shows 'degraded' when a subsystem is actually failed; must distinguish 'contact lost' from 'no events recently'",
+    "Event taxonomy proliferation: new subsystems adding event types without schema governance could cause the taxonomy to fragment; must require schema-governed registration for all new event types"
+  ],
+
+  "spiderweb_ux_metaphor": {
+    "metaphor": "The event fabric is the spiderweb. The UX is the dew on the web. Every subsystem vibrates the web. The frontend does not poll and guess — it watches the web. Raw events are the spiderweb fibers. The UI shows where the web is vibrating (derived tension).",
+    "strand_states": ["healthy", "idle", "active", "stale", "degraded", "blocked", "quarantined", "backpressured", "waiting_for_permission"],
+    "ux_projections": [
+      "MissionTopologyProjection — live topology view showing all strands and their states",
+      "BridgeHealthProjection — bridge connection, backend liveness, projection freshness",
+      "WorkerResourceProjection — active/idle/blocked workers, queue depth, lease conflicts",
+      "GitHubIntegrationProjection — rate limit health, permission posture, webhook queue",
+      "TestPressureProjection — test churn detection, final-validation eligibility",
+      "ReleaseGateProjection — blocker status, evidence convergence",
+      "TelemetryConsentProjection — consent state, degradation indicators"
+    ],
+    "derived_tension_rule": "Never show raw events in the UI. Show derived tension. Instead of 'bridge.heartbeat_sent' repeated, show 'Backend alive · idle · projection unchanged · refresh cadence reduced'. Instead of 'github.rate_limit.near_exhausted' raw, show 'GitHub rate limit degraded · estimated reset 14 min'. The UI exposes where the web is vibrating, not every individual fiber."
+  }
+}

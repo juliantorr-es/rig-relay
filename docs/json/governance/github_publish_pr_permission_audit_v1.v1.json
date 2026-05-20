@@ -1,0 +1,87 @@
+{
+  "schema_version": "rig.github.profile_readme_permission_audit.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "owner": "juliantorr-es",
+  "profile_repo": "github.com/juliantorr-es/juliantorr-es",
+  "profile_repo_hash": "a913de668ac0ac9f63aa54b58d74ce221240ef9fa46d42431891f4828d3ac44d",
+  "content_light": true,
+  "remote_mutation": false,
+  "dry_run": true,
+  "live_network": false,
+  "proposed_operation": "publish_profile_readme_via_pull_request",
+  "required_read_permissions": [
+    {
+      "permission_id": "contents:read",
+      "permission_kind": "github_app_permission",
+      "access_level": "read",
+      "required": true,
+      "purpose": "Read repository contents including profile README file",
+      "github_api_header": "X-Accepted-GitHub-Permissions",
+      "status": "missing"
+    },
+    {
+      "permission_id": "metadata:read",
+      "permission_kind": "github_app_permission",
+      "access_level": "read",
+      "required": true,
+      "purpose": "Read repository metadata to verify profile repo exists",
+      "status": "missing"
+    }
+  ],
+  "required_write_permissions": [
+    {
+      "permission_id": "contents:write",
+      "permission_kind": "github_app_permission",
+      "access_level": "write",
+      "required": true,
+      "purpose": "Commit profile README changes to publish via PR",
+      "status": "missing"
+    },
+    {
+      "permission_id": "pull_requests:write",
+      "permission_kind": "github_app_permission",
+      "access_level": "write",
+      "required": true,
+      "purpose": "Open PR for profile README updates",
+      "status": "missing"
+    }
+  ],
+  "explicitly_not_required": [
+    {
+      "permission_id": "workflows:write",
+      "permission_kind": "github_app_permission",
+      "reason": "Profile README PR does not edit .github/workflows/ files. Workflows permission is explicitly not needed for this path."
+    },
+    {
+      "permission_id": "actions:write",
+      "permission_kind": "github_app_permission",
+      "reason": "No workflow dispatch, rerun, or cancel operations in profile README path."
+    }
+  ],
+  "permission_classification": {
+    "read_ready": false,
+    "write_ready": false,
+    "publish_possible": "blocked_dry_run",
+    "workflows_write_needed": false,
+    "actions_write_needed": false,
+    "contents_write_sufficient": false,
+    "pull_requests_write_sufficient": true,
+    "minimum_permission_set": [
+      "contents:read",
+      "metadata:read",
+      "contents:write",
+      "pull_requests:write"
+    ]
+  },
+  "permission_gaps": [
+    "contents:read",
+    "metadata:read",
+    "contents:write",
+    "pull_requests:write"
+  ],
+  "recommended_action": "request_permissions",
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_fields_present": false
+  }
+}

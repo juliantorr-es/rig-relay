@@ -1,0 +1,59 @@
+{
+  "schema_version": "rig.local_inference.task_profile.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "profiles": {
+    "chat_light": {
+      "required_capabilities": ["chat_completions"],
+      "preferred_capabilities": ["streaming"],
+      "streaming_preferred": true,
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "code_review_light": {
+      "required_capabilities": ["chat_completions"],
+      "preferred_capabilities": ["streaming"],
+      "min_context_window_tokens": 8192,
+      "streaming_preferred": true,
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "structured_json": {
+      "required_capabilities": ["chat_completions", "structured_json_output"],
+      "preferred_capabilities": ["tool_calling"],
+      "structured_output_required": true,
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "tool_planning": {
+      "required_capabilities": ["chat_completions", "tool_calling"],
+      "preferred_capabilities": ["structured_json_output", "streaming"],
+      "tool_call_required": true,
+      "streaming_preferred": true,
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "long_context_summary": {
+      "required_capabilities": ["chat_completions"],
+      "preferred_capabilities": ["streaming"],
+      "min_context_window_tokens": 32768,
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "embedding_or_retrieval": {
+      "required_capabilities": ["embeddings"],
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "vision_or_multimodal": {
+      "required_capabilities": ["chat_completions", "vision"],
+      "preferred_capabilities": ["streaming"],
+      "manual_selection_allowed": true,
+      "policy_selection_allowed": false
+    },
+    "unknown": {
+      "required_capabilities": ["chat_completions"],
+      "manual_selection_allowed": false,
+      "policy_selection_allowed": false
+    }
+  }
+}

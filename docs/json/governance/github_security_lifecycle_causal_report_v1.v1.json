@@ -1,0 +1,70 @@
+{
+  "schema_version": "rig.github.security_lifecycle_causal_report.v1",
+  "generated_at": "2026-05-20T18:42:59.803117+00:00",
+  "content_light": true,
+  "total_events": 11,
+  "events": [
+    {
+      "event": "security_queue_generated",
+      "relationship": "observed",
+      "stage": 1
+    },
+    {
+      "event": "remediation_plan_generated",
+      "relationship": "derived",
+      "stage": 2,
+      "from": "security_queue"
+    },
+    {
+      "event": "patch_proposal_generated",
+      "relationship": "derived",
+      "stage": 3,
+      "from": "remediation_plan"
+    },
+    {
+      "event": "patch_preview_generated",
+      "relationship": "observed",
+      "stage": 4,
+      "from": "patch_proposal"
+    },
+    {
+      "event": "source_context_acquired_or_blocked",
+      "relationship": "observed",
+      "stage": 5
+    },
+    {
+      "event": "candidate_diff_generated_or_blocked",
+      "relationship": "observed",
+      "stage": 6
+    },
+    {
+      "event": "pr_plan_generated",
+      "relationship": "derived",
+      "stage": 7,
+      "from": "candidate_diff"
+    },
+    {
+      "event": "readiness_simulated",
+      "relationship": "observed",
+      "stage": 8,
+      "from": "pr_plan"
+    },
+    {
+      "event": "pr_mutation_simulated",
+      "relationship": "observed",
+      "stage": 9,
+      "from": "readiness"
+    },
+    {
+      "event": "post_pr_lifecycle_planned",
+      "relationship": "observed",
+      "stage": 10,
+      "from": "pr_mutation"
+    },
+    {
+      "event": "alert_state_update_deferred",
+      "relationship": "observed",
+      "stage": 10
+    }
+  ]
+}

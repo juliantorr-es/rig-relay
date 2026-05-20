@@ -1,0 +1,207 @@
+{
+  "branch": "main",
+  "bridge_lifecycle_summary": {
+    "bridge.auth.succeeded": 2,
+    "bridge.backend_loop.started": 2,
+    "bridge.backend_loop.stopped": 1,
+    "bridge.connection.begin": 2,
+    "bridge.disconnect": 1,
+    "bridge.first_status.sent": 1,
+    "bridge.heartbeat.sent": 2,
+    "bridge.projection_loop.error": 1,
+    "bridge.status.updated": 4
+  },
+  "causal_chain_summary": {
+    "correlated_only_count": 11,
+    "observed_count": 14
+  },
+  "consumer_error_summary": {
+    "consumer_error_count": 1
+  },
+  "duckdb_available": true,
+  "duckdb_version": "1.5.2",
+  "event_category_counts": {
+    "bridge": 17,
+    "event_fabric": 1,
+    "projection": 4,
+    "resource": 1,
+    "resource_projection": 2
+  },
+  "event_count": 25,
+  "event_type_counts": {
+    "bridge.auth.succeeded": 2,
+    "bridge.backend_loop.started": 2,
+    "bridge.backend_loop.stopped": 1,
+    "bridge.connection.begin": 2,
+    "bridge.disconnect": 1,
+    "bridge.first_status.sent": 1,
+    "bridge.heartbeat.sent": 2,
+    "bridge.projection_loop.error": 1,
+    "bridge.reconnect.attempt": 1,
+    "bridge.status.updated": 4,
+    "event_fabric.consumer_error.detected": 1,
+    "projection.content.requested": 1,
+    "projection.content.sent": 2,
+    "projection.unchanged_for_interval": 1,
+    "resource.consumer_pressure.updated": 1,
+    "resource_projection.snapshot.generated": 2
+  },
+  "generated_at": "2026-05-20T18:07:48.865276+00:00",
+  "head": "6ed7fbce5450feccd662e4e1563badb283ba6dfc",
+  "intentionally_deferred": [
+    "payload-level inspection for resource usage telemetry",
+    "causal chain depth analysis beyond observed/correlated counts",
+    "time-series bucketing of pressure events"
+  ],
+  "malformed_lines": 0,
+  "mutation_authority": false,
+  "producer_counts": {
+    "bridge": 17,
+    "projection": 4,
+    "resource": 4
+  },
+  "query_manifest": [
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "event_count",
+      "purpose": "Count total events in the fabric",
+      "query_id": "event_count",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "event_type_counts",
+      "purpose": "Top 25 event types by count",
+      "query_id": "event_type_counts",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "event_category_counts",
+      "purpose": "Count by dotted category prefix",
+      "query_id": "event_category_counts",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "producer_counts",
+      "purpose": "Count events by producer",
+      "query_id": "producer_counts",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "sensitivity_class_counts",
+      "purpose": "Count by sensitivity class",
+      "query_id": "sensitivity_class_counts",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "redaction_status_counts",
+      "purpose": "Count by redaction status",
+      "query_id": "redaction_status_counts",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "bridge_lifecycle_summary",
+      "purpose": "Bridge event counts by type",
+      "query_id": "bridge_lifecycle_summary",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "resource_pressure_summary",
+      "purpose": "Counts of reconnect_failed, queue_pressure.high, consumer_error events",
+      "query_id": "resource_pressure_summary",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "consumer_error_summary",
+      "purpose": "Consumer error event count",
+      "query_id": "consumer_error_summary",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "reconnect_pressure_summary",
+      "purpose": "Reconnect failed event count",
+      "query_id": "reconnect_pressure_summary",
+      "read_side_only": true,
+      "redaction_risk": "none",
+      "status": "succeeded"
+    },
+    {
+      "input_relation": "event_fabric_jsonl",
+      "mutation_risk": "none",
+      "output_field": "causal_chain_summary",
+      "purpose": "OBSERVED vs CORRELATED_ONLY causal link counts",
+      "query_id": "causal_chain_summary",
+      "read_side_only": true,
+      "redaction_risk": "low",
+      "status": "succeeded"
+    }
+  ],
+  "read_side_only": true,
+  "recommended_next_slice": "Seed a small event fabric JSONL with example bridge and projection events, then re-run to validate the query path against real data.",
+  "reconnect_pressure_summary": {
+    "reconnect_failed_count": 0
+  },
+  "redaction_status_counts": {
+    "passed": 25
+  },
+  "redaction_summary": {
+    "envelope_only": true,
+    "payload_hash_only": false,
+    "raw_payloads_exposed": false
+  },
+  "resource_pressure_summary": {
+    "consumer_error_count": 1,
+    "queue_pressure_high_count": 0,
+    "reconnect_failed_count": 0
+  },
+  "schema_version": "rig.event.duckdb_projection_report.v1",
+  "sensitivity_class_counts": {
+    "internal_operational": 25
+  },
+  "source_event_logs": [
+    ".build/rig-relay/events/seeded_bridge_lifecycle.v1.jsonl"
+  ],
+  "status": "succeeded",
+  "telemetry_redaction_implications": [
+    "Only envelope-level fields are extracted; raw payload data is never queried",
+    "No persistent DuckDB database files are created",
+    "DuckDB queries never write back to the append-only event log",
+    "Event counts and category breakdowns are aggregated"
+  ]
+}
