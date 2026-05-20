@@ -1,0 +1,205 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.meta.permissions_inventory.v1.schema.json",
+  "title": "Meta Permissions Inventory v1",
+  "description": "Static permission inventory and review-risk map for Meta integration surfaces. No live network calls.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "live_network",
+    "surfaces",
+    "capability_count",
+    "refused_count",
+    "deferred_count",
+    "evidence_paths",
+    "remaining_seams",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.meta.permissions_inventory.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head": {
+      "type": ["string", "null"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "live_network": {
+      "type": "boolean",
+      "const": false
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface_inventory"
+      }
+    },
+    "capability_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "refused_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deferred_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "capability_entry": {
+      "type": "object",
+      "required": [
+        "capability_id",
+        "surface",
+        "operation_kind",
+        "required_permission_names",
+        "app_review_likely_required",
+        "business_verification_likely_required",
+        "user_data_risk",
+        "content_light_allowed",
+        "v1_status",
+        "refusal_reason"
+      ],
+      "properties": {
+        "capability_id": {"type": "string"},
+        "surface": {
+          "type": "string",
+          "enum": [
+            "facebook_pages",
+            "instagram_graph",
+            "whatsapp_business_cloud",
+            "webhooks",
+            "publishing_surfaces"
+          ]
+        },
+        "operation_kind": {
+          "type": "string",
+          "enum": [
+            "read",
+            "webhook_receive",
+            "publish",
+            "message_send",
+            "manage",
+            "admin"
+          ]
+        },
+        "required_permission_names": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "app_review_likely_required": {"type": "boolean"},
+        "business_verification_likely_required": {"type": "boolean"},
+        "user_data_risk": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "restricted"]
+        },
+        "content_light_allowed": {"type": "boolean"},
+        "v1_status": {
+          "type": "string",
+          "enum": [
+            "supported_readonly",
+            "refused",
+            "deferred",
+            "not_implemented"
+          ]
+        },
+        "refusal_reason": {
+          "type": "string"
+        },
+        "requires_doc_verification": {"type": "boolean"},
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "notes": {"type": "string"},
+        "future_public_app_posture": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "surface_inventory": {
+      "type": "object",
+      "required": [
+        "surface_name",
+        "capabilities"
+      ],
+      "properties": {
+        "surface_name": {"type": "string"},
+        "capabilities": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/capability_entry"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_capabilities",
+        "supported_readonly_count",
+        "refused_count",
+        "deferred_count",
+        "high_risk_count",
+        "app_review_likely_count",
+        "business_verification_likely_count"
+      ],
+      "properties": {
+        "total_capabilities": {"type": "integer", "minimum": 0},
+        "supported_readonly_count": {"type": "integer", "minimum": 0},
+        "refused_count": {"type": "integer", "minimum": 0},
+        "deferred_count": {"type": "integer", "minimum": 0},
+        "high_risk_count": {"type": "integer", "minimum": 0},
+        "app_review_likely_count": {"type": "integer", "minimum": 0},
+        "business_verification_likely_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}

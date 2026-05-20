@@ -1,0 +1,231 @@
+{
+  "schema_version": "rig.meta.surface_audit.v1",
+  "generated_at": "2026-05-20T07:27:55.364716+00:00",
+  "branch": "main",
+  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network": false,
+  "packets": [
+    {
+      "packet_id": "meta-surface-audit:7b9bf3faef27",
+      "surface": "facebook_pages",
+      "proposed_future_action": "Build a read-only Facebook Page profile audit that reads public metadata only, no publishing, no content ingestion.",
+      "current_status": "blocked_by_app_review",
+      "required_config_refs": [
+        "RIG_META_APP_ID",
+        "RIG_META_ACCESS_TOKEN",
+        "RIG_META_PAGE_ID"
+      ],
+      "required_permission_refs": [
+        "meta.fb_pages.read_metadata"
+      ],
+      "blocked_by": [
+        "app_review_required",
+        "business_verification_required",
+        "permissions_inventory_must_precede"
+      ],
+      "user_data_risk": "medium",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Read-only profile audit only. Never ingest post content or user comments. Use SHA256 for identifiers. Reject raw page content in evidence."
+    },
+    {
+      "packet_id": "meta-surface-audit:035a8da367be",
+      "surface": "instagram_graph",
+      "proposed_future_action": "Build a read-only Instagram business account profile audit. Read business metadata only; no media content ingestion, no publishing.",
+      "current_status": "blocked_by_app_review",
+      "required_config_refs": [
+        "RIG_META_APP_ID",
+        "RIG_META_ACCESS_TOKEN",
+        "RIG_META_INSTAGRAM_BUSINESS_ACCOUNT_ID"
+      ],
+      "required_permission_refs": [
+        "meta.instagram.read_business_metadata"
+      ],
+      "blocked_by": [
+        "app_review_required",
+        "business_verification_required",
+        "instagram_business_account_linkage_unverified",
+        "permissions_inventory_must_precede"
+      ],
+      "user_data_risk": "medium",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Read-only business account metadata. Never ingest media URLs, captions, or comments."
+    },
+    {
+      "packet_id": "meta-surface-audit:9cb7538b97ad",
+      "surface": "instagram_graph",
+      "proposed_future_action": "Design a content-light content calendar planner that reads media scheduling metadata without ingesting raw media, captions, or comments.",
+      "current_status": "deferred",
+      "required_config_refs": [
+        "RIG_META_APP_ID",
+        "RIG_META_ACCESS_TOKEN",
+        "RIG_META_INSTAGRAM_BUSINESS_ACCOUNT_ID"
+      ],
+      "required_permission_refs": [
+        "meta.instagram.read_media_metadata"
+      ],
+      "blocked_by": [
+        "permissions_inventory_must_precede",
+        "surface_audit_profile_audit_must_precede"
+      ],
+      "user_data_risk": "high",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Content-light only; never ingest raw media, captions, or engagement data. Use content hashes."
+    },
+    {
+      "packet_id": "meta-surface-audit:85b65848837e",
+      "surface": "whatsapp_business_cloud",
+      "proposed_future_action": "Build a read-only WhatsApp Business account setup audit. Verify business account and phone number configuration without webhook registration or message sending.",
+      "current_status": "blocked_by_app_review",
+      "required_config_refs": [
+        "RIG_META_APP_ID",
+        "RIG_META_ACCESS_TOKEN",
+        "RIG_META_WHATSAPP_BUSINESS_ACCOUNT_ID",
+        "RIG_META_WHATSAPP_PHONE_NUMBER_ID"
+      ],
+      "required_permission_refs": [
+        "meta.whatsapp.read_business_metadata"
+      ],
+      "blocked_by": [
+        "app_review_required",
+        "business_verification_required",
+        "permissions_inventory_must_precede"
+      ],
+      "user_data_risk": "restricted",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Read-only account audit. Never register webhooks or send messages. Never store phone numbers raw."
+    },
+    {
+      "packet_id": "meta-surface-audit:ff544e7f7a05",
+      "surface": "webhooks",
+      "proposed_future_action": "Design a webhook security posture: verify token validation logic, app secret proof signing, replay protection, and raw payload quarantine before any webhook receive.",
+      "current_status": "deferred",
+      "required_config_refs": [
+        "RIG_META_APP_SECRET",
+        "RIG_META_VERIFY_TOKEN"
+      ],
+      "required_permission_refs": [
+        "meta.webhooks.verify_token",
+        "meta.webhooks.signature_validation"
+      ],
+      "blocked_by": [
+        "permissions_inventory_must_precede",
+        "app_review_required",
+        "business_verification_required"
+      ],
+      "user_data_risk": "restricted",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Security design only. Never register live webhooks. Never process raw webhook payloads in evidence. Quarantine raw payloads."
+    },
+    {
+      "packet_id": "meta-surface-audit:d4a8e98eae73",
+      "surface": "app_review",
+      "proposed_future_action": "Build an app review preflight checklist: audit required permissions, prepare app review submission materials, and verify business verification status.",
+      "current_status": "blocked_by_app_review",
+      "required_config_refs": [
+        "RIG_META_APP_ID",
+        "RIG_META_APP_SECRET"
+      ],
+      "required_permission_refs": [],
+      "blocked_by": [
+        "permissions_inventory_must_precede",
+        "business_verification_must_precede"
+      ],
+      "user_data_risk": "low",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Preflight checklist only. Never submit app review automatically. Never submit without explicit user approval."
+    },
+    {
+      "packet_id": "meta-surface-audit:d34dfe261dc9",
+      "surface": "business_verification",
+      "proposed_future_action": "Build a business verification readiness audit: check verification requirements, document needed materials, verify no automated submission.",
+      "current_status": "blocked_by_business_verification",
+      "required_config_refs": [
+        "RIG_META_APP_ID"
+      ],
+      "required_permission_refs": [],
+      "blocked_by": [
+        "business_verification_required",
+        "explicit_user_approval_required"
+      ],
+      "user_data_risk": "low",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "Readiness audit only. Never submit business verification automatically. Never collect or store identity documents."
+    },
+    {
+      "packet_id": "meta-surface-audit:a68a8592b11d",
+      "surface": "publishing_surfaces",
+      "proposed_future_action": "Document the permanent v1 refusal of all publishing automation (posts, comments, replies). This refusal is structural, not temporary.",
+      "current_status": "refused",
+      "required_config_refs": [],
+      "required_permission_refs": [
+        "meta.publishing.post_to_feed",
+        "meta.publishing.comment_reply"
+      ],
+      "blocked_by": [
+        "publishing_automation_permanently_refused_in_v1"
+      ],
+      "user_data_risk": "restricted",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "All publishing automation refused in v1. This refusal is structural. Requires explicit user approval per future action."
+    },
+    {
+      "packet_id": "meta-surface-audit:0bbc92d1ba94",
+      "surface": "messaging_surfaces",
+      "proposed_future_action": "Document the permanent v1 refusal of all messaging automation (WhatsApp sends, Instagram DMs). This refusal is structural, not temporary.",
+      "current_status": "refused",
+      "required_config_refs": [],
+      "required_permission_refs": [
+        "meta.whatsapp.send_message",
+        "meta.publishing.direct_message"
+      ],
+      "blocked_by": [
+        "messaging_automation_permanently_refused_in_v1"
+      ],
+      "user_data_risk": "restricted",
+      "remote_mutation": false,
+      "content_light": true,
+      "public_release_relevance": "low",
+      "safety_notes": "All messaging automation refused in v1. This refusal is structural. Never automate message sends. Never ingest DMs."
+    }
+  ],
+  "packet_count": 9,
+  "refused_packet_count": 2,
+  "evidence_paths": [],
+  "remaining_seams": [
+    "all packets are proposal-only; no live implementation built",
+    "packet IDs are deterministic from content seeds for reproducibility",
+    "publishing_refusal_packet and messaging_refusal_packet are permanent structural refusals",
+    "webhook_security_packet requires app review and business verification before activation",
+    "app_review_preflight_packet requires explicit user approval before any submission",
+    "business_verification_packet requires explicit user approval before any action"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 18
+  },
+  "summary": {
+    "total_packets": 9,
+    "refused_packets": 2,
+    "deferred_packets": 2,
+    "blocked_packets": 5
+  }
+}

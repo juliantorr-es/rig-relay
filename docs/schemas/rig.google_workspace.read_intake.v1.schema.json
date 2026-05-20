@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.read_intake.v1.schema.json",
+  "title": "Google Workspace Read Intake v1",
+  "description": "Read-only intake contract and dry-run/live-gated CLI for Google Workspace surfaces. Content-light: only counts, hashes, scope strings, and refusal booleans.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "dry_run",
+    "surfaces",
+    "refusals",
+    "scope_grants",
+    "evidence_paths",
+    "redaction_status",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.google_workspace.read_intake.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "live": {
+      "type": "boolean"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface_intake"
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface_refusal"
+      }
+    },
+    "scope_grants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/scope_grant_status"
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "surface_intake": {
+      "type": "object",
+      "required": [
+        "surface",
+        "product",
+        "status",
+        "capability_id",
+        "required_scopes"
+      ],
+      "properties": {
+        "surface": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string",
+          "enum": ["gmail", "calendar", "drive", "tasks", "people", "admin_directory"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["present", "refused", "not_implemented", "dry_run_available"]
+        },
+        "capability_id": {
+          "type": "string"
+        },
+        "required_scopes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "metadata_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "metadata_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "identity_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope_granted": {
+          "type": "boolean"
+        },
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "surface_refusal": {
+      "type": "object",
+      "required": [
+        "surface",
+        "required_scope",
+        "granted_scope_present",
+        "status",
+        "remote_mutation"
+      ],
+      "properties": {
+        "surface": {"type": "string"},
+        "required_scope": {"type": "string"},
+        "granted_scope_present": {"type": "boolean"},
+        "status": {
+          "type": "string",
+          "const": "refused"
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "refusal_reason": {
+          "type": "string",
+          "enum": [
+            "missing_scope",
+            "restricted_scope_unverified",
+            "domain_wide_delegation_required",
+            "not_implemented",
+            "verification_required",
+            "dry_run_no_network"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "scope_grant_status": {
+      "type": "object",
+      "required": ["scope", "granted", "sensitivity"],
+      "properties": {
+        "scope": {"type": "string"},
+        "granted": {"type": "boolean"},
+        "sensitivity": {
+          "type": "string",
+          "enum": ["non_sensitive", "sensitive", "restricted", "admin_restricted", "unknown"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_surfaces",
+        "present_surfaces",
+        "refused_surfaces",
+        "not_implemented_surfaces",
+        "next_action"
+      ],
+      "properties": {
+        "total_surfaces": {"type": "integer", "minimum": 0},
+        "present_surfaces": {"type": "integer", "minimum": 0},
+        "refused_surfaces": {"type": "integer", "minimum": 0},
+        "not_implemented_surfaces": {"type": "integer", "minimum": 0},
+        "next_action": {
+          "type": "string",
+          "enum": [
+            "configure_oauth",
+            "run_live_read_intake",
+            "request_scope",
+            "no_action"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

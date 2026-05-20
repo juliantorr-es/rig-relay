@@ -101,11 +101,12 @@ def test_dry_run_report_is_schema_valid_and_refuses_secret_scanning():
     assert report["counts"]["code_scanning_total"] == 0
     assert report["counts"]["dependabot_total"] == 0
     assert any(item["surface"] == "secret_scanning" for item in report["refusals"])
-    assert {item["surface"] for item in report["source_surfaces"]} == {
+    assert {
         "code_scanning",
         "dependabot",
         "secret_scanning",
-    }
+        "checks_workflow",
+    }.issubset({item["surface"] for item in report["source_surfaces"]})
     assert report["summary"]["permission_mode"] == "development_debug"
     assert report["summary"]["token_narrowing_requested"] is True
     assert report["summary"]["token_narrowing_effective"] is False
@@ -230,7 +231,13 @@ def test_live_intake_uses_exchanged_token_and_not_placeholder(
                 "severity": "high",
             }
         ]
-        return alerts, groups, None
+        pagination_meta = {
+            "per_page": 100,
+            "pages_collected": 1,
+            "items_collected": 1,
+            "truncated": 0,
+        }
+        return alerts, groups, None, pagination_meta
 
     monkeypatch.setattr(
         "rig_relay.integrations.github_provider._security_intake.GitHubLiveTokenExchanger.exchange_installation_token",

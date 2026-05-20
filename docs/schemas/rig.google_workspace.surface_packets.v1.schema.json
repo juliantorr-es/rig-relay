@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.surface_packets.v1.schema.json",
+  "title": "Google Workspace Surface Packets v1",
+  "description": "Future work/proposal packets for Google Workspace read surfaces. No writes. Determined from operating picture and read intake artifacts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "source_artifacts",
+    "packets",
+    "packet_count",
+    "redaction_status",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.google_workspace.surface_packets.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "present", "artifact_hash"],
+        "properties": {
+          "artifact_id": {"type": "string"},
+          "path": {"type": "string"},
+          "present": {"type": "boolean"},
+          "artifact_hash": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "packets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/packet"
+      }
+    },
+    "packet_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "packet": {
+      "type": "object",
+      "required": [
+        "packet_id",
+        "packet_type",
+        "source_surface",
+        "status",
+        "recommended_local_action",
+        "blocked_by",
+        "public_release_relevance",
+        "remote_mutation",
+        "content_light"
+      ],
+      "properties": {
+        "packet_id": {"type": "string"},
+        "packet_type": {
+          "type": "string",
+          "enum": [
+            "oauth_setup_packet",
+            "scope_request_packet",
+            "verification_required_packet",
+            "gmail_metadata_packet",
+            "calendar_metadata_packet",
+            "drive_metadata_packet",
+            "tasks_metadata_packet",
+            "contacts_metadata_packet",
+            "domain_wide_delegation_deferred_packet",
+            "public_scope_profile_split_packet"
+          ]
+        },
+        "source_surface": {"type": "string"},
+        "status": {
+          "type": "string",
+          "enum": ["ready", "blocked", "deferred", "advisory"]
+        },
+        "recommended_local_action": {"type": "string"},
+        "required_scope_refs": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "blocked_by": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "public_release_relevance": {
+          "type": "string",
+          "enum": ["required", "optional", "deferred", "not_applicable"]
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "content_light": {
+          "type": "boolean",
+          "const": true
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_packets",
+        "ready_packets",
+        "blocked_packets",
+        "deferred_packets"
+      ],
+      "properties": {
+        "total_packets": {"type": "integer", "minimum": 0},
+        "ready_packets": {"type": "integer", "minimum": 0},
+        "blocked_packets": {"type": "integer", "minimum": 0},
+        "deferred_packets": {"type": "integer", "minimum": 0},
+        "next_action": {
+          "type": "string",
+          "enum": ["configure_oauth", "run_live_read_intake", "request_scope", "split_public_scope_profiles", "no_action"]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

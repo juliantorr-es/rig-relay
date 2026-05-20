@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.operating_picture.v1.schema.json",
+  "title": "Google Workspace Operating Picture v1",
+  "description": "Deterministic local control-plane view of Google Workspace provider auth, scopes, read-only surface readiness, refusals, and next actions.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "source_artifacts",
+    "auth_summary",
+    "surface_summary",
+    "scope_posture",
+    "refusals",
+    "next_recommended_actions",
+    "evidence_paths",
+    "redaction_status",
+    "remaining_seams",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.google_workspace.operating_picture.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head": {
+      "type": ["string", "null"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/source_artifact"
+      }
+    },
+    "auth_summary": {
+      "$ref": "#/definitions/auth_summary"
+    },
+    "surface_summary": {
+      "$ref": "#/definitions/surface_summary"
+    },
+    "scope_posture": {
+      "$ref": "#/definitions/scope_posture"
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/refusal"
+      }
+    },
+    "next_recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "configure_oauth",
+          "run_dry_run",
+          "run_live_read_intake",
+          "request_scope",
+          "split_public_scope_profiles",
+          "no_action"
+        ]
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "source_artifact": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "path",
+        "present",
+        "status",
+        "artifact_hash",
+        "schema_version",
+        "summary"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["missing", "present", "invalid"]
+        },
+        "artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "schema_version": {
+          "type": ["string", "null"]
+        },
+        "summary": {
+          "type": ["object", "null"]
+        },
+        "error_kind": {
+          "type": ["string", "null"]
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "auth_summary": {
+      "type": "object",
+      "required": [
+        "oauth_configured",
+        "pkce_available",
+        "token_present",
+        "token_hash_present",
+        "refresh_token_present",
+        "granted_scope_count",
+        "requested_scope_count",
+        "missing_required_scopes",
+        "restricted_scope_count",
+        "sensitive_scope_count",
+        "consent_mode",
+        "public_release_ready"
+      ],
+      "properties": {
+        "oauth_configured": {"type": "boolean"},
+        "pkce_available": {"type": "boolean"},
+        "token_present": {"type": "boolean"},
+        "token_hash_present": {"type": "boolean"},
+        "refresh_token_present": {"type": "boolean"},
+        "granted_scope_count": {"type": "integer", "minimum": 0},
+        "requested_scope_count": {"type": "integer", "minimum": 0},
+        "missing_required_scopes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "restricted_scope_count": {"type": "integer", "minimum": 0},
+        "sensitive_scope_count": {"type": "integer", "minimum": 0},
+        "consent_mode": {
+          "type": "string",
+          "enum": ["unknown", "internal", "external", "testing", "production"]
+        },
+        "public_release_ready": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "surface_status": {
+      "type": "object",
+      "required": ["surface", "status", "evidence_paths"],
+      "properties": {
+        "surface": {"type": "string"},
+        "status": {
+          "type": "string",
+          "enum": ["present", "refused", "missing", "not_implemented", "dry_run_available"]
+        },
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "surface_summary": {
+      "type": "object",
+      "required": [
+        "gmail_profile",
+        "gmail_metadata",
+        "calendar_list",
+        "calendar_events_readonly",
+        "drive_metadata",
+        "tasks_readonly",
+        "contacts_people_readonly"
+      ],
+      "properties": {
+        "gmail_profile": {"$ref": "#/definitions/surface_status"},
+        "gmail_metadata": {"$ref": "#/definitions/surface_status"},
+        "calendar_list": {"$ref": "#/definitions/surface_status"},
+        "calendar_events_readonly": {"$ref": "#/definitions/surface_status"},
+        "drive_metadata": {"$ref": "#/definitions/surface_status"},
+        "tasks_readonly": {"$ref": "#/definitions/surface_status"},
+        "contacts_people_readonly": {"$ref": "#/definitions/surface_status"}
+      },
+      "additionalProperties": false
+    },
+    "scope_posture": {
+      "type": "object",
+      "required": [
+        "least_privilege_ready",
+        "broad_local_dev_posture",
+        "public_release_ready",
+        "verification_required",
+        "restricted_scopes_refused_or_deferred"
+      ],
+      "properties": {
+        "least_privilege_ready": {"type": "boolean"},
+        "broad_local_dev_posture": {"type": "boolean"},
+        "public_release_ready": {"type": "boolean"},
+        "verification_required": {"type": "boolean"},
+        "restricted_scopes_refused_or_deferred": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "refusal": {
+      "type": "object",
+      "required": ["refusal_kind", "status", "reason"],
+      "properties": {
+        "refusal_kind": {
+          "type": "string",
+          "enum": [
+            "missing_scope",
+            "restricted_scope_unverified",
+            "domain_wide_delegation_deferred",
+            "service_account_key_management_external"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "const": "refused"
+        },
+        "reason": {"type": "string"},
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count",
+        "checked_artifact_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0},
+        "checked_artifact_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "auth_health",
+        "surface_health",
+        "scope_posture_conservative",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "auth_health": {
+          "type": "string",
+          "enum": ["oauth_configured", "auth_unconfigured", "auth_partial"]
+        },
+        "surface_health": {
+          "type": "string",
+          "enum": ["some_present", "partial_refusal", "all_missing"]
+        },
+        "scope_posture_conservative": {"type": "boolean"},
+        "next_recommended_action": {
+          "type": "string",
+          "enum": [
+            "configure_oauth",
+            "run_dry_run",
+            "run_live_read_intake",
+            "request_scope",
+            "split_public_scope_profiles",
+            "no_action"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

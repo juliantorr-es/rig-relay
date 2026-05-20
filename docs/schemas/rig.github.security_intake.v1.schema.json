@@ -265,11 +265,11 @@
           "properties": {
             "surface": {
               "type": "string",
-              "enum": ["code_scanning", "dependabot", "secret_scanning", "authentication"]
+              "enum": ["code_scanning", "dependabot", "secret_scanning", "authentication", "checks_workflow"]
             },
             "status": {
               "type": "string",
-              "enum": ["dry_run", "collected", "refused"]
+              "enum": ["dry_run", "collected", "refused", "not_implemented_read_side"]
             },
             "required_permission": {
               "type": "string"
@@ -567,6 +567,33 @@
         },
         "additionalProperties": false
       }
+    },
+    "pagination": {
+      "type": "object",
+      "required": [
+        "per_page_limit",
+        "max_pages",
+        "pages_collected",
+        "truncated",
+        "remaining_items_estimate",
+        "checks_workflow_status",
+        "checks_workflow_pagination_remaining_seam"
+      ],
+      "properties": {
+        "per_page_limit": { "type": "integer", "minimum": 1 },
+        "max_pages": { "type": "integer", "minimum": 1 },
+        "pages_collected": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean" },
+        "remaining_items_estimate": { "type": "integer", "minimum": 0 },
+        "checks_workflow_status": {
+          "type": "string",
+          "enum": ["not_implemented_read_side", "present", "refused"]
+        },
+        "checks_workflow_pagination_remaining_seam": { "type": "boolean" },
+        "code_scanning_pages_collected": { "type": "integer", "minimum": 0 },
+        "dependabot_pages_collected": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
     },
     "refusals": {
       "type": "array",

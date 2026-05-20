@@ -1,0 +1,267 @@
+{
+  "schema_version": "rig.google_workspace.surface_packets.v1",
+  "generated_at": "2026-05-20T07:28:11.435192+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_artifacts": [
+    {
+      "artifact_id": "operating_picture",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_operating_picture_v1.v1.json",
+      "present": true,
+      "artifact_hash": "237677068ca03b49e6e1e620bfe3433b4b59bdf3ea9d479f4d684e773969f0f6"
+    },
+    {
+      "artifact_id": "read_intake",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_read_intake_v1.v1.json",
+      "present": true,
+      "artifact_hash": "fbccb747a15e60b39217c5e846414f6d67b89d9c1911d301c853edd43a4664e4"
+    }
+  ],
+  "packets": [
+    {
+      "packet_id": "gw-oauth-setup",
+      "packet_type": "oauth_setup_packet",
+      "source_surface": "oauth",
+      "status": "ready",
+      "recommended_local_action": "Configure OAuth consent screen and client credentials",
+      "required_scope_refs": [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+      ],
+      "blocked_by": [],
+      "public_release_relevance": "required",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-scope-gmail-metadata",
+      "packet_type": "scope_request_packet",
+      "source_surface": "gmail_metadata",
+      "status": "blocked",
+      "recommended_local_action": "Request gmail.labels scope for label metadata read",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/gmail.labels"
+      ],
+      "blocked_by": [
+        "oauth_unconfigured",
+        "restricted_scope_verification"
+      ],
+      "public_release_relevance": "optional",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-scope-calendar-readonly",
+      "packet_type": "scope_request_packet",
+      "source_surface": "calendar_list",
+      "status": "ready",
+      "recommended_local_action": "Request calendar.readonly scope for calendar list metadata",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
+      "blocked_by": [
+        "oauth_unconfigured"
+      ],
+      "public_release_relevance": "optional",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-scope-drive-metadata",
+      "packet_type": "scope_request_packet",
+      "source_surface": "drive_metadata",
+      "status": "blocked",
+      "recommended_local_action": "Request drive.metadata.readonly scope; restricted scope assessment needed",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ],
+      "blocked_by": [
+        "oauth_unconfigured",
+        "restricted_scope_verification"
+      ],
+      "public_release_relevance": "deferred",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-verification-required",
+      "packet_type": "verification_required_packet",
+      "source_surface": "oauth_verification",
+      "status": "blocked",
+      "recommended_local_action": "Complete Google OAuth verification for restricted scopes",
+      "required_scope_refs": [],
+      "blocked_by": [
+        "restricted_scopes_present",
+        "security_assessment_required",
+        "annual_recertification_required"
+      ],
+      "public_release_relevance": "required",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-gmail-metadata-read",
+      "packet_type": "gmail_metadata_packet",
+      "source_surface": "gmail_metadata",
+      "status": "ready",
+      "recommended_local_action": "Enable Gmail label metadata reading after scope grant",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/gmail.labels"
+      ],
+      "blocked_by": [
+        "scope_not_granted"
+      ],
+      "public_release_relevance": "optional",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-calendar-metadata-read",
+      "packet_type": "calendar_metadata_packet",
+      "source_surface": "calendar_list",
+      "status": "ready",
+      "recommended_local_action": "Enable Calendar list and event metadata reading after scope grant",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events.readonly"
+      ],
+      "blocked_by": [
+        "scope_not_granted"
+      ],
+      "public_release_relevance": "optional",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-drive-metadata-read",
+      "packet_type": "drive_metadata_packet",
+      "source_surface": "drive_metadata",
+      "status": "blocked",
+      "recommended_local_action": "Enable Drive file metadata reading; no file content ingestion in v1",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ],
+      "blocked_by": [
+        "scope_not_granted",
+        "restricted_scope_verification",
+        "no_file_content_ingestion"
+      ],
+      "public_release_relevance": "deferred",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-tasks-metadata-read",
+      "packet_type": "tasks_metadata_packet",
+      "source_surface": "tasks_readonly",
+      "status": "ready",
+      "recommended_local_action": "Enable Tasks list reading after scope grant",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ],
+      "blocked_by": [
+        "scope_not_granted"
+      ],
+      "public_release_relevance": "optional",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-contacts-metadata-read",
+      "packet_type": "contacts_metadata_packet",
+      "source_surface": "contacts_people_readonly",
+      "status": "ready",
+      "recommended_local_action": "Enable Contacts/People reading after scope grant; hash all PII",
+      "required_scope_refs": [
+        "https://www.googleapis.com/auth/contacts.readonly"
+      ],
+      "blocked_by": [
+        "scope_not_granted",
+        "pii_redaction_required"
+      ],
+      "public_release_relevance": "deferred",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-dwd-deferred",
+      "packet_type": "domain_wide_delegation_deferred_packet",
+      "source_surface": "admin_directory",
+      "status": "deferred",
+      "recommended_local_action": "Defer domain-wide delegation to future lane; requires super admin authorization",
+      "required_scope_refs": [],
+      "blocked_by": [
+        "super_admin_authorization_required",
+        "domain_wide_delegation_deferred_in_v1"
+      ],
+      "public_release_relevance": "deferred",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    },
+    {
+      "packet_id": "gw-scope-profile-split",
+      "packet_type": "public_scope_profile_split_packet",
+      "source_surface": "oauth_scopes",
+      "status": "blocked",
+      "recommended_local_action": "Split public scope profiles: internal dev (broad) vs public release (narrow, non-restricted)",
+      "required_scope_refs": [],
+      "blocked_by": [
+        "current_broad_local_dev_posture",
+        "restricted_scopes_must_be_removed_for_public"
+      ],
+      "public_release_relevance": "required",
+      "remote_mutation": false,
+      "content_light": true,
+      "evidence_refs": [
+        "docs/json/governance/google_workspace_operating_picture_v1.v1.json"
+      ]
+    }
+  ],
+  "packet_count": 12,
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 21
+  },
+  "summary": {
+    "total_packets": 12,
+    "ready_packets": 6,
+    "blocked_packets": 5,
+    "deferred_packets": 1,
+    "next_action": "run_live_read_intake"
+  }
+}

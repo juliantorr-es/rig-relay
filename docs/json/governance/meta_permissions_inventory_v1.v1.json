@@ -1,0 +1,403 @@
+{
+  "schema_version": "rig.meta.permissions_inventory.v1",
+  "generated_at": "2026-05-20T07:27:55.206061+00:00",
+  "branch": "main",
+  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network": false,
+  "surfaces": [
+    {
+      "surface_name": "Facebook Pages Graph",
+      "capabilities": [
+        {
+          "capability_id": "meta.fb_pages.read_metadata",
+          "surface": "facebook_pages",
+          "operation_kind": "read",
+          "required_permission_names": [
+            "pages_read_engagement",
+            "pages_read_user_content"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "medium",
+          "content_light_allowed": true,
+          "v1_status": "supported_readonly",
+          "refusal_reason": "",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "read_only_profile_audit"
+        },
+        {
+          "capability_id": "meta.fb_pages.manage_content",
+          "surface": "facebook_pages",
+          "operation_kind": "manage",
+          "required_permission_names": [
+            "pages_manage_posts",
+            "pages_manage_metadata"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "publishing_and_content_management_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_app_review_and_business_verification"
+        },
+        {
+          "capability_id": "meta.fb_pages.read_insights",
+          "surface": "facebook_pages",
+          "operation_kind": "read",
+          "required_permission_names": [
+            "pages_read_engagement"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "medium",
+          "content_light_allowed": true,
+          "v1_status": "deferred",
+          "refusal_reason": "deferred_to_future_slice; read_metadata_audit_must_precede",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "read_only_insights_audit"
+        },
+        {
+          "capability_id": "meta.fb_pages.publish_post",
+          "surface": "facebook_pages",
+          "operation_kind": "publish",
+          "required_permission_names": [
+            "pages_manage_posts",
+            "pages_read_user_content"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "all_publishing_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_explicit_user_approval_per_action"
+        }
+      ]
+    },
+    {
+      "surface_name": "Instagram Graph",
+      "capabilities": [
+        {
+          "capability_id": "meta.instagram.read_business_metadata",
+          "surface": "instagram_graph",
+          "operation_kind": "read",
+          "required_permission_names": [
+            "instagram_basic",
+            "instagram_manage_insights"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "medium",
+          "content_light_allowed": true,
+          "v1_status": "supported_readonly",
+          "refusal_reason": "",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "read_only_profile_audit"
+        },
+        {
+          "capability_id": "meta.instagram.read_media_metadata",
+          "surface": "instagram_graph",
+          "operation_kind": "read",
+          "required_permission_names": [
+            "instagram_basic",
+            "instagram_content_publish"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": true,
+          "v1_status": "deferred",
+          "refusal_reason": "deferred_to_future_slice; media_content_has_privacy_risk",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "read_only_audit_with_redaction"
+        },
+        {
+          "capability_id": "meta.instagram.publish_media",
+          "surface": "instagram_graph",
+          "operation_kind": "publish",
+          "required_permission_names": [
+            "instagram_content_publish",
+            "instagram_manage_comments"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "all_publishing_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_explicit_user_approval_per_action"
+        },
+        {
+          "capability_id": "meta.instagram.comment_moderation",
+          "surface": "instagram_graph",
+          "operation_kind": "manage",
+          "required_permission_names": [
+            "instagram_manage_comments"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "comment_reply_automation_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_explicit_user_approval_per_action"
+        }
+      ]
+    },
+    {
+      "surface_name": "WhatsApp Business Cloud",
+      "capabilities": [
+        {
+          "capability_id": "meta.whatsapp.read_business_metadata",
+          "surface": "whatsapp_business_cloud",
+          "operation_kind": "read",
+          "required_permission_names": [
+            "whatsapp_business_management"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "medium",
+          "content_light_allowed": true,
+          "v1_status": "supported_readonly",
+          "refusal_reason": "",
+          "requires_doc_verification": true,
+          "confidence": "medium",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "read_only_account_audit"
+        },
+        {
+          "capability_id": "meta.whatsapp.webhook_receive",
+          "surface": "whatsapp_business_cloud",
+          "operation_kind": "webhook_receive",
+          "required_permission_names": [
+            "whatsapp_business_messaging"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "webhook_receive_refused_in_v1; requires_app_review_and_security_audit",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_app_review_business_verification_and_webhook_security"
+        },
+        {
+          "capability_id": "meta.whatsapp.send_message",
+          "surface": "whatsapp_business_cloud",
+          "operation_kind": "message_send",
+          "required_permission_names": [
+            "whatsapp_business_messaging"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "all_messaging_refused_in_v1; never_automate_message_sends",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "never_automated_without_explicit_user_approval"
+        },
+        {
+          "capability_id": "meta.whatsapp.manage_templates",
+          "surface": "whatsapp_business_cloud",
+          "operation_kind": "manage",
+          "required_permission_names": [
+            "whatsapp_business_management"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "template_management_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_app_review_and_explicit_user_approval"
+        }
+      ]
+    },
+    {
+      "surface_name": "Webhooks",
+      "capabilities": [
+        {
+          "capability_id": "meta.webhooks.verify_token",
+          "surface": "webhooks",
+          "operation_kind": "admin",
+          "required_permission_names": [],
+          "app_review_likely_required": false,
+          "business_verification_likely_required": false,
+          "user_data_risk": "low",
+          "content_light_allowed": true,
+          "v1_status": "supported_readonly",
+          "refusal_reason": "",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "config_audit_only"
+        },
+        {
+          "capability_id": "meta.webhooks.signature_validation",
+          "surface": "webhooks",
+          "operation_kind": "admin",
+          "required_permission_names": [],
+          "app_review_likely_required": false,
+          "business_verification_likely_required": false,
+          "user_data_risk": "low",
+          "content_light_allowed": true,
+          "v1_status": "supported_readonly",
+          "refusal_reason": "",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "security_packet_only"
+        },
+        {
+          "capability_id": "meta.webhooks.replay_protection",
+          "surface": "webhooks",
+          "operation_kind": "admin",
+          "required_permission_names": [],
+          "app_review_likely_required": false,
+          "business_verification_likely_required": false,
+          "user_data_risk": "low",
+          "content_light_allowed": true,
+          "v1_status": "deferred",
+          "refusal_reason": "deferred_to_future_slice",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "security_packet_only"
+        },
+        {
+          "capability_id": "meta.webhooks.raw_payload_quarantine",
+          "surface": "webhooks",
+          "operation_kind": "webhook_receive",
+          "required_permission_names": [],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "raw_webhook_payload_ingestion_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_app_review_and_payload_quarantine_design"
+        }
+      ]
+    },
+    {
+      "surface_name": "Publishing Surfaces",
+      "capabilities": [
+        {
+          "capability_id": "meta.publishing.post_to_feed",
+          "surface": "publishing_surfaces",
+          "operation_kind": "publish",
+          "required_permission_names": [
+            "pages_manage_posts",
+            "instagram_content_publish"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "high",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "all_publishing_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_explicit_user_approval_per_action"
+        },
+        {
+          "capability_id": "meta.publishing.comment_reply",
+          "surface": "publishing_surfaces",
+          "operation_kind": "publish",
+          "required_permission_names": [
+            "pages_manage_posts",
+            "instagram_manage_comments"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "comment_reply_automation_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "requires_explicit_user_approval_per_action"
+        },
+        {
+          "capability_id": "meta.publishing.direct_message",
+          "surface": "publishing_surfaces",
+          "operation_kind": "message_send",
+          "required_permission_names": [
+            "pages_messaging",
+            "instagram_manage_messages"
+          ],
+          "app_review_likely_required": true,
+          "business_verification_likely_required": true,
+          "user_data_risk": "restricted",
+          "content_light_allowed": false,
+          "v1_status": "refused",
+          "refusal_reason": "all_messaging_refused_in_v1",
+          "requires_doc_verification": true,
+          "confidence": "high",
+          "notes": "verify against current Meta developer docs before implementation",
+          "future_public_app_posture": "never_automated_without_explicit_user_approval"
+        }
+      ]
+    }
+  ],
+  "capability_count": 19,
+  "refused_count": 11,
+  "deferred_count": 3,
+  "evidence_paths": [],
+  "remaining_seams": [
+    "all permission names require verification against current Meta developer docs",
+    "exact app review requirements per capability need Meta App Dashboard confirmation",
+    "WhatsApp Business Cloud webhook receive and message send permanently refused in v1",
+    "publishing and messaging automation permanently refused in v1"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 18
+  },
+  "summary": {
+    "total_capabilities": 19,
+    "supported_readonly_count": 5,
+    "refused_count": 11,
+    "deferred_count": 3,
+    "high_risk_count": 12,
+    "app_review_likely_count": 16,
+    "business_verification_likely_count": 16
+  }
+}

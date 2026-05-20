@@ -51,6 +51,12 @@ from rig_relay.integrations.google_workspace._models import (
     GoogleWorkspaceScopeSensitivity,
     GoogleWorkspaceVerdict,
 )
+from rig_relay.integrations.google_workspace._operating_picture import (
+    GoogleWorkspaceOperatingPictureError,
+    build_google_workspace_operating_picture,
+    build_google_workspace_operating_picture_from_paths,
+    write_google_workspace_operating_picture,
+)
 from rig_relay.integrations.google_workspace._pkce import (
     PKCEParams,
     create_pkce_params,
@@ -59,9 +65,20 @@ from rig_relay.integrations.google_workspace._pkce import (
     validate_code_challenge,
     validate_verifier_length,
 )
+from rig_relay.integrations.google_workspace._read_intake import (
+    GoogleWorkspaceReadIntakeError,
+    build_google_workspace_read_intake,
+    write_google_workspace_read_intake,
+)
 from rig_relay.integrations.google_workspace._receipts import (
     build_workspace_receipt,
     validate_receipt,
+)
+from rig_relay.integrations.google_workspace._surface_packets import (
+    GoogleWorkspaceSurfacePacketError,
+    project_google_workspace_surface_packets,
+    project_google_workspace_surface_packets_from_paths,
+    write_google_workspace_surface_packets,
 )
 
 __all__ = [
@@ -82,20 +99,28 @@ __all__ = [
     "GoogleWorkspaceCapabilityManifest",
     "GoogleWorkspaceDecision",
     "GoogleWorkspaceGrantStatus",
+    "GoogleWorkspaceOperatingPictureError",
     "GoogleWorkspaceOperationClass",
     "GoogleWorkspaceOperationReceipt",
     "GoogleWorkspaceOperationRequest",
     "GoogleWorkspaceProduct",
+    "GoogleWorkspaceReadIntakeError",
     "GoogleWorkspaceScopeGrant",
     "GoogleWorkspaceScopeSensitivity",
+    "GoogleWorkspaceSurfacePacketError",
     "GoogleWorkspaceVerdict",
     "PKCEParams",
+    "build_google_workspace_operating_picture",
+    "build_google_workspace_operating_picture_from_paths",
+    "build_google_workspace_read_intake",
     "build_workspace_receipt",
     "create_pkce_params",
     "evaluate_workspace_capability",
     "generate_code_challenge",
     "generate_code_verifier",
     "load_capability_manifest",
+    "project_google_workspace_surface_packets",
+    "project_google_workspace_surface_packets_from_paths",
     "read_workspace_auth_state",
     "run_live_workspace_read",
     "should_skip_live_tests",
@@ -103,5 +128,8 @@ __all__ = [
     "validate_manifest",
     "validate_receipt",
     "validate_verifier_length",
+    "write_google_workspace_operating_picture",
+    "write_google_workspace_read_intake",
+    "write_google_workspace_surface_packets",
     "write_workspace_auth_state",
 ]

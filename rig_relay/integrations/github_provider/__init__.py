@@ -101,10 +101,20 @@ from rig_relay.integrations.github_provider._security_mission_packets import (
     project_github_security_mission_packets,
     project_github_security_mission_packets_from_path,
 )
+from rig_relay.integrations.github_provider._security_packet_runner import (
+    GitHubSecurityPacketRunnerError,
+    GitHubSecurityPacketRunnerPlan,
+    build_github_security_packet_runner_plan,
+)
 from rig_relay.integrations.github_provider._security_work_items import (
     GitHubSecurityWorkItemProjectionError,
     project_github_security_work_items,
     project_github_security_work_items_from_path,
+)
+from rig_relay.integrations.github_provider._surface_audit import (
+    GitHubSurfaceAuditError,
+    GitHubSurfaceStewardAudit,
+    build_github_surface_audit,
 )
 
 __all__ = [
@@ -136,7 +146,11 @@ __all__ = [
     "GitHubSecurityIntakeCollector",
     "GitHubSecurityMissionCandidateRoutingError",
     "GitHubSecurityMissionPacketError",
+    "GitHubSecurityPacketRunnerError",
+    "GitHubSecurityPacketRunnerPlan",
     "GitHubSecurityWorkItemProjectionError",
+    "GitHubSurfaceAuditError",
+    "GitHubSurfaceStewardAudit",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
     "assert_content_light_mapping",
@@ -147,6 +161,8 @@ __all__ = [
     "build_github_permission_posture_report",
     "build_github_permission_posture_report_from_paths",
     "build_github_security_intake_report",
+    "build_github_security_packet_runner_plan",
+    "build_github_surface_audit",
     "evaluate_github_capability",
     "get_capability",
     "hash_identifier",

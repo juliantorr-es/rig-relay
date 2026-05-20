@@ -1,0 +1,113 @@
+{
+  "schema_version": "rig.github.security_packet_runner_plan.v1",
+  "generated_at": "2026-05-20T07:09:59.970799+00:00",
+  "source_packet_index_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_packets_v1.v1.json",
+  "source_packet_index_hash": "679efe5c8cf887f196756c7b39d7fa6886079ac9bc1bc6e252ed32b2a520d4c0",
+  "content_light": true,
+  "remote_mutation": false,
+  "apply_local": false,
+  "limit": 3,
+  "selected_packet_count": 3,
+  "total_available_packets": 27,
+  "selection_mode": "default_limit",
+  "plan_items": [
+    {
+      "plan_item_id": "ad73439eb376fe4b1788175cd9c2d89d535ba4125f8d49b93a6dd00fb362fe99",
+      "packet_id": "00172fc90c7b61137f68c8df8d31306e539515772cf39f266ed4d7233983c319",
+      "candidate_id": "0168afb358a6cb508ad52857f373c0f186d834c66500088f2732ad87a0960447",
+      "route": "ready_for_investigation",
+      "source_surface": "code_scanning",
+      "severity_summary": {
+        "normalized_severity": "unknown",
+        "priority": "p1",
+        "source_alert_count": 27
+      },
+      "local_lane_type": "code_scanning_investigation",
+      "expected_local_categories": [
+        "codeql_security",
+        "code_quality",
+        "workflow_or_ci"
+      ],
+      "required_validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_security_packet_runner.py -v",
+        "uv run pytest tests/adversarial/test_github_security_packet_runner_redaction.py -v",
+        "uv run pytest tests/governance/test_github_security_packet_runner_artifact.py -v"
+      ],
+      "remote_mutation": false,
+      "apply_local": false,
+      "status": "planned"
+    },
+    {
+      "plan_item_id": "c475eb023bda8ecd95636713d7d54b0b8c57531a4bce97041d13ad5c2c691859",
+      "packet_id": "2949f1a3c889e7150647240a5f873f1eb7cad9aa257fa21f1f4ad6d5f3f88765",
+      "candidate_id": "1454e982a6f9159afdc8f1b6320aec8f6264642d0990158173966d900ced8565",
+      "route": "ready_for_investigation",
+      "source_surface": "code_scanning",
+      "severity_summary": {
+        "normalized_severity": "unknown",
+        "priority": "p1",
+        "source_alert_count": 27
+      },
+      "local_lane_type": "code_scanning_investigation",
+      "expected_local_categories": [
+        "codeql_security",
+        "code_quality",
+        "workflow_or_ci"
+      ],
+      "required_validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_security_packet_runner.py -v",
+        "uv run pytest tests/adversarial/test_github_security_packet_runner_redaction.py -v",
+        "uv run pytest tests/governance/test_github_security_packet_runner_artifact.py -v"
+      ],
+      "remote_mutation": false,
+      "apply_local": false,
+      "status": "planned"
+    },
+    {
+      "plan_item_id": "85ee776836bfb1a98fa2e3337bfad0243c4ce076b46706940a2439351fdc3380",
+      "packet_id": "3dc1ef491517963991e0bef8add77212177431717f5be6d03cf4d89bc76f3d08",
+      "candidate_id": "aa3ab801ea3c7f69668b0fc2b1614c651923441cfd863b9a8ef4f414cf57ad33",
+      "route": "ready_for_investigation",
+      "source_surface": "code_scanning",
+      "severity_summary": {
+        "normalized_severity": "unknown",
+        "priority": "p1",
+        "source_alert_count": 27
+      },
+      "local_lane_type": "code_scanning_investigation",
+      "expected_local_categories": [
+        "codeql_security",
+        "code_quality",
+        "workflow_or_ci"
+      ],
+      "required_validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_security_packet_runner.py -v",
+        "uv run pytest tests/adversarial/test_github_security_packet_runner_redaction.py -v",
+        "uv run pytest tests/governance/test_github_security_packet_runner_artifact.py -v"
+      ],
+      "remote_mutation": false,
+      "apply_local": false,
+      "status": "planned"
+    }
+  ],
+  "refusals": [],
+  "validation_commands": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/integrations/test_github_security_packet_runner.py -v",
+    "uv run pytest tests/adversarial/test_github_security_packet_runner_redaction.py -v",
+    "uv run pytest tests/governance/test_github_security_packet_runner_artifact.py -v"
+  ],
+  "summary": {
+    "plan_item_count": 3,
+    "refusal_count": 0,
+    "status_summary": {
+      "planned": 3,
+      "blocked": 0,
+      "refused": 0
+    },
+    "next_recommended_action": "run_plan_lane"
+  }
+}

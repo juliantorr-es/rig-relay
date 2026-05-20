@@ -1,0 +1,142 @@
+{
+  "schema_version": "rig.meta.integration_groundwork_v1.report.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head_before": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "head_after": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "dirty_state_before": "clean",
+  "dirty_state_after": "clean — all files are new creations, no pre-existing files modified",
+  "files_changed": [],
+  "files_created": [
+    "rig_relay/integrations/meta_provider/__init__.py",
+    "rig_relay/integrations/meta_provider/_operating_picture.py",
+    "rig_relay/integrations/meta_provider/_permissions_inventory.py",
+    "rig_relay/integrations/meta_provider/_surface_audit.py",
+    "scripts/rig_meta_operating_picture.py",
+    "scripts/rig_meta_permissions_inventory.py",
+    "scripts/rig_meta_surface_audit.py",
+    "docs/schemas/rig.meta.operating_picture.v1.schema.json",
+    "docs/schemas/rig.meta.permissions_inventory.v1.schema.json",
+    "docs/schemas/rig.meta.surface_audit.v1.schema.json",
+    "docs/json/governance/meta_operating_picture_v1.v1.json",
+    "docs/json/governance/meta_permissions_inventory_v1.v1.json",
+    "docs/json/governance/meta_surface_audit_v1.v1.json",
+    "tests/integrations/test_meta_operating_picture.py",
+    "tests/integrations/test_meta_permissions_inventory.py",
+    "tests/integrations/test_meta_surface_audit.py",
+    "tests/governance/test_meta_operating_picture_artifact.py",
+    "tests/governance/test_meta_permissions_inventory_artifact.py",
+    "tests/governance/test_meta_surface_audit_artifact.py",
+    "tests/adversarial/test_meta_operating_picture_redaction.py",
+    "tests/adversarial/test_meta_permissions_inventory_redaction.py",
+    "tests/adversarial/test_meta_surface_audit_redaction.py"
+  ],
+  "files_deleted": [],
+  "tests_run": 37,
+  "tests_passed": 37,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": "full pytest suite not run — per mission constraints",
+  "test_classifications": {
+    "contract": ["all integration and governance tests"],
+    "integration": ["all 3 integration test files — 21 tests"],
+    "real_artifact": ["all 3 governance artifact test files — 6 tests"],
+    "adversarial": ["all 3 redaction test files — 10 tests"],
+    "substrate": ["all 3 integration test files"]
+  },
+  "evidence_artifacts": {
+    "operating_picture": "docs/json/governance/meta_operating_picture_v1.v1.json",
+    "permissions_inventory": "docs/json/governance/meta_permissions_inventory_v1.v1.json",
+    "surface_audit": "docs/json/governance/meta_surface_audit_v1.v1.json"
+  },
+  "schema_validation_results": {
+    "total_schemas": 281,
+    "passed": 281,
+    "failed": 0,
+    "jsonschema_available": true
+  },
+  "telemetry_and_redaction_implications": {
+    "content_light": true,
+    "remote_mutation": false,
+    "live_network": false,
+    "no_raw_tokens": true,
+    "no_user_content": true,
+    "grep_policy_documented_exceptions": [
+      "access_token_configured — safe boolean config flag key name, not a raw token",
+      "app_secret_configured — safe boolean config flag key name, not a raw secret",
+      "webhook_verify_token_configured — safe boolean config flag key name",
+      "whatsapp_phone_number_id_configured — safe boolean config flag key name",
+      "meta.webhooks.verify_token — safe capability ID, not a raw token value",
+      "raw_webhook_payload_ingestion_refused_in_v1 — refusal reason text, not a payload"
+    ]
+  },
+  "dependency_changes": "none",
+  "completed_work": {
+    "lane_a_operating_picture": {
+      "description": "Local-only, schema-valid operating picture that says what Meta integration surfaces exist, what is configured, what is refused, and what next action is safe.",
+      "config_detection": "8 env vars checked as booleans only (RIG_META_APP_ID through RIG_META_VERIFY_TOKEN)",
+      "surface_status": "facebook_pages, instagram_graph, whatsapp_business_cloud, webhooks inferred from config",
+      "refused_surfaces": ["publishing", "messaging", "comments_replies"],
+      "safety_posture": "refusal-first, app_review_required=true, business_verification_required=true, webhook_security_required=true",
+      "next_actions": "build_surface_audit always; build_permissions_inventory when config present; no_action otherwise"
+    },
+    "lane_b_permissions_inventory": {
+      "description": "Static permission inventory with 19 capabilities across 5 surfaces, no live calls.",
+      "surfaces": 5,
+      "total_capabilities": 19,
+      "supported_readonly": 5,
+      "refused": 11,
+      "deferred": 3,
+      "high_risk": 12,
+      "app_review_likely": 16,
+      "business_verification_likely": 16,
+      "all_requires_doc_verification": true,
+      "refused_capabilities_include": ["all publishing", "all messaging", "webhook receive", "template management", "comment moderation"]
+    },
+    "lane_c_surface_audit": {
+      "description": "9 proposal packets for future Meta features. 2 permanent structural refusals (publishing, messaging). No live API calls.",
+      "total_packets": 9,
+      "refused": 2,
+      "deferred": 2,
+      "blocked": 5,
+      "packet_ids_deterministic": true,
+      "refused_surfaces_permanently": ["publishing_surfaces", "messaging_surfaces"]
+    }
+  },
+  "intentionally_deferred_work": [
+    "Facebook Pages live API integration — not built, only operating picture",
+    "Instagram Graph live API integration — not built, only operating picture",
+    "WhatsApp Business Cloud live API — not built, only operating picture",
+    "Webhook registration — not built, only security packet",
+    "App review submission — preflight packet only, no submission",
+    "Business verification — readiness packet only, no submission",
+    "Publishing automation — permanently refused in v1",
+    "Messaging automation — permanently refused in v1",
+    "Comment/reply automation — permanently refused in v1",
+    "Token exchange — not built, no credential handling",
+    "Meta OAuth flow — not built, no live auth"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "Facebook Pages Graph API — read-only metadata profile audit not built; only env presence checked",
+    "Instagram Graph API — read-only profile audit not built; business account linkage unverified",
+    "WhatsApp Business Cloud — webhook receive and message send refused in v1; phone number and template management not audited",
+    "Webhook subscription — refused until app review and business verification completed",
+    "Publishing surfaces — all publishing, comment, and reply automation refused in v1",
+    "Messaging surfaces — WhatsApp/Instagram messaging refused; requires app review, webhook security, and user consent",
+    "App review preflight — packet planned but no review submission built",
+    "Business verification — required for public app access; no verification flow built",
+    "All 19 capability permission names require verification against current Meta developer docs",
+    "Exact app review requirements per capability need Meta App Dashboard confirmation",
+    "No aggregate coordinator artifact yet (lanes A, B, C produce independent artifacts)"
+  ],
+  "meta_surfaces_refused": [
+    "publishing — all Facebook/Instagram publishing automation refused in v1",
+    "messaging — all WhatsApp send/Instagram DM automation refused in v1",
+    "comments_replies — all comment/reply automation refused in v1",
+    "webhook_receive — raw webhook payload ingestion refused in v1",
+    "template_management — WhatsApp template management refused in v1",
+    "comment_moderation — Instagram comment moderation refused in v1"
+  ],
+  "public_release_ready": false,
+  "next_recommended_slice": "If Meta config env vars are set, run permissions_inventory CLI. Then consider building the Facebook Page profile audit packet as a live read-only smoke test (behind app review and business verification)."
+}

@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.surface_audit.v1.schema.json",
+  "title": "GitHub Surface Steward Audit v1",
+  "description": "Read-only audit of GitHub-facing public surfaces: project README, profile README, GitHub Pages/static site, badges, and public claim consistency.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "owner",
+    "repo",
+    "content_light",
+    "remote_mutation",
+    "audited_surfaces",
+    "missing_surfaces",
+    "stale_surfaces",
+    "proposal_packets",
+    "required_permissions_for_future_publish",
+    "next_recommended_action",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.surface_audit.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "audited_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_name", "status", "present"],
+        "properties": {
+          "surface_name": {
+            "type": "string",
+            "enum": [
+              "project_readme",
+              "profile_readme",
+              "static_site_pages",
+              "badge_status_block",
+              "public_claims",
+              "changelog",
+              "license",
+              "contributing",
+              "security_policy",
+              "code_of_conduct"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["present", "missing", "stale", "incomplete", "needs_live_check", "not_checked"]
+          },
+          "present": { "type": "boolean" },
+          "details": { "type": "string" },
+          "evidence_paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "issues_found": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "missing_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_name", "reason"],
+        "properties": {
+          "surface_name": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "stale_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface_name", "reason"],
+        "properties": {
+          "surface_name": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "proposal_packets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["proposal_id", "title", "target_surface", "action", "status"],
+        "properties": {
+          "proposal_id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "target_surface": { "type": "string" },
+          "action": {
+            "type": "string",
+            "enum": [
+              "project_readme_update",
+              "profile_readme_update",
+              "static_site_publish_check",
+              "badge_status_block",
+              "unsupported_claim_cleanup",
+              "changelog_update",
+              "license_review",
+              "security_policy_review",
+              "contributing_review"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["proposed", "needs_approval", "ready", "blocked"]
+          },
+          "details": { "type": "string" }
+        }
+      }
+    },
+    "required_permissions_for_future_publish": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission", "scope", "reason"],
+        "properties": {
+          "permission": { "type": "string" },
+          "scope": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "next_recommended_action": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_surfaces_audited",
+        "present_surface_count",
+        "missing_surface_count",
+        "stale_surface_count",
+        "proposal_count",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "total_surfaces_audited": { "type": "integer" },
+        "present_surface_count": { "type": "integer" },
+        "missing_surface_count": { "type": "integer" },
+        "stale_surface_count": { "type": "integer" },
+        "proposal_count": { "type": "integer" },
+        "next_recommended_action": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

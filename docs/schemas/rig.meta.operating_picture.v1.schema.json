@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.meta.operating_picture.v1.schema.json",
+  "title": "Meta Operating Picture v1",
+  "description": "Deterministic local control-plane view of Meta integration surfaces, configuration, refusal posture, and next safe actions.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "live_network",
+    "configured_summary",
+    "surface_summary",
+    "safety_posture",
+    "next_recommended_action",
+    "evidence_paths",
+    "remaining_seams",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.meta.operating_picture.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head": {
+      "type": ["string", "null"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "live_network": {
+      "type": "boolean",
+      "const": false
+    },
+    "configured_summary": {
+      "$ref": "#/definitions/configured_summary"
+    },
+    "surface_summary": {
+      "$ref": "#/definitions/surface_summary"
+    },
+    "safety_posture": {
+      "$ref": "#/definitions/safety_posture"
+    },
+    "next_recommended_action": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "build_permissions_inventory",
+          "build_surface_audit",
+          "configure_dev_app",
+          "no_action"
+        ]
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "configured_summary": {
+      "type": "object",
+      "required": [
+        "app_id_configured",
+        "app_secret_configured",
+        "access_token_configured",
+        "page_id_configured",
+        "instagram_business_account_id_configured",
+        "whatsapp_business_account_id_configured",
+        "whatsapp_phone_number_id_configured",
+        "webhook_verify_token_configured"
+      ],
+      "properties": {
+        "app_id_configured": {"type": "boolean"},
+        "app_secret_configured": {"type": "boolean"},
+        "access_token_configured": {"type": "boolean"},
+        "page_id_configured": {"type": "boolean"},
+        "instagram_business_account_id_configured": {"type": "boolean"},
+        "whatsapp_business_account_id_configured": {"type": "boolean"},
+        "whatsapp_phone_number_id_configured": {"type": "boolean"},
+        "webhook_verify_token_configured": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "surface_summary": {
+      "type": "object",
+      "required": [
+        "facebook_pages",
+        "instagram_graph",
+        "whatsapp_business_cloud",
+        "webhooks",
+        "publishing",
+        "messaging",
+        "comments_replies"
+      ],
+      "properties": {
+        "facebook_pages": {
+          "type": "string",
+          "enum": ["unconfigured", "configured", "refused", "not_implemented"]
+        },
+        "instagram_graph": {
+          "type": "string",
+          "enum": ["unconfigured", "configured", "refused", "not_implemented"]
+        },
+        "whatsapp_business_cloud": {
+          "type": "string",
+          "enum": ["unconfigured", "configured", "refused", "not_implemented"]
+        },
+        "webhooks": {
+          "type": "string",
+          "enum": ["unconfigured", "configured", "refused", "not_implemented"]
+        },
+        "publishing": {
+          "type": "string",
+          "const": "refused"
+        },
+        "messaging": {
+          "type": "string",
+          "const": "refused"
+        },
+        "comments_replies": {
+          "type": "string",
+          "const": "refused"
+        }
+      },
+      "additionalProperties": false
+    },
+    "safety_posture": {
+      "type": "object",
+      "required": [
+        "public_release_ready",
+        "app_review_required",
+        "business_verification_required",
+        "webhook_security_required",
+        "user_content_ingestion_allowed",
+        "publishing_allowed",
+        "messaging_allowed"
+      ],
+      "properties": {
+        "public_release_ready": {"type": "boolean"},
+        "app_review_required": {"type": "boolean"},
+        "business_verification_required": {"type": "boolean"},
+        "webhook_security_required": {"type": "boolean"},
+        "user_content_ingestion_allowed": {"type": "boolean"},
+        "publishing_allowed": {"type": "boolean"},
+        "messaging_allowed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count",
+        "checked_artifact_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0},
+        "checked_artifact_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "config_health",
+        "surface_health",
+        "safety_health",
+        "next_action"
+      ],
+      "properties": {
+        "config_health": {
+          "type": "string",
+          "enum": ["unconfigured", "partial", "fully_configured"]
+        },
+        "surface_health": {
+          "type": "string",
+          "enum": ["all_unconfigured", "partial", "all_refused_or_not_implemented"]
+        },
+        "safety_health": {
+          "type": "string",
+          "enum": ["refusal_first", "needs_review", "ready"]
+        },
+        "next_action": {
+          "type": "string",
+          "enum": [
+            "build_permissions_inventory",
+            "build_surface_audit",
+            "configure_dev_app",
+            "no_action"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "schema_version": "rig.github_integration_groundwork_wave_1_report.v1",
+  "generated_at": "2026-05-20T07:00:00Z",
+  "branch": "main",
+  "head_before": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "head_after": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "dirty_state_before": "clean",
+  "dirty_state_after": "modified_and_new_files_present",
+  "pre_existing_dirty_files": [
+    "rig_relay/integrations/google_workspace/__init__.py",
+    "rig_relay/integrations/google_workspace/_redaction.py",
+    "docs/json/governance/google_workspace_operating_picture_v1.v1.json",
+    "docs/json/governance/google_workspace_read_intake_v1.v1.json",
+    "docs/json/governance/google_workspace_surface_packets_v1.v1.json",
+    "docs/json/governance/meta_integration_groundwork_v1_report.v1.json",
+    "docs/json/governance/meta_operating_picture_v1.v1.json",
+    "docs/json/governance/meta_permissions_inventory_v1.v1.json",
+    "docs/json/governance/meta_surface_audit_v1.v1.json",
+    "docs/schemas/rig.google_workspace.*.json",
+    "docs/schemas/rig.meta.*.json",
+    "rig_relay/integrations/google_workspace/_operating_picture.py",
+    "rig_relay/integrations/google_workspace/_read_intake.py",
+    "rig_relay/integrations/google_workspace/_surface_packets.py",
+    "rig_relay/integrations/meta_provider/",
+    "scripts/rig_google_workspace_*.py",
+    "scripts/rig_meta_*.py",
+    "tests/**/test_google_workspace_*.py",
+    "tests/**/test_meta_*.py"
+  ],
+  "files_changed_by_this_mission": [
+    "rig_relay/integrations/github_provider/__init__.py",
+    "rig_relay/integrations/github_provider/_operating_picture.py",
+    "rig_relay/integrations/github_provider/_security_intake.py",
+    "docs/schemas/rig.github.security_intake.v1.schema.json",
+    "tests/integrations/test_github_security_intake.py",
+    "docs/json/governance/github_operating_picture_v1.v1.json"
+  ],
+  "files_created_by_this_mission": [
+    "rig_relay/integrations/github_provider/_security_packet_runner.py",
+    "rig_relay/integrations/github_provider/_surface_audit.py",
+    "scripts/rig_github_security_packet_runner.py",
+    "scripts/rig_github_surface_audit.py",
+    "docs/schemas/rig.github.security_packet_runner_plan.v1.schema.json",
+    "docs/schemas/rig.github.surface_audit.v1.schema.json",
+    "docs/json/governance/github_security_packet_runner_plan_v1.v1.json",
+    "docs/json/governance/github_surface_audit_v1.v1.json",
+    "tests/integrations/test_github_security_packet_runner.py",
+    "tests/governance/test_github_security_packet_runner_artifact.py",
+    "tests/adversarial/test_github_security_packet_runner_redaction.py",
+    "tests/integrations/test_github_surface_audit.py",
+    "tests/governance/test_github_surface_audit_artifact.py",
+    "tests/adversarial/test_github_surface_audit_redaction.py",
+    "docs/json/governance/github_integration_groundwork_wave_1_report.v1.json"
+  ],
+  "files_deleted": [],
+  "lane_ownership_map": {
+    "lane_a_security_packet_runner": [
+      "rig_relay/integrations/github_provider/_security_packet_runner.py",
+      "scripts/rig_github_security_packet_runner.py",
+      "docs/schemas/rig.github.security_packet_runner_plan.v1.schema.json",
+      "docs/json/governance/github_security_packet_runner_plan_v1.v1.json",
+      "tests/integrations/test_github_security_packet_runner.py",
+      "tests/governance/test_github_security_packet_runner_artifact.py",
+      "tests/adversarial/test_github_security_packet_runner_redaction.py"
+    ],
+    "lane_b_security_intake_completion": [
+      "rig_relay/integrations/github_provider/_security_intake.py",
+      "docs/schemas/rig.github.security_intake.v1.schema.json",
+      "tests/integrations/test_github_security_intake.py"
+    ],
+    "lane_c_surface_steward_audit": [
+      "rig_relay/integrations/github_provider/_surface_audit.py",
+      "scripts/rig_github_surface_audit.py",
+      "docs/schemas/rig.github.surface_audit.v1.schema.json",
+      "docs/json/governance/github_surface_audit_v1.v1.json",
+      "tests/integrations/test_github_surface_audit.py",
+      "tests/governance/test_github_surface_audit_artifact.py",
+      "tests/adversarial/test_github_surface_audit_redaction.py"
+    ],
+    "coordinator_integration": [
+      "rig_relay/integrations/github_provider/__init__.py",
+      "rig_relay/integrations/github_provider/_operating_picture.py",
+      "docs/json/governance/github_operating_picture_v1.v1.json"
+    ]
+  },
+  "completed_work": {
+    "lane_a": "Security Packet Runner v1: Turns security mission packets into bounded local execution plans. Reads packet index + operating picture, refuses on stale/remote_mutation/empty, selects by limit or packet-id, emits plan artifact with per-item lane type, categories, validation commands. CLI: --plan-only, --limit 3, --packet-id, --summary. All 12 tests pass.",
+    "lane_b": "Security Intake Completion: Added checks/workflow read-side surface (not_implemented_read_side), pagination metadata (per_page_limit, max_pages, pages_collected, truncated, remaining_items_estimate), and updated source_surfaces in dry-run, refusal, and live paths. Dependabot refusal/permission diagnosis already present. Schema updated with new pagination property and checks_workflow enum. All 9 intake tests pass.",
+    "lane_c": "Surface Steward Audit v1: Read-only audit of 10 GitHub-facing surfaces (project_readme, profile_readme, static_site_pages, badge_status_block, public_claims, changelog, license, contributing, security_policy, code_of_conduct). Produces audited/missing/stale surfaces, proposal packets, and future publish permission requirements. CLI: --owner, --repo, --output-json, --summary. All 13 tests pass.",
+    "coordinator": "Updated operating picture to reference new security_packet_runner_plan and github_surface_audit artifacts as source entries. Updated __init__.py with new public API exports. All operating picture tests pass."
+  },
+  "intentionally_deferred_work": [
+    "Live network call testing (RIG_LIVE_AUTH_TESTS=1 required)",
+    "Checks/workflow run API implementation (currently not_implemented_read_side)",
+    "Profile README live check (needs network)",
+    "Dependabot live alert collection (permission required)",
+    "Secret scanning live collection (permission required)",
+    "Remote mutation enabling",
+    "PR/issue/branch creation",
+    "Alert dismissal",
+    "GitHub file writes",
+    "Fleet orchestration (worktree lanes)",
+    "Full pytest suite"
+  ],
+  "discovered_out_of_scope_risks": [
+    "Operating picture content-light check regex \\bcontents\\b is overly aggressive and blocks legitimate GitHub permission names like 'contents:write'",
+    "Security packet runner does not yet resolve per-packet detail files from .build/rig-relay/security-mission-packets/",
+    "Surface audit public_claims comparison is rudimentary and only checks release-candidate readiness claim",
+    "No cross-artifact hash validation between equivalent fields in different artifacts"
+  ],
+  "tests_run": [
+    "tests/integrations/test_github_security_packet_runner.py (8 tests)",
+    "tests/governance/test_github_security_packet_runner_artifact.py (1 test)",
+    "tests/adversarial/test_github_security_packet_runner_redaction.py (3 tests)",
+    "tests/integrations/test_github_security_intake.py (5 tests, 2 updated)",
+    "tests/governance/test_github_security_intake_artifact.py (1 test)",
+    "tests/adversarial/test_github_security_intake_redaction.py (2 tests)",
+    "tests/integrations/test_github_surface_audit.py (9 tests)",
+    "tests/governance/test_github_surface_audit_artifact.py (1 test)",
+    "tests/adversarial/test_github_surface_audit_redaction.py (3 tests)",
+    "tests/integrations/test_github_operating_picture.py (4 tests)",
+    "tests/governance/test_github_operating_picture_artifact.py (1 test)"
+  ],
+  "test_results": "39 passed, 0 failed",
+  "test_classifications": {
+    "contract_and_integration": 26,
+    "contract_and_real_artifact": 5,
+    "adversarial": 8
+  },
+  "tests_intentionally_skipped": [
+    "Full pytest suite (uv run pytest)",
+    "Live network tests",
+    "Provider-specific tests",
+    "Non-GitHub tests"
+  ],
+  "schema_validation_results": {
+    "total_schemas": 281,
+    "passed": 281,
+    "failed": 0,
+    "new_schemas": [
+      "rig.github.security_packet_runner_plan.v1.schema.json",
+      "rig.github.surface_audit.v1.schema.json"
+    ],
+    "modified_schemas": [
+      "rig.github.security_intake.v1.schema.json"
+    ]
+  },
+  "redaction_proof": {
+    "content_light_assertions": "All artifacts assert content_light=true, remote_mutation=false",
+    "forbidden_field_stripping": "safe_summary() strips token_prefix, authorization, raw_response, raw_body, code_snippet, patch, diff, contents, secret",
+    "token_scanning": "All serialized outputs scanned for ghp_, gho_, ghu_, ghs_, ghr_, github_pat_ patterns",
+    "adversarial_test_coverage": "8 adversarial tests verify redaction on each lane's artifact shapes"
+  },
+  "remote_mutation_status": false,
+  "public_release_ready": false,
+  "remaining_seams": [
+    "Packet runner: per-packet detail file resolution from .build/ directory",
+    "Packet runner: apply_local flag and guarded local mutation (future)",
+    "Intake: checks/workflow API live read-side implementation",
+    "Intake: dependabot permission enablement for live collection",
+    "Intake: secret_scanning permission enablement for live collection",
+    "Surface audit: profile README live network check",
+    "Surface audit: static site publish pipeline verification",
+    "Surface audit: public claim reconciliation with comprehensive operating picture",
+    "Operating picture: content-light regex refinement for legitimate GitHub permission names",
+    "Cross-artifact: hash-based integrity validation between related artifacts",
+    "Fleet orchestration: worktree-based security lane execution"
+  ],
+  "next_recommended_slice": "Run the packet runner plan CLI to produce a live plan; inspect plan items at per-packet detail level; implement checks/workflow read-side intake when permissions or local CI/CD evidence are available; enable Dependabot permission for live alert collection."
+}

@@ -1,0 +1,147 @@
+{
+  "schema_version": "rig.github.surface_audit.v1",
+  "generated_at": "2026-05-20T07:25:47.446552+00:00",
+  "owner": "juliantorr-es",
+  "repo": "rig-relay",
+  "content_light": true,
+  "remote_mutation": false,
+  "audited_surfaces": [
+    {
+      "surface_name": "project_readme",
+      "status": "present",
+      "present": true,
+      "details": "Project README found at repository root.",
+      "evidence_paths": [
+        "README.md"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "profile_readme",
+      "status": "needs_live_check",
+      "present": false,
+      "details": "Profile README typically lives at github.com/juliantorr-es/juliantorr-es. Needs live network check to verify presence and content.",
+      "evidence_paths": [],
+      "issues_found": [
+        "needs_live_profile_repo_check"
+      ]
+    },
+    {
+      "surface_name": "static_site_pages",
+      "status": "present",
+      "present": true,
+      "details": "Static site artifacts found.",
+      "evidence_paths": [
+        "docs/render-manifest.json",
+        "docs/pages/",
+        "docs/index.html"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "badge_status_block",
+      "status": "present",
+      "present": true,
+      "details": "Badges detected in README.md.",
+      "evidence_paths": [
+        "README.md"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "public_claims",
+      "status": "present",
+      "present": true,
+      "details": "Public claims extracted from README.md.",
+      "evidence_paths": [
+        "README.md"
+      ],
+      "issues_found": [
+        "README claims release-candidate readiness but operating_picture shows public_release_ready=false"
+      ]
+    },
+    {
+      "surface_name": "changelog",
+      "status": "present",
+      "present": true,
+      "details": "CHANGELOG.md found at repository root.",
+      "evidence_paths": [
+        "CHANGELOG.md"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "license",
+      "status": "present",
+      "present": true,
+      "details": "LICENSE found at repository root.",
+      "evidence_paths": [
+        "LICENSE"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "contributing",
+      "status": "present",
+      "present": true,
+      "details": "CONTRIBUTING.md found at repository root.",
+      "evidence_paths": [
+        "CONTRIBUTING.md"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "security_policy",
+      "status": "present",
+      "present": true,
+      "details": "SECURITY.md found at repository root.",
+      "evidence_paths": [
+        "SECURITY.md"
+      ],
+      "issues_found": []
+    },
+    {
+      "surface_name": "code_of_conduct",
+      "status": "present",
+      "present": true,
+      "details": "CODE_OF_CONDUCT.md found at repository root.",
+      "evidence_paths": [
+        "CODE_OF_CONDUCT.md"
+      ],
+      "issues_found": []
+    }
+  ],
+  "missing_surfaces": [],
+  "stale_surfaces": [],
+  "proposal_packets": [
+    {
+      "proposal_id": "proposal:profile_readme:needs_live_check",
+      "title": "Create or update GitHub profile README",
+      "target_surface": "profile_readme",
+      "action": "profile_readme_update",
+      "status": "blocked",
+      "details": "Profile README typically lives at github.com/juliantorr-es/juliantorr-es. Needs live network check to verify presence and content."
+    }
+  ],
+  "required_permissions_for_future_publish": [
+    {
+      "permission": "repository_file_updates:write",
+      "scope": "repository",
+      "reason": "Needed to commit README, CHANGELOG, Pages updates."
+    },
+    {
+      "permission": "pages:write",
+      "scope": "repository",
+      "reason": "Needed to configure GitHub Pages publishing source."
+    }
+  ],
+  "next_recommended_action": "review_proposals",
+  "summary": {
+    "total_surfaces_audited": 10,
+    "present_surface_count": 9,
+    "missing_surface_count": 0,
+    "stale_surface_count": 0,
+    "proposal_count": 1,
+    "next_recommended_action": "review_proposals"
+  }
+}

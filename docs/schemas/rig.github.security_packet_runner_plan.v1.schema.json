@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_packet_runner_plan.v1.schema.json",
+  "title": "GitHub Security Packet Runner Plan v1",
+  "description": "Bounded local execution plan for security mission packets. Read-only by default; no remote mutation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_packet_index_path",
+    "source_packet_index_hash",
+    "content_light",
+    "remote_mutation",
+    "apply_local",
+    "limit",
+    "selected_packet_count",
+    "total_available_packets",
+    "selection_mode",
+    "plan_items",
+    "refusals",
+    "validation_commands",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_packet_runner_plan.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_packet_index_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_packet_index_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "apply_local": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "selected_packet_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total_available_packets": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "selection_mode": {
+      "type": "string",
+      "enum": ["default_limit", "by_packet_id", "all"]
+    },
+    "plan_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "plan_item_id",
+          "packet_id",
+          "candidate_id",
+          "route",
+          "source_surface",
+          "severity_summary",
+          "local_lane_type",
+          "expected_local_categories",
+          "required_validation_commands",
+          "remote_mutation",
+          "apply_local",
+          "status"
+        ],
+        "properties": {
+          "plan_item_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "packet_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "candidate_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "route": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_surface": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+          },
+          "severity_summary": {
+            "type": "object",
+            "properties": {
+              "normalized_severity": { "type": "string" },
+              "priority": { "type": "string" },
+              "source_alert_count": { "type": "integer" }
+            }
+          },
+          "local_lane_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_local_categories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "required_validation_commands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "apply_local": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "in_progress", "completed", "blocked", "refused"]
+          }
+        }
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason", "detail"],
+        "properties": {
+          "reason": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "plan_item_count",
+        "refusal_count",
+        "status_summary",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "plan_item_count": { "type": "integer" },
+        "refusal_count": { "type": "integer" },
+        "status_summary": {
+          "type": "object",
+          "properties": {
+            "planned": { "type": "integer" },
+            "blocked": { "type": "integer" },
+            "refused": { "type": "integer" }
+          }
+        },
+        "next_recommended_action": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -29,6 +29,11 @@ from rig_relay.integrations.github_provider._redaction import (
 _GITHUB_API_BASE = "https://api.github.com"
 _CODE_SCANNING_ALERTS_PATH = "/repos/{owner}/{repo}/code-scanning/alerts"
 _DEPENDABOT_ALERTS_PATH = "/repos/{owner}/{repo}/dependabot/alerts"
+_CHECKS_WORKFLOW_RUNS_PATH = "/repos/{owner}/{repo}/actions/runs"
+_CHECK_RUNS_PATH = "/repos/{owner}/{repo}/check-runs"
+
+_DEFAULT_PAGINATION_LIMIT = 100
+_MAX_PAGES = 10
 
 _VALIDATION_COMMANDS = [
     "uv run python scripts/rig_relay_validate_schemas.py",
@@ -369,24 +374,36 @@ class GitHubSecurityIntakeCollector:
 
     def _collect_paginated_items(
         self, path: str, token: str, params: dict[str, str] | None = None
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, int]]:
         page = 1
         items: list[dict[str, Any]] = []
         base_params = dict(params or {})
+        pagination_meta: dict[str, int] = {
+            "per_page": _DEFAULT_PAGINATION_LIMIT,
+            "pages_collected": 0,
+            "items_collected": 0,
+            "truncated": 0,
+        }
         while True:
             page_params = dict(base_params)
-            page_params["per_page"] = "100"
+            page_params["per_page"] = str(_DEFAULT_PAGINATION_LIMIT)
             page_params["page"] = str(page)
             payload, links = self._request_json(path, token, page_params)
             if not isinstance(payload, list):
                 raise GitHubSecurityIntakeError(
                     f"Expected list payload from {path}, got {type(payload).__name__}"
                 )
-            items.extend([item for item in payload if isinstance(item, dict)])
+            page_items = [item for item in payload if isinstance(item, dict)]
+            items.extend(page_items)
+            pagination_meta["pages_collected"] += 1
+            pagination_meta["items_collected"] = len(items)
             if "next" not in links:
                 break
+            if page >= _MAX_PAGES:
+                pagination_meta["truncated"] = 1
+                break
             page += 1
-        return items
+        return items, pagination_meta
 
     def _collect_alert_surface(
         self,
@@ -395,15 +412,28 @@ class GitHubSecurityIntakeCollector:
         path: str,
         *,
         params: dict[str, str] | None = None,
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None]:
+    ) -> tuple[
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        dict[str, Any] | None,
+        dict[str, int],
+    ]:
         required_permission = (
             "Code scanning alerts read"
             if surface == "code_scanning"
             else "Dependabot alerts read"
         )
         endpoint_family = surface
+        pagination_meta: dict[str, int] = {
+            "per_page": _DEFAULT_PAGINATION_LIMIT,
+            "pages_collected": 0,
+            "items_collected": 0,
+            "truncated": 0,
+        }
         try:
-            raw_alerts = self._collect_paginated_items(path, token, params=params)
+            raw_alerts, pagination_meta = self._collect_paginated_items(
+                path, token, params=params
+            )
         except httpx.HTTPStatusError as e:
             if e.response.status_code in {400, 401, 403, 404, 422}:
                 return (
@@ -417,6 +447,7 @@ class GitHubSecurityIntakeCollector:
                         error_kind="http_error",
                         status_code=e.response.status_code,
                     ),
+                    pagination_meta,
                 )
             raise GitHubSecurityIntakeError(
                 f"GitHub API HTTP {e.response.status_code} for {surface}"
@@ -432,6 +463,7 @@ class GitHubSecurityIntakeCollector:
                     endpoint_family=endpoint_family,
                     error_kind="network_error",
                 ),
+                pagination_meta,
             )
 
         normalized: list[dict[str, Any]] = []
@@ -453,7 +485,7 @@ class GitHubSecurityIntakeCollector:
                     _as_str(record.get("severity", "unknown"))
                 ),
             })
-        return normalized, groups, None
+        return normalized, groups, None, pagination_meta
 
     def _build_base_report(
         self,
@@ -493,6 +525,7 @@ class GitHubSecurityIntakeCollector:
             "mutation_permission_count": 0,
             "broad_app_permission_risk_mitigated_by_token_scope": False,
             "read_only_token_enforced": False,
+            "recommended_permission_reductions": [],
             "source_surfaces": [],
             "counts": {
                 "code_scanning_open": 0,
@@ -504,6 +537,15 @@ class GitHubSecurityIntakeCollector:
             "alerts": {"code_scanning": [], "dependabot": []},
             "patch_candidate_groups": [],
             "refusals": [],
+            "pagination": {
+                "per_page_limit": _DEFAULT_PAGINATION_LIMIT,
+                "max_pages": _MAX_PAGES,
+                "pages_collected": 0,
+                "truncated": False,
+                "remaining_items_estimate": 0,
+                "checks_workflow_status": "not_implemented_read_side",
+                "checks_workflow_pagination_remaining_seam": True,
+            },
         }
         if report_fields:
             report.update(report_fields)
@@ -553,6 +595,13 @@ class GitHubSecurityIntakeCollector:
                 "Secret scanning alerts read",
                 endpoint_family="secret_scanning",
                 error_kind="missing_permission_or_not_enabled",
+            ),
+            _build_surface(
+                "checks_workflow",
+                "not_implemented_read_side",
+                "Checks read",
+                details="Checks/workflow run API read-side not yet implemented. Reads are gated on local CI/CD evidence only.",
+                endpoint_family="checks",
             ),
         ]
         report.update(
@@ -658,6 +707,13 @@ class GitHubSecurityIntakeCollector:
                 "Secret scanning alerts read",
                 endpoint_family="secret_scanning",
                 error_kind="missing_permission_or_not_enabled",
+            ),
+            _build_surface(
+                "checks_workflow",
+                "not_implemented_read_side",
+                "Checks read",
+                details="Checks/workflow run API read-side not yet implemented. Reads are gated on local CI/CD evidence only.",
+                endpoint_family="checks",
             ),
         ]
         report["counts"]["refused_surfaces"] = _count_refused_surfaces(
@@ -825,16 +881,21 @@ class GitHubSecurityIntakeCollector:
         )
         report.update(posture_summary)
 
-        code_scanning_alerts, code_groups, code_refusal = self._collect_alert_surface(
-            "code_scanning",
-            raw_token,
-            _code_scanning_endpoint(owner, repo),
-            params=None,
-        )
-        dependabot_alerts, dependabot_groups, dependabot_refusal = (
+        (code_scanning_alerts, code_groups, code_refusal, code_pagination_meta) = (
             self._collect_alert_surface(
-                "dependabot", raw_token, _dependabot_endpoint(owner, repo), params=None
+                "code_scanning",
+                raw_token,
+                _code_scanning_endpoint(owner, repo),
+                params=None,
             )
+        )
+        (
+            dependabot_alerts,
+            dependabot_groups,
+            dependabot_refusal,
+            dependabot_pagination_meta,
+        ) = self._collect_alert_surface(
+            "dependabot", raw_token, _dependabot_endpoint(owner, repo), params=None
         )
 
         report["alerts"]["code_scanning"] = code_scanning_alerts
@@ -847,6 +908,23 @@ class GitHubSecurityIntakeCollector:
         report["counts"]["dependabot_open"] = sum(
             1 for item in dependabot_alerts if _as_str(item.get("state")) == "open"
         )
+
+        code_truncated = code_pagination_meta.get("truncated", 0)
+        dep_truncated = dependabot_pagination_meta.get("truncated", 0)
+        report["pagination"] = {
+            "per_page_limit": _DEFAULT_PAGINATION_LIMIT,
+            "max_pages": _MAX_PAGES,
+            "code_scanning_pages_collected": code_pagination_meta.get(
+                "pages_collected", 0
+            ),
+            "dependabot_pages_collected": dependabot_pagination_meta.get(
+                "pages_collected", 0
+            ),
+            "truncated": bool(code_truncated or dep_truncated),
+            "remaining_items_estimate": 0,
+            "checks_workflow_status": "not_implemented_read_side",
+            "checks_workflow_pagination_remaining_seam": True,
+        }
 
         secret_refusal = _build_refusal(
             "secret_scanning",
@@ -875,6 +953,13 @@ class GitHubSecurityIntakeCollector:
                 ),
             ),
             secret_refusal,
+            _build_surface(
+                "checks_workflow",
+                "not_implemented_read_side",
+                "Checks read",
+                details="Checks/workflow run API read-side not yet implemented. Reads are gated on local CI/CD evidence only.",
+                endpoint_family="checks",
+            ),
         ]
         if code_refusal is not None:
             report["refusals"].append(code_refusal)
@@ -948,6 +1033,13 @@ class GitHubSecurityIntakeCollector:
                 "Secret scanning alerts read",
                 endpoint_family="secret_scanning",
                 error_kind="missing_permission_or_not_enabled",
+            ),
+            _build_surface(
+                "checks_workflow",
+                "not_implemented_read_side",
+                "Checks read",
+                details="Checks/workflow run API read-side not yet implemented. Reads are gated on local CI/CD evidence only.",
+                endpoint_family="checks",
             ),
         ]
         report.update(

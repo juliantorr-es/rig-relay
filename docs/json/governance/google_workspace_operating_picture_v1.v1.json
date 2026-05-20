@@ -1,0 +1,243 @@
+{
+  "schema_version": "rig.google_workspace.operating_picture.v1",
+  "generated_at": "2026-05-20T07:28:10.703469+00:00",
+  "branch": "main",
+  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_artifacts": [
+    {
+      "artifact_id": "capability_manifest",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_capability_manifest.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "eb3e5970a76c5721836ed9be1340a632a6b2829c7778c0740dd1794bb99600bf",
+      "schema_version": "rig.google_workspace.capability_manifest.v1",
+      "summary": {
+        "total_capabilities": 8,
+        "read_only_capabilities": 6,
+        "mutation_capabilities_refused": 1,
+        "domain_wide_delegation_capabilities": 2,
+        "default_policy": {
+          "read_only_default": "refused without scope grant",
+          "mutation_default": "refused in v1",
+          "destructive_default": "refused in v1",
+          "live_network_default": "refused in v1"
+        }
+      },
+      "content_hash": "af6e3d0f9d663394b0436df84a769380cff5de53b8fddc750f01c91ea382a091"
+    },
+    {
+      "artifact_id": "contract",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_contract_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "0268ad2765e39fa4c475858801b49acdbf5e1dfc0655b0323c3fd747b0307d27",
+      "schema_version": "rig.google_workspace.contract.v1",
+      "summary": {
+        "implementation_status": "contract_only",
+        "auth_modes_count": 7,
+        "restricted_scope_policy_live_refused": true,
+        "domain_wide_delegation_refused": true,
+        "deferred_work_count": 7
+      },
+      "content_hash": "8f2ad98f4afc4c37342c3d4b4a0cba7b749cc00fb856b9c05e5e6af90cd27c6e"
+    },
+    {
+      "artifact_id": "live_auth",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_google_auth_result.v1.json",
+      "present": true,
+      "status": "invalid",
+      "artifact_hash": "fe3898497b4f0a999f469734e7ed77838a637a6ec1d7e9e8e27ddafc190e8e18",
+      "schema_version": null,
+      "summary": {
+        "oauth_configured": false,
+        "pkce_available": true,
+        "token_present": false,
+        "token_hash_present": false,
+        "refresh_token_present": false,
+        "granted_scope_count": 0,
+        "requested_scope_count": 0,
+        "missing_required_scopes": [],
+        "restricted_scope_count": 0,
+        "sensitive_scope_count": 0,
+        "consent_mode": "unknown",
+        "public_release_ready": false,
+        "config_issues": [
+          "no_auth_configured"
+        ]
+      },
+      "content_hash": "922d6ecdcdcd84c3543f5824af3a89fa3dd906faa3ec882311b48ca5372af4d0",
+      "error_kind": "schema_version_mismatch"
+    },
+    {
+      "artifact_id": "read_intake",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_read_intake_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "a6730886b741697d8e8983008d3dbcb29954de4d71a9d9076d5ac1e8073a333e",
+      "schema_version": "rig.google_workspace.read_intake.v1",
+      "summary": {
+        "dry_run": true,
+        "live": false,
+        "total_surfaces": 7,
+        "present_surfaces": 0,
+        "refused_surfaces": 2,
+        "not_implemented_surfaces": 0
+      },
+      "content_hash": "b891a05542befd073d4f6f535247e3738ac7f2669bcd21ac94e64e36e7c967e5"
+    },
+    {
+      "artifact_id": "scope_manifest",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_scope_manifest_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "fb28bf979c3bd8886f28772c22c67e8af35ea5240cede4eea989e6df2d7be16c",
+      "schema_version": "rig.google_workspace.scope_manifest.v1",
+      "summary": {
+        "total_scopes": 12,
+        "restricted_scope_count": 3,
+        "sensitive_scope_count": 1,
+        "non_sensitive_scope_count": 8,
+        "scopes_requiring_security_assessment": 3
+      },
+      "content_hash": "50ac753a00d8b91cf9fe869eafe191b578a21430b2081783b13c53982ab56ee4"
+    }
+  ],
+  "auth_summary": {
+    "oauth_configured": false,
+    "pkce_available": true,
+    "token_present": false,
+    "token_hash_present": false,
+    "refresh_token_present": false,
+    "granted_scope_count": 0,
+    "requested_scope_count": 12,
+    "missing_required_scopes": [
+      "restricted_scopes_refused_for_live"
+    ],
+    "restricted_scope_count": 3,
+    "sensitive_scope_count": 1,
+    "consent_mode": "external",
+    "public_release_ready": false
+  },
+  "surface_summary": {
+    "gmail_profile": {
+      "surface": "gmail_profile",
+      "status": "refused",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    },
+    "gmail_metadata": {
+      "surface": "gmail_metadata",
+      "status": "dry_run_available",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    },
+    "calendar_list": {
+      "surface": "calendar_list",
+      "status": "dry_run_available",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    },
+    "calendar_events_readonly": {
+      "surface": "calendar_events_readonly",
+      "status": "not_implemented",
+      "evidence_paths": []
+    },
+    "drive_metadata": {
+      "surface": "drive_metadata",
+      "status": "refused",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    },
+    "tasks_readonly": {
+      "surface": "tasks_readonly",
+      "status": "dry_run_available",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    },
+    "contacts_people_readonly": {
+      "surface": "contacts_people_readonly",
+      "status": "dry_run_available",
+      "evidence_paths": [
+        "docs/json/governance/google_workspace_read_intake_v1.v1.json"
+      ]
+    }
+  },
+  "scope_posture": {
+    "least_privilege_ready": false,
+    "broad_local_dev_posture": true,
+    "public_release_ready": false,
+    "verification_required": true,
+    "restricted_scopes_refused_or_deferred": true
+  },
+  "refusals": [
+    {
+      "refusal_kind": "missing_scope",
+      "status": "refused",
+      "reason": "Missing required scopes: restricted_scopes_refused_for_live",
+      "evidence_paths": [
+        "docs/json/integrations/google_workspace_scope_manifest_v1.v1.json"
+      ]
+    },
+    {
+      "refusal_kind": "restricted_scope_unverified",
+      "status": "refused",
+      "reason": "Restricted scopes present and not verified for public release. Security assessment required.",
+      "evidence_paths": [
+        "docs/json/integrations/google_workspace_contract_v1.v1.json"
+      ]
+    },
+    {
+      "refusal_kind": "domain_wide_delegation_deferred",
+      "status": "refused",
+      "reason": "Domain-wide delegation deferred to a later lane. Requires super admin authorization.",
+      "evidence_paths": [
+        "docs/json/integrations/google_workspace_contract_v1.v1.json"
+      ]
+    },
+    {
+      "refusal_kind": "service_account_key_management_external",
+      "status": "refused",
+      "reason": "Service account key management is external to Rig Relay. Keys stored in keychain only.",
+      "evidence_paths": []
+    }
+  ],
+  "next_recommended_actions": [
+    "configure_oauth",
+    "run_live_read_intake"
+  ],
+  "evidence_paths": [
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_capability_manifest.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_contract_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_google_auth_result.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_read_intake_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_scope_manifest_v1.v1.json"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 21,
+    "checked_artifact_count": 5
+  },
+  "remaining_seams": [
+    "gmail message body read remains refused until restricted scope assessment complete",
+    "drive file content ingestion deferred; metadata-only in v1",
+    "domain-wide delegation remains deferred to future lane",
+    "calendar event descriptions remain hashed/omitted in v1",
+    "contacts details remain hashed in v1",
+    "service account key management is external to Rig Relay",
+    "live network calls gated by RIG_LIVE_AUTH_TESTS=1"
+  ],
+  "summary": {
+    "auth_health": "auth_partial",
+    "surface_health": "all_missing",
+    "scope_posture_conservative": true,
+    "next_recommended_action": "configure_oauth"
+  }
+}

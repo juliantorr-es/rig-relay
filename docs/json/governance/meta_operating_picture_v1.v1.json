@@ -1,0 +1,67 @@
+{
+  "schema_version": "rig.meta.operating_picture.v1",
+  "generated_at": "2026-05-20T07:27:55.068059+00:00",
+  "branch": "main",
+  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "content_light": true,
+  "remote_mutation": false,
+  "live_network": false,
+  "configured_summary": {
+    "app_id_configured": false,
+    "app_secret_configured": false,
+    "access_token_configured": false,
+    "page_id_configured": false,
+    "instagram_business_account_id_configured": false,
+    "whatsapp_business_account_id_configured": false,
+    "whatsapp_phone_number_id_configured": false,
+    "webhook_verify_token_configured": false
+  },
+  "surface_summary": {
+    "facebook_pages": "unconfigured",
+    "instagram_graph": "unconfigured",
+    "whatsapp_business_cloud": "unconfigured",
+    "webhooks": "unconfigured",
+    "publishing": "refused",
+    "messaging": "refused",
+    "comments_replies": "refused"
+  },
+  "safety_posture": {
+    "public_release_ready": false,
+    "app_review_required": true,
+    "business_verification_required": true,
+    "webhook_security_required": true,
+    "user_content_ingestion_allowed": false,
+    "publishing_allowed": false,
+    "messaging_allowed": false
+  },
+  "next_recommended_action": [
+    "no_action",
+    "build_surface_audit"
+  ],
+  "evidence_paths": [
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/meta_permissions_inventory_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/meta_surface_audit_v1.v1.json"
+  ],
+  "remaining_seams": [
+    "Facebook Pages Graph API — read-only metadata profile audit not built; only env presence checked",
+    "Instagram Graph API — read-only profile audit not built; business account linkage unverified",
+    "WhatsApp Business Cloud — webhook receive and message send refused in v1; phone number and template management not audited",
+    "Webhook subscription — refused until app review and business verification completed",
+    "Publishing surfaces — all publishing, comment, and reply automation refused in v1",
+    "Messaging surfaces — WhatsApp/Instagram messaging refused; requires app review, webhook security, and user consent",
+    "App review preflight — packet planned but no review submission built",
+    "Business verification — required for public app access; no verification flow built"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 18,
+    "checked_artifact_count": 2
+  },
+  "summary": {
+    "config_health": "unconfigured",
+    "surface_health": "all_unconfigured",
+    "safety_health": "refusal_first",
+    "next_action": "no_action"
+  }
+}

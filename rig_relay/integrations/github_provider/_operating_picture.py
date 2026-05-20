@@ -50,6 +50,16 @@ _DEFAULT_SWIFT_CODEQL_ADVISORY_PARKING_JSON = (
     / "governance"
     / "swift_codeql_advisory_parking_v1.v1.json"
 )
+_DEFAULT_SECURITY_PACKET_RUNNER_PLAN_JSON = (
+    _REPO_ROOT
+    / "docs"
+    / "json"
+    / "governance"
+    / "github_security_packet_runner_plan_v1.v1.json"
+)
+_DEFAULT_SURFACE_AUDIT_JSON = (
+    _REPO_ROOT / "docs" / "json" / "governance" / "github_surface_audit_v1.v1.json"
+)
 _DEFAULT_OUTPUT_JSON = (
     _REPO_ROOT / "docs" / "json" / "governance" / "github_operating_picture_v1.v1.json"
 )
@@ -980,6 +990,21 @@ def build_github_operating_picture_from_paths(
             ),
             "rig.swift_codeql_advisory_parking.v1",
         ),
+        (
+            "security_packet_runner_plan",
+            Path(
+                source_paths.get(
+                    "security_packet_runner_plan_json",
+                    _DEFAULT_SECURITY_PACKET_RUNNER_PLAN_JSON,
+                )
+            ),
+            "rig.github.security_packet_runner_plan.v1",
+        ),
+        (
+            "github_surface_audit",
+            Path(source_paths.get("surface_audit_json", _DEFAULT_SURFACE_AUDIT_JSON)),
+            "rig.github.surface_audit.v1",
+        ),
     ]
     descriptors: list[dict[str, Any]] = []
     live_auth = None
@@ -988,6 +1013,8 @@ def build_github_operating_picture_from_paths(
     mission_packets = None
     ci_cd_reliability = None
     swift_codeql_advisory_parking = None
+    security_packet_runner_plan = None
+    github_surface_audit = None
     for artifact_id, path, schema_version in source_specs:
         descriptor, data = _load_artifact(
             artifact_id, path, expected_schema_version=schema_version
@@ -1006,6 +1033,10 @@ def build_github_operating_picture_from_paths(
                 ci_cd_reliability = data
             case "swift_codeql_advisory_parking":
                 swift_codeql_advisory_parking = data
+            case "security_packet_runner_plan":
+                security_packet_runner_plan = data
+            case "github_surface_audit":
+                github_surface_audit = data
 
     branch, head = _load_git_metadata(repo_root)
     report = build_github_operating_picture(
@@ -1024,6 +1055,8 @@ def build_github_operating_picture_from_paths(
             "security_mission_packets": mission_packets,
             "github_ci_cd_reliability": ci_cd_reliability,
             "swift_codeql_advisory_parking": swift_codeql_advisory_parking,
+            "security_packet_runner_plan": security_packet_runner_plan,
+            "github_surface_audit": github_surface_audit,
         },
     )
     return report

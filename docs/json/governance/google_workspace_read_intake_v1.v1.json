@@ -1,0 +1,247 @@
+{
+  "schema_version": "rig.google_workspace.read_intake.v1",
+  "generated_at": "2026-05-20T07:28:11.078598+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "dry_run": true,
+  "live": false,
+  "surfaces": [
+    {
+      "surface": "gmail_profile",
+      "product": "gmail",
+      "status": "refused",
+      "capability_id": "google_workspace.gmail.profile.get",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": [
+        "docs/json/integrations/google_workspace_contract_v1.v1.json"
+      ]
+    },
+    {
+      "surface": "gmail_labels",
+      "product": "gmail",
+      "status": "dry_run_available",
+      "capability_id": "google_workspace.gmail.labels.list",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/gmail.labels"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": []
+    },
+    {
+      "surface": "calendar_list",
+      "product": "calendar",
+      "status": "dry_run_available",
+      "capability_id": "google_workspace.calendar.calendarList.list",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": []
+    },
+    {
+      "surface": "calendar_events",
+      "product": "calendar",
+      "status": "dry_run_available",
+      "capability_id": "google_workspace.calendar.events.readonly",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/calendar.events.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": []
+    },
+    {
+      "surface": "drive_files",
+      "product": "drive",
+      "status": "refused",
+      "capability_id": "google_workspace.drive.files.list",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/drive.metadata.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": [
+        "docs/json/integrations/google_workspace_contract_v1.v1.json"
+      ]
+    },
+    {
+      "surface": "tasklists",
+      "product": "tasks",
+      "status": "dry_run_available",
+      "capability_id": "google_workspace.tasks.tasklists.list",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/tasks.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": []
+    },
+    {
+      "surface": "contacts",
+      "product": "people",
+      "status": "dry_run_available",
+      "capability_id": "google_workspace.contacts.list",
+      "required_scopes": [
+        "https://www.googleapis.com/auth/contacts.readonly"
+      ],
+      "metadata_count": null,
+      "metadata_hashes": [],
+      "identity_hash": null,
+      "scope_granted": false,
+      "evidence_paths": []
+    }
+  ],
+  "refusals": [
+    {
+      "surface": "gmail_profile",
+      "required_scope": "https://www.googleapis.com/auth/gmail.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "restricted_scope_unverified"
+    },
+    {
+      "surface": "gmail_labels",
+      "required_scope": "https://www.googleapis.com/auth/gmail.labels",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "dry_run_no_network"
+    },
+    {
+      "surface": "calendar_list",
+      "required_scope": "https://www.googleapis.com/auth/calendar.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "dry_run_no_network"
+    },
+    {
+      "surface": "calendar_events",
+      "required_scope": "https://www.googleapis.com/auth/calendar.events.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "dry_run_no_network"
+    },
+    {
+      "surface": "drive_files",
+      "required_scope": "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "restricted_scope_unverified"
+    },
+    {
+      "surface": "tasklists",
+      "required_scope": "https://www.googleapis.com/auth/tasks.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "dry_run_no_network"
+    },
+    {
+      "surface": "contacts",
+      "required_scope": "https://www.googleapis.com/auth/contacts.readonly",
+      "granted_scope_present": false,
+      "status": "refused",
+      "remote_mutation": false,
+      "refusal_reason": "dry_run_no_network"
+    }
+  ],
+  "scope_grants": [
+    {
+      "scope": "openid",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/userinfo.email",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/userinfo.profile",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/gmail.readonly",
+      "granted": false,
+      "sensitivity": "restricted"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/gmail.metadata",
+      "granted": false,
+      "sensitivity": "restricted"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/calendar.readonly",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/calendar.events.readonly",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/drive.readonly",
+      "granted": false,
+      "sensitivity": "restricted"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/tasks.readonly",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/contacts.readonly",
+      "granted": false,
+      "sensitivity": "non_sensitive"
+    },
+    {
+      "scope": "https://www.googleapis.com/auth/admin.directory.user.readonly",
+      "granted": false,
+      "sensitivity": "sensitive"
+    }
+  ],
+  "evidence_paths": [
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_scope_manifest_v1.v1.json"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 14
+  },
+  "summary": {
+    "total_surfaces": 7,
+    "present_surfaces": 0,
+    "refused_surfaces": 2,
+    "not_implemented_surfaces": 5,
+    "next_action": "configure_oauth"
+  }
+}
