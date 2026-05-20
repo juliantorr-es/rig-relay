@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Swift CodeQL Advisory Parking Schema",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "type": "string", "const": "rig.swift_codeql_advisory_parking.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "observed_slow_step": { "type": "string" },
+    "observed_duration_seconds": { "type": "integer" },
+    "parked_surface": { "type": "string" },
+    "reason_codes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "default_ci_required": { "type": "boolean", "const": false },
+    "advisory_workflow_path": { "type": "string" },
+    "required_ci_preserved": { "type": "boolean" },
+    "codeql_languages_required": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "codeql_languages_advisory": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "permissions_review": {
+      "type": "object",
+      "properties": {
+        "required_ci_permissions": { "type": "string" },
+        "advisory_ci_permissions": { "type": "string" }
+      },
+      "required": ["required_ci_permissions", "advisory_ci_permissions"]
+    },
+    "trigger_review": {
+      "type": "object",
+      "properties": {
+        "required_ci_triggers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "advisory_ci_triggers": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["required_ci_triggers", "advisory_ci_triggers"]
+    },
+    "future_promotion_criteria": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests_run": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests_skipped": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["parked_advisory", "needs_manual_review", "request_changes"]
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "redaction_status": { "type": "string", "const": "content_light" }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "observed_slow_step",
+    "observed_duration_seconds",
+    "parked_surface",
+    "reason_codes",
+    "default_ci_required",
+    "advisory_workflow_path",
+    "required_ci_preserved",
+    "codeql_languages_required",
+    "codeql_languages_advisory",
+    "permissions_review",
+    "trigger_review",
+    "future_promotion_criteria",
+    "tests_run",
+    "tests_skipped",
+    "recommendation",
+    "content_light",
+    "redaction_status"
+  ],
+  "additionalProperties": false
+}

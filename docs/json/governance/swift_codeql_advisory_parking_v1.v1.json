@@ -1,0 +1,58 @@
+{
+  "$schema": "https://rig-relay.dev/schemas/rig.swift_codeql_advisory_parking.v1.schema.json",
+  "schema_version": "rig.swift_codeql_advisory_parking.v1",
+  "generated_at": "2026-05-20T01:42:00Z",
+  "observed_slow_step": "github/codeql-action/autobuild@v4",
+  "observed_duration_seconds": 533,
+  "parked_surface": "swift_app_shell",
+  "reason_codes": [
+    "slow_autobuild",
+    "expensive_macos_runners",
+    "unnecessary_for_core_python_schema_release"
+  ],
+  "default_ci_required": false,
+  "advisory_workflow_path": ".github/workflows/codeql-swift-advisory.yml",
+  "required_ci_preserved": true,
+  "codeql_languages_required": [
+    "python",
+    "javascript-typescript"
+  ],
+  "codeql_languages_advisory": [
+    "swift"
+  ],
+  "permissions_review": {
+    "required_ci_permissions": "contents: read",
+    "advisory_ci_permissions": "contents: read, security-events: write"
+  },
+  "trigger_review": {
+    "required_ci_triggers": [
+      "push",
+      "pull_request"
+    ],
+    "advisory_ci_triggers": [
+      "workflow_dispatch",
+      "schedule"
+    ]
+  },
+  "future_promotion_criteria": [
+    "deterministic Swift build command exists",
+    "runtime consistently below 180 seconds or explicit accepted budget",
+    "no flaky autobuild behavior across 3 scheduled runs",
+    "no blocking on unrelated Python/JS/schema release gates",
+    "artifact documents exact build command and failure modes"
+  ],
+  "tests_run": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/release_gate/test_github_ci_cd_reliability_artifact.py -v",
+    "uv run pytest tests/release_gate/test_swift_codeql_advisory_parking_artifact.py -v",
+    "uv run pytest tests/site_renderer/ -v"
+  ],
+  "tests_skipped": [
+    "full pytest",
+    "live auth",
+    "Swift build locally"
+  ],
+  "recommendation": "parked_advisory",
+  "content_light": true,
+  "redaction_status": "content_light"
+}
