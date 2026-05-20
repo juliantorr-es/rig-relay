@@ -61,9 +61,7 @@
       "artifacts": [
         ".build/github-actions/github-live-auth-summary.json"
       ]
-    }
-  ],
-  "conditional_checks": [
+    },
     {
       "job_id": "deepseek-lane-routing",
       "job_name": "DeepSeek lane routing",
@@ -75,10 +73,10 @@
       ],
       "artifacts": [
         ".build/github-actions/deepseek-lane-routing-summary.json"
-      ],
-      "condition": "Only run when tests/integrations/test_deepseek_lane_routing.py exists."
+      ]
     }
   ],
+  "conditional_checks": [],
   "advisory_checks": [
     {
       "job_id": "release-gate",

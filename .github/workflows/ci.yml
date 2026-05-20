@@ -261,7 +261,6 @@ jobs:
 
   deepseek-lane-routing:
     name: DeepSeek lane routing
-    if: ${{ hashFiles('tests/integrations/test_deepseek_lane_routing.py') != '' }}
     runs-on: ubuntu-latest
 
     steps:

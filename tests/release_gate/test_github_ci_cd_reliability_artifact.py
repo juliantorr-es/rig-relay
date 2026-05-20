@@ -67,17 +67,21 @@ def test_conditional_and_advisory_checks_are_labeled():
     workflow = _load_workflow()
     jobs = workflow["jobs"]
 
-    conditional = artifact["conditional_checks"][0]
-    conditional_job = jobs[conditional["job_id"]]
-    assert (
-        "hashFiles('tests/integrations/test_deepseek_lane_routing.py')"
-        in conditional_job["if"]
-    )
+    # Since deepseek-lane-routing is now required, there are no conditional checks
+    assert len(artifact["conditional_checks"]) == 0
 
     advisory = artifact["advisory_checks"][0]
     advisory_job = jobs[advisory["job_id"]]
     assert "advisory" in advisory_job["name"].lower()
     assert advisory_job["continue-on-error"] is True
+
+
+def test_no_job_level_hashfiles_conditions():
+    workflow = _load_workflow()
+    for job_id, job in workflow.get("jobs", {}).items():
+        if "if" in job:
+            condition = str(job["if"])
+            assert "hashFiles" not in condition, f"Job {job_id} has invalid job-level hashFiles condition: {condition}"
 
 
 def test_live_auth_policy_remains_safe_by_default():
