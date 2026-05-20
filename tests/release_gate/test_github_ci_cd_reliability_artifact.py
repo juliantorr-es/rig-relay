@@ -26,9 +26,12 @@ def _load_workflow() -> dict:
 
 
 def _load_all_workflows() -> dict[str, dict]:
+    workflow_paths = sorted(
+        {path for pattern in ("*.yml", "*.yaml") for path in WORKFLOWS_DIR.glob(pattern)}
+    )
     return {
         workflow_path.name: yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
-        for workflow_path in WORKFLOWS_DIR.glob("*.yml")
+        for workflow_path in workflow_paths
     }
 
 
@@ -47,6 +50,16 @@ def _codeql_init_steps(job: dict) -> list[dict]:
         if isinstance(step, dict)
         and isinstance(step.get("uses"), str)
         and step["uses"].startswith("github/codeql-action/init@")
+    ]
+
+
+def _codeql_autobuild_steps(job: dict) -> list[dict]:
+    return [
+        step
+        for step in job.get("steps", [])
+        if isinstance(step, dict)
+        and isinstance(step.get("uses"), str)
+        and step["uses"].startswith("github/codeql-action/autobuild@")
     ]
 
 
@@ -140,9 +153,12 @@ def test_codeql_push_pr_excludes_swift_and_avoids_autodetect():
     assert "pull_request" in triggers
 
     analyze_job = jobs["analyze"]
-    matrix_languages = analyze_job["strategy"]["matrix"]["language"]
-    assert set(matrix_languages) == {"python", "javascript-typescript"}
-    assert "swift" not in matrix_languages
+    matrix = analyze_job["strategy"]["matrix"]
+    include = matrix["include"]
+    assert include == [
+        {"language": "python", "build-mode": "none"},
+        {"language": "javascript-typescript", "build-mode": "none"},
+    ]
 
     init_steps = _codeql_init_steps(analyze_job)
     assert init_steps, "Expected at least one CodeQL init step"
@@ -151,6 +167,25 @@ def test_codeql_push_pr_excludes_swift_and_avoids_autodetect():
         assert languages == "${{ matrix.language }}", (
             "CodeQL init must set explicit languages to avoid autodetection"
         )
+
+    assert not _codeql_autobuild_steps(analyze_job)
+
+    for workflow_name, workflow in workflows.items():
+        triggers = _workflow_triggers(workflow)
+        if "push" not in triggers and "pull_request" not in triggers:
+            continue
+        for job_id, job in (workflow.get("jobs") or {}).items():
+            for step in _codeql_init_steps(job):
+                languages = step.get("with", {}).get("languages")
+                assert languages, (
+                    f"{workflow_name}:{job_id} uses CodeQL init without explicit languages"
+                )
+                assert "swift" not in str(languages).lower(), (
+                    f"{workflow_name}:{job_id} still includes Swift in CodeQL init"
+                )
+            assert not _codeql_autobuild_steps(job), (
+                f"{workflow_name}:{job_id} contains CodeQL autobuild on push/PR"
+            )
 
 
 def test_swift_codeql_is_advisory_only_with_manual_and_scheduled_triggers():
@@ -171,6 +206,17 @@ def test_swift_codeql_is_advisory_only_with_manual_and_scheduled_triggers():
     assert init_steps, "Expected Swift advisory CodeQL init step"
     assert init_steps[0]["with"]["languages"] == "swift"
 
+    summary_step = next(
+        step
+        for step in advisory_job["steps"]
+        if isinstance(step, dict)
+        and step.get("name") == "Write Swift advisory summary"
+        and isinstance(step.get("run"), str)
+    )
+    assert "manual/scheduled only" in summary_step["run"]
+    assert "workflow_dispatch + weekly schedule" in summary_step["run"]
+    assert "push and pull_request" in summary_step["run"]
+
 
 def test_required_ci_jobs_and_permissions_remain_least_privilege():
     workflows = _load_all_workflows()
@@ -187,3 +233,9 @@ def test_required_ci_jobs_and_permissions_remain_least_privilege():
     assert "static-site-renderer" in ci_jobs
     assert "deepseek-opencode-usage-report" in ci_jobs
     assert "github-live-auth" in ci_jobs
+
+
+def test_governance_artifact_records_default_setup_suspicion():
+    artifact = _load_json(ARTIFACT_PATH)
+
+    assert artifact["github_default_setup_suspected"] is True

@@ -5,6 +5,7 @@
   "generated_at": "2026-05-20T01:55:00Z",
   "workflow_name": "CI",
   "workflow_path": ".github/workflows/ci.yml",
+  "github_default_setup_suspected": true,
   "required_gate_rationale": "Required checks mirror the repository's deterministic local release-gate commands: schema validation, site renderer tests plus static rendering, DeepSeek/OpenCode usage report tests, and safe GitHub live-auth coverage. Swift CodeQL is parked as advisory-only because observed Swift autobuild runtime was 533 seconds in default CI; default push/pull_request CodeQL is explicitly limited to python and javascript-typescript. Broader release-evidence diagnostics remain available as advisory checks while full-suite pytest is intentionally not the required merge gate yet.",
   "required_checks": [
     {

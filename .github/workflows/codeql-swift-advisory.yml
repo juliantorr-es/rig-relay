@@ -39,7 +39,9 @@ jobs:
           {
             echo "## Swift CodeQL Advisory"
             echo
-            echo "- Status: advisory/manual/scheduled only"
+            echo "- Status: manual/scheduled only"
+            echo "- Trigger surface: workflow_dispatch + weekly schedule"
+            echo "- Excludes push and pull_request"
             echo "- Reason: Swift autobuild took 533 seconds in default CI"
             echo "- Required release CI: Python/schema/static-site/DeepSeek/GitHub-auth-safe jobs only"
             echo "- Future promotion: requires deterministic Swift build command and stable runtime evidence"

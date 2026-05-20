@@ -41,6 +41,9 @@
       "type": "string",
       "const": ".github/workflows/ci.yml"
     },
+    "github_default_setup_suspected": {
+      "type": "boolean"
+    },
     "required_gate_rationale": {
       "type": "string",
       "minLength": 1
