@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.github.security_mission_candidates.v1",
-  "generated_at_utc": "2026-05-20T04:57:01.913589+00:00",
+  "generated_at_utc": "2026-05-20T05:41:52.772600+00:00",
   "source_artifact_path": "docs/json/governance/github_security_work_items_v1.v1.json",
-  "source_artifact_hash": "adc69cc0ace5554dc2b12683661606ddc7ebf1542e4a321e70c9b2e1f0331912",
+  "source_artifact_hash": "af17fe0b67a1b4c71ede2cc4b412e2c822c86b17d612eabcc5a5ddc7fce6bef2",
   "content_light": true,
   "remote_mutation": false,
   "mission_candidate_count": 3,

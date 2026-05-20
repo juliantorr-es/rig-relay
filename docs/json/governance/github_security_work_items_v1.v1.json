@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.github.security_work_items.v1",
-  "generated_at_utc": "2026-05-20T04:47:13.261865+00:00",
+  "generated_at_utc": "2026-05-20T05:41:52.765713+00:00",
   "source_artifact_path": "docs/json/governance/github_security_intake_result.v1.json",
   "source_artifact_hash": "d1f948d08dc2a4ea19011183c5151f946ce1050a1cedafdf84798cb4f4297642",
   "remote_mutation": false,

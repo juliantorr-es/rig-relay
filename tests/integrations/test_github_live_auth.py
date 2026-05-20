@@ -179,6 +179,70 @@ class TestLiveTokenExchangerExistence:
         exchanger = GitHubLiveTokenExchanger(timeout=5.0)
         assert exchanger._timeout == 5.0
 
+    def test_live_token_exchanger_sends_requested_permissions_in_request_body(
+        self, monkeypatch
+    ):
+        import rig_relay.integrations.github_provider._live_auth as live_mod
+
+        captured: dict[str, object] = {}
+
+        def fake_post_json(url, headers=None, data=None, timeout=None):
+            captured["url"] = url
+            captured["headers"] = headers or {}
+            captured["data"] = data
+            return {
+                "token": "ghs_installation_token_1234567890abcdef",
+                "expires_at": "2026-06-19T00:00:00Z",
+                "permissions": {"metadata": "read", "security_events": "read"},
+                "repository_selection": "all",
+            }
+
+        monkeypatch.setattr(live_mod, "_post_json", fake_post_json)
+        monkeypatch.setattr(
+            live_mod.GitHubLiveJwtSigner, "sign", lambda self, claims: "jwt-test-token"
+        )
+
+        exchanger = live_mod.GitHubLiveTokenExchanger(timeout=5.0)
+        result, token = exchanger.exchange_installation_token(
+            app_id=3774417,
+            installation_id=133860977,
+            private_key_bytes=(
+                b"-----BEGIN RSA PRIVATE KEY-----\nFAKE\n-----END RSA PRIVATE KEY-----"
+            ),
+            requested_permissions={
+                "metadata": "read",
+                "security_events": "read",
+                "vulnerability_alerts": "read",
+            },
+        )
+
+        assert token == "ghs_installation_token_1234567890abcdef"
+        assert captured["data"] == {
+            "permissions": {
+                "metadata": "read",
+                "security_events": "read",
+                "vulnerability_alerts": "read",
+            }
+        }
+        assert result["token_present"] is True
+        assert result["permissions"] == {"metadata": "read", "security_events": "read"}
+
+
+class TestPermissionModeHelpers:
+    def test_permission_mode_defaults_to_development_debug(self):
+        from rig_relay.integrations.github_provider._live_auth import (
+            GitHubPermissionMode,
+            normalize_permission_mode,
+        )
+
+        assert normalize_permission_mode(None) == GitHubPermissionMode.DEVELOPMENT_DEBUG
+        assert normalize_permission_mode("development_debug") == (
+            GitHubPermissionMode.DEVELOPMENT_DEBUG
+        )
+        assert normalize_permission_mode("public_release") == (
+            GitHubPermissionMode.PUBLIC_RELEASE
+        )
+
 
 class TestLiveReadOnlySmoke:
     def test_live_read_only_smoke_functions_exist(self):
@@ -299,13 +363,20 @@ class TestLiveAuthScriptTokenFlow:
                     "any_auth_configured": True,
                 }
 
-        def fake_exchange(self, app_id, installation_id, private_key_bytes):
+        def fake_exchange(
+            self, app_id, installation_id, private_key_bytes, requested_permissions=None
+        ):
+            assert requested_permissions == {
+                "metadata": "read",
+                "security_events": "read",
+                "vulnerability_alerts": "read",
+            }
             return (
                 {
                     "token_hash": hash_identifier(exchanged_token),
                     "expires_at": "2026-06-19T00:00:00Z",
                     "kind": "installation",
-                    "permissions": {"contents": "read"},
+                    "permissions": requested_permissions or {},
                     "repository_selection": "all",
                 },
                 exchanged_token,
@@ -322,7 +393,11 @@ class TestLiveAuthScriptTokenFlow:
             assert token != "__placeholder__"
             assert installation_id == 133860977
             assert repository_selection == "all"
-            assert permission_keys == ["contents"]
+            assert permission_keys == [
+                "metadata",
+                "security_events",
+                "vulnerability_alerts",
+            ]
             return {
                 "schema_version": "rig.github.live_auth_result.v1",
                 "auth_mode": "app_installation",
@@ -330,7 +405,18 @@ class TestLiveAuthScriptTokenFlow:
                 "installation_access": "success",
                 "accessible_repo_count": 1,
                 "accessible_repo_name_hashes": [hash_identifier("owner/private-repo")],
-                "permission_keys": ["contents"],
+                "permission_keys": [
+                    "actions",
+                    "administration",
+                    "checks",
+                    "contents",
+                    "issues",
+                    "metadata",
+                    "pull_requests",
+                    "security_events",
+                    "vulnerability_alerts",
+                    "workflows",
+                ],
                 "repository_selection": "all",
             }
 
@@ -343,13 +429,25 @@ class TestLiveAuthScriptTokenFlow:
             live_mod.GitHubLiveReadOnlySmoke, "probe_installation_access", fake_probe
         )
 
-        results = script._lift_run_live_github(DummyConfig(), "receipt-1", "trace-1")
+        results = script._lift_run_live_github(
+            DummyConfig(),
+            "receipt-1",
+            "trace-1",
+            live_mod.GitHubPermissionMode.DEVELOPMENT_DEBUG,
+        )
 
         assert results["auth_mode"] == "app_installation"
+        assert results["permission_mode"] == "development_debug"
         assert results["token_exchange"]["token_hash"] == hash_identifier(
             exchanged_token
         )
         assert results["installation_access"]["installation_access"] == "success"
+        assert results["token_narrowing_requested"] is True
+        assert results["token_narrowing_effective"] is True
+        assert results["public_release_ready"] is False
+        assert results["unsafe_broad_token_used"] is False
+        assert "actions" in results["app_granted_permissions"]
+        assert "workflows" in results["mutation_permissions_observed"]
         assert exchanged_token not in json.dumps(results)
 
 

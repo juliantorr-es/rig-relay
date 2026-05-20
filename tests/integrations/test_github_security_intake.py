@@ -13,6 +13,7 @@ from rig_relay.integrations.github_provider import (
     GitHubSecurityIntakeCollector,
     build_github_security_intake_report,
 )
+from rig_relay.integrations.github_provider._redaction import hash_identifier
 from rig_relay.integrations.github_provider._security_intake import (
     _normalize_code_scanning_alert,
     _normalize_dependabot_alert,
@@ -92,8 +93,11 @@ def test_dry_run_report_is_schema_valid_and_refuses_secret_scanning():
 
     assert report["schema_version"] == "rig.github.security_intake.v1"
     assert report["dry_run"] is True
+    assert report["permission_mode"] == "development_debug"
     assert report["content_light"] is True
     assert report["remote_mutation"] is False
+    assert report["token_narrowing_requested"] is True
+    assert report["token_narrowing_effective"] is False
     assert report["counts"]["code_scanning_total"] == 0
     assert report["counts"]["dependabot_total"] == 0
     assert any(item["surface"] == "secret_scanning" for item in report["refusals"])
@@ -102,6 +106,9 @@ def test_dry_run_report_is_schema_valid_and_refuses_secret_scanning():
         "dependabot",
         "secret_scanning",
     }
+    assert report["summary"]["permission_mode"] == "development_debug"
+    assert report["summary"]["token_narrowing_requested"] is True
+    assert report["summary"]["token_narrowing_effective"] is False
 
     serialized = json.dumps(report, sort_keys=True)
     for needle in (
@@ -136,13 +143,19 @@ def test_live_intake_uses_exchanged_token_and_not_placeholder(
         assert args == ()
         assert kwargs["app_id"] == 3774417
         assert kwargs["installation_id"] == 133860977
+        assert kwargs["requested_permissions"] == {
+            "metadata": "read",
+            "security_events": "read",
+            "vulnerability_alerts": "read",
+        }
         return (
             {
                 "token": exchanged_token,
                 "expires_at": "2026-06-19T00:00:00Z",
                 "permissions": {
-                    "code_scanning_alerts": "read",
-                    "dependabot_alerts": "read",
+                    "metadata": "read",
+                    "security_events": "read",
+                    "vulnerability_alerts": "read",
                 },
                 "repository_selection": "all",
             },
@@ -164,6 +177,11 @@ def test_live_intake_uses_exchanged_token_and_not_placeholder(
         ))
         assert token == exchanged_token
         assert token != "__placeholder__"
+        assert permission_keys == [
+            "metadata",
+            "security_events",
+            "vulnerability_alerts",
+        ]
         return {
             "schema_version": "rig.github.live_auth_result.v1",
             "auth_mode": "app_installation",
@@ -171,7 +189,18 @@ def test_live_intake_uses_exchanged_token_and_not_placeholder(
             "installation_access": "success",
             "accessible_repo_count": 4,
             "accessible_repo_name_hashes": ["a", "b", "c", "d"],
-            "permission_keys": sorted(permission_keys or []),
+            "permission_keys": [
+                "actions",
+                "administration",
+                "checks",
+                "contents",
+                "issues",
+                "metadata",
+                "pull_requests",
+                "security_events",
+                "vulnerability_alerts",
+                "workflows",
+            ],
             "repository_selection": repository_selection or "",
         }
 
@@ -222,12 +251,30 @@ def test_live_intake_uses_exchanged_token_and_not_placeholder(
         "rig-relay",
         live=True,
         config=config,
+        permission_mode="development_debug",
         receipt_id="receipt-1",
         trace_id="trace-1",
     )
 
     assert probe_calls
     assert report["dry_run"] is False
+    assert report["permission_mode"] == "development_debug"
+    assert report["token_narrowing_requested"] is True
+    assert report["token_narrowing_effective"] is True
+    assert report["public_release_ready"] is False
+    assert report["unsafe_broad_token_used"] is False
+    assert report["requested_token_permissions"] == [
+        {"permission_name": "metadata", "level": "read"},
+        {"permission_name": "security_events", "level": "read"},
+        {"permission_name": "vulnerability_alerts", "level": "read"},
+    ]
+    assert report["effective_token_permissions"] == [
+        {"permission_name": "metadata", "level": "read"},
+        {"permission_name": "security_events", "level": "read"},
+        {"permission_name": "vulnerability_alerts", "level": "read"},
+    ]
+    assert "actions" in report["app_granted_permissions"]
+    assert "workflows" in report["mutation_permissions_observed"]
     assert report["installation_access"]["installation_access"] == "success"
     assert report["counts"]["code_scanning_total"] == 1
     assert report["counts"]["dependabot_total"] == 1
@@ -272,3 +319,99 @@ def test_live_mode_refusal_when_not_gated_does_not_touch_network(
     assert report["refusals"][0]["reason"] == "live_network_disabled"
     assert report["source_surfaces"][0]["status"] == "refused"
     assert report["counts"]["refused_surfaces"] == 3
+
+
+def test_dependabot_400_becomes_structured_refusal_and_state_all_is_not_sent(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import httpx
+
+    monkeypatch.setenv("RIG_LIVE_AUTH_TESTS", "1")
+
+    collector = GitHubSecurityIntakeCollector(timeout=0.1)
+    config = GitHubLiveAuthConfig(
+        app_id=3774417,
+        installation_id=133860977,
+        private_key_env="-----BEGIN RSA PRIVATE KEY-----\nFAKE\n-----END RSA PRIVATE KEY-----",
+    )
+    exchanged_token = "ghs_real_token_1234567890abcdef1234567890abcd"
+    request_params: list[tuple[str, dict[str, str] | None]] = []
+
+    def fake_exchange_installation_token(self, *args, **kwargs):
+        return (
+            {
+                "token": exchanged_token,
+                "expires_at": "2026-06-19T00:00:00Z",
+                "permissions": {
+                    "metadata": "read",
+                    "security_events": "read",
+                    "vulnerability_alerts": "read",
+                },
+                "repository_selection": "all",
+            },
+            exchanged_token,
+        )
+
+    def fake_probe_installation_access(
+        self,
+        token: str,
+        installation_id: int | None = None,
+        repository_selection: str | None = None,
+        permission_keys: list[str] | None = None,
+    ):
+        return {
+            "schema_version": "rig.github.live_auth_result.v1",
+            "auth_mode": "app_installation",
+            "installation_id_hash": hash_identifier("133860977"),
+            "installation_access": "success",
+            "accessible_repo_count": 4,
+            "accessible_repo_name_hashes": ["a", "b", "c", "d"],
+            "permission_keys": sorted(permission_keys or []),
+            "repository_selection": repository_selection or "",
+        }
+
+    def fake_request_json(self, path: str, token: str, params=None):
+        request_params.append((path, dict(params or {})))
+        if path.endswith("/code-scanning/alerts"):
+            return (
+                [
+                    _normalize_code_scanning_alert(
+                        _load_fixture("code_scanning_alerts.page1.json")[0]
+                    )
+                ],
+                {},
+            )
+        request = httpx.Request("GET", f"https://api.github.com{path}")
+        response = httpx.Response(400, request=request)
+        raise httpx.HTTPStatusError("Bad Request", request=request, response=response)
+
+    monkeypatch.setattr(
+        "rig_relay.integrations.github_provider._security_intake.GitHubLiveTokenExchanger.exchange_installation_token",
+        fake_exchange_installation_token,
+    )
+    monkeypatch.setattr(
+        "rig_relay.integrations.github_provider._security_intake.GitHubLiveReadOnlySmoke.probe_installation_access",
+        fake_probe_installation_access,
+    )
+    monkeypatch.setattr(
+        GitHubSecurityIntakeCollector, "_request_json", fake_request_json
+    )
+
+    report = collector.collect(
+        "juliantorr-es",
+        "rig-relay",
+        live=True,
+        config=config,
+        permission_mode="development_debug",
+        receipt_id="receipt-2",
+        trace_id="trace-2",
+    )
+
+    assert report["counts"]["code_scanning_total"] == 1
+    assert report["counts"]["dependabot_total"] == 0
+    assert any(item["surface"] == "dependabot" for item in report["refusals"])
+    assert any(item.get("status_code") == 400 for item in report["refusals"])
+    assert report["counts"]["refused_surfaces"] == 2
+    assert all("state" not in params for _, params in request_params)
+    serialized = json.dumps(report, sort_keys=True)
+    assert "state=all" not in serialized

@@ -1,14 +1,96 @@
 {
   "schema_version": "rig.github_app_permission_posture.v1",
-  "generated_at_utc": "2026-05-20T05:08:25.327388+00:00",
+  "generated_at_utc": "2026-05-20T05:41:52.898659+00:00",
   "content_light": true,
   "remote_mutation": false,
+  "permission_mode": "development_debug",
+  "app_granted_permissions": [],
+  "requested_token_permissions": [],
+  "effective_token_permissions": [
+    {
+      "permission_name": "actions",
+      "level": "write"
+    },
+    {
+      "permission_name": "actions_variables",
+      "level": "write"
+    },
+    {
+      "permission_name": "administration",
+      "level": "write"
+    },
+    {
+      "permission_name": "checks",
+      "level": "write"
+    },
+    {
+      "permission_name": "code_quality",
+      "level": "write"
+    },
+    {
+      "permission_name": "copilot_agent_settings",
+      "level": "write"
+    },
+    {
+      "permission_name": "deployments",
+      "level": "write"
+    },
+    {
+      "permission_name": "issues",
+      "level": "write"
+    },
+    {
+      "permission_name": "metadata",
+      "level": "read"
+    },
+    {
+      "permission_name": "packages",
+      "level": "write"
+    },
+    {
+      "permission_name": "pages",
+      "level": "write"
+    },
+    {
+      "permission_name": "pull_requests",
+      "level": "write"
+    },
+    {
+      "permission_name": "repository_hooks",
+      "level": "write"
+    },
+    {
+      "permission_name": "security_events",
+      "level": "write"
+    },
+    {
+      "permission_name": "vulnerability_alerts",
+      "level": "write"
+    },
+    {
+      "permission_name": "workflows",
+      "level": "write"
+    }
+  ],
+  "token_narrowing_requested": false,
+  "token_narrowing_effective": false,
+  "broad_app_permissions_observed": [],
+  "mutation_permissions_observed": [],
+  "unsafe_broad_token_used": false,
+  "public_release_ready": false,
+  "permission_posture_status": "unknown",
+  "over_permissioned": false,
+  "over_permission_count": 0,
+  "mutation_permission_count": 0,
+  "broad_app_permission_risk_mitigated_by_token_scope": false,
+  "read_only_token_enforced": false,
+  "recommended_permission_reductions": [],
   "source_artifacts": [
     {
       "path": "docs/json/governance/live_github_auth_result.v1.json",
       "present": true,
       "status": "available",
-      "artifact_hash": "5d9098057ec8a9cdb0c5bcfd39aae9be0c6c0d360df05b2fcf57f422e63d0c84",
+      "artifact_hash": "1189b2253bb8d5219eea66ea8525a78dcd25bde08712505dd1baca6d436ab89d",
       "schema_version": "rig.github.live_auth_result.v1",
       "reason": null
     },
@@ -24,7 +106,7 @@
       "path": "docs/json/governance/github_security_work_items_v1.v1.json",
       "present": true,
       "status": "available",
-      "artifact_hash": "adc69cc0ace5554dc2b12683661606ddc7ebf1542e4a321e70c9b2e1f0331912",
+      "artifact_hash": "6d1a53bbcb1fa09c9947570c2b2cbbb57b55dc21c08d17c69d0949f3ffe02e14",
       "schema_version": "rig.github.security_work_items.v1",
       "reason": null
     },
@@ -32,7 +114,7 @@
       "path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
       "present": true,
       "status": "available",
-      "artifact_hash": "3ac9901a50172b4c74c9de42d6a82835d1c272a24921d37a0527ed50e4b29f24",
+      "artifact_hash": "7071f9165f597ec37533723308eb6c9b7761a755094e2c4d8e1d4a76143dc688",
       "schema_version": "rig.github.security_mission_candidates.v1",
       "reason": null
     }
@@ -40,35 +122,67 @@
   "observed_permissions": [
     {
       "permission_name": "actions",
-      "level": "read",
+      "level": "write",
       "source_artifact": "live_auth",
       "observed_from": "live_results.token_exchange.permissions",
       "permission_name_hash": "2b0dcdd40016096b852d9d5b79de2ad570249dc8e4d4ebe4fa4ab81e2aa9af35",
-      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "actions_variables",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "2a3dc0f7c8e6e14bc22a04ef4cf945deca19011e4df732c2fed55205d2c65c14",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "administration",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "512afb6c763173d396baa0d08494e5845682df53d11f056110221a6601973e2c",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
     },
     {
       "permission_name": "checks",
-      "level": "read",
+      "level": "write",
       "source_artifact": "live_auth",
       "observed_from": "live_results.token_exchange.permissions",
       "permission_name_hash": "961f787b0cd3443fbc7c456886ecd25749c0485c4ae9a02f10599b17dad9f944",
-      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
     },
     {
-      "permission_name": "contents",
-      "level": "read",
+      "permission_name": "code_quality",
+      "level": "write",
       "source_artifact": "live_auth",
       "observed_from": "live_results.token_exchange.permissions",
-      "permission_name_hash": "d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8",
-      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+      "permission_name_hash": "d4a132eb04cfb4f211c70123d35ea2669c903a74985c1ec1cf263e6e330393a9",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "copilot_agent_settings",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "a6ba3cf2596e2e155c7aac64c0f18293393165c65c2749b6eb900f542131775b",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "deployments",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "01366d7dabda289fd567b8afa93a1fdc0be11b962254a027caec2e4be5a94c16",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
     },
     {
       "permission_name": "issues",
-      "level": "read",
+      "level": "write",
       "source_artifact": "live_auth",
       "observed_from": "live_results.token_exchange.permissions",
       "permission_name_hash": "02e3fe5aad80ca85ace4db35008faabe7950c53998160c66c9072b6fd33dec0f",
-      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
     },
     {
       "permission_name": "metadata",
@@ -79,12 +193,60 @@
       "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
     },
     {
+      "permission_name": "packages",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "b28b1ed9821f38c64524ea13e19264bb0772f8376afffd5d8a1f8277621833eb",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "pages",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "bfa062de040f55a15ce910800757061ec3d2fc31d6b7c72d9fa02b75a9ad1133",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
       "permission_name": "pull_requests",
-      "level": "read",
+      "level": "write",
       "source_artifact": "live_auth",
       "observed_from": "live_results.token_exchange.permissions",
       "permission_name_hash": "272c8e85ded6d7603eaca6368c9739a8e9ebfd708d24021e1982bfb786e8a8fa",
-      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "repository_hooks",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "246126b6b221234a9bdefe9304e54ec5ce3b86c63493596d612441c1b4379898",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "security_events",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "3da00b107b3b0efef74dd441e0f3e0be22ecca5d0ae7a38d5391d0926eb9cbe4",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "vulnerability_alerts",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "9df25fca7d2a8f86f53b4a964c0310c7a1334a1855cd9ff96c3c7df4db195caf",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+    },
+    {
+      "permission_name": "workflows",
+      "level": "write",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "45b34f16db605a06e99207c844b67ee88e470b5a68fbbab05dba0fc8b8e6cc9f",
+      "level_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
     }
   ],
   "required_permissions": [
@@ -109,8 +271,8 @@
       "mutation_risk": "read_only",
       "allowed_in_this_slice": true,
       "surface_label": "Code scanning alerts",
-      "observed_level": "none",
-      "status": "missing",
+      "observed_level": "write",
+      "status": "observed",
       "permission_name_hash": "3da00b107b3b0efef74dd441e0f3e0be22ecca5d0ae7a38d5391d0926eb9cbe4",
       "surface_hash": "6844723a49be7f20b5fd54bc549d6782e9cc1f13eae45928e123399d536f1fa9"
     },
@@ -122,8 +284,8 @@
       "mutation_risk": "read_only_security",
       "allowed_in_this_slice": true,
       "surface_label": "Dependabot alerts",
-      "observed_level": "none",
-      "status": "missing",
+      "observed_level": "write",
+      "status": "observed",
       "permission_name_hash": "9df25fca7d2a8f86f53b4a964c0310c7a1334a1855cd9ff96c3c7df4db195caf",
       "surface_hash": "23779f7e188a00ba1604b15e6da507930533371ef1289b34316a7e23deadf996"
     },
@@ -135,7 +297,7 @@
       "mutation_risk": "mutation_enabled",
       "allowed_in_this_slice": false,
       "surface_label": "Workflows mutation",
-      "observed_level": "none",
+      "observed_level": "write",
       "status": "non_goal",
       "permission_name_hash": "45b34f16db605a06e99207c844b67ee88e470b5a68fbbab05dba0fc8b8e6cc9f",
       "surface_hash": "b828d91085c2d1be82a134a4b1ef6df4933bd6fd2b819e7331d6b5a0ade7007e"
@@ -284,7 +446,7 @@
     "mutation_permissions_requested": false,
     "secret_material_persisted": false,
     "remote_mutation": false,
-    "observed_permission_count": 6,
+    "observed_permission_count": 16,
     "missing_permission_count": 3,
     "permission_request_count": 3
   },
@@ -298,7 +460,7 @@
     }
   ],
   "summary": {
-    "observed_permission_count": 6,
+    "observed_permission_count": 16,
     "required_permission_count": 4,
     "missing_permission_count": 3,
     "permission_request_count": 3,
@@ -306,30 +468,77 @@
     "input_unavailable_count": 0,
     "mutation_permissions_requested": false,
     "remote_mutation": false,
+    "permission_mode": "development_debug",
+    "permission_posture_status": "unknown",
+    "public_release_ready": false,
+    "over_permission_count": 0,
+    "mutation_permission_count": 0,
+    "unsafe_broad_token_used": false,
+    "broad_app_permission_risk_mitigated_by_token_scope": false,
     "by_permission_name": [
       {
         "permission_name": "actions",
-        "level": "read"
+        "level": "write"
+      },
+      {
+        "permission_name": "actions_variables",
+        "level": "write"
+      },
+      {
+        "permission_name": "administration",
+        "level": "write"
       },
       {
         "permission_name": "checks",
-        "level": "read"
+        "level": "write"
       },
       {
-        "permission_name": "contents",
-        "level": "read"
+        "permission_name": "code_quality",
+        "level": "write"
+      },
+      {
+        "permission_name": "copilot_agent_settings",
+        "level": "write"
+      },
+      {
+        "permission_name": "deployments",
+        "level": "write"
       },
       {
         "permission_name": "issues",
-        "level": "read"
+        "level": "write"
       },
       {
         "permission_name": "metadata",
         "level": "read"
       },
       {
+        "permission_name": "packages",
+        "level": "write"
+      },
+      {
+        "permission_name": "pages",
+        "level": "write"
+      },
+      {
         "permission_name": "pull_requests",
-        "level": "read"
+        "level": "write"
+      },
+      {
+        "permission_name": "repository_hooks",
+        "level": "write"
+      },
+      {
+        "permission_name": "security_events",
+        "level": "write"
+      },
+      {
+        "permission_name": "vulnerability_alerts",
+        "level": "write"
+      },
+      {
+        "permission_name": "workflows",
+        "level": "write"
       }
     ],
     "by_requested_permission": [
@@ -345,6 +554,7 @@
         "permission_name": "vulnerability_alerts",
         "requested_level": "read"
       }
-    ]
+    ],
+    "recommended_permission_reductions": []
   }
 }

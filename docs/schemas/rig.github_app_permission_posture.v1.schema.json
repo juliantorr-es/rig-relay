@@ -9,6 +9,23 @@
     "generated_at_utc",
     "content_light",
     "remote_mutation",
+    "permission_mode",
+    "app_granted_permissions",
+    "requested_token_permissions",
+    "effective_token_permissions",
+    "token_narrowing_requested",
+    "token_narrowing_effective",
+    "unsafe_broad_token_used",
+    "broad_app_permissions_observed",
+    "mutation_permissions_observed",
+    "public_release_ready",
+    "permission_posture_status",
+    "over_permissioned",
+    "over_permission_count",
+    "mutation_permission_count",
+    "broad_app_permission_risk_mitigated_by_token_scope",
+    "read_only_token_enforced",
+    "recommended_permission_reductions",
     "source_artifacts",
     "observed_permissions",
     "required_permissions",
@@ -35,6 +52,119 @@
     "remote_mutation": {
       "type": "boolean",
       "const": false
+    },
+    "permission_mode": {
+      "type": "string",
+      "enum": ["development_debug", "preproduction", "public_release", "unknown"]
+    },
+    "app_granted_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requested_token_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission_name", "level"],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "effective_token_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission_name", "level"],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "token_narrowing_requested": {
+      "type": "boolean"
+    },
+    "token_narrowing_effective": {
+      "type": "boolean"
+    },
+    "unsafe_broad_token_used": {
+      "type": "boolean"
+    },
+    "broad_app_permissions_observed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mutation_permissions_observed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "public_release_ready": {
+      "type": "boolean"
+    },
+    "permission_posture_status": {
+      "type": "string",
+      "enum": [
+        "development_debug_overpermissioned",
+        "least_privilege",
+        "read_only_sufficient",
+        "over_permissioned",
+        "mutation_enabled",
+        "unknown"
+      ]
+    },
+    "over_permissioned": {
+      "type": "boolean"
+    },
+    "over_permission_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mutation_permission_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "broad_app_permission_risk_mitigated_by_token_scope": {
+      "type": "boolean"
+    },
+    "read_only_token_enforced": {
+      "type": "boolean"
+    },
+    "recommended_permission_reductions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission_name", "recommended_level", "rationale"],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "recommended_level": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "source_artifacts": {
       "type": "array",
@@ -451,6 +581,7 @@
     "summary": {
       "type": "object",
       "required": [
+        "permission_mode",
         "observed_permission_count",
         "required_permission_count",
         "missing_permission_count",
@@ -459,10 +590,20 @@
         "input_unavailable_count",
         "mutation_permissions_requested",
         "remote_mutation",
+        "permission_posture_status",
+        "public_release_ready",
+        "over_permission_count",
+        "mutation_permission_count",
+        "unsafe_broad_token_used",
+        "broad_app_permission_risk_mitigated_by_token_scope",
         "by_permission_name",
-        "by_requested_permission"
+        "by_requested_permission",
+        "recommended_permission_reductions"
       ],
       "properties": {
+        "permission_mode": {
+          "type": "string"
+        },
         "observed_permission_count": {
           "type": "integer",
           "minimum": 0
@@ -495,6 +636,26 @@
           "type": "boolean",
           "const": false
         },
+        "permission_posture_status": {
+          "type": "string"
+        },
+        "public_release_ready": {
+          "type": "boolean"
+        },
+        "over_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mutation_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsafe_broad_token_used": {
+          "type": "boolean"
+        },
+        "broad_app_permission_risk_mitigated_by_token_scope": {
+          "type": "boolean"
+        },
         "by_permission_name": {
           "type": "array",
           "items": {
@@ -524,6 +685,25 @@
               "requested_level": {
                 "type": "string",
                 "enum": ["read", "write", "admin"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "recommended_permission_reductions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["permission_name", "recommended_level", "rationale"],
+            "properties": {
+              "permission_name": {
+                "type": "string"
+              },
+              "recommended_level": {
+                "type": "string"
+              },
+              "rationale": {
+                "type": "string"
               }
             },
             "additionalProperties": false

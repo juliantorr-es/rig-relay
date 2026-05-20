@@ -13,12 +13,23 @@ import json
 import os
 from pathlib import Path
 
+from rig_relay.integrations.github_provider._live_auth import (
+    GitHubPermissionMode,
+    normalize_permission_mode,
+)
 from rig_relay.integrations.github_provider._redaction import safe_summary
 from rig_relay.integrations.github_provider._security_intake import (
     build_github_security_intake_report,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+PERMISSION_MODE_ENV_KEY = "RIG_GITHUB_PERMISSION_MODE"
+
+
+def _permission_mode_from_value(value: str | None) -> GitHubPermissionMode:
+    return normalize_permission_mode(
+        value if value is not None else os.environ.get(PERMISSION_MODE_ENV_KEY)
+    )
 
 
 def _write_json(path: Path, data: dict) -> None:
@@ -52,13 +63,23 @@ def main(argv: list[str] | None = None) -> int:
         / "github_security_intake_result.v1.json",
         help="Output JSON path.",
     )
+    parser.add_argument(
+        "--permission-mode",
+        type=str,
+        default=None,
+        choices=["development_debug", "preproduction", "public_release"],
+        help="Permission posture mode used for token narrowing and reporting.",
+    )
     args = parser.parse_args(argv)
+    permission_mode = _permission_mode_from_value(args.permission_mode)
 
     live = bool(args.live)
     if not live and not args.dry_run:
         args.dry_run = True
 
-    report = build_github_security_intake_report(args.owner, args.repo, live=live)
+    report = build_github_security_intake_report(
+        args.owner, args.repo, live=live, permission_mode=permission_mode
+    )
     payload = safe_summary(report)
     _write_json(args.output_json, payload)
 
@@ -69,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
                 "dry_run": payload.get("dry_run", False),
                 "content_light": payload.get("content_light", True),
                 "remote_mutation": payload.get("remote_mutation", False),
+                "permission_mode": payload.get(
+                    "permission_mode", permission_mode.value
+                ),
                 "code_scanning_total": payload.get("counts", {}).get(
                     "code_scanning_total", 0
                 ),

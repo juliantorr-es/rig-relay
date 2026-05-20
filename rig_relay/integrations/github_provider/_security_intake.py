@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import os
-from typing import Any
+from typing import Any, cast
 import uuid
 
 import httpx
@@ -15,6 +15,10 @@ from rig_relay.integrations.github_provider._live_auth import (
     GitHubLiveAuthError,
     GitHubLiveReadOnlySmoke,
     GitHubLiveTokenExchanger,
+    GitHubPermissionMode,
+    build_read_only_installation_permissions,
+    normalize_permission_mode,
+    summarize_permission_posture,
 )
 from rig_relay.integrations.github_provider._redaction import (
     assert_content_light_mapping,
@@ -81,6 +85,8 @@ def _build_refusal(
     reason: str,
     required_permission: str,
     *,
+    endpoint_family: str = "",
+    error_kind: str = "",
     status_code: int | None = None,
 ) -> dict[str, Any]:
     refusal: dict[str, Any] = {
@@ -90,13 +96,20 @@ def _build_refusal(
         "required_permission": required_permission,
         "remote_mutation": False,
     }
+    if endpoint_family:
+        refusal["endpoint_family"] = endpoint_family
     if status_code is not None:
         refusal["status_code"] = status_code
     return refusal
 
 
 def _build_surface(
-    surface: str, status: str, required_permission: str, *, details: str = ""
+    surface: str,
+    status: str,
+    required_permission: str,
+    *,
+    details: str = "",
+    endpoint_family: str = "",
 ) -> dict[str, Any]:
     item = {
         "surface": surface,
@@ -104,6 +117,8 @@ def _build_surface(
         "required_permission": required_permission,
         "remote_mutation": False,
     }
+    if endpoint_family:
+        item["endpoint_family"] = endpoint_family
     if details:
         item["details"] = details
     return item
@@ -259,6 +274,23 @@ def _classify_dependabot_lane() -> str:
     return "dependency_update_needed"
 
 
+def _requested_installation_permissions(
+    permission_mode: GitHubPermissionMode,
+) -> dict[str, str]:
+    return build_read_only_installation_permissions()
+
+
+def _requested_permission_entries(
+    permission_mode: GitHubPermissionMode,
+) -> list[dict[str, str]]:
+    return [
+        {"permission_name": key, "level": value}
+        for key, value in sorted(
+            _requested_installation_permissions(permission_mode).items()
+        )
+    ]
+
+
 def _build_patch_candidate_group(
     group_kind: str, alert_refs: list[str], severity_summary: dict[str, int]
 ) -> dict[str, Any]:
@@ -276,6 +308,37 @@ def _build_patch_candidate_group(
         "severity_summary": severity_summary,
         "suggested_local_lane": lane,
         "required_local_validation_commands": list(_VALIDATION_COMMANDS),
+    }
+
+
+def _build_summary(report: dict[str, Any]) -> dict[str, Any]:
+    counts = report.get("counts", {})
+    requested_permissions = report.get("requested_token_permissions", [])
+    effective_permissions = report.get("effective_token_permissions", [])
+    return {
+        "permission_mode": _as_str(report.get("permission_mode", "unknown")),
+        "dry_run": bool(report.get("dry_run", False)),
+        "code_scanning_total": _as_int(counts.get("code_scanning_total")),
+        "dependabot_total": _as_int(counts.get("dependabot_total")),
+        "refused_surface_count": _as_int(counts.get("refused_surfaces")),
+        "requested_permission_count": len(requested_permissions)
+        if isinstance(requested_permissions, list)
+        else 0,
+        "effective_permission_count": len(effective_permissions)
+        if isinstance(effective_permissions, list)
+        else 0,
+        "token_narrowing_requested": bool(
+            report.get("token_narrowing_requested", False)
+        ),
+        "token_narrowing_effective": bool(
+            report.get("token_narrowing_effective", False)
+        ),
+        "permission_posture_status": _as_str(
+            report.get("permission_posture_status", "unknown")
+        ),
+        "public_release_ready": bool(report.get("public_release_ready", False)),
+        "unsafe_broad_token_used": bool(report.get("unsafe_broad_token_used", False)),
+        "remote_mutation": bool(report.get("remote_mutation", False)),
     }
 
 
@@ -338,10 +401,11 @@ class GitHubSecurityIntakeCollector:
             if surface == "code_scanning"
             else "Dependabot alerts read"
         )
+        endpoint_family = surface
         try:
             raw_alerts = self._collect_paginated_items(path, token, params=params)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code in {401, 403, 404, 422}:
+            if e.response.status_code in {400, 401, 403, 404, 422}:
                 return (
                     [],
                     [],
@@ -349,6 +413,8 @@ class GitHubSecurityIntakeCollector:
                         surface,
                         "missing_permission_or_not_enabled",
                         required_permission,
+                        endpoint_family=endpoint_family,
+                        error_kind="http_error",
                         status_code=e.response.status_code,
                     ),
                 )
@@ -356,7 +422,17 @@ class GitHubSecurityIntakeCollector:
                 f"GitHub API HTTP {e.response.status_code} for {surface}"
             ) from e
         except httpx.RequestError:
-            return [], [], _build_refusal(surface, "network_error", required_permission)
+            return (
+                [],
+                [],
+                _build_refusal(
+                    surface,
+                    "network_error",
+                    required_permission,
+                    endpoint_family=endpoint_family,
+                    error_kind="network_error",
+                ),
+            )
 
         normalized: list[dict[str, Any]] = []
         groups: list[dict[str, Any]] = []
@@ -387,20 +463,36 @@ class GitHubSecurityIntakeCollector:
         receipt_id: str,
         trace_id: str,
         dry_run: bool,
-        installation_id_hash: str = "",
+        report_fields: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
+        report = {
             "schema_version": "rig.github.security_intake.v1",
             "generated_at": _now_iso(),
             "auth_mode": "app_installation",
             "owner_hash": _hash_or_empty(owner),
             "repo_hash": _hash_or_empty(repo),
-            "installation_id_hash": installation_id_hash,
+            "installation_id_hash": "",
             "trace_id": trace_id,
             "receipt_id": receipt_id,
             "dry_run": dry_run,
             "content_light": True,
             "remote_mutation": False,
+            "permission_mode": "unknown",
+            "requested_token_permissions": [],
+            "effective_token_permissions": [],
+            "token_narrowing_requested": False,
+            "token_narrowing_effective": False,
+            "unsafe_broad_token_used": False,
+            "app_granted_permissions": [],
+            "broad_app_permissions_observed": [],
+            "mutation_permissions_observed": [],
+            "public_release_ready": False,
+            "permission_posture_status": "unknown",
+            "over_permissioned": False,
+            "over_permission_count": 0,
+            "mutation_permission_count": 0,
+            "broad_app_permission_risk_mitigated_by_token_scope": False,
+            "read_only_token_enforced": False,
             "source_surfaces": [],
             "counts": {
                 "code_scanning_open": 0,
@@ -413,6 +505,68 @@ class GitHubSecurityIntakeCollector:
             "patch_candidate_groups": [],
             "refusals": [],
         }
+        if report_fields:
+            report.update(report_fields)
+        return report
+
+    def _build_refusal_report(
+        self,
+        report: dict[str, Any],
+        *,
+        permission_mode: GitHubPermissionMode,
+        requested_permissions: list[dict[str, str]],
+        token_permissions: dict[str, Any],
+        installation_permission_keys: list[str],
+        code_details: str,
+        dependabot_details: str,
+        authentication_reason: str | None = None,
+        authentication_error_kind: str | None = None,
+    ) -> dict[str, Any]:
+        if authentication_reason is not None:
+            report["refusals"].append(
+                _build_refusal(
+                    "authentication",
+                    authentication_reason,
+                    "GitHub App installation credentials",
+                    endpoint_family="authentication",
+                    error_kind=authentication_error_kind or authentication_reason,
+                )
+            )
+        report["source_surfaces"] = [
+            _build_surface(
+                "code_scanning",
+                "refused",
+                "Code scanning alerts read",
+                details=code_details,
+                endpoint_family="code_scanning",
+            ),
+            _build_surface(
+                "dependabot",
+                "refused",
+                "Dependabot alerts read",
+                details=dependabot_details,
+                endpoint_family="dependabot",
+            ),
+            _build_refusal(
+                "secret_scanning",
+                "missing_permission_or_not_enabled",
+                "Secret scanning alerts read",
+                endpoint_family="secret_scanning",
+                error_kind="missing_permission_or_not_enabled",
+            ),
+        ]
+        report.update(
+            summarize_permission_posture(
+                permission_mode=permission_mode,
+                requested_permissions=requested_permissions,
+                token_permissions=token_permissions,
+                installation_permission_keys=installation_permission_keys,
+            )
+        )
+        report["counts"]["refused_surfaces"] = _count_refused_surfaces(
+            report["source_surfaces"]
+        )
+        return self._finalize(report)
 
     def collect(
         self,
@@ -421,46 +575,89 @@ class GitHubSecurityIntakeCollector:
         *,
         live: bool = False,
         config: GitHubLiveAuthConfig | None = None,
+        permission_mode: GitHubPermissionMode
+        | str = GitHubPermissionMode.DEVELOPMENT_DEBUG,
         receipt_id: str | None = None,
         trace_id: str | None = None,
     ) -> dict[str, Any]:
+        normalized_permission_mode = normalize_permission_mode(permission_mode)
         receipt_id = receipt_id or _new_uuid()
         trace_id = trace_id or _new_uuid()
         if not live:
             return self._collect_dry_run(
-                owner, repo, receipt_id=receipt_id, trace_id=trace_id
+                owner,
+                repo,
+                permission_mode=normalized_permission_mode,
+                receipt_id=receipt_id,
+                trace_id=trace_id,
             )
         return self._collect_live(
             owner,
             repo,
+            permission_mode=normalized_permission_mode,
             config=config or GitHubLiveAuthConfig.from_environment(),
             receipt_id=receipt_id,
             trace_id=trace_id,
         )
 
     def _collect_dry_run(
-        self, owner: str, repo: str, *, receipt_id: str, trace_id: str
+        self,
+        owner: str,
+        repo: str,
+        *,
+        permission_mode: GitHubPermissionMode,
+        receipt_id: str,
+        trace_id: str,
     ) -> dict[str, Any]:
         report = self._build_base_report(
-            owner, repo, receipt_id=receipt_id, trace_id=trace_id, dry_run=True
+            owner,
+            repo,
+            receipt_id=receipt_id,
+            trace_id=trace_id,
+            dry_run=True,
+            report_fields={
+                "permission_mode": permission_mode.value,
+                "installation_id_hash": "",
+                "requested_token_permissions": _requested_permission_entries(
+                    permission_mode
+                ),
+                "effective_token_permissions": _requested_permission_entries(
+                    permission_mode
+                ),
+                "token_narrowing_requested": True,
+                "token_narrowing_effective": False,
+                "unsafe_broad_token_used": False,
+            },
         )
+        report["app_granted_permissions"] = []
+        report["broad_app_permissions_observed"] = []
+        report["mutation_permissions_observed"] = []
+        report["public_release_ready"] = False
+        report["unsafe_broad_token_used"] = False
+        report["permission_posture_status"] = "unknown"
+        report["broad_app_permission_risk_mitigated_by_token_scope"] = False
+        report["read_only_token_enforced"] = False
         report["source_surfaces"] = [
             _build_surface(
                 "code_scanning",
                 "dry_run",
                 "Code scanning alerts read",
                 details="No network calls were made.",
+                endpoint_family="code_scanning",
             ),
             _build_surface(
                 "dependabot",
                 "dry_run",
                 "Dependabot alerts read",
                 details="No network calls were made.",
+                endpoint_family="dependabot",
             ),
             _build_refusal(
                 "secret_scanning",
                 "missing_permission_or_not_enabled",
                 "Secret scanning alerts read",
+                endpoint_family="secret_scanning",
+                error_kind="missing_permission_or_not_enabled",
             ),
         ]
         report["counts"]["refused_surfaces"] = _count_refused_surfaces(
@@ -471,6 +668,8 @@ class GitHubSecurityIntakeCollector:
                 "secret_scanning",
                 "missing_permission_or_not_enabled",
                 "Secret scanning alerts read",
+                endpoint_family="secret_scanning",
+                error_kind="missing_permission_or_not_enabled",
             )
         )
         return self._finalize(report)
@@ -481,6 +680,7 @@ class GitHubSecurityIntakeCollector:
         repo: str,
         *,
         config: GitHubLiveAuthConfig,
+        permission_mode: GitHubPermissionMode,
         receipt_id: str,
         trace_id: str,
     ) -> dict[str, Any]:
@@ -488,80 +688,59 @@ class GitHubSecurityIntakeCollector:
             return self._build_permission_refusal_report(
                 owner,
                 repo,
+                permission_mode=permission_mode,
+                requested_token_permissions=_requested_permission_entries(
+                    permission_mode
+                ),
                 receipt_id=receipt_id,
                 trace_id=trace_id,
                 reason="live_network_disabled",
             )
 
         report = self._build_base_report(
-            owner, repo, receipt_id=receipt_id, trace_id=trace_id, dry_run=False
+            owner,
+            repo,
+            receipt_id=receipt_id,
+            trace_id=trace_id,
+            dry_run=False,
+            report_fields={
+                "permission_mode": permission_mode.value,
+                "requested_token_permissions": _requested_permission_entries(
+                    permission_mode
+                ),
+                "token_narrowing_requested": True,
+                "token_narrowing_effective": False,
+                "unsafe_broad_token_used": False,
+            },
         )
 
         if not config._has_app_auth():
-            report["refusals"].append(
-                _build_refusal(
-                    "authentication",
-                    "missing_app_auth_configuration",
-                    "GitHub App installation credentials",
-                )
+            return self._build_refusal_report(
+                report,
+                permission_mode=permission_mode,
+                requested_permissions=_requested_permission_entries(permission_mode),
+                token_permissions={},
+                installation_permission_keys=[],
+                code_details="Auth configuration incomplete.",
+                dependabot_details="Auth configuration incomplete.",
+                authentication_reason="missing_app_auth_configuration",
+                authentication_error_kind="missing_app_auth_configuration",
             )
-            report["source_surfaces"] = [
-                _build_surface(
-                    "code_scanning",
-                    "refused",
-                    "Code scanning alerts read",
-                    details="Auth configuration incomplete.",
-                ),
-                _build_surface(
-                    "dependabot",
-                    "refused",
-                    "Dependabot alerts read",
-                    details="Auth configuration incomplete.",
-                ),
-                _build_refusal(
-                    "secret_scanning",
-                    "missing_permission_or_not_enabled",
-                    "Secret scanning alerts read",
-                ),
-            ]
-            report["counts"]["refused_surfaces"] = _count_refused_surfaces(
-                report["source_surfaces"]
-            )
-            return self._finalize(report)
 
         try:
             private_key = config.load_private_key()
         except GitHubLiveAuthError:
-            report["refusals"].append(
-                _build_refusal(
-                    "authentication",
-                    "private_key_load_failed",
-                    "GitHub App installation credentials",
-                )
+            return self._build_refusal_report(
+                report,
+                permission_mode=permission_mode,
+                requested_permissions=_requested_permission_entries(permission_mode),
+                token_permissions={},
+                installation_permission_keys=[],
+                code_details="Private key load failed.",
+                dependabot_details="Private key load failed.",
+                authentication_reason="private_key_load_failed",
+                authentication_error_kind="private_key_load_failed",
             )
-            report["source_surfaces"] = [
-                _build_surface(
-                    "code_scanning",
-                    "refused",
-                    "Code scanning alerts read",
-                    details="Private key load failed.",
-                ),
-                _build_surface(
-                    "dependabot",
-                    "refused",
-                    "Dependabot alerts read",
-                    details="Private key load failed.",
-                ),
-                _build_refusal(
-                    "secret_scanning",
-                    "missing_permission_or_not_enabled",
-                    "Secret scanning alerts read",
-                ),
-            ]
-            report["counts"]["refused_surfaces"] = _count_refused_surfaces(
-                report["source_surfaces"]
-            )
-            return self._finalize(report)
 
         exchanger = GitHubLiveTokenExchanger(timeout=self.timeout)
         try:
@@ -569,38 +748,22 @@ class GitHubSecurityIntakeCollector:
                 app_id=config.app_id or 0,
                 installation_id=config.installation_id or 0,
                 private_key_bytes=private_key,
+                requested_permissions=_requested_installation_permissions(
+                    permission_mode
+                ),
             )
         except GitHubLiveAuthError:
-            report["refusals"].append(
-                _build_refusal(
-                    "authentication",
-                    "token_exchange_failed",
-                    "GitHub App installation credentials",
-                )
+            return self._build_refusal_report(
+                report,
+                permission_mode=permission_mode,
+                requested_permissions=_requested_permission_entries(permission_mode),
+                token_permissions={},
+                installation_permission_keys=[],
+                code_details="Token exchange failed.",
+                dependabot_details="Token exchange failed.",
+                authentication_reason="token_narrowing_refused",
+                authentication_error_kind="token_narrowing_refused",
             )
-            report["source_surfaces"] = [
-                _build_surface(
-                    "code_scanning",
-                    "refused",
-                    "Code scanning alerts read",
-                    details="Token exchange failed.",
-                ),
-                _build_surface(
-                    "dependabot",
-                    "refused",
-                    "Dependabot alerts read",
-                    details="Token exchange failed.",
-                ),
-                _build_refusal(
-                    "secret_scanning",
-                    "missing_permission_or_not_enabled",
-                    "Secret scanning alerts read",
-                ),
-            ]
-            report["counts"]["refused_surfaces"] = _count_refused_surfaces(
-                report["source_surfaces"]
-            )
-            return self._finalize(report)
 
         smoke = GitHubLiveReadOnlySmoke(timeout=self.timeout)
         installation_access = smoke.probe_installation_access(
@@ -612,54 +775,65 @@ class GitHubSecurityIntakeCollector:
             else None,
         )
         if installation_access.get("error"):
-            report["refusals"].append(
-                _build_refusal(
-                    "authentication",
-                    _as_str(installation_access.get("error")),
-                    "GitHub App installation credentials",
-                    status_code=installation_access.get("status_code")
-                    if isinstance(installation_access.get("status_code"), int)
-                    else None,
-                )
+            return self._build_refusal_report(
+                report,
+                permission_mode=permission_mode,
+                requested_permissions=_requested_permission_entries(permission_mode),
+                token_permissions=cast(
+                    dict[str, Any],
+                    token_result.get("permissions")
+                    if isinstance(token_result.get("permissions"), dict)
+                    else {},
+                ),
+                installation_permission_keys=[],
+                code_details="Installation access proof failed.",
+                dependabot_details="Installation access proof failed.",
+                authentication_reason=_as_str(installation_access.get("error")),
+                authentication_error_kind=_as_str(installation_access.get("error")),
             )
-            report["source_surfaces"] = [
-                _build_surface(
-                    "code_scanning",
-                    "refused",
-                    "Code scanning alerts read",
-                    details="Installation access proof failed.",
-                ),
-                _build_surface(
-                    "dependabot",
-                    "refused",
-                    "Dependabot alerts read",
-                    details="Installation access proof failed.",
-                ),
-                _build_refusal(
-                    "secret_scanning",
-                    "missing_permission_or_not_enabled",
-                    "Secret scanning alerts read",
-                ),
-            ]
-            report["counts"]["refused_surfaces"] = _count_refused_surfaces(
-                report["source_surfaces"]
-            )
-            return self._finalize(report)
+        return self._finalize_live_collection(
+            report,
+            owner=owner,
+            repo=repo,
+            permission_mode=permission_mode,
+            raw_token=raw_token,
+            token_result=token_result,
+            installation_access=installation_access,
+        )
 
+    def _finalize_live_collection(
+        self,
+        report: dict[str, Any],
+        *,
+        owner: str,
+        repo: str,
+        permission_mode: GitHubPermissionMode,
+        raw_token: str,
+        token_result: dict[str, Any],
+        installation_access: dict[str, Any],
+    ) -> dict[str, Any]:
         report["installation_access"] = safe_summary(installation_access)
+        posture_summary = summarize_permission_posture(
+            permission_mode=permission_mode,
+            requested_permissions=_requested_permission_entries(permission_mode),
+            token_permissions=token_result.get("permissions")
+            if isinstance(token_result.get("permissions"), dict)
+            else {},
+            installation_permission_keys=installation_access.get("permission_keys")
+            if isinstance(installation_access.get("permission_keys"), list)
+            else [],
+        )
+        report.update(posture_summary)
 
         code_scanning_alerts, code_groups, code_refusal = self._collect_alert_surface(
             "code_scanning",
             raw_token,
             _code_scanning_endpoint(owner, repo),
-            params={"state": "all"},
+            params=None,
         )
         dependabot_alerts, dependabot_groups, dependabot_refusal = (
             self._collect_alert_surface(
-                "dependabot",
-                raw_token,
-                _dependabot_endpoint(owner, repo),
-                params={"state": "all"},
+                "dependabot", raw_token, _dependabot_endpoint(owner, repo), params=None
             )
         )
 
@@ -674,6 +848,11 @@ class GitHubSecurityIntakeCollector:
             1 for item in dependabot_alerts if _as_str(item.get("state")) == "open"
         )
 
+        secret_refusal = _build_refusal(
+            "secret_scanning",
+            "missing_permission_or_not_enabled",
+            "Secret scanning alerts read",
+        )
         report["source_surfaces"] = [
             _build_surface(
                 "code_scanning",
@@ -695,23 +874,13 @@ class GitHubSecurityIntakeCollector:
                     else "Permission or feature unavailable."
                 ),
             ),
-            _build_refusal(
-                "secret_scanning",
-                "missing_permission_or_not_enabled",
-                "Secret scanning alerts read",
-            ),
+            secret_refusal,
         ]
         if code_refusal is not None:
             report["refusals"].append(code_refusal)
         if dependabot_refusal is not None:
             report["refusals"].append(dependabot_refusal)
-        report["refusals"].append(
-            _build_refusal(
-                "secret_scanning",
-                "missing_permission_or_not_enabled",
-                "Secret scanning alerts read",
-            )
-        )
+        report["refusals"].append(secret_refusal)
         report["counts"]["refused_surfaces"] = _count_refused_surfaces(
             report["source_surfaces"]
         )
@@ -720,19 +889,42 @@ class GitHubSecurityIntakeCollector:
             dependabot_alerts,
             code_refusal=code_refusal,
             dependabot_refusal=dependabot_refusal,
-            secret_refusal=report["refusals"][-1] if report["refusals"] else None,
+            secret_refusal=secret_refusal,
         )
         return self._finalize(report)
 
     def _build_permission_refusal_report(
-        self, owner: str, repo: str, *, receipt_id: str, trace_id: str, reason: str
+        self,
+        owner: str,
+        repo: str,
+        *,
+        permission_mode: GitHubPermissionMode,
+        requested_token_permissions: list[dict[str, str]],
+        receipt_id: str,
+        trace_id: str,
+        reason: str,
     ) -> dict[str, Any]:
         report = self._build_base_report(
-            owner, repo, receipt_id=receipt_id, trace_id=trace_id, dry_run=False
+            owner,
+            repo,
+            receipt_id=receipt_id,
+            trace_id=trace_id,
+            dry_run=False,
+            report_fields={
+                "permission_mode": permission_mode.value,
+                "requested_token_permissions": requested_token_permissions,
+                "token_narrowing_requested": True,
+                "token_narrowing_effective": False,
+                "unsafe_broad_token_used": False,
+            },
         )
         report["refusals"].append(
             _build_refusal(
-                "authentication", reason, "GitHub App installation credentials"
+                "authentication",
+                reason,
+                "GitHub App installation credentials",
+                endpoint_family="authentication",
+                error_kind=reason,
             )
         )
         report["source_surfaces"] = [
@@ -741,28 +933,35 @@ class GitHubSecurityIntakeCollector:
                 "refused",
                 "Code scanning alerts read",
                 details="Live network is disabled.",
+                endpoint_family="code_scanning",
             ),
             _build_surface(
                 "dependabot",
                 "refused",
                 "Dependabot alerts read",
                 details="Live network is disabled.",
+                endpoint_family="dependabot",
             ),
             _build_refusal(
                 "secret_scanning",
                 "missing_permission_or_not_enabled",
                 "Secret scanning alerts read",
+                endpoint_family="secret_scanning",
+                error_kind="missing_permission_or_not_enabled",
             ),
         ]
+        report.update(
+            summarize_permission_posture(
+                permission_mode=permission_mode,
+                requested_permissions=requested_token_permissions
+                if requested_token_permissions
+                else [],
+                token_permissions={},
+                installation_permission_keys=[],
+            )
+        )
         report["counts"]["refused_surfaces"] = _count_refused_surfaces(
             report["source_surfaces"]
-        )
-        report["refusals"].append(
-            _build_refusal(
-                "secret_scanning",
-                "missing_permission_or_not_enabled",
-                "Secret scanning alerts read",
-            )
         )
         return self._finalize(report)
 
@@ -833,6 +1032,7 @@ class GitHubSecurityIntakeCollector:
         return result
 
     def _finalize(self, report: dict[str, Any]) -> dict[str, Any]:
+        report["summary"] = _build_summary(report)
         assert_content_light_mapping(report)
         return safe_summary(report)
 
@@ -843,11 +1043,19 @@ def build_github_security_intake_report(
     *,
     live: bool = False,
     config: GitHubLiveAuthConfig | None = None,
+    permission_mode: GitHubPermissionMode
+    | str = GitHubPermissionMode.DEVELOPMENT_DEBUG,
     receipt_id: str | None = None,
     trace_id: str | None = None,
 ) -> dict[str, Any]:
     return GitHubSecurityIntakeCollector().collect(
-        owner, repo, live=live, config=config, receipt_id=receipt_id, trace_id=trace_id
+        owner,
+        repo,
+        live=live,
+        config=config,
+        permission_mode=permission_mode,
+        receipt_id=receipt_id,
+        trace_id=trace_id,
     )
 
 

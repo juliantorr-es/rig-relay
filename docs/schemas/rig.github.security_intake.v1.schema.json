@@ -16,11 +16,28 @@
     "dry_run",
     "content_light",
     "remote_mutation",
+    "permission_mode",
+    "requested_token_permissions",
+    "effective_token_permissions",
+    "token_narrowing_requested",
+    "token_narrowing_effective",
+    "unsafe_broad_token_used",
+    "app_granted_permissions",
+    "broad_app_permissions_observed",
+    "mutation_permissions_observed",
+    "public_release_ready",
+    "permission_posture_status",
+    "over_permissioned",
+    "over_permission_count",
+    "mutation_permission_count",
+    "broad_app_permission_risk_mitigated_by_token_scope",
+    "read_only_token_enforced",
     "source_surfaces",
     "counts",
     "alerts",
     "patch_candidate_groups",
-    "refusals"
+    "refusals",
+    "summary"
   ],
   "properties": {
     "schema_version": {
@@ -66,6 +83,100 @@
     "remote_mutation": {
       "type": "boolean",
       "const": false
+    },
+    "permission_mode": {
+      "type": "string",
+      "enum": ["development_debug", "preproduction", "public_release"]
+    },
+    "requested_token_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission_name", "level"],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "effective_token_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["permission_name", "level"],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "token_narrowing_requested": {
+      "type": "boolean"
+    },
+    "token_narrowing_effective": {
+      "type": "boolean"
+    },
+    "unsafe_broad_token_used": {
+      "type": "boolean"
+    },
+    "app_granted_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "broad_app_permissions_observed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mutation_permissions_observed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "public_release_ready": {
+      "type": "boolean"
+    },
+    "permission_posture_status": {
+      "type": "string",
+      "enum": [
+        "development_debug_overpermissioned",
+        "least_privilege",
+        "read_only_sufficient",
+        "over_permissioned",
+        "mutation_enabled",
+        "unknown"
+      ]
+    },
+    "over_permissioned": {
+      "type": "boolean"
+    },
+    "over_permission_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mutation_permission_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "broad_app_permission_risk_mitigated_by_token_scope": {
+      "type": "boolean"
+    },
+    "read_only_token_enforced": {
+      "type": "boolean"
     },
     "installation_access": {
       "type": "object",
@@ -127,23 +238,26 @@
           "required_permission",
           "remote_mutation"
         ],
-        "properties": {
-          "surface": {
-            "type": "string",
-            "enum": ["code_scanning", "dependabot", "secret_scanning", "authentication"]
-          },
-          "status": {
-            "type": "string",
-            "enum": ["dry_run", "collected", "refused"]
-          },
-          "required_permission": {
-            "type": "string"
-          },
-          "remote_mutation": {
-            "type": "boolean",
-            "const": false
-          },
-          "details": {
+          "properties": {
+            "surface": {
+              "type": "string",
+              "enum": ["code_scanning", "dependabot", "secret_scanning", "authentication"]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["dry_run", "collected", "refused"]
+            },
+            "required_permission": {
+              "type": "string"
+            },
+            "endpoint_family": {
+              "type": "string"
+            },
+            "remote_mutation": {
+              "type": "boolean",
+              "const": false
+            },
+            "details": {
             "type": "string"
           },
           "reason": {
@@ -434,7 +548,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
+          "required": [
           "surface",
           "status",
           "reason",
@@ -454,6 +568,12 @@
           "required_permission": {
             "type": "string"
           },
+          "endpoint_family": {
+            "type": "string"
+          },
+          "error_kind": {
+            "type": "string"
+          },
           "remote_mutation": {
             "type": "boolean",
             "const": false
@@ -464,6 +584,72 @@
         },
         "additionalProperties": false
       }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "permission_mode",
+        "dry_run",
+        "code_scanning_total",
+        "dependabot_total",
+        "refused_surface_count",
+        "requested_permission_count",
+        "effective_permission_count",
+        "token_narrowing_requested",
+        "token_narrowing_effective",
+        "permission_posture_status",
+        "public_release_ready",
+        "unsafe_broad_token_used",
+        "remote_mutation"
+      ],
+      "properties": {
+        "permission_mode": {
+          "type": "string"
+        },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "code_scanning_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependabot_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused_surface_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requested_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "effective_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "token_narrowing_requested": {
+          "type": "boolean"
+        },
+        "token_narrowing_effective": {
+          "type": "boolean"
+        },
+        "permission_posture_status": {
+          "type": "string"
+        },
+        "public_release_ready": {
+          "type": "boolean"
+        },
+        "unsafe_broad_token_used": {
+          "type": "boolean"
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": false

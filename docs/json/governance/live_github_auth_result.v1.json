@@ -1,6 +1,6 @@
 {
-  "receipt_id": "7d83f119-62f8-4aab-a30e-49e2513e8993",
-  "trace_id": "b9133b16-2c1b-4118-8e39-505e975fb149",
+  "receipt_id": "d002ece3-26bb-4f34-859b-04209f001101",
+  "trace_id": "4e6032a3-1bad-4be9-93c1-ee7b87bfd680",
   "dry_run": false,
   "config_summary": {
     "app_id_configured": true,
@@ -16,18 +16,87 @@
   },
   "issues": [],
   "live_results": {
+    "permission_mode": "development_debug",
+    "app_granted_permissions": [
+      "admin",
+      "maintain",
+      "metadata",
+      "pull",
+      "push",
+      "security_events",
+      "triage",
+      "vulnerability_alerts"
+    ],
+    "requested_token_permissions": [
+      {
+        "permission_name": "metadata",
+        "level": "read"
+      },
+      {
+        "permission_name": "security_events",
+        "level": "read"
+      },
+      {
+        "permission_name": "vulnerability_alerts",
+        "level": "read"
+      }
+    ],
+    "effective_token_permissions": [
+      {
+        "permission_name": "metadata",
+        "level": "read"
+      },
+      {
+        "permission_name": "security_events",
+        "level": "read"
+      },
+      {
+        "permission_name": "vulnerability_alerts",
+        "level": "read"
+      }
+    ],
+    "token_narrowing_requested": true,
+    "token_narrowing_effective": true,
+    "broad_app_permissions_observed": [
+      "admin",
+      "maintain",
+      "pull",
+      "push",
+      "triage"
+    ],
+    "mutation_permissions_observed": [
+      "security_events",
+      "vulnerability_alerts"
+    ],
+    "unsafe_broad_token_used": false,
+    "public_release_ready": false,
+    "permission_posture_status": "development_debug_overpermissioned",
+    "over_permissioned": true,
+    "over_permission_count": 5,
+    "mutation_permission_count": 2,
+    "broad_app_permission_risk_mitigated_by_token_scope": true,
+    "read_only_token_enforced": true,
+    "recommended_permission_reductions": [
+      {
+        "permission_name": "security_events",
+        "recommended_level": "read",
+        "rationale": "reduce broad setup/debug permissions for release posture"
+      },
+      {
+        "permission_name": "vulnerability_alerts",
+        "recommended_level": "read",
+        "rationale": "reduce broad setup/debug permissions for release posture"
+      }
+    ],
     "token_exchange": {
-      "token_hash": "94f87f9bfb6e8fd6fb268158bd05bdd5def139128d1efe3eb92b8211a683818c",
+      "token_hash": "c2b9b599d9e22a43286facc9544679e04483fa594bd31aa745f3e47833375a2b",
       "token_present": true,
-      "expires_at": "2026-05-20T05:05:03Z",
+      "expires_at": "2026-05-20T06:41:53Z",
       "kind": "installation",
       "permissions": {
-        "actions": "read",
-        "checks": "read",
-        "contents": "read",
-        "issues": "read",
         "metadata": "read",
-        "pull_requests": "read"
+        "security_events": "read",
+        "vulnerability_alerts": "read"
       },
       "repository_selection": "all"
     },
@@ -44,21 +113,19 @@
         "42576872e67cf6b6caa18cc2e875f48b1ad2a091aa1f5b409c80c3a259104cc4"
       ],
       "permission_keys": [
-        "actions",
         "admin",
-        "checks",
-        "contents",
-        "issues",
         "maintain",
         "metadata",
         "pull",
-        "pull_requests",
         "push",
-        "triage"
+        "security_events",
+        "triage",
+        "vulnerability_alerts"
       ],
       "repository_selection": "all"
     },
     "auth_mode": "app_installation"
   },
-  "timestamp_utc": "2026-05-20T04:05:04.242105+00:00"
+  "permission_mode": "development_debug",
+  "timestamp_utc": "2026-05-20T05:41:53.789970+00:00"
 }

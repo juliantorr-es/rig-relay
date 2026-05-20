@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum, auto
 import os
 from pathlib import Path
 import re
@@ -23,12 +24,186 @@ _GITHUB_INSTALLATION_TOKEN_ENDPOINT = (
 _GITHUB_INSTALLATION_REPOSITORIES_ENDPOINT = (
     "https://api.github.com/installation/repositories"
 )
+_READ_ONLY_INSTALLATION_PERMISSIONS = {
+    "metadata": "read",
+    "security_events": "read",
+    "vulnerability_alerts": "read",
+}
+_MUTATION_PERMISSION_NAMES = frozenset({
+    "actions",
+    "actions_variables",
+    "administration",
+    "checks",
+    "code_quality",
+    "copilot_agent_settings",
+    "deployments",
+    "issues",
+    "packages",
+    "pages",
+    "pull_requests",
+    "repository_hooks",
+    "security_events",
+    "vulnerability_alerts",
+    "workflows",
+})
 
 _RSA_KEY_HEADER_RE = re.compile(rb"^-{5}BEGIN (RSA )?PRIVATE KEY-{5}")
 
 
 class GitHubLiveAuthError(Exception):
     """Raised when live GitHub auth operations fail."""
+
+
+class GitHubPermissionMode(StrEnum):
+    DEVELOPMENT_DEBUG = auto()
+    PREPRODUCTION = auto()
+    PUBLIC_RELEASE = auto()
+
+
+def normalize_permission_mode(value: Any | None) -> GitHubPermissionMode:
+    if isinstance(value, GitHubPermissionMode):
+        return value
+    text = _normalize_permission_mode_text(value)
+    if text == GitHubPermissionMode.PREPRODUCTION.value:
+        return GitHubPermissionMode.PREPRODUCTION
+    if text == GitHubPermissionMode.PUBLIC_RELEASE.value:
+        return GitHubPermissionMode.PUBLIC_RELEASE
+    return GitHubPermissionMode.DEVELOPMENT_DEBUG
+
+
+def build_read_only_installation_permissions() -> dict[str, str]:
+    return dict(_READ_ONLY_INSTALLATION_PERMISSIONS)
+
+
+def _normalize_permission_mode_text(value: Any | None) -> str:
+    if isinstance(value, str):
+        return value.strip().lower().replace("-", "_")
+    if value is None:
+        return ""
+    return str(value).strip().lower().replace("-", "_")
+
+
+def _permission_entries(permissions: Any | None) -> list[dict[str, str]]:
+    if isinstance(permissions, list):
+        entries = [
+            {
+                "permission_name": str(item.get("permission_name", "")).strip(),
+                "level": str(item.get("level", item.get("requested_level", "")))
+                .strip()
+                .lower(),
+            }
+            for item in permissions
+            if isinstance(item, dict) and item.get("permission_name")
+        ]
+        entries.sort(key=lambda item: item["permission_name"])
+        return entries
+    if not isinstance(permissions, dict):
+        return []
+    entries = [
+        {"permission_name": str(name), "level": str(level).strip().lower()}
+        for name, level in permissions.items()
+        if isinstance(name, str)
+    ]
+    entries.sort(key=lambda item: item["permission_name"])
+    return entries
+
+
+def _permission_names_from_entries(entries: list[dict[str, str]]) -> list[str]:
+    return sorted({
+        entry["permission_name"]
+        for entry in entries
+        if isinstance(entry, dict) and isinstance(entry.get("permission_name"), str)
+    })
+
+
+def summarize_permission_posture(
+    *,
+    permission_mode: GitHubPermissionMode,
+    requested_permissions: Any,
+    token_permissions: dict[str, Any] | None,
+    installation_permission_keys: list[str] | None,
+) -> dict[str, Any]:
+    requested_entries = _permission_entries(requested_permissions)
+    effective_entries = _permission_entries(token_permissions)
+    app_granted_permissions = sorted({
+        key for key in (installation_permission_keys or []) if isinstance(key, str)
+    })
+    requested_names = _permission_names_from_entries(requested_entries)
+    effective_names = _permission_names_from_entries(effective_entries)
+    broad_app_permissions_observed = [
+        name for name in app_granted_permissions if name not in requested_names
+    ]
+    mutation_permissions_observed = [
+        name for name in app_granted_permissions if name in _MUTATION_PERMISSION_NAMES
+    ]
+    token_narrowing_requested = bool(requested_entries)
+    token_narrowing_effective = token_narrowing_requested and (
+        requested_names == effective_names
+    )
+    broad_app_permission_risk_mitigated_by_token_scope = bool(
+        token_narrowing_requested
+        and token_narrowing_effective
+        and broad_app_permissions_observed
+    )
+    over_permission_count = len(broad_app_permissions_observed)
+    mutation_permission_count = len(mutation_permissions_observed)
+    if permission_mode == GitHubPermissionMode.PUBLIC_RELEASE:
+        if mutation_permission_count:
+            permission_posture_status = "mutation_enabled"
+        elif over_permission_count:
+            permission_posture_status = "over_permissioned"
+        elif token_narrowing_effective:
+            permission_posture_status = "least_privilege"
+        else:
+            permission_posture_status = "unknown"
+    elif permission_mode == GitHubPermissionMode.PREPRODUCTION:
+        if mutation_permission_count or over_permission_count:
+            permission_posture_status = "over_permissioned"
+        elif token_narrowing_effective:
+            permission_posture_status = "read_only_sufficient"
+        else:
+            permission_posture_status = "unknown"
+    elif mutation_permission_count or over_permission_count:
+        permission_posture_status = "development_debug_overpermissioned"
+    elif token_narrowing_effective:
+        permission_posture_status = "read_only_sufficient"
+    else:
+        permission_posture_status = "unknown"
+
+    public_release_ready = (
+        permission_mode == GitHubPermissionMode.PUBLIC_RELEASE
+        and not over_permission_count
+        and not mutation_permission_count
+        and token_narrowing_effective
+    )
+    recommended_permission_reductions = [
+        {
+            "permission_name": name,
+            "recommended_level": "none" if name == "workflows" else "read",
+            "rationale": "reduce broad setup/debug permissions for release posture",
+        }
+        for name in mutation_permissions_observed
+    ]
+    recommended_permission_reductions.sort(key=lambda item: item["permission_name"])
+    return {
+        "permission_mode": permission_mode.value,
+        "app_granted_permissions": app_granted_permissions,
+        "requested_token_permissions": requested_entries,
+        "effective_token_permissions": effective_entries,
+        "token_narrowing_requested": token_narrowing_requested,
+        "token_narrowing_effective": token_narrowing_effective,
+        "broad_app_permissions_observed": broad_app_permissions_observed,
+        "mutation_permissions_observed": mutation_permissions_observed,
+        "unsafe_broad_token_used": False,
+        "public_release_ready": public_release_ready,
+        "permission_posture_status": permission_posture_status,
+        "over_permissioned": bool(over_permission_count or mutation_permission_count),
+        "over_permission_count": over_permission_count,
+        "mutation_permission_count": mutation_permission_count,
+        "broad_app_permission_risk_mitigated_by_token_scope": broad_app_permission_risk_mitigated_by_token_scope,
+        "read_only_token_enforced": token_narrowing_effective,
+        "recommended_permission_reductions": recommended_permission_reductions,
+    }
 
 
 def _installation_access_refusal(
@@ -191,7 +366,11 @@ class GitHubLiveTokenExchanger:
         self._timeout = timeout
 
     def exchange_installation_token(
-        self, app_id: int, installation_id: int, private_key_bytes: bytes
+        self,
+        app_id: int,
+        installation_id: int,
+        private_key_bytes: bytes,
+        requested_permissions: dict[str, str] | None = None,
     ) -> tuple[dict[str, Any], str]:
         """Exchange a GitHub App JWT for an installation access token.
 
@@ -210,12 +389,17 @@ class GitHubLiveTokenExchanger:
             installation_id=installation_id
         )
 
+        request_body: dict[str, Any] = {}
+        if requested_permissions:
+            request_body["permissions"] = dict(requested_permissions)
+
         token_response = _post_json(
             url,
             headers={
                 "Authorization": f"Bearer {jwt_token}",
                 "Accept": "application/vnd.github.v3+json",
             },
+            data=request_body or None,
             timeout=self._timeout,
         )
 
@@ -473,4 +657,8 @@ __all__ = [
     "GitHubLiveJwtSigner",
     "GitHubLiveReadOnlySmoke",
     "GitHubLiveTokenExchanger",
+    "GitHubPermissionMode",
+    "build_read_only_installation_permissions",
+    "normalize_permission_mode",
+    "summarize_permission_posture",
 ]

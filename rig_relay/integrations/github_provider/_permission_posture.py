@@ -97,6 +97,24 @@ _PERMISSION_SURFACE_CATALOG = [
     },
 ]
 
+_MUTATION_PERMISSION_NAMES = frozenset({
+    "actions",
+    "actions_variables",
+    "administration",
+    "checks",
+    "code_quality",
+    "copilot_agent_settings",
+    "deployments",
+    "issues",
+    "packages",
+    "pages",
+    "pull_requests",
+    "repository_hooks",
+    "security_events",
+    "vulnerability_alerts",
+    "workflows",
+})
+
 
 class GitHubPermissionPostureError(Exception):
     """Raised when permission posture planning cannot proceed."""
@@ -133,6 +151,78 @@ def _normalize_lower(value: Any, default: str = "unknown") -> str:
 def _normalize_level(value: Any) -> str:
     level = _normalize_lower(value)
     return level if level in _ALLOWED_PERMISSION_LEVELS else "unknown"
+
+
+def _permission_entries_from_permissions(
+    permissions: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(permissions, dict):
+        return []
+    entries = [
+        {
+            "permission_name": _normalize_text(permission_name),
+            "level": _normalize_level(raw_level),
+        }
+        for permission_name, raw_level in permissions.items()
+        if isinstance(permission_name, str)
+    ]
+    entries.sort(key=lambda item: item["permission_name"])
+    return entries
+
+
+def _permission_names_from_entries(entries: list[dict[str, Any]]) -> list[str]:
+    names = {
+        _normalize_text(entry.get("permission_name"), default="")
+        for entry in entries
+        if isinstance(entry, dict)
+    }
+    return sorted(name for name in names if name)
+
+
+def _permission_mode_name(live_auth: dict[str, Any] | None) -> str:
+    if not isinstance(live_auth, dict):
+        return "unknown"
+    mode = _normalize_lower(live_auth.get("permission_mode"), default="unknown")
+    return (
+        mode
+        if mode in {"development_debug", "preproduction", "public_release"}
+        else "unknown"
+    )
+
+
+def _live_auth_posture_inputs(live_auth: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(live_auth, dict):
+        return {
+            "permission_mode": "unknown",
+            "requested_permissions": [],
+            "effective_permissions": [],
+            "app_granted_permissions": [],
+        }
+    requested_permissions = live_auth.get("requested_token_permissions", [])
+    if not isinstance(requested_permissions, list):
+        requested_permissions = []
+    effective_permissions = live_auth.get("effective_token_permissions", [])
+    if not isinstance(effective_permissions, list):
+        effective_permissions = []
+    app_granted_permissions = _string_list(
+        live_auth.get("app_granted_permissions")
+        or live_auth.get("broad_app_permissions_observed")
+        or []
+    )
+    return {
+        "permission_mode": _permission_mode_name(live_auth),
+        "requested_permissions": requested_permissions,
+        "effective_permissions": effective_permissions,
+        "app_granted_permissions": app_granted_permissions,
+    }
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    result = [str(item) for item in value if isinstance(item, str)]
+    result.sort()
+    return result
 
 
 def _normalize_path(path: Path) -> str:
@@ -220,6 +310,26 @@ def _observed_permissions_from_live_auth(
 ) -> list[dict[str, Any]]:
     if not isinstance(live_auth, dict):
         return []
+    effective_permissions = live_auth.get("effective_token_permissions", [])
+    if isinstance(effective_permissions, list) and effective_permissions:
+        observed = [
+            {
+                "permission_name": _normalize_text(
+                    item.get("permission_name"), default="unknown"
+                ),
+                "level": _normalize_level(item.get("level")),
+                "source_artifact": "live_auth",
+                "observed_from": "effective_token_permissions",
+                "permission_name_hash": hash_identifier(
+                    _normalize_text(item.get("permission_name"), default="unknown")
+                ),
+                "level_hash": hash_identifier(_normalize_level(item.get("level"))),
+            }
+            for item in effective_permissions
+            if isinstance(item, dict)
+        ]
+        observed.sort(key=lambda item: item["permission_name"])
+        return observed
     token_exchange = live_auth.get("live_results", {}).get("token_exchange", {})
     permissions = token_exchange.get("permissions", {})
     if not isinstance(permissions, dict):
@@ -546,6 +656,92 @@ def _build_risk_summary(
     }
 
 
+def _build_posture_summary(
+    *,
+    permission_mode: str,
+    requested_permissions: list[dict[str, Any]],
+    effective_permissions: list[dict[str, Any]],
+    app_granted_permissions: list[str],
+) -> dict[str, Any]:
+    requested_names = _permission_names_from_entries(requested_permissions)
+    effective_names = _permission_names_from_entries(effective_permissions)
+    broad_app_permissions_observed = [
+        name for name in app_granted_permissions if name not in requested_names
+    ]
+    mutation_permissions_observed = [
+        name for name in app_granted_permissions if name in _MUTATION_PERMISSION_NAMES
+    ]
+    token_narrowing_requested = bool(requested_names)
+    token_narrowing_effective = token_narrowing_requested and (
+        requested_names == effective_names
+    )
+    broad_app_permission_risk_mitigated_by_token_scope = bool(
+        token_narrowing_requested
+        and token_narrowing_effective
+        and broad_app_permissions_observed
+    )
+    over_permission_count = len(broad_app_permissions_observed)
+    mutation_permission_count = len(mutation_permissions_observed)
+
+    if permission_mode == "public_release":
+        if mutation_permission_count:
+            permission_posture_status = "mutation_enabled"
+        elif over_permission_count:
+            permission_posture_status = "over_permissioned"
+        elif token_narrowing_effective:
+            permission_posture_status = "least_privilege"
+        else:
+            permission_posture_status = "unknown"
+    elif permission_mode == "preproduction":
+        if mutation_permission_count or over_permission_count:
+            permission_posture_status = "over_permissioned"
+        elif token_narrowing_effective:
+            permission_posture_status = "read_only_sufficient"
+        else:
+            permission_posture_status = "unknown"
+    elif mutation_permission_count or over_permission_count:
+        permission_posture_status = "development_debug_overpermissioned"
+    elif token_narrowing_effective:
+        permission_posture_status = "read_only_sufficient"
+    else:
+        permission_posture_status = "unknown"
+
+    public_release_ready = (
+        permission_mode == "public_release"
+        and not over_permission_count
+        and not mutation_permission_count
+        and token_narrowing_effective
+    )
+    recommended_permission_reductions = [
+        {
+            "permission_name": name,
+            "recommended_level": "none" if name == "workflows" else "read",
+            "rationale": "reduce broad setup/debug permissions for release posture",
+        }
+        for name in mutation_permissions_observed
+    ]
+    recommended_permission_reductions.sort(key=lambda item: item["permission_name"])
+    return {
+        "permission_mode": permission_mode,
+        "app_granted_permissions": app_granted_permissions,
+        "requested_token_permissions": requested_permissions,
+        "effective_token_permissions": effective_permissions,
+        "token_narrowing_requested": token_narrowing_requested,
+        "token_narrowing_effective": token_narrowing_effective,
+        "broad_app_permissions_observed": broad_app_permissions_observed,
+        "mutation_permissions_observed": mutation_permissions_observed,
+        "unsafe_broad_token_used": False,
+        "public_release_ready": public_release_ready,
+        "permission_posture_status": permission_posture_status,
+        "over_permissioned": bool(over_permission_count or mutation_permission_count),
+        "over_permission_count": over_permission_count,
+        "mutation_permission_count": mutation_permission_count,
+        "broad_app_permission_risk_mitigated_by_token_scope": broad_app_permission_risk_mitigated_by_token_scope,
+        "read_only_token_enforced": token_narrowing_effective,
+        "recommended_permission_reductions": recommended_permission_reductions,
+    }
+
+
 def _build_refusals() -> list[dict[str, Any]]:
     return [
         {
@@ -565,6 +761,7 @@ def build_github_permission_posture_report(
     work_items: dict[str, Any] | None,
     mission_candidates: dict[str, Any] | None,
     source_artifacts: list[dict[str, Any]],
+    permission_mode: str | None = None,
     generated_at_utc: str | None = None,
 ) -> dict[str, Any]:
     generated_at = generated_at_utc or _now_iso()
@@ -572,10 +769,24 @@ def build_github_permission_posture_report(
         if isinstance(artifact, dict):
             _assert_no_forbidden_content(artifact)
     observed_permissions = _observed_permissions_from_live_auth(live_auth)
-    observed_levels = {
+    posture_inputs = _live_auth_posture_inputs(live_auth)
+    effective_permissions = posture_inputs["effective_permissions"]
+    if not effective_permissions:
+        effective_permissions = [
+            {"permission_name": item["permission_name"], "level": item["level"]}
+            for item in observed_permissions
+        ]
+    posture_summary = _build_posture_summary(
+        permission_mode=permission_mode
+        or str(posture_inputs["permission_mode"])
+        or "unknown",
+        requested_permissions=posture_inputs["requested_permissions"],
+        effective_permissions=effective_permissions,
+        app_granted_permissions=posture_inputs["app_granted_permissions"],
+    )
+    required_permissions = _required_permissions({
         item["permission_name"]: item["level"] for item in observed_permissions
-    }
-    required_permissions = _required_permissions(observed_levels)
+    })
     candidate_index = _build_candidate_index(work_items)
     mission_lookup = _build_mission_candidate_lookup(mission_candidates)
     permission_request_plan, missing_permissions, blocked_candidate_links = (
@@ -597,6 +808,7 @@ def build_github_permission_posture_report(
         "generated_at_utc": generated_at,
         "content_light": True,
         "remote_mutation": False,
+        **posture_summary,
         "source_artifacts": source_artifacts,
         "observed_permissions": observed_permissions,
         "required_permissions": required_permissions,
@@ -616,6 +828,15 @@ def build_github_permission_posture_report(
             "input_unavailable_count": input_unavailable_count,
             "mutation_permissions_requested": False,
             "remote_mutation": False,
+            "permission_mode": posture_summary["permission_mode"],
+            "permission_posture_status": posture_summary["permission_posture_status"],
+            "public_release_ready": posture_summary["public_release_ready"],
+            "over_permission_count": posture_summary["over_permission_count"],
+            "mutation_permission_count": posture_summary["mutation_permission_count"],
+            "unsafe_broad_token_used": posture_summary["unsafe_broad_token_used"],
+            "broad_app_permission_risk_mitigated_by_token_scope": posture_summary[
+                "broad_app_permission_risk_mitigated_by_token_scope"
+            ],
             "by_permission_name": [
                 {"permission_name": item["permission_name"], "level": item["level"]}
                 for item in observed_permissions
@@ -626,6 +847,9 @@ def build_github_permission_posture_report(
                     "requested_level": item["requested_level"],
                 }
                 for item in permission_request_plan
+            ],
+            "recommended_permission_reductions": posture_summary[
+                "recommended_permission_reductions"
             ],
         },
     }
@@ -639,6 +863,7 @@ def build_github_permission_posture_report_from_paths(
     security_intake_json: Path | str = _DEFAULT_SECURITY_INTAKE,
     work_items_json: Path | str = _DEFAULT_WORK_ITEMS,
     mission_candidates_json: Path | str = _DEFAULT_MISSION_CANDIDATES,
+    permission_mode: str | None = None,
     generated_at_utc: str | None = None,
 ) -> dict[str, Any]:
     live_auth_path = Path(live_auth_json)
@@ -666,6 +891,7 @@ def build_github_permission_posture_report_from_paths(
         work_items=work_items,
         mission_candidates=mission_candidates,
         source_artifacts=source_artifacts,
+        permission_mode=permission_mode,
         generated_at_utc=generated_at_utc,
     )
 

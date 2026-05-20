@@ -71,19 +71,21 @@ class FakeGitHubTokenEndpoint:
         self._issued_at: dict[str, datetime] = {}
 
     def exchange_installation_token(
-        self, jwt_assertion: str
+        self, jwt_assertion: str, requested_permissions: dict[str, str] | None = None
     ) -> tuple[dict[str, Any], str]:
         token = _make_test_token("ghs_test")
         now = datetime.now(UTC)
         expires_at = now + timedelta(seconds=self._token_expiry_seconds)
         expires_str = expires_at.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        result = {
+        result: dict[str, Any] = {
             "token": token,
             "expires_at": expires_str,
             "token_type": "installation",
             "installation_id": self._installation_id,
         }
+        if requested_permissions:
+            result["permissions"] = dict(requested_permissions)
         self._issued_tokens[token] = result
         self._issued_at[token] = now
         return result, token

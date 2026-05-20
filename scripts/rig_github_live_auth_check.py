@@ -22,18 +22,31 @@ import sys
 from typing import Any, cast
 import uuid
 
+from rig_relay.integrations.github_provider._live_auth import (
+    GitHubPermissionMode,
+    build_read_only_installation_permissions,
+    normalize_permission_mode,
+    summarize_permission_posture,
+)
 from rig_relay.integrations.github_provider._redaction import safe_summary
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIVE_ENV_KEY = "RIG_LIVE_AUTH_TESTS"
+PERMISSION_MODE_ENV_KEY = "RIG_GITHUB_PERMISSION_MODE"
 
 
 def _sha256_hex(data: str) -> str:
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
+def _permission_mode_from_value(value: str | None) -> GitHubPermissionMode:
+    return normalize_permission_mode(
+        value if value is not None else os.environ.get(PERMISSION_MODE_ENV_KEY)
+    )
+
+
 def _lift_run_live_github(
-    config: Any, receipt_id: str, trace_id: str
+    config: Any, receipt_id: str, trace_id: str, permission_mode: GitHubPermissionMode
 ) -> dict[str, Any]:
     """Synchronous wrapper around the live GitHub auth pipeline.
 
@@ -47,6 +60,16 @@ def _lift_run_live_github(
 
     issues: list[dict[str, str]] = []
     results: dict[str, Any] = {}
+    requested_permissions = build_read_only_installation_permissions()
+    results["permission_mode"] = permission_mode.value
+    results.update(
+        summarize_permission_posture(
+            permission_mode=permission_mode,
+            requested_permissions=requested_permissions,
+            token_permissions={},
+            installation_permission_keys=[],
+        )
+    )
 
     if not config._has_private_key():
         issues.append({
@@ -95,11 +118,12 @@ def _lift_run_live_github(
             app_id=app_id,
             installation_id=installation_id,
             private_key_bytes=private_key,
+            requested_permissions=requested_permissions,
         )
     except GitHubLiveAuthError as e:
         results["token_exchange"] = {
             "schema_version": "rig.github.live_auth_refusal.v1",
-            "error": "token_exchange_failed",
+            "error": "token_narrowing_refused",
             "error_description": str(e)[:256],
         }
         results["auth_mode"] = "app_installation"
@@ -129,6 +153,17 @@ def _lift_run_live_github(
 
     results["installation_access"] = installation_access
     results["auth_mode"] = "app_installation"
+    posture_summary = summarize_permission_posture(
+        permission_mode=permission_mode,
+        requested_permissions=requested_permissions,
+        token_permissions=token_result.get("permissions")
+        if isinstance(token_result.get("permissions"), dict)
+        else {},
+        installation_permission_keys=installation_access.get("permission_keys")
+        if isinstance(installation_access.get("permission_keys"), list)
+        else [],
+    )
+    results.update(posture_summary)
 
     return results
 
@@ -173,6 +208,7 @@ def _live_output(results: dict[str, Any], issues_report: dict[str, Any]) -> None
     print("Configuration:")
     for issue in issues_report["issues"]:
         print(f"  - [{issue['kind']}] {issue['detail']}")
+    print(f"  permission_mode: {results.get('permission_mode', 'unknown')}")
 
     print()
     print("Token exchange:")
@@ -186,6 +222,12 @@ def _live_output(results: dict[str, Any], issues_report: dict[str, Any]) -> None
         print(f"  expires_at:     {te.get('expires_at', 'N/A')}")
         print(f"  permissions:    {te.get('permissions', {})}")
         print(f"  repo_selection: {te.get('repository_selection', 'N/A')}")
+        print(
+            f"  token_narrowing_requested: {results.get('token_narrowing_requested', False)}"
+        )
+        print(
+            f"  token_narrowing_effective:  {results.get('token_narrowing_effective', False)}"
+        )
 
     print()
     print("Installation access:")
@@ -281,12 +323,20 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Write content-light JSON result to PATH",
     )
+    parser.add_argument(
+        "--permission-mode",
+        type=str,
+        default=None,
+        choices=["development_debug", "preproduction", "public_release"],
+        help="Permission posture mode used for token narrowing and reporting.",
+    )
     args = parser.parse_args(argv)
 
     from rig_relay.integrations.github_provider import GitHubLiveAuthConfig
 
     receipt_id = str(uuid.uuid4())
     trace_id = str(uuid.uuid4())
+    permission_mode = _permission_mode_from_value(args.permission_mode)
 
     config = GitHubLiveAuthConfig.from_environment()
     issues_report = _build_issues_report(config, receipt_id, trace_id)
@@ -298,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
-        results = _lift_run_live_github(config, receipt_id, trace_id)
+        results = _lift_run_live_github(config, receipt_id, trace_id, permission_mode)
         _live_output(results, issues_report)
 
         if args.output_json:
@@ -311,6 +361,7 @@ def main(argv: list[str] | None = None) -> int:
                     "config_summary": config.config_summary(),
                     "issues": issues_report["issues"],
                     "live_results": safe_summary(results),
+                    "permission_mode": permission_mode.value,
                     "timestamp_utc": datetime.now(UTC).isoformat(),
                 },
             )
@@ -331,6 +382,7 @@ def main(argv: list[str] | None = None) -> int:
                 "receipt_id": receipt_id,
                 "trace_id": trace_id,
                 "dry_run": True,
+                "permission_mode": permission_mode.value,
                 "config_summary": config.config_summary(),
                 "issues": issues_report["issues"],
                 "timestamp_utc": datetime.now(UTC).isoformat(),
