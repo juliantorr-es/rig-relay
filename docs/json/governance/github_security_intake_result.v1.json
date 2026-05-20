@@ -1,0 +1,117 @@
+{
+  "schema_version": "rig.github.security_intake.v1",
+  "generated_at": "2026-05-20T04:40:22.911794+00:00",
+  "auth_mode": "app_installation",
+  "owner_hash": "bf6c3fbc104395556b59da9feb9785abbf0125fb5ac3351f6b9758073dd3f2a7",
+  "repo_hash": "ac1d0ecd9737d5c86e1a45b9c46835a2522239dd4608a1f1b72f177f5db5cecf",
+  "installation_id_hash": "",
+  "trace_id": "611f2e15-4846-485e-a368-b3b3296ec259",
+  "receipt_id": "529a02ef-8aeb-4162-ac30-5490ed3201f2",
+  "dry_run": false,
+  "content_light": true,
+  "remote_mutation": false,
+  "source_surfaces": [
+    {
+      "surface": "code_scanning",
+      "status": "refused",
+      "required_permission": "Code scanning alerts read",
+      "remote_mutation": false,
+      "details": "Permission or feature unavailable."
+    },
+    {
+      "surface": "dependabot",
+      "status": "refused",
+      "required_permission": "Dependabot alerts read",
+      "remote_mutation": false,
+      "details": "Permission or feature unavailable."
+    },
+    {
+      "surface": "secret_scanning",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Secret scanning alerts read",
+      "remote_mutation": false
+    }
+  ],
+  "counts": {
+    "code_scanning_open": 0,
+    "code_scanning_total": 0,
+    "dependabot_open": 0,
+    "dependabot_total": 0,
+    "refused_surfaces": 3
+  },
+  "alerts": {
+    "code_scanning": [],
+    "dependabot": []
+  },
+  "patch_candidate_groups": [
+    {
+      "group_kind": "permission_blocked",
+      "alert_refs": [
+        "code_scanning:refused,dependabot:refused,secret_scanning:refused"
+      ],
+      "severity_summary": {
+        "unknown": 1
+      },
+      "suggested_local_lane": "permission_follow_up",
+      "required_local_validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_security_intake.py -v",
+        "uv run pytest tests/adversarial/test_github_security_intake_redaction.py -v",
+        "uv run pytest tests/governance/test_github_security_intake_artifact.py -v"
+      ]
+    }
+  ],
+  "refusals": [
+    {
+      "surface": "code_scanning",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Code scanning alerts read",
+      "remote_mutation": false,
+      "status_code": 403
+    },
+    {
+      "surface": "dependabot",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Dependabot alerts read",
+      "remote_mutation": false,
+      "status_code": 403
+    },
+    {
+      "surface": "secret_scanning",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Secret scanning alerts read",
+      "remote_mutation": false
+    }
+  ],
+  "installation_access": {
+    "schema_version": "rig.github.live_auth_result.v1",
+    "auth_mode": "app_installation",
+    "installation_id_hash": "ec34a5228168a9fe01bda860beac9a13be8deceafee6b4d8a0f81ef72add1d11",
+    "installation_access": "success",
+    "accessible_repo_count": 4,
+    "accessible_repo_name_hashes": [
+      "aefa506e9f666edef30a7f38136b49429b38af0e774aede3e7451227d7e7044e",
+      "0ccf633ad28f89242c51933435ba8c2a15e44aba2c7e470eb7f20633d9014e40",
+      "06a8a8bce7a1b829d609b3b29c64d3f99c917b2ef2b871b179b8fb329b35c194",
+      "42576872e67cf6b6caa18cc2e875f48b1ad2a091aa1f5b409c80c3a259104cc4"
+    ],
+    "permission_keys": [
+      "actions",
+      "admin",
+      "checks",
+      "contents",
+      "issues",
+      "maintain",
+      "metadata",
+      "pull",
+      "pull_requests",
+      "push",
+      "triage"
+    ],
+    "repository_selection": "all"
+  }
+}

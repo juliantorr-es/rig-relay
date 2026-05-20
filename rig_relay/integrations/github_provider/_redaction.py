@@ -24,6 +24,14 @@ _FORBIDDEN_RECEIPT_FIELDS = frozenset({
     "oauth_code",
     "client_secret",
     "token_prefix",
+    "authorization",
+    "raw_response",
+    "raw_body",
+    "code_snippet",
+    "patch",
+    "diff",
+    "contents",
+    "secret",
 })
 
 _JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9\-_]+\.(?:[A-Za-z0-9\-_]+)?\.[A-Za-z0-9\-_]+")
@@ -51,7 +59,17 @@ _SENSITIVE_FIELDS = frozenset({
     "code",
 })
 
-_FORBIDDEN_SUMMARY_FIELDS = frozenset({"token_prefix"})
+_FORBIDDEN_SUMMARY_FIELDS = frozenset({
+    "token_prefix",
+    "authorization",
+    "raw_response",
+    "raw_body",
+    "code_snippet",
+    "patch",
+    "diff",
+    "contents",
+    "secret",
+})
 
 
 def safe_summary(data: dict) -> dict:

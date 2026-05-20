@@ -1,0 +1,470 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_intake.v1.schema.json",
+  "title": "GitHub Security Intake v1",
+  "description": "Read-only, content-light ingestion report for GitHub code scanning and Dependabot alerts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "auth_mode",
+    "owner_hash",
+    "repo_hash",
+    "installation_id_hash",
+    "trace_id",
+    "receipt_id",
+    "dry_run",
+    "content_light",
+    "remote_mutation",
+    "source_surfaces",
+    "counts",
+    "alerts",
+    "patch_candidate_groups",
+    "refusals"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_intake.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "auth_mode": {
+      "type": "string",
+      "enum": ["app_installation"]
+    },
+    "owner_hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "repo_hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "installation_id_hash": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 64
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "receipt_id": {
+      "type": "string"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "installation_access": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "auth_mode",
+        "installation_id_hash",
+        "installation_access",
+        "accessible_repo_count",
+        "accessible_repo_name_hashes",
+        "permission_keys",
+        "repository_selection"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.github.live_auth_result.v1"
+        },
+        "auth_mode": {
+          "type": "string",
+          "enum": ["app_installation"]
+        },
+        "installation_id_hash": {
+          "type": "string"
+        },
+        "installation_access": {
+          "type": "string",
+          "enum": ["success", "refused"]
+        },
+        "accessible_repo_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accessible_repo_name_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permission_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "repository_selection": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "status",
+          "required_permission",
+          "remote_mutation"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "secret_scanning", "authentication"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["dry_run", "collected", "refused"]
+          },
+          "required_permission": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "details": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "code_scanning_open",
+        "code_scanning_total",
+        "dependabot_open",
+        "dependabot_total",
+        "refused_surfaces"
+      ],
+      "properties": {
+        "code_scanning_open": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "code_scanning_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependabot_open": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependabot_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused_surfaces": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "alerts": {
+      "type": "object",
+      "required": ["code_scanning", "dependabot"],
+      "properties": {
+        "code_scanning": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "classification",
+              "alert_number",
+              "state",
+              "created_at",
+              "updated_at",
+              "fixed_at",
+              "dismissed_at",
+              "rule_id_hash",
+              "rule_severity",
+              "rule_security_severity_level",
+              "tool_name",
+              "most_recent_instance_ref_hash",
+              "file_path_hash",
+              "start_line",
+              "end_line",
+              "html_url_hash"
+            ],
+            "properties": {
+              "classification": {
+                "type": "string",
+                "const": "code_scanning"
+              },
+              "alert_number": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "state": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string"
+              },
+              "fixed_at": {
+                "type": "string"
+              },
+              "dismissed_at": {
+                "type": "string"
+              },
+              "rule_id_hash": {
+                "type": "string"
+              },
+              "rule_severity": {
+                "type": "string"
+              },
+              "rule_security_severity_level": {
+                "type": "string"
+              },
+              "tool_name": {
+                "type": "string"
+              },
+              "most_recent_instance_ref_hash": {
+                "type": "string"
+              },
+              "file_path_hash": {
+                "type": "string"
+              },
+              "start_line": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "end_line": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "html_url_hash": {
+                "type": "string"
+              },
+              "suggested_group_kind": {
+                "type": "string",
+                "enum": [
+                  "dependency_update_needed",
+                  "codeql_security_fix_needed",
+                  "code_quality_fix_needed",
+                  "workflow_or_ci_fix_needed",
+                  "permission_blocked",
+                  "unknown_triage_needed"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "dependabot": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "classification",
+              "alert_number",
+              "state",
+              "severity",
+              "created_at",
+              "updated_at",
+              "fixed_at",
+              "dismissed_at",
+              "package_ecosystem",
+              "package_coordinate_hash",
+              "package_name_hash",
+              "manifest_path_hash",
+              "scope",
+              "ghsa_id_hash",
+              "ghsa_identifier_hashes",
+              "cve_identifier_hashes",
+              "fixed_version_available",
+              "fixed_version",
+              "html_url_hash"
+            ],
+            "properties": {
+              "classification": {
+                "type": "string",
+                "const": "dependabot"
+              },
+              "alert_number": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "state": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string"
+              },
+              "fixed_at": {
+                "type": "string"
+              },
+              "dismissed_at": {
+                "type": "string"
+              },
+              "package_ecosystem": {
+                "type": "string"
+              },
+              "package_coordinate_hash": {
+                "type": "string"
+              },
+              "package_name_hash": {
+                "type": "string"
+              },
+              "manifest_path_hash": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "ghsa_id_hash": {
+                "type": "string"
+              },
+              "ghsa_identifier_hashes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cve_identifier_hashes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fixed_version_available": {
+                "type": "boolean"
+              },
+              "fixed_version": {
+                "type": "string"
+              },
+              "html_url_hash": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "patch_candidate_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "group_kind",
+          "alert_refs",
+          "severity_summary",
+          "suggested_local_lane",
+          "required_local_validation_commands"
+        ],
+        "properties": {
+          "group_kind": {
+            "type": "string",
+            "enum": [
+              "dependency_update_needed",
+              "codeql_security_fix_needed",
+              "code_quality_fix_needed",
+              "workflow_or_ci_fix_needed",
+              "permission_blocked",
+              "unknown_triage_needed"
+            ]
+          },
+          "alert_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity_summary": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "suggested_local_lane": {
+            "type": "string"
+          },
+          "required_local_validation_commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "status",
+          "reason",
+          "required_permission",
+          "remote_mutation"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "required_permission": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "status_code": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

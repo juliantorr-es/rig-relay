@@ -76,6 +76,10 @@ from rig_relay.integrations.github_provider._redaction import (
     hash_identifier,
     scan_for_tokens,
 )
+from rig_relay.integrations.github_provider._security_intake import (
+    GitHubSecurityIntakeCollector,
+    build_github_security_intake_report,
+)
 
 __all__ = [
     "FakeGitHubAppAuth",
@@ -101,11 +105,13 @@ __all__ = [
     "GitHubProviderRequiredPermission",
     "GitHubRedactionStatus",
     "GitHubRepositoryPermissionGrant",
+    "GitHubSecurityIntakeCollector",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
     "assert_content_light_mapping",
     "assert_no_raw_github_token",
     "build_github_operation_receipt",
+    "build_github_security_intake_report",
     "evaluate_github_capability",
     "get_capability",
     "hash_identifier",
