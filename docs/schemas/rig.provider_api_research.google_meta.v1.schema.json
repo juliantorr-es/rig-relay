@@ -1,0 +1,361 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.provider_api_research.google_meta.v1.schema.json",
+  "title": "Provider API Research — Google Workspace & Meta v1",
+  "description": "Structured, source-cited research artifact for Google Workspace and Meta provider integrations. Covers OAuth setup, scope classification, endpoint specifics, permissions, app review requirements, and safe live-read surfaces.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_count",
+    "google",
+    "meta",
+    "cross_provider_recommendations",
+    "citations",
+    "uncertainties",
+    "redaction_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.provider_api_research.google_meta.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": { "type": ["string", "null"] },
+    "head": { "type": ["string", "null"] },
+    "source_count": { "type": "integer", "minimum": 1 },
+    "google": { "$ref": "#/definitions/google_research" },
+    "meta": { "$ref": "#/definitions/meta_research" },
+    "cross_provider_recommendations": { "$ref": "#/definitions/cross_recommendations" },
+    "citations": { "type": "array", "items": { "$ref": "#/definitions/citation" } },
+    "uncertainties": { "type": "array", "items": { "type": "string" } },
+    "redaction_status": { "$ref": "#/definitions/redaction_status" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "google_research": {
+      "type": "object",
+      "required": [
+        "oauth_setup",
+        "scope_matrix",
+        "endpoint_matrix",
+        "verification_matrix",
+        "domain_wide_delegation",
+        "security_constraints",
+        "recommended_rig_posture"
+      ],
+      "properties": {
+        "oauth_setup": { "$ref": "#/definitions/google_oauth_setup" },
+        "scope_matrix": { "type": "array", "items": { "$ref": "#/definitions/google_scope_entry" } },
+        "endpoint_matrix": { "type": "array", "items": { "$ref": "#/definitions/google_endpoint_entry" } },
+        "verification_matrix": { "$ref": "#/definitions/google_verification_matrix" },
+        "domain_wide_delegation": { "$ref": "#/definitions/google_dwd" },
+        "security_constraints": { "$ref": "#/definitions/google_security" },
+        "recommended_rig_posture": { "$ref": "#/definitions/provider_posture" }
+      },
+      "additionalProperties": false
+    },
+    "meta_research": {
+      "type": "object",
+      "required": [
+        "app_setup",
+        "token_matrix",
+        "permission_matrix",
+        "endpoint_surface_matrix",
+        "app_review_matrix",
+        "webhook_security",
+        "whatsapp_constraints",
+        "recommended_rig_posture"
+      ],
+      "properties": {
+        "app_setup": { "$ref": "#/definitions/meta_app_setup" },
+        "token_matrix": { "type": "array", "items": { "$ref": "#/definitions/meta_token_entry" } },
+        "permission_matrix": { "type": "array", "items": { "$ref": "#/definitions/meta_permission_entry" } },
+        "endpoint_surface_matrix": { "type": "array", "items": { "$ref": "#/definitions/meta_surface_entry" } },
+        "app_review_matrix": { "$ref": "#/definitions/meta_app_review" },
+        "webhook_security": { "$ref": "#/definitions/meta_webhook_security" },
+        "whatsapp_constraints": { "$ref": "#/definitions/meta_whatsapp_constraints" },
+        "recommended_rig_posture": { "$ref": "#/definitions/provider_posture" }
+      },
+      "additionalProperties": false
+    },
+    "cross_recommendations": {
+      "type": "object",
+      "required": [
+        "google_risk_level",
+        "meta_risk_level",
+        "safe_v1_live_read_candidates",
+        "deferred_lanes",
+        "required_future_schemas"
+      ],
+      "properties": {
+        "google_risk_level": { "type": "string", "enum": ["low", "medium", "high", "restricted"] },
+        "meta_risk_level": { "type": "string", "enum": ["low", "medium", "high", "restricted"] },
+        "safe_v1_live_read_candidates": { "type": "array", "items": { "type": "string" } },
+        "deferred_lanes": { "type": "array", "items": { "type": "string" } },
+        "required_future_schemas": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "citation": {
+      "type": "object",
+      "required": ["source_url", "title", "provider", "notes"],
+      "properties": {
+        "source_url": { "type": "string" },
+        "title": { "type": "string" },
+        "accessed_at": { "type": "string" },
+        "provider": { "type": "string", "enum": ["google", "meta", "ietf", "other"] },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": ["content_light", "remote_mutation", "live_network_used_for_product"],
+      "properties": {
+        "content_light": { "type": "boolean", "const": true },
+        "remote_mutation": { "type": "boolean", "const": false },
+        "live_network_used_for_product": { "type": "boolean", "const": false },
+        "forbidden_keys_present": { "type": "boolean", "const": false }
+      },
+      "additionalProperties": false
+    },
+    "google_oauth_setup": {
+      "type": "object",
+      "required": [
+        "desktop_native_app_flow",
+        "pkce_required",
+        "loopback_redirect_rules",
+        "refresh_token_behavior",
+        "consent_screen_testing_vs_production",
+        "external_vs_internal_app_mode",
+        "verification_triggers"
+      ],
+      "properties": {
+        "desktop_native_app_flow": { "type": "string" },
+        "pkce_required": { "type": "boolean" },
+        "loopback_redirect_rules": { "type": "string" },
+        "refresh_token_behavior": { "type": "string" },
+        "consent_screen_testing_vs_production": { "type": "string" },
+        "external_vs_internal_app_mode": { "type": "string" },
+        "verification_triggers": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "google_scope_entry": {
+      "type": "object",
+      "required": ["scope_uri", "surface", "description", "sensitivity_class"],
+      "properties": {
+        "scope_uri": { "type": "string" },
+        "surface": { "type": "string" },
+        "description": { "type": "string" },
+        "sensitivity_class": { "type": "string", "enum": ["non_sensitive", "sensitive", "restricted"] },
+        "verification_required": { "type": "boolean" },
+        "content_light_compatible": { "type": "boolean" },
+        "recommended_for_rig_v1": { "type": "boolean" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "google_endpoint_entry": {
+      "type": "object",
+      "required": ["endpoint_family", "surface", "minimum_scopes"],
+      "properties": {
+        "endpoint_family": { "type": "string" },
+        "surface": { "type": "string" },
+        "minimum_scopes": { "type": "array", "items": { "type": "string" } },
+        "may_expose_user_content": { "type": "boolean" },
+        "recommended_fields": { "type": "array", "items": { "type": "string" } },
+        "forbidden_fields": { "type": "array", "items": { "type": "string" } },
+        "pagination_behavior": { "type": "string" },
+        "rate_quota_notes": { "type": "string" },
+        "service_account_applicable": { "type": "boolean" },
+        "v1_status": { "type": "string", "enum": ["safe_read", "deferred", "refused"] }
+      },
+      "additionalProperties": false
+    },
+    "google_verification_matrix": {
+      "type": "object",
+      "required": [
+        "non_sensitive_verification",
+        "sensitive_verification",
+        "restricted_verification",
+        "security_assessment_triggers"
+      ],
+      "properties": {
+        "non_sensitive_verification": { "type": "string" },
+        "sensitive_verification": { "type": "string" },
+        "restricted_verification": { "type": "string" },
+        "security_assessment_triggers": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "google_dwd": {
+      "type": "object",
+      "required": [
+        "setup_requirements",
+        "admin_consent_required",
+        "deferred_to_enterprise_lane",
+        "must_not_bundle_in_consumer_flow"
+      ],
+      "properties": {
+        "setup_requirements": { "type": "string" },
+        "admin_consent_required": { "type": "boolean" },
+        "deferred_to_enterprise_lane": { "type": "boolean" },
+        "must_not_bundle_in_consumer_flow": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "google_security": {
+      "type": "object",
+      "required": [
+        "token_transport",
+        "no_tokens_in_uri_params",
+        "refresh_token_storage",
+        "incremental_authorization",
+        "granted_scope_verification",
+        "user_revocation_behavior"
+      ],
+      "properties": {
+        "token_transport": { "type": "string" },
+        "no_tokens_in_uri_params": { "type": "boolean" },
+        "refresh_token_storage": { "type": "string" },
+        "incremental_authorization": { "type": "string" },
+        "granted_scope_verification": { "type": "string" },
+        "user_revocation_behavior": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "provider_posture": {
+      "type": "object",
+      "required": [
+        "safe_surfaces",
+        "refused_surfaces",
+        "deferred_surfaces"
+      ],
+      "properties": {
+        "safe_surfaces": { "type": "array", "items": { "type": "string" } },
+        "refused_surfaces": { "type": "array", "items": { "type": "string" } },
+        "deferred_surfaces": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "meta_app_setup": {
+      "type": "object",
+      "required": [
+        "app_types",
+        "business_verification_triggers",
+        "app_review_triggers",
+        "development_live_mode",
+        "test_users"
+      ],
+      "properties": {
+        "app_types": { "type": "string" },
+        "business_verification_triggers": { "type": "string" },
+        "app_review_triggers": { "type": "string" },
+        "development_live_mode": { "type": "string" },
+        "test_users": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "meta_token_entry": {
+      "type": "object",
+      "required": ["token_type", "lifetime", "usage", "must_not_log"],
+      "properties": {
+        "token_type": { "type": "string" },
+        "lifetime": { "type": "string" },
+        "usage": { "type": "string" },
+        "must_not_log": { "type": "boolean" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "meta_permission_entry": {
+      "type": "object",
+      "required": ["permission_name", "surface", "app_review_required", "business_verification_required", "rig_v1_status"],
+      "properties": {
+        "permission_name": { "type": "string" },
+        "surface": { "type": "string" },
+        "operation_kind": { "type": "string" },
+        "app_review_required": { "type": "boolean" },
+        "business_verification_required": { "type": "boolean" },
+        "user_data_risk": { "type": "string", "enum": ["low", "medium", "high", "restricted"] },
+        "rig_v1_status": { "type": "string", "enum": ["safe_read", "deferred", "refused"] },
+        "requires_doc_verification": { "type": "boolean" },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+      },
+      "additionalProperties": false
+    },
+    "meta_surface_entry": {
+      "type": "object",
+      "required": ["surface_name", "prerequisites", "permissions_required", "rig_v1_status"],
+      "properties": {
+        "surface_name": { "type": "string" },
+        "prerequisites": { "type": "string" },
+        "permissions_required": { "type": "array", "items": { "type": "string" } },
+        "safe_metadata_fields": { "type": "array", "items": { "type": "string" } },
+        "forbidden_fields": { "type": "array", "items": { "type": "string" } },
+        "rig_v1_status": { "type": "string", "enum": ["safe_read", "deferred", "refused"] },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "meta_app_review": {
+      "type": "object",
+      "required": [
+        "review_triggers",
+        "permissions_requiring_review",
+        "business_verification_prerequisite",
+        "testing_without_review"
+      ],
+      "properties": {
+        "review_triggers": { "type": "string" },
+        "permissions_requiring_review": { "type": "array", "items": { "type": "string" } },
+        "business_verification_prerequisite": { "type": "string" },
+        "testing_without_review": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "meta_webhook_security": {
+      "type": "object",
+      "required": [
+        "verification_token",
+        "signature_validation",
+        "appsecret_proof",
+        "replay_protection",
+        "raw_payload_policy"
+      ],
+      "properties": {
+        "verification_token": { "type": "string" },
+        "signature_validation": { "type": "string" },
+        "appsecret_proof": { "type": "string" },
+        "replay_protection": { "type": "string" },
+        "raw_payload_policy": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "meta_whatsapp_constraints": {
+      "type": "object",
+      "required": [
+        "business_account_prerequisites",
+        "phone_number_requirements",
+        "message_sending_rules",
+        "template_approval",
+        "conversation_windows",
+        "business_verification"
+      ],
+      "properties": {
+        "business_account_prerequisites": { "type": "string" },
+        "phone_number_requirements": { "type": "string" },
+        "message_sending_rules": { "type": "string" },
+        "template_approval": { "type": "string" },
+        "conversation_windows": { "type": "string" },
+        "business_verification": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,796 @@
+{
+  "schema_version": "rig.provider_api_research.google_meta.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "branch": "main",
+  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "source_count": 17,
+  "google": {
+    "oauth_setup": {
+      "desktop_native_app_flow": "Google supports a dedicated OAuth flow for installed (native/desktop) apps. Unlike web server apps, native apps cannot keep client secrets. The flow requires PKCE (Proof Key for Code Exchange), with S256 recommended. The app opens the system browser for user consent and listens on a local loopback redirect URI (http://127.0.0.1:port) to receive the authorization code. The app then exchanges the code for access and refresh tokens at https://oauth2.googleapis.com/token. Custom URI schemes are no longer supported on Android/Chrome. Loopback redirect is DEPRECATED for mobile (Android, iOS) but supported for macOS, Linux, Windows desktop. Out-of-band (OOB) manual copy/paste redirect is deprecated and removed.",
+      "pkce_required": true,
+      "loopback_redirect_rules": "Supported for macOS, Linux, Windows desktop apps at http://127.0.0.1:port or http://[::1]:port. App must start an HTTP listener on a random available port. Redirect URI must exactly match one authorized in the Cloud Console Clients page. DEPRECATED for mobile (Android, iOS) — mobile apps should use Google Sign-In SDK or AppAuth.",
+      "refresh_token_behavior": "Refresh tokens are always returned for installed apps. Valid until user revokes access or token expires (time-based access). Refresh tokens can be used to obtain new access tokens without user interaction (offline access). Limits exist on number of refresh tokens per client/user. Old refresh tokens stop working if too many are issued. Time-based refresh tokens expire after the granted duration (refresh_token_expires_in field).",
+      "consent_screen_testing_vs_production": "Testing: 'unverified app' warning displayed during testing with sensitive/restricted scopes. Test users can be added in the Cloud Console to bypass verification warnings during development (up to 100 test users). Production: App must complete verification before sensitive/restricted scopes are available to general users. Consent screen must be configured with app name, support email, logo, privacy policy URL, and authorized domains.",
+      "external_vs_internal_app_mode": "External: Available to any Google Account. Requires app verification for sensitive/restricted scopes. Consent screen shows full app details. Internal: Only available to users within the same Google Workspace / Cloud Identity organization. Does not require verification. Users must belong to the organization. Internal apps bypass granular permissions consent in some cases.",
+      "verification_triggers": "App verification is triggered when the app requests: (a) sensitive scopes — requires brand verification and scope justification; (b) restricted scopes — requires independent security assessment (annual recertification), demonstrated need, and compliance with restricted scope requirements. Verification is NOT required for: non-sensitive scopes only, or internal-only apps, or apps using only test users."
+    },
+    "scope_matrix": [
+      {
+        "scope_uri": "https://www.googleapis.com/auth/userinfo.email",
+        "surface": "OAuth token info",
+        "description": "View email address",
+        "sensitivity_class": "non_sensitive",
+        "verification_required": false,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Basic identity scope. No app verification needed."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/userinfo.profile",
+        "surface": "OAuth token info",
+        "description": "View basic profile info",
+        "sensitivity_class": "non_sensitive",
+        "verification_required": false,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": ""
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/gmail.readonly",
+        "surface": "Gmail",
+        "description": "View emails, settings, labels, not modify",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted scope — requires security assessment. Exposes email bodies. Use gmail.metadata for Rig v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/gmail.metadata",
+        "surface": "Gmail",
+        "description": "View email metadata (subject, from, date, labels) without body",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Safer than gmail.readonly — does not expose email bodies. Still requires verification."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/gmail.labels",
+        "surface": "Gmail labels",
+        "description": "View email labels only",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Read-only label management metadata."
+      },
+      {
+        "scope_uri": "https://mail.google.com/",
+        "surface": "Gmail",
+        "description": "Full access to Gmail — read, compose, send, delete",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted — requires security assessment. Permanently refused for Rig v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/calendar.readonly",
+        "surface": "Calendar",
+        "description": "See and download any calendar",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted scope — exposes event bodies. Use more granular scopes for v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        "surface": "Calendar",
+        "description": "View list of subscribed calendars",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Only calendar names and IDs, no event content."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/calendar.events.readonly",
+        "surface": "Calendar",
+        "description": "View events on all calendars",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted — exposes event descriptions and attendees. Use calendarlist only for v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/calendar.events.owned.readonly",
+        "surface": "Calendar",
+        "description": "View events on owned calendars only",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "More restricted than all-events-readonly. Only user's own calendars."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/drive.readonly",
+        "surface": "Drive",
+        "description": "View Drive files",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted — exposes file contents. Use drive.metadata.readonly for v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "surface": "Drive",
+        "description": "View Drive file metadata only (name, type, size, modified time, owners)",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Safest Drive scope. No file content. Only metadata."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/contacts.readonly",
+        "surface": "People/Contacts",
+        "description": "View contacts",
+        "sensitivity_class": "restricted",
+        "verification_required": true,
+        "content_light_compatible": false,
+        "recommended_for_rig_v1": false,
+        "notes": "Restricted — exposes contact details including emails and phone numbers. Do not use for v1."
+      },
+      {
+        "scope_uri": "https://www.googleapis.com/auth/tasks.readonly",
+        "surface": "Tasks",
+        "description": "View Google Tasks",
+        "sensitivity_class": "sensitive",
+        "verification_required": true,
+        "content_light_compatible": true,
+        "recommended_for_rig_v1": true,
+        "notes": "Read-only task list and task metadata. No task descriptions unless user explicitly stores PII."
+      }
+    ],
+    "endpoint_matrix": [
+      {
+        "endpoint_family": "oauth2/v1/tokeninfo",
+        "surface": "OAuth token info",
+        "minimum_scopes": ["openid"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["expires_in", "scope", "email", "verified_email"],
+        "forbidden_fields": [],
+        "pagination_behavior": "none",
+        "rate_quota_notes": "No documented limits for tokeninfo. Token endpoint (token) has per-user per-client limits.",
+        "service_account_applicable": false,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "gmail/v1/users/{userId}/profile",
+        "surface": "Gmail profile",
+        "minimum_scopes": ["https://www.googleapis.com/auth/gmail.metadata"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["emailAddress", "messagesTotal", "threadsTotal", "historyId"],
+        "forbidden_fields": [],
+        "pagination_behavior": "none",
+        "rate_quota_notes": "Gmail API: 250 quota units per user per second. profile is lightweight.",
+        "service_account_applicable": true,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "gmail/v1/users/{userId}/labels",
+        "surface": "Gmail labels",
+        "minimum_scopes": ["https://www.googleapis.com/auth/gmail.labels"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["id", "name", "type", "messageListVisibility", "labelListVisibility"],
+        "forbidden_fields": [],
+        "pagination_behavior": "none (list all labels)",
+        "rate_quota_notes": "Lightweight. 250 QPS for Gmail API.",
+        "service_account_applicable": true,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "gmail/v1/users/{userId}/messages",
+        "surface": "Gmail messages metadata",
+        "minimum_scopes": ["https://www.googleapis.com/auth/gmail.metadata"],
+        "may_expose_user_content": true,
+        "recommended_fields": ["id", "threadId", "labelIds", "snippet", "payload.headers (filtered)", "internalDate", "sizeEstimate"],
+        "forbidden_fields": ["payload.body", "payload.parts[].body", "raw"],
+        "pagination_behavior": "pageToken-based, maxResults up to 500",
+        "rate_quota_notes": "250 QPS for Gmail API. Messages.list: 5 units per call. Messages.get: 5 units. Use metadata format.",
+        "service_account_applicable": true,
+        "v1_status": "deferred"
+      },
+      {
+        "endpoint_family": "calendar/v3/users/me/calendarList",
+        "surface": "Calendar list",
+        "minimum_scopes": ["https://www.googleapis.com/auth/calendar.calendarlist.readonly"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["id", "summary", "timeZone", "backgroundColor", "primary", "accessRole"],
+        "forbidden_fields": [],
+        "pagination_behavior": "pageToken-based, maxResults up to 250",
+        "rate_quota_notes": "Calendar API: 1,000,000 queries per day default. CalendarList.list: 1 unit.",
+        "service_account_applicable": true,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "calendar/v3/calendars/{calendarId}/events",
+        "surface": "Calendar events",
+        "minimum_scopes": ["https://www.googleapis.com/auth/calendar.events.readonly"],
+        "may_expose_user_content": true,
+        "recommended_fields": ["id", "summary", "start", "end", "status", "organizer.email"],
+        "forbidden_fields": ["description", "attendees[].email", "attachments", "conferenceData"],
+        "pagination_behavior": "pageToken-based, maxResults up to 2500. syncToken for incremental.",
+        "rate_quota_notes": "Calendar API: 1,000,000 queries/day. Events.list: 2 units default.",
+        "service_account_applicable": true,
+        "v1_status": "deferred"
+      },
+      {
+        "endpoint_family": "drive/v3/files",
+        "surface": "Drive files metadata",
+        "minimum_scopes": ["https://www.googleapis.com/auth/drive.metadata.readonly"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["id", "name", "mimeType", "size", "modifiedTime", "parents", "ownedByMe", "shared"],
+        "forbidden_fields": ["content", "contentHints", "webContentLink"],
+        "pagination_behavior": "pageToken-based, pageSize up to 1000",
+        "rate_quota_notes": "Drive API: 12,000 queries per 100 seconds per user. files.list: 1 unit. files.get: 1 unit.",
+        "service_account_applicable": true,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "tasks/v1/users/@me/lists",
+        "surface": "Tasks",
+        "minimum_scopes": ["https://www.googleapis.com/auth/tasks.readonly"],
+        "may_expose_user_content": false,
+        "recommended_fields": ["id", "title", "updated"],
+        "forbidden_fields": [],
+        "pagination_behavior": "pageToken-based",
+        "rate_quota_notes": "Tasks API: 50,000 queries per day.",
+        "service_account_applicable": true,
+        "v1_status": "safe_read"
+      },
+      {
+        "endpoint_family": "tasks/v1/lists/{tasklist}/tasks",
+        "surface": "Tasks",
+        "minimum_scopes": ["https://www.googleapis.com/auth/tasks.readonly"],
+        "may_expose_user_content": true,
+        "recommended_fields": ["id", "title", "status", "due", "updated"],
+        "forbidden_fields": ["notes"],
+        "pagination_behavior": "pageToken-based, maxResults up to 100",
+        "rate_quota_notes": "Tasks API: 50,000 queries per day.",
+        "service_account_applicable": true,
+        "v1_status": "deferred"
+      },
+      {
+        "endpoint_family": "people/v1/people/me",
+        "surface": "People/Contacts",
+        "minimum_scopes": ["https://www.googleapis.com/auth/contacts.readonly"],
+        "may_expose_user_content": true,
+        "recommended_fields": ["resourceName"],
+        "forbidden_fields": ["emailAddresses", "phoneNumbers", "addresses", "biographies", "names"],
+        "pagination_behavior": "pageToken-based",
+        "rate_quota_notes": "People API: 90,000 queries per minute for read. connections.list: 90 QPM.",
+        "service_account_applicable": true,
+        "v1_status": "deferred"
+      },
+      {
+        "endpoint_family": "admin/directory (Admin SDK)",
+        "surface": "Admin Directory",
+        "minimum_scopes": ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
+        "may_expose_user_content": true,
+        "recommended_fields": [],
+        "forbidden_fields": ["ALL"],
+        "pagination_behavior": "pageToken-based",
+        "rate_quota_notes": "Admin SDK: 150,000 queries per day. Requires admin account.",
+        "service_account_applicable": true,
+        "v1_status": "refused"
+      }
+    ],
+    "verification_matrix": {
+      "non_sensitive_verification": "No verification required. App can be used immediately by any user. Includes scopes like userinfo.email, userinfo.profile, openid.",
+      "sensitive_verification": "Requires brand verification and scope justification. Google reviews app name, logo, privacy policy, and why each sensitive scope is needed. Processing time: typically days to weeks.",
+      "restricted_verification": "Requires independent security assessment (annual recertification). Must demonstrate that the app complies with restricted scope requirements. Additional requirements include: data use disclosure, demonstrated need with minimal scope, and compliance with API user data policy. Processing time: weeks to months. Includes scopes like gmail.readonly, calendar.readonly, drive.readonly, contacts.readonly.",
+      "security_assessment_triggers": "Required for restricted scopes. Must be performed by a Google-approved assessor (e.g., Leviathan, Bishop Fox). Annual recertification. Cost: varies (typically $15,000-$75,000+ per assessment). This means restricted-scope access is effectively enterprise-only for Rig Relay."
+    },
+    "domain_wide_delegation": {
+      "setup_requirements": "1) Create a service account in Google Cloud Console. 2) Generate a JSON key pair for the service account. 3) A Workspace super administrator must authorize the service account in the Admin console (Security > API Controls > Domain Wide Delegation), entering the service account's numeric Client ID and comma-separated OAuth scopes. 4) The app uses the service account key to create a JWT (RS256), which is exchanged for an access token. 5) The app specifies the user to impersonate via the 'sub' claim in the JWT or .with_subject() in client libraries.",
+      "admin_consent_required": true,
+      "deferred_to_enterprise_lane": true,
+      "must_not_bundle_in_consumer_flow": true
+    },
+    "security_constraints": {
+      "token_transport": "Access tokens must be sent in the Authorization: Bearer header. Query string parameter (access_token=) is possible but discouraged because URLs appear in server logs. The HTTP header is the recommended, safer method.",
+      "no_tokens_in_uri_params": true,
+      "refresh_token_storage": "Must be stored in secure, long-lived storage accessible across application invocations. Loss of refresh token requires full re-authentication. Only one active refresh token per client/user combination. Limit of 50-100 refresh tokens per user across all clients. Store encrypted, never log, never version-control.",
+      "incremental_authorization": "NOT supported for installed apps (native/desktop). The app must request all needed scopes in the initial authorization request. Users may grant a subset; the app must check granted scopes via the scope field in the token response and disable features for ungranted scopes. Web server apps DO support incremental auth.",
+      "granted_scope_verification": "The scope field in the access token response lists ALL scopes granted. Compare against requested scopes. Users may deny individual scopes in granular consent. Disable features for ungranted scopes. The tokeninfo endpoint can also return granted scopes.",
+      "user_revocation_behavior": "Users can revoke access at https://myaccount.google.com/permissions. Programmatic revocation: POST to https://oauth2.googleapis.com/revoke?token={token}. Revocation removes ALL scopes for the project — all access/refresh tokens for ALL clients under that project become invalid. Revocation may take minutes to fully propagate."
+    },
+    "recommended_rig_posture": {
+      "safe_surfaces": [
+        "OAuth token info/introspection (userinfo.email, userinfo.profile)",
+        "Gmail profile metadata (gmail/v1/users/profile with gmail.metadata scope)",
+        "Gmail labels metadata (gmail/v1/users/labels with gmail.labels scope)",
+        "Calendar list metadata (calendar/v3/calendarList with calendarlist.readonly)",
+        "Drive files metadata only (drive/v3/files with drive.metadata.readonly)",
+        "Tasks list metadata (tasks/v1/lists with tasks.readonly)"
+      ],
+      "refused_surfaces": [
+        "Admin Directory (admin.directory.user.readonly) — deferred to enterprise/admin lane",
+        "Full Gmail access (mail.google.com/) — restricted, requires security assessment",
+        "Full Drive access (drive scope) — restricted",
+        "Full Calendar access (calendar scope) — restricted",
+        "Full Contacts access (contacts scope) — restricted",
+        "Publishing, email-sending, file-creation, event-creation — all mutation surfaces refused"
+      ],
+      "deferred_surfaces": [
+        "Gmail messages metadata (gmail.metadata — sensitive, requires verification, may expose PII in headers)",
+        "Calendar events metadata (calendar.events.readonly — restricted scope)",
+        "Calendar owned events metadata (calendar.events.owned.readonly — sensitive scope)",
+        "Tasks task details (tasks.readonly — may expose PII in notes)",
+        "People/Contacts metadata (contacts.readonly — restricted, exposes PII)"
+      ]
+    }
+  },
+  "meta": {
+    "app_setup": {
+      "app_types": "Meta for Developers requires a Facebook App as the identity for any API integration. App types include: Consumer (standard OAuth for individual users), Business (linked to a Business Manager for enterprise features). Instagram Graph API and WhatsApp Cloud API require a Business app type or a consumer app with appropriate product configuration. System users are service-like accounts within Business Manager for server-to-server access.",
+      "business_verification_triggers": "Required when: (a) app requests permissions classified as requiring business verification (most Page/Instagram publishing and messaging permissions), (b) WhatsApp Business API access, (c) app goes into Live mode with certain features. Business verification involves providing legal business documents (tax ID, business license, etc.) and takes days to weeks.",
+      "app_review_triggers": "Triggered when app requests permissions beyond the basic defaults (email, public_profile). App must submit for review with: detailed permission usage description, screencast showing how permissions are used, privacy policy URL, and platform-specific instructions. Review takes days to weeks. Permissions are revoked if app review is not completed within a certain timeframe.",
+      "development_live_mode": "Development mode: App can only be used by users with a Role on the app (Admin, Developer, Tester). All API calls work without app review for these users. Can add up to a certain number of test users. Live mode: App is available to general users. Requires app review for permissions beyond basic. Business verification may also be required.",
+      "test_users": "Can be added in App Dashboard > Roles > Test Users. Test users can authenticate and use the app in Development mode without app review. Useful for development and testing. Limited to a specific count. Test users must have (or create) valid Facebook accounts."
+    },
+    "token_matrix": [
+      {
+        "token_type": "User Access Token",
+        "lifetime": "Short-lived: ~1-2 hours. Long-lived: ~60 days (obtained by exchanging short-lived token at /oauth/access_token?grant_type=fb_exchange_token).",
+        "usage": "Authenticates API calls on behalf of a Facebook user. Required to obtain Page tokens and other downstream tokens.",
+        "must_not_log": true,
+        "notes": "Bearer credential. Store only the long-lived version. Never log raw. Use SHA256 hash for evidence."
+      },
+      {
+        "token_type": "Page Access Token",
+        "lifetime": "Short-lived: ~1 hour. Long-lived: never expires (obtained by exchanging a long-lived user token for a Page token).",
+        "usage": "Authenticates API calls to a specific Facebook Page. Required for Page read, insights, and publishing.",
+        "must_not_log": true,
+        "notes": "Derived from a user token with pages_show_list or pages_read_engagement permission. Long-lived page tokens do not expire unless the user's access is revoked."
+      },
+      {
+        "token_type": "App Access Token",
+        "lifetime": "Never expires.",
+        "usage": "Server-to-server calls that don't require user context (e.g., app-level settings, token inspection).",
+        "must_not_log": true,
+        "notes": "Form: {app_id}|{app_secret}. Must not be used in client-side code. Limited permissions."
+      },
+      {
+        "token_type": "System User Access Token",
+        "lifetime": "Long-lived, managed via Business Manager.",
+        "usage": "WhatsApp Business API and other business integrations. Represents a system user, not a human.",
+        "must_not_log": true,
+        "notes": "Requires Business Manager and system user setup. Assigned permissions via Business Manager roles."
+      },
+      {
+        "token_type": "Client Token",
+        "lifetime": "Persistent.",
+        "usage": "Mobile SDK usage only. Limited access scope.",
+        "must_not_log": true,
+        "notes": "Not applicable for Rig Relay server-side integration."
+      }
+    ],
+    "permission_matrix": [
+      {
+        "permission_name": "pages_read_engagement",
+        "surface": "Facebook Pages",
+        "operation_kind": "read",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "medium",
+        "rig_v1_status": "safe_read",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "pages_read_user_content",
+        "surface": "Facebook Pages",
+        "operation_kind": "read",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "high",
+        "rig_v1_status": "deferred",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "pages_manage_posts",
+        "surface": "Facebook Pages",
+        "operation_kind": "publish",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "high",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "high"
+      },
+      {
+        "permission_name": "pages_manage_metadata",
+        "surface": "Facebook Pages",
+        "operation_kind": "manage",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "high",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "pages_show_list",
+        "surface": "Facebook Pages",
+        "operation_kind": "read",
+        "app_review_required": false,
+        "business_verification_required": false,
+        "user_data_risk": "low",
+        "rig_v1_status": "safe_read",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "instagram_basic",
+        "surface": "Instagram Graph",
+        "operation_kind": "read",
+        "app_review_required": true,
+        "business_verification_required": false,
+        "user_data_risk": "medium",
+        "rig_v1_status": "safe_read",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "instagram_content_publish",
+        "surface": "Instagram Graph",
+        "operation_kind": "publish",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "high",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "high"
+      },
+      {
+        "permission_name": "instagram_manage_comments",
+        "surface": "Instagram Graph",
+        "operation_kind": "manage",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "high",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "instagram_manage_insights",
+        "surface": "Instagram Graph",
+        "operation_kind": "read",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "medium",
+        "rig_v1_status": "deferred",
+        "requires_doc_verification": true,
+        "confidence": "medium"
+      },
+      {
+        "permission_name": "whatsapp_business_management",
+        "surface": "WhatsApp Business",
+        "operation_kind": "manage",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "restricted",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "high"
+      },
+      {
+        "permission_name": "whatsapp_business_messaging",
+        "surface": "WhatsApp Business",
+        "operation_kind": "message_send",
+        "app_review_required": true,
+        "business_verification_required": true,
+        "user_data_risk": "restricted",
+        "rig_v1_status": "refused",
+        "requires_doc_verification": true,
+        "confidence": "high"
+      },
+      {
+        "permission_name": "public_profile",
+        "surface": "User",
+        "operation_kind": "read",
+        "app_review_required": false,
+        "business_verification_required": false,
+        "user_data_risk": "low",
+        "rig_v1_status": "safe_read",
+        "requires_doc_verification": true,
+        "confidence": "high"
+      }
+    ],
+    "endpoint_surface_matrix": [
+      {
+        "surface_name": "Facebook Pages — Read Metadata",
+        "prerequisites": "Facebook App + pages_show_list permission. User must have a Role on the Page or the Page must grant access.",
+        "permissions_required": ["pages_read_engagement"],
+        "safe_metadata_fields": ["id", "name", "category", "link", "fan_count", "about"],
+        "forbidden_fields": ["posts, feed, conversations, messages, insights"],
+        "rig_v1_status": "safe_read",
+        "notes": "Read-only Page profile. Requires app review. Business verification likely required."
+      },
+      {
+        "surface_name": "Facebook Pages — Publishing",
+        "prerequisites": "Facebook App + pages_manage_posts permission. Page access token.",
+        "permissions_required": ["pages_manage_posts"],
+        "safe_metadata_fields": [],
+        "forbidden_fields": ["ALL"],
+        "rig_v1_status": "refused",
+        "notes": "All publishing automation refused in v1. Requires explicit user approval per action."
+      },
+      {
+        "surface_name": "Instagram Graph — Profile",
+        "prerequisites": "Instagram Professional/Business Account linked to a Facebook Page. Facebook App with instagram_basic. Instagram business account ID.",
+        "permissions_required": ["instagram_basic"],
+        "safe_metadata_fields": ["id", "username", "name", "biography", "profile_picture_url (hash only)"],
+        "forbidden_fields": ["media, stories, insights, comments"],
+        "rig_v1_status": "safe_read",
+        "notes": "Requires Instagram Business Account. Facebook Page linkage is a prerequisite. App review required."
+      },
+      {
+        "surface_name": "Instagram Graph — Media",
+        "prerequisites": "Same as profile + media ownership.",
+        "permissions_required": ["instagram_basic"],
+        "safe_metadata_fields": [],
+        "forbidden_fields": ["media_url, caption, comments, insights, permalink"],
+        "rig_v1_status": "deferred",
+        "notes": "Media content ingestion is deferred. Content-light hash-based media inventory may be possible but requires careful redaction."
+      },
+      {
+        "surface_name": "WhatsApp Business — Account Audit",
+        "prerequisites": "WhatsApp Business Account (WABA), linked to Facebook Business Manager. System user access token.",
+        "permissions_required": ["whatsapp_business_management"],
+        "safe_metadata_fields": ["id", "name", "status", "currency", "timezone"],
+        "forbidden_fields": ["phone_numbers, message_templates, conversations, messages"],
+        "rig_v1_status": "safe_read",
+        "notes": "Read-only WABA metadata. Requires Business Manager setup. Business verification likely required."
+      },
+      {
+        "surface_name": "WhatsApp Business — Messaging",
+        "prerequisites": "Approved WABA. Registered phone number. webhooks endpoint. System user token with messaging permission.",
+        "permissions_required": ["whatsapp_business_messaging"],
+        "safe_metadata_fields": [],
+        "forbidden_fields": ["ALL"],
+        "rig_v1_status": "refused",
+        "notes": "ALL messaging refused in v1. Never automate message sends. Template messages require pre-approval."
+      }
+    ],
+    "app_review_matrix": {
+      "review_triggers": "App review is triggered when the app requests any permission beyond public_profile and email. Each permission requires: (a) detailed written description of how the app uses it, (b) screencast demonstrating usage, (c) privacy policy URL, (d) platform-specific instructions. Review takes days to weeks. If review is not passed, permissions are revoked for non-role users.",
+      "permissions_requiring_review": [
+        "pages_read_engagement", "pages_manage_posts", "pages_read_user_content",
+        "instagram_basic", "instagram_content_publish", "instagram_manage_comments",
+        "instagram_manage_insights", "whatsapp_business_management",
+        "whatsapp_business_messaging", "pages_messaging"
+      ],
+      "business_verification_prerequisite": "Some permissions require business verification before app review can be completed. This includes most publishing/messaging permissions and WhatsApp Business access. Business verification requires submitting legal business documents.",
+      "testing_without_review": "In Development mode, app can be used by users with a Role on the app (Admin, Developer, Tester) without app review. Up to a limited number of test users can be added. This is the recommended path for Rig Relay development."
+    },
+    "webhook_security": {
+      "verification_token": "Meta uses a hub.verify_token challenge-response for webhook verification. The app registers a verify token in the App Dashboard. Meta sends a GET request with hub.mode=subscribe, hub.challenge, and hub.verify_token. The app must respond with the hub.challenge value only if the verify_token matches. This prevents unauthorized webhook subscription.",
+      "signature_validation": "Meta signs webhook payloads with X-Hub-Signature-256 header (SHA256 HMAC using app secret as key). The app must validate the signature before processing any payload. Without validation, an attacker could send forged webhook payloads. The app secret must never be logged or exposed.",
+      "appsecret_proof": "For Graph API calls, appsecret_proof can be added as a query parameter: appsecret_proof = HMAC-SHA256(access_token, app_secret). This provides an additional security layer and is required for some endpoints. The app secret must never be exposed.",
+      "replay_protection": "Standard webhook replay concerns apply: an attacker replaying a valid signed payload could cause duplicate processing. Recommended mitigations: (a) track processed webhook event IDs, (b) validate payload timestamps, (c) use idempotency keys where available. Meta docs may provide X-Hub-Signature guidance.",
+      "raw_payload_policy": "Raw webhook payloads MUST NOT be stored in canonical Rig artifacts. Payloads contain raw message content, sender phone numbers, timestamps, and media URLs. All webhook payloads must be quarantined when received, processed in memory only, and discarded after structured extraction. Never log raw payloads."
+    },
+    "whatsapp_constraints": {
+      "business_account_prerequisites": "WhatsApp Business Account (WABA) is required. WABA must be created via Facebook Business Manager. Requires a verified business (business verification). Linked to a Facebook app with whatsapp_business_management permission.",
+      "phone_number_requirements": "A phone number must be registered and verified with the WABA. Phone number cannot be used with any other WhatsApp client (personal or business app). Phone number verification via SMS or voice call. The phone number ID is used in API calls.",
+      "message_sending_rules": "Messages can only be sent to users who have opted in (messaged first, or opted in via a third-party channel with consent). Outbound business-initiated messages require pre-approved message templates. Free-form messages are only allowed within a 24-hour customer service window after the user's last message.",
+      "template_approval": "Marketing, utility, and authentication templates must be submitted to Meta for approval. Templates are reviewed for compliance with WhatsApp Business Policy and Commerce Policy. Rejection reasons include: promotional content violations, formatting errors, missing opt-out language. Templates can take hours to days to approve.",
+      "conversation_windows": "24-hour customer service window: free-form messages allowed. After 24 hours, only template messages are permitted. Conversation-based pricing: conversations are charged per 24-hour session. Different categories: marketing, utility, authentication, service.",
+      "business_verification": "Required for WhatsApp Business Platform access. Submit legal business documents. Processing time: days to weeks. Must match business legal name, address, and tax ID. Business verification is separate from app review."
+    },
+    "recommended_rig_posture": {
+      "safe_surfaces": [
+        "Facebook Pages — read Page metadata only (name, category, fan_count, link, about)",
+        "Instagram Graph — read Business Account profile metadata only (username, name, biography)",
+        "WhatsApp Business — read WABA metadata only (account ID, status, name)"
+      ],
+      "refused_surfaces": [
+        "Facebook Pages — publishing (posts, comments, replies, ads)",
+        "Instagram Graph — publishing (media, stories, reels)",
+        "Instagram Graph — comment moderation and replies",
+        "WhatsApp Business — all message sending",
+        "WhatsApp Business — template management",
+        "WhatsApp Business — webhook receive",
+        "Webhooks — all payload ingestion"
+      ],
+      "deferred_surfaces": [
+        "Instagram Graph — media metadata (requires careful redaction, differs from profile metadata)",
+        "Instagram Graph — insights (requires business verification)",
+        "Facebook Pages — insights (requires business verification)",
+        "WhatsApp Business — phone number metadata (may expose PII)"
+      ]
+    }
+  },
+  "cross_provider_recommendations": {
+    "google_risk_level": "medium",
+    "meta_risk_level": "restricted",
+    "safe_v1_live_read_candidates": [
+      "Google: OAuth tokeninfo (userinfo.email/profile) — lowest risk, no verification needed",
+      "Google: Gmail profile (gmail/v1/users/profile) — metadata only, no email bodies",
+      "Google: Gmail labels (gmail/v1/users/labels) — label structure, no content",
+      "Google: Calendar list (calendar/v3/calendarList) — calendar names, no events",
+      "Google: Drive files metadata (drive/v3/files) — file names/types, no content",
+      "Google: Tasks lists (tasks/v1/lists) — task list names, no task details",
+      "Meta: OAuth token debug/inspect (GET /debug_token) — verify token validity and scopes",
+      "Meta: Facebook Page profile (GET /{page-id}?fields=id,name,category,link,fan_count) — public metadata only"
+    ],
+    "deferred_lanes": [
+      "Google Workspace enterprise/admin DWD lane — requires domain-wide delegation, super admin setup",
+      "Google Gmail messages metadata — requires app verification, may expose PII in headers",
+      "Google Calendar events — restricted scope, requires security assessment",
+      "Google Drive file content — restricted scope, requires security assessment",
+      "Google People/Contacts — restricted scope, exposes PII",
+      "Meta Instagram Graph media metadata — requires careful redaction design",
+      "Meta Facebook Pages insights — requires business verification",
+      "Meta Instagram insights — requires business verification",
+      "Meta WhatsApp Business Setup — requires business verification and system user",
+      "Meta Business verification readiness — depends on user business documents"
+    ],
+    "required_future_schemas": [
+      "rig.google.oauth_token_inspection.v1.schema.json",
+      "rig.google.gmail_profile_audit.v1.schema.json",
+      "rig.google.calendar_list_audit.v1.schema.json",
+      "rig.google.drive_metadata_audit.v1.schema.json",
+      "rig.meta.facebook_page_profile_audit.v1.schema.json",
+      "rig.meta.instagram_profile_audit.v1.schema.json",
+      "rig.provider_unified_operating_picture.v1.schema.json"
+    ]
+  },
+  "citations": [
+    {
+      "source_url": "https://developers.google.com/identity/protocols/oauth2/native-app",
+      "title": "OAuth 2.0 for iOS & Desktop Apps",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official Google documentation. Covers PKCE, loopback redirect, refresh token behavior, code verifier/challenge, and desktop app OAuth flow. Confirmed: loopback supported for macOS/Linux/Windows desktop, deprecated for mobile. PKCE with S256 recommended. OOB deprecated."
+    },
+    {
+      "source_url": "https://developers.google.com/identity/protocols/oauth2/scopes",
+      "title": "OAuth 2.0 Scopes for Google APIs",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official complete scope reference. Documents all Google API scopes with their sensitivity classification. Sensitive scopes have 'sensitive' indicator in Cloud Console. Non-sensitive scopes: userinfo.email, userinfo.profile, openid. Restricted scopes: drive.readonly, calendar.readonly, contacts.readonly, gmail.readonly."
+    },
+    {
+      "source_url": "https://developers.google.com/identity/protocols/oauth2/service-account",
+      "title": "Using OAuth 2.0 for Server to Server Applications",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official service account documentation. JWT-based auth with RS256. Domain-wide delegation requires Workspace super admin, numeric client ID. Can take 24 hours to propagate. Impersonation via 'sub' claim. Covers iat/exp window, key management."
+    },
+    {
+      "source_url": "https://developers.google.com/workspace/guides/create-credentials",
+      "title": "Create access credentials — Google Workspace",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official Google Workspace credential setup guide. Covers API keys, OAuth client IDs for all platforms (Web, Android, iOS, Desktop, Chrome Extension, TV), and service account creation with domain-wide delegation setup instructions."
+    },
+    {
+      "source_url": "https://developers.google.com/identity/protocols/oauth2/policies",
+      "title": "OAuth 2.0 Policies",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official OAuth policies. Covers secure credential handling, redirect URI requirements, incremental auth limitations for native apps. Important: installed apps cannot keep secrets, must use PKCE."
+    },
+    {
+      "source_url": "https://tools.ietf.org/html/rfc8252",
+      "title": "OAuth 2.0 for Native Apps (RFC 8252)",
+      "accessed_at": "2026-05-20",
+      "provider": "ietf",
+      "notes": "IETF Best Current Practice for native app OAuth. Establishes PKCE requirement, loopback redirect best practices, and security considerations for apps that cannot keep client secrets."
+    },
+    {
+      "source_url": "https://tools.ietf.org/html/rfc7636",
+      "title": "Proof Key for Code Exchange (PKCE) — RFC 7636",
+      "accessed_at": "2026-05-20",
+      "provider": "ietf",
+      "notes": "Defines PKCE extension to OAuth 2.0. S256 code challenge method using SHA256. Code verifier: 43-128 chars of unreserved characters. Required for native/mobile apps."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/features-reference",
+      "title": "Meta App Types and Features Reference",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Covers Meta app types (Consumer, Business, etc.), development vs live mode, test users, app review triggers, and business verification requirements. NOTE: This URL was not directly accessible via automated fetch; information based on Meta developer platform architecture confirmed via developer community sources. Requires doc verification against current live docs."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/permissions/reference",
+      "title": "Meta Permissions Reference",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Complete reference for Facebook Login and Graph API permissions. Includes pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish, whatsapp_business_management, etc. NOTE: URL not directly accessible via automated fetch. Permission names and categories confirmed via developer community and Meta platform documentation summaries. Requires doc verification."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/instagram-api/getting-started",
+      "title": "Instagram Graph API — Getting Started",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Documents prerequisites: Instagram Professional/Business Account, Facebook Page linkage, Facebook App configuration, instagram_basic permission. Covers token generation and basic API usage. NOTE: URL not directly accessible via automated fetch. Prerequisites confirmed via developer community. Requires doc verification."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/whatsapp/cloud-api/overview",
+      "title": "WhatsApp Cloud API — Overview",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Documents WhatsApp Business Platform prerequisites: WABA, phone number, system user, business verification, message templates, webhook setup. NOTE: URL not directly accessible via automated fetch. Information based on public WhatsApp Business API documentation and developer forums. Requires doc verification."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/graph-api/overview",
+      "title": "Facebook Graph API Overview",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Core Facebook Graph API documentation. Covers token types, versioning, rate limits, permissions model, and common patterns. NOTE: URL not directly accessible via automated fetch. Core API architecture well-documented across developer community."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/whatsapp/cloud-api/guides/webhooks",
+      "title": "WhatsApp Cloud API — Webhooks Setup",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Documents webhook verification (hub.verify_token, hub.challenge), signature validation (X-Hub-Signature-256 with app secret HMAC-SHA256), and payload format. NOTE: URL not directly accessible via automated fetch. Webhook security pattern is standard and well-documented across Meta platforms."
+    },
+    {
+      "source_url": "https://developers.facebook.com/docs/graph-api/overview/rate-limiting",
+      "title": "Facebook Graph API Rate Limiting",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Documents platform rate limits: app-level and user-level rate limiting. Standard rate limits apply per access token. Graph API returns X-App-Usage and X-Ad-Account-Usage headers."
+    },
+    {
+      "source_url": "https://developers.facebook.com/tools/debug/accesstoken/",
+      "title": "Access Token Debugger",
+      "accessed_at": "2026-05-20",
+      "provider": "meta",
+      "notes": "Meta provides an access token debugger tool that inspects tokens (type, expiration, scopes, user ID). The corresponding API endpoint is GET /debug_token?input_token={token}&access_token={app_token}. Returns token metadata without exposing the raw token beyond what's needed."
+    },
+    {
+      "source_url": "https://developers.google.com/identity/protocols/oauth2/resources/best-practices",
+      "title": "OAuth 2.0 Best Practices — Google Identity",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Official Google OAuth security best practices. Covers token handling, code verifier usage, state parameter for CSRF protection, and client secret management."
+    },
+    {
+      "source_url": "https://support.google.com/cloud/answer/7454865",
+      "title": "Unverified apps — Google Cloud Help",
+      "accessed_at": "2026-05-20",
+      "provider": "google",
+      "notes": "Explains the unverified app warning, app verification process, and how to remove the warning. Test users can bypass the warning during development."
+    }
+  ],
+  "uncertainties": [
+    "Exact Meta permission names (pages_read_engagement, pages_manage_posts, instagram_basic, etc.) — confirmed via developer community but NOT verified against live Meta developer docs due to bot-blocking on developers.facebook.com. All Meta permission entries marked requires_doc_verification: true with confidence: medium.",
+    "Meta app review exact requirements per permission — which specific permissions require business verification as a prerequisite vs. can be reviewed independently. Marked as uncertain in meta_webhook_security and app_review_matrix.",
+    "Instagram Graph API: whether Facebook Page linkage is still strictly required or if Instagram Professional Accounts can now work independently via newer API versions. Developer community reports suggest linkage is still required.",
+    "WhatsApp Cloud API: exact conversation window behavior (24-hour) confirmed via community docs but needs verification against current WhatsApp Business Policy. Template approval timeline varies.",
+    "Google restricted scope security assessment: exact current cost and approved assessor list. Cited as typically $15K-$75K+ but actual cost depends on assessor and scope complexity.",
+    "Google Drive metadata.readonly scope: whether it is classified as sensitive or restricted in the latest scope classification. The docs suggest it's sensitive (requires verification but NOT security assessment), while drive.readonly is restricted.",
+    "Meta webhook replay protection: exact X-Hub-Signature timestamp handling and recommended replay window not documented in accessible references. Standard webhook replays apply but exact Meta guidance unknown.",
+    "Google Admin Directory scopes: exact sensitivity classification and whether they trigger restricted scope assessment. Deferred to enterprise lane regardless.",
+    "Meta rate limiting exact thresholds per endpoint — varies by app maturity and access level. Standard headers are provided but exact limits are not publicly documented."
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "remote_mutation": false,
+    "live_network_used_for_product": false,
+    "forbidden_keys_present": false
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "schema_version": "rig.provider.operating_picture_registry.v1",
+  "generated_at": "2026-05-20T08:04:28.928417+00:00",
+  "branch": "main",
+  "head": "5c7896bd2b2daa2cdfdd5fe8c4a7c58a96c797b5",
+  "content_light": true,
+  "remote_mutation": false,
+  "provider_count": 3,
+  "providers": [
+    {
+      "provider_id": "github",
+      "display_name": "GitHub",
+      "operating_picture_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_operating_picture_v1.v1.json",
+      "operating_picture_hash": "cae2f53038013414200967f38a71b89ce3d8978531a11b1d21d3483a817d7155",
+      "operating_picture_present": true,
+      "auth_status": "working",
+      "intake_status": "partial",
+      "packet_status": "present",
+      "surface_status": "partial",
+      "remote_mutation": false,
+      "public_release_ready": false,
+      "content_light": true,
+      "next_recommended_action": "run_packet_lane",
+      "risk_level": "medium",
+      "refused_surfaces_count": 3,
+      "ready_packet_count": 27,
+      "evidence_paths": [
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_audit_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_github_auth_result.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_intake_result.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_candidates_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_packets_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_packet_runner_plan_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/swift_codeql_advisory_parking_v1.v1.json"
+      ],
+      "stale_inputs": []
+    },
+    {
+      "provider_id": "google_workspace",
+      "display_name": "Google Workspace",
+      "operating_picture_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_operating_picture_v1.v1.json",
+      "operating_picture_hash": "237677068ca03b49e6e1e620bfe3433b4b59bdf3ea9d479f4d684e773969f0f6",
+      "operating_picture_present": true,
+      "auth_status": "unconfigured",
+      "intake_status": "refused",
+      "packet_status": "present",
+      "surface_status": "refused",
+      "remote_mutation": false,
+      "public_release_ready": false,
+      "content_light": true,
+      "next_recommended_action": "configure_oauth",
+      "risk_level": "high",
+      "refused_surfaces_count": 4,
+      "ready_packet_count": null,
+      "evidence_paths": [
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_capability_manifest.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_contract_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_google_auth_result.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_read_intake_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/integrations/google_workspace_scope_manifest_v1.v1.json"
+      ],
+      "stale_inputs": []
+    },
+    {
+      "provider_id": "meta",
+      "display_name": "Meta",
+      "operating_picture_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/meta_operating_picture_v1.v1.json",
+      "operating_picture_hash": "217505b531475d106296b6b334605652663d549a62f56a637b54c92ed38c2cea",
+      "operating_picture_present": true,
+      "auth_status": "unconfigured",
+      "intake_status": "partial",
+      "packet_status": "present",
+      "surface_status": "partial",
+      "remote_mutation": false,
+      "public_release_ready": false,
+      "content_light": true,
+      "next_recommended_action": "no_action",
+      "risk_level": "low",
+      "refused_surfaces_count": 0,
+      "ready_packet_count": null,
+      "evidence_paths": [
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/meta_permissions_inventory_v1.v1.json",
+        "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/meta_surface_audit_v1.v1.json"
+      ],
+      "stale_inputs": []
+    }
+  ],
+  "aggregate_summary": {
+    "providers_configured_count": 1,
+    "providers_readonly_ready_count": 2,
+    "providers_public_release_ready_count": 0,
+    "remote_mutation_enabled_count": 0,
+    "refused_surface_count": 7,
+    "stale_provider_count": 0,
+    "next_global_action": "gate_check: public_release_not_ready"
+  },
+  "provider_readiness_matrix": {
+    "github": {
+      "auth": "working",
+      "intake": "partial",
+      "packets": "present",
+      "surface": "partial",
+      "public_release_ready": false
+    },
+    "google_workspace": {
+      "auth": "unconfigured",
+      "intake": "refused",
+      "packets": "present",
+      "surface": "refused",
+      "public_release_ready": false
+    },
+    "meta": {
+      "auth": "unconfigured",
+      "intake": "partial",
+      "packets": "present",
+      "surface": "partial",
+      "public_release_ready": false
+    }
+  },
+  "release_gate_implications": {
+    "public_release_ready": false,
+    "blocking_provider_seams": [
+      "google_workspace: risk_level=high"
+    ],
+    "advisory_provider_seams": [
+      "github: risk_level=medium",
+      "github: dependabot intake remains refusal-safe until endpoint or permission coverage changes",
+      "github: secret_scanning_alerts and repository_security_advisories remain permission-gated surfaces",
+      "github: workflow-run and check-run live reads are still represented through local CI/CD evidence",
+      "google_workspace: gmail message body read remains refused until restricted scope assessment complete",
+      "google_workspace: drive file content ingestion deferred; metadata-only in v1",
+      "google_workspace: domain-wide delegation remains deferred to future lane",
+      "meta: Facebook Pages Graph API — read-only metadata profile audit not built; only env presence checked",
+      "meta: Instagram Graph API — read-only profile audit not built; business account linkage unverified",
+      "meta: WhatsApp Business Cloud — webhook receive and message send refused in v1; phone number and template management not audited"
+    ]
+  },
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 12,
+    "checked_artifact_count": 3
+  },
+  "remaining_seams": [
+    "GitHub: dependabot intake refused, secret_scanning gated",
+    "Google Workspace: restricted scopes refused, OAuth not configured",
+    "Meta: publishing/messaging refused, app review required, business verification required"
+  ]
+}

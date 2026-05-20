@@ -1,0 +1,64 @@
+{
+  "schema_version": "rig.github.security_packet_execution.v1",
+  "generated_at": "2026-05-20T07:59:53.261763+00:00",
+  "source_plan_path": "docs/json/governance/github_security_packet_runner_plan_v1.v1.json",
+  "source_plan_hash": "905696142ac0d3d9e836acbf74a37c844b82cd4dbd1f2f46e59926efc4cf7127",
+  "source_operating_picture_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_operating_picture_v1.v1.json",
+  "source_operating_picture_hash": "cae2f53038013414200967f38a71b89ce3d8978531a11b1d21d3483a817d7155",
+  "content_light": true,
+  "remote_mutation": false,
+  "local_mutation": false,
+  "refuse_local_apply": true,
+  "limit": 1,
+  "selected_count": 1,
+  "executed_count": 1,
+  "execution_results": [
+    {
+      "execution_id": "dc917022fdd1737c4cbc39bbbcf9056e135b3081e1da9fd8cb7d2a7228a826c6",
+      "packet_id": "00172fc90c7b61137f68c8df8d31306e539515772cf39f266ed4d7233983c319",
+      "candidate_id": "0168afb358a6cb508ad52857f373c0f186d834c66500088f2732ad87a0960447",
+      "route": "ready_for_investigation",
+      "source_surface": "code_scanning",
+      "severity_summary": {
+        "normalized_severity": "unknown",
+        "priority": "p1",
+        "source_alert_count": 27
+      },
+      "local_lane_type": "code_scanning_investigation",
+      "result_status": "inspected",
+      "remediation_recommendation": "Investigation complete. Code scanning alert metadata inspected. Human review recommended to classify true/false positive. No local remediation can be generated without source code inspection.",
+      "required_validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_security_packet_runner.py -v",
+        "uv run pytest tests/adversarial/test_github_security_packet_runner_redaction.py -v",
+        "uv run pytest tests/governance/test_github_security_packet_runner_artifact.py -v"
+      ],
+      "evidence_refs": [
+        "packet_id:00172fc90c7b61137f68c8df8d31306e539515772cf39f266ed4d7233983c319",
+        "candidate_id:0168afb358a6cb508ad52857f373c0f186d834c66500088f2732ad87a0960447"
+      ],
+      "source_artifact_hashes": {
+        "packet_id": "00172fc90c7b61137f68c8df8d31306e539515772cf39f266ed4d7233983c319"
+      },
+      "remote_mutation": false,
+      "local_mutation": false,
+      "content_light": true
+    }
+  ],
+  "summary": {
+    "selected_count": 1,
+    "executed_count": 1,
+    "needs_local_remediation_count": 0,
+    "needs_human_review_count": 0,
+    "permission_blocked_count": 0,
+    "advisory_only_count": 0,
+    "skipped_count": 0,
+    "next_recommended_action": "no_action"
+  },
+  "validation_commands": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/integrations/test_github_security_packet_execution.py -v",
+    "uv run pytest tests/adversarial/test_github_security_packet_execution_redaction.py -v",
+    "uv run pytest tests/governance/test_github_security_packet_execution_artifact.py -v"
+  ]
+}

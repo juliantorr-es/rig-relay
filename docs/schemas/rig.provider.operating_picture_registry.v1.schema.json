@@ -1,0 +1,285 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.provider.operating_picture_registry.v1.schema.json",
+  "title": "Provider Operating Picture Registry v1",
+  "description": "Cross-provider registry summarizing all provider operating pictures in one canonical, content-light artifact.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "provider_count",
+    "providers",
+    "aggregate_summary",
+    "provider_readiness_matrix",
+    "release_gate_implications",
+    "redaction_status",
+    "remaining_seams"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.provider.operating_picture_registry.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head": {
+      "type": ["string", "null"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "provider_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/provider_entry"
+      }
+    },
+    "aggregate_summary": {
+      "$ref": "#/definitions/aggregate_summary"
+    },
+    "provider_readiness_matrix": {
+      "$ref": "#/definitions/provider_readiness_matrix"
+    },
+    "release_gate_implications": {
+      "$ref": "#/definitions/release_gate_implications"
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "provider_entry": {
+      "type": "object",
+      "required": [
+        "provider_id",
+        "display_name",
+        "operating_picture_path",
+        "operating_picture_hash",
+        "operating_picture_present",
+        "auth_status",
+        "intake_status",
+        "packet_status",
+        "surface_status",
+        "remote_mutation",
+        "public_release_ready",
+        "content_light",
+        "next_recommended_action",
+        "risk_level",
+        "refused_surfaces_count",
+        "evidence_paths"
+      ],
+      "properties": {
+        "provider_id": {
+          "type": "string",
+          "enum": ["github", "google_workspace", "meta"]
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "operating_picture_path": {
+          "type": ["string", "null"]
+        },
+        "operating_picture_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "operating_picture_present": {
+          "type": "boolean"
+        },
+        "auth_status": {
+          "type": "string",
+          "enum": ["working", "configured", "unconfigured", "refused", "unknown"]
+        },
+        "intake_status": {
+          "type": "string",
+          "enum": ["present", "missing", "refused", "partial", "not_implemented"]
+        },
+        "packet_status": {
+          "type": "string",
+          "enum": ["present", "missing", "refused", "stale", "not_implemented"]
+        },
+        "surface_status": {
+          "type": "string",
+          "enum": ["present", "missing", "refused", "partial", "not_implemented"]
+        },
+        "remote_mutation": {
+          "type": "boolean"
+        },
+        "public_release_ready": {
+          "type": "boolean"
+        },
+        "content_light": {
+          "type": "boolean"
+        },
+        "next_recommended_action": {
+          "type": "string"
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "restricted"]
+        },
+        "refused_surfaces_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ready_packet_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "stale_inputs": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "aggregate_summary": {
+      "type": "object",
+      "required": [
+        "providers_configured_count",
+        "providers_readonly_ready_count",
+        "providers_public_release_ready_count",
+        "remote_mutation_enabled_count",
+        "refused_surface_count",
+        "stale_provider_count",
+        "next_global_action"
+      ],
+      "properties": {
+        "providers_configured_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providers_readonly_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providers_public_release_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "remote_mutation_enabled_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused_surface_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale_provider_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "next_global_action": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider_readiness_matrix": {
+      "type": "object",
+      "required": ["github", "google_workspace", "meta"],
+      "properties": {
+        "github": {
+          "type": "object",
+          "required": ["auth", "intake", "packets", "surface", "public_release_ready"],
+          "properties": {
+            "auth": {"type": "string"},
+            "intake": {"type": "string"},
+            "packets": {"type": "string"},
+            "surface": {"type": "string"},
+            "public_release_ready": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "google_workspace": {
+          "type": "object",
+          "required": ["auth", "intake", "packets", "surface", "public_release_ready"],
+          "properties": {
+            "auth": {"type": "string"},
+            "intake": {"type": "string"},
+            "packets": {"type": "string"},
+            "surface": {"type": "string"},
+            "public_release_ready": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "meta": {
+          "type": "object",
+          "required": ["auth", "intake", "packets", "surface", "public_release_ready"],
+          "properties": {
+            "auth": {"type": "string"},
+            "intake": {"type": "string"},
+            "packets": {"type": "string"},
+            "surface": {"type": "string"},
+            "public_release_ready": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "release_gate_implications": {
+      "type": "object",
+      "required": [
+        "public_release_ready",
+        "blocking_provider_seams",
+        "advisory_provider_seams"
+      ],
+      "properties": {
+        "public_release_ready": {"type": "boolean"},
+        "blocking_provider_seams": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "advisory_provider_seams": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count",
+        "checked_artifact_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0},
+        "checked_artifact_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}

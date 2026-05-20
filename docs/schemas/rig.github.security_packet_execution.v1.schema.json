@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_packet_execution.v1.schema.json",
+  "title": "GitHub Security Packet Execution v1",
+  "description": "Schema-valid execution results for GitHub security packet investigation. Read-only local inspection only. No remote mutation. No local mutation by default.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_plan_path",
+    "source_plan_hash",
+    "source_operating_picture_path",
+    "source_operating_picture_hash",
+    "content_light",
+    "remote_mutation",
+    "local_mutation",
+    "refuse_local_apply",
+    "limit",
+    "selected_count",
+    "executed_count",
+    "execution_results",
+    "summary",
+    "validation_commands"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_packet_execution.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_plan_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_plan_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_operating_picture_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_operating_picture_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "local_mutation": {
+      "type": "boolean"
+    },
+    "refuse_local_apply": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "selected_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "executed_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "execution_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "execution_id",
+          "packet_id",
+          "candidate_id",
+          "route",
+          "source_surface",
+          "severity_summary",
+          "local_lane_type",
+          "result_status",
+          "remediation_recommendation",
+          "required_validation_commands",
+          "evidence_refs",
+          "source_artifact_hashes",
+          "remote_mutation",
+          "local_mutation",
+          "content_light"
+        ],
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "packet_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "candidate_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "route": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_surface": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+          },
+          "severity_summary": {
+            "type": "object",
+            "properties": {
+              "normalized_severity": { "type": "string" },
+              "priority": { "type": "string" },
+              "source_alert_count": { "type": "integer" }
+            },
+            "required": ["normalized_severity", "priority"]
+          },
+          "local_lane_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result_status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "inspected",
+              "needs_local_remediation",
+              "advisory_only",
+              "permission_blocked",
+              "needs_human_review",
+              "skipped"
+            ]
+          },
+          "remediation_recommendation": {
+            "type": "string"
+          },
+          "required_validation_commands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "source_artifact_hashes": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "local_mutation": {
+            "type": "boolean"
+          },
+          "content_light": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "selected_count",
+        "executed_count",
+        "needs_local_remediation_count",
+        "needs_human_review_count",
+        "permission_blocked_count",
+        "advisory_only_count",
+        "skipped_count",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "selected_count": { "type": "integer" },
+        "executed_count": { "type": "integer" },
+        "needs_local_remediation_count": { "type": "integer" },
+        "needs_human_review_count": { "type": "integer" },
+        "permission_blocked_count": { "type": "integer" },
+        "advisory_only_count": { "type": "integer" },
+        "skipped_count": { "type": "integer" },
+        "next_recommended_action": {
+          "type": "string",
+          "enum": [
+            "create_local_patch_plan",
+            "request_permission",
+            "mark_advisory",
+            "run_more_packets",
+            "no_action"
+          ]
+        }
+      }
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}
