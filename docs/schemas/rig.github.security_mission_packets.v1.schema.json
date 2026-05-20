@@ -1,0 +1,358 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_mission_packets.v1.schema.json",
+  "title": "GitHub Security Mission Packets v1",
+  "description": "Deterministic local mission packet index and per-packet artifact for ready GitHub security mission candidates.",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/mission_packet_index"
+    },
+    {
+      "$ref": "#/definitions/mission_packet"
+    }
+  ],
+  "definitions": {
+    "mission_packet": {
+      "type": "object",
+      "required": [
+        "packet_id",
+        "packet_path",
+        "mission_candidate_id",
+        "source_candidate_id",
+        "source_surface",
+        "mission_type",
+        "route",
+        "priority",
+        "normalized_severity",
+        "recommended_action",
+        "proposed_next_action",
+        "investigation_goal",
+        "investigation_constraints",
+        "evidence_refs",
+        "evidence_hashes",
+        "source_alert_count",
+        "content_light",
+        "remote_mutation",
+        "mutation_allowed",
+        "requires_human_review",
+        "allowed_next_steps",
+        "forbidden_next_steps",
+        "acceptance_criteria",
+        "stop_conditions"
+      ],
+      "properties": {
+        "packet_id": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "packet_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission_candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_surface": {
+          "type": "string",
+          "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+        },
+        "mission_type": {
+          "type": "string",
+          "enum": [
+            "dependency_update_plan",
+            "investigate_security_alert",
+            "permission_enablement_plan",
+            "advisory_record",
+            "refusal_record",
+            "unknown_security_work"
+          ]
+        },
+        "route": {
+          "type": "string",
+          "enum": [
+            "ready_for_dependency_update",
+            "ready_for_investigation",
+            "permission_required",
+            "advisory_only",
+            "blocked_insufficient_evidence",
+            "blocked_refused_surface",
+            "noop"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["p0", "p1", "p2", "p3", "p4"]
+        },
+        "normalized_severity": {
+          "type": "string"
+        },
+        "recommended_action": {
+          "type": "string"
+        },
+        "proposed_next_action": {
+          "type": "string"
+        },
+        "investigation_goal": {
+          "type": "string"
+        },
+        "investigation_constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_hashes": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "source_alert_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_light": {
+          "type": "boolean",
+          "const": true
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "mutation_allowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "requires_human_review": {
+          "type": "boolean",
+          "const": true
+        },
+        "allowed_next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stop_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_hashes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "mission_packet_index": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "generated_at_utc",
+        "source_artifact_path",
+        "source_artifact_hash",
+        "packet_dir",
+        "content_light",
+        "remote_mutation",
+        "packet_count",
+        "excluded_candidate_count",
+        "excluded_by_route",
+        "packets",
+        "route_summary",
+        "risk_summary",
+        "summary"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.github.security_mission_packets.v1"
+        },
+        "generated_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_artifact_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_artifact_hash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "packet_dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_light": {
+          "type": "boolean",
+          "const": true
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "packet_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_by_route": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "packets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/mission_packet"
+          }
+        },
+        "route_summary": {
+          "type": "object",
+          "required": [
+            "selection_mode",
+            "input_by_route",
+            "selected_by_route",
+            "selected_route"
+          ],
+          "properties": {
+            "selection_mode": {
+              "type": "string",
+              "enum": ["ready_only"]
+            },
+            "input_by_route": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "selected_by_route": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "selected_route": {
+              "type": "string",
+              "enum": ["ready_for_investigation"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "risk_summary": {
+          "type": "object",
+          "required": [
+            "content_light",
+            "remote_mutation",
+            "mutation_allowed",
+            "requires_human_review",
+            "ready_candidate_count",
+            "advisory_candidate_count",
+            "permission_required_candidate_count"
+          ],
+          "properties": {
+            "content_light": {
+              "type": "boolean",
+              "const": true
+            },
+            "remote_mutation": {
+              "type": "boolean",
+              "const": false
+            },
+            "mutation_allowed": {
+              "type": "boolean",
+              "const": false
+            },
+            "requires_human_review": {
+              "type": "boolean",
+              "const": true
+            },
+            "ready_candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "advisory_candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "permission_required_candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "packet_count",
+            "excluded_candidate_count",
+            "excluded_by_route",
+            "source_artifact_hash",
+            "remote_mutation"
+          ],
+          "properties": {
+            "packet_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "excluded_candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "excluded_by_route": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "source_artifact_hash": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            },
+            "remote_mutation": {
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,2397 @@
+{
+  "schema_version": "rig.github.security_mission_packets.v1",
+  "generated_at_utc": "2026-05-20T06:12:52.299960+00:00",
+  "source_artifact_path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
+  "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+  "packet_dir": ".build/rig-relay/security-mission-packets",
+  "content_light": true,
+  "remote_mutation": false,
+  "packet_count": 27,
+  "excluded_candidate_count": 17,
+  "excluded_by_route": {
+    "advisory_only": 15,
+    "permission_required": 2
+  },
+  "packets": [
+    {
+      "packet_id": "00172fc90c7b61137f68c8df8d31306e539515772cf39f266ed4d7233983c319",
+      "packet_path": ".build/rig-relay/security-mission-packets/51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539.v1.json",
+      "mission_candidate_id": "0168afb358a6cb508ad52857f373c0f186d834c66500088f2732ad87a0960447",
+      "source_candidate_id": "51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:0168afb358a6cb508ad52857f373c0f186d834c66500088f2732ad87a0960447",
+        "source_candidate_id:51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "39ca434d4cae5453cac4c6135eefd751391bfe6cd43eef4d52f4434ef195f28e",
+        "source_candidate_id_hash": "5299ecf57402d0127d782ad6447af1bc2670b37da7d8246400af81284ddf3d4c",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "2949f1a3c889e7150647240a5f873f1eb7cad9aa257fa21f1f4ad6d5f3f88765",
+      "packet_path": ".build/rig-relay/security-mission-packets/86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b.v1.json",
+      "mission_candidate_id": "1454e982a6f9159afdc8f1b6320aec8f6264642d0990158173966d900ced8565",
+      "source_candidate_id": "86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:1454e982a6f9159afdc8f1b6320aec8f6264642d0990158173966d900ced8565",
+        "source_candidate_id:86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "c8a27914e48c183c0033305a8450da308c6ff91b175d20ff4b6f3dde79387e04",
+        "source_candidate_id_hash": "c80ca18fbc059aeeb8b2af08d9a5642096ba640f7245cb3fd393cc5a3a8799cf",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "3dc1ef491517963991e0bef8add77212177431717f5be6d03cf4d89bc76f3d08",
+      "packet_path": ".build/rig-relay/security-mission-packets/39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509.v1.json",
+      "mission_candidate_id": "aa3ab801ea3c7f69668b0fc2b1614c651923441cfd863b9a8ef4f414cf57ad33",
+      "source_candidate_id": "39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:aa3ab801ea3c7f69668b0fc2b1614c651923441cfd863b9a8ef4f414cf57ad33",
+        "source_candidate_id:39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "d7213b6d8b563f54131391c4624fc3179fc0878edd2420710d8e55427c714f7d",
+        "source_candidate_id_hash": "6ed541fb3426e17c24271b801c0ec3afc30a8ca8d0d02f19d4d50d49f8cbd8a7",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "41c982bad23bafc7f71d566c828bfdb24232bc709cce16ccdd04b95877115754",
+      "packet_path": ".build/rig-relay/security-mission-packets/4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7.v1.json",
+      "mission_candidate_id": "8fdc38684f90a4d4d39ec1f201781e95053b6111ba514eb078ddf6b171c38b8c",
+      "source_candidate_id": "4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:8fdc38684f90a4d4d39ec1f201781e95053b6111ba514eb078ddf6b171c38b8c",
+        "source_candidate_id:4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "36372cb34076ae9985532ada3efb77b242a05ba014f5cc7ec4070b7a1d919087",
+        "source_candidate_id_hash": "62692a9ff32728d5e872dfea59082e611d4646691ba7f6ddc57311df12578772",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "44986b2e90fd5cf82a15844a6958fa3913f763fd1fd4116d89f9fbaf0738368b",
+      "packet_path": ".build/rig-relay/security-mission-packets/c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345.v1.json",
+      "mission_candidate_id": "4f69113fa7ceb377f6b5d965d65414b25be390601b74ffef999591ffe442d147",
+      "source_candidate_id": "c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:4f69113fa7ceb377f6b5d965d65414b25be390601b74ffef999591ffe442d147",
+        "source_candidate_id:c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "94380e75010de595cdab02ed1098d28e64ef49eed16e180169c0433277c9ec02",
+        "source_candidate_id_hash": "9e9b0e504f85e23abe11050952972d641ba9624e952deae9ad2cf740f061fd2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "4e3f359d970d1318a79e52486f1e4956643d3d1d500327d80f0d5405183f8e27",
+      "packet_path": ".build/rig-relay/security-mission-packets/0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa.v1.json",
+      "mission_candidate_id": "a1f30a9005b60e43f83fd6fce6483f9ecd3251547eef4ea86fdbe5d1029d63c3",
+      "source_candidate_id": "0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:a1f30a9005b60e43f83fd6fce6483f9ecd3251547eef4ea86fdbe5d1029d63c3",
+        "source_candidate_id:0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "461f72f48084aa40cbf273cb2a35bcfa3f7c38ad7394853403ac4b5e92526b9a",
+        "source_candidate_id_hash": "09c8611e26e883f4adcc5b4036036d87eed6d1fbf572beb03cdf831e1c3b84b6",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "5991d81835cbad6bf390acc7b7bcba0a826ec7e81b81c18137c8d0b2bf5c4595",
+      "packet_path": ".build/rig-relay/security-mission-packets/af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618.v1.json",
+      "mission_candidate_id": "002a6485496bbbc8309435b668a4c9abb8b9e3f3b13a8db76100981dd8a04cc6",
+      "source_candidate_id": "af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:002a6485496bbbc8309435b668a4c9abb8b9e3f3b13a8db76100981dd8a04cc6",
+        "source_candidate_id:af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "5ec42cdddb567805a7212ce31db475b37c622b2b4e724818e262039b5796b06b",
+        "source_candidate_id_hash": "e78e5ca7f9306e39f740867a21b61c7d08b78341cd6b94d6407fcbc293636223",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "60e164238d48c9ff0065c393328fb33b19f423b82d33f7cfff3d80c907fb0efd",
+      "packet_path": ".build/rig-relay/security-mission-packets/d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28.v1.json",
+      "mission_candidate_id": "aae67d9b0bfe5edebf7f80e82fb3858054d803a73f027676c0497ea34c66600c",
+      "source_candidate_id": "d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:aae67d9b0bfe5edebf7f80e82fb3858054d803a73f027676c0497ea34c66600c",
+        "source_candidate_id:d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "356e128801acbc2af51b403fc6f7a5d9ef38fc2f484850c7489f9565f3bdc26e",
+        "source_candidate_id_hash": "36dcb0ed3e82bec601e57f1bcbae5f98404cd731be1e7fc4083267106a236920",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "67702be5cf45b8500bcb9904b3ee431f7b0a7712db5f746d5f650ea2ff596983",
+      "packet_path": ".build/rig-relay/security-mission-packets/933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6.v1.json",
+      "mission_candidate_id": "5a1b5ebcca7b70fcf1be1402689e0f9deddeaf346c2bc96694e4ce3ac84ea8ca",
+      "source_candidate_id": "933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:5a1b5ebcca7b70fcf1be1402689e0f9deddeaf346c2bc96694e4ce3ac84ea8ca",
+        "source_candidate_id:933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "834646051c2543026b4a9fb4567b1f3ef449d68040e31f3f2a76dbe70876968c",
+        "source_candidate_id_hash": "e65c204bee2632ae7714af80fa1062608c86d4894862744f4f9ee878431eb4b0",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "67cfb8beb217e525c2c431e177473edce173219a9b155e9cacdf95ccaad6144e",
+      "packet_path": ".build/rig-relay/security-mission-packets/33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb.v1.json",
+      "mission_candidate_id": "a095311bb5b0c2d241cae9adcf89dc2263080e5986e6fd358792452299da074a",
+      "source_candidate_id": "33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:a095311bb5b0c2d241cae9adcf89dc2263080e5986e6fd358792452299da074a",
+        "source_candidate_id:33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "0c89f15c5bb0bdbfa63dfaa40557413075b5c362c191a90e1a6c4f7ccac2ab6d",
+        "source_candidate_id_hash": "f53e527ac1c6de4c0aba5391c741d684adcb1aa0992c764719597a9297ec3adc",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "695f14b7239a18b43aca2b2d101f989e2c33a41b1cffd533c21db869bfd2729d",
+      "packet_path": ".build/rig-relay/security-mission-packets/ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31.v1.json",
+      "mission_candidate_id": "d2c2df62eb8de152fc340cc41f1e35be76cbdbeae3acadf5913c74b0271ab045",
+      "source_candidate_id": "ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:d2c2df62eb8de152fc340cc41f1e35be76cbdbeae3acadf5913c74b0271ab045",
+        "source_candidate_id:ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "20cdd347ae151237c3fd458c605067429a5e29f6af1388f2dcbc59095d349a35",
+        "source_candidate_id_hash": "ac5577c967b3896761d5f818a81eb84f49dcc5a78227c72c5109aed915c7adcb",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "787deacef2a3244d6698249bf72352bfb6bf521a60589dab33044d433c49f293",
+      "packet_path": ".build/rig-relay/security-mission-packets/f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf.v1.json",
+      "mission_candidate_id": "f603bcf1bbce3fcbba746fa986fcb7008bbfc86966b021ef62e91a61d9cdd5d3",
+      "source_candidate_id": "f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:f603bcf1bbce3fcbba746fa986fcb7008bbfc86966b021ef62e91a61d9cdd5d3",
+        "source_candidate_id:f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "f58274e42dfd6e52197a4b4bfbe4770573a4508dcc4967ca2e39b2edfbe0dafd",
+        "source_candidate_id_hash": "7dd344e99cf62adeebb9bd1204a306724035bf560112ac50d03fe3499f02242c",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "a22b2771301c16a08ff3b68fd9c949c1a1e8ff0f86cc4a2f0f760e76a18b3532",
+      "packet_path": ".build/rig-relay/security-mission-packets/74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830.v1.json",
+      "mission_candidate_id": "70739df70280d198cacec133fa07609d91c92de742184f8fa34b2f2ba74c00af",
+      "source_candidate_id": "74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:70739df70280d198cacec133fa07609d91c92de742184f8fa34b2f2ba74c00af",
+        "source_candidate_id:74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "b2d43d00b75f91be436ffa34de983f5c7a4f7c1d4afbda5d862609ae2a4583cb",
+        "source_candidate_id_hash": "ca43f2ec82538c16e624aa11d373fcef180f29ae281af216ecd5a6d1b49fa794",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "bd8d97d91761c88fa8b786775906b774abe0e14418a0a4cf2083f0e942308653",
+      "packet_path": ".build/rig-relay/security-mission-packets/cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028.v1.json",
+      "mission_candidate_id": "535eb212bcdca4bdb5051782eed718507c488e719c6fabc4fef2e2fd3a69a133",
+      "source_candidate_id": "cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:535eb212bcdca4bdb5051782eed718507c488e719c6fabc4fef2e2fd3a69a133",
+        "source_candidate_id:cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "744981a3649cc5b37bd3965225caf2fbf6a3968211279128e3da6f5d7e28f8ca",
+        "source_candidate_id_hash": "048220923929993597b9ef570cd148a1d667ce1d03637cd778ee8a494fb9d7ce",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "c57f0ff1b7302db35b003e6c07678bea8f2ef0b2c25c4e149124abd8dea87aad",
+      "packet_path": ".build/rig-relay/security-mission-packets/f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac.v1.json",
+      "mission_candidate_id": "d4d15a3fda19f9f75a709b3a54cf50dbf8585a885f0c58cde6d838b1614dd3ac",
+      "source_candidate_id": "f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:d4d15a3fda19f9f75a709b3a54cf50dbf8585a885f0c58cde6d838b1614dd3ac",
+        "source_candidate_id:f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "5a4ec1e7b87059f0ce454aa78e59c0527ce8d668cc0b1b74d20e51073b3cb2ba",
+        "source_candidate_id_hash": "fe838d50032f09827c41b9a53a60241338b30308f8d844c92f78b35124268395",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "caa310f151c1d47f7c81257c36a4f341ca5e37f16458d5c9c86163ee49ac9768",
+      "packet_path": ".build/rig-relay/security-mission-packets/3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858.v1.json",
+      "mission_candidate_id": "3824de1077655d50de7c171881069ed278e04c1efa62ec7b4ba68fe3e37095cc",
+      "source_candidate_id": "3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:3824de1077655d50de7c171881069ed278e04c1efa62ec7b4ba68fe3e37095cc",
+        "source_candidate_id:3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "7fb945e45b85e23edc24d5886250c7b8316326addfe9f36d23186173fbc2c137",
+        "source_candidate_id_hash": "afcab20e86da6423f90bbb3df8af550f30bedb13ed8b630e1ad0d28f74f2b062",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "cc120123095503d4f7872b7eb214fc0f56ebdf5a611f7e1b57d6fbd541827752",
+      "packet_path": ".build/rig-relay/security-mission-packets/1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2.v1.json",
+      "mission_candidate_id": "02bf76993f73e11c92776c9a5adb73d28bd3a6b5e3076fcf54c5719eabbcab38",
+      "source_candidate_id": "1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:02bf76993f73e11c92776c9a5adb73d28bd3a6b5e3076fcf54c5719eabbcab38",
+        "source_candidate_id:1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "7a0a7d8103680a73e691f58319ff07aa3f3ac208bb1def114cf4c2c1ccd66468",
+        "source_candidate_id_hash": "12692a56bac5aa28bb24689af5610c308cb9fd1e07032e2b7652dfa2aeb4f9f3",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "cc9c03ece1b9cafe7d6bc607d5ae07f49410286f55680065a4c93a05167daa6a",
+      "packet_path": ".build/rig-relay/security-mission-packets/9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d.v1.json",
+      "mission_candidate_id": "11f73c9f0da099a76f2359f9d6b07f241cd1c35d313f3c2347f3fc9b72250c6b",
+      "source_candidate_id": "9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:11f73c9f0da099a76f2359f9d6b07f241cd1c35d313f3c2347f3fc9b72250c6b",
+        "source_candidate_id:9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "68961dbbcbf73dafc05200d5046f978df44de88a067f4826cd4893fcdc65856d",
+        "source_candidate_id_hash": "299a772e16de68b9d825f69051752a0a0ba9535081ac596323361c341af630dc",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "ccb0a5b0338eb2136344b9579ba2d7feb558f44880699f8d523c18dd50d8702b",
+      "packet_path": ".build/rig-relay/security-mission-packets/3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282.v1.json",
+      "mission_candidate_id": "18de49c4d1962890f32cd2c0c5cb79aeb79b8d73a1d7d505cff1e3047a6911e8",
+      "source_candidate_id": "3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:18de49c4d1962890f32cd2c0c5cb79aeb79b8d73a1d7d505cff1e3047a6911e8",
+        "source_candidate_id:3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "cc278ad6c94eb7a6c0f17aa7dc6fe3a04ceb78637a2344107e787b91867d9154",
+        "source_candidate_id_hash": "34310dff167bc208a262f2c33c94bff32a4f3ca54a0ca7093c87d3cc49d2f0ab",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "cd7090ca47e9992d5022c9b4d3d158597bc6b3baa15e5684143bfb3ab306684e",
+      "packet_path": ".build/rig-relay/security-mission-packets/222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed.v1.json",
+      "mission_candidate_id": "5a14aa4d3919f4aade74aedcf70222207ed831eef00fc1ecb83c6b4b6e4df9a0",
+      "source_candidate_id": "222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:5a14aa4d3919f4aade74aedcf70222207ed831eef00fc1ecb83c6b4b6e4df9a0",
+        "source_candidate_id:222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "5f6ff6b22e3477078504ca451792f1928c4b8004d432c83eba7dc6e361c5ad91",
+        "source_candidate_id_hash": "efbdc1eb4e66ed1d804b0ae6db6f9bb28dae541da4f813b36630f140ac8b9c34",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "dcc81a19f791ed2daa23a50f85f202236c09410489672cbca5639ed01a60eacf",
+      "packet_path": ".build/rig-relay/security-mission-packets/dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3.v1.json",
+      "mission_candidate_id": "ad6d5f2821d78b94318054d65d833a5ced2312c748128054326f572d1453ff41",
+      "source_candidate_id": "dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:ad6d5f2821d78b94318054d65d833a5ced2312c748128054326f572d1453ff41",
+        "source_candidate_id:dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "6d39cd6a782da09aa629c8f372aee25f2f3372e52c051c8aea6f78de59d0bd40",
+        "source_candidate_id_hash": "e38792779163ef9a03fdc514c5a3ca0b6b6134d31b6422a7b10ac9c365f592e2",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "dd31502232d94d17fef91ca1af6148f1a7b3c70b62517e824ba892334c81f767",
+      "packet_path": ".build/rig-relay/security-mission-packets/c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b.v1.json",
+      "mission_candidate_id": "7ec123a8e08f6ae670c7fac5c11549f4bf61505ba4257ea407c2c85d92b82764",
+      "source_candidate_id": "c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:7ec123a8e08f6ae670c7fac5c11549f4bf61505ba4257ea407c2c85d92b82764",
+        "source_candidate_id:c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "e891c677647a77db142d10c31c279b60e0fe5929d14bc46b61e1a0a90ff474c1",
+        "source_candidate_id_hash": "a30052018b3dfa1181be60dcf3c44df018b5d4a5aed878b683dafb032ce924b0",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "df682f979bd46bf4e9e5e9463b1fb3b1412fa43d7e3a161edea97ab863d11871",
+      "packet_path": ".build/rig-relay/security-mission-packets/fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3.v1.json",
+      "mission_candidate_id": "81af8fd25dc6eb8d1c633d805060a62251e0d72cfc273d7693fa29969bf7d7b9",
+      "source_candidate_id": "fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:81af8fd25dc6eb8d1c633d805060a62251e0d72cfc273d7693fa29969bf7d7b9",
+        "source_candidate_id:fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "3af8f9a1202d06c16309027ea9c257d587fd7049661c21f693878abba4b60945",
+        "source_candidate_id_hash": "6a99384bc82ca2955c32d187c97178ec0072004514d78b8e8fc242fe1d29a7e0",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "e940e1b0ff79e7a26ac34afa432785844ed4e699752dab2bed03ab50f9d045cb",
+      "packet_path": ".build/rig-relay/security-mission-packets/7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda.v1.json",
+      "mission_candidate_id": "88264b8010a34a74a5cdccf205d9af11608c844f85a916e4447e5b7b6ac2aaab",
+      "source_candidate_id": "7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:88264b8010a34a74a5cdccf205d9af11608c844f85a916e4447e5b7b6ac2aaab",
+        "source_candidate_id:7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "b751effc774fef1d3f0678c4cc6810e2d0cae3043f3f8bdc4a8ee95c97757192",
+        "source_candidate_id_hash": "1e226119843bb99c07e7ff55f5cdc90d6f4fbd03b3e95a165f578d22df7b971a",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "eb82b4faa11570a426a203aeee94f20f013392122de67635179a15cb9de6e45e",
+      "packet_path": ".build/rig-relay/security-mission-packets/f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f.v1.json",
+      "mission_candidate_id": "c9f92bf5aaa7efcf67d5c7407df57b53d234e6119ff021951ae654f677179849",
+      "source_candidate_id": "f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:c9f92bf5aaa7efcf67d5c7407df57b53d234e6119ff021951ae654f677179849",
+        "source_candidate_id:f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "914d750a6a5c5835d5b22b59d295b5592eaa3606d5c43d78101d88c5135ec7a3",
+        "source_candidate_id_hash": "f7db7afa791eac65d83577d9e3f4222138aa9e26b71b2651ea316519198f9861",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "eca39d9c1c1da8f97d3262aa7c566c1e139014419b8eb218bef9a9f826041a78",
+      "packet_path": ".build/rig-relay/security-mission-packets/2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b.v1.json",
+      "mission_candidate_id": "fb9874cc72af69995395ffad6171a603b655c294a9c5758cfa24ecf2cca92602",
+      "source_candidate_id": "2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:fb9874cc72af69995395ffad6171a603b655c294a9c5758cfa24ecf2cca92602",
+        "source_candidate_id:2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "43acde3d66b61d2134ecd1058bfe318b5c597c34fc67a90becb351076e33a5b7",
+        "source_candidate_id_hash": "8af7dbf89303b0b045be9d7b812d71ed7764feed127768dbb8530704555a1a87",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    },
+    {
+      "packet_id": "f0ec76fcd0b2d7e3c318692216470ee72d022d32593668053dd4ddf3b35c8da0",
+      "packet_path": ".build/rig-relay/security-mission-packets/0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009.v1.json",
+      "mission_candidate_id": "97efc3d879da03d0130052ee88bb0aeb4e0c98999849c18e23bf14f744d20506",
+      "source_candidate_id": "0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009",
+      "source_surface": "code_scanning",
+      "mission_type": "investigate_security_alert",
+      "route": "ready_for_investigation",
+      "priority": "p1",
+      "normalized_severity": "unknown",
+      "recommended_action": "unknown",
+      "proposed_next_action": "inspect_code_scanning_alert",
+      "investigation_goal": "Investigate grouped code-scanning alerts for candidate 0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009. Determine whether it is true positive, false positive, duplicate, or advisory-only.",
+      "investigation_constraints": [
+        "content_light only",
+        "read-only local investigation",
+        "no remote mutation",
+        "no raw alert bodies or source snippets",
+        "no GitHub issue, PR, or branch creation"
+      ],
+      "evidence_refs": [
+        "mission_candidate_id:97efc3d879da03d0130052ee88bb0aeb4e0c98999849c18e23bf14f744d20506",
+        "source_candidate_id:0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009",
+        "route_group_id:ff8e59c1f99b92273f8edb8a46c09a44154f28b8c0377fa068040b74c003729b",
+        "source_artifact_hash:1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      ],
+      "evidence_hashes": {
+        "mission_candidate_id_hash": "387853b3bafe14935fb0b7dfb9f4b80eb2c2409a922249b4ffefe4708376ae79",
+        "source_candidate_id_hash": "22ef93f5efc13be1b12a877ace3ba47042fd492a7d9ba6ca369bb6e9d0e7eee9",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+        "mission_type_hash": "d63c96ed2216ab48399f3195f3c0eab56e5b43fd3f0d4c302d167eac34cc710a",
+        "route_hash": "7c7e348118ab80e852eaa189f4fc510c0116fac647d29d890d6b7b605c7abd85",
+        "priority_hash": "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+        "normalized_severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "source_alert_count_hash": "670671cd97404156226e507973f2ab8330d3022ca96e0c93bdbdb320c41adcaf"
+      },
+      "source_alert_count": 27,
+      "content_light": true,
+      "remote_mutation": false,
+      "mutation_allowed": false,
+      "requires_human_review": true,
+      "allowed_next_steps": [
+        "inspect local artifact evidence",
+        "inspect repository files manually/read-only",
+        "run targeted tests if needed",
+        "classify finding",
+        "propose remediation plan",
+        "produce local investigation receipt"
+      ],
+      "forbidden_next_steps": [
+        "create GitHub issue",
+        "create PR",
+        "create branch",
+        "dismiss alert",
+        "request autofix",
+        "commit autofix",
+        "edit source files",
+        "edit workflows",
+        "modify dependencies",
+        "upload SARIF",
+        "perform remote mutation",
+        "persist raw credential material or raw alert bodies"
+      ],
+      "acceptance_criteria": [
+        "finding classification recorded",
+        "evidence references checked",
+        "recommended next action selected",
+        "no mutation performed",
+        "content-light receipt emitted",
+        "if remediation is needed, a separate governed mission is proposed rather than performed"
+      ],
+      "stop_conditions": [
+        "evidence insufficient",
+        "candidate maps to permission-required surface",
+        "candidate requires write permission",
+        "candidate requires network/live GitHub mutation",
+        "candidate would require persisting raw code snippet or credential material",
+        "candidate is duplicate/advisory-only"
+      ],
+      "source_hashes": {
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+        "route_group_id_hash": "39772dbac3b6905b9daedfe9de90f312cb2f05cebcac80ea9f23556aa3ea5d5c",
+        "route_group_key_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc"
+      }
+    }
+  ],
+  "route_summary": {
+    "selection_mode": "ready_only",
+    "input_by_route": {
+      "advisory_only": 15,
+      "permission_required": 2,
+      "ready_for_investigation": 27
+    },
+    "selected_by_route": {
+      "ready_for_investigation": 27
+    },
+    "selected_route": "ready_for_investigation"
+  },
+  "risk_summary": {
+    "content_light": true,
+    "remote_mutation": false,
+    "mutation_allowed": false,
+    "requires_human_review": true,
+    "ready_candidate_count": 27,
+    "advisory_candidate_count": 15,
+    "permission_required_candidate_count": 2
+  },
+  "summary": {
+    "packet_count": 27,
+    "excluded_candidate_count": 17,
+    "excluded_by_route": {
+      "advisory_only": 15,
+      "permission_required": 2
+    },
+    "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+    "remote_mutation": false
+  }
+}

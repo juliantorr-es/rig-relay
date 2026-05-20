@@ -90,6 +90,11 @@ from rig_relay.integrations.github_provider._security_mission_candidates import 
     route_github_security_work_items,
     route_github_security_work_items_from_path,
 )
+from rig_relay.integrations.github_provider._security_mission_packets import (
+    GitHubSecurityMissionPacketError,
+    project_github_security_mission_packets,
+    project_github_security_mission_packets_from_path,
+)
 from rig_relay.integrations.github_provider._security_work_items import (
     GitHubSecurityWorkItemProjectionError,
     project_github_security_work_items,
@@ -123,6 +128,7 @@ __all__ = [
     "GitHubRepositoryPermissionGrant",
     "GitHubSecurityIntakeCollector",
     "GitHubSecurityMissionCandidateRoutingError",
+    "GitHubSecurityMissionPacketError",
     "GitHubSecurityWorkItemProjectionError",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
@@ -139,6 +145,8 @@ __all__ = [
     "load_github_capability_manifest",
     "normalize_oauth_scope_to_app_permission",
     "permission_satisfies",
+    "project_github_security_mission_packets",
+    "project_github_security_mission_packets_from_path",
     "project_github_security_work_items",
     "project_github_security_work_items_from_path",
     "read_auth_state",
