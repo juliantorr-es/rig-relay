@@ -1,0 +1,856 @@
+{
+  "schema_version": "rig.github.carte_blanche_permission_value_matrix.v1",
+  "generated_at": "2026-05-20T09:00:02.885270+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_permissions": 20,
+  "permissions": [
+    {
+      "permission_id": "contents",
+      "permission_name": "Contents",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "repo_file_read",
+        "repo_tree_read",
+        "blob_read",
+        "default_branch_read",
+        "file_list_read"
+      ],
+      "enabled_write_lanes": [
+        "repo_file_write",
+        "branch_create",
+        "commit_push",
+        "blob_create",
+        "pr_file_update",
+        "commit_create"
+      ],
+      "enabled_automation_lanes": [
+        "auto_commit_patch",
+        "evidence_backed_pr",
+        "changelog_update",
+        "readme_update",
+        "docs_sync"
+      ],
+      "enabled_security_lanes": [
+        "security_policy_update",
+        "codeowners_update",
+        "dependabot_config_update",
+        "workflow_file_update"
+      ],
+      "enabled_ci_lanes": [
+        "ci_config_update",
+        "actions_workflow_update"
+      ],
+      "enabled_release_lanes": [
+        "release_notes_write",
+        "changelog_write",
+        "build_config_update"
+      ],
+      "maximum_product_value": "high",
+      "mutation_risk": "high",
+      "supply_chain_risk": "high",
+      "governance_required": "extreme",
+      "implementation_priority": 1,
+      "recommended_policy": "approval_required_every_mutation; receipt per commit; dry_run_preview_first",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/repos/contents",
+        "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps"
+      ],
+      "remaining_unknowns": [
+        "Git LFS interaction with installation tokens"
+      ]
+    },
+    {
+      "permission_id": "metadata",
+      "permission_name": "Metadata",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read"
+      ],
+      "enabled_read_lanes": [
+        "repo_metadata_read",
+        "topics_read",
+        "description_read",
+        "language_read",
+        "license_read",
+        "visibility_read"
+      ],
+      "enabled_write_lanes": [],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "medium",
+      "mutation_risk": "none",
+      "supply_chain_risk": "none",
+      "governance_required": "minimal",
+      "implementation_priority": 1,
+      "recommended_policy": "always_allowed; read-only; foundational for operating picture",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/repos/repos"
+      ],
+      "remaining_unknowns": []
+    },
+    {
+      "permission_id": "pull_requests",
+      "permission_name": "Pull Requests",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "pr_list_read",
+        "pr_detail_read",
+        "pr_review_read",
+        "pr_comment_read",
+        "pr_status_read",
+        "pr_diff_read"
+      ],
+      "enabled_write_lanes": [
+        "pr_create",
+        "pr_update",
+        "pr_close",
+        "pr_reopen",
+        "pr_merge",
+        "pr_review_create",
+        "pr_comment_create",
+        "pr_assign",
+        "pr_label",
+        "pr_milestone"
+      ],
+      "enabled_automation_lanes": [
+        "auto_pr_creation",
+        "pr_triage",
+        "pr_review_assignment",
+        "pr_merge_queue",
+        "pr_staleness_management"
+      ],
+      "enabled_security_lanes": [
+        "security_patch_pr",
+        "dependabot_pr_management",
+        "codeql_fix_pr"
+      ],
+      "enabled_ci_lanes": [
+        "pr_ci_trigger",
+        "pr_status_check",
+        "pr_checks_integration"
+      ],
+      "enabled_release_lanes": [
+        "release_pr_creation",
+        "version_bump_pr"
+      ],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "medium",
+      "governance_required": "elevated",
+      "implementation_priority": 2,
+      "recommended_policy": "read always; write requires approval except label/assign; merge requires explicit human approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/pulls",
+        "https://docs.github.com/en/graphql/reference/objects#pullrequest"
+      ],
+      "remaining_unknowns": [
+        "merge queue API availability for GitHub Apps",
+        "auto-merge behavior with installation tokens"
+      ]
+    },
+    {
+      "permission_id": "issues",
+      "permission_name": "Issues",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "issue_list_read",
+        "issue_detail_read",
+        "issue_comment_read",
+        "issue_timeline_read"
+      ],
+      "enabled_write_lanes": [
+        "issue_create",
+        "issue_update",
+        "issue_close",
+        "issue_reopen",
+        "issue_comment",
+        "issue_assign",
+        "issue_label",
+        "issue_milestone",
+        "issue_lock"
+      ],
+      "enabled_automation_lanes": [
+        "auto_issue_triage",
+        "issue_inbox_zero",
+        "issue_staleness_close",
+        "issue_label_routing",
+        "issue_duplicate_detection"
+      ],
+      "enabled_security_lanes": [
+        "security_issue_creation",
+        "vulnerability_disclosure_issue"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "low",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 3,
+      "recommended_policy": "read always; write allowed with evidence for label/assign/close/reopen; create requires human approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/issues",
+        "https://docs.github.com/en/graphql/reference/objects#issue"
+      ],
+      "remaining_unknowns": [
+        "issue forms beta API support",
+        "sub-issues API availability"
+      ]
+    },
+    {
+      "permission_id": "actions",
+      "permission_name": "Actions",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "workflow_list_read",
+        "workflow_run_read",
+        "workflow_log_read",
+        "workflow_artifact_read",
+        "workflow_job_read"
+      ],
+      "enabled_write_lanes": [
+        "workflow_dispatch",
+        "workflow_rerun",
+        "workflow_cancel",
+        "workflow_file_write"
+      ],
+      "enabled_automation_lanes": [
+        "ci_failure_diagnosis",
+        "ci_repair_loop",
+        "workflow_health_monitor",
+        "ci_config_optimizer"
+      ],
+      "enabled_security_lanes": [
+        "ci_security_audit",
+        "workflow_permission_review"
+      ],
+      "enabled_ci_lanes": [
+        "ci_pipeline_management",
+        "build_trigger",
+        "test_result_analysis"
+      ],
+      "enabled_release_lanes": [
+        "release_build_trigger",
+        "artifact_upload_trigger"
+      ],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "high",
+      "governance_required": "elevated",
+      "implementation_priority": 3,
+      "recommended_policy": "read always; dispatch/rerun requires approval; workflow file write requires separate Content permission + approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/actions",
+        "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions"
+      ],
+      "remaining_unknowns": [
+        "OIDC token interaction with installation tokens",
+        "reusable workflow API availability"
+      ]
+    },
+    {
+      "permission_id": "security_events",
+      "permission_name": "Security Events",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "code_scanning_alert_read",
+        "secret_scanning_alert_read",
+        "security_advisory_read"
+      ],
+      "enabled_write_lanes": [
+        "code_scanning_alert_dismiss",
+        "code_scanning_alert_reopen",
+        "secret_scanning_alert_dismiss"
+      ],
+      "enabled_automation_lanes": [
+        "codeql_alert_triage",
+        "secret_scanning_queue_manager",
+        "security_advisory_draft"
+      ],
+      "enabled_security_lanes": [
+        "security_queue_burn_down",
+        "vulnerability_alert_routing",
+        "security_posture_report"
+      ],
+      "enabled_ci_lanes": [
+        "security_ci_integration"
+      ],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "low",
+      "governance_required": "elevated",
+      "implementation_priority": 2,
+      "recommended_policy": "read always; dismiss/reopen only with evidence audit trail; never dismiss without linked fix PR",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/code-scanning",
+        "https://docs.github.com/en/rest/secret-scanning"
+      ],
+      "remaining_unknowns": [
+        "secret scanning alert dismissal API for installation tokens",
+        "push protection bypass API"
+      ]
+    },
+    {
+      "permission_id": "dependabot_alerts",
+      "permission_name": "Dependabot Alerts",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "dependabot_alert_list",
+        "dependabot_alert_detail"
+      ],
+      "enabled_write_lanes": [
+        "dependabot_alert_dismiss",
+        "dependabot_alert_reopen"
+      ],
+      "enabled_automation_lanes": [
+        "dependabot_queue_burn_down",
+        "auto_dependency_update_pr"
+      ],
+      "enabled_security_lanes": [
+        "supply_chain_vulnerability_tracking",
+        "dependency_health_report"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "low",
+      "supply_chain_risk": "medium",
+      "governance_required": "standard",
+      "implementation_priority": 2,
+      "recommended_policy": "read always; dismiss with evidence of fix; prioritize auto-update PRs",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/dependabot/alerts"
+      ],
+      "remaining_unknowns": [
+        "dependabot version update config API stability"
+      ]
+    },
+    {
+      "permission_id": "administration",
+      "permission_name": "Administration",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "repo_settings_read",
+        "branch_protection_read",
+        "ruleset_read",
+        "webhook_read",
+        "deploy_key_read"
+      ],
+      "enabled_write_lanes": [
+        "repo_settings_update",
+        "branch_protection_update",
+        "ruleset_update",
+        "webhook_manage"
+      ],
+      "enabled_automation_lanes": [
+        "branch_protection_audit",
+        "ruleset_compliance_check",
+        "settings_drift_detection"
+      ],
+      "enabled_security_lanes": [
+        "security_setting_audit",
+        "branch_protection_hardening"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "medium",
+      "mutation_risk": "high",
+      "supply_chain_risk": "high",
+      "governance_required": "extreme",
+      "implementation_priority": 6,
+      "recommended_policy": "read-only by default; write requires super-admin-level approval; never auto-apply",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/repos/repos",
+        "https://docs.github.com/en/rest/branches/branch-protection"
+      ],
+      "remaining_unknowns": [
+        "ruleset management API completeness",
+        "custom deployment protection rules API"
+      ]
+    },
+    {
+      "permission_id": "pages",
+      "permission_name": "Pages",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "pages_status_read",
+        "pages_build_read",
+        "pages_deployment_read"
+      ],
+      "enabled_write_lanes": [
+        "pages_build_trigger",
+        "pages_source_update",
+        "pages_cname_update"
+      ],
+      "enabled_automation_lanes": [
+        "auto_docs_publish",
+        "static_site_pipeline",
+        "pages_health_monitor"
+      ],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [
+        "pages_build_ci_trigger"
+      ],
+      "enabled_release_lanes": [
+        "docs_release_publish",
+        "changelog_site_update"
+      ],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 4,
+      "recommended_policy": "publish after docs build passes; preview before publish; never publish unapproved content",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/pages",
+        "https://docs.github.com/en/pages"
+      ],
+      "remaining_unknowns": [
+        "custom GitHub Pages deployment API",
+        "branch-based pages API"
+      ]
+    },
+    {
+      "permission_id": "deployments",
+      "permission_name": "Deployments",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "deployment_status_read",
+        "deployment_list_read",
+        "environment_read"
+      ],
+      "enabled_write_lanes": [
+        "deployment_create",
+        "deployment_status_update"
+      ],
+      "enabled_automation_lanes": [
+        "deployment_health_monitor",
+        "deployment_rollback_detection"
+      ],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [
+        "deployment_ci_integration"
+      ],
+      "enabled_release_lanes": [
+        "release_deployment_tracking",
+        "environment_promotion"
+      ],
+      "maximum_product_value": "medium",
+      "mutation_risk": "high",
+      "supply_chain_risk": "medium",
+      "governance_required": "elevated",
+      "implementation_priority": 5,
+      "recommended_policy": "read always; status update allowed; deployment create requires approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/deployments"
+      ],
+      "remaining_unknowns": [
+        "environment protection rules API"
+      ]
+    },
+    {
+      "permission_id": "webhooks",
+      "permission_name": "Webhooks",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "webhook_list_read",
+        "webhook_config_read",
+        "webhook_delivery_read"
+      ],
+      "enabled_write_lanes": [
+        "webhook_create",
+        "webhook_update",
+        "webhook_delete"
+      ],
+      "enabled_automation_lanes": [
+        "webhook_event_observer",
+        "event_replay_reconciliation"
+      ],
+      "enabled_security_lanes": [
+        "webhook_secret_audit"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 7,
+      "recommended_policy": "read webhook state; manage webhook registrations; validate webhook secrets",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/repos/webhooks",
+        "https://docs.github.com/en/webhooks"
+      ],
+      "remaining_unknowns": [
+        "webhook delivery redelivery API for Apps"
+      ]
+    },
+    {
+      "permission_id": "members",
+      "permission_name": "Members",
+      "permission_scope": "organization",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "org_member_list",
+        "team_member_list",
+        "collaborator_list"
+      ],
+      "enabled_write_lanes": [],
+      "enabled_automation_lanes": [
+        "membership_audit",
+        "access_review"
+      ],
+      "enabled_security_lanes": [
+        "org_access_posture"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "medium",
+      "mutation_risk": "none",
+      "supply_chain_risk": "none",
+      "governance_required": "minimal",
+      "implementation_priority": 6,
+      "recommended_policy": "read-only in v1; membership changes require org admin",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/orgs/members"
+      ],
+      "remaining_unknowns": []
+    },
+    {
+      "permission_id": "organization_administration",
+      "permission_name": "Organization Administration",
+      "permission_scope": "organization",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "org_settings_read",
+        "org_audit_log_read"
+      ],
+      "enabled_write_lanes": [],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [
+        "org_security_audit",
+        "org_2fa_audit"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "low",
+      "mutation_risk": "high",
+      "supply_chain_risk": "high",
+      "governance_required": "extreme",
+      "implementation_priority": 8,
+      "recommended_policy": "read-only audit only; write requires org admin approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/orgs"
+      ],
+      "remaining_unknowns": [
+        "org-level API token requirements"
+      ]
+    },
+    {
+      "permission_id": "projects",
+      "permission_name": "Projects",
+      "permission_scope": "organization",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "project_v2_list",
+        "project_item_read",
+        "project_view_read"
+      ],
+      "enabled_write_lanes": [
+        "project_item_create",
+        "project_item_update",
+        "project_item_delete"
+      ],
+      "enabled_automation_lanes": [
+        "project_board_auto_triage",
+        "issue_to_project_routing"
+      ],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [
+        "release_board_management"
+      ],
+      "maximum_product_value": "medium",
+      "mutation_risk": "low",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 5,
+      "recommended_policy": "read always; item management with evidence; auto-routing allowed",
+      "official_docs_refs": [
+        "https://docs.github.com/en/issues/planning-and-tracking-with-projects"
+      ],
+      "remaining_unknowns": [
+        "Projects v2 API completeness for GitHub Apps"
+      ]
+    },
+    {
+      "permission_id": "secrets",
+      "permission_name": "Secrets",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "actions_secret_names_read"
+      ],
+      "enabled_write_lanes": [
+        "actions_secret_create",
+        "actions_secret_update",
+        "actions_secret_delete"
+      ],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [
+        "secret_rotation_reminder"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "low",
+      "mutation_risk": "high",
+      "supply_chain_risk": "extreme",
+      "governance_required": "extreme",
+      "implementation_priority": 8,
+      "recommended_policy": "never read secret values; manage secret existence only; rotation advisory only",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/actions/secrets"
+      ],
+      "remaining_unknowns": []
+    },
+    {
+      "permission_id": "statuses",
+      "permission_name": "Commit Statuses",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "commit_status_read",
+        "check_run_read",
+        "check_suite_read"
+      ],
+      "enabled_write_lanes": [
+        "commit_status_create"
+      ],
+      "enabled_automation_lanes": [
+        "status_health_monitor",
+        "ci_status_aggregator"
+      ],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [
+        "ci_status_reporting"
+      ],
+      "enabled_release_lanes": [
+        "release_commit_verification"
+      ],
+      "maximum_product_value": "medium",
+      "mutation_risk": "low",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 3,
+      "recommended_policy": "read always; status creation for evidence-backed checks only",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/commits/statuses",
+        "https://docs.github.com/en/rest/checks"
+      ],
+      "remaining_unknowns": [
+        "check suite re-request API for Apps"
+      ]
+    },
+    {
+      "permission_id": "repository_hooks",
+      "permission_name": "Repository Webhooks",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "webhook_list_read",
+        "webhook_delivery_read"
+      ],
+      "enabled_write_lanes": [
+        "webhook_create",
+        "webhook_update",
+        "webhook_delete",
+        "webhook_ping"
+      ],
+      "enabled_automation_lanes": [
+        "webhook_event_observer",
+        "event_driven_github_ops"
+      ],
+      "enabled_security_lanes": [
+        "webhook_secret_validation"
+      ],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "high",
+      "mutation_risk": "medium",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 7,
+      "recommended_policy": "manage webhook registrations; validate signatures always",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/repos/webhooks"
+      ],
+      "remaining_unknowns": []
+    },
+    {
+      "permission_id": "repository_projects",
+      "permission_name": "Repository Projects",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "project_list_read"
+      ],
+      "enabled_write_lanes": [
+        "project_create_update"
+      ],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "low",
+      "mutation_risk": "low",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 8,
+      "recommended_policy": "read allowed; write requires approval",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/projects"
+      ],
+      "remaining_unknowns": [
+        "Projects classic vs v2 migration API"
+      ]
+    },
+    {
+      "permission_id": "discussions",
+      "permission_name": "Discussions",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "discussion_list_read",
+        "discussion_comment_read"
+      ],
+      "enabled_write_lanes": [
+        "discussion_create",
+        "discussion_comment",
+        "discussion_answer_mark"
+      ],
+      "enabled_automation_lanes": [
+        "discussion_moderation",
+        "qa_thread_closure"
+      ],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [
+        "release_discussion_announcement"
+      ],
+      "maximum_product_value": "medium",
+      "mutation_risk": "low",
+      "supply_chain_risk": "low",
+      "governance_required": "standard",
+      "implementation_priority": 5,
+      "recommended_policy": "read always; write allowed with evidence",
+      "official_docs_refs": [
+        "https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions"
+      ],
+      "remaining_unknowns": [
+        "GraphQL-only limitations",
+        "discussion category API"
+      ]
+    },
+    {
+      "permission_id": "codespaces",
+      "permission_name": "Codespaces",
+      "permission_scope": "repository",
+      "available_access_levels": [
+        "read",
+        "write"
+      ],
+      "enabled_read_lanes": [
+        "codespace_list_read"
+      ],
+      "enabled_write_lanes": [],
+      "enabled_automation_lanes": [],
+      "enabled_security_lanes": [],
+      "enabled_ci_lanes": [],
+      "enabled_release_lanes": [],
+      "maximum_product_value": "low",
+      "mutation_risk": "none",
+      "supply_chain_risk": "none",
+      "governance_required": "minimal",
+      "implementation_priority": 8,
+      "recommended_policy": "read-only observation",
+      "official_docs_refs": [
+        "https://docs.github.com/en/rest/codespaces"
+      ],
+      "remaining_unknowns": []
+    }
+  ],
+  "summary": {
+    "high_value_permissions": 9,
+    "mutation_permissions": 16,
+    "read_only_permissions": 4,
+    "org_level_permissions": 3
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_permission_value_matrix.v1.schema.json",
+  "title": "GitHub Carte Blanche Permission-Value Matrix v1",
+  "description": "Maps every meaningful GitHub App permission to developer product value.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_permissions", "permissions", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_permission_value_matrix.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_permissions": {"type": "integer", "minimum": 0},
+    "permissions": {"type": "array", "items": {"$ref": "#/definitions/permission_entry"}},
+    "summary": {"type": "object", "required": ["high_value_permissions", "mutation_permissions", "read_only_permissions", "org_level_permissions"], "properties": {
+      "high_value_permissions": {"type": "integer"}, "mutation_permissions": {"type": "integer"},
+      "read_only_permissions": {"type": "integer"}, "org_level_permissions": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "permission_entry": {
+      "type": "object",
+      "required": ["permission_id", "permission_name", "permission_scope", "maximum_product_value", "implementation_priority"],
+      "properties": {
+        "permission_id": {"type": "string"}, "permission_name": {"type": "string"},
+        "permission_scope": {"type": "string"}, "available_access_levels": {"type": "array", "items": {"type": "string"}},
+        "official_docs_refs": {"type": "array", "items": {"type": "string"}},
+        "enabled_read_lanes": {"type": "array", "items": {"type": "string"}},
+        "enabled_write_lanes": {"type": "array", "items": {"type": "string"}},
+        "enabled_automation_lanes": {"type": "array", "items": {"type": "string"}},
+        "enabled_security_lanes": {"type": "array", "items": {"type": "string"}},
+        "enabled_ci_lanes": {"type": "array", "items": {"type": "string"}},
+        "enabled_release_lanes": {"type": "array", "items": {"type": "string"}},
+        "maximum_product_value": {"type": "string", "enum": ["high", "medium", "low"]},
+        "mutation_risk": {"type": "string", "enum": ["high", "medium", "low", "none"]},
+        "supply_chain_risk": {"type": "string", "enum": ["extreme", "high", "medium", "low", "none"]},
+        "governance_required": {"type": "string", "enum": ["minimal", "standard", "elevated", "extreme"]},
+        "implementation_priority": {"type": "integer", "minimum": 1},
+        "recommended_policy": {"type": "string"},
+        "remaining_unknowns": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}

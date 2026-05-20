@@ -7,7 +7,8 @@ import json
 import pytest
 
 from rig_relay.integrations.provider_registry._operating_picture_registry import (
-    build_provider_operating_picture_registry,
+    _PROVIDER_DEFS,
+    _build_provider_entry,
     _derive_github_auth_status,
     _derive_github_intake_status,
     _derive_github_packet_status,
@@ -16,8 +17,7 @@ from rig_relay.integrations.provider_registry._operating_picture_registry import
     _derive_meta_auth_status,
     _derive_meta_intake_status,
     _derive_risk_level,
-    _build_provider_entry,
-    _PROVIDER_DEFS,
+    build_provider_operating_picture_registry,
 )
 
 pytestmark = [pytest.mark.contract]

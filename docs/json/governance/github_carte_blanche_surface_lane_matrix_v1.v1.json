@@ -1,0 +1,808 @@
+{
+  "schema_version": "rig.github.carte_blanche_surface_lane_matrix.v1",
+  "generated_at": "2026-05-20T09:00:02.886200+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_surfaces": 25,
+  "surfaces": [
+    {
+      "surface_id": "repo_metadata",
+      "human_name": "Repository Metadata",
+      "value_proposition": "Complete read-only view of repository settings, topics, description, language, license",
+      "developer_pain_removed": "Scattered across Settings tabs; no programmatic summary",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}"
+      ],
+      "write_operations": [],
+      "destructive_operations": [],
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "hash repo name, owner; store topic list as strings",
+      "evidence_strategy": "operating picture snapshot",
+      "first_slice": "repo_operating_picture",
+      "mature_lane": "multi_repo_inventory",
+      "out_of_scope_boundary": "private repo content",
+      "risk_level": "low",
+      "recommended_phase": "phase_0",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "repo_topics",
+      "human_name": "Repository Topics",
+      "value_proposition": "Programmatic topic management for discoverability",
+      "developer_pain_removed": "Manual topic entry; no bulk management",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/topics"
+      ],
+      "write_operations": [
+        "PUT /repos/{owner}/{repo}/topics"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "metadata:read",
+        "administration:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "topic strings only; no private data",
+      "evidence_strategy": "topic diff receipt",
+      "first_slice": "public_surface_program",
+      "mature_lane": "repo_discovery_optimizer",
+      "out_of_scope_boundary": "none",
+      "risk_level": "low",
+      "recommended_phase": "phase_1",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "profile_readme",
+      "human_name": "Profile README",
+      "value_proposition": "Maintain developer profile README as a living portfolio surface",
+      "developer_pain_removed": "Profile README rot; no automated update pipeline",
+      "read_operations": [
+        "GET /repos/{user}/{user}/contents/README.md"
+      ],
+      "write_operations": [
+        "PUT /repos/{user}/{user}/contents/README.md"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:read",
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "hash profile content; store stats in claims index",
+      "evidence_strategy": "evidence-backed claims index",
+      "first_slice": "profile_readme_audit",
+      "mature_lane": "profile_portfolio_maintainer",
+      "out_of_scope_boundary": "private profile info",
+      "risk_level": "medium",
+      "recommended_phase": "phase_1",
+      "remaining_unknowns": [
+        "profile repo naming convention API"
+      ]
+    },
+    {
+      "surface_id": "project_readme",
+      "human_name": "Project README",
+      "value_proposition": "Keep project README current with badges, claims, installation instructions",
+      "developer_pain_removed": "Badge rot; stale installation docs; manual claim updates",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/readme"
+      ],
+      "write_operations": [
+        "PUT /repos/{owner}/{repo}/contents/README.md"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:read",
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "section hashes; badge status mapping",
+      "evidence_strategy": "surface audit",
+      "first_slice": "readme_surface_audit",
+      "mature_lane": "public_surface_maintainer",
+      "out_of_scope_boundary": "README content extraction",
+      "risk_level": "medium",
+      "recommended_phase": "phase_1",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "repo_description",
+      "human_name": "Repository Description & Homepage",
+      "value_proposition": "Keep repository description and homepage URL current",
+      "developer_pain_removed": "Forgetting to update description after pivot",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}"
+      ],
+      "write_operations": [
+        "PATCH /repos/{owner}/{repo}"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "administration:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "description string hash",
+      "evidence_strategy": "description diff receipt",
+      "first_slice": "public_surface_program",
+      "mature_lane": "repo_metadata_maintainer",
+      "out_of_scope_boundary": "visibility changes",
+      "risk_level": "medium",
+      "recommended_phase": "phase_1",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "github_pages",
+      "human_name": "GitHub Pages",
+      "value_proposition": "Automated docs site publishing with preview and rollback",
+      "developer_pain_removed": "Manual Pages deploy; broken builds unnoticed; no preview",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/pages",
+        "GET /repos/{owner}/{repo}/pages/builds"
+      ],
+      "write_operations": [
+        "POST /repos/{owner}/{repo}/pages/builds",
+        "PUT /repos/{owner}/{repo}/pages"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "pages:read",
+        "pages:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "public_repos_only_free"
+      ],
+      "content_light_strategy": "build status, domain hash, CNAME hash",
+      "evidence_strategy": "build log hash, deploy receipt",
+      "first_slice": "pages_status_monitor",
+      "mature_lane": "docs_site_publisher",
+      "out_of_scope_boundary": "custom domain management",
+      "risk_level": "medium",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "releases",
+      "human_name": "Releases",
+      "value_proposition": "Automated release management with changelog, assets, and evidence",
+      "developer_pain_removed": "Manual release drafting; forgetting release notes; asset upload tedium",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/releases",
+        "GET /repos/{owner}/{repo}/releases/latest"
+      ],
+      "write_operations": [
+        "POST /repos/{owner}/{repo}/releases",
+        "PATCH /repos/{owner}/{repo}/releases/{id}",
+        "POST upload release asset"
+      ],
+      "destructive_operations": [
+        "DELETE /repos/{owner}/{repo}/releases/{id}"
+      ],
+      "required_permissions": [
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": true,
+      "plan_limitations": [],
+      "content_light_strategy": "release tag hash, name hash, body hash",
+      "evidence_strategy": "release receipt with asset hashes",
+      "first_slice": "release_draft_assistant",
+      "mature_lane": "release_manager",
+      "out_of_scope_boundary": "delete releases by default",
+      "risk_level": "high",
+      "recommended_phase": "phase_5",
+      "remaining_unknowns": [
+        "release asset upload with installation token"
+      ]
+    },
+    {
+      "surface_id": "issues",
+      "human_name": "Issues",
+      "value_proposition": "Full issue lifecycle management with triage, labeling, and routing",
+      "developer_pain_removed": "Issue backlog; manual triage; no auto-labeling; duplicate detection missing",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/issues",
+        "GET /repos/{owner}/{repo}/issues/{number}"
+      ],
+      "write_operations": [
+        "POST /repos/{owner}/{repo}/issues",
+        "PATCH /repos/{owner}/{repo}/issues/{number}"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "issues:read",
+        "issues:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": true,
+      "plan_limitations": [],
+      "content_light_strategy": "issue number, title hash, state, label list; never body content",
+      "evidence_strategy": "issue action receipt",
+      "first_slice": "issue_triage_inbox_zero",
+      "mature_lane": "issue_triage_manager",
+      "out_of_scope_boundary": "reading issue bodies without explicit opt-in",
+      "risk_level": "low",
+      "recommended_phase": "phase_3",
+      "remaining_unknowns": [
+        "issue locking API for Apps"
+      ]
+    },
+    {
+      "surface_id": "pull_requests",
+      "human_name": "Pull Requests",
+      "value_proposition": "Evidence-backed PR creation, review, and merge management",
+      "developer_pain_removed": "No automated PR creation from evidence; manual review assignment; stale PR tracking missing",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/pulls",
+        "GET /repos/{owner}/{repo}/pulls/{number}"
+      ],
+      "write_operations": [
+        "POST /repos/{owner}/{repo}/pulls",
+        "PATCH /repos/{owner}/{repo}/pulls/{number}",
+        "POST merge"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "pull_requests:read",
+        "pull_requests:write",
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": true,
+      "plan_limitations": [],
+      "content_light_strategy": "PR number, title hash, state, branch refs, SHA hashes; never diff content in artifacts",
+      "evidence_strategy": "pr_creation_receipt with evidence refs",
+      "first_slice": "evidence_backed_pr",
+      "mature_lane": "pull_request_copilot",
+      "out_of_scope_boundary": "auto-merge without approval",
+      "risk_level": "high",
+      "recommended_phase": "phase_3",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "branch_protection",
+      "human_name": "Branch Protection",
+      "value_proposition": "Audit and maintain branch protection rules",
+      "developer_pain_removed": "No visibility into protection drift; manual rule review",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection"
+      ],
+      "write_operations": [
+        "PUT /repos/{owner}/{repo}/branches/{branch}/protection"
+      ],
+      "destructive_operations": [
+        "DELETE protection"
+      ],
+      "required_permissions": [
+        "administration:read",
+        "administration:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [
+        "public_repos_free"
+      ],
+      "content_light_strategy": "rule names, counts; never settings details in public artifacts",
+      "evidence_strategy": "protection drift report",
+      "first_slice": "branch_protection_audit",
+      "mature_lane": "branch_hygiene_operator",
+      "out_of_scope_boundary": "auto-apply protection changes",
+      "risk_level": "high",
+      "recommended_phase": "phase_6",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "rulesets",
+      "human_name": "Repository Rulesets",
+      "value_proposition": "Manage repository-level rules for branch/tag protection at scale",
+      "developer_pain_removed": "No programmatic ruleset management; drift undetected",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/rulesets"
+      ],
+      "write_operations": [
+        "POST /repos/{owner}/{repo}/rulesets",
+        "PUT ruleset"
+      ],
+      "destructive_operations": [
+        "DELETE ruleset"
+      ],
+      "required_permissions": [
+        "administration:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "ruleset name, enforcement level, target; never bypass list in public",
+      "evidence_strategy": "ruleset compliance report",
+      "first_slice": "ruleset_audit",
+      "mature_lane": "repo_hygiene_operator",
+      "out_of_scope_boundary": "auto-apply ruleset changes",
+      "risk_level": "high",
+      "recommended_phase": "phase_6",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "dependabot_config",
+      "human_name": "Dependabot Configuration",
+      "value_proposal": "Manage Dependabot version/security update configuration",
+      "value_proposition": "Programmatic Dependabot config management",
+      "developer_pain_removed": "Manual dependabot.yml editing; version update schedule management",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/contents/.github/dependabot.yml"
+      ],
+      "write_operations": [
+        "PUT dependabot.yml"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "config hash; package ecosystem list",
+      "evidence_strategy": "config change receipt",
+      "first_slice": "dependabot_config_audit",
+      "mature_lane": "dependabot_manager",
+      "out_of_scope_boundary": "none",
+      "risk_level": "medium",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "codeql_config",
+      "human_name": "CodeQL Configuration",
+      "value_proposition": "Manage CodeQL analysis configuration",
+      "developer_pain_removed": "CodeQL misconfiguration; query suite management",
+      "read_operations": [
+        "GET codeql config file"
+      ],
+      "write_operations": [
+        "PUT codeql config file"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [
+        "default_setup_only_free"
+      ],
+      "content_light_strategy": "config hash; query suite list",
+      "evidence_strategy": "config audit receipt",
+      "first_slice": "codeql_config_audit",
+      "mature_lane": "codeql_manager",
+      "out_of_scope_boundary": "none",
+      "risk_level": "medium",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "code_scanning_alerts",
+      "human_name": "Code Scanning Alerts",
+      "value_proposition": "Full code scanning alert lifecycle: triage, fix PR, dismiss",
+      "developer_pain_removed": "Alert backlog; no automated fix pipeline; manual dismissal",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/code-scanning/alerts"
+      ],
+      "write_operations": [
+        "PATCH alert state"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "security_events:read",
+        "security_events:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "default_setup_only_free",
+        "advanced_setup_enterprise"
+      ],
+      "content_light_strategy": "alert number, rule id, severity, state; never code snippet",
+      "evidence_strategy": "alert state change receipt",
+      "first_slice": "codeql_alert_burn_down",
+      "mature_lane": "security_queue_manager",
+      "out_of_scope_boundary": "reading alert code snippets into artifacts",
+      "risk_level": "medium",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "secret_scanning_alerts",
+      "human_name": "Secret Scanning Alerts",
+      "value_proposition": "Full secret scanning alert lifecycle management",
+      "developer_pain_removed": "Alert fatigue; manual secret revocation; no automated tracking",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/secret-scanning/alerts"
+      ],
+      "write_operations": [
+        "PATCH alert state"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "security_events:read",
+        "security_events:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "enterprise_for_push_protection"
+      ],
+      "content_light_strategy": "alert number, secret type, state; NEVER secret value or location",
+      "evidence_strategy": "alert state receipt with resolution evidence",
+      "first_slice": "secret_boundary_manager",
+      "mature_lane": "secret_boundary_manager",
+      "out_of_scope_boundary": "reading secret values; exposing secret locations in public artifacts",
+      "risk_level": "high",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "dependabot_alerts",
+      "human_name": "Dependabot Alerts",
+      "value_proposition": "Supply chain vulnerability tracking and automated fix PRs",
+      "developer_pain_removed": "Dependency vulnerability backlog; manual update PR review",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/dependabot/alerts"
+      ],
+      "write_operations": [
+        "PATCH alert state"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "dependabot_alerts:read",
+        "dependabot_alerts:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [],
+      "content_light_strategy": "alert number, package name, severity, state; never vulnerable code",
+      "evidence_strategy": "alert fix receipt with PR reference",
+      "first_slice": "dependabot_queue_burn_down",
+      "mature_lane": "dependabot_manager",
+      "out_of_scope_boundary": "auto-dismiss without fix",
+      "risk_level": "medium",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "security_advisories",
+      "human_name": "Security Advisories",
+      "value_proposition": "Repository security advisory lifecycle management",
+      "developer_pain_removed": "Manual advisory drafting; no automated CVE request pipeline",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/security-advisories"
+      ],
+      "write_operations": [
+        "POST create advisory",
+        "PATCH advisory"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "security_events:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "public_repos_only"
+      ],
+      "content_light_strategy": "advisory GHSA ID, severity, state; never full description",
+      "evidence_strategy": "advisory state receipt",
+      "first_slice": "security_advisory_draft_assistant",
+      "mature_lane": "security_queue_manager",
+      "out_of_scope_boundary": "publishing advisories without review",
+      "risk_level": "high",
+      "recommended_phase": "phase_2",
+      "remaining_unknowns": [
+        "CVE request API availability for Apps"
+      ]
+    },
+    {
+      "surface_id": "actions_workflows",
+      "human_name": "Actions Workflows",
+      "value_proposition": "CI workflow health monitoring, dispatch, and optimization",
+      "developer_pain_removed": "CI failures unnoticed; manual reruns; workflow drift",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/actions/workflows",
+        "GET runs",
+        "GET logs"
+      ],
+      "write_operations": [
+        "POST dispatch",
+        "POST rerun",
+        "POST cancel"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "actions:read",
+        "actions:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "free_minutes_limited"
+      ],
+      "content_light_strategy": "workflow name, run ID, conclusion; never log content in artifacts",
+      "evidence_strategy": "workflow_run receipt with conclusion hash",
+      "first_slice": "ci_health_monitor",
+      "mature_lane": "ci_actions_operator",
+      "out_of_scope_boundary": "reading workflow logs into artifacts",
+      "risk_level": "medium",
+      "recommended_phase": "phase_4",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "workflow_files",
+      "human_name": "Workflow File Management",
+      "value_proposition": "Edit GitHub Actions workflow files under governance",
+      "developer_pain_removed": "Manual YAML editing; workflow permission drift",
+      "read_operations": [
+        "GET workflow file contents"
+      ],
+      "write_operations": [
+        "PUT workflow file"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:write",
+        "workflows:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "file hash; change description",
+      "evidence_strategy": "workflow change receipt with diff hash",
+      "first_slice": "workflow_security_audit",
+      "mature_lane": "ci_actions_operator",
+      "out_of_scope_boundary": "auto-apply workflow changes without review",
+      "risk_level": "high",
+      "recommended_phase": "phase_4",
+      "remaining_unknowns": [
+        "workflows permission requirement for installation tokens"
+      ]
+    },
+    {
+      "surface_id": "collaborators",
+      "human_name": "Collaborators",
+      "value_proposition": "Repository collaborator audit and access review",
+      "developer_pain_removed": "Unknown who has access; stale collaborator permissions",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/collaborators"
+      ],
+      "write_operations": [
+        "PUT add collaborator",
+        "DELETE collaborator"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "members:read",
+        "members:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "collaborator count; permission level distribution; never usernames in public",
+      "evidence_strategy": "access review report",
+      "first_slice": "collaborator_audit",
+      "mature_lane": "org_hygiene_operator",
+      "out_of_scope_boundary": "auto-remove collaborators",
+      "risk_level": "high",
+      "recommended_phase": "phase_6",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "deploy_keys",
+      "human_name": "Deploy Keys",
+      "value_proposition": "Audit deploy key usage and staleness",
+      "developer_pain_removed": "Forgotten deploy keys; no usage tracking",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/keys"
+      ],
+      "write_operations": [
+        "POST create key",
+        "DELETE key"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "administration:read",
+        "administration:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "key ID hash, title hash, created_at; never key material",
+      "evidence_strategy": "deploy key audit report",
+      "first_slice": "deploy_key_audit",
+      "mature_lane": "repo_hygiene_operator",
+      "out_of_scope_boundary": "creating deploy keys",
+      "risk_level": "high",
+      "recommended_phase": "phase_6",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "environments",
+      "human_name": "Environments & Deployments",
+      "value_proposition": "Environment protection and deployment status monitoring",
+      "developer_pain_removed": "Environment drift; deployment status unknown",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/environments",
+        "GET deployments"
+      ],
+      "write_operations": [
+        "POST create deployment status"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "deployments:read",
+        "deployments:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": true,
+      "plan_limitations": [
+        "public_repos_only_free"
+      ],
+      "content_light_strategy": "environment name hash, deployment status",
+      "evidence_strategy": "deployment receipt",
+      "first_slice": "deployment_status_monitor",
+      "mature_lane": "release_manager",
+      "out_of_scope_boundary": "auto-create deployments",
+      "risk_level": "medium",
+      "recommended_phase": "phase_5",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "organization_members",
+      "human_name": "Organization Members & Teams",
+      "value_proposition": "Organization membership audit and access posture",
+      "developer_pain_removed": "No org-level access visibility; stale membership",
+      "read_operations": [
+        "GET /orgs/{org}/members",
+        "GET /orgs/{org}/teams"
+      ],
+      "write_operations": [],
+      "destructive_operations": [],
+      "required_permissions": [
+        "members:read"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": true,
+      "webhook_support": true,
+      "plan_limitations": [],
+      "content_light_strategy": "member count, role distribution; never member logins in public",
+      "evidence_strategy": "org access posture report",
+      "first_slice": "org_membership_audit",
+      "mature_lane": "org_hygiene_operator",
+      "out_of_scope_boundary": "auto-modify membership",
+      "risk_level": "medium",
+      "recommended_phase": "phase_6",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "traffic_insights",
+      "human_name": "Traffic & Insights",
+      "value_proposition": "Repository traffic and referral analytics",
+      "developer_pain_removed": "No visibility into repo views, clones, referrers",
+      "read_operations": [
+        "GET /repos/{owner}/{repo}/traffic/views",
+        "GET clones",
+        "GET referrers"
+      ],
+      "write_operations": [],
+      "destructive_operations": [],
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "view count, clone count; never referrer URLs in public",
+      "evidence_strategy": "traffic snapshot",
+      "first_slice": "traffic_insights_dashboard",
+      "mature_lane": "telemetry_insights_operator",
+      "out_of_scope_boundary": "logging referrer details",
+      "risk_level": "low",
+      "recommended_phase": "phase_7",
+      "remaining_unknowns": []
+    },
+    {
+      "surface_id": "community_health",
+      "human_name": "Community Health Files",
+      "value_proposition": "Maintain community health files (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)",
+      "developer_pain_removed": "Missing or stale community files; manual updates",
+      "read_operations": [
+        "GET community profile",
+        "GET individual files"
+      ],
+      "write_operations": [
+        "PUT file contents"
+      ],
+      "destructive_operations": [],
+      "required_permissions": [
+        "contents:read",
+        "contents:write"
+      ],
+      "auth_mode": "installation_token",
+      "REST_support": true,
+      "GraphQL_support": false,
+      "webhook_support": false,
+      "plan_limitations": [],
+      "content_light_strategy": "file present boolean, file hash",
+      "evidence_strategy": "community health scorecard",
+      "first_slice": "community_health_audit",
+      "mature_lane": "community_health_maintainer",
+      "out_of_scope_boundary": "none",
+      "risk_level": "low",
+      "recommended_phase": "phase_1",
+      "remaining_unknowns": []
+    }
+  ],
+  "summary": {
+    "read_surfaces": 3,
+    "write_surfaces": 0,
+    "read_write_surfaces": 22,
+    "webhook_surfaces": 11
+  }
+}

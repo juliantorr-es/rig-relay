@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import json
 import pathlib
+
 import jsonschema
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.parent

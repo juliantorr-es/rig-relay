@@ -1,0 +1,69 @@
+{
+  "schema_version": "rig.github.publish_pr.v1",
+  "generated_at": "2026-05-20T08:44:13.523871+00:00",
+  "mode": "dry_run",
+  "dry_run": true,
+  "execute_remote_flag_passed": false,
+  "content_light": true,
+  "remote_mutation": false,
+  "local_mutation": false,
+  "result_status": "proposal_ready",
+  "refusal_reasons": [],
+  "source_packets_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_packets_v1.v1.json",
+  "source_preview_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_preview_v1.v1.json",
+  "source_packets_hash": "1d911acc2fdf72167c7d2c7fbcf348ecd5d388bfa8dadd9a749d008199bd6c67",
+  "source_preview_hash": "b74c31c095160045771370f114103e984c331e742ede08ae802aa1e60b2a3a69",
+  "approval_gate_status": "pending_review",
+  "permission_audit_refs": [
+    "docs/json/governance/github_app_permission_posture_v1.v1.json",
+    "docs/json/governance/github_surface_audit_v1.v1.json"
+  ],
+  "source_packets": {
+    "total_packets": 10,
+    "ready_packets": 0,
+    "blocked_packets": 0,
+    "deferred_packets": 0,
+    "packet_type_summary": [
+      "contribution_surface_packet",
+      "claim_cleanup_packet",
+      "github_pages_packet",
+      "no_action_packet",
+      "release_notes_packet",
+      "badge_status_packet",
+      "profile_readme_packet",
+      "security_posture_packet",
+      "project_readme_packet"
+    ],
+    "source_artifact_count": 0,
+    "content_light": true
+  },
+  "source_previews": {
+    "preview_type": "",
+    "branch": "",
+    "ready_packets": 0,
+    "total_packets": 0,
+    "surface_ready_count": 0,
+    "content_light": true
+  },
+  "proposal": {
+    "proposed_branch": "public-surface/wave6/publish-pr-v1",
+    "proposed_pr_title": "Public Surface Program Wave 6: Publish PR v1 — ",
+    "proposed_pr_summary": "Publish PR v1 for GitHub Public Surface Program Wave 6.\n\nReady surfaces: .\nRecommended actions: none.",
+    "proposed_files": [],
+    "proposed_base_branch": "main",
+    "proposed_labels": [
+      "public-surface",
+      "wave-6",
+      "publish-pr-v1"
+    ],
+    "evidence_refs": []
+  },
+  "validation_commands": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/integrations/test_github_publish_pr.py -v",
+    "uv run pytest tests/adversarial/test_github_publish_pr_redaction.py -v",
+    "uv run pytest tests/governance/test_github_publish_pr_artifact.py -v"
+  ],
+  "redaction_status": "content_light_verified",
+  "remaining_seams": []
+}

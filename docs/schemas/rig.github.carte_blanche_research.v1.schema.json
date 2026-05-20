@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_research.v1.schema.json",
+  "title": "GitHub Carte Blanche Research v1",
+  "description": "Comprehensive research artifact mapping maximum GitHub integration surface under full trust.",
+  "type": "object",
+  "required": [
+    "schema_version", "generated_at", "content_light", "remote_mutation",
+    "research_scope", "permission_count", "surface_lane_count",
+    "mutation_lane_count", "webhook_event_count",
+    "product_mode_count", "user_journey_count", "platform_limit_count",
+    "roadmap_phase_count", "competitive_positioning",
+    "source_artifacts_consulted", "redaction_status", "summary"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_research.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "branch": {"type": ["string", "null"]},
+    "head": {"type": ["string", "null"]},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "research_scope": {"type": "string"},
+    "assumption": {"type": "string"},
+    "official_docs_refs": {"type": "array", "items": {"type": "string"}},
+    "permission_count": {"type": "integer", "minimum": 0},
+    "surface_lane_count": {"type": "integer", "minimum": 0},
+    "mutation_lane_count": {"type": "integer", "minimum": 0},
+    "webhook_event_count": {"type": "integer", "minimum": 0},
+    "product_mode_count": {"type": "integer", "minimum": 0},
+    "user_journey_count": {"type": "integer", "minimum": 0},
+    "platform_limit_count": {"type": "integer", "minimum": 0},
+    "roadmap_phase_count": {"type": "integer", "minimum": 0},
+    "competitive_positioning": {"type": "array", "items": {"$ref": "#/definitions/competitive_item"}},
+    "artifacts_produced": {"type": "array", "items": {"type": "string"}},
+    "source_artifacts_consulted": {"type": "array", "items": {"type": "string"}},
+    "data_model_concepts": {"type": "array", "items": {"$ref": "#/definitions/data_model_concept"}},
+    "redaction_status": {"$ref": "#/definitions/redaction_status"},
+    "summary": {"$ref": "#/definitions/research_summary"}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "competitive_item": {
+      "type": "object",
+      "required": ["feature_id", "product_value", "trust_requirement", "recommended_phase"],
+      "properties": {
+        "feature_id": {"type": "string"},
+        "product_value": {"type": "string", "enum": ["high", "medium", "low", "unsure"]},
+        "trust_requirement": {"type": "string", "enum": ["low", "medium", "high", "extreme"]},
+        "viral_potential": {"type": "string", "enum": ["high", "medium", "low", "none"]},
+        "complexity": {"type": "string", "enum": ["high", "medium", "low"]},
+        "risk": {"type": "string", "enum": ["high", "medium", "low"]},
+        "recommended_phase": {"type": "string"},
+        "reason": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "data_model_concept": {
+      "type": "object",
+      "required": ["artifact_id", "purpose", "schema_needed"],
+      "properties": {
+        "artifact_id": {"type": "string"},
+        "purpose": {"type": "string"},
+        "canonical_path_suggestion": {"type": "string"},
+        "schema_needed": {"type": "boolean"},
+        "source_inputs": {"type": "array", "items": {"type": "string"}},
+        "downstream_consumers": {"type": "array", "items": {"type": "string"}},
+        "content_light_constraints": {"type": "string"},
+        "mutation_status_fields": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": ["content_light", "forbidden_strings_present", "redaction_rule_count"],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "research_summary": {
+      "type": "object",
+      "required": ["total_permissions_mapped", "total_surface_lanes", "total_mutation_lanes", "total_webhook_events", "total_product_modes", "total_user_journeys", "total_platform_limits", "total_roadmap_phases", "next_recommended_slice"],
+      "properties": {
+        "total_permissions_mapped": {"type": "integer"},
+        "total_surface_lanes": {"type": "integer"},
+        "total_mutation_lanes": {"type": "integer"},
+        "total_webhook_events": {"type": "integer"},
+        "total_product_modes": {"type": "integer"},
+        "total_user_journeys": {"type": "integer"},
+        "total_platform_limits": {"type": "integer"},
+        "total_roadmap_phases": {"type": "integer"},
+        "next_recommended_slice": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

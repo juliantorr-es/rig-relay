@@ -1,12 +1,13 @@
 {
   "schema_version": "rig.github.operating_picture.v1",
-  "generated_at_utc": "2026-05-20T07:25:47.932203+00:00",
+  "generated_at_utc": "2026-05-20T08:27:21.534705+00:00",
   "branch": "main",
-  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "head": "635244d78188db3c39197d1da93d382c2f76465c",
   "owner": null,
   "repo": null,
   "content_light": true,
   "remote_mutation": false,
+  "local_mutation": false,
   "source_artifacts": [
     {
       "artifact_id": "github_ci_cd_reliability",
@@ -432,6 +433,339 @@
         ]
       },
       "content_hash": "fbc751a16e622e30abed451029f1adb5cb5112ca66ee6851ee2f2ce0bc6ac478"
+    }
+  ],
+  "dirty_state_summary": {
+    "clean": false,
+    "total_modified_count": 2,
+    "modified_count": 2,
+    "untracked_count": 0,
+    "staged_count": 1
+  },
+  "local_surface_inventory": [
+    {
+      "surface_name": "project_readme",
+      "repo_relative_path": "README.md",
+      "file_category": "documentation",
+      "exists": true,
+      "sha256": "07ad185ad63c7a2c812936f59a225f6da63a153398944d6b400cf62f80238e59",
+      "byte_count": 10380,
+      "line_count": 201,
+      "content_light_summary": "File present at README.md, 10380 bytes",
+      "detected_surface_roles": [
+        "landing_page",
+        "project_description"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "profile_readme_candidate",
+      "repo_relative_path": "",
+      "file_category": "profile",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "github_pages_candidate",
+      "repo_relative_path": "",
+      "file_category": "publishing",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "docs_directory",
+      "repo_relative_path": "docs",
+      "file_category": "documentation",
+      "exists": true,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "generated_static_docs",
+      "repo_relative_path": "",
+      "file_category": "publishing",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "release_notes_or_changelog",
+      "repo_relative_path": "CHANGELOG.md",
+      "file_category": "release",
+      "exists": true,
+      "sha256": "c3b927dbf9fd7f185728b2b5b07bf3b3ebaf47fc93aeeb458522c41c55bb012e",
+      "byte_count": 1419,
+      "line_count": 24,
+      "content_light_summary": "File present at CHANGELOG.md, 1419 bytes",
+      "detected_surface_roles": [
+        "version_history"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "security_policy",
+      "repo_relative_path": "SECURITY.md",
+      "file_category": "security",
+      "exists": true,
+      "sha256": "56820e9e2cf931cdf44d3af8583ce5786967aa326bdc93c7266f74435d201741",
+      "byte_count": 1581,
+      "line_count": 41,
+      "content_light_summary": "File present at SECURITY.md, 1581 bytes",
+      "detected_surface_roles": [
+        "vulnerability_reporting"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "contributing_guide",
+      "repo_relative_path": "CONTRIBUTING.md",
+      "file_category": "community",
+      "exists": true,
+      "sha256": "bb7cdc95335cd629c3885e79958312170be22ecc8971b796d998ba11cb50c605",
+      "byte_count": 2441,
+      "line_count": 68,
+      "content_light_summary": "File present at CONTRIBUTING.md, 2441 bytes",
+      "detected_surface_roles": [
+        "developer_onboarding"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "code_of_conduct",
+      "repo_relative_path": "CODE_OF_CONDUCT.md",
+      "file_category": "community",
+      "exists": true,
+      "sha256": "745cc9119d51ab1434f452c17157b31f370618bfe75e29c4db0167fc37e208a1",
+      "byte_count": 626,
+      "line_count": 20,
+      "content_light_summary": "File present at CODE_OF_CONDUCT.md, 626 bytes",
+      "detected_surface_roles": [],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "license",
+      "repo_relative_path": "LICENSE",
+      "file_category": "legal",
+      "exists": true,
+      "sha256": "080edf2df47398f518a520a7d7c4b67c663171845b92e0d4765bbebaf9456b40",
+      "byte_count": 34520,
+      "line_count": 663,
+      "content_light_summary": "File present at LICENSE, 34520 bytes",
+      "detected_surface_roles": [
+        "legal_attribution"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "github_workflows",
+      "repo_relative_path": ".github/workflows",
+      "file_category": "ci_cd",
+      "exists": true,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [
+        "ci_automation"
+      ],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "issue_templates",
+      "repo_relative_path": ".github/ISSUE_TEMPLATE",
+      "file_category": "community",
+      "exists": true,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": false,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "pull_request_template",
+      "repo_relative_path": ".github/pull_request_template.md",
+      "file_category": "community",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "dependabot_config",
+      "repo_relative_path": ".github/dependabot.yml",
+      "file_category": "security",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "codeql_config",
+      "repo_relative_path": ".github/codeql",
+      "file_category": "security",
+      "exists": false,
+      "sha256": null,
+      "byte_count": null,
+      "line_count": null,
+      "content_light_summary": null,
+      "detected_surface_roles": [],
+      "audit_needed": true,
+      "remaining_seams": []
+    },
+    {
+      "surface_name": "badges_or_status_blocks",
+      "repo_relative_path": "README.md",
+      "file_category": "documentation",
+      "exists": true,
+      "sha256": "07ad185ad63c7a2c812936f59a225f6da63a153398944d6b400cf62f80238e59",
+      "byte_count": 10380,
+      "line_count": 201,
+      "content_light_summary": "File present at README.md, 10380 bytes",
+      "detected_surface_roles": [],
+      "audit_needed": false,
+      "remaining_seams": []
+    }
+  ],
+  "evidence_source_registry": [
+    {
+      "source": "github_operating_picture",
+      "path": "docs/json/governance/github_operating_picture_v1.v1.json",
+      "kind": "projection"
+    },
+    {
+      "source": "github_security_intake",
+      "path": "docs/json/governance/github_security_intake_result.v1.json",
+      "kind": "intake"
+    },
+    {
+      "source": "github_mission_packets",
+      "path": "docs/json/governance/github_security_mission_packets_v1.v1.json",
+      "kind": "planning"
+    },
+    {
+      "source": "github_ci_cd_reliability",
+      "path": "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+      "kind": "ci_evidence"
+    },
+    {
+      "source": "github_surface_audit",
+      "path": "docs/json/governance/github_surface_audit_v1.v1.json",
+      "kind": "audit"
+    }
+  ],
+  "public_surface_lane_readiness": {
+    "total_surfaces": 16,
+    "present_count": 10,
+    "missing_count": 6,
+    "present_surfaces": [
+      "project_readme",
+      "docs_directory",
+      "release_notes_or_changelog",
+      "security_policy",
+      "contributing_guide",
+      "code_of_conduct",
+      "license",
+      "github_workflows",
+      "issue_templates",
+      "badges_or_status_blocks"
+    ],
+    "missing_surfaces": [
+      "profile_readme_candidate",
+      "github_pages_candidate",
+      "generated_static_docs",
+      "pull_request_template",
+      "dependabot_config",
+      "codeql_config"
+    ],
+    "ready_for_audit": true,
+    "ready_for_preview": false
+  },
+  "known_signal_summary": {
+    "detected_signals": {
+      "landing_page": 1,
+      "project_description": 1,
+      "version_history": 1,
+      "vulnerability_reporting": 1,
+      "developer_onboarding": 1,
+      "legal_attribution": 1,
+      "ci_automation": 1
+    },
+    "signal_count": 7
+  },
+  "next_recommended_slices": [
+    "audit_missing_surfaces",
+    "generate_surface_packets",
+    "build_claims_index"
+  ],
+  "refusal_reasons": [
+    {
+      "surface": "profile_readme_candidate",
+      "reason": "missing_local_file",
+      "detail": " not found locally."
+    },
+    {
+      "surface": "github_pages_candidate",
+      "reason": "missing_local_file",
+      "detail": " not found locally."
+    },
+    {
+      "surface": "generated_static_docs",
+      "reason": "missing_local_file",
+      "detail": " not found locally."
+    },
+    {
+      "surface": "pull_request_template",
+      "reason": "missing_local_file",
+      "detail": ".github/pull_request_template.md not found locally."
+    },
+    {
+      "surface": "dependabot_config",
+      "reason": "missing_local_file",
+      "detail": ".github/dependabot.yml not found locally."
+    },
+    {
+      "surface": "codeql_config",
+      "reason": "missing_local_file",
+      "detail": ".github/codeql not found locally."
     }
   ],
   "auth_summary": {

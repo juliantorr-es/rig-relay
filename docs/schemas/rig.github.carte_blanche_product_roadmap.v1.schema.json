@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_product_roadmap.v1.schema.json",
+  "title": "GitHub Carte Blanche Product Roadmap v1",
+  "description": "Full GitHub operations roadmap from public-surface program to chief-of-staff behavior.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_phases", "phases", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_product_roadmap.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_phases": {"type": "integer", "minimum": 0},
+    "phases": {"type": "array", "items": {"$ref": "#/definitions/phase"}},
+    "summary": {"type": "object", "required": ["current_phase", "next_phase", "total_lanes_across_phases"], "properties": {
+      "current_phase": {"type": "string"}, "next_phase": {"type": "string"},
+      "total_lanes_across_phases": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "phase": {
+      "type": "object",
+      "required": ["phase_id", "goal", "included_lanes", "excluded_lanes", "required_permissions", "mutation_policy", "success_definition"],
+      "properties": {
+        "phase_id": {"type": "string"}, "goal": {"type": "string"},
+        "included_lanes": {"type": "array", "items": {"type": "string"}},
+        "excluded_lanes": {"type": "array", "items": {"type": "string"}},
+        "required_permissions": {"type": "array", "items": {"type": "string"}},
+        "required_artifacts": {"type": "array", "items": {"type": "string"}},
+        "required_tests": {"type": "array", "items": {"type": "string"}},
+        "required_UI": {"type": "string"}, "mutation_policy": {"type": "string"},
+        "telemetry_value": {"type": "string"}, "release_gate": {"type": "string"},
+        "success_definition": {"type": "string"}, "remaining_seams": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -9,7 +9,15 @@
     "generated_at_utc",
     "content_light",
     "remote_mutation",
+    "local_mutation",
     "source_artifacts",
+    "dirty_state_summary",
+    "local_surface_inventory",
+    "evidence_source_registry",
+    "public_surface_lane_readiness",
+    "known_signal_summary",
+    "next_recommended_slices",
+    "refusal_reasons",
     "auth_summary",
     "permission_summary",
     "intake_summary",
@@ -50,6 +58,34 @@
     "remote_mutation": {
       "type": "boolean",
       "const": false
+    },
+    "local_mutation": {
+      "type": "boolean"
+    },
+    "dirty_state_summary": {
+      "$ref": "#/definitions/dirty_state_summary"
+    },
+    "local_surface_inventory": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/local_surface_entry" }
+    },
+    "evidence_source_registry": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/evidence_source_entry" }
+    },
+    "public_surface_lane_readiness": {
+      "$ref": "#/definitions/public_surface_lane_readiness"
+    },
+    "known_signal_summary": {
+      "$ref": "#/definitions/known_signal_summary"
+    },
+    "next_recommended_slices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "refusal_reasons": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/refusal_reason" }
     },
     "source_artifacts": {
       "type": "array",
@@ -411,6 +447,80 @@
             "no_action"
           ]
         }
+      },
+      "additionalProperties": false
+    },
+    "dirty_state_summary": {
+      "type": "object",
+      "required": ["clean", "total_modified_count"],
+      "properties": {
+        "clean": { "type": "boolean" },
+        "total_modified_count": { "type": ["integer", "null"], "minimum": 0 },
+        "modified_count": { "type": "integer", "minimum": 0 },
+        "untracked_count": { "type": "integer", "minimum": 0 },
+        "staged_count": { "type": "integer", "minimum": 0 },
+        "error": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "local_surface_entry": {
+      "type": "object",
+      "required": ["surface_name", "exists", "file_category"],
+      "properties": {
+        "surface_name": { "type": "string" },
+        "repo_relative_path": { "type": "string" },
+        "file_category": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "sha256": { "type": ["string", "null"] },
+        "byte_count": { "type": ["integer", "null"] },
+        "line_count": { "type": ["integer", "null"] },
+        "content_light_summary": { "type": ["string", "null"] },
+        "detected_surface_roles": { "type": "array", "items": { "type": "string" } },
+        "audit_needed": { "type": "boolean" },
+        "remaining_seams": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "evidence_source_entry": {
+      "type": "object",
+      "required": ["source", "path", "kind"],
+      "properties": {
+        "source": { "type": "string" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "public_surface_lane_readiness": {
+      "type": "object",
+      "required": ["total_surfaces", "present_count", "missing_count", "ready_for_audit", "ready_for_preview"],
+      "properties": {
+        "total_surfaces": { "type": "integer", "minimum": 0 },
+        "present_count": { "type": "integer", "minimum": 0 },
+        "missing_count": { "type": "integer", "minimum": 0 },
+        "present_surfaces": { "type": "array", "items": { "type": "string" } },
+        "missing_surfaces": { "type": "array", "items": { "type": "string" } },
+        "ready_for_audit": { "type": "boolean" },
+        "ready_for_preview": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "known_signal_summary": {
+      "type": "object",
+      "required": ["detected_signals", "signal_count"],
+      "properties": {
+        "detected_signals": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "signal_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "refusal_reason": {
+      "type": "object",
+      "required": ["surface", "reason", "detail"],
+      "properties": {
+        "surface": { "type": "string" },
+        "reason": { "type": "string" },
+        "detail": { "type": "string" }
       },
       "additionalProperties": false
     }

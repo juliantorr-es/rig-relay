@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.public_surface_audit.v1.schema.json",
+  "title": "GitHub Public Surface Audit v1",
+  "description": "Audit of public-facing GitHub surfaces for missing, stale, unsupported, inconsistent, or misleading public presentation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "owner",
+    "repo",
+    "content_light",
+    "remote_mutation",
+    "local_mutation",
+    "audit_summary",
+    "findings",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.public_surface_audit.v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string" },
+    "repo": { "type": "string" },
+    "content_light": { "type": "boolean", "const": true },
+    "remote_mutation": { "type": "boolean", "const": false },
+    "local_mutation": { "type": "boolean" },
+    "audit_summary": { "$ref": "#/definitions/audit_summary" },
+    "findings": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+    "summary": { "$ref": "#/definitions/summary" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "audit_summary": {
+      "type": "object",
+      "required": ["total_surfaces_audited", "total_findings", "finding_type_counts"],
+      "properties": {
+        "total_surfaces_audited": { "type": "integer", "minimum": 0 },
+        "total_findings": { "type": "integer", "minimum": 0 },
+        "finding_type_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_id", "surface_role", "finding_type", "severity",
+        "content_light_observation", "human_review_required",
+        "local_mutation", "remote_mutation"
+      ],
+      "properties": {
+        "finding_id": { "type": "string", "minLength": 1 },
+        "surface_role": { "type": "string" },
+        "finding_type": {
+          "type": "string",
+          "enum": [
+            "missing_surface", "stale_surface", "unsupported_claim",
+            "inconsistent_claim", "stale_badge_or_status", "missing_security_posture",
+            "missing_contribution_path", "missing_release_story", "missing_pages_site",
+            "weak_project_positioning", "overclaimed_readiness",
+            "blocked_by_missing_evidence", "needs_human_review"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "advisory"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "source_surface_refs": { "type": "array", "items": { "type": "string" } },
+        "content_light_observation": { "type": "string" },
+        "proposed_packet_type": { "type": "string" },
+        "human_review_required": { "type": "boolean" },
+        "local_mutation": { "type": "boolean" },
+        "remote_mutation": { "type": "boolean", "const": false },
+        "remaining_seams": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_findings", "critical_count", "high_count", "needs_human_review_count", "next_recommended_action"],
+      "properties": {
+        "total_findings": { "type": "integer", "minimum": 0 },
+        "critical_count": { "type": "integer", "minimum": 0 },
+        "high_count": { "type": "integer", "minimum": 0 },
+        "medium_count": { "type": "integer", "minimum": 0 },
+        "low_count": { "type": "integer", "minimum": 0 },
+        "advisory_count": { "type": "integer", "minimum": 0 },
+        "needs_human_review_count": { "type": "integer", "minimum": 0 },
+        "next_recommended_action": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

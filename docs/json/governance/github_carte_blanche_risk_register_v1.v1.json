@@ -1,0 +1,184 @@
+{
+  "schema_version": "rig.github.carte_blanche_risk_register.v1",
+  "generated_at": "2026-05-20T09:00:02.889985+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_limits": 14,
+  "limits": [
+    {
+      "limitation_id": "PLAT-001",
+      "affected_surface": "installation_token_user_oauth_gap",
+      "limitation_type": "requires_user_oauth",
+      "description": "Some GitHub operations cannot be performed by installation tokens and require user-to-server OAuth (e.g., user-level profile updates, starring repos, following users)",
+      "source_docs_refs": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app"
+      ],
+      "workaround": "Request user OAuth when needed; store user token alongside installation token",
+      "product_implication": "Profile README updates and user-level operations require OAuth grant",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-002",
+      "affected_surface": "installation_token_expiry",
+      "limitation_type": "rate_limited",
+      "description": "Installation access tokens expire after 1 hour; apps must regenerate tokens. Enterprise installation tokens cannot be scoped down.",
+      "source_docs_refs": [
+        "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-an-installation-access-token-for-a-github-app"
+      ],
+      "workaround": "Automatic token rotation with expiration tracking; cache token and regenerate when approaching expiry",
+      "product_implication": "Long-running operations must handle token refresh transparently",
+      "risk_if_ignored": "high"
+    },
+    {
+      "limitation_id": "PLAT-003",
+      "affected_surface": "secret_scanning_push_protection",
+      "limitation_type": "enterprise_only",
+      "description": "Push protection for custom patterns requires GitHub Advanced Security which is enterprise-only",
+      "source_docs_refs": [
+        "https://docs.github.com/en/enterprise-cloud@latest/code-security/secret-scanning"
+      ],
+      "workaround": "Use standard secret scanning; push protection limited to GHAS customers",
+      "product_implication": "Secret boundary manager features may be tier-limited",
+      "risk_if_ignored": "low"
+    },
+    {
+      "limitation_id": "PLAT-004",
+      "affected_surface": "actions_minutes_limits",
+      "limitation_type": "plan_limited",
+      "description": "GitHub Actions has free minute limits; Relay CI operations could exhaust minutes if not rate-limited",
+      "source_docs_refs": [
+        "https://docs.github.com/en/billing/managing-billing-for-github-actions"
+      ],
+      "workaround": "Track workflow minutes; add throttling; warn before exhaustion",
+      "product_implication": "CI operator modes must include cost governance",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-005",
+      "affected_surface": "rate_limits",
+      "limitation_type": "rate_limited",
+      "description": "GitHub API rate limits: 5000 requests/hour for authenticated users, lower for installation tokens per repository. Secondary rate limits may apply.",
+      "source_docs_refs": [
+        "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api"
+      ],
+      "workaround": "Implement rate limit tracking; backoff; batch where possible; use conditional requests",
+      "product_implication": "Bulk operations must be throttled; observability on rate limit consumption required",
+      "risk_if_ignored": "high"
+    },
+    {
+      "limitation_id": "PLAT-006",
+      "affected_surface": "graphql_complexity",
+      "limitation_type": "rate_limited",
+      "description": "GraphQL API has point-based rate limiting separate from REST; complex queries may exceed limits",
+      "source_docs_refs": [
+        "https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api"
+      ],
+      "workaround": "Calculate query cost before execution; paginate; use REST fallback",
+      "product_implication": "GraphQL-first features need cost estimation",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-007",
+      "affected_surface": "webhook_payload_size",
+      "limitation_type": "docs_ambiguous",
+      "description": "Webhook payload maximum size is 25 MB; larger payloads may be truncated. Some large PR or push events may exceed this.",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/about-webhooks"
+      ],
+      "workaround": "Use webhook as trigger only; fetch full data via API",
+      "product_implication": "Event-driven ops must re-fetch data via API, not rely on payload completeness",
+      "risk_if_ignored": "low"
+    },
+    {
+      "limitation_id": "PLAT-008",
+      "affected_surface": "profile_readme_repo_discovery",
+      "limitation_type": "API_unavailable",
+      "description": "No API endpoint to discover a user's profile README repo name; convention is {username}/{username}",
+      "source_docs_refs": [
+        "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-your-profile-readme"
+      ],
+      "workaround": "Hardcode convention as primary; fall back to user input",
+      "product_implication": "Profile README automation may need repo name input",
+      "risk_if_ignored": "low"
+    },
+    {
+      "limitation_id": "PLAT-009",
+      "affected_surface": "pages_custom_domain_management",
+      "limitation_type": "API_unavailable",
+      "description": "Some GitHub Pages custom domain operations require repository admin or are not available via API",
+      "source_docs_refs": [
+        "https://docs.github.com/en/rest/pages"
+      ],
+      "workaround": "Document manual steps; leverage Pages API for core operations",
+      "product_implication": "Full Pages automation may require manual intervention for domain setup",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-010",
+      "affected_surface": "merge_queue_api",
+      "limitation_type": "API_unavailable",
+      "description": "Merge queue functionality is in limited beta and may not have stable API support for GitHub Apps",
+      "source_docs_refs": [
+        "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue"
+      ],
+      "workaround": "Watch for GA; use PR merge API in the meantime",
+      "product_implication": "Auto-merge pipeline may be less reliable until GA",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-011",
+      "affected_surface": "projects_v2_api",
+      "limitation_type": "docs_ambiguous",
+      "description": "Projects v2 API is still evolving; some operations may be GraphQL-only or have limited App support",
+      "source_docs_refs": [
+        "https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-projects"
+      ],
+      "workaround": "Use GraphQL API for Projects v2; test permission compatibility",
+      "product_implication": "Project board automation may need workarounds",
+      "risk_if_ignored": "low"
+    },
+    {
+      "limitation_id": "PLAT-012",
+      "affected_surface": "audit_log_api",
+      "limitation_type": "enterprise_only",
+      "description": "Organization audit log API requires GitHub Enterprise; not available on free/team plans",
+      "source_docs_refs": [
+        "https://docs.github.com/en/rest/orgs/orgs#get-the-audit-log-for-an-organization"
+      ],
+      "workaround": "Simulate audit trail from webhook events for non-enterprise users",
+      "product_implication": "Audit features enterprise-gated",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-013",
+      "affected_surface": "package_publishing",
+      "limitation_type": "permission_unclear",
+      "description": "GitHub Packages publishing via GitHub Apps may require additional write:packages permission which is separate from repo permissions",
+      "source_docs_refs": [
+        "https://docs.github.com/en/rest/packages"
+      ],
+      "workaround": "Request write:packages permission explicitly; test package registration flow",
+      "product_implication": "Package release operator needs explicit package permission",
+      "risk_if_ignored": "medium"
+    },
+    {
+      "limitation_id": "PLAT-014",
+      "affected_surface": "issue_forms_beta",
+      "limitation_type": "docs_ambiguous",
+      "description": "Issue forms (YAML-defined templates) are partially supported through the contents API but not via dedicated API",
+      "source_docs_refs": [
+        "https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests"
+      ],
+      "workaround": "Manage issue form YAML files via Contents API",
+      "product_implication": "Issue template management works through file API",
+      "risk_if_ignored": "low"
+    }
+  ],
+  "summary": {
+    "api_unavailable": 3,
+    "requires_user_oauth": 1,
+    "plan_limited": 1,
+    "rate_limited": 3,
+    "app_not_supported": 1
+  }
+}

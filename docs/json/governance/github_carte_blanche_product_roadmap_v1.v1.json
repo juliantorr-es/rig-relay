@@ -1,0 +1,363 @@
+{
+  "schema_version": "rig.github.carte_blanche_product_roadmap.v1",
+  "generated_at": "2026-05-20T09:00:02.890462+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_phases": 9,
+  "phases": [
+    {
+      "phase_id": "phase_0",
+      "goal": "Research siphon: build carte blanche research artifacts documenting maximum integration surface",
+      "included_lanes": [
+        "research_artifact_generation",
+        "permission_value_matrix",
+        "surface_lane_inventory",
+        "mutation_catalog",
+        "webhook_event_matrix",
+        "platform_limits_registry"
+      ],
+      "excluded_lanes": [
+        "all_mutation_lanes",
+        "all_live_api_calls",
+        "all_webhook_subscriptions"
+      ],
+      "required_permissions": [
+        "metadata:read"
+      ],
+      "required_artifacts": [
+        "all_8_carte_blanche_artifacts"
+      ],
+      "required_tests": [
+        "governance_artifact_tests",
+        "adversarial_redaction_tests"
+      ],
+      "required_UI": "none",
+      "mutation_policy": "no_remote_mutation",
+      "telemetry_value": "high_for_research_governance",
+      "release_gate": "all_artifacts_schema_valid_and_redaction_clean",
+      "success_definition": "Schema-governed research substrate showing how to use every meaningful GitHub permission to its fullest product value",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_1",
+      "goal": "Public surface program: audit, maintain, and publish all public repository surfaces",
+      "included_lanes": [
+        "profile_readme_maintainer",
+        "project_readme_maintainer",
+        "repo_metadata_auditor",
+        "repo_topics_manager",
+        "community_health_maintainer",
+        "badge_status_block_manager",
+        "surface_audit_runner"
+      ],
+      "excluded_lanes": [
+        "mutation_lanes_except_content_write",
+        "issue_pr_management",
+        "security_queue_management",
+        "ci_operations"
+      ],
+      "required_permissions": [
+        "contents:read",
+        "contents:write",
+        "metadata:read",
+        "administration:write"
+      ],
+      "required_artifacts": [
+        "operating_picture",
+        "surface_audit",
+        "evidence_backed_claims_index",
+        "surface_packets"
+      ],
+      "required_tests": [
+        "integration_public_surface",
+        "governance_surface_audit",
+        "adversarial_content_injection"
+      ],
+      "required_UI": "surface_dashboard_chips",
+      "mutation_policy": "approval_required_for_all_writes; dry_run_preview_mandatory",
+      "telemetry_value": "high_for_developer_presence",
+      "release_gate": "public_surface_audit_clean_and_claims_index_ready",
+      "success_definition": "Relay can audit, propose, and publish updates to all public repository surfaces with evidence-backed claims",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_2",
+      "goal": "Security queue manager: full security alert lifecycle management",
+      "included_lanes": [
+        "code_scanning_alert_triage",
+        "secret_scanning_boundary_manager",
+        "dependabot_alert_manager",
+        "security_advisory_draft_assistant",
+        "security_policy_maintainer",
+        "codeql_config_manager",
+        "dependabot_config_manager"
+      ],
+      "excluded_lanes": [
+        "auto_dismiss_without_fix",
+        "auto_merge_security_fixes",
+        "org_level_security"
+      ],
+      "required_permissions": [
+        "security_events:read",
+        "security_events:write",
+        "dependabot_alerts:read",
+        "dependabot_alerts:write",
+        "contents:read",
+        "contents:write"
+      ],
+      "required_artifacts": [
+        "security_intake",
+        "security_queue",
+        "patch_candidate_groups",
+        "security_packet_runner_plan",
+        "security_packet_execution"
+      ],
+      "required_tests": [
+        "integration_security_intake",
+        "governance_security_packets",
+        "adversarial_alert_injection"
+      ],
+      "required_UI": "security_queue_dashboard",
+      "mutation_policy": "alert_dismissal_requires_evidence; fix_pr_creation_requires_approval; never_dismiss_without_linked_fix",
+      "telemetry_value": "high_for_security_posture",
+      "release_gate": "security_queue_burn_down_demonstrated_on_test_repo",
+      "success_definition": "Relay maintains a healthy security queue with evidence-backed dismissals and fix proposals",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_3",
+      "goal": "Issue and PR operator: triage issues, manage PR lifecycle, evidence-backed proposals",
+      "included_lanes": [
+        "issue_triage_manager",
+        "issue_auto_labeler",
+        "issue_project_router",
+        "pr_review_copilot",
+        "evidence_backed_pr_creator",
+        "stale_issue_cleaner",
+        "stale_pr_manager"
+      ],
+      "excluded_lanes": [
+        "auto_merge_without_approval",
+        "auto_close_without_review",
+        "pr_body_content_reading_without_opt_in"
+      ],
+      "required_permissions": [
+        "issues:read",
+        "issues:write",
+        "pull_requests:read",
+        "pull_requests:write",
+        "contents:write"
+      ],
+      "required_artifacts": [
+        "issue_queue",
+        "pr_queue",
+        "evidence_backed_claims_index",
+        "operating_picture"
+      ],
+      "required_tests": [
+        "integration_issue_triage",
+        "integration_pr_workflow",
+        "governance_pr_receipts",
+        "adversarial_pr_injection"
+      ],
+      "required_UI": "issue_pr_dashboard",
+      "mutation_policy": "label_assign_auto_allowed; create_requires_evidence; merge_requires_explicit_approval",
+      "telemetry_value": "high_for_developer_productivity",
+      "release_gate": "issue_inbox_zero_and_evidence_backed_pr_opened_on_test_repo",
+      "success_definition": "Relay reduces issue backlog and creates evidence-backed PRs that reviewers can trust",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_4",
+      "goal": "CI/Actions operator: workflow health, dispatch, failure diagnosis, configuration management",
+      "included_lanes": [
+        "ci_health_monitor",
+        "workflow_dispatch_manager",
+        "ci_failure_diagnosis",
+        "workflow_config_auditor",
+        "ci_cost_governor"
+      ],
+      "excluded_lanes": [
+        "auto_edit_workflow_without_review",
+        "exhausting_ci_minutes",
+        "secrets_management"
+      ],
+      "required_permissions": [
+        "actions:read",
+        "actions:write",
+        "contents:read"
+      ],
+      "required_artifacts": [
+        "ci_health_index",
+        "actions_queue",
+        "workflow_config_audit_report"
+      ],
+      "required_tests": [
+        "integration_ci_health",
+        "governance_workflow_receipts",
+        "adversarial_ci_injection"
+      ],
+      "required_UI": "ci_dashboard",
+      "mutation_policy": "rerun_flaky_allowed; dispatch_requires_approval; workflow_file_edit_requires_approval_and_contents_permission",
+      "telemetry_value": "high_for_ci_visibility",
+      "release_gate": "ci_health_dashboard_populated_from_test_repo",
+      "success_definition": "Relay monitors CI health across repos and can diagnose and propose fixes for common failures",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_5",
+      "goal": "Release and Pages operator: automated release management and docs site publishing",
+      "included_lanes": [
+        "release_manager",
+        "release_notes_generator",
+        "changelog_maintainer",
+        "docs_site_publisher",
+        "deployment_status_monitor",
+        "environment_health_monitor"
+      ],
+      "excluded_lanes": [
+        "auto_publish_without_review",
+        "custom_domain_setup",
+        "delete_releases"
+      ],
+      "required_permissions": [
+        "contents:write",
+        "pages:read",
+        "pages:write",
+        "deployments:read",
+        "deployments:write"
+      ],
+      "required_artifacts": [
+        "release_index",
+        "changelog",
+        "docs_build_report",
+        "release_receipts"
+      ],
+      "required_tests": [
+        "integration_release_workflow",
+        "integration_pages_publish",
+        "governance_release_receipts"
+      ],
+      "required_UI": "release_dashboard_and_pages_preview",
+      "mutation_policy": "release_draft_auto_prepared; publish_requires_approval; pages_publish_requires_build_pass_and_approval",
+      "telemetry_value": "high_for_release_automation",
+      "release_gate": "evidence_backed_release_created_and_docs_site_published_on_test_repo",
+      "success_definition": "Relay manages the release train from draft to publish, keeping changelog and docs site in sync",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_6",
+      "goal": "Repo and org hygiene operator: branch protection, rulesets, collaborators, org membership audit",
+      "included_lanes": [
+        "branch_protection_auditor",
+        "ruleset_compliance_checker",
+        "collaborator_access_auditor",
+        "deploy_key_auditor",
+        "org_membership_auditor",
+        "team_access_review",
+        "stale_branch_detector"
+      ],
+      "excluded_lanes": [
+        "auto_apply_protection_changes",
+        "auto_remove_collaborators",
+        "auto_modify_org_membership"
+      ],
+      "required_permissions": [
+        "administration:read",
+        "members:read"
+      ],
+      "required_artifacts": [
+        "org_access_posture",
+        "branch_protection_report",
+        "ruleset_compliance_report",
+        "access_review_report"
+      ],
+      "required_tests": [
+        "integration_repo_hygiene",
+        "integration_org_audit",
+        "governance_access_receipts"
+      ],
+      "required_UI": "hygiene_dashboard",
+      "mutation_policy": "read_only_by_default; proposals_only; no_auto_apply",
+      "telemetry_value": "medium_for_org_governance",
+      "release_gate": "org_access_posture_and_repo_hygiene_reports_generated",
+      "success_definition": "Relay provides visibility into repo and org health without making changes",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_7",
+      "goal": "Event-driven GitHub ops: webhook observer, event correlation, telemetry pipeline",
+      "included_lanes": [
+        "webhook_event_observer",
+        "event_replay_reconciliation",
+        "telemetry_insights_operator",
+        "traffic_analytics_dashboard",
+        "multi_repo_correlation_engine"
+      ],
+      "excluded_lanes": [
+        "auto_generated_commits_from_events",
+        "event_based_mutation_without_approval"
+      ],
+      "required_permissions": [
+        "webhooks:read",
+        "metadata:read"
+      ],
+      "required_artifacts": [
+        "webhook_event_envelope_log",
+        "telemetry_index",
+        "cross_repo_correlation_index"
+      ],
+      "required_tests": [
+        "integration_webhook_events",
+        "governance_event_receipts",
+        "adversarial_webhook_injection"
+      ],
+      "required_UI": "event_observer_dashboard",
+      "mutation_policy": "observation_only; no_mutation_from_events",
+      "telemetry_value": "high_for_platform_intelligence",
+      "release_gate": "webhook_events_observed_and_correlated_on_test_repo",
+      "success_definition": "Relay turns GitHub events into an inspectable operating substrate",
+      "remaining_seams": []
+    },
+    {
+      "phase_id": "phase_8",
+      "goal": "Multi-repo developer chief of staff: full GitHub operating layer across all repos and orgs",
+      "included_lanes": [
+        "all_previous_phase_lanes",
+        "multi_repo_orchestration",
+        "cross_repo_release_sync",
+        "org_wide_security_posture",
+        "developer_portfolio_dashboard",
+        "council_adversarial_review"
+      ],
+      "excluded_lanes": [
+        "unreviewed_mutations",
+        "org_settings_changes"
+      ],
+      "required_permissions": [
+        "all_read_permissions",
+        "all_approved_write_permissions"
+      ],
+      "required_artifacts": [
+        "all_artifact_types",
+        "multi_repo_operating_picture",
+        "developer_portfolio_index"
+      ],
+      "required_tests": [
+        "full_integration_suite",
+        "cross_repo_orchestration_tests"
+      ],
+      "required_UI": "chief_of_staff_dashboard",
+      "mutation_policy": "full_governance_with_approval_chains_and_receipts",
+      "telemetry_value": "high_for_full_product",
+      "release_gate": "all_test_repos_have_healthy_operating_pictures_and_security_queues",
+      "success_definition": "Relay is the governed GitHub chief-of-staff: repos are healthy, surfaces are current, security queues move, CI is visible, releases flow, and evidence backs every claim",
+      "remaining_seams": []
+    }
+  ],
+  "summary": {
+    "current_phase": "phase_0",
+    "next_phase": "phase_1",
+    "total_lanes_across_phases": 56
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.evidence_backed_claims_index.v1.schema.json",
+  "title": "GitHub Evidence-Backed Claims Index v1",
+  "description": "Read-only index of public-facing claims extracted from README.md, cross-referenced against operating picture and surface audit evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "owner",
+    "repo",
+    "content_light",
+    "remote_mutation",
+    "local_mutation",
+    "source_operating_picture_path",
+    "source_operating_picture_hash",
+    "source_surface_audit_path",
+    "source_surface_audit_hash",
+    "claims",
+    "validation_commands",
+    "claim_summary",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.evidence_backed_claims_index.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "local_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_operating_picture_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_operating_picture_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{0,64}$"
+    },
+    "source_surface_audit_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_surface_audit_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{0,64}$"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_id",
+          "claim_category",
+          "source_surface_ref",
+          "normalized_claim_summary",
+          "evidence_refs",
+          "support_status",
+          "confidence",
+          "public_wording_risk",
+          "suggested_action",
+          "human_review_required",
+          "local_mutation",
+          "remote_mutation",
+          "remaining_seams"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "claim_category": {
+            "type": "string",
+            "enum": [
+              "functionality_claim",
+              "security_claim",
+              "release_readiness_claim",
+              "platform_support_claim",
+              "test_coverage_claim",
+              "documentation_claim",
+              "installation_claim",
+              "performance_claim",
+              "stability_claim",
+              "integration_claim",
+              "governance_claim",
+              "telemetry_privacy_claim",
+              "unknown_claim"
+            ]
+          },
+          "source_surface_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "normalized_claim_summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "support_status": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "partially_supported",
+              "unsupported",
+              "contradicted",
+              "unknown"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "public_wording_risk": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "suggested_action": {
+            "type": "string",
+            "enum": [
+              "keep",
+              "caveat",
+              "downgrade",
+              "remove",
+              "request_human_review"
+            ]
+          },
+          "human_review_required": {
+            "type": "boolean"
+          },
+          "local_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remaining_seams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_claims",
+        "supported_count",
+        "unsupported_count",
+        "partially_supported_count",
+        "contradicted_count",
+        "unknown_count",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "total_claims": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsupported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partially_supported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contradicted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "next_recommended_action": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

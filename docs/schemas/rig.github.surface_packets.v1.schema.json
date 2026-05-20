@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.surface_packets.v1.schema.json",
+  "title": "GitHub Surface Packets v1",
+  "description": "Reviewable public-surface proposal packets generated from surface audit findings. Packets NEVER apply patches, edit files, or create PRs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "owner",
+    "repo",
+    "content_light",
+    "remote_mutation",
+    "local_mutation",
+    "packets",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.surface_packets.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "local_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_operating_picture_path": {
+      "type": "string"
+    },
+    "source_surface_audit_path": {
+      "type": "string"
+    },
+    "surface_issues_detected": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "packets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "packet_id",
+          "packet_type",
+          "source_findings",
+          "source_claims",
+          "target_surface_role",
+          "proposed_change_summary",
+          "generated_public_text_allowed",
+          "evidence_refs",
+          "validation_commands",
+          "apply_ready",
+          "preview_ready",
+          "human_review_required",
+          "local_mutation",
+          "remote_mutation",
+          "remaining_seams"
+        ],
+        "properties": {
+          "packet_id": {
+            "type": "string",
+            "minLength": 64
+          },
+          "packet_type": {
+            "type": "string",
+            "enum": [
+              "project_readme_packet",
+              "profile_readme_packet",
+              "github_pages_packet",
+              "badge_status_packet",
+              "release_notes_packet",
+              "security_posture_packet",
+              "contribution_surface_packet",
+              "claim_cleanup_packet",
+              "no_action_packet",
+              "human_review_packet"
+            ]
+          },
+          "source_findings": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "source_claims": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "target_surface_role": {
+            "type": "string"
+          },
+          "proposed_change_summary": {
+            "type": "string"
+          },
+          "generated_public_text_allowed": {
+            "type": "boolean",
+            "const": false
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "validation_commands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "apply_ready": {
+            "type": "boolean",
+            "const": false
+          },
+          "preview_ready": {
+            "type": "boolean"
+          },
+          "human_review_required": {
+            "type": "boolean"
+          },
+          "local_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remaining_seams": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_packets",
+        "packet_type_counts",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "total_packets": {
+          "type": "integer"
+        },
+        "packet_type_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "next_recommended_action": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

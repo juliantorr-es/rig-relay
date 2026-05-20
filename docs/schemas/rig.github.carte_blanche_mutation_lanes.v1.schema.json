@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_mutation_lanes.v1.schema.json",
+  "title": "GitHub Carte Blanche Mutation Lanes v1",
+  "description": "Catalogs every useful remote mutation Relay could perform under full trust.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_mutations", "mutations", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_mutation_lanes.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_mutations": {"type": "integer", "minimum": 0},
+    "mutations": {"type": "array", "items": {"$ref": "#/definitions/mutation_entry"}},
+    "summary": {"type": "object", "required": ["disabled_count", "dry_run_count", "approval_required_count", "automatic_count"], "properties": {
+      "disabled_count": {"type": "integer"}, "dry_run_count": {"type": "integer"},
+      "approval_required_count": {"type": "integer"}, "automatic_count": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "mutation_entry": {
+      "type": "object",
+      "required": ["mutation_lane_id", "user_visible_value", "required_permission", "recommended_initial_state"],
+      "properties": {
+        "mutation_lane_id": {"type": "string"}, "user_visible_value": {"type": "string"},
+        "official_endpoint": {"type": "string"}, "required_permission": {"type": "string"},
+        "auth_mode": {"type": "string"}, "can_be_done_by_github_app": {"type": "boolean"},
+        "requires_user_oauth": {"type": "boolean"}, "required_preflight_artifacts": {"type": "array", "items": {"type": "string"}},
+        "required_approval_level": {"type": "string"}, "rollback_strategy": {"type": "string"},
+        "dry_run_strategy": {"type": "string"}, "receipt_fields": {"type": "array", "items": {"type": "string"}},
+        "dangerous_failure_modes": {"type": "array", "items": {"type": "string"}},
+        "recommended_initial_state": {"type": "string", "enum": ["disabled", "dry_run", "approval_required", "automatic_under_policy"]},
+        "test_strategy": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

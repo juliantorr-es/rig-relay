@@ -1,0 +1,150 @@
+{
+  "schema_version": "rig.github.surface_preview.v1",
+  "generated_at": "2026-05-20T08:49:57.223460+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "local_mutation": false,
+  "preview_entries": [
+    {
+      "preview_id": "sha256:9657832c9cc35b7dabff9412a8f28ece14c481fc4eee3e7a64a6d37758f33fcf",
+      "packet_id": "04ddc400e2218127e0aa92c6b9e25be4753c454df381fae231c7d69a86f2188a",
+      "target_surface_role": "security_posture_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "7db51e8753bce7e356bd20189677151f77b45234044d25dd9de509b7b84efae3",
+      "render_status": "rendered",
+      "safety_status": "safe",
+      "evidence_refs": [
+        "evidence:SECURITY.md",
+        "source_role:security_policy"
+      ],
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "no_safety_issues"
+      ]
+    },
+    {
+      "preview_id": "sha256:8b32eb78614ad48c6b2e2894a3257922cc2642105f16c3bd21b5fa8105a16117",
+      "packet_id": "4c6c98e9945bb62b6ece9da2a3ec0345ae1dea67e6be38432f108109e3ec5907",
+      "target_surface_role": "project_readme_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "c9a401ebe489406d0bf7068f783ad82f67cb2e34efc8d267cc1381035112d5fb",
+      "render_status": "rendered",
+      "safety_status": "safe",
+      "evidence_refs": [
+        "evidence:README.md",
+        "source_role:project_readme"
+      ],
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "no_safety_issues"
+      ]
+    },
+    {
+      "preview_id": "sha256:6a0df54812642a7640dd580ae388828bad85d2b605ec4193e6895c3276abfa00",
+      "packet_id": "55e16942014407ec5d32dc03db27dfb5213df98cfed32256fe66c14730683312",
+      "target_surface_role": "claim_cleanup_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "388b2cca946a178e8fe21419324373c2888dff2ec863d058ae6345359a67452a",
+      "render_status": "blocked",
+      "safety_status": "blocked",
+      "evidence_refs": [
+        "evidence:README.md",
+        "source_role:public_claims"
+      ],
+      "human_review_required": true,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "claim verification requires operating picture freshness guarantee"
+      ]
+    },
+    {
+      "preview_id": "sha256:e54fa744497717630b12bd07ddc2084e4df4375ff3b6ecd36d93ca52d02583a4",
+      "packet_id": "5a944d8152c64fcbfca77910394706e98f85474b15604e2baff69c3a0b8329fa",
+      "target_surface_role": "github_pages_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "fbff2f3ec3c1327ce0138b487d40e84b20d007e0fa1caf87e682a736892e6a4f",
+      "render_status": "blocked",
+      "safety_status": "blocked",
+      "evidence_refs": [
+        "evidence:docs/render-manifest.json",
+        "evidence:docs/pages/",
+        "evidence:docs/index.html",
+        "source_role:static_site_pages"
+      ],
+      "human_review_required": true,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "pages publishing source not verified via live API"
+      ]
+    },
+    {
+      "preview_id": "sha256:f3306960f7dad8dc950c0c95c910c1e25a66be607f10787d0ffc9157934e7c72",
+      "packet_id": "a15b03ba32335a704eaad2652a750096ec40dbc0454081256c4a0151a9772427",
+      "target_surface_role": "profile_readme_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "346f660cac6cdd073b03cc0f1f28e6fbe7fa2b4779f62ebf0a93cde5a011b185",
+      "render_status": "blocked",
+      "safety_status": "blocked",
+      "evidence_refs": [
+        "source_role:profile_readme"
+      ],
+      "human_review_required": true,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "requires live network check; local-only read not sufficient"
+      ]
+    },
+    {
+      "preview_id": "sha256:d275df6f4bc5874f6e6052a287761beb0459bc3a2d8687a921a93cfa0d8c7fdc",
+      "packet_id": "a3e5ae89d9254517fab3e80318ceda9b3a0e8d23bc0cd3ceaf58dac13380a310",
+      "target_surface_role": "release_notes_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "60745340bc6bcf53c5f1e251049fa10d928e58c4c70f69b3b54bdfa3d603f616",
+      "render_status": "rendered",
+      "safety_status": "safe",
+      "evidence_refs": [
+        "evidence:CHANGELOG.md",
+        "source_role:changelog"
+      ],
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "no_safety_issues"
+      ]
+    },
+    {
+      "preview_id": "sha256:77558e3afe356bc02076ac515ab993bbaf98cfa504e9b96243a464a27568e67f",
+      "packet_id": "e0a82006bdd48c2f0048b355d73ea9bcf0c9f95b16e4d7db843b148afdc72d37",
+      "target_surface_role": "badge_status_preview",
+      "preview_artifact_path": null,
+      "preview_hash": "79f6605654c3a9e13da58e28ec7f1e1d752e22927a0248a7215821adea20ca11",
+      "render_status": "rendered",
+      "safety_status": "blocked",
+      "evidence_refs": [
+        "evidence:README.md",
+        "source_role:badge_status_block"
+      ],
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "badge freshness not verified via live CI/CD API"
+      ]
+    }
+  ],
+  "summary": {
+    "total_packets": 7,
+    "previewed_count": 4,
+    "blocked_count": 3,
+    "not_rendered_count": 0,
+    "next_recommended_action": "human_review_required"
+  }
+}

@@ -641,9 +641,23 @@ def build_github_operating_picture(
         "repo": repo,
         "content_light": True,
         "remote_mutation": False,
+        "local_mutation": False,
         "source_artifacts": sorted(
             source_artifacts, key=lambda item: str(item["artifact_id"])
         ),
+        "dirty_state_summary": _dirty_state_summary(_REPO_ROOT),
+        "local_surface_inventory": _local_surface_inventory(_REPO_ROOT),
+        "evidence_source_registry": _evidence_source_registry(),
+        "public_surface_lane_readiness": _public_surface_lane_readiness(
+            _local_surface_inventory(_REPO_ROOT)
+        ),
+        "known_signal_summary": _known_signal_summary(
+            _local_surface_inventory(_REPO_ROOT)
+        ),
+        "next_recommended_slices": _next_recommended_slices(
+            _local_surface_inventory(_REPO_ROOT)
+        ),
+        "refusal_reasons": _refusal_reasons(_local_surface_inventory(_REPO_ROOT)),
         "auth_summary": sections["auth_summary"],
         "permission_summary": sections["permission_summary"],
         "intake_summary": sections["intake_summary"],
@@ -1060,6 +1074,232 @@ def build_github_operating_picture_from_paths(
         },
     )
     return report
+
+
+def _dirty_state_summary(repo_root: Path) -> dict[str, Any]:
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return {"clean": False, "file_count": None, "error": "git_status_failed"}
+    lines = [line for line in status.strip().split("\n") if line.strip()]
+    modified = sum(1 for line in lines if line[:2].strip() in {"M", "MM", "AM"})
+    untracked = sum(1 for line in lines if line.startswith("??"))
+    staged = sum(
+        1 for line in lines if line[0] in {"M", "A", "D"} and not line.startswith("??")
+    )
+    return {
+        "clean": len(lines) == 0,
+        "total_modified_count": len(lines),
+        "modified_count": modified,
+        "untracked_count": untracked,
+        "staged_count": staged,
+    }
+
+
+_SURFACE_INVENTORY_SPEC: list[tuple[str, str, list[str]]] = [
+    ("project_readme", "README.md", ["README.md"]),
+    ("profile_readme_candidate", "", []),
+    ("github_pages_candidate", "", []),
+    ("docs_directory", "docs", []),
+    ("generated_static_docs", "", []),
+    ("release_notes_or_changelog", "CHANGELOG.md", ["CHANGELOG.md"]),
+    ("security_policy", "SECURITY.md", ["SECURITY.md"]),
+    ("contributing_guide", "CONTRIBUTING.md", ["CONTRIBUTING.md"]),
+    ("code_of_conduct", "CODE_OF_CONDUCT.md", ["CODE_OF_CONDUCT.md"]),
+    ("license", "LICENSE", ["LICENSE", "LICENSE.md"]),
+    ("github_workflows", ".github/workflows", []),
+    ("issue_templates", ".github/ISSUE_TEMPLATE", []),
+    (
+        "pull_request_template",
+        ".github/pull_request_template.md",
+        [".github/pull_request_template.md", ".github/PULL_REQUEST_TEMPLATE.md"],
+    ),
+    (
+        "dependabot_config",
+        ".github/dependabot.yml",
+        [".github/dependabot.yml", ".github/dependabot.yaml"],
+    ),
+    ("codeql_config", ".github/codeql", []),
+    ("badges_or_status_blocks", "README.md", []),
+]
+
+
+def _local_surface_inventory(repo_root: Path) -> list[dict[str, Any]]:
+    inventory: list[dict[str, Any]] = []
+    for surface_name, primary_path, alt_paths in _SURFACE_INVENTORY_SPEC:
+        exists = False
+        resolved_path = ""
+        for candidate in [primary_path, *alt_paths]:
+            if not candidate:
+                continue
+            full = repo_root / candidate
+            if full.is_dir() or full.exists():
+                exists = True
+                resolved_path = candidate
+                break
+        stats = (
+            _file_stats(repo_root / resolved_path)
+            if resolved_path and (repo_root / resolved_path).exists()
+            else {}
+        )
+        if exists and not resolved_path:
+            exists = False
+        roles = _detect_surface_roles(surface_name, exists, repo_root)
+        inventory.append({
+            "surface_name": surface_name,
+            "repo_relative_path": resolved_path or primary_path,
+            "file_category": _surface_category(surface_name),
+            "exists": exists,
+            "sha256": stats.get("sha256"),
+            "byte_count": stats.get("byte_count"),
+            "line_count": stats.get("line_count"),
+            "content_light_summary": stats.get("content_light_summary"),
+            "detected_surface_roles": roles,
+            "audit_needed": not exists,
+            "remaining_seams": [],
+        })
+    return inventory
+
+
+def _surface_category(surface_name: str) -> str:
+    categories = {
+        "project_readme": "documentation",
+        "profile_readme_candidate": "profile",
+        "github_pages_candidate": "publishing",
+        "docs_directory": "documentation",
+        "generated_static_docs": "publishing",
+        "release_notes_or_changelog": "release",
+        "security_policy": "security",
+        "contributing_guide": "community",
+        "code_of_conduct": "community",
+        "license": "legal",
+        "github_workflows": "ci_cd",
+        "issue_templates": "community",
+        "pull_request_template": "community",
+        "dependabot_config": "security",
+        "codeql_config": "security",
+        "badges_or_status_blocks": "documentation",
+    }
+    return categories.get(surface_name, "unknown")
+
+
+def _detect_surface_roles(
+    surface_name: str, exists: bool, repo_root: Path
+) -> list[str]:
+    if not exists:
+        return []
+    roles: list[str] = []
+    if surface_name == "project_readme":
+        roles.append("landing_page")
+        roles.append("project_description")
+    elif surface_name == "release_notes_or_changelog":
+        roles.append("version_history")
+    elif surface_name == "security_policy":
+        roles.append("vulnerability_reporting")
+    elif surface_name == "contributing_guide":
+        roles.append("developer_onboarding")
+    elif surface_name == "license":
+        roles.append("legal_attribution")
+    elif surface_name == "github_workflows":
+        roles.append("ci_automation")
+    return roles
+
+
+def _file_stats(path: Path) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {}
+    try:
+        raw = path.read_bytes()
+        return {
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "byte_count": len(raw),
+            "line_count": raw.decode(errors="replace").count("\n") + 1,
+            "content_light_summary": f"File present at {path.name}, {len(raw)} bytes",
+        }
+    except (OSError, PermissionError):
+        return {}
+
+
+def _evidence_source_registry() -> list[dict[str, Any]]:
+    return [
+        {
+            "source": "github_operating_picture",
+            "path": "docs/json/governance/github_operating_picture_v1.v1.json",
+            "kind": "projection",
+        },
+        {
+            "source": "github_security_intake",
+            "path": "docs/json/governance/github_security_intake_result.v1.json",
+            "kind": "intake",
+        },
+        {
+            "source": "github_mission_packets",
+            "path": "docs/json/governance/github_security_mission_packets_v1.v1.json",
+            "kind": "planning",
+        },
+        {
+            "source": "github_ci_cd_reliability",
+            "path": "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+            "kind": "ci_evidence",
+        },
+        {
+            "source": "github_surface_audit",
+            "path": "docs/json/governance/github_surface_audit_v1.v1.json",
+            "kind": "audit",
+        },
+    ]
+
+
+def _public_surface_lane_readiness(inventory: list[dict[str, Any]]) -> dict[str, Any]:
+    existing = [s["surface_name"] for s in inventory if s["exists"]]
+    missing = [s["surface_name"] for s in inventory if not s["exists"]]
+    return {
+        "total_surfaces": len(inventory),
+        "present_count": len(existing),
+        "missing_count": len(missing),
+        "present_surfaces": existing,
+        "missing_surfaces": missing,
+        "ready_for_audit": len(existing) > 0,
+        "ready_for_preview": False,
+    }
+
+
+def _known_signal_summary(inventory: list[dict[str, Any]]) -> dict[str, Any]:
+    signals: dict[str, int] = {}
+    for item in inventory:
+        for role in item.get("detected_surface_roles", []):
+            signals[role] = signals.get(role, 0) + 1
+    return {"detected_signals": signals, "signal_count": sum(signals.values())}
+
+
+def _next_recommended_slices(inventory: list[dict[str, Any]]) -> list[str]:
+    slices: list[str] = []
+    missing = [s for s in inventory if not s["exists"]]
+    if missing:
+        slices.append("audit_missing_surfaces")
+        slices.append("generate_surface_packets")
+    else:
+        slices.append("run_surface_audit")
+    slices.append("build_claims_index")
+    return slices
+
+
+def _refusal_reasons(inventory: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    reasons: list[dict[str, Any]] = []
+    for item in inventory:
+        if not item["exists"]:
+            reasons.append({
+                "surface": item["surface_name"],
+                "reason": "missing_local_file",
+                "detail": f"{item['repo_relative_path']} not found locally.",
+            })
+    return reasons
 
 
 def write_github_operating_picture(

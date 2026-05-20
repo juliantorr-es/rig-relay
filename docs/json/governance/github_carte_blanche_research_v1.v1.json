@@ -1,0 +1,367 @@
+{
+  "schema_version": "rig.github.carte_blanche_research.v1",
+  "generated_at": "2026-05-20T09:00:02.833649+00:00",
+  "branch": "main",
+  "head": "635244d78188db3c39197d1da93d382c2f76465c",
+  "content_light": true,
+  "remote_mutation": false,
+  "research_scope": "Maximum practical GitHub App permissions and user trust (carte blanche). Maps every meaningful GitHub permission, surface, mutation, webhook event, product mode, user journey, platform limit, and roadmap phase to Relay product value.",
+  "assumption": "User intentionally grants Rig Relay full GitHub App permissions, read/write access where GitHub permits, webhook access, repository access, organization access where available, and full operational trust.",
+  "official_docs_refs": [
+    "https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps",
+    "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app",
+    "https://docs.github.com/en/rest",
+    "https://docs.github.com/en/graphql",
+    "https://docs.github.com/en/webhooks",
+    "https://docs.github.com/en/apps/creating-github-apps/setting-up-a-github-app/choosing-permissions-for-a-github-app",
+    "https://docs.github.com/en/rest/overview/endpoints-available-for-github-app-installation-access-tokens",
+    "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions"
+  ],
+  "permission_count": 20,
+  "surface_lane_count": 25,
+  "mutation_lane_count": 12,
+  "webhook_event_count": 19,
+  "product_mode_count": 0,
+  "user_journey_count": 0,
+  "platform_limit_count": 14,
+  "roadmap_phase_count": 9,
+  "competitive_positioning": [
+    {
+      "feature_id": "public_surface_maintainer",
+      "product_value": "high",
+      "trust_requirement": "low",
+      "viral_potential": "high",
+      "complexity": "low",
+      "risk": "low",
+      "recommended_phase": "phase_1",
+      "reason": "Immediately useful; visible proof on profile; low risk; high viral potential"
+    },
+    {
+      "feature_id": "issue_triage_inbox_zero",
+      "product_value": "high",
+      "trust_requirement": "low",
+      "viral_potential": "medium",
+      "complexity": "medium",
+      "risk": "low",
+      "recommended_phase": "phase_3",
+      "reason": "Solves universal maintainer pain; safe read+label operations first"
+    },
+    {
+      "feature_id": "evidence_backed_pr",
+      "product_value": "high",
+      "trust_requirement": "high",
+      "viral_potential": "high",
+      "complexity": "medium",
+      "risk": "medium",
+      "recommended_phase": "phase_3",
+      "reason": "Most ambitious visible feature; requires strong governance; builds trust over time"
+    },
+    {
+      "feature_id": "security_queue_burn_down",
+      "product_value": "high",
+      "trust_requirement": "medium",
+      "viral_potential": "medium",
+      "complexity": "medium",
+      "risk": "medium",
+      "recommended_phase": "phase_2",
+      "reason": "Critical for enterprise credibility; alert management is table-stakes security posture"
+    },
+    {
+      "feature_id": "dependabot_manager",
+      "product_value": "medium",
+      "trust_requirement": "low",
+      "viral_potential": "low",
+      "complexity": "low",
+      "risk": "low",
+      "recommended_phase": "phase_2",
+      "reason": "Obvious automation; low risk; builds supply chain security story"
+    },
+    {
+      "feature_id": "ci_actions_operator",
+      "product_value": "high",
+      "trust_requirement": "medium",
+      "viral_potential": "medium",
+      "complexity": "high",
+      "risk": "medium",
+      "recommended_phase": "phase_4",
+      "reason": "Powerful for teams; high complexity; CI ecosystem deep understanding needed"
+    },
+    {
+      "feature_id": "release_manager",
+      "product_value": "high",
+      "trust_requirement": "high",
+      "viral_potential": "medium",
+      "complexity": "medium",
+      "risk": "high",
+      "recommended_phase": "phase_5",
+      "reason": "High value but high risk; releases are irreversible; governance paramount"
+    },
+    {
+      "feature_id": "docs_site_publisher",
+      "product_value": "medium",
+      "trust_requirement": "medium",
+      "viral_potential": "medium",
+      "complexity": "medium",
+      "risk": "low",
+      "recommended_phase": "phase_5",
+      "reason": "Visible proof of automation; safe because previewable; builds integrated experience"
+    },
+    {
+      "feature_id": "org_hygiene_operator",
+      "product_value": "medium",
+      "trust_requirement": "extreme",
+      "viral_potential": "low",
+      "complexity": "medium",
+      "risk": "high",
+      "recommended_phase": "phase_6",
+      "reason": "Enterprise-targeted; requires org admin trust; read-only first"
+    },
+    {
+      "feature_id": "multi_repo_chief_of_staff",
+      "product_value": "high",
+      "trust_requirement": "extreme",
+      "viral_potential": "high",
+      "complexity": "high",
+      "risk": "high",
+      "recommended_phase": "phase_8",
+      "reason": "Ultimate product; requires proven trust track record across all phases"
+    },
+    {
+      "feature_id": "profile_portfolio_maintainer",
+      "product_value": "high",
+      "trust_requirement": "low",
+      "viral_potential": "high",
+      "complexity": "low",
+      "risk": "low",
+      "recommended_phase": "phase_1",
+      "reason": "Immediate personal value; visible on GitHub profile; low risk; high viral sharing"
+    },
+    {
+      "feature_id": "community_health_maintainer",
+      "product_value": "medium",
+      "trust_requirement": "low",
+      "viral_potential": "low",
+      "complexity": "low",
+      "risk": "low",
+      "recommended_phase": "phase_1",
+      "reason": "Table-stakes open source hygiene; safe file updates; low risk"
+    },
+    {
+      "feature_id": "webhook_event_observer",
+      "product_value": "high",
+      "trust_requirement": "medium",
+      "viral_potential": "low",
+      "complexity": "high",
+      "risk": "medium",
+      "recommended_phase": "phase_7",
+      "reason": "Backend infrastructure; not user-visible directly; enables reactive features"
+    }
+  ],
+  "artifacts_produced": [
+    "docs/json/governance/github_carte_blanche_research_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_permission_value_matrix_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_surface_lane_matrix_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_endpoint_matrix_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_webhook_matrix_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_mutation_lanes_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_risk_register_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_product_roadmap_v1.v1.json"
+  ],
+  "source_artifacts_consulted": [
+    "rig_relay/integrations/github_provider/ (all 20 files)",
+    "docs/schemas/rig.github.*.schema.json",
+    "docs/json/governance/github_*.json",
+    "docs/json/integrations/github_app_integration_audit_v0.v1.json"
+  ],
+  "data_model_concepts": [
+    {
+      "artifact_id": "GitHubInstallationSnapshot",
+      "purpose": "Point-in-time snapshot of a GitHub App installation: repos, permissions, token state",
+      "canonical_path_suggestion": "docs/json/governance/github_installation_snapshot_v1.v1.json",
+      "schema_needed": true,
+      "source_inputs": [
+        "installation_token_exchange_response",
+        "list_accessible_repos_response"
+      ],
+      "downstream_consumers": [
+        "operating_picture",
+        "permission_ledger",
+        "rate_limit_ledger"
+      ],
+      "content_light_constraints": "hash installation_id, repo names, token hash; never raw token or private key",
+      "mutation_status_fields": [
+        "remote_mutation: false",
+        "local_mutation: false"
+      ]
+    },
+    {
+      "artifact_id": "GitHubRepoOperatingPicture",
+      "purpose": "Complete local view of a single repo: metadata, surfaces, issues, PRs, security, CI, releases",
+      "canonical_path_suggestion": "already exists as github_operating_picture_v1",
+      "schema_needed": true,
+      "source_inputs": [
+        "repo_metadata",
+        "security_intake",
+        "surface_audit",
+        "mission_candidates",
+        "packet_runner_plan"
+      ],
+      "downstream_consumers": [
+        "provider_registry",
+        "release_gate",
+        "dashboard"
+      ],
+      "content_light_constraints": "all identifiers hashed; no file contents, patches, diffs, code snippets",
+      "mutation_status_fields": [
+        "remote_mutation: false",
+        "local_mutation: false"
+      ]
+    },
+    {
+      "artifact_id": "GitHubSecurityQueue",
+      "purpose": "Normalized security alert queue across code scanning, secret scanning, dependabot",
+      "canonical_path_suggestion": "already exists via security_intake_result",
+      "schema_needed": true,
+      "source_inputs": [
+        "code_scanning_alerts",
+        "secret_scanning_alerts",
+        "dependabot_alerts"
+      ],
+      "downstream_consumers": [
+        "security_packet_runner",
+        "dashboard"
+      ],
+      "content_light_constraints": "alert metadata only; never alert code snippets, secret values, or file locations",
+      "mutation_status_fields": [
+        "dismissed_by",
+        "dismissal_evidence_hash"
+      ]
+    },
+    {
+      "artifact_id": "GitHubMutationReceipt",
+      "purpose": "Governed receipt for every remote mutation performed by Relay",
+      "canonical_path_suggestion": "already exists via github_provider_operation_receipt",
+      "schema_needed": true,
+      "source_inputs": [
+        "mutation_request",
+        "mutation_response",
+        "preflight_artifacts",
+        "approval_chain"
+      ],
+      "downstream_consumers": [
+        "audit_log",
+        "evidence_ledger"
+      ],
+      "content_light_constraints": "mutation description hash; before/after SHA; never raw response body",
+      "mutation_status_fields": [
+        "mutation_id",
+        "status",
+        "before_sha",
+        "after_sha",
+        "approval_chain_hashes"
+      ]
+    },
+    {
+      "artifact_id": "GitHubWebhookEventEnvelope",
+      "purpose": "Content-light wrapper for received webhook events with signature validation metadata",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/webhook_events.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "webhook_payload",
+        "signature_header",
+        "event_type_header"
+      ],
+      "downstream_consumers": [
+        "event_observer",
+        "telemetry_pipeline"
+      ],
+      "content_light_constraints": "event type, action, resource IDs hashed; NEVER raw payload body; NEVER secret values or PII from payloads",
+      "mutation_status_fields": [
+        "signature_validated",
+        "replayed",
+        "processed"
+      ]
+    },
+    {
+      "artifact_id": "GitHubPermissionLedger",
+      "purpose": "Ledger of all permission grants, token scopes, and permission posture over time",
+      "canonical_path_suggestion": "docs/json/governance/github_permission_ledger_v1.v1.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "installation_token_permissions",
+        "app_permission_grants",
+        "token_narrowing_requests"
+      ],
+      "downstream_consumers": [
+        "operating_picture",
+        "permission_posture_report",
+        "release_gate"
+      ],
+      "content_light_constraints": "permission names and levels as strings; never token values or private key references",
+      "mutation_status_fields": [
+        "grant_id",
+        "grant_status",
+        "scope_hash"
+      ]
+    },
+    {
+      "artifact_id": "GitHubRateLimitLedger",
+      "purpose": "Track rate limit consumption, remaining budget, and throttling events",
+      "canonical_path_suggestion": ".build/rig-relay/evidence/rate_limit_ledger.jsonl",
+      "schema_needed": true,
+      "source_inputs": [
+        "x-ratelimit-remaining headers",
+        "x-ratelimit-reset headers"
+      ],
+      "downstream_consumers": [
+        "throttle_controller",
+        "telemetry_dashboard"
+      ],
+      "content_light_constraints": "rate limit counts only; never API key or token",
+      "mutation_status_fields": [
+        "limit_category",
+        "remaining",
+        "reset_at",
+        "throttled"
+      ]
+    },
+    {
+      "artifact_id": "GitHubTelemetryEvent",
+      "purpose": "Standardized telemetry event for all GitHub provider activity",
+      "canonical_path_suggestion": "already exists as rig.relay.github.* events",
+      "schema_needed": true,
+      "source_inputs": [
+        "operation_receipts",
+        "webhook_envelopes",
+        "mutation_receipts"
+      ],
+      "downstream_consumers": [
+        "analytics_duckdb",
+        "dashboard",
+        "telemetry_pipeline"
+      ],
+      "content_light_constraints": "event names, hashes, counts; NEVER raw API bodies, file contents, patches, secrets",
+      "mutation_status_fields": [
+        "event_name",
+        "event_sha256",
+        "artifact_hashes"
+      ]
+    }
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 15
+  },
+  "summary": {
+    "total_permissions_mapped": 20,
+    "total_surface_lanes": 25,
+    "total_mutation_lanes": 12,
+    "total_webhook_events": 19,
+    "total_product_modes": 0,
+    "total_user_journeys": 0,
+    "total_platform_limits": 14,
+    "total_roadmap_phases": 9,
+    "next_recommended_slice": "phase_1_public_surface_program"
+  }
+}

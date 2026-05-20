@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.publish_pr.v1.schema.json",
+  "title": "GitHub Publish PR v1",
+  "description": "Schema-valid PR proposal for the GitHub Public Surface Program. Dry-run by default. Remote mutation requires explicit --execute-remote flag.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "mode",
+    "dry_run",
+    "remote_mutation",
+    "local_mutation",
+    "content_light",
+    "result_status",
+    "refusal_reasons",
+    "redaction_status",
+    "remaining_seams",
+    "source_packets_artifact",
+    "source_preview_artifact",
+    "source_packets_hash",
+    "source_preview_hash",
+    "proposal",
+    "validation_commands"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.publish_pr.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["dry_run", "execute_remote"]
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "execute_remote_flag_passed": {
+      "type": "boolean"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean"
+    },
+    "local_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "result_status": {
+      "type": "string",
+      "enum": ["proposal_ready", "refused", "executed"]
+    },
+    "refusal_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "source_packets_artifact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_preview_artifact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_packets_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_preview_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "approval_gate_status": {
+      "type": "string",
+      "enum": ["pending_review", "approved", "refused", "not_applicable"]
+    },
+    "permission_audit_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "proposal": {
+      "type": "object",
+      "required": [
+        "proposed_branch",
+        "proposed_pr_title",
+        "proposed_pr_summary",
+        "proposed_files",
+        "evidence_refs"
+      ],
+      "properties": {
+        "proposed_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_pr_title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_pr_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposed_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "proposed_base_branch": {
+          "type": "string"
+        },
+        "proposed_labels": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "source_packets": {
+      "type": "object",
+      "description": "Content-light summary of source surface packets"
+    },
+    "source_previews": {
+      "type": "object",
+      "description": "Content-light summary of source surface preview"
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["content_light_verified"]
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

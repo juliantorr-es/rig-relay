@@ -77,6 +77,11 @@ from rig_relay.integrations.github_provider._permission_posture import (
     build_github_permission_posture_report,
     build_github_permission_posture_report_from_paths,
 )
+from rig_relay.integrations.github_provider._publish_pr import (
+    GitHubPublishPrConfig,
+    GitHubPublishPrError,
+    build_github_publish_pr,
+)
 from rig_relay.integrations.github_provider._receipts import (
     build_github_operation_receipt,
     validate_github_operation_receipt,
@@ -116,6 +121,11 @@ from rig_relay.integrations.github_provider._surface_audit import (
     GitHubSurfaceStewardAudit,
     build_github_surface_audit,
 )
+from rig_relay.integrations.github_provider._surface_preview import (
+    GitHubSurfacePreview,
+    GitHubSurfacePreviewError,
+    build_github_surface_preview,
+)
 
 __all__ = [
     "FakeGitHubAppAuth",
@@ -141,6 +151,8 @@ __all__ = [
     "GitHubProviderOperationReceipt",
     "GitHubProviderOperationRequest",
     "GitHubProviderRequiredPermission",
+    "GitHubPublishPrConfig",
+    "GitHubPublishPrError",
     "GitHubRedactionStatus",
     "GitHubRepositoryPermissionGrant",
     "GitHubSecurityIntakeCollector",
@@ -150,6 +162,8 @@ __all__ = [
     "GitHubSecurityPacketRunnerPlan",
     "GitHubSecurityWorkItemProjectionError",
     "GitHubSurfaceAuditError",
+    "GitHubSurfacePreview",
+    "GitHubSurfacePreviewError",
     "GitHubSurfaceStewardAudit",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
@@ -160,9 +174,11 @@ __all__ = [
     "build_github_operation_receipt",
     "build_github_permission_posture_report",
     "build_github_permission_posture_report_from_paths",
+    "build_github_publish_pr",
     "build_github_security_intake_report",
     "build_github_security_packet_runner_plan",
     "build_github_surface_audit",
+    "build_github_surface_preview",
     "evaluate_github_capability",
     "get_capability",
     "hash_identifier",

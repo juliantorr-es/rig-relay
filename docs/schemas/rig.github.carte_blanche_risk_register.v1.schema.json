@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_risk_register.v1.schema.json",
+  "title": "GitHub Carte Blanche Risk Register v1",
+  "description": "Records platform limits and risks for maximum GitHub integration.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_limits", "limits", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_risk_register.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_limits": {"type": "integer", "minimum": 0},
+    "limits": {"type": "array", "items": {"$ref": "#/definitions/limit_entry"}},
+    "summary": {"type": "object", "required": ["api_unavailable", "requires_user_oauth", "plan_limited", "rate_limited", "app_not_supported"], "properties": {
+      "api_unavailable": {"type": "integer"}, "requires_user_oauth": {"type": "integer"},
+      "plan_limited": {"type": "integer"}, "rate_limited": {"type": "integer"},
+      "app_not_supported": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "limit_entry": {
+      "type": "object",
+      "required": ["limitation_id", "limitation_type", "description", "product_implication"],
+      "properties": {
+        "limitation_id": {"type": "string"}, "affected_surface": {"type": "string"},
+        "limitation_type": {"type": "string", "enum": ["API_unavailable", "requires_user_oauth", "enterprise_only", "plan_limited", "app_not_supported", "rate_limited", "permission_unclear", "docs_ambiguous", "risky_by_policy"]},
+        "description": {"type": "string"}, "source_docs_refs": {"type": "array", "items": {"type": "string"}},
+        "workaround": {"type": "string"}, "product_implication": {"type": "string"},
+        "risk_if_ignored": {"type": "string", "enum": ["high", "medium", "low"]}
+      },
+      "additionalProperties": true
+    }
+  }
+}

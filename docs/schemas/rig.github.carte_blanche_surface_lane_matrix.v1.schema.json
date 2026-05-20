@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_surface_lane_matrix.v1.schema.json",
+  "title": "GitHub Carte Blanche Surface Lane Matrix v1",
+  "description": "Maps every relevant GitHub surface into a Relay product lane.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_surfaces", "surfaces", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_surface_lane_matrix.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_surfaces": {"type": "integer", "minimum": 0},
+    "surfaces": {"type": "array", "items": {"$ref": "#/definitions/surface_entry"}},
+    "summary": {"type": "object", "required": ["read_surfaces", "write_surfaces", "read_write_surfaces", "webhook_surfaces"], "properties": {
+      "read_surfaces": {"type": "integer"}, "write_surfaces": {"type": "integer"},
+      "read_write_surfaces": {"type": "integer"}, "webhook_surfaces": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "surface_entry": {
+      "type": "object",
+      "required": ["surface_id", "human_name", "value_proposition", "risk_level", "recommended_phase"],
+      "properties": {
+        "surface_id": {"type": "string"}, "human_name": {"type": "string"},
+        "official_docs_refs": {"type": "array", "items": {"type": "string"}},
+        "value_proposition": {"type": "string"}, "developer_pain_removed": {"type": "string"},
+        "read_operations": {"type": "array", "items": {"type": "string"}},
+        "write_operations": {"type": "array", "items": {"type": "string"}},
+        "destructive_operations": {"type": "array", "items": {"type": "string"}},
+        "required_permissions": {"type": "array", "items": {"type": "string"}},
+        "auth_mode": {"type": "string"}, "REST_support": {"type": "boolean"},
+        "GraphQL_support": {"type": "boolean"}, "webhook_support": {"type": "boolean"},
+        "plan_limitations": {"type": "array", "items": {"type": "string"}},
+        "content_light_strategy": {"type": "string"}, "evidence_strategy": {"type": "string"},
+        "first_slice": {"type": "string"}, "mature_lane": {"type": "string"},
+        "out_of_scope_boundary": {"type": "string"}, "risk_level": {"type": "string"},
+        "recommended_phase": {"type": "string"}, "remaining_unknowns": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}

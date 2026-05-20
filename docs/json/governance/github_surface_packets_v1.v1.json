@@ -1,0 +1,286 @@
+{
+  "schema_version": "rig.github.surface_packets.v1",
+  "generated_at": "2026-05-20T08:38:32.427911+00:00",
+  "owner": "juliantorr-es",
+  "repo": "rig-relay",
+  "content_light": true,
+  "remote_mutation": false,
+  "local_mutation": false,
+  "source_operating_picture_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_operating_picture_v1.v1.json",
+  "source_surface_audit_path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_audit_v1.v1.json",
+  "surface_issues_detected": {
+    "profile_readme": true,
+    "public_claims": true
+  },
+  "packets": [
+    {
+      "packet_id": "04ddc400e2218127e0aa92c6b9e25be4753c454df381fae231c7d69a86f2188a",
+      "packet_type": "security_posture_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "security_policy",
+      "proposed_change_summary": "Review SECURITY.md for vulnerability-reporting instructions and supported versions.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "SECURITY.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "432502d238a96c8c35bb6dd791c19d59fbddc0bcf5c00103332b4b0328a4a821",
+      "packet_type": "contribution_surface_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "contributing",
+      "proposed_change_summary": "Review CONTRIBUTING.md for developer onboarding accuracy.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "CONTRIBUTING.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "4524882ee2db402a849f4750163969b29ad96ddeb39c747a57abeffb91d2c28d",
+      "packet_type": "no_action_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "code_of_conduct",
+      "proposed_change_summary": "No action needed — CODE_OF_CONDUCT.md present and verified.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "CODE_OF_CONDUCT.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "4c6c98e9945bb62b6ece9da2a3ec0345ae1dea67e6be38432f108109e3ec5907",
+      "packet_type": "project_readme_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "project_readme",
+      "proposed_change_summary": "Review project README for freshness, completeness, and accurate claims.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "README.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "55e16942014407ec5d32dc03db27dfb5213df98cfed32256fe66c14730683312",
+      "packet_type": "claim_cleanup_packet",
+      "source_findings": [
+        "9c3aeb0460a7debff4919ccc7d5b9250a21224c348bac983d0349ea00da3bb50"
+      ],
+      "source_claims": [
+        "ff6c0e6c7b721f1e8dc4eda85e32e9c62888e0e05b5d85b15b3a1a7961bf2b13"
+      ],
+      "target_surface_role": "public_claims",
+      "proposed_change_summary": "Reconcile public claims with current operating picture; align RC readiness language.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "README.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": false,
+      "human_review_required": true,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "claim verification requires operating picture freshness guarantee"
+      ]
+    },
+    {
+      "packet_id": "5a944d8152c64fcbfca77910394706e98f85474b15604e2baff69c3a0b8329fa",
+      "packet_type": "github_pages_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "static_site_pages",
+      "proposed_change_summary": "Verify GitHub Pages publishing pipeline and static site artifact freshness.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "docs/render-manifest.json",
+        "docs/pages/",
+        "docs/index.html"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "pages publishing source not verified via live API"
+      ]
+    },
+    {
+      "packet_id": "83ded84f74b3ca3d87f69d1d0d5feafd5a2d69351e60be5799b6596cf844da12",
+      "packet_type": "no_action_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "license",
+      "proposed_change_summary": "No action needed — LICENSE file present and verified.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "LICENSE"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "a15b03ba32335a704eaad2652a750096ec40dbc0454081256c4a0151a9772427",
+      "packet_type": "profile_readme_packet",
+      "source_findings": [
+        "ebf3ab814ab827e8adb55c1a6610e7de323c0bd929a9a6f589e5ef5f7e5e7769"
+      ],
+      "source_claims": [],
+      "target_surface_role": "profile_readme",
+      "proposed_change_summary": "Needs live network check to verify github.com/juliantorr-es/juliantorr-es profile README presence.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": false,
+      "human_review_required": true,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "requires live network check; local-only read not sufficient"
+      ]
+    },
+    {
+      "packet_id": "a3e5ae89d9254517fab3e80318ceda9b3a0e8d23bc0cd3ceaf58dac13380a310",
+      "packet_type": "release_notes_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "changelog",
+      "proposed_change_summary": "Review CHANGELOG.md for version accuracy and release history completeness.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "CHANGELOG.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": []
+    },
+    {
+      "packet_id": "e0a82006bdd48c2f0048b355d73ea9bcf0c9f95b16e4d7db843b148afdc72d37",
+      "packet_type": "badge_status_packet",
+      "source_findings": [],
+      "source_claims": [],
+      "target_surface_role": "badge_status_block",
+      "proposed_change_summary": "Validate status badge block freshness against current CI/CD state.",
+      "generated_public_text_allowed": false,
+      "evidence_refs": [
+        "README.md"
+      ],
+      "validation_commands": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/integrations/test_github_surface_packets.py -v",
+        "uv run pytest tests/adversarial/test_github_surface_packets_redaction.py -v",
+        "uv run pytest tests/governance/test_github_surface_packets_artifact.py -v"
+      ],
+      "apply_ready": false,
+      "preview_ready": true,
+      "human_review_required": false,
+      "local_mutation": false,
+      "remote_mutation": false,
+      "remaining_seams": [
+        "badge freshness not verified via live CI/CD API"
+      ]
+    }
+  ],
+  "summary": {
+    "total_packets": 10,
+    "packet_type_counts": {
+      "badge_status_packet": 1,
+      "claim_cleanup_packet": 1,
+      "contribution_surface_packet": 1,
+      "github_pages_packet": 1,
+      "no_action_packet": 2,
+      "profile_readme_packet": 1,
+      "project_readme_packet": 1,
+      "release_notes_packet": 1,
+      "security_posture_packet": 1
+    },
+    "next_recommended_action": "human_review_required_for_some_packets"
+  }
+}

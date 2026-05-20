@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.surface_preview.v1.schema.json",
+  "title": "GitHub Surface Preview v1",
+  "description": "Local dry-run preview of GitHub public surface mutations. Simulates what would change without writing files or mutating remote surfaces.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "remote_mutation",
+    "preview_entries",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.surface_preview.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "local_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "preview_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "preview_id",
+          "packet_id",
+          "target_surface_role",
+          "preview_artifact_path",
+          "preview_hash",
+          "render_status",
+          "safety_status",
+          "evidence_refs",
+          "human_review_required",
+          "local_mutation",
+          "remote_mutation",
+          "remaining_seams"
+        ],
+        "properties": {
+          "preview_id": {
+            "type": "string",
+            "minLength": 64
+          },
+          "packet_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_surface_role": {
+            "type": "string",
+            "enum": [
+              "project_readme_preview",
+              "profile_readme_preview",
+              "github_pages_preview",
+              "badge_status_preview",
+              "release_notes_preview",
+              "security_posture_preview",
+              "claim_cleanup_preview"
+            ]
+          },
+          "preview_artifact_path": {
+            "type": ["string", "null"],
+            "description": "Path to generated preview artifact, or null if not generated in v1."
+          },
+          "preview_hash": {
+            "type": "string",
+            "minLength": 64
+          },
+          "render_status": {
+            "type": "string",
+            "enum": ["rendered", "blocked", "not_rendered"]
+          },
+          "safety_status": {
+            "type": "string",
+            "enum": ["safe", "blocked"]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "human_review_required": {
+            "type": "boolean"
+          },
+          "local_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "remaining_seams": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_packets",
+        "previewed_count",
+        "blocked_count",
+        "not_rendered_count",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "total_packets": { "type": "integer" },
+        "previewed_count": { "type": "integer" },
+        "blocked_count": { "type": "integer" },
+        "not_rendered_count": { "type": "integer" },
+        "next_recommended_action": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

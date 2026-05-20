@@ -1,0 +1,340 @@
+{
+  "schema_version": "rig.github.carte_blanche_mutation_lanes.v1",
+  "generated_at": "2026-05-20T09:00:02.889495+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_mutations": 12,
+  "mutations": [
+    {
+      "mutation_lane_id": "branch_create",
+      "user_visible_value": "Create feature/fix branches for evidence-backed changes",
+      "official_endpoint": "POST /repos/{owner}/{repo}/git/refs",
+      "required_permission": "contents:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "operating_picture_snapshot",
+        "evidence_backed_claims_index"
+      ],
+      "required_approval_level": "none_for_read_only_worktree",
+      "rollback_strategy": "delete branch if unmerged",
+      "dry_run_strategy": "create branch in local worktree first",
+      "receipt_fields": [
+        "branch_name_hash",
+        "base_sha",
+        "ref_sha"
+      ],
+      "dangerous_failure_modes": [
+        "pushing_to_default_branch_by_accident",
+        "force_push_on_existing_branch"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "contract tests with fake git references"
+    },
+    {
+      "mutation_lane_id": "commit_file_changes",
+      "user_visible_value": "Commit file changes with evidence-backed change description",
+      "official_endpoint": "PUT /repos/{owner}/{repo}/contents/{path}",
+      "required_permission": "contents:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "evidence_backed_claims_index",
+        "dry_run_preview"
+      ],
+      "required_approval_level": "human_review_and_approval",
+      "rollback_strategy": "revert commit via new commit",
+      "dry_run_strategy": "local patch application preview",
+      "receipt_fields": [
+        "file_path_hash",
+        "before_sha",
+        "after_sha_probable",
+        "commit_message_hash"
+      ],
+      "dangerous_failure_modes": [
+        "overwriting_other_agents_work",
+        "committing_secrets",
+        "large_binary_files"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real worktree fixtures"
+    },
+    {
+      "mutation_lane_id": "open_pull_request",
+      "user_visible_value": "Open evidence-backed PR from research/fix branch",
+      "official_endpoint": "POST /repos/{owner}/{repo}/pulls",
+      "required_permission": "pull_requests:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "evidence_backed_claims_index",
+        "dry_run_diff_review"
+      ],
+      "required_approval_level": "human_review_before_open",
+      "rollback_strategy": "close PR if rejected",
+      "dry_run_strategy": "preview PR body and diff locally",
+      "receipt_fields": [
+        "pr_number",
+        "pr_url_hash",
+        "head_branch_hash",
+        "base_branch_hash"
+      ],
+      "dangerous_failure_modes": [
+        "opening_pr_on_wrong_base_branch",
+        "including_secrets_in_pr_body"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo fixtures"
+    },
+    {
+      "mutation_lane_id": "merge_pull_request",
+      "user_visible_value": "Merge approved PR when all checks pass and explicit approval received",
+      "official_endpoint": "PUT /repos/{owner}/{repo}/pulls/{number}/merge",
+      "required_permission": "contents:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "pr_status_check_report",
+        "approval_receipt"
+      ],
+      "required_approval_level": "explicit_human_merge_approval",
+      "rollback_strategy": "revert merge commit",
+      "dry_run_strategy": "check mergeability via API before merge",
+      "receipt_fields": [
+        "pr_number",
+        "merge_sha",
+        "merge_method"
+      ],
+      "dangerous_failure_modes": [
+        "merging_into_protected_branch_without_checks",
+        "merge_conflict_resolution_error"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo and branch protection fixtures"
+    },
+    {
+      "mutation_lane_id": "create_issue",
+      "user_visible_value": "Create issues for discovered work, vulnerabilities, or maintenance tasks",
+      "official_endpoint": "POST /repos/{owner}/{repo}/issues",
+      "required_permission": "issues:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "evidence_backed_finding"
+      ],
+      "required_approval_level": "none_for_internal_created_issues",
+      "rollback_strategy": "close issue if created in error",
+      "dry_run_strategy": "preview issue body locally",
+      "receipt_fields": [
+        "issue_number",
+        "issue_title_hash"
+      ],
+      "dangerous_failure_modes": [
+        "creating_duplicate_issues",
+        "including_sensitive_data_in_issue_body"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo fixtures"
+    },
+    {
+      "mutation_lane_id": "label_issue_or_pr",
+      "user_visible_value": "Apply labels for triage routing and status tracking",
+      "official_endpoint": "POST /repos/{owner}/{repo}/issues/{number}/labels",
+      "required_permission": "issues:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "label_classification_rules"
+      ],
+      "required_approval_level": "none_automatic_under_policy",
+      "rollback_strategy": "remove label",
+      "dry_run_strategy": "predict label assignments before applying",
+      "receipt_fields": [
+        "issue_number",
+        "applied_labels",
+        "removed_labels"
+      ],
+      "dangerous_failure_modes": [
+        "applying_wrong_labels_at_scale",
+        "conflicting_label_sets"
+      ],
+      "recommended_initial_state": "automatic_under_policy",
+      "test_strategy": "contract tests with label classification fixtures"
+    },
+    {
+      "mutation_lane_id": "create_release",
+      "user_visible_value": "Create GitHub Releases with changelog and evidence-backed release notes",
+      "official_endpoint": "POST /repos/{owner}/{repo}/releases",
+      "required_permission": "contents:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "release_notes_draft",
+        "changelog_diff",
+        "validation_suite_results"
+      ],
+      "required_approval_level": "human_release_approval",
+      "rollback_strategy": "delete release; recreate with corrected data",
+      "dry_run_strategy": "preview release body and tag locally",
+      "receipt_fields": [
+        "release_id",
+        "tag_name",
+        "release_body_hash"
+      ],
+      "dangerous_failure_modes": [
+        "tagging_wrong_commit",
+        "overwriting_existing_release",
+        "uploading_wrong_assets"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo release fixtures"
+    },
+    {
+      "mutation_lane_id": "trigger_workflow_dispatch",
+      "user_visible_value": "Trigger CI workflows on demand with evidence-backed parameters",
+      "official_endpoint": "POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches",
+      "required_permission": "actions:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "ci_trigger_justification"
+      ],
+      "required_approval_level": "human_approval_for_production_triggers",
+      "rollback_strategy": "cancel triggered run",
+      "dry_run_strategy": "validate workflow dispatch inputs locally",
+      "receipt_fields": [
+        "workflow_id",
+        "dispatch_ref",
+        "inputs_hash"
+      ],
+      "dangerous_failure_modes": [
+        "triggering_production_deployment_pipeline",
+        "exhausting_ci_minutes"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo CI fixtures"
+    },
+    {
+      "mutation_lane_id": "update_repository_description",
+      "user_visible_value": "Update repository description from evidence-backed claims index",
+      "official_endpoint": "PATCH /repos/{owner}/{repo}",
+      "required_permission": "administration:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "evidence_backed_claims_index",
+        "description_draft"
+      ],
+      "required_approval_level": "human_review",
+      "rollback_strategy": "revert to previous description",
+      "dry_run_strategy": "preview new description",
+      "receipt_fields": [
+        "before_hash",
+        "after_hash",
+        "field_changed"
+      ],
+      "dangerous_failure_modes": [
+        "accidentally_changing_visibility_or_settings"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo fixtures"
+    },
+    {
+      "mutation_lane_id": "dismiss_code_scanning_alert",
+      "user_visible_value": "Dismiss code scanning alerts with evidence of fix or false positive determination",
+      "official_endpoint": "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{number}",
+      "required_permission": "security_events:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "fix_evidence_report",
+        "false_positive_analysis"
+      ],
+      "required_approval_level": "human_for_dismissal_no_fix",
+      "rollback_strategy": "reopen alert",
+      "dry_run_strategy": "preview dismissal reason before applying",
+      "receipt_fields": [
+        "alert_number",
+        "new_state",
+        "dismissal_reason_hash"
+      ],
+      "dangerous_failure_modes": [
+        "dismissing_critical_vulnerability_without_fix",
+        "bulk_dismissing_real_alerts"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "contract tests with alert fixture data"
+    },
+    {
+      "mutation_lane_id": "update_workflow_file",
+      "user_visible_value": "Edit GitHub Actions workflow files for security hardening or optimization",
+      "official_endpoint": "PUT /repos/{owner}/{repo}/contents/.github/workflows/{file}",
+      "required_permission": "contents:write + workflows:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "workflow_security_audit_report",
+        "dry_run_diff"
+      ],
+      "required_approval_level": "human_review_mandatory",
+      "rollback_strategy": "revert workflow file commit",
+      "dry_run_strategy": "local workflow validation with act or similar",
+      "receipt_fields": [
+        "file_path_hash",
+        "before_sha",
+        "after_sha_probable"
+      ],
+      "dangerous_failure_modes": [
+        "breaking_ci_pipeline",
+        "introducing_security_regression",
+        "exposing_secrets_in_workflow"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo CI workflow fixtures"
+    },
+    {
+      "mutation_lane_id": "publish_github_pages_content",
+      "user_visible_value": "Publish updated docs site content after approval",
+      "official_endpoint": "POST /repos/{owner}/{repo}/pages/builds or PUT content",
+      "required_permission": "pages:write + contents:write",
+      "auth_mode": "installation_token",
+      "can_be_done_by_github_app": true,
+      "requires_user_oauth": false,
+      "required_preflight_artifacts": [
+        "static_site_build_report",
+        "content_preview"
+      ],
+      "required_approval_level": "human_review_before_publish",
+      "rollback_strategy": "trigger re-deploy of previous commit",
+      "dry_run_strategy": "local static site build preview",
+      "receipt_fields": [
+        "build_status",
+        "deployment_hash"
+      ],
+      "dangerous_failure_modes": [
+        "publishing_broken_site",
+        "publishing_stale_content",
+        "exposing_private_docs"
+      ],
+      "recommended_initial_state": "approval_required",
+      "test_strategy": "integration with real repo Pages fixtures"
+    }
+  ],
+  "summary": {
+    "disabled_count": 0,
+    "dry_run_count": 0,
+    "approval_required_count": 11,
+    "automatic_count": 1
+  }
+}

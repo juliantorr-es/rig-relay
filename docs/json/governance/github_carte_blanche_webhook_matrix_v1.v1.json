@@ -1,0 +1,583 @@
+{
+  "schema_version": "rig.github.carte_blanche_webhook_matrix.v1",
+  "generated_at": "2026-05-20T09:00:02.887762+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "total_events": 19,
+  "events": [
+    {
+      "event_name": "installation",
+      "permission_required": "none (app-level)",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "refresh_operating_picture",
+        "validate_installation_access",
+        "update_repo_inventory"
+      ],
+      "local_artifacts_to_update": [
+        "operating_picture",
+        "repo_inventory"
+      ],
+      "followup_api_reads": [
+        "list_accessible_repos",
+        "probe_installation_access"
+      ],
+      "possible_mutations": [],
+      "dedupe_key": "installation_id+action",
+      "replay_strategy": "idempotency check via installation state",
+      "webhook_signature_required": true,
+      "queue_strategy": "immediate_processing",
+      "telemetry_value": "high",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#installation"
+      ]
+    },
+    {
+      "event_name": "push",
+      "permission_required": "contents:read",
+      "payload_sensitivity": "high",
+      "useful_relay_reactions": [
+        "update_commit_vs_evidence_index",
+        "trigger_surface_audit",
+        "check_for_config_changes"
+      ],
+      "local_artifacts_to_update": [
+        "operating_picture",
+        "evidence_index",
+        "surface_audit_cache"
+      ],
+      "followup_api_reads": [
+        "get_commit_details",
+        "compare_commits"
+      ],
+      "possible_mutations": [
+        "open_branch_for_fix_if_security_event"
+      ],
+      "dedupe_key": "repository_id+after_sha",
+      "replay_strategy": "compare commit SHA; skip if already processed",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_by_repo_with_debounce",
+      "telemetry_value": "high",
+      "risk_level": "medium",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#push"
+      ]
+    },
+    {
+      "event_name": "pull_request",
+      "permission_required": "pull_requests:read",
+      "payload_sensitivity": "high",
+      "useful_relay_reactions": [
+        "pr_triage",
+        "update_pr_queue",
+        "check_pr_against_evidence",
+        "auto_label"
+      ],
+      "local_artifacts_to_update": [
+        "pr_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_pr_details",
+        "get_pr_reviews",
+        "get_pr_commits"
+      ],
+      "possible_mutations": [
+        "add_pr_labels",
+        "request_reviewers",
+        "post_review_comment"
+      ],
+      "dedupe_key": "repository_id+pr_number+action",
+      "replay_strategy": "fetch latest PR state; compare with stored state",
+      "webhook_signature_required": true,
+      "queue_strategy": "priority_queue_by_action",
+      "telemetry_value": "high",
+      "risk_level": "medium",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request"
+      ]
+    },
+    {
+      "event_name": "issues",
+      "permission_required": "issues:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "issue_triage",
+        "auto_label_by_content",
+        "route_to_project_board"
+      ],
+      "local_artifacts_to_update": [
+        "issue_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_issue_details",
+        "get_issue_comments",
+        "get_issue_timeline"
+      ],
+      "possible_mutations": [
+        "add_labels",
+        "assign_to_user",
+        "add_to_project"
+      ],
+      "dedupe_key": "repository_id+issue_number+action",
+      "replay_strategy": "fetch current issue state; skip duplicates",
+      "webhook_signature_required": true,
+      "queue_strategy": "standard_queue_with_priority",
+      "telemetry_value": "high",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues"
+      ]
+    },
+    {
+      "event_name": "pull_request_review",
+      "permission_required": "pull_requests:read",
+      "payload_sensitivity": "high",
+      "useful_relay_reactions": [
+        "update_pr_merge_readiness",
+        "track_review_approval_status",
+        "notify_author"
+      ],
+      "local_artifacts_to_update": [
+        "pr_queue",
+        "review_tracker"
+      ],
+      "followup_api_reads": [
+        "get_pr_reviews",
+        "get_pr_status"
+      ],
+      "possible_mutations": [
+        "auto_merge_if_approved_and_checks_pass"
+      ],
+      "dedupe_key": "pr_number+review_id",
+      "replay_strategy": "compare review state with stored state",
+      "webhook_signature_required": true,
+      "queue_strategy": "priority_immediate",
+      "telemetry_value": "high",
+      "risk_level": "medium",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request_review"
+      ]
+    },
+    {
+      "event_name": "code_scanning_alert",
+      "permission_required": "security_events:read",
+      "payload_sensitivity": "critical",
+      "useful_relay_reactions": [
+        "triage_alert",
+        "group_alert_with_existing_patch_candidates",
+        "update_security_queue"
+      ],
+      "local_artifacts_to_update": [
+        "security_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_alert_details",
+        "get_alert_instances"
+      ],
+      "possible_mutations": [
+        "create_fix_pr",
+        "dismiss_false_positive_with_evidence"
+      ],
+      "dedupe_key": "repository_id+alert_number",
+      "replay_strategy": "fetch alert state; process only if changed",
+      "webhook_signature_required": true,
+      "queue_strategy": "priority_critical_immediate",
+      "telemetry_value": "high",
+      "risk_level": "high",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#code_scanning_alert"
+      ]
+    },
+    {
+      "event_name": "secret_scanning_alert",
+      "permission_required": "security_events:read",
+      "payload_sensitivity": "critical",
+      "useful_relay_reactions": [
+        "log_alert_without_secret_value",
+        "notify_maintainer",
+        "track_revocation_status"
+      ],
+      "local_artifacts_to_update": [
+        "security_queue",
+        "secret_boundary_ledger"
+      ],
+      "followup_api_reads": [
+        "get_alert_details",
+        "get_alert_locations"
+      ],
+      "possible_mutations": [],
+      "dedupe_key": "repository_id+alert_number",
+      "replay_strategy": "fetch alert state; log but never store payload details",
+      "webhook_signature_required": true,
+      "queue_strategy": "immediate_log_only",
+      "telemetry_value": "high",
+      "risk_level": "restricted",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#secret_scanning_alert"
+      ]
+    },
+    {
+      "event_name": "dependabot_alert",
+      "permission_required": "dependabot_alerts:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "update_dependency_queue",
+        "auto_create_dependency_update_pr",
+        "track_fix_timeline"
+      ],
+      "local_artifacts_to_update": [
+        "dependency_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_alert_details",
+        "get_dependabot_updates"
+      ],
+      "possible_mutations": [
+        "dismiss_with_fix_evidence",
+        "create_update_pr"
+      ],
+      "dedupe_key": "repository_id+alert_number",
+      "replay_strategy": "fetch alert state; process changed alerts",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_hourly",
+      "telemetry_value": "medium",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#dependabot_alert"
+      ]
+    },
+    {
+      "event_name": "workflow_run",
+      "permission_required": "actions:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "ci_health_update",
+        "failure_diagnosis",
+        "auto_rerun_flaky_tests"
+      ],
+      "local_artifacts_to_update": [
+        "ci_health_index",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_workflow_run_logs",
+        "get_workflow_jobs"
+      ],
+      "possible_mutations": [
+        "rerun_workflow_if_flaky",
+        "cancel_run_if_security_issue"
+      ],
+      "dedupe_key": "repository_id+run_id",
+      "replay_strategy": "check run status; skip completed runs",
+      "webhook_signature_required": true,
+      "queue_strategy": "standard_event_queue",
+      "telemetry_value": "high",
+      "risk_level": "medium",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run"
+      ]
+    },
+    {
+      "event_name": "check_run",
+      "permission_required": "checks:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "aggregate_ci_status",
+        "track_check_history",
+        "detect_check_regression"
+      ],
+      "local_artifacts_to_update": [
+        "ci_health_index",
+        "check_history"
+      ],
+      "followup_api_reads": [
+        "get_check_run_details",
+        "get_check_run_annotations"
+      ],
+      "possible_mutations": [
+        "rerequest_check_suite"
+      ],
+      "dedupe_key": "repository_id+check_run_id",
+      "replay_strategy": "compare check status with stored state",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_by_repo",
+      "telemetry_value": "medium",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#check_run"
+      ]
+    },
+    {
+      "event_name": "release",
+      "permission_required": "contents:read",
+      "payload_sensitivity": "low",
+      "useful_relay_reactions": [
+        "update_release_inventory",
+        "validate_release_vs_evidence",
+        "trigger_docs_site_update"
+      ],
+      "local_artifacts_to_update": [
+        "release_index",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_release_details",
+        "get_release_assets"
+      ],
+      "possible_mutations": [
+        "update_docs_site_for_release",
+        "notify_subscribers"
+      ],
+      "dedupe_key": "repository_id+release_id",
+      "replay_strategy": "compare release state; skip duplicates",
+      "webhook_signature_required": true,
+      "queue_strategy": "standard_queue",
+      "telemetry_value": "high",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#release"
+      ]
+    },
+    {
+      "event_name": "deployment_status",
+      "permission_required": "deployments:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "track_deployment_history",
+        "detect_deployment_failures",
+        "update_environment_status"
+      ],
+      "local_artifacts_to_update": [
+        "deployment_index",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_deployment_details",
+        "get_environment_details"
+      ],
+      "possible_mutations": [
+        "rollback_deployment_if_failure_detected"
+      ],
+      "dedupe_key": "repository_id+deployment_id+status",
+      "replay_strategy": "compare status with stored state",
+      "webhook_signature_required": true,
+      "queue_strategy": "immediate_processing",
+      "telemetry_value": "medium",
+      "risk_level": "medium",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#deployment_status"
+      ]
+    },
+    {
+      "event_name": "page_build",
+      "permission_required": "pages:read",
+      "payload_sensitivity": "low",
+      "useful_relay_reactions": [
+        "verify_pages_build_status",
+        "log_build_error_for_diagnosis",
+        "trigger_retry_if_transient"
+      ],
+      "local_artifacts_to_update": [
+        "pages_build_history",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_pages_build_details",
+        "get_pages_status"
+      ],
+      "possible_mutations": [
+        "retrigger_build_if_error_transient"
+      ],
+      "dedupe_key": "repository_id+build_id",
+      "replay_strategy": "check build status; skip completed builds",
+      "webhook_signature_required": true,
+      "queue_strategy": "standard_queue",
+      "telemetry_value": "medium",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#page_build"
+      ]
+    },
+    {
+      "event_name": "repository",
+      "permission_required": "metadata:read",
+      "payload_sensitivity": "low",
+      "useful_relay_reactions": [
+        "update_repo_metadata_cache",
+        "detect_repo_visibility_change",
+        "detect_archive_or_delete"
+      ],
+      "local_artifacts_to_update": [
+        "repo_inventory",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_repo_details",
+        "list_repo_topics"
+      ],
+      "possible_mutations": [],
+      "dedupe_key": "repository_id+action",
+      "replay_strategy": "fetch latest repo state; compare with cache",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_offline_reconciliation",
+      "telemetry_value": "high",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#repository"
+      ]
+    },
+    {
+      "event_name": "membership",
+      "permission_required": "members:read",
+      "payload_sensitivity": "high",
+      "useful_relay_reactions": [
+        "update_org_access_posture",
+        "detect_permission_changes",
+        "audit_membership_changes"
+      ],
+      "local_artifacts_to_update": [
+        "org_access_posture",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_org_members",
+        "get_team_members"
+      ],
+      "possible_mutations": [],
+      "dedupe_key": "organization_id+user_id+action",
+      "replay_strategy": "fetch current membership; compare with stored",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_daily_reconciliation",
+      "telemetry_value": "high",
+      "risk_level": "high",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#membership"
+      ]
+    },
+    {
+      "event_name": "security_advisory",
+      "permission_required": "security_events:read",
+      "payload_sensitivity": "high",
+      "useful_relay_reactions": [
+        "track_advisory_lifecycle",
+        "validate_advisory_vs_code_scanning",
+        "update_security_posture"
+      ],
+      "local_artifacts_to_update": [
+        "security_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_advisory_details",
+        "get_advisory_cve"
+      ],
+      "possible_mutations": [],
+      "dedupe_key": "repository_id+advisory_id",
+      "replay_strategy": "fetch advisory state; process changed advisories",
+      "webhook_signature_required": true,
+      "queue_strategy": "priority_immediate",
+      "telemetry_value": "high",
+      "risk_level": "high",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#security_advisory"
+      ]
+    },
+    {
+      "event_name": "discussion",
+      "permission_required": "discussions:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "track_discussion_activity",
+        "detect_unanswered_questions",
+        "route_to_issue_if_actionable"
+      ],
+      "local_artifacts_to_update": [
+        "discussion_tracker",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_discussion_details",
+        "get_discussion_comments"
+      ],
+      "possible_mutations": [
+        "mark_as_answered",
+        "create_issue_from_discussion"
+      ],
+      "dedupe_key": "repository_id+discussion_number",
+      "replay_strategy": "compare discussion state with stored",
+      "webhook_signature_required": true,
+      "queue_strategy": "batch_hourly",
+      "telemetry_value": "medium",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#discussion"
+      ]
+    },
+    {
+      "event_name": "star",
+      "permission_required": "metadata:read",
+      "payload_sensitivity": "low",
+      "useful_relay_reactions": [
+        "update_repo_popularity_metrics",
+        "detect_viral_events"
+      ],
+      "local_artifacts_to_update": [
+        "telemetry_index"
+      ],
+      "followup_api_reads": [],
+      "possible_mutations": [],
+      "dedupe_key": "repository_id+user_id+action",
+      "replay_strategy": "aggregate only; skip dedupe at scale",
+      "webhook_signature_required": true,
+      "queue_strategy": "aggregate_batch_hourly",
+      "telemetry_value": "low",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#star"
+      ]
+    },
+    {
+      "event_name": "issues",
+      "permission_required": "issues:read",
+      "payload_sensitivity": "medium",
+      "useful_relay_reactions": [
+        "issue_triage",
+        "auto_label_by_content",
+        "route_to_project_board"
+      ],
+      "local_artifacts_to_update": [
+        "issue_queue",
+        "operating_picture"
+      ],
+      "followup_api_reads": [
+        "get_issue_details",
+        "get_issue_comments"
+      ],
+      "possible_mutations": [
+        "add_labels",
+        "assign_to_user"
+      ],
+      "dedupe_key": "repository_id+issue_number+action",
+      "replay_strategy": "fetch current issue state; skip duplicates",
+      "webhook_signature_required": true,
+      "queue_strategy": "standard_queue_with_priority",
+      "telemetry_value": "high",
+      "risk_level": "low",
+      "source_docs_refs": [
+        "https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues"
+      ]
+    }
+  ],
+  "summary": {
+    "high_value_events": 13,
+    "mutation_triggering_events": 13,
+    "security_events": 4,
+    "ci_events": 2,
+    "repo_events": 4
+  }
+}

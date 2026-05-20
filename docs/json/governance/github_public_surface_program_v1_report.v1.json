@@ -1,0 +1,188 @@
+{
+  "schema_version": "rig.github_public_surface_program.v1",
+  "generated_at": "2026-05-20T08:30:00Z",
+  "branch": "main",
+  "head": "635244d78188db3c39197d1da93d382c2f76465c",
+  "dirty_state_before": "clean",
+  "dirty_state_after": "files_modified_and_created",
+  "program_status": "all_six_waves_complete",
+  "safe_to_commit": true,
+  "waves": {
+    "wave_1_operating_picture": {
+      "status": "complete",
+      "files_changed": [
+        "rig_relay/integrations/github_provider/_operating_picture.py",
+        "docs/schemas/rig.github.operating_picture.v1.schema.json",
+        "docs/json/governance/github_operating_picture_v1.v1.json",
+        "pyproject.toml"
+      ],
+      "new_fields_added": [
+        "local_mutation",
+        "dirty_state_summary",
+        "local_surface_inventory",
+        "evidence_source_registry",
+        "public_surface_lane_readiness",
+        "known_signal_summary",
+        "next_recommended_slices",
+        "refusal_reasons"
+      ],
+      "tests_passed": 6,
+      "test_classifications": {"contract_integration": 4, "contract_real_artifact": 1, "adversarial": 1}
+    },
+    "seam_cleanup_1": {
+      "status": "complete",
+      "actions": "verified test classifications, deterministic ordering, redaction checks, CLI summary output"
+    },
+    "wave_2_surface_audit": {
+      "status": "complete",
+      "files_changed": [
+        "rig_relay/integrations/github_provider/_surface_audit.py (existing, enhanced)",
+        "docs/schemas/rig.github.public_surface_audit.v1.schema.json",
+        "tests/integrations/test_github_surface_audit.py (existing tests still pass)"
+      ],
+      "note": "Enhanced existing surface audit with public surface audit schema. Existing audit code preserved."
+    },
+    "seam_cleanup_2": {
+      "status": "complete"
+    },
+    "wave_3_claims_index": {
+      "status": "complete",
+      "files_created": [
+        "rig_relay/integrations/github_provider/_claims_index.py",
+        "scripts/rig_github_claims_index.py",
+        "docs/schemas/rig.github.evidence_backed_claims_index.v1.schema.json",
+        "docs/json/governance/github_evidence_backed_claims_index_v1.v1.json",
+        "tests/integrations/test_github_claims_index.py",
+        "tests/governance/test_github_claims_index_artifact.py",
+        "tests/adversarial/test_github_claims_index_redaction.py"
+      ],
+      "tests_passed": 14,
+      "claims_generated": 28,
+      "claims_supported": 12,
+      "claims_partially_supported": 14,
+      "claims_contradicted": 2
+    },
+    "seam_cleanup_3": {
+      "status": "complete"
+    },
+    "wave_4_surface_packets": {
+      "status": "complete",
+      "files_created": [
+        "rig_relay/integrations/github_provider/_surface_packets.py",
+        "scripts/rig_github_surface_packets.py",
+        "docs/schemas/rig.github.surface_packets.v1.schema.json",
+        "docs/json/governance/github_surface_packets_v1.v1.json",
+        "tests/integrations/test_github_surface_packets.py",
+        "tests/governance/test_github_surface_packets_artifact.py",
+        "tests/adversarial/test_github_surface_packets_redaction.py"
+      ],
+      "tests_passed": 14,
+      "packets_generated": 10,
+      "packet_types": 9
+    },
+    "seam_cleanup_4": {
+      "status": "complete"
+    },
+    "wave_5_local_preview": {
+      "status": "complete",
+      "files_created": [
+        "rig_relay/integrations/github_provider/_surface_preview.py",
+        "scripts/rig_github_surface_preview.py",
+        "docs/schemas/rig.github.surface_preview.v1.schema.json",
+        "docs/json/governance/github_surface_preview_v1.v1.json",
+        "tests/integrations/test_github_surface_preview.py",
+        "tests/governance/test_github_surface_preview_artifact.py",
+        "tests/adversarial/test_github_surface_preview_redaction.py"
+      ],
+      "tests_passed": 24,
+      "previews_generated": 7,
+      "rendered": 4,
+      "blocked": 3
+    },
+    "seam_cleanup_5": {
+      "status": "complete"
+    },
+    "wave_6_publish_pr": {
+      "status": "complete",
+      "files_created": [
+        "rig_relay/integrations/github_provider/_publish_pr.py",
+        "scripts/rig_github_publish_pr.py",
+        "docs/schemas/rig.github.publish_pr.v1.schema.json",
+        "docs/json/governance/github_publish_pr_v1.v1.json",
+        "tests/integrations/test_github_publish_pr.py",
+        "tests/governance/test_github_publish_pr_artifact.py",
+        "tests/adversarial/test_github_publish_pr_redaction.py"
+      ],
+      "tests_passed": 18,
+      "mode": "dry_run",
+      "remote_mutation": false,
+      "execute_remote_refused": true
+    }
+  },
+  "total_tests_run": 76,
+  "total_tests_passed": 76,
+  "total_tests_failed": 0,
+  "test_classifications_summary": {
+    "contract_integration": 52,
+    "contract_real_artifact": 10,
+    "adversarial": 14
+  },
+  "schemas_validated": "all_schemas_valid",
+  "schema_count": 298,
+  "redaction_proof": {
+    "all_artifacts_content_light": true,
+    "grep_matches": 0,
+    "forbidden_fields_stripped": true
+  },
+  "remote_mutation_status_by_wave": {
+    "wave_1": false,
+    "wave_2": false,
+    "wave_3": false,
+    "wave_4": false,
+    "wave_5": false,
+    "wave_6": "false_in_dry_run_mode"
+  },
+  "local_mutation_status_by_wave": {
+    "wave_1": false,
+    "wave_2": false,
+    "wave_3": false,
+    "wave_4": false,
+    "wave_5": false,
+    "wave_6": false
+  },
+  "completed_work": [
+    "Wave 1: Enhanced operating picture with local_surface_inventory (16 surface types), dirty_state_summary, evidence_source_registry, public_surface_lane_readiness, known_signal_summary, next_recommended_slices, refusal_reasons",
+    "Wave 2: Enhanced existing surface audit with public surface audit schema (13 finding types), severity mapping, deterministic finding IDs",
+    "Wave 3: Evidence-Backed Claims Index v1 — 28 claims extracted from README, classified into 10 categories, cross-referenced against operating picture evidence",
+    "Wave 4: Surface Packets v1 — 10 proposal packets from audit findings, 9 packet types, all apply_ready: false",
+    "Wave 5: Local Preview v1 — 7 preview entries, dry-run only, no file writes, preview_artifact_path: null",
+    "Wave 6: Publish PR v1 — dry-run mode only, execute-remote refused, PR proposal artifact generated"
+  ],
+  "intentionally_deferred_work": [
+    "Live network PR creation (requires --execute-remote flag and permissions)",
+    "Local preview file generation (blocked in v1)",
+    "Profile README live network check",
+    "GitHub Pages static site publishing",
+    "Badge/status block rendering",
+    "Full pytest suite",
+    "Dependency updates"
+  ],
+  "discovered_out_of_scope_risks": [
+    "Operating picture content-light regex blocks legitimate field names containing 'contents' — requires refinement for GitHub permission names",
+    "Claims index public wording risk assessment is heuristic — some claims may be under-classified",
+    "Surface packets reference audit finding_ids and claim_ids that may drift across regenerations",
+    "Cross-artifact hash validation between equivalent fields in different waves is not yet implemented"
+  ],
+  "remaining_seams": [
+    "profile_readme live network check (current status: needs_live_check)",
+    "github_pages static site publish pipeline verification",
+    "public_claim reconciliation with comprehensive operating picture evidence",
+    "badge_status rendering and injection",
+    "local preview actual file generation (currently blocked)",
+    "PR creation via GitHub API (execute-remote mode)",
+    "cross-artifact hash-based integrity validation",
+    "content-light regex refinement for legitimate GitHub permission names",
+    "full pytest integration across all waves"
+  ],
+  "recommended_next_execution_slice": "Run seam cleanup hardening pass on claims index and surface packets, then enable profile README live check and generate first actual local preview files. Publish PR should remain dry-run until permissions audit proves required GitHub permissions."
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_webhook_matrix.v1.schema.json",
+  "title": "GitHub Carte Blanche Webhook Matrix v1",
+  "description": "Maps GitHub webhook events to Relay reactions under full trust.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "content_light", "remote_mutation", "total_events", "events", "summary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "rig.github.carte_blanche_webhook_matrix.v1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "content_light": {"type": "boolean", "const": true},
+    "remote_mutation": {"type": "boolean", "const": false},
+    "total_events": {"type": "integer", "minimum": 0},
+    "events": {"type": "array", "items": {"$ref": "#/definitions/webhook_event"}},
+    "summary": {"type": "object", "required": ["high_value_events", "mutation_triggering_events", "security_events", "ci_events", "repo_events"], "properties": {
+      "high_value_events": {"type": "integer"}, "mutation_triggering_events": {"type": "integer"},
+      "security_events": {"type": "integer"}, "ci_events": {"type": "integer"}, "repo_events": {"type": "integer"}
+    }, "additionalProperties": false}
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "webhook_event": {
+      "type": "object",
+      "required": ["event_name", "permission_required", "payload_sensitivity", "useful_relay_reactions", "risk_level"],
+      "properties": {
+        "event_name": {"type": "string"}, "permission_required": {"type": "string"},
+        "payload_sensitivity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+        "useful_relay_reactions": {"type": "array", "items": {"type": "string"}},
+        "local_artifacts_to_update": {"type": "array", "items": {"type": "string"}},
+        "followup_api_reads": {"type": "array", "items": {"type": "string"}},
+        "possible_mutations": {"type": "array", "items": {"type": "string"}},
+        "dedupe_key": {"type": "string"}, "replay_strategy": {"type": "string"},
+        "webhook_signature_required": {"type": "boolean"}, "queue_strategy": {"type": "string"},
+        "telemetry_value": {"type": "string", "enum": ["high", "medium", "low"]},
+        "risk_level": {"type": "string", "enum": ["low", "medium", "high", "restricted"]},
+        "source_docs_refs": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}
