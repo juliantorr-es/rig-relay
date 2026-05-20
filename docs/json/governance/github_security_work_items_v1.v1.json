@@ -1,56 +1,1030 @@
 {
   "schema_version": "rig.github.security_work_items.v1",
-  "generated_at_utc": "2026-05-20T05:41:52.765713+00:00",
+  "generated_at_utc": "2026-05-20T05:49:33.033735+00:00",
   "source_artifact_path": "docs/json/governance/github_security_intake_result.v1.json",
-  "source_artifact_hash": "d1f948d08dc2a4ea19011183c5151f946ce1050a1cedafdf84798cb4f4297642",
+  "source_artifact_hash": "9668a1dfb0b307f096a587450ceb61f664363e5a29284df4cf1d4d9d081940a1",
   "remote_mutation": false,
   "content_light": true,
-  "work_item_count": 3,
-  "refused_surface_count": 3,
-  "candidate_group_count": 3,
+  "source_alert_count": 42,
+  "work_item_count": 44,
+  "refused_surface_count": 2,
+  "candidate_group_count": 10,
   "candidate_groups": [
     {
-      "group_id": "268ce7adeb66f2f7233c354e9c2ebb821bd41b069e0d5be361bf10f931b64efd",
-      "group_kind": "refusal",
-      "group_key": "code_scanning|missing_permission_or_not_enabled|Code scanning alerts read",
-      "source_surface": "refusal",
-      "candidate_count": 1,
-      "recommended_lane": "permission_required",
-      "recommended_action": "request_permission",
+      "group_id": "41953625743887d327a8725219493011b52ac6ac3c06ccb1cc4d8f7120071809",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|fixed|high|3c2442ee7e3b34ff8ff4bc86689e13568ec81674c9d7906e85ccd88dc60de520",
+      "source_surface": "code_scanning",
+      "candidate_count": 2,
+      "recommended_lane": "advisory_only",
+      "recommended_action": "ignore_noop",
       "mutation_allowed": false,
       "remote_mutation_required": false,
       "severity_summary": {
-        "unknown": 1
+        "high": 2
       },
       "candidates": [
         {
-          "candidate_id": "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
-          "source_surface": "refusal",
-          "source_finding_key": "code_scanning:missing_permission_or_not_enabled",
-          "normalized_severity": "unknown",
-          "state": "refused",
-          "confidence": "high",
-          "recommended_lane": "permission_required",
-          "recommended_action": "request_permission",
+          "candidate_id": "05ffe0634895fce03316e135d8256386ecdc375456f2fa0b95fa537f1e181768",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#10",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
           "mutation_allowed": false,
           "remote_mutation_required": false,
-          "rationale": "code_scanning ingestion was refused because missing_permission_or_not_enabled.",
+          "rationale": "Code scanning alert code_scanning#10 is fixed",
           "source_hashes": {
-            "surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
-            "reason_hash": "48dcaad9dd812c8ac1eb43680658297e7ec5c2461ed887ff35728ac79e047215",
-            "required_permission_hash": "409678f1c5746516d2100c724032803b7193257663cf72536342646d375fa9a5"
-          },
-          "required_permission": "Code scanning alerts read",
-          "refusal_reason": "missing_permission_or_not_enabled"
+            "rule_id_hash": "3c2442ee7e3b34ff8ff4bc86689e13568ec81674c9d7906e85ccd88dc60de520",
+            "file_path_hash": "57db4ee3b64d58bf29b1f2a9b1e7f6be966c63c6bfc58c7b08ee04bbc9a783e7",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "85dc932b2c186790c2371ab2451124c77bac51168e70216a93818e890463f88c"
+          }
+        },
+        {
+          "candidate_id": "ce6ddc2ca14b03707e6331f636735c45f6dde7d4271161f39f08a54071a50198",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#15",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#15 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "3c2442ee7e3b34ff8ff4bc86689e13568ec81674c9d7906e85ccd88dc60de520",
+            "file_path_hash": "c59c1a4632aa103cec0c82a04d72eb7b4b285eba2c6b7e17009b1fc7e5cc618c",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "d291485ae44673b5d29915fefdf0ae7e73148c8e4c196af495ae49d44f6702ac"
+          }
         }
       ],
       "source_hashes": {
-        "group_key_hash": "b5e106689beb5c5e88ff0760a82819bf44672c1770df4d029dc1b8feedb70a7a",
+        "group_key_hash": "5c2e3c616b7ea7f8e9c38840c6474821a72373024ec27c625b817c73b4300ef0",
         "candidate_id_hashes": [
-          "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641"
+          "05ffe0634895fce03316e135d8256386ecdc375456f2fa0b95fa537f1e181768",
+          "ce6ddc2ca14b03707e6331f636735c45f6dde7d4271161f39f08a54071a50198"
         ]
       },
-      "rationale": "code_scanning ingestion was refused because missing_permission_or_not_enabled."
+      "rationale": "Code scanning alert code_scanning#10 is fixed"
+    },
+    {
+      "group_id": "e794ab3825c874f708705d20f9af827b3704a01c1b68e4cb13cd29d3225d497a",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|fixed|high|62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+      "source_surface": "code_scanning",
+      "candidate_count": 4,
+      "recommended_lane": "advisory_only",
+      "recommended_action": "ignore_noop",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 4
+      },
+      "candidates": [
+        {
+          "candidate_id": "08df980a3eab8ea295883c0fd1dd6e8e782ae12804d84c53aa7ae353d8d93958",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#40",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#40 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "1bdb612dc96005bd465a4448489db1eb9796375fe78ab49157657cb4274c7fce"
+          }
+        },
+        {
+          "candidate_id": "43d090de323d28bb898b2f500c4affc78f7108aca5cc8f10782a8cfe15349403",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#22",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#22 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "c6c909e2adee93bd1d3067736e14af8b161edf82458f0a7124d6d92ffc34707c"
+          }
+        },
+        {
+          "candidate_id": "6f6675720ca1d78d486edeb8275e000e4f68b9499bd4b92da7a1d6f9148b50ad",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#12",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#12 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+            "file_path_hash": "48ea491b4dd4d210645a85bdc955a43409fa95a31e9a50ad044c068de6d327d5",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "1618899bf3d349dfa7f73f4e60bcd560b535944982fa2d04d0102e0e378be379"
+          }
+        },
+        {
+          "candidate_id": "e6514304df709b9e19d60c9c7c08596ed2019b94fb31946022c08cfe9d01d934",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#39",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#39 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "62ca9f5f43f456ccb6b7d648d26217713e7832ccaaad72661c8f24f3d8725e02",
+            "file_path_hash": "322153f5390061a47c5d92241b3e3bdc0d0a17ab6e0b270f6e20a05c141aa825",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "2ef3e6e27cefb6fd0199c5a74cd0cbcca461fff0c788f855806b98a55475afb0"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "e0e2fdeed4cb6d5c62ebedee5974a6123651701351b5d19be8267676cee8e781",
+        "candidate_id_hashes": [
+          "08df980a3eab8ea295883c0fd1dd6e8e782ae12804d84c53aa7ae353d8d93958",
+          "43d090de323d28bb898b2f500c4affc78f7108aca5cc8f10782a8cfe15349403",
+          "6f6675720ca1d78d486edeb8275e000e4f68b9499bd4b92da7a1d6f9148b50ad",
+          "e6514304df709b9e19d60c9c7c08596ed2019b94fb31946022c08cfe9d01d934"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#40 is fixed"
+    },
+    {
+      "group_id": "cec28240f8da24cd3d68ea6bcd684209b68f1f4f9872f665721952ef55fb65cb",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|fixed|high|72c39a3fc7b51c4d072bff2730dea8f6433f52e0151785a6c47d708c9f36a442",
+      "source_surface": "code_scanning",
+      "candidate_count": 1,
+      "recommended_lane": "advisory_only",
+      "recommended_action": "ignore_noop",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 1
+      },
+      "candidates": [
+        {
+          "candidate_id": "9a51afc8f09d583204c1205992ee6d7867c725e54ef4c48923627248d09ff5c5",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#14",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#14 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "72c39a3fc7b51c4d072bff2730dea8f6433f52e0151785a6c47d708c9f36a442",
+            "file_path_hash": "ed891b0dde91a9faa00c9bebfe1168b3e35bdacc06efc8582ed050ef132bf215",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "0fdccf8b81031b722f9c254f16fff72c9ff334f45f00cde34ea5f85545b546e7"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "3b50016ec294077dbe531ab54af815948ff8422563ad7367b0e4886993480fcb",
+        "candidate_id_hashes": [
+          "9a51afc8f09d583204c1205992ee6d7867c725e54ef4c48923627248d09ff5c5"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#14 is fixed"
+    },
+    {
+      "group_id": "8406fd3f8f6d4f94b4a3444c6ce885aee8679f79739ba63b64cc9dd899e0b27f",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|fixed|high|b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "source_surface": "code_scanning",
+      "candidate_count": 7,
+      "recommended_lane": "advisory_only",
+      "recommended_action": "ignore_noop",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 7
+      },
+      "candidates": [
+        {
+          "candidate_id": "37d44a8ab55451f21bc77477dd5451ee4327bb7e4414fdd8837a05121f4ba0ea",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#21",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#21 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "208bb3c434e5c75fee33d7a49b7c6114dbf1b48a46abaddcf49aec3785b14521"
+          }
+        },
+        {
+          "candidate_id": "4f9a2972fd191ace0d78920aae523b38fb8a6c3828434c907b899c40a2cf0dd2",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#11",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#11 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "48ea491b4dd4d210645a85bdc955a43409fa95a31e9a50ad044c068de6d327d5",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "082e3cf54071b8132454ce99d71d2901fedc96c85d4c41f0ea01d1fa68f8af3d"
+          }
+        },
+        {
+          "candidate_id": "707140151dc80fc6cc66b49871ff06f79c38a314a6633f1199851754aa8c88ff",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#17",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#17 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "61d8fa06e6b87624d8bdc5e68d094ad29785741c9e72910e4c2373ab07f4dcf2"
+          }
+        },
+        {
+          "candidate_id": "736610e3f4c0c002cc9ad4968f54b3a068ed8bc2f4feb479497702a9e340cb84",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#37",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#37 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "e3f23570ced5267f559a03b41d974ffdcf69dfc2d17ed8b5fd1c002aef503f04"
+          }
+        },
+        {
+          "candidate_id": "a88f7d528c8b8b6ac47d7620fb4805ae130ce22a4dd01e5c77434cd0f7a72c14",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#27",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#27 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "322153f5390061a47c5d92241b3e3bdc0d0a17ab6e0b270f6e20a05c141aa825",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "faab8d68ae0c678c83effca58909eda8d9c5ab6597c78054b0232e121f65dc9d"
+          }
+        },
+        {
+          "candidate_id": "bbf0ed60b4e73685e8e883c16ee4beb43ab7868c9ed7d35a1ff94fe1e057fc4d",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#20",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#20 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "f8b6108de37e3b664e9092eed1ef6ab32ba677f28b4109565d7545efb1400f8e"
+          }
+        },
+        {
+          "candidate_id": "d03394eef60d034bbfe26feacd4274b2f419cb27316f4273fe1bf6e2884c28cc",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#35",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#35 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "7a841c5717e9f622e80832ca0658fd8673131b27774f87eb4354d0cdfa4d351d"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "0593a61998e183b0598d5511e68b51ff14be882b202870f21436301490365e1a",
+        "candidate_id_hashes": [
+          "37d44a8ab55451f21bc77477dd5451ee4327bb7e4414fdd8837a05121f4ba0ea",
+          "4f9a2972fd191ace0d78920aae523b38fb8a6c3828434c907b899c40a2cf0dd2",
+          "707140151dc80fc6cc66b49871ff06f79c38a314a6633f1199851754aa8c88ff",
+          "736610e3f4c0c002cc9ad4968f54b3a068ed8bc2f4feb479497702a9e340cb84",
+          "a88f7d528c8b8b6ac47d7620fb4805ae130ce22a4dd01e5c77434cd0f7a72c14",
+          "bbf0ed60b4e73685e8e883c16ee4beb43ab7868c9ed7d35a1ff94fe1e057fc4d",
+          "d03394eef60d034bbfe26feacd4274b2f419cb27316f4273fe1bf6e2884c28cc"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#21 is fixed"
+    },
+    {
+      "group_id": "a77ca54a6521e0b95d184a51fb7d9d7091a6afb71db00df14edbc670ca80a369",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|fixed|high|bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "source_surface": "code_scanning",
+      "candidate_count": 1,
+      "recommended_lane": "advisory_only",
+      "recommended_action": "ignore_noop",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 1
+      },
+      "candidates": [
+        {
+          "candidate_id": "47d7df2d11424d5dcff4912ca2f6de5141ebd189c1ae6b3bfe898aa3d31d2b43",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#16",
+          "normalized_severity": "high",
+          "state": "fixed",
+          "confidence": "medium",
+          "recommended_lane": "advisory_only",
+          "recommended_action": "ignore_noop",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#16 is fixed",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "d208dbe732cc0ab8fee984b81b02a8412d6ec1e52ed2e7e3a81e1cdd97ba09df",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "ea4c94161a8362a48e69847a78e06fd9d3d7914367dbe834e820cdf0ef37af16"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "d1ffd95b76e64c376ad53fba0ad9d90728cc9b511165daa9af20608efa133767",
+        "candidate_id_hashes": [
+          "47d7df2d11424d5dcff4912ca2f6de5141ebd189c1ae6b3bfe898aa3d31d2b43"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#16 is fixed"
+    },
+    {
+      "group_id": "79519b4b5b134664187a8253626c524cc38053d5f0795f92348bd794eb3c7cc4",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|open|high|b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+      "source_surface": "code_scanning",
+      "candidate_count": 18,
+      "recommended_lane": "security_patch",
+      "recommended_action": "inspect_code_scanning_alert",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 18
+      },
+      "candidates": [
+        {
+          "candidate_id": "0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#32",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#32 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "d747c2b79cd402684d8dcd09b0d8b6852a5096af14a0f0939e38118c7ab0cd7d"
+          }
+        },
+        {
+          "candidate_id": "0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#33",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#33 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "9d2dc1db0ff676a4f858a0fbff100987519021aa315c9abb4217073a0db02ec7"
+          }
+        },
+        {
+          "candidate_id": "1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#19",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#19 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "aeed8547fb8dcf51df9ee96e5f650c765431bf574d3bb944bf8f4123ee0e5a0b"
+          }
+        },
+        {
+          "candidate_id": "222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#6",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#6 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "9f77d3ae4492bd720628559cbdf61be259f59e4ea4feeaf1fa239be308284cba",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "092a630b68e7626d07d247ae1c3ecabdc947dbed209dc1a5c4546318d06d4d89"
+          }
+        },
+        {
+          "candidate_id": "3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#28",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#28 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "4adb9dd894a7f7ec83879e4af4395fa965f3729cd4912dd37c2bc22bb9b1096c"
+          }
+        },
+        {
+          "candidate_id": "3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#42",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#42 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "ed555d378894aed3f06b4f8305ab72eed39ccfc5be6c03e971ccdfefa81c7e53",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "a4f2cf1690f40562f4b0a71c90fbb5f05a0b62e80e42f47f601516d953e389d8"
+          }
+        },
+        {
+          "candidate_id": "4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#36",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#36 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "0697a7cbcf0ff90c262882ad115b61570413a3ea4a1fe89a3fd9e8e59cf07331"
+          }
+        },
+        {
+          "candidate_id": "51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#38",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#38 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "e788ccacc92627ba7bf4477b5b4dbf88978fd2e67c23d316b778d46f3a8e9b39"
+          }
+        },
+        {
+          "candidate_id": "74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#31",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#31 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "1a522546e1e8e6b57e90a25ed1993222131a314a761b06a7ff5fb95e9799793a"
+          }
+        },
+        {
+          "candidate_id": "7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#8",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#8 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "4ff5672f4482dc88129ba538713a74159b12e08457a43a5906c3014cc0e14627",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "603d9a63f666410fe82048c0ff777b3b688f04b54936854f5749f5726f457f51"
+          }
+        },
+        {
+          "candidate_id": "86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#34",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#34 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "458f6cac2f18be05e022f5537dbf3d621f4f74a96ed424805986f639eebd0026"
+          }
+        },
+        {
+          "candidate_id": "ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#9",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#9 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "4ff5672f4482dc88129ba538713a74159b12e08457a43a5906c3014cc0e14627",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "37d8a946708d6e24cedfcd91e7f88f74dfd93a827e7457914ce2bd6cd8cca249"
+          }
+        },
+        {
+          "candidate_id": "cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#30",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#30 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "ac6ac67281ff3a4fc69c7c0a1f6c8b8312a914bf1a602e63e9a71283317d3189"
+          }
+        },
+        {
+          "candidate_id": "d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#18",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#18 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "b64e11851e4d32501ffc67447fbd75ef9a09679ae8ece45d0bca5579fa1a0e29",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "ae19a239bdfee28925309c3ef82aa703c74578ef72fdb88784cdc11125ea9265"
+          }
+        },
+        {
+          "candidate_id": "dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#41",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#41 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "50fac0158089ddac211935079862533e7166290e3cc3103bde03cc8f28eb306a"
+          }
+        },
+        {
+          "candidate_id": "f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#4",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#4 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "716997e6c0e1140f5139726ff01ff92e3c5c026bd60c2d9156bef8297cadaea5",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "5d06345b37fdb7f6b90b6cf08b4679f9feb0f23071bd019f403e7e4840f0082b"
+          }
+        },
+        {
+          "candidate_id": "f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#29",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#29 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "c6f46c0a3616cbf1a7eb78d3b3d278c620ef42067e544bb2f799d91926009d09"
+          }
+        },
+        {
+          "candidate_id": "f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#7",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#7 is open",
+          "source_hashes": {
+            "rule_id_hash": "b974bb25720049028709a5bd15e6f87d41643931ee8aec2415839675d26541e8",
+            "file_path_hash": "9f77d3ae4492bd720628559cbdf61be259f59e4ea4feeaf1fa239be308284cba",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "0cbf236c709adc33bf5331ad3540eea5008ce9628f963fe7a2d7c373ef88a812"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "5224751187c4542f28292196432ab2cf963328cae794e56240f814913c6451bc",
+        "candidate_id_hashes": [
+          "0478718a2956bb35d3d959341d0b6f05f8a39fc4af51be370d2e8f350c9a8009",
+          "0e72027a50f8a7019977b94e07a40934b3223c1c785f6246f0d0c769794ce9aa",
+          "1e514b413211279627ef5a70520d81020ff0e5b5fd847b256376cae582ab54f2",
+          "222def9feb4662e1fbcdd7c71c073488e440f0f5b5b07ac2f90bce42f27544ed",
+          "3b00f9750cd792c4c8f31503393dc4e13bdca5e28c54a96a0e78f6b73a7b7282",
+          "3f832d9ebb31b33a6af88b482d053df30f32ee3300aa3c400d2d23c0078a9858",
+          "4e99047eb6b8e5c4005e8162087c53b0457f4264280934f4f84a2bdc340c00e7",
+          "51d6a428ca33048e3b515ce538f385092ba36801d86e17c285939a0bc3c96539",
+          "74fe9ffb1598cc24f16bfa5dab806c6d1f71348fc9ff71ab14a216d7ad35a830",
+          "7c9135905622d4d6b8fd25a37fab990498e57b294d541df16adb148545ccedda",
+          "86a1690577e11f9f7e7b03eb918db3e051d651d026371089a93c09a7e519db0b",
+          "ca826c27eaf2334b5c74e1e6471cb75f63626228269863986f96e18458f25b31",
+          "cdec1f83f4336dfb8ca64bdebacecc70895624d9593a77a18c8b0c29eac2c028",
+          "d212633b8e2284b2d2b2208e298cc91fddc1b6634879814fdcc97ad00fcf3a28",
+          "dd20a386c4bf52f15cd0d743edc71b0ae00df61e16fb803c0616fc6e452995b3",
+          "f1451e948ab99d7d7a571f7f433942782204e7410942fd523e5186f3ac2d42ac",
+          "f3261670e4bf9c4e31daa4d42367c1d1be3599129f44494261c251f5cc55afdf",
+          "f709ea425d257cd3ec5bc669a51ae4da04386403537c69a49d395ccdc564974f"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#32 is open"
+    },
+    {
+      "group_id": "cdba1a190cc8fb11748508f119afa474fdbcad5826225e9ffc645f508620140f",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|open|high|bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+      "source_surface": "code_scanning",
+      "candidate_count": 7,
+      "recommended_lane": "security_patch",
+      "recommended_action": "inspect_code_scanning_alert",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 7
+      },
+      "candidates": [
+        {
+          "candidate_id": "2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#3",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#3 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "7c21c1a6fa35744f680ecc83d265173925c2ae6dd725f1281010d9733f426f26",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "e1a855a45385ada3351892bd073fa9cb7f6daa89d8051a41c375e2f38987aa42"
+          }
+        },
+        {
+          "candidate_id": "33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#1",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#1 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "c863010ea2edee500bfd29ed732b3e638c6884e9d5ccc60140bd44f68366d1e0",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "2abffd3856b76011c924973bd4ba225ee043244500967580d2b62bd92910fd27"
+          }
+        },
+        {
+          "candidate_id": "39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#2",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#2 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "47022005745bc5a506d6f23b0de11c2a6577503538b6cc1248d5ada11d982339",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "3cb1ac634eb169a51ab39522f009fc4c3a5f7b255c1f4fd75503141d84c53226"
+          }
+        },
+        {
+          "candidate_id": "9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#24",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#24 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "d208dbe732cc0ab8fee984b81b02a8412d6ec1e52ed2e7e3a81e1cdd97ba09df",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "bc81f0bd3b9478bb8e18d225c6206b508cac3455c16323cab7cb1458eb905126"
+          }
+        },
+        {
+          "candidate_id": "af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#23",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#23 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "3abe22e586ad96bb209ddd041340e0166cbdc743af433b1a5cead148e096d0f4",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "5b745ec2aca7ab35b0f80fc0102267cbe4986d559725fcdcb589639cffd317ea"
+          }
+        },
+        {
+          "candidate_id": "c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#25",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#25 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "c27490188ff7f34c6d3082dc9ac835395a0d3c8b5794d0132aecfe743931e8da",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "63afd210cb56ab5b2dda0ea13e444c064c69e109df708fe893a1a2b85f77f5eb"
+          }
+        },
+        {
+          "candidate_id": "c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#26",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#26 is open",
+          "source_hashes": {
+            "rule_id_hash": "bf2b81cd892e274fc13769bd2482688dfa7f2dcc07518377f69bb3780c497897",
+            "file_path_hash": "cbfcc3977fef39f0b78dc2d7ab8481a6f795eacb16533c4713adef2458fe3600",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "634d32161f03bcc5850c9d7d8835119daf9207613813e5f7ec71b19693d58bdc"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "2bf0acb3bcaa825776f145e2b80ffde699505e5dbd80500415822da1e0cd6bb1",
+        "candidate_id_hashes": [
+          "2b4a53110a68d1629f4e355cf4cec983468b6e0ec090f77fefc88f22fd35010b",
+          "33052a8ee269418eedb6e357bd8f89fcb6bae2890e91cecde8d5084a0cf549bb",
+          "39db04224ef8fca0b6f931e51b72423b2d42c5ad64b3f1cfbdbe0d43f34a5509",
+          "9e66da1326d9a8e36932be84be2d3b04080af2b5a79f61c197373401ba496c5d",
+          "af0200634a73e1821396d7ebd8944f94079510fa1e9abbc8598badb5a73f9618",
+          "c4101eefab93eec358ca0b6d49aaa8eaa0012e99407448e8e91e822f0696b57b",
+          "c95ebf5cc1c508e0b5cb1410ee83e44de8816e3274580c1561e91d26b0520345"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#3 is open"
+    },
+    {
+      "group_id": "866a4f29a6032a9403398d3715ccae110413cec3a1b2bf50e140abb37644cd5f",
+      "group_kind": "code_scanning",
+      "group_key": "code_scanning|codeql_security_fix_needed|open|high|e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+      "source_surface": "code_scanning",
+      "candidate_count": 2,
+      "recommended_lane": "security_patch",
+      "recommended_action": "inspect_code_scanning_alert",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "high": 2
+      },
+      "candidates": [
+        {
+          "candidate_id": "933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#5",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#5 is open",
+          "source_hashes": {
+            "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+            "file_path_hash": "080e04a484e9a0f65c08b7fd6f257990d2534ba0d7de1a1dc38c7dccb9c20b26",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "ea6ba5089ef62d5cffb86fc02ae61028de2b7cb6aac33a9f84071f441b145752"
+          }
+        },
+        {
+          "candidate_id": "fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3",
+          "source_surface": "code_scanning",
+          "source_finding_key": "code_scanning#13",
+          "normalized_severity": "high",
+          "state": "open",
+          "confidence": "medium",
+          "recommended_lane": "security_patch",
+          "recommended_action": "inspect_code_scanning_alert",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "Code scanning alert code_scanning#13 is open",
+          "source_hashes": {
+            "rule_id_hash": "e798d9cf7207da94e19d8a317ac517fef1a456e53bad6bb046d088b1e7d9e2f1",
+            "file_path_hash": "5ec06d515bce3feb913036df739b4656f721a3747cbb25485aaeb9fca299ddb4",
+            "most_recent_instance_ref_hash": "f921bd05e68b03740c450e565e0e6173e546193170b2dd404ddb6f153e9b5bf3",
+            "html_url_hash": "26f2b250586694f83fa5bf0922c787ebd5939efa75cf6f355d2556987106e0a0"
+          }
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "6d8a48001a428b6098d6d28d84e79bc2f3be7ba208d0da652d9a8966390660ae",
+        "candidate_id_hashes": [
+          "933dea692ce926a483e4625ba6cfa1c088584c1eb78de6cc9f475af41e0ba4b6",
+          "fd45936b1176f7b65f42bdc74d3fea2d758b1e264ef60a31fa7d1ccbf26153a3"
+        ]
+      },
+      "rationale": "Code scanning alert code_scanning#5 is open"
     },
     {
       "group_id": "9baa0e683b01aa77e803a9c0f8f6983b2f0bbde20820a8ddf47f59df47f09136",
@@ -141,16 +1115,6 @@
   ],
   "refusals": [
     {
-      "surface": "code_scanning",
-      "status": "refused",
-      "reason": "missing_permission_or_not_enabled",
-      "required_permission": "Code scanning alerts read",
-      "remote_mutation": false,
-      "recommended_lane": "permission_required",
-      "recommended_action": "request_permission",
-      "candidate_id": "7284a46ab57694a5cc5cf5fd71c4a52e43725aa0f5485404e62af506b7c7705a"
-    },
-    {
       "surface": "dependabot",
       "status": "refused",
       "reason": "missing_permission_or_not_enabled",
@@ -172,17 +1136,23 @@
     }
   ],
   "summary": {
-    "work_item_count": 3,
-    "candidate_group_count": 3,
-    "refused_surface_count": 3,
+    "work_item_count": 44,
+    "source_alert_count": 42,
+    "candidate_group_count": 10,
+    "refused_surface_count": 2,
     "by_surface": {
-      "refusal": 3
+      "code_scanning": 42,
+      "refusal": 2
     },
     "by_lane": {
-      "permission_required": 3
+      "advisory_only": 15,
+      "permission_required": 2,
+      "security_patch": 27
     },
     "by_action": {
-      "request_permission": 3
+      "ignore_noop": 15,
+      "inspect_code_scanning_alert": 27,
+      "request_permission": 2
     }
   }
 }

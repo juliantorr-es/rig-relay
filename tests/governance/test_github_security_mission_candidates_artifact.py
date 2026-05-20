@@ -62,3 +62,5 @@ def test_github_security_mission_candidates_artifact_validates_and_stays_content
     assert report["schema_version"] == "rig.github.security_mission_candidates.v1"
     assert report["content_light"] is True
     assert report["remote_mutation"] is False
+    assert report["ready_candidate_count"] > 0
+    assert report["blocked_candidate_count"] == 2

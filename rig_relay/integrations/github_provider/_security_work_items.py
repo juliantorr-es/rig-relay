@@ -300,6 +300,7 @@ def _build_summary(report: dict[str, Any]) -> dict[str, Any]:
             by_action[action] = by_action.get(action, 0) + 1
     return {
         "work_item_count": report["work_item_count"],
+        "source_alert_count": report["source_alert_count"],
         "candidate_group_count": report["candidate_group_count"],
         "refused_surface_count": report["refused_surface_count"],
         "by_surface": dict(sorted(by_surface.items())),
@@ -325,6 +326,7 @@ def project_github_security_work_items(
     code_scanning_groups: dict[str, list[dict[str, Any]]] = {}
     dependabot_groups: dict[str, list[dict[str, Any]]] = {}
     refusal_groups: dict[str, list[dict[str, Any]]] = {}
+    source_alert_count = 0
 
     alerts = intake.get("alerts", {})
     if not isinstance(alerts, dict):
@@ -332,12 +334,14 @@ def project_github_security_work_items(
     for alert in alerts.get("code_scanning", []):
         if not isinstance(alert, dict):
             continue
+        source_alert_count += 1
         candidate, group_key = _build_code_scanning_candidate(alert)
         code_scanning_groups.setdefault(group_key, []).append(candidate)
 
     for alert in alerts.get("dependabot", []):
         if not isinstance(alert, dict):
             continue
+        source_alert_count += 1
         candidate, group_key = _build_dependabot_candidate(alert)
         dependabot_groups.setdefault(group_key, []).append(candidate)
 
@@ -414,6 +418,7 @@ def project_github_security_work_items(
         "source_artifact_hash": source_hash,
         "remote_mutation": False,
         "content_light": True,
+        "source_alert_count": source_alert_count,
         "work_item_count": work_item_count,
         "refused_surface_count": refused_surface_count,
         "candidate_group_count": len(candidate_groups),

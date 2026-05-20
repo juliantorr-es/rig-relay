@@ -239,3 +239,17 @@ def test_repeated_runs_keep_identical_ids_and_ordering():
         first["mission_candidates"][0]["mission_candidate_id"]
         == second["mission_candidates"][0]["mission_candidate_id"]
     )
+
+
+def test_real_work_items_route_to_ready_investigation_candidates():
+    projected = route_github_security_work_items_from_path(
+        WORK_ITEMS_PATH,
+        source_artifact_path=str(WORK_ITEMS_PATH),
+        generated_at_utc="2026-05-19T00:00:00Z",
+    )
+
+    assert projected["mission_candidate_count"] == 44
+    assert projected["ready_candidate_count"] > 0
+    assert projected["blocked_candidate_count"] == 2
+    assert projected["advisory_candidate_count"] > 0
+    assert projected["summary"]["by_route"]["ready_for_investigation"] > 0

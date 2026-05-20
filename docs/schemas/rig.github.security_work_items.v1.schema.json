@@ -11,6 +11,7 @@
     "source_artifact_hash",
     "remote_mutation",
     "content_light",
+    "source_alert_count",
     "work_item_count",
     "refused_surface_count",
     "candidate_group_count",
@@ -43,6 +44,10 @@
     "content_light": {
       "type": "boolean",
       "const": true
+    },
+    "source_alert_count": {
+      "type": "integer",
+      "minimum": 0
     },
     "work_item_count": {
       "type": "integer",
@@ -258,6 +263,7 @@
       "type": "object",
       "required": [
         "work_item_count",
+        "source_alert_count",
         "candidate_group_count",
         "refused_surface_count",
         "by_surface",
@@ -266,6 +272,10 @@
       ],
       "properties": {
         "work_item_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_alert_count": {
           "type": "integer",
           "minimum": 0
         },

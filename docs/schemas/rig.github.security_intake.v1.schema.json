@@ -32,6 +32,7 @@
     "mutation_permission_count",
     "broad_app_permission_risk_mitigated_by_token_scope",
     "read_only_token_enforced",
+    "recommended_permission_reductions",
     "source_surfaces",
     "counts",
     "alerts",
@@ -177,6 +178,29 @@
     },
     "read_only_token_enforced": {
       "type": "boolean"
+    },
+    "recommended_permission_reductions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "permission_name",
+          "recommended_level",
+          "rationale"
+        ],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "recommended_level": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "installation_access": {
       "type": "object",

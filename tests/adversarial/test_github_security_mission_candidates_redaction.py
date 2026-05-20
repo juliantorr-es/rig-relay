@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from rig_relay.integrations.github_provider._security_mission_candidates import (
@@ -11,7 +13,7 @@ from rig_relay.integrations.github_provider._security_mission_candidates import 
 pytestmark = [pytest.mark.adversarial]
 
 
-def test_router_rejects_forbidden_secret_like_input_content():
+def test_router_strips_forbidden_secret_like_input_content():
     report = {
         "schema_version": "rig.github.security_work_items.v1",
         "generated_at_utc": "2026-05-19T00:00:00Z",
@@ -74,9 +76,32 @@ def test_router_rejects_forbidden_secret_like_input_content():
         },
     }
 
-    with pytest.raises(ValueError, match="forbidden"):
-        route_github_security_work_items(
-            report,
-            source_artifact_path="docs/json/governance/github_security_work_items_v1.v1.json",
-            generated_at_utc="2026-05-19T00:00:00Z",
-        )
+    routed = route_github_security_work_items(
+        report,
+        source_artifact_path="docs/json/governance/github_security_work_items_v1.v1.json",
+        generated_at_utc="2026-05-19T00:00:00Z",
+    )
+
+    serialized = json.dumps(routed, sort_keys=True)
+    for forbidden in (
+        "ghp_",
+        "gho_",
+        "ghu_",
+        "ghs_",
+        "ghr_",
+        "github_pat_",
+        "BEGIN PRIVATE KEY",
+        '"access_token"',
+        '"token_prefix"',
+        '"authorization"',
+        '"client_secret"',
+        '"private_key"',
+        '"raw_response"',
+        '"raw_body"',
+        '"patch"',
+        '"diff"',
+        '"contents"',
+        '"code_snippet"',
+        "diff --git",
+    ):
+        assert forbidden not in serialized

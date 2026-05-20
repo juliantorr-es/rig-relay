@@ -54,3 +54,4 @@ def test_github_security_work_items_artifact_validates_and_stays_content_light()
     assert report["schema_version"] == "rig.github.security_work_items.v1"
     assert report["content_light"] is True
     assert report["remote_mutation"] is False
+    assert report["source_alert_count"] == 42

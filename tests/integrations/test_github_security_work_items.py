@@ -132,6 +132,7 @@ def test_projection_from_existing_alert_fixtures_is_deterministic(tmp_path):
     assert first == second
     assert first["remote_mutation"] is False
     assert first["content_light"] is True
+    assert first["source_alert_count"] == 4
     assert first["work_item_count"] == 5
     assert first["refused_surface_count"] == 1
     assert first["candidate_group_count"] == 5
@@ -155,6 +156,25 @@ def test_projection_from_existing_alert_fixtures_is_deterministic(tmp_path):
 
     schema = json.loads(WORK_ITEMS_SCHEMA_PATH.read_text(encoding="utf-8"))
     jsonschema.validate(instance=first, schema=schema)
+
+
+def test_real_intake_projects_code_scanning_alerts_into_work_items():
+    report = project_github_security_work_items_from_path(
+        INTAKE_PATH,
+        source_artifact_path=str(INTAKE_PATH),
+        generated_at_utc="2026-05-19T00:00:00Z",
+    )
+
+    assert report["source_alert_count"] == 42
+    assert report["work_item_count"] == 44
+    assert report["candidate_group_count"] == 10
+    assert report["refused_surface_count"] == 2
+    assert report["summary"]["source_alert_count"] == 42
+    assert report["summary"]["by_surface"]["code_scanning"] == 42
+    assert any(
+        group["group_kind"] == "code_scanning"
+        for group in report["candidate_groups"]
+    )
 
 
 def test_projection_refusal_becomes_permission_required_candidate():

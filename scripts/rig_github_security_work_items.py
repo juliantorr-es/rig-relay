@@ -64,6 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         json.dumps(
             {
+                "source_alert_count": report.get("source_alert_count", 0),
                 "work_item_count": report.get("work_item_count", 0),
                 "candidate_group_count": report.get("candidate_group_count", 0),
                 "refused_surface_count": report.get("refused_surface_count", 0),

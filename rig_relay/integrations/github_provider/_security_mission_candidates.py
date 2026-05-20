@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from rig_relay.core.utils.io import read_safe
@@ -57,6 +58,28 @@ _MISSION_TYPE_ORDER = {
 }
 
 _PRIORITY_ORDER = {"p0": 0, "p1": 1, "p2": 2, "p3": 3, "p4": 4}
+
+_FORBIDDEN_TEXT_PATTERNS = (
+    re.compile(r"ghp_[A-Za-z0-9]{20,}"),
+    re.compile(r"gho_[A-Za-z0-9]{20,}"),
+    re.compile(r"ghu_[A-Za-z0-9]{20,}"),
+    re.compile(r"ghs_[A-Za-z0-9]{20,}"),
+    re.compile(r"ghr_[A-Za-z0-9]{20,}"),
+    re.compile(r"github_pat_[A-Za-z0-9]{20,}"),
+    re.compile(r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----"),
+    re.compile(r"\baccess_token\b"),
+    re.compile(r"\btoken_prefix\b"),
+    re.compile(r"\bauthorization\b"),
+    re.compile(r"\bclient_secret\b"),
+    re.compile(r"\bprivate_key\b"),
+    re.compile(r"\braw_response\b"),
+    re.compile(r"\braw_body\b"),
+    re.compile(r"\bpatch\b"),
+    re.compile(r"\bdiff\b"),
+    re.compile(r"\bcontents\b"),
+    re.compile(r"\bcode_snippet\b"),
+    re.compile(r"\bsecret\b"),
+)
 
 
 class GitHubSecurityMissionCandidateRoutingError(Exception):
@@ -146,30 +169,11 @@ def _assert_no_forbidden_content(value: Any) -> None:
                 "forbidden_secret_like_string_detected: mission candidate artifact "
                 "contains secret-like content"
             )
-        for forbidden in (
-            "ghp_",
-            "gho_",
-            "ghu_",
-            "ghs_",
-            "ghr_",
-            "github_pat_",
-            "BEGIN PRIVATE KEY",
-            "access_token",
-            "token_prefix",
-            "authorization",
-            "client_secret",
-            "private_key",
-            "raw_response",
-            "raw_body",
-            "patch",
-            "diff",
-            "contents",
-            "code_snippet",
-        ):
-            if forbidden in value:
+        for pattern in _FORBIDDEN_TEXT_PATTERNS:
+            if pattern.search(value):
                 raise ValueError(
                     "forbidden_content_detected: mission candidate artifact contains "
-                    f"'{forbidden}'"
+                    f"'{pattern.pattern}'"
                 )
 
 

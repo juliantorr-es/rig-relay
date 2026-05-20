@@ -46,4 +46,4 @@ def test_github_security_intake_artifact_validates_and_stays_content_light():
     assert report["schema_version"] == "rig.github.security_intake.v1"
     assert report["content_light"] is True
     assert report["remote_mutation"] is False
-    assert report["dry_run"] is True
+    assert report["dry_run"] is False
