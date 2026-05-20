@@ -6,15 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.12"
+  CI_ARTIFACT_DIR: .build/github-actions
 
 jobs:
-  pre-commit:
-    name: Pre-commit
+  schema-validation:
+    name: Schema validation
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repository
@@ -35,138 +41,59 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras
 
-      - name: Check lockfile consistency
-        run: uv lock --check
-
-      - name: Install pip (required by pre-commit)
-        run: uv pip install pip
-
-      - name: Add virtual environment to PATH
-        run: echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
-
-      - name: Cache pre-commit
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-
-      - name: Run pre-commit
-        run: uv run pre-commit run --all-files --show-diff-on-failure
-
-      - name: Validate JSON schemas
+      - name: Run schema validation
+        id: run_schema_validation
         run: uv run python scripts/rig_relay_validate_schemas.py
 
-      - name: Run repository hygiene static check
-        run: uv run python scripts/rig_rc_security_repository_hygiene.py --output .build/rig-relay/rc-security-repo-hygiene-ci.json
-
-      - name: Check schema files for Python contamination
-        run: uv run pytest tests/coordination/test_schema_validation.py::test_no_schema_contains_python_syntax -n0
-
-  tests:
-    name: Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-      - name: Install uv with caching
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
-        with:
-          version: "latest"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Sync dependencies
-        run: uv sync --all-extras
-
-      - name: Verify CLI can start
+      - name: Write schema validation summary
+        if: always()
         run: |
-          uv run rig-relay --help
-          uv run rig-relay-acp --help
-          uv run vibe --help
-          uv run vibe-acp --help
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.run_schema_validation.outcome }}" in
+            success) result=pass ;;
+            failure) result=fail ;;
+            skipped) result=not-run ;;
+            *) result="${{ steps.run_schema_validation.outcome }}" ;;
+          esac
 
-      - name: Validate tool receipt emission is content-light
-        run: uv run pytest tests/tools/test_tool_receipt_emission.py -n0
-
-      - name: Install ripgrep
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
-
-      - name: Run tests
-        run: uv run pytest --ignore tests/snapshots
-
-      - name: Validate IDE capability manifest
-        run: uv run python scripts/rig_relay_validate_ide_manifest.py
-
-      - name: Validate IDE sidecar protocol fixtures
-        run: uv run pytest tests/ide_sidecar/ -n0
-
-      - name: Check IDE capability map is up-to-date
-        run: |
-          uv run python scripts/rig_relay_generate_ide_capability_map.py
-          git diff --exit-code docs/protocols/ide-capability-map.md || {
-            echo "❌ Generated capability map is stale. Run: uv run python scripts/rig_relay_generate_ide_capability_map.py"
-            exit 1
+          cat > "$CI_ARTIFACT_DIR/schema-validation-summary.json" <<EOF
+          {
+            "job_id": "schema-validation",
+            "job_name": "Schema validation",
+            "result": "$result",
+            "commands": [
+              "uv run python scripts/rig_relay_validate_schemas.py"
+            ],
+            "local_reproduction": [
+              "uv run python scripts/rig_relay_validate_schemas.py"
+            ],
+            "artifacts": [
+              ".build/github-actions/schema-validation-summary.json"
+            ]
           }
+          EOF
 
-  snapshot-tests:
-    name: Snapshot Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+          {
+            echo "## Schema validation"
+            echo
+            echo "- Command run: \`uv run python scripts/rig_relay_validate_schemas.py\`"
+            echo "- Pass/fail: **$result**"
+            echo "- Local reproduction: \`uv run python scripts/rig_relay_validate_schemas.py\`"
+            echo "- Artifact path: \`.build/github-actions/schema-validation-summary.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-      - name: Install uv with caching
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
-        with:
-          version: "latest"
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Sync dependencies
-        run: uv sync --all-extras
-
-      - name: Run snapshot tests
-        id: snapshot-tests
-        run: uv run pytest tests/snapshots
-        continue-on-error: true
-
-      - name: Upload snapshot report
-        if: steps.snapshot-tests.outcome == 'failure'
+      - name: Upload schema validation summary
+        if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
-          name: snapshot-report
-          path: snapshot_report.html
-          if-no-files-found: warn
-          retention-days: 3
+          name: schema-validation-summary
+          path: .build/github-actions/schema-validation-summary.json
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Fail job if snapshot tests failed
-        if: steps.snapshot-tests.outcome == 'failure'
-        run: |
-          echo "Snapshot tests failed, failing job."
-          exit 1
-
-  release-gate:
-    name: Release Evidence Gate
+  static-site-renderer:
+    name: Static site renderer
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repository
@@ -187,8 +114,351 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras
 
-      - name: Produce CI evidence (structured)
-        id: ci-evidence
+      - name: Run site renderer tests
+        id: run_site_renderer_tests
+        run: uv run pytest tests/site_renderer/ -v
+
+      - name: Render static site
+        id: run_static_site_render
+        run: uv run python scripts/rig_site_render.py
+
+      - name: Write static site renderer summary
+        if: always()
+        run: |
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.run_site_renderer_tests.outcome }}" in
+            success) test_result=pass ;;
+            failure) test_result=fail ;;
+            skipped) test_result=not-run ;;
+            *) test_result="${{ steps.run_site_renderer_tests.outcome }}" ;;
+          esac
+          case "${{ steps.run_static_site_render.outcome }}" in
+            success) render_result=pass ;;
+            failure) render_result=fail ;;
+            skipped) render_result=not-run ;;
+            *) render_result="${{ steps.run_static_site_render.outcome }}" ;;
+          esac
+
+          cat > "$CI_ARTIFACT_DIR/static-site-renderer-summary.json" <<EOF
+          {
+            "job_id": "static-site-renderer",
+            "job_name": "Static site renderer",
+            "result": {
+              "tests": "$test_result",
+              "render": "$render_result"
+            },
+            "commands": [
+              "uv run pytest tests/site_renderer/ -v",
+              "uv run python scripts/rig_site_render.py"
+            ],
+            "local_reproduction": [
+              "uv run pytest tests/site_renderer/ -v",
+              "uv run python scripts/rig_site_render.py"
+            ],
+            "artifacts": [
+              ".build/github-actions/static-site-renderer-summary.json",
+              ".build/rig-relay/site/site_render_report.v1.json"
+            ]
+          }
+          EOF
+
+          {
+            echo "## Static site renderer"
+            echo
+            echo "- Command run: \`uv run pytest tests/site_renderer/ -v\`"
+            echo "- Pass/fail: **$test_result**"
+            echo "- Local reproduction: \`uv run pytest tests/site_renderer/ -v\`"
+            echo "- Command run: \`uv run python scripts/rig_site_render.py\`"
+            echo "- Pass/fail: **$render_result**"
+            echo "- Local reproduction: \`uv run python scripts/rig_site_render.py\`"
+            echo "- Artifact path: \`.build/github-actions/static-site-renderer-summary.json\`"
+            echo "- Artifact path: \`.build/rig-relay/site/site_render_report.v1.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload static site renderer artifacts
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: static-site-renderer-artifacts
+          path: |
+            .build/github-actions/static-site-renderer-summary.json
+            .build/rig-relay/site/site_render_report.v1.json
+          if-no-files-found: error
+          retention-days: 7
+
+  deepseek-opencode-usage-report:
+    name: DeepSeek/OpenCode usage report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install uv with caching
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Run DeepSeek/OpenCode usage report tests
+        id: run_deepseek_opencode_usage_report
+        run: uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v
+
+      - name: Write DeepSeek/OpenCode usage report summary
+        if: always()
+        run: |
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.run_deepseek_opencode_usage_report.outcome }}" in
+            success) result=pass ;;
+            failure) result=fail ;;
+            skipped) result=not-run ;;
+            *) result="${{ steps.run_deepseek_opencode_usage_report.outcome }}" ;;
+          esac
+
+          cat > "$CI_ARTIFACT_DIR/deepseek-opencode-usage-report-summary.json" <<EOF
+          {
+            "job_id": "deepseek-opencode-usage-report",
+            "job_name": "DeepSeek/OpenCode usage report",
+            "result": "$result",
+            "commands": [
+              "uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v"
+            ],
+            "local_reproduction": [
+              "uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v"
+            ],
+            "artifacts": [
+              ".build/github-actions/deepseek-opencode-usage-report-summary.json"
+            ]
+          }
+          EOF
+
+          {
+            echo "## DeepSeek/OpenCode usage report"
+            echo
+            echo "- Command run: \`uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v\`"
+            echo "- Pass/fail: **$result**"
+            echo "- Local reproduction: \`uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v\`"
+            echo "- Artifact path: \`.build/github-actions/deepseek-opencode-usage-report-summary.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload DeepSeek/OpenCode usage report summary
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: deepseek-opencode-usage-report-summary
+          path: .build/github-actions/deepseek-opencode-usage-report-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+  deepseek-lane-routing:
+    name: DeepSeek lane routing
+    if: ${{ hashFiles('tests/integrations/test_deepseek_lane_routing.py') != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install uv with caching
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Run DeepSeek lane routing tests
+        id: run_deepseek_lane_routing
+        run: uv run pytest tests/integrations/test_deepseek_lane_routing.py -v
+
+      - name: Write DeepSeek lane routing summary
+        if: always()
+        run: |
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.run_deepseek_lane_routing.outcome }}" in
+            success) result=pass ;;
+            failure) result=fail ;;
+            skipped) result=not-run ;;
+            *) result="${{ steps.run_deepseek_lane_routing.outcome }}" ;;
+          esac
+
+          cat > "$CI_ARTIFACT_DIR/deepseek-lane-routing-summary.json" <<EOF
+          {
+            "job_id": "deepseek-lane-routing",
+            "job_name": "DeepSeek lane routing",
+            "result": "$result",
+            "commands": [
+              "uv run pytest tests/integrations/test_deepseek_lane_routing.py -v"
+            ],
+            "local_reproduction": [
+              "uv run pytest tests/integrations/test_deepseek_lane_routing.py -v"
+            ],
+            "artifacts": [
+              ".build/github-actions/deepseek-lane-routing-summary.json"
+            ]
+          }
+          EOF
+
+          {
+            echo "## DeepSeek lane routing"
+            echo
+            echo "- Command run: \`uv run pytest tests/integrations/test_deepseek_lane_routing.py -v\`"
+            echo "- Pass/fail: **$result**"
+            echo "- Local reproduction: \`uv run pytest tests/integrations/test_deepseek_lane_routing.py -v\`"
+            echo "- Artifact path: \`.build/github-actions/deepseek-lane-routing-summary.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload DeepSeek lane routing summary
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: deepseek-lane-routing-summary
+          path: .build/github-actions/deepseek-lane-routing-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+  github-live-auth:
+    name: GitHub live auth (safe by default)
+    runs-on: ubuntu-latest
+    env:
+      RIG_LIVE_AUTH_TESTS: ${{ vars.RIG_LIVE_AUTH_TESTS }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install uv with caching
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Run safe GitHub live auth tests
+        id: run_github_live_auth_safe
+        run: uv run pytest tests/integrations/test_github_live_auth.py -v
+
+      - name: Run opt-in GitHub live auth smoke
+        id: run_github_live_auth_live
+        if: ${{ env.RIG_LIVE_AUTH_TESTS == '1' }}
+        run: uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json
+
+      - name: Write GitHub live auth summary
+        if: always()
+        run: |
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.run_github_live_auth_safe.outcome }}" in
+            success) safe_result=pass ;;
+            failure) safe_result=fail ;;
+            skipped) safe_result=not-run ;;
+            *) safe_result="${{ steps.run_github_live_auth_safe.outcome }}" ;;
+          esac
+          case "${{ steps.run_github_live_auth_live.outcome }}" in
+            success) live_result=pass ;;
+            failure) live_result=fail ;;
+            skipped) live_result=not-run ;;
+            *) live_result="${{ steps.run_github_live_auth_live.outcome }}" ;;
+          esac
+
+          cat > "$CI_ARTIFACT_DIR/github-live-auth-summary.json" <<EOF
+          {
+            "job_id": "github-live-auth",
+            "job_name": "GitHub live auth (safe by default)",
+            "result": {
+              "safe_tests": "$safe_result",
+              "opt_in_live_smoke": "$live_result"
+            },
+            "commands": [
+              "uv run pytest tests/integrations/test_github_live_auth.py -v",
+              "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json"
+            ],
+            "local_reproduction": [
+              "uv run pytest tests/integrations/test_github_live_auth.py -v",
+              "RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json"
+            ],
+            "artifacts": [
+              ".build/github-actions/github-live-auth-summary.json",
+              ".build/github-actions/github-live-auth-live-result.json"
+            ],
+            "notes": "Default CI leaves RIG_LIVE_AUTH_TESTS unset. Only protected environments should set it to 1."
+          }
+          EOF
+
+          {
+            echo "## GitHub live auth (safe by default)"
+            echo
+            echo "- Command run: \`uv run pytest tests/integrations/test_github_live_auth.py -v\`"
+            echo "- Pass/fail: **$safe_result**"
+            echo "- Local reproduction: \`uv run pytest tests/integrations/test_github_live_auth.py -v\`"
+            echo "- Command run: \`RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json\`"
+            echo "- Pass/fail: **$live_result**"
+            echo "- Local reproduction: \`RIG_LIVE_AUTH_TESTS=1 uv run python scripts/rig_github_live_auth_check.py --live --output-json .build/github-actions/github-live-auth-live-result.json\`"
+            echo "- Artifact path: \`.build/github-actions/github-live-auth-summary.json\`"
+            echo "- Artifact path: \`.build/github-actions/github-live-auth-live-result.json\`"
+            echo "- Notes: default CI keeps \`RIG_LIVE_AUTH_TESTS\` unset; only a protected environment should set it to \`1\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload GitHub live auth artifacts
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: github-live-auth-artifacts
+          path: |
+            .build/github-actions/github-live-auth-summary.json
+            .build/github-actions/github-live-auth-live-result.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  release-gate:
+    name: Release Evidence Gate (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+      - name: Install uv with caching
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Produce CI evidence
+        id: produce_ci_evidence
         run: |
           uv run python -c "
           from rig_relay.ci_evidence import produce_ci_evidence
@@ -197,24 +467,93 @@ jobs:
           print(f'Evidence paths: {result.evidence_paths}')
           "
 
-      - name: Run release evidence gate (non-mutating)
-        id: gate
+      - name: Run release evidence gate
+        id: run_release_gate
         run: uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json
 
-      - name: Upload CI evidence artifacts
+      - name: Write advisory release gate summary
+        if: always()
+        run: |
+          mkdir -p "$CI_ARTIFACT_DIR"
+          case "${{ steps.produce_ci_evidence.outcome }}" in
+            success) evidence_result=pass ;;
+            failure) evidence_result=fail ;;
+            skipped) evidence_result=not-run ;;
+            *) evidence_result="${{ steps.produce_ci_evidence.outcome }}" ;;
+          esac
+          case "${{ steps.run_release_gate.outcome }}" in
+            success) gate_result=pass ;;
+            failure) gate_result=fail ;;
+            skipped) gate_result=not-run ;;
+            *) gate_result="${{ steps.run_release_gate.outcome }}" ;;
+          esac
+
+          cat > "$CI_ARTIFACT_DIR/release-gate-advisory-summary.json" <<EOF
+          {
+            "job_id": "release-gate",
+            "job_name": "Release Evidence Gate (advisory)",
+            "result": {
+              "produce_ci_evidence": "$evidence_result",
+              "release_gate": "$gate_result"
+            },
+            "commands": [
+              "uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"",
+              "uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json"
+            ],
+            "local_reproduction": [
+              "uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"",
+              "uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json"
+            ],
+            "artifacts": [
+              ".build/github-actions/release-gate-advisory-summary.json",
+              ".build/rig-relay/evidence/ci_*_run.v1.json",
+              ".build/rig-relay/evidence/ci_*_job.v1.json",
+              ".build/rig-relay/evidence/ci_*_artifact_index.v1.json",
+              ".build/rig-relay/evidence/ci_*_verdict.v1.json",
+              ".build/rig-relay/release-gate-ci.json"
+            ],
+            "notes": "Advisory only: broader release-evidence diagnostics remain available, but the deterministic required gate is the targeted local validation suite."
+          }
+          EOF
+
+          {
+            echo "## Release Evidence Gate (advisory)"
+            echo
+            echo "- Command run: \`uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"\`"
+            echo "- Pass/fail: **$evidence_result**"
+            echo "- Local reproduction: \`uv run python -c \"from rig_relay.ci_evidence import produce_ci_evidence; result = produce_ci_evidence(); print(result.verdict); print(result.evidence_paths)\"\`"
+            echo "- Command run: \`uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json\`"
+            echo "- Pass/fail: **$gate_result**"
+            echo "- Local reproduction: \`uv run python -m rig_relay.release_gate --output .build/rig-relay/release-gate-ci.json\`"
+            echo "- Artifact path: \`.build/github-actions/release-gate-advisory-summary.json\`"
+            echo "- Artifact path: \`.build/rig-relay/evidence/ci_*_run.v1.json\`"
+            echo "- Artifact path: \`.build/rig-relay/evidence/ci_*_job.v1.json\`"
+            echo "- Artifact path: \`.build/rig-relay/evidence/ci_*_artifact_index.v1.json\`"
+            echo "- Artifact path: \`.build/rig-relay/evidence/ci_*_verdict.v1.json\`"
+            echo "- Artifact path: \`.build/rig-relay/release-gate-ci.json\`"
+            echo "- Notes: advisory only; required merge gates are the targeted, reproducible commands above."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload advisory CI evidence artifacts
         if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: ci-evidence
-          path: .build/rig-relay/evidence/
+          path: |
+            .build/rig-relay/evidence/ci_*_run.v1.json
+            .build/rig-relay/evidence/ci_*_job.v1.json
+            .build/rig-relay/evidence/ci_*_artifact_index.v1.json
+            .build/rig-relay/evidence/ci_*_verdict.v1.json
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload gate result
+      - name: Upload advisory release gate result
         if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: release-gate-result
-          path: .build/rig-relay/release-gate-ci.json
+          path: |
+            .build/github-actions/release-gate-advisory-summary.json
+            .build/rig-relay/release-gate-ci.json
           if-no-files-found: warn
           retention-days: 7

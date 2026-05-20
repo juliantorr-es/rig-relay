@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.copilot_ci_pr_apply.v1.schema.json",
+  "title": "Copilot CI PR Apply Schema",
+  "description": "Structured metadata for applying Copilot CI/CD Reliability PR files safely.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "base_branch",
+    "base_head_sha",
+    "pr_branch",
+    "pr_head_sha",
+    "applied_files",
+    "branch_checkout",
+    "path_checkout_from_pr",
+    "merge_performed",
+    "push_performed",
+    "working_tree_mutated_by_pr_files",
+    "dirty_state_before",
+    "dirty_state_after",
+    "workflow_policy_checks",
+    "validation_commands",
+    "validation_results",
+    "tests_skipped",
+    "remaining_risks",
+    "recommendation",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.copilot_ci_pr_apply.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "base_branch": {
+      "type": "string"
+    },
+    "base_head_sha": {
+      "type": "string"
+    },
+    "pr_branch": {
+      "type": "string"
+    },
+    "pr_head_sha": {
+      "type": "string"
+    },
+    "applied_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "branch_checkout": {
+      "type": "boolean",
+      "const": false
+    },
+    "path_checkout_from_pr": {
+      "type": "boolean",
+      "const": true
+    },
+    "merge_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "push_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "working_tree_mutated_by_pr_files": {
+      "type": "boolean",
+      "const": true
+    },
+    "dirty_state_before": {
+      "type": "boolean"
+    },
+    "dirty_state_after": {
+      "type": "boolean"
+    },
+    "workflow_policy_checks": {
+      "type": "object",
+      "required": [
+        "permissions_minimal",
+        "no_write_all",
+        "no_pull_request_target",
+        "live_auth_disabled_by_default",
+        "no_sensitive_caching",
+        "reproduction_commands_in_summary"
+      ],
+      "properties": {
+        "permissions_minimal": {
+          "type": "boolean",
+          "const": true
+        },
+        "no_write_all": {
+          "type": "boolean",
+          "const": true
+        },
+        "no_pull_request_target": {
+          "type": "boolean",
+          "const": true
+        },
+        "live_auth_disabled_by_default": {
+          "type": "boolean",
+          "const": true
+        },
+        "no_sensitive_caching": {
+          "type": "boolean",
+          "const": true
+        },
+        "reproduction_commands_in_summary": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validation_results": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "passed",
+          "failed",
+          "skipped"
+        ]
+      }
+    },
+    "tests_skipped": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "remaining_risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "ready_for_user_commit",
+        "request_changes",
+        "needs_manual_review"
+      ]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    }
+  },
+  "additionalProperties": false
+}
