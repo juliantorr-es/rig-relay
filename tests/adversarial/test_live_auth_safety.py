@@ -86,8 +86,9 @@ class TestLiveAuthSecretBoundaries:
         result_str = json.dumps(result)
         assert raw_token not in result_str
         assert "token_hash" in result
-        assert result["token_prefix"] == raw_token[:8]
-        assert len(result["token_prefix"]) == 8
+        assert result["token_present"] is True
+        assert "token_prefix" not in result
+        assert "token_prefix" not in result_str
         assert "token" not in result
         assert isinstance(result.get("token_hash"), str)
         assert len(result["token_hash"]) == 64
@@ -110,8 +111,10 @@ class TestLiveAuthSecretBoundaries:
         result_str = json.dumps(result)
         assert raw_token not in result_str
         assert raw_response["refresh_token"] not in result_str
-        assert result["token_prefix"] == raw_token[:8]
-        assert len(result["token_prefix"]) == 8
+        assert "token_prefix" not in result
+        assert "refresh_token_prefix" not in result
+        assert "token_prefix" not in result_str
+        assert "refresh_token_prefix" not in result_str
         assert len(result.get("token_hash", "")) == 64
         assert result.get("token_hash") != raw_token
 
@@ -361,26 +364,24 @@ class TestLiveAuthRefusalPatterns:
         summary = config.config_summary()
         assert summary["oauth_configured"] is False
 
-    def test_github_live_smoke_inspect_identity_refuses_without_token(
+    def test_github_live_smoke_probe_installation_access_uses_installation_endpoint(
         self, monkeypatch
     ):
         import rig_relay.integrations.github_provider._live_auth as live_mod
 
-        saved = live_mod._get_json
-        try:
-            live_mod._get_json = lambda *a, **kw: {
-                "login": "",
-                "type": "",
-                "node_id": "",
-            }
-            smoke = live_mod.GitHubLiveReadOnlySmoke()
-            result = smoke.inspect_identity("")
-            assert "login_hash" in result
-            assert result.get("identity_type") == "user"
-            result_str = json.dumps(result)
-            assert "ghp_" not in result_str
-        finally:
-            live_mod._get_json = saved
+        called_urls: list[str] = []
+
+        def fake_get_json(url, headers=None, params=None, timeout=None):
+            called_urls.append(url)
+            return {"repositories": []}
+
+        monkeypatch.setattr(live_mod, "_get_json", fake_get_json)
+        smoke = live_mod.GitHubLiveReadOnlySmoke()
+        result = smoke.probe_installation_access("")
+        assert result.get("installation_access") == "success"
+        result_str = json.dumps(result)
+        assert "ghp_" not in result_str
+        assert called_urls == ["https://api.github.com/installation/repositories"]
 
     def test_google_live_smoke_inspect_identity_refuses_without_token(self):
         from rig_relay.integrations.google_workspace._live_auth import (

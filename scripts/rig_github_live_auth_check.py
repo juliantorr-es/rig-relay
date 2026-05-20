@@ -22,6 +22,8 @@ import sys
 from typing import Any, cast
 import uuid
 
+from rig_relay.integrations.github_provider._redaction import safe_summary
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LIVE_ENV_KEY = "RIG_LIVE_AUTH_TESTS"
 
@@ -37,7 +39,6 @@ def _lift_run_live_github(
 
     Lazily imports all live-auth modules and httpx. Content-light output only.
     """
-    from rig_relay.integrations.github_provider._redaction import safe_summary
     from rig_relay.integrations.github_provider._live_auth import (
         GitHubLiveAuthError,
         GitHubLiveReadOnlySmoke,
@@ -108,28 +109,26 @@ def _lift_run_live_github(
 
     smoke = GitHubLiveReadOnlySmoke()
     try:
-        identity = smoke.inspect_identity(raw_token)
+        installation_access = smoke.probe_installation_access(
+            raw_token,
+            installation_id=installation_id,
+            repository_selection=token_result.get("repository_selection"),
+            permission_keys=sorted(token_result.get("permissions", {}).keys())
+            if isinstance(token_result.get("permissions"), dict)
+            else None,
+        )
     except GitHubLiveAuthError as e:
-        results["identity_inspect"] = {
+        results["installation_access"] = {
             "schema_version": "rig.github.live_auth_refusal.v1",
-            "error": "identity_inspect_failed",
+            "auth_mode": "app_installation",
+            "error": "installation_access_failed",
             "error_description": str(e)[:256],
         }
         results["auth_mode"] = "app_installation"
         return results
 
-    results["identity_inspect"] = identity
+    results["installation_access"] = installation_access
     results["auth_mode"] = "app_installation"
-
-    try:
-        repos = smoke.list_accessible_repos(raw_token)
-        results["repos_list"] = {"repo_count": len(repos), "repos": repos[:10]}
-    except GitHubLiveAuthError as e:
-        results["repos_list"] = {
-            "schema_version": "rig.github.live_auth_refusal.v1",
-            "error": "repos_list_failed",
-            "error_description": str(e)[:256],
-        }
 
     return results
 
@@ -159,8 +158,8 @@ def _dry_run_output(config: Any, issues_report: dict[str, Any]) -> None:
     print("Live mode would:")
     print("  1. Load and validate the RSA private key")
     print("  2. Sign a JWT and exchange for an installation access token")
-    print("  3. Inspect identity via /user")
-    print("  4. List accessible repositories")
+    print("  3. Prove installation access via /installation/repositories")
+    print("  4. List accessible repositories from the installation")
     print()
     print(f"Run with --live (and {LIVE_ENV_KEY}=1) to execute live calls.")
     print(f"Receipt ID: {issues_report['receipt_id']}")
@@ -183,32 +182,24 @@ def _live_output(results: dict[str, Any], issues_report: dict[str, Any]) -> None
         print(f"  {te.get('error_description', '')}")
     else:
         print(f"  token_hash:     {te.get('token_hash', 'N/A')}")
+        print(f"  token_present:  {te.get('token_present', False)}")
         print(f"  expires_at:     {te.get('expires_at', 'N/A')}")
         print(f"  permissions:    {te.get('permissions', {})}")
         print(f"  repo_selection: {te.get('repository_selection', 'N/A')}")
 
     print()
-    print("Identity inspect:")
-    ident = results.get("identity_inspect", {})
+    print("Installation access:")
+    ident = results.get("installation_access", {})
     if ident.get("error"):
         print(f"  FAILED: {ident.get('error')}")
+        print(f"  {ident.get('error_description', '')}")
     else:
-        print(f"  identity_type: {ident.get('identity_type', 'N/A')}")
-        print(f"  login_hash:    {ident.get('login_hash', 'N/A')}")
-        print(f"  type:          {ident.get('type', 'N/A')}")
-
-    print()
-    print("Accessible repos:")
-    repos = results.get("repos_list", {})
-    if repos.get("error"):
-        print(f"  FAILED: {repos.get('error')}")
-    else:
-        print(f"  repo_count: {repos.get('repo_count', 0)}")
-        for r in repos.get("repos", []):
-            print(
-                f"    - name_hash={r.get('name_hash', '')}  "
-                f"private={r.get('private', False)}"
-            )
+        print(f"  installation_id_hash:   {ident.get('installation_id_hash', 'N/A')}")
+        print(f"  accessible_repo_count:   {ident.get('accessible_repo_count', 0)}")
+        print(f"  repository_selection:    {ident.get('repository_selection', 'N/A')}")
+        print(f"  permission_keys:         {ident.get('permission_keys', [])}")
+        for repo_hash in ident.get("accessible_repo_name_hashes", []):
+            print(f"    - repo_name_hash={repo_hash}")
 
     print()
     print(f"Receipt ID: {issues_report['receipt_id']}")

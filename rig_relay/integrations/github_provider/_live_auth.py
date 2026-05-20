@@ -20,12 +20,30 @@ _GITHUB_TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token"
 _GITHUB_INSTALLATION_TOKEN_ENDPOINT = (
     "https://api.github.com/app/installations/{installation_id}/access_tokens"
 )
+_GITHUB_INSTALLATION_REPOSITORIES_ENDPOINT = (
+    "https://api.github.com/installation/repositories"
+)
 
 _RSA_KEY_HEADER_RE = re.compile(rb"^-{5}BEGIN (RSA )?PRIVATE KEY-{5}")
 
 
 class GitHubLiveAuthError(Exception):
     """Raised when live GitHub auth operations fail."""
+
+
+def _installation_access_refusal(
+    error: str, description: str, status_code: int | None = None
+) -> dict[str, Any]:
+    refusal: dict[str, Any] = {
+        "schema_version": "rig.github.live_auth_refusal.v1",
+        "auth_mode": "app_installation",
+        "error": error,
+        "error_description": description[:256],
+        "installation_access": "refused",
+    }
+    if status_code is not None:
+        refusal["status_code"] = status_code
+    return refusal
 
 
 @dataclass
@@ -244,14 +262,21 @@ class GitHubLiveReadOnlySmoke:
         self._timeout = timeout
 
     def inspect_identity(self, token: str) -> dict[str, Any]:
-        """Check token type and return content-light identity.
+        """Compatibility wrapper for installation-token proof."""
+        return self.probe_installation_access(token)
 
-        Calls /user for OAuth/token, /app for installation tokens.
-        """
+    def probe_installation_access(
+        self,
+        token: str,
+        installation_id: int | None = None,
+        repository_selection: str | None = None,
+        permission_keys: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Prove installation-token access without using `/user`."""
         httpx = _import_httpx()
         try:
-            user_response = _get_json(
-                f"{_GITHUB_API_BASE}/user",
+            repos_response = _get_json(
+                _GITHUB_INSTALLATION_REPOSITORIES_ENDPOINT,
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github.v3+json",
@@ -259,65 +284,67 @@ class GitHubLiveReadOnlySmoke:
                 timeout=self._timeout,
             )
         except httpx.HTTPStatusError as e:
-            if e.response.status_code in (401, 403):
-                return {
-                    "error": "identity_inspect_failed",
-                    "error_description": f"HTTP {e.response.status_code}",
-                }
+            if e.response.status_code in {401, 403, 404, 422}:
+                return _installation_access_refusal(
+                    "installation_access_failed",
+                    f"HTTP {e.response.status_code}",
+                    status_code=e.response.status_code,
+                )
             raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
+        except httpx.RequestError as e:
+            return _installation_access_refusal(
+                "installation_access_failed", f"network_error: {e}"
+            )
 
-        login = user_response.get("login", "")
-        user_type = user_response.get("type", "")
-
-        if user_type == "Bot":
-            return {
-                "identity_type": "installation",
-                "login_hash": hash_identifier(login),
-                "type": user_type,
-                "node_id_hash": hash_identifier(user_response.get("node_id", "")),
-            }
+        repos = [
+            repo
+            for repo in repos_response.get("repositories", [])
+            if isinstance(repo, dict)
+        ]
+        repo_name_hashes = [
+            hash_identifier(repo.get("full_name", repo.get("name", "")))
+            for repo in repos
+        ]
+        derived_permission_keys = sorted({
+            key
+            for repo in repos
+            for key in (
+                repo.get("permissions", {})
+                if isinstance(repo.get("permissions"), dict)
+                else {}
+            ).keys()
+            if isinstance(key, str)
+        })
+        merged_permission_keys = sorted(
+            {key for key in (permission_keys or []) if isinstance(key, str)}
+            | set(derived_permission_keys)
+        )
 
         return {
-            "identity_type": "user",
-            "login_hash": hash_identifier(login),
-            "type": user_type,
-            "node_id_hash": hash_identifier(user_response.get("node_id", "")),
+            "schema_version": "rig.github.live_auth_result.v1",
+            "auth_mode": "app_installation",
+            "installation_id_hash": (
+                hash_identifier(str(installation_id))
+                if installation_id is not None
+                else ""
+            ),
+            "installation_access": "success",
+            "accessible_repo_count": len(repos),
+            "accessible_repo_name_hashes": repo_name_hashes,
+            "permission_keys": merged_permission_keys,
+            "repository_selection": repository_selection or "",
         }
 
     def list_accessible_repos(self, token: str) -> list[dict[str, Any]]:
         """List repos accessible to this token.
 
-        Tries installation repos first, falls back to user repos.
+        Installation-token flow only. Returns installation-accessible repos.
         Content-light: repo names are hashed.
         """
         httpx = _import_httpx()
         try:
-            user_response = _get_json(
-                f"{_GITHUB_API_BASE}/user",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github.v3+json",
-                },
-                timeout=self._timeout,
-            )
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code in (401, 403):
-                # We can't identify if it's user or bot, but we can assume user since /user failed.
-                user_response = {"type": "Unknown"}
-            else:
-                raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
-
-        user_type = user_response.get("type", "")
-
-        if user_type == "Bot":
-            return self._list_installation_repos(token)
-        return self._list_user_repos(token)
-
-    def _list_installation_repos(self, token: str) -> list[dict[str, Any]]:
-        httpx = _import_httpx()
-        try:
             repos_response = _get_json(
-                f"{_GITHUB_API_BASE}/installation/repositories",
+                _GITHUB_INSTALLATION_REPOSITORIES_ENDPOINT,
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github.v3+json",
@@ -325,30 +352,15 @@ class GitHubLiveReadOnlySmoke:
                 timeout=self._timeout,
             )
         except httpx.HTTPStatusError as e:
-            if e.response.status_code in (401, 403):
+            if e.response.status_code in {401, 403, 404, 422}:
                 raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
             raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
 
-        return [_redact_repo(repo) for repo in repos_response.get("repositories", [])]
-
-    def _list_user_repos(self, token: str) -> list[dict[str, Any]]:
-        httpx = _import_httpx()
-        try:
-            repos_response = _get_json(
-                f"{_GITHUB_API_BASE}/user/repos",
-                params={"per_page": "100", "sort": "updated"},
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github.v3+json",
-                },
-                timeout=self._timeout,
-            )
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code in (401, 403):
-                raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
-            raise GitHubLiveAuthError(f"HTTP {e.response.status_code}") from e
-
-        return [_redact_repo(repo) for repo in repos_response if isinstance(repo, dict)]
+        return [
+            _redact_repo(repo)
+            for repo in repos_response.get("repositories", [])
+            if isinstance(repo, dict)
+        ]
 
 
 def _redact_repo(repo: dict[str, Any]) -> dict[str, Any]:
@@ -373,7 +385,7 @@ def _redact_token_response(
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "token_hash": hash_identifier(token) if token else "",
-        "token_prefix": token[:8] if token else "",
+        "token_present": bool(token),
         "expires_at": response.get("expires_at", datetime.now(UTC).isoformat()),
         "kind": kind,
     }

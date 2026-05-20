@@ -117,3 +117,16 @@ class TestSecretBoundaryAssertNoSecrets:
         assert "ghp_this_is_a_secret_token_value_do_not_leak" not in result_str
         for f in findings:
             assert f == "nested.deep.token"
+
+    def test_token_prefix_is_forbidden_in_content_light_mappings(self):
+        from rig_relay.integrations.github_provider._redaction import (
+            assert_content_light_mapping,
+            safe_summary,
+        )
+
+        with pytest.raises(ValueError, match="token_prefix"):
+            assert_content_light_mapping({"token_prefix": "ghs_prefix_only"})
+
+        summary = safe_summary({"token_prefix": "ghs_prefix_only", "nested": 1})
+        assert "token_prefix" not in summary
+        assert "token_prefix" not in json.dumps(summary)

@@ -1,41 +1,64 @@
 {
-  "receipt_id": "2ee2c7f4-3363-4198-85d7-80cadbc33350",
-  "trace_id": "285b61e0-100b-484f-9a3b-3e163fd4c269",
+  "receipt_id": "7d83f119-62f8-4aab-a30e-49e2513e8993",
+  "trace_id": "b9133b16-2c1b-4118-8e39-505e975fb149",
   "dry_run": false,
   "config_summary": {
-    "app_id_configured": false,
-    "installation_id_configured": false,
+    "app_id_configured": true,
+    "installation_id_configured": true,
     "private_key_source": "file",
     "private_key_present": true,
     "client_id_configured": false,
     "client_secret_configured": false,
     "redirect_uri_configured": false,
-    "app_auth_possible": false,
+    "app_auth_possible": true,
     "oauth_auth_possible": false,
-    "any_auth_configured": false
+    "any_auth_configured": true
   },
-  "issues": [
-    {
-      "kind": "no_auth_configured",
-      "detail": "Neither GitHub App auth nor OAuth auth is configured"
-    }
-  ],
+  "issues": [],
   "live_results": {
-    "auth_mode": "app_installation",
     "token_exchange": {
-      "schema_version": "rig.github.live_auth_refusal.v1",
-      "error": "config_incomplete",
-      "issues": [
-        {
-          "kind": "missing_app_id",
-          "detail": "RIG_GITHUB_APP_ID is not set"
-        },
-        {
-          "kind": "missing_installation_id",
-          "detail": "RIG_GITHUB_INSTALLATION_ID is not set"
-        }
-      ]
-    }
+      "token_hash": "94f87f9bfb6e8fd6fb268158bd05bdd5def139128d1efe3eb92b8211a683818c",
+      "token_present": true,
+      "expires_at": "2026-05-20T05:05:03Z",
+      "kind": "installation",
+      "permissions": {
+        "actions": "read",
+        "checks": "read",
+        "contents": "read",
+        "issues": "read",
+        "metadata": "read",
+        "pull_requests": "read"
+      },
+      "repository_selection": "all"
+    },
+    "installation_access": {
+      "schema_version": "rig.github.live_auth_result.v1",
+      "auth_mode": "app_installation",
+      "installation_id_hash": "ec34a5228168a9fe01bda860beac9a13be8deceafee6b4d8a0f81ef72add1d11",
+      "installation_access": "success",
+      "accessible_repo_count": 4,
+      "accessible_repo_name_hashes": [
+        "aefa506e9f666edef30a7f38136b49429b38af0e774aede3e7451227d7e7044e",
+        "0ccf633ad28f89242c51933435ba8c2a15e44aba2c7e470eb7f20633d9014e40",
+        "06a8a8bce7a1b829d609b3b29c64d3f99c917b2ef2b871b179b8fb329b35c194",
+        "42576872e67cf6b6caa18cc2e875f48b1ad2a091aa1f5b409c80c3a259104cc4"
+      ],
+      "permission_keys": [
+        "actions",
+        "admin",
+        "checks",
+        "contents",
+        "issues",
+        "maintain",
+        "metadata",
+        "pull",
+        "pull_requests",
+        "push",
+        "triage"
+      ],
+      "repository_selection": "all"
+    },
+    "auth_mode": "app_installation"
   },
-  "timestamp_utc": "2026-05-19T23:27:13.522663+00:00"
+  "timestamp_utc": "2026-05-20T04:05:04.242105+00:00"
 }

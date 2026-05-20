@@ -38,6 +38,25 @@ class TestLiveAuthConfigLoadFromEnv:
         assert config.client_id == "test-client"
         assert config._has_oauth_auth() is True
 
+    def test_live_auth_config_reports_real_app_env(self, monkeypatch, tmp_path):
+        private_key_path = tmp_path / "github-private-key.pem"
+        private_key_path.write_text(
+            "-----BEGIN RSA PRIVATE KEY-----\nFAKE\n-----END RSA PRIVATE KEY-----\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("RIG_GITHUB_APP_ID", "3774417")
+        monkeypatch.setenv("RIG_GITHUB_INSTALLATION_ID", "133860977")
+        monkeypatch.setenv("RIG_GITHUB_PRIVATE_KEY_PATH", str(private_key_path))
+
+        config = GitHubLiveAuthConfig.from_environment()
+        summary = config.config_summary()
+
+        assert summary["app_id_configured"] is True
+        assert summary["installation_id_configured"] is True
+        assert summary["private_key_present"] is True
+        assert summary["app_auth_possible"] is True
+        assert summary["any_auth_configured"] is True
+
     def test_live_auth_config_unconfigured_by_default(self):
         config = GitHubLiveAuthConfig()
         assert config.is_configured() is False
@@ -169,8 +188,169 @@ class TestLiveReadOnlySmoke:
 
         smoke = GitHubLiveReadOnlySmoke(timeout=5.0)
         assert hasattr(smoke, "inspect_identity")
+        assert hasattr(smoke, "probe_installation_access")
         assert hasattr(smoke, "list_accessible_repos")
         assert smoke._timeout == 5.0
+
+
+class TestLiveInstallationAccessProof:
+    def test_probe_installation_access_uses_installation_repositories_endpoint(
+        self, monkeypatch
+    ):
+        import rig_relay.integrations.github_provider._live_auth as live_mod
+
+        called_urls: list[str] = []
+
+        def fake_get_json(url, headers=None, params=None, timeout=None):
+            called_urls.append(url)
+            return {
+                "repositories": [
+                    {
+                        "full_name": "owner/private-repo",
+                        "name": "private-repo",
+                        "permissions": {"contents": True, "issues": False},
+                        "private": True,
+                        "owner": {"type": "Organization"},
+                    }
+                ]
+            }
+
+        monkeypatch.setattr(live_mod, "_get_json", fake_get_json)
+
+        smoke = live_mod.GitHubLiveReadOnlySmoke(timeout=5.0)
+        result = smoke.probe_installation_access(
+            "ghs_installation_token_1234567890abcdef",
+            installation_id=133860977,
+            repository_selection="all",
+            permission_keys=["metadata"],
+        )
+
+        assert called_urls == ["https://api.github.com/installation/repositories"]
+        assert result["schema_version"] == "rig.github.live_auth_result.v1"
+        assert result["auth_mode"] == "app_installation"
+        assert result["installation_access"] == "success"
+        assert result["installation_id_hash"] == hash_identifier("133860977")
+        assert result["accessible_repo_count"] == 1
+        assert result["accessible_repo_name_hashes"] == [
+            hash_identifier("owner/private-repo")
+        ]
+        assert result["permission_keys"] == ["contents", "issues", "metadata"]
+        assert result["repository_selection"] == "all"
+        assert "ghs_installation_token_1234567890abcdef" not in json.dumps(result)
+
+    def test_probe_installation_access_returns_structured_refusal_on_http_401(
+        self, monkeypatch
+    ):
+        import httpx
+
+        import rig_relay.integrations.github_provider._live_auth as live_mod
+
+        def fake_get_json(url, headers=None, params=None, timeout=None):
+            request = httpx.Request("GET", url)
+            response = httpx.Response(401, request=request)
+            raise httpx.HTTPStatusError(
+                "Unauthorized", request=request, response=response
+            )
+
+        monkeypatch.setattr(live_mod, "_get_json", fake_get_json)
+
+        smoke = live_mod.GitHubLiveReadOnlySmoke(timeout=5.0)
+        result = smoke.probe_installation_access(
+            "ghs_installation_token_1234567890abcdef", installation_id=133860977
+        )
+
+        assert result["schema_version"] == "rig.github.live_auth_refusal.v1"
+        assert result["auth_mode"] == "app_installation"
+        assert result["error"] == "installation_access_failed"
+        assert result["status_code"] == 401
+        assert "ghs_installation_token_1234567890abcdef" not in json.dumps(result)
+
+
+class TestLiveAuthScriptTokenFlow:
+    def test_lift_run_live_github_forwards_exchanged_token_to_smoke_probe(
+        self, monkeypatch
+    ):
+        import rig_relay.integrations.github_provider._live_auth as live_mod
+        import scripts.rig_github_live_auth_check as script
+
+        exchanged_token = "ghs_installation_token_1234567890abcdef"
+
+        class DummyConfig:
+            app_id = 3774417
+            installation_id = 133860977
+
+            def _has_private_key(self) -> bool:
+                return True
+
+            def load_private_key(self) -> bytes:
+                return b"-----BEGIN RSA PRIVATE KEY-----\nFAKE\n-----END RSA PRIVATE KEY-----"
+
+            def config_summary(self) -> dict[str, bool | str]:
+                return {
+                    "app_id_configured": True,
+                    "installation_id_configured": True,
+                    "private_key_source": "file",
+                    "private_key_present": True,
+                    "client_id_configured": False,
+                    "client_secret_configured": False,
+                    "redirect_uri_configured": False,
+                    "app_auth_possible": True,
+                    "oauth_auth_possible": False,
+                    "any_auth_configured": True,
+                }
+
+        def fake_exchange(self, app_id, installation_id, private_key_bytes):
+            return (
+                {
+                    "token_hash": hash_identifier(exchanged_token),
+                    "expires_at": "2026-06-19T00:00:00Z",
+                    "kind": "installation",
+                    "permissions": {"contents": "read"},
+                    "repository_selection": "all",
+                },
+                exchanged_token,
+            )
+
+        def fake_probe(
+            self,
+            token,
+            installation_id=None,
+            repository_selection=None,
+            permission_keys=None,
+        ):
+            assert token == exchanged_token
+            assert token != "__placeholder__"
+            assert installation_id == 133860977
+            assert repository_selection == "all"
+            assert permission_keys == ["contents"]
+            return {
+                "schema_version": "rig.github.live_auth_result.v1",
+                "auth_mode": "app_installation",
+                "installation_id_hash": hash_identifier("133860977"),
+                "installation_access": "success",
+                "accessible_repo_count": 1,
+                "accessible_repo_name_hashes": [hash_identifier("owner/private-repo")],
+                "permission_keys": ["contents"],
+                "repository_selection": "all",
+            }
+
+        monkeypatch.setattr(
+            live_mod.GitHubLiveTokenExchanger,
+            "exchange_installation_token",
+            fake_exchange,
+        )
+        monkeypatch.setattr(
+            live_mod.GitHubLiveReadOnlySmoke, "probe_installation_access", fake_probe
+        )
+
+        results = script._lift_run_live_github(DummyConfig(), "receipt-1", "trace-1")
+
+        assert results["auth_mode"] == "app_installation"
+        assert results["token_exchange"]["token_hash"] == hash_identifier(
+            exchanged_token
+        )
+        assert results["installation_access"]["installation_access"] == "success"
+        assert exchanged_token not in json.dumps(results)
 
 
 class TestLiveAuthNeverLogsRawToken:
@@ -261,12 +441,15 @@ class TestLiveAuthHashNoLeak:
             kind="installation",
         )
 
+        serialized = json.dumps(result)
         assert "token" not in {
             k for k in result if "hash" not in k or "prefix" not in k
         }
         assert raw not in result.get("token_hash", "")
-        assert result["token_prefix"] == raw[:8]
+        assert result["token_present"] is True
+        assert "token_prefix" not in result
         assert len(result["token_hash"]) == 64
+        assert "token_prefix" not in serialized
 
     def test_redact_token_response_handles_empty_token(self):
         from rig_relay.integrations.github_provider._live_auth import (
@@ -274,5 +457,8 @@ class TestLiveAuthHashNoLeak:
         )
 
         result = _redact_token_response({"expires_at": ""}, "", kind="oauth")
+        serialized = json.dumps(result)
         assert result["token_hash"] == ""
-        assert result["token_prefix"] == ""
+        assert result["token_present"] is False
+        assert "token_prefix" not in result
+        assert "token_prefix" not in serialized

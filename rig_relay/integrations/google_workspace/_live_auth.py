@@ -29,13 +29,11 @@ def _content_light_token_response(raw: dict[str, Any]) -> dict[str, Any]:
     access_token = raw.get("access_token", "")
     if access_token:
         result["token_hash"] = _sha256_hex(access_token)
-        result["token_prefix"] = access_token[:8]
     result["expires_in"] = raw.get("expires_in", 0)
     result["scope"] = raw.get("scope", "")
     result["token_type"] = raw.get("token_type", "")
     if "refresh_token" in raw:
         result["refresh_token_hash"] = _sha256_hex(raw["refresh_token"])
-        result["refresh_token_prefix"] = raw["refresh_token"][:8]
     return result
 
 

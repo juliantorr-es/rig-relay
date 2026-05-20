@@ -23,6 +23,7 @@ _FORBIDDEN_RECEIPT_FIELDS = frozenset({
     "raw_absolute_path",
     "oauth_code",
     "client_secret",
+    "token_prefix",
 })
 
 _JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9\-_]+\.(?:[A-Za-z0-9\-_]+)?\.[A-Za-z0-9\-_]+")
@@ -50,19 +51,26 @@ _SENSITIVE_FIELDS = frozenset({
     "code",
 })
 
+_FORBIDDEN_SUMMARY_FIELDS = frozenset({"token_prefix"})
+
+
 def safe_summary(data: dict) -> dict:
     """Returns a deep copy of data with sensitive fields hashed.
-    
+
     Any key matching a sensitive field name has its string value replaced with a SHA-256 hash.
     """
     result = {}
     for k, v in data.items():
+        if k in _FORBIDDEN_SUMMARY_FIELDS:
+            continue
         if k in _SENSITIVE_FIELDS and isinstance(v, str):
             result[k] = "sha256:" + hash_identifier(v)
         elif isinstance(v, dict):
             result[k] = safe_summary(v)
         elif isinstance(v, list):
-            result[k] = [safe_summary(item) if isinstance(item, dict) else item for item in v]
+            result[k] = [
+                safe_summary(item) if isinstance(item, dict) else item for item in v
+            ]
         else:
             result[k] = v
     return result

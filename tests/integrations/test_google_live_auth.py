@@ -210,11 +210,15 @@ class TestLiveTokenExchanger:
             "refresh_token": "1//0gRefreshTokenValue",
         }
         result = _content_light_token_response(raw)
+        serialized = json.dumps(result)
         assert "access_token" not in result
         assert "refresh_token" not in result
         assert "token_hash" in result
         assert "refresh_token_hash" in result
-        assert result["token_prefix"] == "ya29.a0A"
+        assert "token_prefix" not in result
+        assert "refresh_token_prefix" not in result
+        assert "token_prefix" not in serialized
+        assert "refresh_token_prefix" not in serialized
         assert result["expires_in"] == 3599
         assert result["scope"] == "openid email profile"
 
