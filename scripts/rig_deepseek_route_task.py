@@ -14,6 +14,7 @@ from rig_relay.integrations.deepseek_routing import (
     DeepSeekRoutingTask,
     build_deepseek_routing_decision,
     format_deepseek_routing_decision_table,
+    format_deepseek_routing_preflight_banner,
     load_deepseek_lane_policy,
     validate_deepseek_lane_policy,
     validate_deepseek_routing_decision,
@@ -46,7 +47,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--requires-multi-file-reasoning", action="store_true")
     parser.add_argument("--requires-strict-tool-beta", action="store_true")
     parser.add_argument("--strict-tool-schema-compatible", action="store_true")
-    parser.add_argument("--user-override-lane")
+    parser.add_argument("--user-override-lane", "--deepseek-lane")
+    parser.add_argument(
+        "--show-routing",
+        "--route-task",
+        action="store_true",
+        help="Print a preflight DeepSeek recommendation banner.",
+    )
     parser.add_argument("--generated-at")
     parser.add_argument("--json", action="store_true", help="Emit JSON to stdout.")
     parser.add_argument(
@@ -95,6 +102,16 @@ def _build_task(args: argparse.Namespace) -> DeepSeekRoutingTask:
     )
 
 
+def _default_receipt_path(decision: dict[str, Any]) -> Path:
+    return (
+        Path.cwd()
+        / ".build"
+        / "rig-relay"
+        / "deepseek-routing"
+        / f"{decision['decision_id']}.json"
+    )
+
+
 def _emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
 
@@ -130,10 +147,22 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    if args.write_artifact is not None:
-        write_deepseek_routing_decision(decision, args.write_artifact)
+    receipt_path = args.write_artifact
+    if receipt_path is None and args.show_routing:
+        receipt_path = _default_receipt_path(decision)
 
-    if args.json:
+    if receipt_path is not None:
+        write_deepseek_routing_decision(decision, receipt_path)
+
+    if args.show_routing:
+        print(
+            format_deepseek_routing_preflight_banner(
+                decision,
+                default_lane=str(policy["default_lane"]),
+                receipt_path=receipt_path,
+            )
+        )
+    elif args.json:
         _emit_json(decision)
     else:
         print(format_deepseek_routing_decision_table(decision))

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://rig-relay.dev/schemas/rig.two_pr_verification_review.v1.schema.json",
+  "schema_version": "rig.two_pr_verification_review.v1",
+  "generated_at": "2026-05-20T02:10:00Z",
+  "base_branch": "main",
+  "base_head_sha": "c936adae6cb9002e9e6819f3283872d0fcf9819e",
+  "current_branch": "main",
+  "current_head_sha": "c936adae6cb9002e9e6819f3283872d0fcf9819e",
+  "dirty_state_before": true,
+  "pr_reviews": [
+    {
+      "pr_label": "PR A: Copilot CI/CD Reliability PR",
+      "branch": "origin/copilot/fix-ci-workflow-validation",
+      "head_sha": "be255183b0692c74b6e6123306fb85fb113cb35c",
+      "files_changed": [
+        ".github/workflows/ci.yml",
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+        "docs/schemas/rig.github_ci_cd_reliability.v1.schema.json",
+        "tests/release_gate/test_github_ci_cd_reliability_artifact.py"
+      ],
+      "workflow_files_changed": [
+        ".github/workflows/ci.yml"
+      ],
+      "governance_files_changed": [
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+        "docs/schemas/rig.github_ci_cd_reliability.v1.schema.json"
+      ],
+      "policy_checks": {
+        "permissions_minimal": true,
+        "no_write_all": true,
+        "no_pull_request_target": true,
+        "live_auth_disabled_by_default": true,
+        "no_sensitive_caching": true,
+        "reproduction_commands_in_summary": true
+      },
+      "validation_plan": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/release_gate/test_github_ci_cd_reliability_artifact.py -v",
+        "uv run pytest tests/site_renderer/ -v"
+      ],
+      "recommendation": "needs_rebase",
+      "remaining_risks": [
+        "PR A branch contains an invalid job-level hashFiles condition that causes GitHub Actions syntax parsing errors",
+        "PR A branch does not contain Swift CodeQL parking fixes"
+      ]
+    },
+    {
+      "pr_label": "PR B: Swift CodeQL Parking PR",
+      "branch": "origin/copilot/fix-codeql-swift-trigger",
+      "head_sha": "85a6a27d4891e657829a74c60e35cd20095321a7",
+      "files_changed": [
+        ".github/workflows/codeql-swift-advisory.yml",
+        ".github/workflows/codeql.yml",
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+        "tests/release_gate/test_github_ci_cd_reliability_artifact.py"
+      ],
+      "workflow_files_changed": [
+        ".github/workflows/codeql-swift-advisory.yml",
+        ".github/workflows/codeql.yml"
+      ],
+      "governance_files_changed": [
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json"
+      ],
+      "policy_checks": {
+        "permissions_minimal": true,
+        "no_write_all": true,
+        "no_pull_request_target": true,
+        "live_auth_disabled_by_default": true,
+        "no_sensitive_caching": true,
+        "reproduction_commands_in_summary": true
+      },
+      "validation_plan": [
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        "uv run pytest tests/release_gate/test_github_ci_cd_reliability_artifact.py -v",
+        "uv run pytest tests/site_renderer/ -v"
+      ],
+      "recommendation": "approve",
+      "remaining_risks": [
+        "Swift analysis runs as advisory/manual only and is not checked on default push/PR pipeline runs"
+      ]
+    }
+  ],
+  "overlapping_files": [
+    "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+    "tests/release_gate/test_github_ci_cd_reliability_artifact.py"
+  ],
+  "local_dirty_overlap": [],
+  "cross_pr_conflicts": [
+    "PR A contains an invalid job-level hashFiles condition which has been fixed on main and is superseded by PR B"
+  ],
+  "merge_order_recommendation": "PR B is directly based on the main branch (which already includes the PR A files and the hashFiles fix). Therefore, the user should merge PR B (origin/copilot/fix-codeql-swift-trigger) first. This will automatically bring in all PR A fixes, the hashFiles fix, and the Swift CodeQL parking configurations. PR A (origin/copilot/fix-ci-workflow-validation) can then be closed/discarded.",
+  "tests_run": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/release_gate/test_github_ci_cd_reliability_artifact.py -v",
+    "uv run pytest tests/release_gate/test_copilot_ci_pr_apply_artifact.py -v",
+    "uv run pytest tests/site_renderer/ -v"
+  ],
+  "tests_skipped": [
+    "full pytest",
+    "live auth",
+    "Swift build locally",
+    "dependency update commands",
+    "workflow dispatch",
+    "npm audit fix",
+    "uv lock upgrade"
+  ],
+  "content_light": true,
+  "redaction_status": "content_light"
+}

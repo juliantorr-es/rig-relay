@@ -64,6 +64,16 @@ let _history = [];
 // ═══ Helpers ═════════════════════════════════════════════════════════
 
 function _fallbackUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const array = new Uint8Array(16)
+    crypto.getRandomValues(array)
+    array[6] = (array[6] & 0x0f) | 0x40
+    array[8] = (array[8] & 0x3f) | 0x80
+    const hex = Array.from(array, function (b) { return b.toString(16).padStart(2, '0') }).join('')
+    return hex.substring(0, 8) + '-' + hex.substring(8, 12) + '-' + hex.substring(12, 16) + '-' + hex.substring(16, 20) + '-' + hex.substring(20, 32)
+  }
+  
+  // Very weak fallback if no crypto is available
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -353,7 +363,14 @@ function _renderToast(notif) {
   const container = document.querySelector('.toast-container')
   if (!container) return
 
-  const existing = container.querySelector('.toast[data-notification-id="' + notif.id + '"]')
+  const allExisting = container.querySelectorAll('.toast')
+  let existing = null
+  for (let i = 0; i < allExisting.length; i++) {
+    if (allExisting[i].getAttribute('data-notification-id') === notif.id) {
+      existing = allExisting[i]
+      break
+    }
+  }
   if (existing) {
     existing.remove()
   }
@@ -428,7 +445,14 @@ function _renderToast(notif) {
 }
 
 function _removeToastDom(id) {
-  const toast = document.querySelector('.toast[data-notification-id="' + id + '"]')
+  const allToasts = document.querySelectorAll('.toast')
+  let toast = null
+  for (let i = 0; i < allToasts.length; i++) {
+    if (allToasts[i].getAttribute('data-notification-id') === id) {
+      toast = allToasts[i]
+      break
+    }
+  }
   if (!toast) return
 
   if (_toastTimers[id]) {
@@ -459,9 +483,14 @@ function show(kind, message, options) {
   if (dedupKey) {
     const container = document.querySelector('.toast-container')
     if (container) {
-      const existing = container.querySelector(
-        '.toast[data-dedup-key="' + dedupKey.replace(/"/g, '\\"') + '"]'
-      )
+      const allToasts = container.querySelectorAll('.toast')
+      let existing = null
+      for (let i = 0; i < allToasts.length; i++) {
+        if (allToasts[i].getAttribute('data-dedup-key') === dedupKey) {
+          existing = allToasts[i]
+          break
+        }
+      }
       if (existing) {
         existing.remove()
       }

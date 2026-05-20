@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.pr_reconciliation_review.v1.schema.json",
+  "title": "PR Reconciliation Review Schema",
+  "description": "Structured review metadata for reconciling the Copilot CI/CD PR with local security changes.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "base_branch",
+    "base_head_sha",
+    "current_branch",
+    "current_head_sha",
+    "dirty_state_before",
+    "remote_pr_branch",
+    "remote_pr_head_sha",
+    "copilot_files_changed",
+    "local_dirty_files",
+    "overlapping_files",
+    "branch_checkout",
+    "path_checkout_from_pr",
+    "merge_performed",
+    "push_performed",
+    "working_tree_mutated_by_pr_files",
+    "workflow_review",
+    "permissions_review",
+    "cache_review",
+    "live_auth_policy_review",
+    "artifact_upload_review",
+    "job_summary_review",
+    "dependency_change_review",
+    "security_patch_review",
+    "conflicts",
+    "required_local_commands",
+    "tests_run",
+    "tests_skipped",
+    "recommendation",
+    "merge_order_recommendation",
+    "remaining_risks",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.pr_reconciliation_review.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "base_branch": {
+      "type": "string"
+    },
+    "base_head_sha": {
+      "type": "string"
+    },
+    "current_branch": {
+      "type": "string"
+    },
+    "current_head_sha": {
+      "type": "string"
+    },
+    "dirty_state_before": {
+      "type": "boolean"
+    },
+    "remote_pr_branch": {
+      "type": "string"
+    },
+    "remote_pr_head_sha": {
+      "type": "string"
+    },
+    "copilot_files_changed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "local_dirty_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overlapping_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "branch_checkout": {
+      "type": "boolean",
+      "const": false
+    },
+    "path_checkout_from_pr": {
+      "type": "boolean",
+      "const": true
+    },
+    "merge_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "push_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "working_tree_mutated_by_pr_files": {
+      "type": "boolean",
+      "const": true
+    },
+    "workflow_review": {
+      "type": "string"
+    },
+    "permissions_review": {
+      "type": "string"
+    },
+    "cache_review": {
+      "type": "string"
+    },
+    "live_auth_policy_review": {
+      "type": "string"
+    },
+    "artifact_upload_review": {
+      "type": "string"
+    },
+    "job_summary_review": {
+      "type": "string"
+    },
+    "dependency_change_review": {
+      "type": "string"
+    },
+    "security_patch_review": {
+      "type": "string"
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_local_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_skipped": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "approve_copilot_pr",
+        "request_copilot_changes",
+        "stabilize_local_security_patch_first",
+        "needs_manual_review"
+      ]
+    },
+    "merge_order_recommendation": {
+      "type": "string"
+    },
+    "remaining_risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    }
+  },
+  "additionalProperties": false
+}

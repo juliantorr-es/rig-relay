@@ -1,0 +1,338 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek.router_promotion_policy.v1.schema.json",
+  "title": "DeepSeek Router Promotion Policy Schema",
+  "description": "Deterministic promotion thresholds for the DeepSeek lane router. The policy is local-only, content-light, and release-gated; it never mutates OpenCode runtime state by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "generated_at",
+    "minimum_sample_thresholds",
+    "lane_thresholds",
+    "override_thresholds",
+    "failure_thresholds",
+    "cost_thresholds",
+    "cache_thresholds",
+    "safety_thresholds",
+    "rollback_thresholds",
+    "allowed_promotion_levels",
+    "explicit_non_goals"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek.router_promotion_policy.v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "rig.deepseek.router_promotion_policy.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "minimum_sample_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_total_decisions",
+        "minimum_decisions_per_promoted_lane",
+        "minimum_distinct_sessions",
+        "minimum_completed_tasks",
+        "minimum_observation_days"
+      ],
+      "properties": {
+        "minimum_total_decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_decisions_per_promoted_lane": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_distinct_sessions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_completed_tasks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_observation_days": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "lane_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cheap_inspect",
+        "normal_repo_work",
+        "hard_convergence",
+        "json_artifact",
+        "strict_tool_beta"
+      ],
+      "properties": {
+        "cheap_inspect": {
+          "$ref": "#/definitions/lane_threshold"
+        },
+        "normal_repo_work": {
+          "$ref": "#/definitions/lane_threshold"
+        },
+        "hard_convergence": {
+          "$ref": "#/definitions/lane_threshold"
+        },
+        "json_artifact": {
+          "$ref": "#/definitions/lane_threshold"
+        },
+        "strict_tool_beta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minimum_successful_decisions",
+            "maximum_failure_rate",
+            "auto_promote"
+          ],
+          "properties": {
+            "minimum_successful_decisions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "maximum_failure_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "auto_promote": {
+              "type": "boolean",
+              "const": false
+            }
+          }
+        }
+      }
+    },
+    "override_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_override_rate_low_risk",
+        "maximum_override_rate_rollback"
+      ],
+      "properties": {
+        "maximum_override_rate_low_risk": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maximum_override_rate_rollback": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "failure_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_lane_attributed_failure_rate_low_risk",
+        "maximum_lane_attributed_failure_rate_normal_repo_work",
+        "maximum_lane_attributed_failure_rate_rollback"
+      ],
+      "properties": {
+        "maximum_lane_attributed_failure_rate_low_risk": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maximum_lane_attributed_failure_rate_normal_repo_work": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maximum_lane_attributed_failure_rate_rollback": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "cost_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_discounted_cost_spike_ratio",
+        "maximum_full_cost_spike_ratio",
+        "maximum_pro_max_share"
+      ],
+      "properties": {
+        "maximum_discounted_cost_spike_ratio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximum_full_cost_spike_ratio": {
+          "type": "number",
+          "minimum": 0
+        },
+        "maximum_pro_max_share": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "cache_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_cache_hit_ratio_low_risk",
+        "minimum_cache_hit_ratio_promotion_window"
+      ],
+      "properties": {
+        "minimum_cache_hit_ratio_low_risk": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "minimum_cache_hit_ratio_promotion_window": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "safety_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_raw_secret_violation_count",
+        "maximum_raw_task_text_persisted_count",
+        "maximum_opencode_mutation_count",
+        "maximum_live_network_escalation_count",
+        "maximum_dynamic_prefix_warning_count"
+      ],
+      "properties": {
+        "maximum_raw_secret_violation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_raw_task_text_persisted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_opencode_mutation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_live_network_escalation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_dynamic_prefix_warning_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "rollback_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_secret_violation_count",
+        "raw_task_text_persisted_count",
+        "opencode_mutation_count",
+        "live_network_escalation_count",
+        "cache_hit_ratio_floor",
+        "lane_attributed_failure_rate_spike",
+        "override_rate_floor"
+      ],
+      "properties": {
+        "raw_secret_violation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "raw_task_text_persisted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "opencode_mutation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "live_network_escalation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_hit_ratio_floor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "lane_attributed_failure_rate_spike": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "override_rate_floor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "allowed_promotion_levels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "recommendation_only",
+          "auto_apply_low_risk",
+          "auto_apply_normal_repo_work",
+          "auto_apply_all_allowed",
+          "hold",
+          "rollback"
+        ]
+      }
+    },
+    "explicit_non_goals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "definitions": {
+    "lane_threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_successful_decisions",
+        "maximum_failure_rate"
+      ],
+      "properties": {
+        "minimum_successful_decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_failure_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maximum_lane_attributed_failure_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

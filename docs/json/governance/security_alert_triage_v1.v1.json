@@ -1,0 +1,104 @@
+{
+  "schema_version": "rig.security_alert_triage.v1",
+  "report_id": "report_security_triage_001",
+  "generated_at": "2026-05-19T23:50:00Z",
+  "alerts_triaged": [
+    {
+      "alert_id": "urllib3-decompression",
+      "severity": "high",
+      "ecosystem": "pip",
+      "package_or_rule": "urllib3",
+      "action_taken": "upgraded",
+      "justification": "Upgraded urllib3 via uv lock to mitigate decompression-bomb safeguards bypassed in parts of streaming API."
+    },
+    {
+      "alert_id": "urllib3-sensitive-headers",
+      "severity": "high",
+      "ecosystem": "pip",
+      "package_or_rule": "urllib3",
+      "action_taken": "upgraded",
+      "justification": "Upgraded urllib3 via uv lock to mitigate sensitive headers forwarded across origins in proxied low-level redirects."
+    },
+    {
+      "alert_id": "serialize-javascript-rce",
+      "severity": "high",
+      "ecosystem": "npm",
+      "package_or_rule": "serialize-javascript",
+      "action_taken": "upgraded",
+      "justification": "Upgraded serialize-javascript to 7.0.5 to fix RCE via RegExp.flags and Date.prototype.toISOString."
+    },
+    {
+      "alert_id": "serialize-javascript-dos",
+      "severity": "moderate",
+      "ecosystem": "npm",
+      "package_or_rule": "serialize-javascript",
+      "action_taken": "upgraded",
+      "justification": "Upgraded serialize-javascript to 7.0.5 to fix CPU exhaustion DoS via crafted array-like objects."
+    },
+    {
+      "alert_id": "gitpython-path-traversal",
+      "severity": "high",
+      "ecosystem": "pip",
+      "package_or_rule": "GitPython",
+      "action_taken": "upgraded",
+      "justification": "Upgraded GitPython to latest version via uv lock to fix path traversal."
+    },
+    {
+      "alert_id": "gitpython-rce-newline",
+      "severity": "high",
+      "ecosystem": "pip",
+      "package_or_rule": "GitPython",
+      "action_taken": "upgraded",
+      "justification": "Upgraded GitPython to latest version via uv lock to fix config_writer newline injection."
+    },
+    {
+      "alert_id": "gitpython-rce-section",
+      "severity": "high",
+      "ecosystem": "pip",
+      "package_or_rule": "GitPython",
+      "action_taken": "upgraded",
+      "justification": "Upgraded GitPython to latest version via uv lock to fix config_writer section parameter bypass."
+    },
+    {
+      "alert_id": "idna-dos",
+      "severity": "moderate",
+      "ecosystem": "pip",
+      "package_or_rule": "idna",
+      "action_taken": "upgraded",
+      "justification": "Upgraded idna to latest version via uv lock."
+    },
+    {
+      "alert_id": "codeql-github-live-auth",
+      "severity": "high",
+      "ecosystem": "codeql",
+      "package_or_rule": "rig_relay/integrations/github_provider/_live_auth.py",
+      "action_taken": "code_fix",
+      "justification": "Fixed app_installation mode to call GET /installation/repositories instead of GET /user to avoid 401 crashes."
+    },
+    {
+      "alert_id": "codeql-redacted-logging",
+      "severity": "high",
+      "ecosystem": "codeql",
+      "package_or_rule": "rig_relay/integrations/github_provider/_redaction.py",
+      "action_taken": "code_fix",
+      "justification": "Implemented safe_summary() and updated live smoke scripts to redact raw tokens and keys before logging/persisting."
+    },
+    {
+      "alert_id": "codeql-weak-hashing",
+      "severity": "moderate",
+      "ecosystem": "codeql",
+      "package_or_rule": "rig_relay/sdk/_models.py",
+      "action_taken": "code_fix",
+      "justification": "Verified that hashlib uses SHA-256 instead of MD5/SHA-1 across sdk/_models.py, key_store.py, telemetry/local.py, cli/desktop_cockpit.py."
+    },
+    {
+      "alert_id": "codeql-frontend-security",
+      "severity": "high",
+      "ecosystem": "codeql",
+      "package_or_rule": "frontend/desktop/js/telemetry/traceContext.js",
+      "action_taken": "code_fix",
+      "justification": "Replaced Math.random() with crypto.getRandomValues in traceContext.js and notifications.js. Refactored querySelector string concatenations in notifications.js to avoid CSS injection."
+    }
+  ],
+  "overall_assessment": "all_resolved"
+}

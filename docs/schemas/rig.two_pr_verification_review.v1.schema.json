@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.two_pr_verification_review.v1.schema.json",
+  "title": "Two PR Verification Review Schema",
+  "description": "Structured review metadata for verifying both the Copilot CI/CD Reliability PR and the Swift CodeQL Parking PR.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "base_branch",
+    "base_head_sha",
+    "current_branch",
+    "current_head_sha",
+    "dirty_state_before",
+    "pr_reviews",
+    "overlapping_files",
+    "local_dirty_overlap",
+    "cross_pr_conflicts",
+    "merge_order_recommendation",
+    "tests_run",
+    "tests_skipped",
+    "content_light",
+    "redaction_status"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "rig.two_pr_verification_review.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "base_branch": {
+      "type": "string"
+    },
+    "base_head_sha": {
+      "type": "string"
+    },
+    "current_branch": {
+      "type": "string"
+    },
+    "current_head_sha": {
+      "type": "string"
+    },
+    "dirty_state_before": {
+      "type": "boolean"
+    },
+    "pr_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "pr_label",
+          "branch",
+          "head_sha",
+          "files_changed",
+          "workflow_files_changed",
+          "governance_files_changed",
+          "policy_checks",
+          "validation_plan",
+          "recommendation",
+          "remaining_risks"
+        ],
+        "properties": {
+          "pr_label": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "head_sha": {
+            "type": "string"
+          },
+          "files_changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workflow_files_changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "governance_files_changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policy_checks": {
+            "type": "object",
+            "required": [
+              "permissions_minimal",
+              "no_write_all",
+              "no_pull_request_target",
+              "live_auth_disabled_by_default",
+              "no_sensitive_caching",
+              "reproduction_commands_in_summary"
+            ],
+            "properties": {
+              "permissions_minimal": {
+                "type": "boolean"
+              },
+              "no_write_all": {
+                "type": "boolean"
+              },
+              "no_pull_request_target": {
+                "type": "boolean"
+              },
+              "live_auth_disabled_by_default": {
+                "type": "boolean"
+              },
+              "no_sensitive_caching": {
+                "type": "boolean"
+              },
+              "reproduction_commands_in_summary": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "validation_plan": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "request_changes",
+              "needs_rebase",
+              "needs_manual_review"
+            ]
+          },
+          "remaining_risks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "overlapping_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "local_dirty_overlap": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cross_pr_conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "merge_order_recommendation": {
+      "type": "string"
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_skipped": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    }
+  },
+  "additionalProperties": false
+}

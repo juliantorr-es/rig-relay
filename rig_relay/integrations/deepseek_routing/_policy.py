@@ -414,3 +414,29 @@ def format_deepseek_routing_decision_table(decision: dict[str, Any]) -> str:
     width = max(len(label) for label, _ in rows)
     lines = [f"{label.ljust(width)}  {value}" for label, value in rows]
     return "\n".join(lines)
+
+
+def format_deepseek_routing_preflight_banner(
+    decision: dict[str, Any], *, default_lane: str, receipt_path: Path | None = None
+) -> str:
+    receipt_display = (
+        f".build/rig-relay/deepseek-routing/{decision['decision_id']}.json"
+    )
+    if receipt_path is not None:
+        try:
+            receipt_display = (
+                receipt_path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+            )
+        except ValueError:
+            receipt_display = receipt_path.name
+    lines = [
+        "DeepSeek routing recommendation",
+        f"Lane: {decision['selected_lane']}",
+        f"Model: {decision['selected_model']}",
+        f"Effort: {decision['reasoning_effort']}",
+        f"Reason: {', '.join(decision['reason_codes'])}",
+        "Cache warning: preserve stable prefixes",
+        f"Override: --deepseek-lane {default_lane}",
+        f"Receipt: {receipt_display}",
+    ]
+    return "\n".join(lines)

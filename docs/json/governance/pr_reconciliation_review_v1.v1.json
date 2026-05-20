@@ -1,0 +1,69 @@
+{
+  "$schema": "https://rig-relay.dev/schemas/rig.pr_reconciliation_review.v1.schema.json",
+  "schema_version": "rig.pr_reconciliation_review.v1",
+  "generated_at": "2026-05-20T00:52:00Z",
+  "base_branch": "main",
+  "base_head_sha": "fc1ac3d8582f3a7fb91ef30f78d3adfadb0b7654",
+  "current_branch": "main",
+  "current_head_sha": "fc1ac3d8582f3a7fb91ef30f78d3adfadb0b7654",
+  "dirty_state_before": true,
+  "remote_pr_branch": "origin/copilot/fix-ci-workflow-validation",
+  "remote_pr_head_sha": "be255183b0692c74b6e6123306fb85fb113cb35c",
+  "copilot_files_changed": [
+    ".github/workflows/ci.yml",
+    "docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+    "docs/schemas/rig.github_ci_cd_reliability.v1.schema.json",
+    "tests/release_gate/test_github_ci_cd_reliability_artifact.py"
+  ],
+  "local_dirty_files": [
+    "docs/pages/schemas.html",
+    "docs/render-manifest.json",
+    "frontend/desktop/js/notifications.js",
+    "frontend/desktop/js/telemetry/traceContext.js",
+    "rig_relay/integrations/deepseek_routing/__init__.py",
+    "rig_relay/integrations/deepseek_routing/_policy.py",
+    "scripts/rig_deepseek_route_task.py",
+    "tests/integrations/test_deepseek_lane_routing.py"
+  ],
+  "overlapping_files": [],
+  "branch_checkout": false,
+  "path_checkout_from_pr": true,
+  "merge_performed": false,
+  "push_performed": false,
+  "working_tree_mutated_by_pr_files": true,
+  "workflow_review": "The GitHub Actions workflow is highly secure. It manages concurrency properly by setting cancel-in-progress to true, uses ubuntu-latest, and separates jobs into clean task-oriented targets like schema validation, site rendering, and deepseek lane routing. It avoids prompt/workflow injection points by not using untrusted input context. To validate this safely without branch switching or merging, selected files from origin/copilot/fix-ci-workflow-validation were copied into the current working tree with path checkout.",
+  "permissions_review": "Global permissions are correctly locked down to 'contents: read' for minimal privileges. There are no write-all permissions or usage of dangerous triggers like pull_request_target.",
+  "cache_review": "Uses astral-sh/setup-uv with dependency caching keyed on uv.lock. The cache configuration does not cache any credential stores, keys, or build logs.",
+  "live_auth_policy_review": "Default CI leaves RIG_LIVE_AUTH_TESTS unset, executing mock-only auth checks. Live auth network smoke testing is gated under an opt-in model using variables, runs inside an advisory job, and does not print or leak credentials.",
+  "artifact_upload_review": "Uploaded artifacts are limited to content-light JSON reports and HTML rendering summaries. Forbidden artifacts such as raw credentials, private keys, databases, or raw build logs are completely excluded.",
+  "job_summary_review": "Every job outputs local reproduction commands and pass/fail indicators to the $GITHUB_STEP_SUMMARY, matching the actual commands run in CI.",
+  "dependency_change_review": "No dependency changes or lockfile churn are introduced in the PR.",
+  "security_patch_review": "The local security patch implements secure browser-level fallback random UUIDs in trace contexts and robust dedup checks. Fake auth patterns retain correct interface shapes, and no secret leaking pathways exist.",
+  "conflicts": [],
+  "required_local_commands": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run pytest tests/site_renderer/ -v",
+    "uv run pytest tests/integrations/test_deepseek_opencode_usage_report.py -v",
+    "uv run pytest tests/integrations/test_github_live_auth.py -v"
+  ],
+  "tests_run": [
+    "tests/release_gate/test_github_ci_cd_reliability_artifact.py",
+    "tests/site_renderer/",
+    "tests/integrations/test_deepseek_opencode_usage_report.py",
+    "tests/integrations/test_deepseek_lane_routing.py",
+    "tests/integrations/test_github_live_auth.py",
+    "tests/adversarial/test_live_auth_safety.py"
+  ],
+  "tests_skipped": [
+    "tests/adversarial/test_live_auth_safety.py (live network assertions skipped as expected due to missing credentials)"
+  ],
+  "recommendation": "approve_copilot_pr",
+  "merge_order_recommendation": "We recommend merging the Copilot CI/CD Reliability PR first, since it establishes the gate frameworks and matches the locally committed security patches perfectly without any conflict. The remaining local dirty files from the deepseek/schemas lanes can then be committed/staged and validated against the new CI framework. This recommendation is limited to approving the Copilot CI/CD PR as workflow-only infrastructure, and does not approve the local security cleanup patch or claim completion of the entire repository security alert stabilization.",
+  "remaining_risks": [
+    "no blocking workflow-policy risks found in the Copilot CI/CD PR",
+    "local security cleanup patch remains dirty and requires separate stabilization",
+    "live auth remains disabled in normal CI and still needs separate real-account smoke validation"
+  ],
+  "content_light": true,
+  "redaction_status": "content_light"
+}

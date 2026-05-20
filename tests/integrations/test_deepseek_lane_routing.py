@@ -12,6 +12,7 @@ from rig_relay.integrations.deepseek_routing import (
     DeepSeekRoutingTask,
     build_deepseek_routing_decision,
     format_deepseek_routing_decision_table,
+    format_deepseek_routing_preflight_banner,
     load_deepseek_lane_policy,
     validate_deepseek_lane_policy,
     validate_deepseek_routing_decision,
@@ -300,6 +301,76 @@ def test_cli_json_emits_schema_valid_decision(
 
 
 @pytest.mark.integration
+@pytest.mark.real_artifact
+@pytest.mark.adversarial
+def test_show_routing_banner_writes_receipt_and_redacts_task_text(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    task_text = "use api key sk-secret-test-value and /Users/user/Private/Repo now"
+    exit_code = route_main([
+        "--task",
+        task_text,
+        "--context-tokens",
+        "4000",
+        "--show-routing",
+        "--generated-at",
+        "2026-05-19T12:00:00Z",
+    ])
+    captured = capsys.readouterr()
+    receipt_dir = tmp_path / ".build" / "rig-relay" / "deepseek-routing"
+    receipts = sorted(receipt_dir.glob("*.json"))
+    assert exit_code == 0
+    assert len(receipts) == 1
+    assert "DeepSeek routing recommendation" in captured.out
+    assert "Lane: cheap_inspect" in captured.out
+    assert "Model: deepseek-v4-flash" in captured.out
+    assert "Effort: none" in captured.out
+    assert "Cache warning: preserve stable prefixes" in captured.out
+    assert "Receipt: .build/rig-relay/deepseek-routing/" in captured.out
+    assert str(tmp_path) not in captured.out
+    assert task_text not in captured.out
+    assert "sk-secret-test-value" not in captured.out
+    assert "/Users/user/Private/Repo" not in captured.out
+    jsonschema.validate(
+        json.loads(receipts[0].read_text(encoding="utf-8")),
+        _schema("rig.deepseek.routing_decision.v1"),
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.real_artifact
+def test_route_task_alias_writes_receipt_for_overridden_lane(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    exit_code = route_main([
+        "--route-task",
+        "--task",
+        "release claim reconciliation under override",
+        "--context-tokens",
+        "200000",
+        "--deepseek-lane",
+        "normal_repo_work",
+        "--generated-at",
+        "2026-05-19T12:00:00Z",
+    ])
+    captured = capsys.readouterr()
+    receipt_dir = tmp_path / ".build" / "rig-relay" / "deepseek-routing"
+    receipts = sorted(receipt_dir.glob("*.json"))
+    assert exit_code == 0
+    assert len(receipts) == 1
+    assert "DeepSeek routing recommendation" in captured.out
+    assert "Lane: normal_repo_work" in captured.out
+    assert "Model: deepseek-v4-pro" in captured.out
+    assert "Override: --deepseek-lane normal_repo_work" in captured.out
+    jsonschema.validate(
+        json.loads(receipts[0].read_text(encoding="utf-8")),
+        _schema("rig.deepseek.routing_decision.v1"),
+    )
+
+
+@pytest.mark.integration
 @pytest.mark.adversarial
 def test_cli_table_output_redacts_task_text(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -354,6 +425,48 @@ def test_routing_does_not_touch_opencode_db_or_config(
     assert db_path.read_text(encoding="utf-8") == "stay-put-db"
 
 
+@pytest.mark.substrate
+def test_show_routing_cli_does_not_touch_opencode_db_or_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = tmp_path / "home"
+    config_dir = home / ".config" / "opencode"
+    db_dir = home / ".local" / "share" / "opencode"
+    config_dir.mkdir(parents=True)
+    db_dir.mkdir(parents=True)
+    config_path = config_dir / "opencode.json"
+    db_path = db_dir / "opencode.db"
+    config_path.write_text("stay-put-config", encoding="utf-8")
+    db_path.write_text("stay-put-db", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(
+        sqlite3,
+        "connect",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("sqlite3.connect called")
+        ),
+    )
+
+    exit_code = route_main([
+        "--route-task",
+        "--task",
+        "short docs polish",
+        "--context-tokens",
+        "5000",
+        "--generated-at",
+        "2026-05-19T12:00:00Z",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "DeepSeek routing recommendation" in captured.out
+    assert str(tmp_path) not in captured.out
+    assert config_path.read_text(encoding="utf-8") == "stay-put-config"
+    assert db_path.read_text(encoding="utf-8") == "stay-put-db"
+    assert (tmp_path / ".build" / "rig-relay" / "deepseek-routing").is_dir()
+
+
 @pytest.mark.contract
 def test_validate_helpers_accept_real_artifacts() -> None:
     policy = _policy()
@@ -364,3 +477,22 @@ def test_validate_helpers_accept_real_artifacts() -> None:
     assert not decision_errors
     rendered = format_deepseek_routing_decision_table(decision)
     assert "cheap_inspect" in rendered
+
+
+@pytest.mark.contract
+def test_preflight_banner_formatter_is_content_light() -> None:
+    task_text = "use api key sk-secret-test-value and /Users/user/Private/Repo now"
+    decision = _decision(_task(task_text=task_text))
+    banner = format_deepseek_routing_preflight_banner(
+        decision, default_lane="normal_repo_work"
+    )
+    assert "DeepSeek routing recommendation" in banner
+    assert "Lane: cheap_inspect" in banner
+    assert "Model: deepseek-v4-flash" in banner
+    assert "Effort: none" in banner
+    assert "Cache warning: preserve stable prefixes" in banner
+    assert "Override: --deepseek-lane normal_repo_work" in banner
+    assert ".build/rig-relay/deepseek-routing/" in banner
+    assert task_text not in banner
+    assert "sk-secret-test-value" not in banner
+    assert "/Users/user/Private/Repo" not in banner

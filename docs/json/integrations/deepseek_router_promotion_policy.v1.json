@@ -1,0 +1,86 @@
+{
+  "allowed_promotion_levels": [
+    "recommendation_only",
+    "auto_apply_low_risk",
+    "auto_apply_normal_repo_work",
+    "auto_apply_all_allowed",
+    "hold",
+    "rollback"
+  ],
+  "cost_thresholds": {
+    "maximum_discounted_cost_spike_ratio": 1.25,
+    "maximum_full_cost_spike_ratio": 1.25,
+    "maximum_pro_max_share": 0.35
+  },
+  "cache_thresholds": {
+    "minimum_cache_hit_ratio_low_risk": 0.9,
+    "minimum_cache_hit_ratio_promotion_window": 0.9
+  },
+  "explicit_non_goals": [
+    "Do not auto-promote strict_tool_beta in v1.",
+    "Do not mutate OpenCode config, SQLite, or runtime behavior.",
+    "Do not use this policy as execution authority."
+  ],
+  "failure_thresholds": {
+    "maximum_lane_attributed_failure_rate_low_risk": 0.05,
+    "maximum_lane_attributed_failure_rate_normal_repo_work": 0.05,
+    "maximum_lane_attributed_failure_rate_rollback": 0.15
+  },
+  "generated_at": "2026-05-19T23:30:00Z",
+  "lane_thresholds": {
+    "cheap_inspect": {
+      "maximum_failure_rate": 0.05,
+      "maximum_lane_attributed_failure_rate": 0.05,
+      "minimum_successful_decisions": 25
+    },
+    "hard_convergence": {
+      "maximum_failure_rate": 0.05,
+      "maximum_lane_attributed_failure_rate": 0.05,
+      "minimum_successful_decisions": 25
+    },
+    "json_artifact": {
+      "maximum_failure_rate": 0.05,
+      "maximum_lane_attributed_failure_rate": 0.05,
+      "minimum_successful_decisions": 25
+    },
+    "normal_repo_work": {
+      "maximum_failure_rate": 0.05,
+      "maximum_lane_attributed_failure_rate": 0.05,
+      "minimum_successful_decisions": 25
+    },
+    "strict_tool_beta": {
+      "auto_promote": false,
+      "maximum_failure_rate": 0.0,
+      "minimum_successful_decisions": 25
+    }
+  },
+  "minimum_sample_thresholds": {
+    "minimum_completed_tasks": 10,
+    "minimum_decisions_per_promoted_lane": 25,
+    "minimum_distinct_sessions": 3,
+    "minimum_observation_days": 7,
+    "minimum_total_decisions": 100
+  },
+  "override_thresholds": {
+    "maximum_override_rate_low_risk": 0.15,
+    "maximum_override_rate_rollback": 0.25
+  },
+  "policy_id": "rig.deepseek.router_promotion_policy.v1",
+  "rollback_thresholds": {
+    "cache_hit_ratio_floor": 0.85,
+    "lane_attributed_failure_rate_spike": 0.15,
+    "live_network_escalation_count": 1,
+    "opencode_mutation_count": 1,
+    "override_rate_floor": 0.25,
+    "raw_secret_violation_count": 1,
+    "raw_task_text_persisted_count": 1
+  },
+  "safety_thresholds": {
+    "maximum_dynamic_prefix_warning_count": 0,
+    "maximum_live_network_escalation_count": 0,
+    "maximum_opencode_mutation_count": 0,
+    "maximum_raw_secret_violation_count": 0,
+    "maximum_raw_task_text_persisted_count": 0
+  },
+  "schema_version": "rig.deepseek.router_promotion_policy.v1"
+}

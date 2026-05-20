@@ -1,0 +1,319 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.deepseek.router_promotion_gate.v1.schema.json",
+  "title": "DeepSeek Router Promotion Gate Report Schema",
+  "description": "Content-light promotion report for the DeepSeek router. The report is derived from local receipts, task outcomes, and optional usage summaries, and it remains read-side only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "generated_at",
+    "policy_id",
+    "source_receipt_count",
+    "source_receipt_hashes",
+    "metrics",
+    "threshold_results",
+    "recommendation",
+    "allowed_auto_apply_lanes",
+    "refused_auto_apply_lanes",
+    "rollback_required",
+    "reason_codes",
+    "redaction_status",
+    "content_light",
+    "evidence_paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.deepseek.router_promotion_gate.v1"
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "policy_id": {
+      "type": "string",
+      "const": "rig.deepseek.router_promotion_policy.v1"
+    },
+    "source_receipt_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_receipt_hashes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_decisions",
+        "decisions_by_lane",
+        "completed_tasks",
+        "distinct_sessions",
+        "observation_window_days",
+        "override_count",
+        "override_rate",
+        "manual_rerun_harder_lane_count",
+        "failed_task_count",
+        "lane_attributed_failure_count",
+        "lane_attributed_failure_rate",
+        "cache_hit_ratio",
+        "discounted_cost_estimate",
+        "full_cost_estimate",
+        "pro_max_share",
+        "raw_secret_violation_count",
+        "raw_task_text_persisted_count",
+        "opencode_mutation_count",
+        "live_network_escalation_count",
+        "dynamic_prefix_warning_count",
+        "stable_prefix_warning_rate"
+      ],
+      "properties": {
+        "total_decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decisions_by_lane": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cheap_inspect",
+            "normal_repo_work",
+            "hard_convergence",
+            "json_artifact",
+            "strict_tool_beta"
+          ],
+          "properties": {
+            "cheap_inspect": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "normal_repo_work": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hard_convergence": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "json_artifact": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "strict_tool_beta": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "completed_tasks": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "distinct_sessions": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "observation_window_days": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "override_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "override_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "manual_rerun_harder_lane_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "failed_task_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "lane_attributed_failure_count": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "lane_attributed_failure_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cache_hit_ratio": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "discounted_cost_estimate": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "full_cost_estimate": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "pro_max_share": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "raw_secret_violation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "raw_task_text_persisted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "opencode_mutation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "live_network_escalation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dynamic_prefix_warning_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stable_prefix_warning_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "threshold_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_thresholds_met",
+        "promotion_window_satisfied",
+        "cache_threshold_met",
+        "override_threshold_met",
+        "failure_threshold_met",
+        "safety_thresholds_violated",
+        "low_risk_ready",
+        "normal_repo_work_ready",
+        "all_allowed_ready",
+        "strict_tool_beta_auto_promote_blocked"
+      ],
+      "properties": {
+        "sample_thresholds_met": {
+          "type": "boolean"
+        },
+        "promotion_window_satisfied": {
+          "type": "boolean"
+        },
+        "cache_threshold_met": {
+          "type": ["boolean", "null"]
+        },
+        "override_threshold_met": {
+          "type": ["boolean", "null"]
+        },
+        "failure_threshold_met": {
+          "type": ["boolean", "null"]
+        },
+        "safety_thresholds_violated": {
+          "type": "boolean"
+        },
+        "low_risk_ready": {
+          "type": "boolean"
+        },
+        "normal_repo_work_ready": {
+          "type": "boolean"
+        },
+        "all_allowed_ready": {
+          "type": "boolean"
+        },
+        "strict_tool_beta_auto_promote_blocked": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": [
+        "hold",
+        "recommendation_only",
+        "auto_apply_low_risk",
+        "auto_apply_normal_repo_work",
+        "auto_apply_all_allowed",
+        "rollback"
+      ]
+    },
+    "allowed_auto_apply_lanes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lane_id"
+      },
+      "uniqueItems": true
+    },
+    "refused_auto_apply_lanes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lane_id"
+      },
+      "uniqueItems": true
+    },
+    "rollback_required": {
+      "type": "boolean"
+    },
+    "reason_codes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "redaction_status": {
+      "type": "string",
+      "const": "content_light"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "evidence_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "definitions": {
+    "lane_id": {
+      "type": "string",
+      "enum": [
+        "cheap_inspect",
+        "normal_repo_work",
+        "hard_convergence",
+        "json_artifact",
+        "strict_tool_beta"
+      ]
+    }
+  }
+}

@@ -16,10 +16,21 @@ var _readyPrerequisites = Object.create(null)
 var _annotations = Object.create(null)
 
 function _generateSessionId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return 'fs_' + crypto.randomUUID().replace(/-/g, '').substring(0, 20)
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return 'fs_' + crypto.randomUUID().replace(/-/g, '').substring(0, 20)
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      var array = new Uint32Array(4)
+      crypto.getRandomValues(array)
+      var hex = ''
+      for (var i = 0; i < array.length; i++) {
+        hex += array[i].toString(16).padStart(8, '0')
+      }
+      return 'fs_' + hex.substring(0, 20)
+    }
   }
-  return 'fs_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+  throw new Error("Secure random number generation is not supported in this environment.")
 }
 
 export function initializeTraceContext(config) {
