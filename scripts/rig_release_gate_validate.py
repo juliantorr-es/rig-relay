@@ -578,7 +578,7 @@ def check_stale_evidence(
 def resolve_head_sha(repo_root: Path) -> str:
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+            ["git", "rev-parse", "HEAD"], cwd=repo_root, stderr=subprocess.DEVNULL, text=True
         ).strip()
     except Exception:
         return ""
@@ -587,7 +587,7 @@ def resolve_head_sha(repo_root: Path) -> str:
 def resolve_branch(repo_root: Path) -> str:
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_root, text=True
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_root, stderr=subprocess.DEVNULL, text=True
         ).strip()
     except Exception:
         return ""

@@ -30,10 +30,106 @@ def _copy_schemas(repo_root: Path) -> None:
         "rig.release_gate.readiness.v1.schema.json",
         "rig.release_gate.blocker.v1.schema.json",
         "rig.release_gate.validation_run.v1.schema.json",
+        "rig.ci.artifact_index.v1.schema.json",
+        "rig.ci.job.v1.schema.json",
+        "rig.ci.run.v1.schema.json",
+        "rig.ci.verdict.v1.schema.json",
     ]:
         src = real_schemas / name
         if src.exists():
             (dst / name).write_text(src.read_text())
+
+
+def _write_mock_ci_evidence(repo_root: Path) -> None:
+    evidence_dir = repo_root / ".build" / "rig-relay" / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+
+    run_data = {
+        "schema_version": "rig.ci.run.v1",
+        "run_id": "test-run-001",
+        "runner_class": "local",
+        "official_release": False,
+        "release_class": "local_validation",
+        "git_branch": "main",
+        "git_sha": "a" * 40,
+        "git_dirty": False,
+        "started_at": "2026-05-18T00:00:00Z",
+        "artifact_index_path": ".build/rig-relay/evidence/ci_mock_artifact_index.v1.json",
+        "verdict_path": ".build/rig-relay/evidence/ci_mock_verdict.v1.json",
+        "evidence_event_stream_path": ".build/rig-relay/evidence/ci_mock_events.v1.jsonl",
+        "generated_at": "2026-05-18T00:00:00Z",
+    }
+    (evidence_dir / "ci_mock_run.v1.json").write_text(json.dumps(run_data, indent=2))
+
+    job_data = {
+        "schema_version": "rig.ci.job.v1",
+        "run_id": "test-run-001",
+        "job_id": "test-job-001",
+        "job_name": "Test Job",
+        "runner_os": "darwin",
+        "runner_arch": "aarch64",
+        "runner_class": "local",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-05-18T00:00:00Z",
+        "completed_at": "2026-05-18T00:01:00Z",
+        "referenced_artifacts": [],
+        "referenced_schema_validations": [],
+        "referenced_test_receipts": [],
+        "telemetry_redaction_notes": "None",
+        "generated_at": "2026-05-18T00:00:00Z",
+    }
+    (evidence_dir / "ci_mock_job.v1.json").write_text(json.dumps(job_data, indent=2))
+
+    index_data = {
+        "schema_version": "rig.ci.artifact_index.v1",
+        "run_id": "test-run-001",
+        "artifacts": [
+            {
+                "artifact_id": "ci_mock_run",
+                "artifact_kind": "ci_run",
+                "path": ".build/rig-relay/evidence/ci_mock_run.v1.json",
+                "sha256": "0" * 64,
+                "size_bytes": 100,
+                "producer": "ci_evidence_producer",
+                "required_for_release_gate": True,
+                "source_surface": "ci_evidence",
+                "created_at": "2026-05-18T00:00:00Z",
+            },
+            {
+                "artifact_id": "ci_mock_job",
+                "artifact_kind": "ci_job",
+                "path": ".build/rig-relay/evidence/ci_mock_job.v1.json",
+                "sha256": "0" * 64,
+                "size_bytes": 100,
+                "producer": "ci_evidence_producer",
+                "required_for_release_gate": True,
+                "source_surface": "ci_evidence",
+                "created_at": "2026-05-18T00:00:00Z",
+            },
+        ],
+        "generated_at": "2026-05-18T00:00:00Z",
+    }
+    (evidence_dir / "ci_mock_artifact_index.v1.json").write_text(json.dumps(index_data, indent=2))
+
+    verdict_data = {
+        "schema_version": "rig.ci.verdict.v1",
+        "run_id": "test-run-001",
+        "verdict": "pass",
+        "release_gate_blocker_id": "blk_ci_cd_structured_evidence_surface",
+        "runner_class": "local",
+        "official_release": False,
+        "release_class": "local_validation",
+        "evaluated_at": "2026-05-18T00:00:00Z",
+        "required_artifacts_present": True,
+        "required_artifacts_valid": True,
+        "artifact_hashes_verified": True,
+        "blocking_reasons": [],
+        "warnings": [],
+        "evidence_paths": [],
+        "telemetry_redaction_notes": "None",
+    }
+    (evidence_dir / "ci_mock_verdict.v1.json").write_text(json.dumps(verdict_data, indent=2))
 
 
 def _write_gate(repo_root: Path, gate: dict) -> Path:
@@ -106,7 +202,9 @@ def _vruns_path(repo_root: Path) -> str:
     )
 
 
-def _run(repo_root: Path, expect_pass: bool = False) -> dict:
+def _run(repo_root: Path, expect_pass: bool = False, write_ci_evidence: bool = True) -> dict:
+    if write_ci_evidence:
+        _write_mock_ci_evidence(repo_root)
     proc = subprocess.run(
         [
             sys.executable,
@@ -140,6 +238,22 @@ class TestValidGatePasses:
         result = _run(tmp_path, expect_pass=True)
         assert result["status"] == "passed"
         assert result["artifact_counts"]["phases"] == 1
+
+    def test_mock_ci_evidence_validates(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        _write_mock_ci_evidence(tmp_path)
+        
+        import importlib.util
+        validator_path = SCRIPTS_DIR / "rig_release_gate_validate.py"
+        spec = importlib.util.spec_from_file_location(
+            "rig_release_gate_validate", validator_path
+        )
+        assert spec is not None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        
+        errors = mod.check_ci_evidence_surface(tmp_path, tmp_path / "docs" / "schemas")
+        assert not errors, f"Mock CI evidence validation errors: {errors}"
 
     def test_gate_with_blockers_and_runs_passes(self, tmp_path: Path):
         _copy_schemas(tmp_path)
@@ -377,7 +491,9 @@ class TestSchemaGovernedArtifacts:
         assert any("schema validation" in e.lower() for e in result["errors"])
 
 
-def _run_with_exit_code(repo_root: Path) -> tuple[int, dict]:
+def _run_with_exit_code(repo_root: Path, write_ci_evidence: bool = True) -> tuple[int, dict]:
+    if write_ci_evidence:
+        _write_mock_ci_evidence(repo_root)
     proc = subprocess.run(
         [
             sys.executable,
@@ -409,6 +525,17 @@ class TestReleaseGateExitCode:
         assert result["status"] == "failed"
         assert result["verdict"] == "FAIL"
         assert any("malformed" in e.lower() for e in result["errors"])
+
+    def test_validator_fails_on_missing_ci_evidence_surface(self, tmp_path: Path):
+        _copy_schemas(tmp_path)
+        _write_gate(tmp_path, _minimal_gate())
+        _write_jsonl(tmp_path, "rc_blockers.v1.jsonl", [])
+        _write_jsonl(tmp_path, "rc_validation_runs.v1.jsonl", [])
+        exit_code, result = _run_with_exit_code(tmp_path, write_ci_evidence=False)
+        assert exit_code == 1
+        assert result["status"] == "failed"
+        assert result["verdict"] == "FAIL"
+        assert any("ci evidence surface" in e.lower() for e in result["errors"])
 
     def test_validator_exits_nonzero_on_missing_evidence(self, tmp_path: Path):
         _copy_schemas(tmp_path)
