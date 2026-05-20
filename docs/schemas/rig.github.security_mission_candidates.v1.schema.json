@@ -1,0 +1,397 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_mission_candidates.v1.schema.json",
+  "title": "GitHub Security Mission Candidates v1",
+  "description": "Deterministic local routing of GitHub security work items into content-light mission candidates.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "source_artifact_path",
+    "source_artifact_hash",
+    "content_light",
+    "remote_mutation",
+    "mission_candidate_count",
+    "blocked_candidate_count",
+    "advisory_candidate_count",
+    "ready_candidate_count",
+    "route_group_count",
+    "route_groups",
+    "mission_candidates",
+    "blocked_reasons",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_mission_candidates.v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "mission_candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocked_candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "advisory_candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ready_candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "route_group_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "route_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "route_group_id",
+          "route",
+          "mission_type",
+          "priority",
+          "candidate_count",
+          "candidate_ids",
+          "source_candidate_ids",
+          "source_surfaces",
+          "severity_summary",
+          "mutation_allowed",
+          "remote_mutation_required",
+          "requires_human_review",
+          "requires_permission_change",
+          "proposed_next_action",
+          "rationale",
+          "source_hashes"
+        ],
+        "properties": {
+          "route_group_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "ready_for_dependency_update",
+              "ready_for_investigation",
+              "permission_required",
+              "advisory_only",
+              "blocked_insufficient_evidence",
+              "blocked_refused_surface",
+              "noop"
+            ]
+          },
+          "mission_type": {
+            "type": "string",
+            "enum": [
+              "dependency_update_plan",
+              "investigate_security_alert",
+              "permission_enablement_plan",
+              "advisory_record",
+              "refusal_record",
+              "unknown_security_work"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["p0", "p1", "p2", "p3", "p4"]
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          },
+          "source_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "source_surfaces": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "severity_summary": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "mutation_allowed": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation_required": {
+            "type": "boolean",
+            "const": false
+          },
+          "requires_human_review": {
+            "type": "boolean"
+          },
+          "requires_permission_change": {
+            "type": "boolean"
+          },
+          "proposed_next_action": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "source_hashes": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mission_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mission_candidate_id",
+          "source_candidate_id",
+          "source_surface",
+          "recommended_lane",
+          "route",
+          "mission_type",
+          "priority",
+          "severity_basis",
+          "mutation_allowed",
+          "remote_mutation_required",
+          "requires_human_review",
+          "requires_permission_change",
+          "proposed_next_action",
+          "rationale",
+          "source_hashes"
+        ],
+        "properties": {
+          "mission_candidate_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "source_candidate_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_surface": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+          },
+          "recommended_lane": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string",
+            "enum": [
+              "ready_for_dependency_update",
+              "ready_for_investigation",
+              "permission_required",
+              "advisory_only",
+              "blocked_insufficient_evidence",
+              "blocked_refused_surface",
+              "noop"
+            ]
+          },
+          "mission_type": {
+            "type": "string",
+            "enum": [
+              "dependency_update_plan",
+              "investigate_security_alert",
+              "permission_enablement_plan",
+              "advisory_record",
+              "refusal_record",
+              "unknown_security_work"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["p0", "p1", "p2", "p3", "p4"]
+          },
+          "severity_basis": {
+            "type": "string"
+          },
+          "mutation_allowed": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation_required": {
+            "type": "boolean",
+            "const": false
+          },
+          "requires_human_review": {
+            "type": "boolean"
+          },
+          "requires_permission_change": {
+            "type": "boolean"
+          },
+          "proposed_next_action": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "source_hashes": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocked_reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mission_candidate_id",
+          "source_candidate_id",
+          "route",
+          "mission_type",
+          "reason",
+          "remote_mutation",
+          "proposed_next_action",
+          "rationale"
+        ],
+        "properties": {
+          "mission_candidate_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "source_candidate_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "route": {
+            "type": "string"
+          },
+          "mission_type": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "proposed_next_action": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "required_permission_hash": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "mission_candidate_count",
+        "blocked_candidate_count",
+        "advisory_candidate_count",
+        "ready_candidate_count",
+        "route_group_count",
+        "by_route",
+        "by_mission_type",
+        "by_priority"
+      ],
+      "properties": {
+        "mission_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "advisory_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ready_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "route_group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_route": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "by_mission_type": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "by_priority": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

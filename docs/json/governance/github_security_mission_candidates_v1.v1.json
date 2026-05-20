@@ -1,0 +1,202 @@
+{
+  "schema_version": "rig.github.security_mission_candidates.v1",
+  "generated_at_utc": "2026-05-20T04:57:01.913589+00:00",
+  "source_artifact_path": "docs/json/governance/github_security_work_items_v1.v1.json",
+  "source_artifact_hash": "adc69cc0ace5554dc2b12683661606ddc7ebf1542e4a321e70c9b2e1f0331912",
+  "content_light": true,
+  "remote_mutation": false,
+  "mission_candidate_count": 3,
+  "blocked_candidate_count": 3,
+  "advisory_candidate_count": 0,
+  "ready_candidate_count": 0,
+  "route_group_count": 1,
+  "route_groups": [
+    {
+      "route_group_id": "1657e578915fac4d086a76867c257034ba8bb297bcf57f4fd6fa6c44f418f6ae",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "priority": "p3",
+      "candidate_count": 3,
+      "candidate_ids": [
+        "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2",
+        "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e",
+        "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f"
+      ],
+      "source_candidate_ids": [
+        "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
+        "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168",
+        "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65"
+      ],
+      "source_surfaces": {
+        "refusal": 3
+      },
+      "severity_summary": {
+        "p3": 3
+      },
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "requires_human_review": true,
+      "requires_permission_change": true,
+      "proposed_next_action": "request_permission",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled.",
+      "source_hashes": {
+        "route_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "mission_type_hash": "06a25b7e196f0199643a4b0aad78fb0775b2ead8568a7581d459b71e319075cf",
+        "priority_hash": "43bb00d0ce7790a53b91256b370c887b24791a5539a6fbfb70c5870e8c91ae5d",
+        "candidate_id_hashes": [
+          "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2",
+          "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e",
+          "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f"
+        ],
+        "source_candidate_id_hashes": [
+          "048f3ff9b6defef7014f61e4b657595437562c44aa6f3c3f6ea9c2fba725d097",
+          "8c2b1300959d02869ceb6c30c6da9d2d365c2b6c81d9c7f962baafa9bab5975d",
+          "3ceba24de228b514be532440449c3b52c836d19f9b7b40d920bd77f706bdd05b"
+        ]
+      }
+    }
+  ],
+  "mission_candidates": [
+    {
+      "mission_candidate_id": "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2",
+      "source_candidate_id": "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
+      "source_surface": "refusal",
+      "recommended_lane": "permission_required",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "priority": "p3",
+      "severity_basis": "permission_required lane with unknown severity -> p3",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "requires_human_review": true,
+      "requires_permission_change": true,
+      "proposed_next_action": "request_permission",
+      "state": "refused",
+      "confidence": "high",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled.",
+      "source_hashes": {
+        "candidate_id_hash": "048f3ff9b6defef7014f61e4b657595437562c44aa6f3c3f6ea9c2fba725d097",
+        "group_id_hash": "afb6c1b43f65e1833761dcbd9a65ed2dea1cd5368b71740b5f8e49753762d474",
+        "group_key_hash": "b5e106689beb5c5e88ff0760a82819bf44672c1770df4d029dc1b8feedb70a7a",
+        "source_surface_hash": "424fb0794608103b88e8671a3d8b723c393be64bc1c4a48389e438952a58af0e",
+        "recommended_lane_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "route_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "mission_type_hash": "06a25b7e196f0199643a4b0aad78fb0775b2ead8568a7581d459b71e319075cf",
+        "priority_hash": "43bb00d0ce7790a53b91256b370c887b24791a5539a6fbfb70c5870e8c91ae5d",
+        "severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "state_hash": "83c874d33e8bff73caaa762c79cd1ed101d727c7f20fe4972c67e67978292f23",
+        "confidence_hash": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94"
+      }
+    },
+    {
+      "mission_candidate_id": "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e",
+      "source_candidate_id": "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168",
+      "source_surface": "refusal",
+      "recommended_lane": "permission_required",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "priority": "p3",
+      "severity_basis": "permission_required lane with unknown severity -> p3",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "requires_human_review": true,
+      "requires_permission_change": true,
+      "proposed_next_action": "request_permission",
+      "state": "refused",
+      "confidence": "high",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled.",
+      "source_hashes": {
+        "candidate_id_hash": "8c2b1300959d02869ceb6c30c6da9d2d365c2b6c81d9c7f962baafa9bab5975d",
+        "group_id_hash": "1b0cf20c622f5750db677c1504cee65c760d8ed491a9df0ab5667f95d23decb5",
+        "group_key_hash": "47103d733c78d9451fcd96ef670d9e4629c714392c6f0c3a941e0f5e15d1f118",
+        "source_surface_hash": "424fb0794608103b88e8671a3d8b723c393be64bc1c4a48389e438952a58af0e",
+        "recommended_lane_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "route_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "mission_type_hash": "06a25b7e196f0199643a4b0aad78fb0775b2ead8568a7581d459b71e319075cf",
+        "priority_hash": "43bb00d0ce7790a53b91256b370c887b24791a5539a6fbfb70c5870e8c91ae5d",
+        "severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "state_hash": "83c874d33e8bff73caaa762c79cd1ed101d727c7f20fe4972c67e67978292f23",
+        "confidence_hash": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94"
+      }
+    },
+    {
+      "mission_candidate_id": "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f",
+      "source_candidate_id": "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65",
+      "source_surface": "refusal",
+      "recommended_lane": "permission_required",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "priority": "p3",
+      "severity_basis": "permission_required lane with unknown severity -> p3",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "requires_human_review": true,
+      "requires_permission_change": true,
+      "proposed_next_action": "request_permission",
+      "state": "refused",
+      "confidence": "high",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled.",
+      "source_hashes": {
+        "candidate_id_hash": "3ceba24de228b514be532440449c3b52c836d19f9b7b40d920bd77f706bdd05b",
+        "group_id_hash": "aa50a5ea24382d2cc9876ddf2b701c51ba562d2b51deb18e257e36cf5345d261",
+        "group_key_hash": "a0ccef498c2b22238bb5a72fa922e5cd125faf54371f574687746ad75c71496f",
+        "source_surface_hash": "424fb0794608103b88e8671a3d8b723c393be64bc1c4a48389e438952a58af0e",
+        "recommended_lane_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "route_hash": "7262b039981abddcbb6d90843409684bae542eee39260d753ab2d7824fdd38ee",
+        "mission_type_hash": "06a25b7e196f0199643a4b0aad78fb0775b2ead8568a7581d459b71e319075cf",
+        "priority_hash": "43bb00d0ce7790a53b91256b370c887b24791a5539a6fbfb70c5870e8c91ae5d",
+        "severity_hash": "b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc",
+        "state_hash": "83c874d33e8bff73caaa762c79cd1ed101d727c7f20fe4972c67e67978292f23",
+        "confidence_hash": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94"
+      }
+    }
+  ],
+  "blocked_reasons": [
+    {
+      "mission_candidate_id": "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2",
+      "source_candidate_id": "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "reason": "missing_permission_or_not_enabled",
+      "remote_mutation": false,
+      "proposed_next_action": "request_permission",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled."
+    },
+    {
+      "mission_candidate_id": "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e",
+      "source_candidate_id": "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "reason": "missing_permission_or_not_enabled",
+      "remote_mutation": false,
+      "proposed_next_action": "request_permission",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled."
+    },
+    {
+      "mission_candidate_id": "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f",
+      "source_candidate_id": "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65",
+      "route": "permission_required",
+      "mission_type": "permission_enablement_plan",
+      "reason": "missing_permission_or_not_enabled",
+      "remote_mutation": false,
+      "proposed_next_action": "request_permission",
+      "rationale": "Work item is blocked until the required GitHub App permission is enabled."
+    }
+  ],
+  "summary": {
+    "mission_candidate_count": 3,
+    "blocked_candidate_count": 3,
+    "advisory_candidate_count": 0,
+    "ready_candidate_count": 0,
+    "route_group_count": 1,
+    "by_route": {
+      "permission_required": 3
+    },
+    "by_mission_type": {
+      "permission_enablement_plan": 3
+    },
+    "by_priority": {
+      "p3": 3
+    }
+  }
+}

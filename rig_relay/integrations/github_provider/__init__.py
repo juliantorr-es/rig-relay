@@ -66,6 +66,11 @@ from rig_relay.integrations.github_provider._models import (
     normalize_oauth_scope_to_app_permission,
     permission_satisfies,
 )
+from rig_relay.integrations.github_provider._permission_posture import (
+    GitHubPermissionPostureError,
+    build_github_permission_posture_report,
+    build_github_permission_posture_report_from_paths,
+)
 from rig_relay.integrations.github_provider._receipts import (
     build_github_operation_receipt,
     validate_github_operation_receipt,
@@ -79,6 +84,16 @@ from rig_relay.integrations.github_provider._redaction import (
 from rig_relay.integrations.github_provider._security_intake import (
     GitHubSecurityIntakeCollector,
     build_github_security_intake_report,
+)
+from rig_relay.integrations.github_provider._security_mission_candidates import (
+    GitHubSecurityMissionCandidateRoutingError,
+    route_github_security_work_items,
+    route_github_security_work_items_from_path,
+)
+from rig_relay.integrations.github_provider._security_work_items import (
+    GitHubSecurityWorkItemProjectionError,
+    project_github_security_work_items,
+    project_github_security_work_items_from_path,
 )
 
 __all__ = [
@@ -96,6 +111,7 @@ __all__ = [
     "GitHubLiveTokenExchanger",
     "GitHubOperationClass",
     "GitHubPermissionKind",
+    "GitHubPermissionPostureError",
     "GitHubProviderAuthState",
     "GitHubProviderCapability",
     "GitHubProviderCapabilityDecision",
@@ -106,11 +122,15 @@ __all__ = [
     "GitHubRedactionStatus",
     "GitHubRepositoryPermissionGrant",
     "GitHubSecurityIntakeCollector",
+    "GitHubSecurityMissionCandidateRoutingError",
+    "GitHubSecurityWorkItemProjectionError",
     "GitHubTokenStorageAuthority",
     "GitHubVerdict",
     "assert_content_light_mapping",
     "assert_no_raw_github_token",
     "build_github_operation_receipt",
+    "build_github_permission_posture_report",
+    "build_github_permission_posture_report_from_paths",
     "build_github_security_intake_report",
     "evaluate_github_capability",
     "get_capability",
@@ -119,7 +139,11 @@ __all__ = [
     "load_github_capability_manifest",
     "normalize_oauth_scope_to_app_permission",
     "permission_satisfies",
+    "project_github_security_work_items",
+    "project_github_security_work_items_from_path",
     "read_auth_state",
+    "route_github_security_work_items",
+    "route_github_security_work_items_from_path",
     "run_live_read_operation",
     "scan_for_tokens",
     "validate_github_capability_manifest",

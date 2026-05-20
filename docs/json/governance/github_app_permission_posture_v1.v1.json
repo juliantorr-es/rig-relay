@@ -1,0 +1,350 @@
+{
+  "schema_version": "rig.github_app_permission_posture.v1",
+  "generated_at_utc": "2026-05-20T05:08:25.327388+00:00",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_artifacts": [
+    {
+      "path": "docs/json/governance/live_github_auth_result.v1.json",
+      "present": true,
+      "status": "available",
+      "artifact_hash": "5d9098057ec8a9cdb0c5bcfd39aae9be0c6c0d360df05b2fcf57f422e63d0c84",
+      "schema_version": "rig.github.live_auth_result.v1",
+      "reason": null
+    },
+    {
+      "path": "docs/json/governance/github_security_intake_result.v1.json",
+      "present": true,
+      "status": "available",
+      "artifact_hash": "d1f948d08dc2a4ea19011183c5151f946ce1050a1cedafdf84798cb4f4297642",
+      "schema_version": "rig.github.security_intake.v1",
+      "reason": null
+    },
+    {
+      "path": "docs/json/governance/github_security_work_items_v1.v1.json",
+      "present": true,
+      "status": "available",
+      "artifact_hash": "adc69cc0ace5554dc2b12683661606ddc7ebf1542e4a321e70c9b2e1f0331912",
+      "schema_version": "rig.github.security_work_items.v1",
+      "reason": null
+    },
+    {
+      "path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
+      "present": true,
+      "status": "available",
+      "artifact_hash": "3ac9901a50172b4c74c9de42d6a82835d1c272a24921d37a0527ed50e4b29f24",
+      "schema_version": "rig.github.security_mission_candidates.v1",
+      "reason": null
+    }
+  ],
+  "observed_permissions": [
+    {
+      "permission_name": "actions",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "2b0dcdd40016096b852d9d5b79de2ad570249dc8e4d4ebe4fa4ab81e2aa9af35",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    },
+    {
+      "permission_name": "checks",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "961f787b0cd3443fbc7c456886ecd25749c0485c4ae9a02f10599b17dad9f944",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    },
+    {
+      "permission_name": "contents",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "d1b2a59fbea7e20077af9f91b27e95e865061b270be03ff539ab3b73587882e8",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    },
+    {
+      "permission_name": "issues",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "02e3fe5aad80ca85ace4db35008faabe7950c53998160c66c9072b6fd33dec0f",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    },
+    {
+      "permission_name": "metadata",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "45447b7afbd5e544f7d0f1df0fccd26014d9850130abd3f020b89ff96b82079f",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    },
+    {
+      "permission_name": "pull_requests",
+      "level": "read",
+      "source_artifact": "live_auth",
+      "observed_from": "live_results.token_exchange.permissions",
+      "permission_name_hash": "272c8e85ded6d7603eaca6368c9739a8e9ebfd708d24021e1982bfb786e8a8fa",
+      "level_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925"
+    }
+  ],
+  "required_permissions": [
+    {
+      "surface": "secret_scanning_alerts",
+      "permission_name": "secret_scanning_alerts",
+      "minimum_level": "read",
+      "endpoint_family": "secret_scanning",
+      "mutation_risk": "sensitive_read",
+      "allowed_in_this_slice": true,
+      "surface_label": "Secret scanning alerts",
+      "observed_level": "none",
+      "status": "missing",
+      "permission_name_hash": "ddf1ba0b3ce5cfb6d46e4a5756d5570d6561b3220c1290e4294180d5f8a75fb0",
+      "surface_hash": "ddf1ba0b3ce5cfb6d46e4a5756d5570d6561b3220c1290e4294180d5f8a75fb0"
+    },
+    {
+      "surface": "code_scanning_alerts",
+      "permission_name": "security_events",
+      "minimum_level": "read",
+      "endpoint_family": "code_scanning",
+      "mutation_risk": "read_only",
+      "allowed_in_this_slice": true,
+      "surface_label": "Code scanning alerts",
+      "observed_level": "none",
+      "status": "missing",
+      "permission_name_hash": "3da00b107b3b0efef74dd441e0f3e0be22ecca5d0ae7a38d5391d0926eb9cbe4",
+      "surface_hash": "6844723a49be7f20b5fd54bc549d6782e9cc1f13eae45928e123399d536f1fa9"
+    },
+    {
+      "surface": "dependabot_alerts",
+      "permission_name": "vulnerability_alerts",
+      "minimum_level": "read",
+      "endpoint_family": "dependabot",
+      "mutation_risk": "read_only_security",
+      "allowed_in_this_slice": true,
+      "surface_label": "Dependabot alerts",
+      "observed_level": "none",
+      "status": "missing",
+      "permission_name_hash": "9df25fca7d2a8f86f53b4a964c0310c7a1334a1855cd9ff96c3c7df4db195caf",
+      "surface_hash": "23779f7e188a00ba1604b15e6da507930533371ef1289b34316a7e23deadf996"
+    },
+    {
+      "surface": "workflow_mutation",
+      "permission_name": "workflows",
+      "minimum_level": "write",
+      "endpoint_family": "actions_workflows",
+      "mutation_risk": "mutation_enabled",
+      "allowed_in_this_slice": false,
+      "surface_label": "Workflows mutation",
+      "observed_level": "none",
+      "status": "non_goal",
+      "permission_name_hash": "45b34f16db605a06e99207c844b67ee88e470b5a68fbbab05dba0fc8b8e6cc9f",
+      "surface_hash": "b828d91085c2d1be82a134a4b1ef6df4933bd6fd2b819e7331d6b5a0ade7007e"
+    }
+  ],
+  "missing_permissions": [
+    {
+      "permission_name": "secret_scanning_alerts",
+      "minimum_level": "read",
+      "observed_level": "none",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f"
+      ],
+      "request_id": "704d1da011c582e8af4f85a3ae7cf8314409aa2ebdefea74ea66dda784f56095",
+      "rationale": "Request secret_scanning_alerts read to unblock refusal security intake.",
+      "risk_classification": "sensitive_read",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually",
+      "blocked_candidate_count": 1,
+      "source_candidate_ids": [
+        "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65"
+      ]
+    },
+    {
+      "permission_name": "security_events",
+      "minimum_level": "read",
+      "observed_level": "none",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2"
+      ],
+      "request_id": "b674fbd5fd6d1f6e68c04971c970f098a6ebfc978887a5c93690b3e6e35d3b71",
+      "rationale": "Request security_events read to unblock refusal security intake.",
+      "risk_classification": "read_only",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually",
+      "blocked_candidate_count": 1,
+      "source_candidate_ids": [
+        "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641"
+      ]
+    },
+    {
+      "permission_name": "vulnerability_alerts",
+      "minimum_level": "read",
+      "observed_level": "none",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e"
+      ],
+      "request_id": "bb11a3b12dee1ef97f0de2ab52ce91696e0c98960c4e540a278fa8ee54074174",
+      "rationale": "Request vulnerability_alerts read to unblock refusal security intake.",
+      "risk_classification": "read_only",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually",
+      "blocked_candidate_count": 1,
+      "source_candidate_ids": [
+        "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168"
+      ]
+    }
+  ],
+  "permission_request_plan": [
+    {
+      "request_id": "704d1da011c582e8af4f85a3ae7cf8314409aa2ebdefea74ea66dda784f56095",
+      "permission_name": "secret_scanning_alerts",
+      "requested_level": "read",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f"
+      ],
+      "rationale": "Request secret_scanning_alerts read to unblock refusal security intake.",
+      "risk_classification": "sensitive_read",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually"
+    },
+    {
+      "request_id": "b674fbd5fd6d1f6e68c04971c970f098a6ebfc978887a5c93690b3e6e35d3b71",
+      "permission_name": "security_events",
+      "requested_level": "read",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2"
+      ],
+      "rationale": "Request security_events read to unblock refusal security intake.",
+      "risk_classification": "read_only",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually"
+    },
+    {
+      "request_id": "bb11a3b12dee1ef97f0de2ab52ce91696e0c98960c4e540a278fa8ee54074174",
+      "permission_name": "vulnerability_alerts",
+      "requested_level": "read",
+      "surface_unblocked": "refusal",
+      "candidate_ids_unblocked": [
+        "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e"
+      ],
+      "rationale": "Request vulnerability_alerts read to unblock refusal security intake.",
+      "risk_classification": "read_only",
+      "requires_owner_action": true,
+      "remote_mutation": false,
+      "recommended_operator_action": "update_github_app_permission_manually"
+    }
+  ],
+  "blocked_candidate_links": [
+    {
+      "mission_candidate_id": "8f85987efaf4d10d80ead3b2306cc2b0145ac6dfeee5e2cf1312e83c2efb2de2",
+      "source_candidate_id": "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
+      "permission_request_id": "b674fbd5fd6d1f6e68c04971c970f098a6ebfc978887a5c93690b3e6e35d3b71",
+      "permission_name": "security_events",
+      "surface_unblocked": "refusal",
+      "blocked_reason": "permission_required",
+      "remote_mutation": false,
+      "rationale": "permission_required mission candidate maps to security_events read request."
+    },
+    {
+      "mission_candidate_id": "97d50985d4d79bfd87737792d7f52501400cb5e53b3d2041af605bab1311a63e",
+      "source_candidate_id": "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168",
+      "permission_request_id": "bb11a3b12dee1ef97f0de2ab52ce91696e0c98960c4e540a278fa8ee54074174",
+      "permission_name": "vulnerability_alerts",
+      "surface_unblocked": "refusal",
+      "blocked_reason": "permission_required",
+      "remote_mutation": false,
+      "rationale": "permission_required mission candidate maps to vulnerability_alerts read request."
+    },
+    {
+      "mission_candidate_id": "cd33d333ea586184129665ee6ed7f7bb72b3f9a087960cc90cf033756118cb6f",
+      "source_candidate_id": "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65",
+      "permission_request_id": "704d1da011c582e8af4f85a3ae7cf8314409aa2ebdefea74ea66dda784f56095",
+      "permission_name": "secret_scanning_alerts",
+      "surface_unblocked": "refusal",
+      "blocked_reason": "permission_required",
+      "remote_mutation": false,
+      "rationale": "permission_required mission candidate maps to secret_scanning_alerts read request."
+    }
+  ],
+  "risk_summary": {
+    "requested_read_permissions_count": 3,
+    "requested_sensitive_read_permissions_count": 1,
+    "requested_write_permissions_count": 0,
+    "requested_admin_permissions_count": 0,
+    "mutation_permissions_requested": false,
+    "secret_material_persisted": false,
+    "remote_mutation": false,
+    "observed_permission_count": 6,
+    "missing_permission_count": 3,
+    "permission_request_count": 3
+  },
+  "refusals": [
+    {
+      "surface": "workflow_mutation",
+      "status": "refused",
+      "reason": "non_goal_surface",
+      "required_permission": "workflows write",
+      "remote_mutation": false
+    }
+  ],
+  "summary": {
+    "observed_permission_count": 6,
+    "required_permission_count": 4,
+    "missing_permission_count": 3,
+    "permission_request_count": 3,
+    "blocked_candidate_count": 3,
+    "input_unavailable_count": 0,
+    "mutation_permissions_requested": false,
+    "remote_mutation": false,
+    "by_permission_name": [
+      {
+        "permission_name": "actions",
+        "level": "read"
+      },
+      {
+        "permission_name": "checks",
+        "level": "read"
+      },
+      {
+        "permission_name": "contents",
+        "level": "read"
+      },
+      {
+        "permission_name": "issues",
+        "level": "read"
+      },
+      {
+        "permission_name": "metadata",
+        "level": "read"
+      },
+      {
+        "permission_name": "pull_requests",
+        "level": "read"
+      }
+    ],
+    "by_requested_permission": [
+      {
+        "permission_name": "secret_scanning_alerts",
+        "requested_level": "read"
+      },
+      {
+        "permission_name": "security_events",
+        "requested_level": "read"
+      },
+      {
+        "permission_name": "vulnerability_alerts",
+        "requested_level": "read"
+      }
+    ]
+  }
+}

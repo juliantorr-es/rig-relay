@@ -1,0 +1,306 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_work_items.v1.schema.json",
+  "title": "GitHub Security Work Items v1",
+  "description": "Deterministic local projection of GitHub security intake into content-light work-item candidates.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "source_artifact_path",
+    "source_artifact_hash",
+    "remote_mutation",
+    "content_light",
+    "work_item_count",
+    "refused_surface_count",
+    "candidate_group_count",
+    "candidate_groups",
+    "refusals",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.security_work_items.v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "work_item_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "refused_surface_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidate_group_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidate_groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "group_id",
+          "group_kind",
+          "group_key",
+          "source_surface",
+          "candidate_count",
+          "recommended_lane",
+          "recommended_action",
+          "mutation_allowed",
+          "remote_mutation_required",
+          "severity_summary",
+          "candidates",
+          "source_hashes",
+          "rationale"
+        ],
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "group_kind": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+          },
+          "group_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_surface": {
+            "type": "string",
+            "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recommended_lane": {
+            "type": "string",
+            "enum": [
+              "security_patch",
+              "dependency_update",
+              "investigation",
+              "permission_required",
+              "advisory_only",
+              "refused_surface"
+            ]
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "mutation_allowed": {
+            "type": "boolean",
+            "const": false
+          },
+          "remote_mutation_required": {
+            "type": "boolean",
+            "const": false
+          },
+          "severity_summary": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "candidate_id",
+                "source_surface",
+                "source_finding_key",
+                "normalized_severity",
+                "state",
+                "confidence",
+                "recommended_lane",
+                "recommended_action",
+                "mutation_allowed",
+                "remote_mutation_required",
+                "rationale",
+                "source_hashes"
+              ],
+              "properties": {
+                "candidate_id": {
+                  "type": "string",
+                  "minLength": 64,
+                  "maxLength": 64
+                },
+                "source_surface": {
+                  "type": "string",
+                  "enum": ["code_scanning", "dependabot", "refusal", "unknown"]
+                },
+                "source_finding_key": {
+                  "type": "string"
+                },
+                "normalized_severity": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "string"
+                },
+                "recommended_lane": {
+                  "type": "string"
+                },
+                "recommended_action": {
+                  "type": "string"
+                },
+                "mutation_allowed": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "remote_mutation_required": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "source_hashes": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "required_permission": {
+                  "type": "string"
+                },
+                "refusal_reason": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "source_hashes": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "rationale": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "status",
+          "reason",
+          "required_permission",
+          "remote_mutation",
+          "recommended_lane",
+          "recommended_action",
+          "candidate_id"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "required_permission": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "recommended_lane": {
+            "type": "string"
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "candidate_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "work_item_count",
+        "candidate_group_count",
+        "refused_surface_count",
+        "by_surface",
+        "by_lane",
+        "by_action"
+      ],
+      "properties": {
+        "work_item_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidate_group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused_surface_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_surface": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "by_lane": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "by_action": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,188 @@
+{
+  "schema_version": "rig.github.security_work_items.v1",
+  "generated_at_utc": "2026-05-20T04:47:13.261865+00:00",
+  "source_artifact_path": "docs/json/governance/github_security_intake_result.v1.json",
+  "source_artifact_hash": "d1f948d08dc2a4ea19011183c5151f946ce1050a1cedafdf84798cb4f4297642",
+  "remote_mutation": false,
+  "content_light": true,
+  "work_item_count": 3,
+  "refused_surface_count": 3,
+  "candidate_group_count": 3,
+  "candidate_groups": [
+    {
+      "group_id": "268ce7adeb66f2f7233c354e9c2ebb821bd41b069e0d5be361bf10f931b64efd",
+      "group_kind": "refusal",
+      "group_key": "code_scanning|missing_permission_or_not_enabled|Code scanning alerts read",
+      "source_surface": "refusal",
+      "candidate_count": 1,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "unknown": 1
+      },
+      "candidates": [
+        {
+          "candidate_id": "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641",
+          "source_surface": "refusal",
+          "source_finding_key": "code_scanning:missing_permission_or_not_enabled",
+          "normalized_severity": "unknown",
+          "state": "refused",
+          "confidence": "high",
+          "recommended_lane": "permission_required",
+          "recommended_action": "request_permission",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "code_scanning ingestion was refused because missing_permission_or_not_enabled.",
+          "source_hashes": {
+            "surface_hash": "6e34e0d5da18e23b1423b52898e6f4991c2b6e56dab50d804cf8cf552778f9bc",
+            "reason_hash": "48dcaad9dd812c8ac1eb43680658297e7ec5c2461ed887ff35728ac79e047215",
+            "required_permission_hash": "409678f1c5746516d2100c724032803b7193257663cf72536342646d375fa9a5"
+          },
+          "required_permission": "Code scanning alerts read",
+          "refusal_reason": "missing_permission_or_not_enabled"
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "b5e106689beb5c5e88ff0760a82819bf44672c1770df4d029dc1b8feedb70a7a",
+        "candidate_id_hashes": [
+          "0085d442154f1171e00d256ba269d62a22f9664ce7f8ade9a63f92fc9685d641"
+        ]
+      },
+      "rationale": "code_scanning ingestion was refused because missing_permission_or_not_enabled."
+    },
+    {
+      "group_id": "9baa0e683b01aa77e803a9c0f8f6983b2f0bbde20820a8ddf47f59df47f09136",
+      "group_kind": "refusal",
+      "group_key": "dependabot|missing_permission_or_not_enabled|Dependabot alerts read",
+      "source_surface": "refusal",
+      "candidate_count": 1,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "unknown": 1
+      },
+      "candidates": [
+        {
+          "candidate_id": "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168",
+          "source_surface": "refusal",
+          "source_finding_key": "dependabot:missing_permission_or_not_enabled",
+          "normalized_severity": "unknown",
+          "state": "refused",
+          "confidence": "high",
+          "recommended_lane": "permission_required",
+          "recommended_action": "request_permission",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "dependabot ingestion was refused because missing_permission_or_not_enabled.",
+          "source_hashes": {
+            "surface_hash": "5b70ccdcefc59ae04e93f09d3515dfbe9a4ac5bde6b5ff398982fc00deccf364",
+            "reason_hash": "48dcaad9dd812c8ac1eb43680658297e7ec5c2461ed887ff35728ac79e047215",
+            "required_permission_hash": "5c0059ccd84c9e55eb46feef1381d69ed2c8babfc38a1331c226e4e637966d95"
+          },
+          "required_permission": "Dependabot alerts read",
+          "refusal_reason": "missing_permission_or_not_enabled"
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "47103d733c78d9451fcd96ef670d9e4629c714392c6f0c3a941e0f5e15d1f118",
+        "candidate_id_hashes": [
+          "dcda2009762664b5d4045ca49a88854b9a3a84a68bc347aae97f78a2d3fa7168"
+        ]
+      },
+      "rationale": "dependabot ingestion was refused because missing_permission_or_not_enabled."
+    },
+    {
+      "group_id": "9d0373d7e60164d7cf3c39437a5113c9109a54225f2380cc0e9cb166c60b5ebe",
+      "group_kind": "refusal",
+      "group_key": "secret_scanning|missing_permission_or_not_enabled|Secret scanning alerts read",
+      "source_surface": "refusal",
+      "candidate_count": 1,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "mutation_allowed": false,
+      "remote_mutation_required": false,
+      "severity_summary": {
+        "unknown": 1
+      },
+      "candidates": [
+        {
+          "candidate_id": "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65",
+          "source_surface": "refusal",
+          "source_finding_key": "secret_scanning:missing_permission_or_not_enabled",
+          "normalized_severity": "unknown",
+          "state": "refused",
+          "confidence": "high",
+          "recommended_lane": "permission_required",
+          "recommended_action": "request_permission",
+          "mutation_allowed": false,
+          "remote_mutation_required": false,
+          "rationale": "secret_scanning ingestion was refused because missing_permission_or_not_enabled.",
+          "source_hashes": {
+            "surface_hash": "f0791803e291e383c7ff1eeca72331e23f82ee68043ac00a168af86c3f70d00a",
+            "reason_hash": "48dcaad9dd812c8ac1eb43680658297e7ec5c2461ed887ff35728ac79e047215",
+            "required_permission_hash": "4362890345ade6cdd6ddcd4dde3fab774f66c99705cbd26ddd05089045c61b2a"
+          },
+          "required_permission": "Secret scanning alerts read",
+          "refusal_reason": "missing_permission_or_not_enabled"
+        }
+      ],
+      "source_hashes": {
+        "group_key_hash": "a0ccef498c2b22238bb5a72fa922e5cd125faf54371f574687746ad75c71496f",
+        "candidate_id_hashes": [
+          "7e34b45d53c53d621a3a4eae61cfac4268f0a482a04863396b213209752abc65"
+        ]
+      },
+      "rationale": "secret_scanning ingestion was refused because missing_permission_or_not_enabled."
+    }
+  ],
+  "refusals": [
+    {
+      "surface": "code_scanning",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Code scanning alerts read",
+      "remote_mutation": false,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "candidate_id": "7284a46ab57694a5cc5cf5fd71c4a52e43725aa0f5485404e62af506b7c7705a"
+    },
+    {
+      "surface": "dependabot",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Dependabot alerts read",
+      "remote_mutation": false,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "candidate_id": "9b0cc0cf3f8d65b5b9bc14203d7059d3584cc72e85a65d1b3322f5b96b2feb29"
+    },
+    {
+      "surface": "secret_scanning",
+      "status": "refused",
+      "reason": "missing_permission_or_not_enabled",
+      "required_permission": "Secret scanning alerts read",
+      "remote_mutation": false,
+      "recommended_lane": "permission_required",
+      "recommended_action": "request_permission",
+      "candidate_id": "aa09e17c3f80ab3e8003750f624d333aaf4cb8e7ad6ddebb23184133454b1ff9"
+    }
+  ],
+  "summary": {
+    "work_item_count": 3,
+    "candidate_group_count": 3,
+    "refused_surface_count": 3,
+    "by_surface": {
+      "refusal": 3
+    },
+    "by_lane": {
+      "permission_required": 3
+    },
+    "by_action": {
+      "request_permission": 3
+    }
+  }
+}

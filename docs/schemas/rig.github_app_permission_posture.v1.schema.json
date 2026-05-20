@@ -1,0 +1,537 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github_app_permission_posture.v1.schema.json",
+  "title": "GitHub App Permission Posture v1",
+  "description": "Deterministic local GitHub App permission posture and permission request plan.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "content_light",
+    "remote_mutation",
+    "source_artifacts",
+    "observed_permissions",
+    "required_permissions",
+    "missing_permissions",
+    "permission_request_plan",
+    "blocked_candidate_links",
+    "risk_summary",
+    "refusals",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github_app_permission_posture.v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "present", "status", "artifact_hash", "schema_version", "reason"],
+        "properties": {
+          "artifact_role": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["available", "input_unavailable"]
+          },
+          "artifact_hash": {
+            "type": ["string", "null"],
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "schema_version": {
+            "type": ["string", "null"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "observed_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "permission_name",
+          "level",
+          "source_artifact",
+          "observed_from",
+          "permission_name_hash",
+          "level_hash"
+        ],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin", "unknown"]
+          },
+          "source_artifact": {
+            "type": "string"
+          },
+          "observed_from": {
+            "type": "string"
+          },
+          "permission_name_hash": {
+            "type": "string"
+          },
+          "level_hash": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "permission_name",
+          "minimum_level",
+          "endpoint_family",
+          "mutation_risk",
+          "allowed_in_this_slice",
+          "observed_level",
+          "status",
+          "permission_name_hash",
+          "surface_hash"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string"
+          },
+          "permission_name": {
+            "type": "string"
+          },
+          "minimum_level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin", "unknown"]
+          },
+          "endpoint_family": {
+            "type": "string"
+          },
+          "mutation_risk": {
+            "type": "string"
+          },
+          "allowed_in_this_slice": {
+            "type": "boolean"
+          },
+          "observed_level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin", "unknown"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["observed", "missing", "non_goal"]
+          },
+          "surface_label": {
+            "type": "string"
+          },
+          "permission_name_hash": {
+            "type": "string"
+          },
+          "surface_hash": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "missing_permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "permission_name",
+          "minimum_level",
+          "observed_level",
+          "surface_unblocked",
+          "candidate_ids_unblocked",
+          "request_id",
+          "rationale",
+          "risk_classification",
+          "requires_owner_action",
+          "remote_mutation",
+          "recommended_operator_action",
+          "blocked_candidate_count",
+          "source_candidate_ids"
+        ],
+        "properties": {
+          "permission_name": {
+            "type": "string"
+          },
+          "minimum_level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin", "unknown"]
+          },
+          "observed_level": {
+            "type": "string",
+            "enum": ["none", "read", "write", "admin", "unknown"]
+          },
+          "surface_unblocked": {
+            "type": "string"
+          },
+          "candidate_ids_unblocked": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "risk_classification": {
+            "type": "string",
+            "enum": ["read_only", "sensitive_read", "mutation_enabled"]
+          },
+          "requires_owner_action": {
+            "type": "boolean",
+            "const": true
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "recommended_operator_action": {
+            "type": "string"
+          },
+          "blocked_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "permission_request_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "permission_name",
+          "requested_level",
+          "surface_unblocked",
+          "candidate_ids_unblocked",
+          "rationale",
+          "risk_classification",
+          "requires_owner_action",
+          "remote_mutation",
+          "recommended_operator_action"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "permission_name": {
+            "type": "string"
+          },
+          "requested_level": {
+            "type": "string",
+            "enum": ["read", "write", "admin"]
+          },
+          "surface_unblocked": {
+            "type": "string"
+          },
+          "candidate_ids_unblocked": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "risk_classification": {
+            "type": "string",
+            "enum": ["read_only", "sensitive_read", "mutation_enabled"]
+          },
+          "requires_owner_action": {
+            "type": "boolean",
+            "const": true
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "recommended_operator_action": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocked_candidate_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mission_candidate_id",
+          "source_candidate_id",
+          "blocked_reason",
+          "remote_mutation",
+          "rationale"
+        ],
+        "properties": {
+          "mission_candidate_id": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "source_candidate_id": {
+            "type": "string"
+          },
+          "permission_request_id": {
+            "type": ["string", "null"],
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "permission_name": {
+            "type": ["string", "null"]
+          },
+          "surface_unblocked": {
+            "type": ["string", "null"]
+          },
+          "blocked_reason": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "mission_type": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "risk_summary": {
+      "type": "object",
+      "required": [
+        "requested_read_permissions_count",
+        "requested_sensitive_read_permissions_count",
+        "requested_write_permissions_count",
+        "requested_admin_permissions_count",
+        "mutation_permissions_requested",
+        "secret_material_persisted",
+        "remote_mutation",
+        "observed_permission_count",
+        "missing_permission_count",
+        "permission_request_count"
+      ],
+      "properties": {
+        "requested_read_permissions_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requested_sensitive_read_permissions_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requested_write_permissions_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requested_admin_permissions_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mutation_permissions_requested": {
+          "type": "boolean",
+          "const": false
+        },
+        "secret_material_persisted": {
+          "type": "boolean",
+          "const": false
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "observed_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "permission_request_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "refusals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "surface",
+          "status",
+          "reason",
+          "required_permission",
+          "remote_mutation"
+        ],
+        "properties": {
+          "surface": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "required_permission": {
+            "type": "string"
+          },
+          "remote_mutation": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "observed_permission_count",
+        "required_permission_count",
+        "missing_permission_count",
+        "permission_request_count",
+        "blocked_candidate_count",
+        "input_unavailable_count",
+        "mutation_permissions_requested",
+        "remote_mutation",
+        "by_permission_name",
+        "by_requested_permission"
+      ],
+      "properties": {
+        "observed_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "required_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_permission_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "permission_request_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_unavailable_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mutation_permissions_requested": {
+          "type": "boolean",
+          "const": false
+        },
+        "remote_mutation": {
+          "type": "boolean",
+          "const": false
+        },
+        "by_permission_name": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["permission_name", "level"],
+            "properties": {
+              "permission_name": {
+                "type": "string"
+              },
+              "level": {
+                "type": "string",
+                "enum": ["none", "read", "write", "admin", "unknown"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "by_requested_permission": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["permission_name", "requested_level"],
+            "properties": {
+              "permission_name": {
+                "type": "string"
+              },
+              "requested_level": {
+                "type": "string",
+                "enum": ["read", "write", "admin"]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
