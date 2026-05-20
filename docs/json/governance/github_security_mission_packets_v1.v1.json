@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.github.security_mission_packets.v1",
-  "generated_at_utc": "2026-05-20T06:12:52.299960+00:00",
+  "generated_at_utc": "2026-05-20T06:33:07.738612+00:00",
   "source_artifact_path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
   "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
   "packet_dir": ".build/rig-relay/security-mission-packets",

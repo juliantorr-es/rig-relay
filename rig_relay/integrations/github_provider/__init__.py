@@ -66,6 +66,12 @@ from rig_relay.integrations.github_provider._models import (
     normalize_oauth_scope_to_app_permission,
     permission_satisfies,
 )
+from rig_relay.integrations.github_provider._operating_picture import (
+    GitHubOperatingPictureError,
+    build_github_operating_picture,
+    build_github_operating_picture_from_paths,
+    write_github_operating_picture,
+)
 from rig_relay.integrations.github_provider._permission_posture import (
     GitHubPermissionPostureError,
     build_github_permission_posture_report,
@@ -114,6 +120,7 @@ __all__ = [
     "GitHubLiveJwtSigner",
     "GitHubLiveReadOnlySmoke",
     "GitHubLiveTokenExchanger",
+    "GitHubOperatingPictureError",
     "GitHubOperationClass",
     "GitHubPermissionKind",
     "GitHubPermissionPostureError",
@@ -134,6 +141,8 @@ __all__ = [
     "GitHubVerdict",
     "assert_content_light_mapping",
     "assert_no_raw_github_token",
+    "build_github_operating_picture",
+    "build_github_operating_picture_from_paths",
     "build_github_operation_receipt",
     "build_github_permission_posture_report",
     "build_github_permission_posture_report_from_paths",
@@ -157,4 +166,5 @@ __all__ = [
     "validate_github_capability_manifest",
     "validate_github_operation_receipt",
     "write_auth_state",
+    "write_github_operating_picture",
 ]

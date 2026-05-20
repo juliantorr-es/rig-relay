@@ -1,0 +1,418 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.operating_picture.v1.schema.json",
+  "title": "GitHub Operating Picture v1",
+  "description": "Deterministic local control-plane view of GitHub provider auth, intake, candidates, mission packets, and local patch lanes.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "content_light",
+    "remote_mutation",
+    "source_artifacts",
+    "auth_summary",
+    "permission_summary",
+    "intake_summary",
+    "candidate_summary",
+    "packet_summary",
+    "local_patch_lane_summary",
+    "next_recommended_actions",
+    "evidence_paths",
+    "redaction_status",
+    "remaining_seams",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.operating_picture.v1"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "head": {
+      "type": ["string", "null"]
+    },
+    "owner": {
+      "type": ["string", "null"]
+    },
+    "repo": {
+      "type": ["string", "null"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "remote_mutation": {
+      "type": "boolean",
+      "const": false
+    },
+    "source_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/source_artifact"
+      }
+    },
+    "auth_summary": {
+      "$ref": "#/definitions/auth_summary"
+    },
+    "permission_summary": {
+      "$ref": "#/definitions/permission_summary"
+    },
+    "intake_summary": {
+      "$ref": "#/definitions/intake_summary"
+    },
+    "candidate_summary": {
+      "$ref": "#/definitions/candidate_summary"
+    },
+    "packet_summary": {
+      "$ref": "#/definitions/packet_summary"
+    },
+    "local_patch_lane_summary": {
+      "$ref": "#/definitions/local_patch_lane_summary"
+    },
+    "next_recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "fix_auth",
+          "run_live_intake_dry_run",
+          "regenerate_candidates",
+          "regenerate_packets",
+          "run_packet_lane",
+          "request_permission",
+          "no_action"
+        ]
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "redaction_status": {
+      "$ref": "#/definitions/redaction_status"
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "summary": {
+      "$ref": "#/definitions/summary"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "source_artifact": {
+      "type": "object",
+      "required": [
+        "artifact_id",
+        "path",
+        "present",
+        "status",
+        "artifact_hash",
+        "schema_version",
+        "summary"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["missing", "present", "invalid"]
+        },
+        "artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "schema_version": {
+          "type": ["string", "null"]
+        },
+        "summary": {
+          "type": ["object", "null"]
+        },
+        "error_kind": {
+          "type": ["string", "null"]
+        },
+        "error": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "auth_summary": {
+      "type": "object",
+      "required": [
+        "app_installation_configured",
+        "installation_access_proven",
+        "token_present",
+        "token_hash_present",
+        "token_narrowing_requested",
+        "token_narrowing_effective",
+        "unsafe_broad_token_used",
+        "public_release_ready",
+        "installation_id_hash",
+        "accessible_repo_count",
+        "repository_selection",
+        "permission_mode"
+      ],
+      "properties": {
+        "app_installation_configured": {"type": "boolean"},
+        "installation_access_proven": {"type": "boolean"},
+        "token_present": {"type": "boolean"},
+        "token_hash_present": {"type": "boolean"},
+        "token_narrowing_requested": {"type": "boolean"},
+        "token_narrowing_effective": {"type": "boolean"},
+        "unsafe_broad_token_used": {"type": "boolean"},
+        "public_release_ready": {"type": "boolean"},
+        "installation_id_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "accessible_repo_count": {"type": "integer", "minimum": 0},
+        "repository_selection": {"type": ["string", "null"]},
+        "permission_mode": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "surface_status": {
+      "type": "object",
+      "required": ["surface", "status", "evidence_paths"],
+      "properties": {
+        "surface": {"type": "string"},
+        "status": {
+          "type": "string",
+          "enum": ["present", "missing", "refused", "unknown"]
+        },
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "refused_surface": {
+      "type": "object",
+      "required": [
+        "surface",
+        "status",
+        "reason",
+        "required_permission_name",
+        "evidence_paths"
+      ],
+      "properties": {
+        "surface": {"type": "string"},
+        "status": {"type": "string", "const": "refused"},
+        "reason": {"type": "string"},
+        "required_permission_name": {"type": "string"},
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "permission_summary": {
+      "type": "object",
+      "required": [
+        "required_read_surfaces",
+        "known_available_surfaces",
+        "refused_surfaces"
+      ],
+      "properties": {
+        "required_read_surfaces": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "known_available_surfaces": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/surface_status"}
+        },
+        "refused_surfaces": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/refused_surface"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "surface_state": {
+      "type": "object",
+      "required": ["status", "evidence_paths"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["present", "missing", "refused"]
+        },
+        "evidence_paths": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "intake_summary": {
+      "type": "object",
+      "required": ["code_scanning", "dependabot", "checks", "workflow_runs"],
+      "properties": {
+        "code_scanning": {"$ref": "#/definitions/surface_state"},
+        "dependabot": {"$ref": "#/definitions/surface_state"},
+        "checks": {"$ref": "#/definitions/surface_state"},
+        "workflow_runs": {"$ref": "#/definitions/surface_state"}
+      },
+      "additionalProperties": false
+    },
+    "candidate_summary": {
+      "type": "object",
+      "required": [
+        "source_artifact_path",
+        "artifact_hash",
+        "source_artifact_hash",
+        "candidate_count",
+        "ready_for_investigation_count",
+        "advisory_only_count",
+        "permission_required_count"
+      ],
+      "properties": {
+        "source_artifact_path": {"type": ["string", "null"]},
+        "artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "candidate_count": {"type": "integer", "minimum": 0},
+        "ready_for_investigation_count": {"type": "integer", "minimum": 0},
+        "advisory_only_count": {"type": "integer", "minimum": 0},
+        "permission_required_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "packet_summary": {
+      "type": "object",
+      "required": [
+        "packet_index_path",
+        "artifact_hash",
+        "source_artifact_path",
+        "source_artifact_hash",
+        "packet_count",
+        "excluded_candidate_count",
+        "excluded_by_route",
+        "packet_index_stale"
+      ],
+      "properties": {
+        "packet_index_path": {"type": ["string", "null"]},
+        "artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_artifact_path": {"type": ["string", "null"]},
+        "source_artifact_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "packet_count": {"type": "integer", "minimum": 0},
+        "excluded_candidate_count": {"type": "integer", "minimum": 0},
+        "excluded_by_route": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "packet_index_stale": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "local_patch_lane_summary": {
+      "type": "object",
+      "required": [
+        "dependency_update_needed",
+        "codeql_security_fix_needed",
+        "code_quality_fix_needed",
+        "workflow_or_ci_fix_needed",
+        "permission_blocked",
+        "unknown_triage_needed"
+      ],
+      "properties": {
+        "dependency_update_needed": {"type": "integer", "minimum": 0},
+        "codeql_security_fix_needed": {"type": "integer", "minimum": 0},
+        "code_quality_fix_needed": {"type": "integer", "minimum": 0},
+        "workflow_or_ci_fix_needed": {"type": "integer", "minimum": 0},
+        "permission_blocked": {"type": "integer", "minimum": 0},
+        "unknown_triage_needed": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "redaction_status": {
+      "type": "object",
+      "required": [
+        "content_light",
+        "forbidden_strings_present",
+        "redaction_rule_count",
+        "checked_artifact_count"
+      ],
+      "properties": {
+        "content_light": {"type": "boolean", "const": true},
+        "forbidden_strings_present": {"type": "boolean", "const": false},
+        "redaction_rule_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checked_artifact_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "auth_health",
+        "intake_health",
+        "packet_health",
+        "packet_index_stale",
+        "next_recommended_action"
+      ],
+      "properties": {
+        "auth_health": {
+          "type": "string",
+          "enum": ["installation_access_proven", "auth_unproven"]
+        },
+        "intake_health": {
+          "type": "string",
+          "enum": ["present", "partial_refusal", "missing"]
+        },
+        "packet_health": {
+          "type": "string",
+          "enum": ["fresh", "stale", "missing"]
+        },
+        "packet_index_stale": {"type": "boolean"},
+        "next_recommended_action": {
+          "type": "string",
+          "enum": [
+            "fix_auth",
+            "run_live_intake_dry_run",
+            "regenerate_candidates",
+            "regenerate_packets",
+            "run_packet_lane",
+            "request_permission",
+            "no_action"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

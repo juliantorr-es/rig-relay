@@ -1,0 +1,337 @@
+{
+  "schema_version": "rig.github.operating_picture.v1",
+  "generated_at_utc": "2026-05-20T06:36:34.612277+00:00",
+  "branch": "main",
+  "head": "4045956372fc5b3a61a22dc467d5ae61d869bcac",
+  "owner": "juliantorr-es",
+  "repo": "rig-relay",
+  "content_light": true,
+  "remote_mutation": false,
+  "source_artifacts": [
+    {
+      "artifact_id": "github_ci_cd_reliability",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "7e2dc355023d38b4b37475aae9d9f60ac09d3e5305a7e7133c3df439eb943226",
+      "schema_version": "rig.github_ci_cd_reliability.v1",
+      "summary": {
+        "workflow_name": "CI",
+        "workflow_path": ".github/workflows/ci.yml",
+        "required_checks_count": 5,
+        "advisory_checks_count": 1,
+        "github_default_setup_suspected": true
+      },
+      "content_hash": "4430f97a625081cd4ca769f90dfa525c668a7bda844af37df00de2efa2d5cb97"
+    },
+    {
+      "artifact_id": "live_auth",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_github_auth_result.v1.json",
+      "present": true,
+      "status": "invalid",
+      "artifact_hash": "8b4df4b3e950497e3b83ff7cc6e6f2a07e4aa51d0e4054fa99b793a5b63623bd",
+      "schema_version": null,
+      "summary": {
+        "permission_mode": "development_debug",
+        "app_installation_configured": true,
+        "installation_access_proven": true,
+        "token_present": true,
+        "token_hash_present": true,
+        "token_narrowing_requested": true,
+        "token_narrowing_effective": true,
+        "unsafe_broad_token_used": false,
+        "public_release_ready": false,
+        "installation_id_hash": "ec34a5228168a9fe01bda860beac9a13be8deceafee6b4d8a0f81ef72add1d11",
+        "accessible_repo_count": 4,
+        "repository_selection": "all"
+      },
+      "content_hash": "45b3698aff30c41a9c88ca8e650cd57bc5237626346c66aa0daaa788854d79ca",
+      "error_kind": "schema_version_mismatch"
+    },
+    {
+      "artifact_id": "security_intake",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_intake_result.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "ad7a25f69aa0cfc11cc74353c7043dec2d2bd458756f3b32ec93d4ce4696dbd2",
+      "schema_version": "rig.github.security_intake.v1",
+      "summary": {
+        "permission_mode": "development_debug",
+        "code_scanning_total": 42,
+        "code_scanning_open": 27,
+        "dependabot_total": 0,
+        "refused_surface_count": 2,
+        "token_narrowing_requested": true,
+        "token_narrowing_effective": true,
+        "public_release_ready": false,
+        "source_surface_statuses": [
+          {
+            "surface": "code_scanning",
+            "status": "collected"
+          },
+          {
+            "surface": "dependabot",
+            "status": "refused"
+          },
+          {
+            "surface": "secret_scanning",
+            "status": "refused"
+          }
+        ]
+      },
+      "content_hash": "9668a1dfb0b307f096a587450ceb61f664363e5a29284df4cf1d4d9d081940a1"
+    },
+    {
+      "artifact_id": "security_mission_candidates",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_candidates_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "2fd5fd0b06af6335c617427c1eb0dfeb23af66a78a387a4f099e7de815ae0d92",
+      "schema_version": "rig.github.security_mission_candidates.v1",
+      "summary": {
+        "mission_candidate_count": 44,
+        "ready_candidate_count": 27,
+        "advisory_candidate_count": 15,
+        "blocked_candidate_count": 2,
+        "by_route": {
+          "advisory_only": 15,
+          "permission_required": 2,
+          "ready_for_investigation": 27
+        },
+        "by_mission_type": {
+          "advisory_record": 15,
+          "investigate_security_alert": 27,
+          "permission_enablement_plan": 2
+        },
+        "by_priority": {
+          "p1": 42,
+          "p3": 2
+        }
+      },
+      "content_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+    },
+    {
+      "artifact_id": "security_mission_packets",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_packets_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "b95ed8b71abf3ca0f2f459eb5a368b33dabdb13b43e6243851cc297f462897d3",
+      "schema_version": "rig.github.security_mission_packets.v1",
+      "summary": {
+        "packet_count": 27,
+        "excluded_candidate_count": 17,
+        "excluded_by_route": {
+          "advisory_only": 15,
+          "permission_required": 2
+        },
+        "packet_index_stale": null,
+        "selected_route": "ready_for_investigation",
+        "selected_by_route": {
+          "ready_for_investigation": 27
+        },
+        "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e"
+      },
+      "content_hash": "c5037a97ab80aff75f4ae71822b132b096e88de2a60d0c394d4348d739ca0012"
+    },
+    {
+      "artifact_id": "swift_codeql_advisory_parking",
+      "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/swift_codeql_advisory_parking_v1.v1.json",
+      "present": true,
+      "status": "present",
+      "artifact_hash": "4b4813fc8fdc0ecd6b6eabd549646259ac75417fdfbb35f1a64a40b33a391978",
+      "schema_version": "rig.swift_codeql_advisory_parking.v1",
+      "summary": {
+        "parked_surface": "swift_app_shell",
+        "recommendation": "parked_advisory",
+        "required_ci_preserved": true,
+        "default_ci_required": false,
+        "codeql_languages_required": [
+          "python",
+          "javascript-typescript"
+        ],
+        "codeql_languages_advisory": [
+          "swift"
+        ]
+      },
+      "content_hash": "fbc751a16e622e30abed451029f1adb5cb5112ca66ee6851ee2f2ce0bc6ac478"
+    }
+  ],
+  "auth_summary": {
+    "app_installation_configured": true,
+    "installation_access_proven": true,
+    "token_present": true,
+    "token_hash_present": true,
+    "token_narrowing_requested": true,
+    "token_narrowing_effective": true,
+    "unsafe_broad_token_used": false,
+    "public_release_ready": false,
+    "installation_id_hash": "ec34a5228168a9fe01bda860beac9a13be8deceafee6b4d8a0f81ef72add1d11",
+    "accessible_repo_count": 4,
+    "repository_selection": "all",
+    "permission_mode": "development_debug"
+  },
+  "permission_summary": {
+    "required_read_surfaces": [
+      "code_scanning_alerts",
+      "dependabot_alerts",
+      "checks",
+      "actions",
+      "metadata"
+    ],
+    "known_available_surfaces": [
+      {
+        "surface": "code_scanning_alerts",
+        "status": "present",
+        "evidence_paths": [
+          "docs/json/governance/github_security_intake_result.v1.json"
+        ]
+      },
+      {
+        "surface": "dependabot_alerts",
+        "status": "refused",
+        "evidence_paths": [
+          "docs/json/governance/github_security_intake_result.v1.json"
+        ]
+      },
+      {
+        "surface": "checks",
+        "status": "present",
+        "evidence_paths": [
+          "docs/json/governance/github_ci_cd_reliability_v1.v1.json"
+        ]
+      },
+      {
+        "surface": "actions",
+        "status": "present",
+        "evidence_paths": [
+          "docs/json/governance/github_ci_cd_reliability_v1.v1.json"
+        ]
+      },
+      {
+        "surface": "metadata",
+        "status": "present",
+        "evidence_paths": [
+          "docs/json/governance/live_github_auth_result.v1.json"
+        ]
+      }
+    ],
+    "refused_surfaces": [
+      {
+        "surface": "dependabot_alerts",
+        "status": "refused",
+        "reason": "missing_permission_or_not_enabled",
+        "required_permission_name": "dependabot_alerts",
+        "evidence_paths": [
+          "docs/json/governance/github_security_intake_result.v1.json"
+        ]
+      },
+      {
+        "surface": "secret_scanning_alerts",
+        "status": "refused",
+        "reason": "missing_permission_or_not_enabled",
+        "required_permission_name": "secret_scanning_alerts",
+        "evidence_paths": [
+          "docs/json/governance/github_security_intake_result.v1.json"
+        ]
+      },
+      {
+        "surface": "repository_security_advisories",
+        "status": "refused",
+        "reason": "missing_permission_or_not_enabled",
+        "required_permission_name": "repository_security_advisories",
+        "evidence_paths": []
+      }
+    ]
+  },
+  "intake_summary": {
+    "code_scanning": {
+      "status": "present",
+      "total": 42,
+      "open": 27,
+      "evidence_paths": [
+        "docs/json/governance/github_security_intake_result.v1.json"
+      ]
+    },
+    "dependabot": {
+      "status": "refused",
+      "total": 0,
+      "open": 0,
+      "refusal_reason": "missing_permission_or_not_enabled",
+      "evidence_paths": [
+        "docs/json/governance/github_security_intake_result.v1.json"
+      ]
+    },
+    "checks": {
+      "status": "present",
+      "evidence_paths": [
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json"
+      ]
+    },
+    "workflow_runs": {
+      "status": "present",
+      "evidence_paths": [
+        "docs/json/governance/github_ci_cd_reliability_v1.v1.json"
+      ]
+    }
+  },
+  "candidate_summary": {
+    "source_artifact_path": "docs/json/governance/github_security_work_items_v1.v1.json",
+    "artifact_hash": "2fd5fd0b06af6335c617427c1eb0dfeb23af66a78a387a4f099e7de815ae0d92",
+    "source_artifact_hash": "034c4bd2b0decb5debdc82e62dbf1e5e75b90b59c765647683ee4b9e956adf32",
+    "candidate_count": 44,
+    "ready_for_investigation_count": 27,
+    "advisory_only_count": 15,
+    "permission_required_count": 2
+  },
+  "packet_summary": {
+    "packet_index_path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
+    "artifact_hash": "b95ed8b71abf3ca0f2f459eb5a368b33dabdb13b43e6243851cc297f462897d3",
+    "source_artifact_path": "docs/json/governance/github_security_mission_candidates_v1.v1.json",
+    "source_artifact_hash": "1e9321c4e63263679a1546024a50d8ca5de896919daa50a4265da86ee834eb2e",
+    "packet_count": 27,
+    "excluded_candidate_count": 17,
+    "excluded_by_route": {
+      "advisory_only": 15,
+      "permission_required": 2
+    },
+    "packet_index_stale": false
+  },
+  "local_patch_lane_summary": {
+    "dependency_update_needed": 0,
+    "codeql_security_fix_needed": 27,
+    "code_quality_fix_needed": 15,
+    "workflow_or_ci_fix_needed": 0,
+    "permission_blocked": 2,
+    "unknown_triage_needed": 0
+  },
+  "next_recommended_actions": [
+    "run_packet_lane",
+    "request_permission"
+  ],
+  "evidence_paths": [
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_ci_cd_reliability_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_github_auth_result.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_intake_result.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_candidates_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_security_mission_packets_v1.v1.json",
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/swift_codeql_advisory_parking_v1.v1.json"
+  ],
+  "redaction_status": {
+    "content_light": true,
+    "forbidden_strings_present": false,
+    "redaction_rule_count": 12,
+    "checked_artifact_count": 6
+  },
+  "remaining_seams": [
+    "dependabot intake remains refusal-safe until endpoint or permission coverage changes",
+    "secret_scanning_alerts and repository_security_advisories remain permission-gated surfaces",
+    "workflow-run and check-run live reads are still represented through local CI/CD evidence"
+  ],
+  "summary": {
+    "auth_health": "installation_access_proven",
+    "intake_health": "partial_refusal",
+    "packet_health": "fresh",
+    "packet_index_stale": false,
+    "next_recommended_action": "run_packet_lane"
+  }
+}
