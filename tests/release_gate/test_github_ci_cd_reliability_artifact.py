@@ -35,6 +35,7 @@ def _load_all_workflows() -> dict[str, dict]:
 def _workflow_triggers(workflow: dict) -> dict:
     triggers = workflow.get("on")
     if triggers is None:
+        # PyYAML can parse the plain key `on` as boolean True in GitHub workflow files.
         triggers = workflow.get(True, {})
     return triggers if isinstance(triggers, dict) else {}
 
@@ -147,7 +148,7 @@ def test_codeql_push_pr_excludes_swift_and_avoids_autodetect():
     assert init_steps, "Expected at least one CodeQL init step"
     for step in init_steps:
         languages = step.get("with", {}).get("languages")
-        assert isinstance(languages, str) and languages.strip(), (
+        assert languages == "${{ matrix.language }}", (
             "CodeQL init must set explicit languages to avoid autodetection"
         )
 
