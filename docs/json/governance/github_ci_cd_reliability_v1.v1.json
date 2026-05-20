@@ -2,10 +2,10 @@
   "$schema": "https://rig-relay.github.io/schemas/rig.github_ci_cd_reliability.v1.schema.json",
   "schema_version": "rig.github_ci_cd_reliability.v1",
   "artifact_id": "github_ci_cd_reliability_v1",
-  "generated_at": "2026-05-19T23:45:51Z",
+  "generated_at": "2026-05-20T01:55:00Z",
   "workflow_name": "CI",
   "workflow_path": ".github/workflows/ci.yml",
-  "required_gate_rationale": "Required checks mirror the repository's deterministic local release-gate commands: schema validation, site renderer tests plus static rendering, DeepSeek/OpenCode usage report tests, and safe GitHub live-auth coverage. Broader release-evidence diagnostics remain available as advisory checks while full-suite pytest is intentionally not the required merge gate yet.",
+  "required_gate_rationale": "Required checks mirror the repository's deterministic local release-gate commands: schema validation, site renderer tests plus static rendering, DeepSeek/OpenCode usage report tests, and safe GitHub live-auth coverage. Swift CodeQL is parked as advisory-only because observed Swift autobuild runtime was 533 seconds in default CI; default push/pull_request CodeQL is explicitly limited to python and javascript-typescript. Broader release-evidence diagnostics remain available as advisory checks while full-suite pytest is intentionally not the required merge gate yet.",
   "required_checks": [
     {
       "job_id": "schema-validation",
