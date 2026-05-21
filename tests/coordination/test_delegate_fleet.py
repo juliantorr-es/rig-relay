@@ -16,6 +16,9 @@ from scripts.rig_relay_queue_plan import compute_ready_plan
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "schemas"
 
 CONVERGENCE_SCHEMA = SCHEMAS_DIR / "rig.relay.parent_convergence_report.v1.schema.json"
+WORK_ITEM_SCHEMA = SCHEMAS_DIR / "rig.relay.work_item.v1.schema.json"
+WORK_QUEUE_SCHEMA = SCHEMAS_DIR / "rig.relay.work_queue.v1.schema.json"
+READY_PLAN_SCHEMA = SCHEMAS_DIR / "rig.relay.ready_work_plan.v1.schema.json"
 
 
 def _try_validate(instance: dict, schema_path: Path) -> list[str]:

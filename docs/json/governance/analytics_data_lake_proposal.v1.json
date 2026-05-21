@@ -1,0 +1,214 @@
+{
+  "schema_version": "rig.relay.analytics_data_lake.v1",
+  "proposal_id": "analytics-data-lake-v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "data_sources": {
+    "telemetry": {
+      "observability_jsonl": {
+        "path_pattern": "~/.rig/relay/sessions/<session_id>/observability.jsonl",
+        "row_count_approx": 78001,
+        "session_count": 254,
+        "schema": "rig.relay.workflow_event.v1",
+        "duckdb_ready": true,
+        "key_fields": "event_id, session_id, parent_session_id, sequence, created_at, event_name, event_hash, payload, producer, receipt_candidate"
+      },
+      "receipts_jsonl": {
+        "path_pattern": "~/.rig/relay/sessions/<session_id>/receipts.jsonl",
+        "row_count_approx": 34082,
+        "session_count": 89,
+        "schema": "rig.relay.receipt_envelope.v1",
+        "duckdb_ready": true,
+        "key_fields": "event_index, event_name, evidence_kind, evidence_relative_path, evidence_sha256, receipt_sha256, session_id, sequence"
+      },
+      "trace_events_jsonl": {
+        "path_pattern": ".build/rig-relay/traces/trace_events.jsonl",
+        "row_count_approx": 3410,
+        "schema": "rig.trace_event.v1",
+        "duckdb_ready": true,
+        "key_fields": "trace_id, span_id, parent_span_id, event_kind, timestamp, event_type, payload"
+      }
+    },
+    "governance_release": {
+      "rc_blockers_jsonl": {
+        "path": "docs/json/release_gate/rc_blockers.v1.jsonl",
+        "row_count": 16,
+        "schema": "rig.release_gate.blocker.v1",
+        "duckdb_ready": false,
+        "gap": "JSONL file — needs DuckDB read_json_auto() wrapper"
+      },
+      "rc_validation_runs_jsonl": {
+        "path": "docs/json/release_gate/rc_validation_runs.v1.jsonl",
+        "row_count": 16,
+        "schema": "rig.release_gate.validation_run.v1",
+        "duckdb_ready": false
+      },
+      "out_of_scope_findings_jsonl": {
+        "path": "docs/findings/out-of-scope-findings.jsonl",
+        "row_count": 16,
+        "schema": "rig.relay.out_of_scope_finding.v1",
+        "duckdb_ready": false,
+        "gap": "Self-declares schema; no formal docs/schemas/ json file exists"
+      },
+      "test_classifications_jsonl": {
+        "path": "docs/json/testing/*.jsonl",
+        "schema": "rig.relay.test_classification.v1",
+        "duckdb_ready": false
+      },
+      "dependency_audit_csv": {
+        "path": ".build/rig-relay/derived/dependency_surface_audit_v1.csv",
+        "schema": "rig.relay.dependency_surface_audit.v1",
+        "duckdb_ready": true
+      }
+    },
+    "correlation_graph": {
+      "description": "Multi-store join surface for trace-aware analytics. Session IDs bridge telemetry, receipts, and governance findings. Trace IDs bridge tool execution to observability events. Finding IDs and blocker IDs bridge governance to release gates.",
+      "join_keys": ["session_id", "trace_id", "span_id", "finding_id", "blocker_id", "receipt_sha256", "event_hash"],
+      "cross_store_paths": [
+        {
+          "from_store": "observability_jsonl",
+          "to_store": "receipts_jsonl",
+          "join_key": "event_hash → receipt_sha256 or evidence_sha256",
+          "query_example": "SELECT e.event_name, COUNT(r.evidence_sha256) FROM observability e LEFT JOIN receipts r ON e.event_hash = r.receipt_sha256 GROUP BY e.event_name"
+        },
+        {
+          "from_store": "observability_jsonl",
+          "to_store": "trace_events_jsonl",
+          "join_key": "session_id → trace context (via span-to-session correlation at producer level)",
+          "query_example": "SELECT o.session_id, COUNT(DISTINCT t.trace_id) FROM observability o JOIN trace_events t ON o.payload->>'trace_id' = t.trace_id GROUP BY o.session_id"
+        },
+        {
+          "from_store": "out_of_scope_findings_jsonl",
+          "to_store": "rc_blockers_jsonl",
+          "join_key": "finding severity → blocker severity (classification join, not identity)",
+          "query_example": "CLASSIFY findings by severity bucket and compare against blocker distribution by phase"
+        },
+        {
+          "from_store": "dependency_audit_csv",
+          "to_store": "test_classifications_jsonl",
+          "join_key": "package → file_path (fuzzy join on test file names)",
+          "query_example": "Which test files import which packages? Which packages have highest test coverage?"
+        }
+      ]
+    },
+    "derived_analytics": {
+      "description": "Auto-generated read-side artifacts computed by disposable DuckDB projections. Never persisted as authority stores. Regenerated on each analytics CLI invocation.",
+      "artifacts": [
+        {
+          "name": "tool_usage_distribution",
+          "source": "observability_jsonl",
+          "query_pattern": "SELECT payload->>'$.tool_name' AS tool, COUNT(*) AS calls, AVG(CASE WHEN event_name='rig.relay.tool.call_completed' THEN 1 ELSE 0 END) AS success_rate FROM observability GROUP BY 1 ORDER BY 2 DESC",
+          "format": "csv"
+        },
+        {
+          "name": "governance_gate_decision_summary",
+          "source": "observability_jsonl",
+          "query_pattern": "SELECT payload->>'$.gate' AS gate, payload->>'$.decision' AS decision, payload->>'$.severity' AS severity, COUNT(*) AS count FROM observability WHERE event_name='rig.relay.governance.gate.decision' GROUP BY 1,2,3 ORDER BY 4 DESC",
+          "format": "csv"
+        },
+        {
+          "name": "blocker_burndown",
+          "source": "rc_blockers_jsonl",
+          "query_pattern": "SELECT status, phase, COUNT(*) AS count FROM rc_blockers GROUP BY 1, 2 ORDER BY 3 DESC",
+          "format": "csv"
+        },
+        {
+          "name": "finding_dependency_graph",
+          "source": "out_of_scope_findings_jsonl",
+          "query_pattern": "SELECT finding_id, blocked_by, COUNT(unblocks) AS unblocks_count FROM findings GROUP BY 1, 2",
+          "format": "duckdb_view"
+        },
+        {
+          "name": "session_health_scorecard",
+          "source": "observability_jsonl + receipts_jsonl",
+          "query_pattern": "Per-session: event_count, tool_success_rate, context_assembly_count, receipt_chain_valid, governance_decisions",
+          "format": "json"
+        },
+        {
+          "name": "test_coverage_by_package",
+          "source": "test_classifications_jsonl + dependency_audit_csv",
+          "query_pattern": "Fuzzy join: test files referencing dependency packages",
+          "format": "csv"
+        }
+      ]
+    }
+  },
+  "architecture": {
+    "principle": "DuckDB is a disposable read-side analytical lens over JSON/JSONL/CSV artifacts. It is NEVER a mutation authority, coordination store, consent store, debug-packet store, workstream ledger, release-gate source of truth, or coordination transaction engine. Every projection is recomputed from canonical sources on each invocation. No persistent .duckdb file is committed.",
+    "layers": [
+      {
+        "layer": "1. Canonical Sources",
+        "description": "389 JSON Schema-governed artifacts across docs/json/, .rig/relay/sessions/, docs/findings/, .build/rig-relay/. All append-only JSONL or versioned JSON. No DuckDB dependency required to read these.",
+        "duckdb_use": "None — canonical storage."
+      },
+      {
+        "layer": "2. Read-Side Ingestion",
+        "description": "Python CLI (rig_relay_analytics) reads canonical sources and projects them into a disposable in-memory DuckDB database. Uses read_json_auto() for schema inference and read_csv_auto() for CSV sources. Schema validation is applied at ingest time via jsonschema before projection.",
+        "duckdb_use": "In-memory DuckDB connection (:memory:). Opened, queried, closed. No persistent file."
+      },
+      {
+        "layer": "3. Derived Analytics Views",
+        "description": "Pre-built SQL views that answer common governance, performance, quality, and release questions. Views are SQL templates stored in the CLI, not persistent database objects. Regenerated on each invocation.",
+        "duckdb_use": "CREATE OR REPLACE TEMPORARY VIEW in memory."
+      },
+      {
+        "layer": "4. Export and Reporting",
+        "description": "Views are emitted as CSV, JSON, or JSONL to .build/rig-relay/derived/. Agents consume structured output via --json flag. Analysts run ad-hoc SQL via --sql flag. Dashboards consume CSV exports.",
+        "duckdb_use": "COPY (SELECT ...) TO 'derived_artifact.csv' (HEADER, DELIMITER ',')."
+      }
+    ],
+    "content_light_guarantee": "All observable telemetry data is content-light by design. Raw prompts and completions are SHA256-hashed before storage. Secrets and API keys are redacted. The analytics layer reads only schema-governed, content-light artifacts. No raw prompt, completion, credential, secret, private file content, or repository content is ever exposed through the analytics query surface."
+  },
+  "access_patterns": {
+    "agent_access": {
+      "cli_command": "uv run python scripts/rig_relay_analytics.py",
+      "output_format": "JSON to stdout (--json), CSV to derived artifacts (--csv), structured summary (default)",
+      "example_queries": [
+        "Which governance gates are blocking the most tool calls?",
+        "How many RC blockers remain across all phases?",
+        "What is the tool success rate trend across the last 10 sessions?",
+        "Which out-of-scope findings block other findings?",
+        "How many sessions have active receipt chains?"
+      ]
+    },
+    "analyst_access": {
+      "interface": "DuckDB SQL via `uv run python scripts/rig_relay_analytics.py --sql 'SELECT ...'` or direct DuckDB CLI on exported derived artifacts.",
+      "sql_examples": [
+        "SELECT payload->>'$.gate' AS gate, payload->>'$.decision' AS decision, payload->>'$.severity' AS severity, COUNT(*) AS cnt FROM '~/.rig/relay/sessions/*/observability.jsonl' WHERE event_name = 'rig.relay.governance.gate.decision' GROUP BY 1,2,3 ORDER BY 4 DESC",
+        "WITH sessions AS (SELECT session_id, COUNT(*) AS event_count, MAX(created_at) AS last_seen FROM '~/.rig/relay/sessions/*/observability.jsonl' GROUP BY 1), receipts AS (SELECT session_id, COUNT(*) AS receipt_count FROM '~/.rig/relay/sessions/*/receipts.jsonl' GROUP BY 1) SELECT s.session_id, s.event_count, COALESCE(r.receipt_count, 0) AS receipt_count, s.last_seen FROM sessions s LEFT JOIN receipts r ON s.session_id = r.session_id ORDER BY s.last_seen DESC",
+        "SELECT status, phase, COUNT(*) AS blocker_count FROM 'docs/json/release_gate/rc_blockers.v1.jsonl' GROUP BY 1, 2 ORDER BY 3 DESC",
+        "SELECT classification, COUNT(*) AS test_count FROM 'docs/json/testing/*.jsonl' GROUP BY 1 ORDER BY 2 DESC",
+        "SELECT classification, COUNT(*) AS dep_count FROM '.build/rig-relay/derived/dependency_surface_audit_v1.csv' GROUP BY 1 ORDER BY 2 DESC"
+      ],
+      "export_formats": ["csv", "parquet", "json", "jsonl"]
+    }
+  },
+  "implementation_plan": {
+    "phases": [
+      {
+        "phase": "Phase 1: Analytics CLI with unified ingestion",
+        "description": "Build scripts/rig_relay_analytics.py with subcommands: scan-sessions, ingest-all, query --sql, export --view. Ingests all DuckDB-ready sources (observability, receipts, traces, CSV). Schema-validates at ingest time.",
+        "deliverables": ["scripts/rig_relay_analytics.py", "tests/analytics/test_analytics_cli.py"],
+        "test_classification": "integration, real_artifact, substrate (DuckDB)"
+      },
+      {
+        "phase": "Phase 2: Derived analytics views",
+        "description": "Add --view flag for pre-built analytics: tool-usage, governance-decisions, blocker-burndown, finding-dependency-graph, session-health, test-coverage. Each view is a SQL template.",
+        "deliverables": ["rig_relay/analytics/views.py (SQL templates)", "expanded CLI flag --view <name>"],
+        "test_classification": "unit (SQL correctness), real_artifact (view output validates)"
+      },
+      {
+        "phase": "Phase 3: Correlation bridge",
+        "description": "Add --correlate flag that cross-references trace events with observability events and receipts via session_id, trace_id, and event_hash. Produce a correlation integrity report (gaps, orphans, duplicates).",
+        "deliverables": ["rig_relay/analytics/correlation.py", "--correlate CLI flag"],
+        "test_classification": "integration, adversarial (correlation gap detection)"
+      },
+      {
+        "phase": "Phase 4: Auto-regeneration on CI/commit",
+        "description": "Wire analytics regeneration into CI pipeline. On each push to main, regenerate derived analytics artifacts and commit to .build/rig-relay/derived/. Agents consume pre-computed artifacts for instant answers.",
+        "deliverables": [".github/workflows/analytics-regeneration.yml (or equivalent)", "scripts/rig_relay_analytics_regenerate.py"],
+        "test_classification": "real_artifact, substrate"
+      }
+    ],
+    "estimated_new_files": 6
+  }
+}

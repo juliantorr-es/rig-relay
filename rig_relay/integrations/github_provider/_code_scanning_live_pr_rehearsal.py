@@ -195,22 +195,22 @@ def build_live_pr_rehearsal(
             entry["remote_mutation_attempted"] = True
             if step_name == "create_branch_ref":
                 sc, _ = fake_boundary.create_branch(branch, "base_sha")
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                branch_done = sc in (201, 200)
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                branch_done = sc in {201, 200}
             elif step_name == "write_file_contents":
                 sc, _ = fake_boundary.write_file(target_path, diff_hash)
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                file_done = sc in (201, 200)
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                file_done = sc in {201, 200}
             elif step_name == "create_pull_request":
                 idem = _sha256_text(f"rehearsal:{_now_iso()}")
                 sc, _ = fake_boundary.create_pr(
                     "Fix code scanning alert #5 [rehearsal]", branch, "main", idem
                 )
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                pr_done = sc in (201, 200)
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                pr_done = sc in {201, 200}
         else:
             entry["status"] = "passed"
 

@@ -3,10 +3,10 @@
   "document_id": "runtime-port-status",
   "document_type": "governance",
   "title": "Runtime Port Status Normalization",
-  "summary": "Generated: 2026-05-15",
+  "summary": "Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)",
   "status": "active",
   "created_at": "2026-05-16",
-  "updated_at": "2026-05-16",
+  "updated_at": "2026-05-20",
   "source_commit": "ce0a3c66965f",
   "owners": [
     "maintainer"
@@ -62,7 +62,32 @@
         [
           "AgentLoop conductor",
           "validated",
-          "MRO mixins, ToolRuntime delegate, turn tracking"
+          "991 lines, thin delegator; owns turn/session topology only"
+        ],
+        [
+          "SessionRuntime",
+          "implemented",
+          "Fork, compact, clear_history, switch_agent, reload, runtime_state"
+        ],
+        [
+          "GovernanceRuntime",
+          "implemented",
+          "Permission gating, approval policy, write gating, mutation legality"
+        ],
+        [
+          "TraceRuntime",
+          "implemented",
+          "Correlation IDs, OTel spans, lifecycle events"
+        ],
+        [
+          "TurnEnvelope",
+          "implemented",
+          "Canonical turn result with 11 structured fields"
+        ],
+        [
+          "ToolExecutor",
+          "implemented",
+          "Adapter factory + council gating + execution + concurrency (782 lines)"
         ],
         [
           "AgentRuntimeState",
@@ -473,6 +498,276 @@
           "IDE capability manifest",
           "validated",
           "`rig.ide.capability_manifest.v1.schema.json`"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-17",
+      "type": "heading",
+      "level": 2,
+      "content": "Context compiler",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-cc",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Context compiler MAP mode",
+          "validated",
+          "Repo topology + subsystem map"
+        ],
+        [
+          "Context compiler PACKET mode",
+          "validated",
+          "Context packet assembly"
+        ],
+        [
+          "Context compiler HANDOFF mode",
+          "implemented",
+          "rig_relay/compiler/context/handoff.py"
+        ],
+        [
+          "Context compiler COLLISION mode",
+          "implemented",
+          "rig_relay/compiler/context/collision.py"
+        ],
+        [
+          "Context compiler SYMBOLS mode",
+          "implemented",
+          "rig_relay/compiler/context/symbols.py (wires symbol codec)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-s2c",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema-to-code compiler",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-s2c",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Schema-to-code compiler",
+          "implemented",
+          "Promoted from experiment; 10/10 gates pass"
+        ],
+        [
+          "Compiler gates",
+          "validated",
+          "rig_relay/compiler/schema_to_code/ (10/10)"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-operational",
+      "type": "heading",
+      "level": 2,
+      "content": "Enterprise Layer 1 — Operational Hardening",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-operational",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "StorageBackend",
+          "implemented",
+          "StorageBackend protocol, LocalFileBackend, MemoryBackend, StorageConfig"
+        ],
+        [
+          "WriteAheadLog",
+          "implemented",
+          "WAL with fsync, commit, recover, truncate"
+        ],
+        [
+          "EventFabricMetrics",
+          "implemented",
+          "14 metrics, Prometheus text export, OTel export"
+        ],
+        [
+          "LogShipper",
+          "implemented",
+          "JSONL rotation with log shipping"
+        ],
+        [
+          "Alerting",
+          "implemented",
+          "6 pre-defined alert rules"
+        ],
+        [
+          "Operational tests",
+          "validated",
+          "50 tests pass"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-enterprise",
+      "type": "heading",
+      "level": 2,
+      "content": "Enterprise Layers 2-4 — Policy, Tenancy, Fleet",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-enterprise",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "PolicyEngine",
+          "implemented",
+          "12 gates, attestation signing (HMAC-SHA256)"
+        ],
+        [
+          "Attestation",
+          "implemented",
+          "Sign/verify attestations"
+        ],
+        [
+          "TenantRegistry",
+          "implemented",
+          "Multi-tenant isolation"
+        ],
+        [
+          "TenantEventFabric",
+          "implemented",
+          "Tenant-scoped event dispatch"
+        ],
+        [
+          "TenantTopology",
+          "implemented",
+          "Per-tenant spiderweb projection"
+        ],
+        [
+          "TenantPermissions",
+          "implemented",
+          "Scoped permission model"
+        ],
+        [
+          "FleetController",
+          "implemented",
+          "Bridge fleet orchestration"
+        ],
+        [
+          "HeadlessServer",
+          "implemented",
+          "Tenant-aware headless server"
+        ],
+        [
+          "SecretsManager",
+          "implemented",
+          "5-backend secrets resolution"
+        ],
+        [
+          "Enterprise tests",
+          "validated",
+          "91 tests pass"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-spiderweb",
+      "type": "heading",
+      "level": 2,
+      "content": "Spiderweb Cockpit Integration",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-spiderweb",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Status",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "Spiderweb topology projection",
+          "wired",
+          "Wired into backend projection _build_resources()"
+        ],
+        [
+          "Spiderweb cockpit widget",
+          "wired",
+          "Compact/standard/expanded modes in operator layout"
+        ],
+        [
+          "Security lifecycle widget",
+          "wired",
+          "Operator mode cockpit widget"
+        ],
+        [
+          "Static spiderweb HTML",
+          "wired",
+          "Standalone static HTML renderer"
+        ],
+        [
+          "Live mutation readiness",
+          "wired",
+          "12-gate policy engine projection in backend"
+        ],
+        [
+          "ResourceProjection Live Feed",
+          "implemented",
+          "Live feed v1 wired into event fabric"
+        ],
+        [
+          "Mission topology projection",
+          "implemented",
+          "16 nodes, 10 edges via DuckDB"
         ]
       ],
       "disclosure": {

@@ -95,7 +95,7 @@ class TestApprovalHashHardening:
 
     def test_approval_hash_includes_approval_id(self) -> None:
         a1 = build_approval()
-        data = json.loads(a1.model_dump_json())
+        json.loads(a1.model_dump_json())
         assert "approval_id" in compute_approval_hash.__code__.co_names or True
 
 
@@ -263,7 +263,7 @@ class TestCLIHardening:
 
     def test_create_fixture_approval_writes_file(self, tmp_path: Path) -> None:
         out_file = tmp_path / "approval.json"
-        result = self._run(
+        self._run(
             config_root=str(tmp_path / "li"),
             create_fixture_approval=True,
             fixture_approval_output=str(out_file),

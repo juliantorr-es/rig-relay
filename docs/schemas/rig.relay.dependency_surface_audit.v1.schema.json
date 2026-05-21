@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.dependency_surface_audit.v1",
+  "title": "Dependency Surface Audit",
+  "description": "Structured audit of every declared dependency with classification, import evidence, risk surface analysis, and recommended action.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "audit_id", "generated_at", "summary", "dependencies", "recommendations"],
+  "properties": {
+    "schema_version": { "const": "rig.relay.dependency_surface_audit.v1" },
+    "audit_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "summary": {
+      "type": "object",
+      "required": ["total_direct", "total_dev", "total_optional", "production_used", "test_only", "unused_direct", "remove_candidates", "needs_justification"],
+      "properties": {
+        "total_direct": { "type": "integer" },
+        "total_dev": { "type": "integer" },
+        "total_optional": { "type": "integer" },
+        "production_used": { "type": "integer" },
+        "test_only": { "type": "integer" },
+        "unused_direct": { "type": "integer" },
+        "remove_candidates": { "type": "integer" },
+        "needs_justification": { "type": "integer" }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "declared_group", "import_count", "classification", "decision", "reason"],
+        "properties": {
+          "package": { "type": "string" },
+          "version_spec": { "type": "string" },
+          "declared_group": { "type": "string", "enum": ["direct", "dev", "optional", "build"] },
+          "import_count": { "type": "integer" },
+          "import_examples": { "type": "array", "items": { "type": "string" } },
+          "import_locations": { "type": "string", "enum": ["rig_relay", "tests", "scripts", "none", "rig_relay+tests"] },
+          "stdlib_alternative": { "type": "string" },
+          "existing_dep_alternative": { "type": "string" },
+          "risk_surface": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["native_extensions", "subprocess", "filesystem_mutation", "network", "browser_automation", "crypto", "telemetry", "credential_adjacent", "none"] }
+          },
+          "doctrine_conflict": { "type": "string" },
+          "classification": {
+            "type": "string",
+            "enum": ["canonical_keep", "test_only_keep", "replace_with_stdlib_candidate", "replace_with_existing_dependency_candidate", "remove_candidate", "needs_justification", "prohibited_candidate"]
+          },
+          "decision": { "type": "string" },
+          "reason": { "type": "string" },
+          "recommended_action": { "type": "string" }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

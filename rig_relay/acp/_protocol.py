@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Any
 
 from acp import Client
 from acp.schema import AuthenticateResponse, SessionInfoUpdate
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from rig_relay.acp._local_auth import build_acp_local_auth_state
 from rig_relay.acp._refusal_adapter import build_acp_refusal, raise_acp_refusal
@@ -22,10 +22,14 @@ from rig_relay.core.session.saved_sessions import (
 )
 
 
+class SessionSetTitleRequest(BaseModel):
+    session_id: str
+    title: str
+
+
 class ProtocolMixin:
     """Mixin for VibeAcpAgentLoop."""
 
-    @override
     async def authenticate(
         self, method_id: str, **kwargs: Any
     ) -> AuthenticateResponse | None:
@@ -137,7 +141,6 @@ class ProtocolMixin:
         )
         return {}
 
-    @override
     async def ext_method(self, method: str, params: dict) -> dict:
         if method == "session/set_title":
             return await self._handle_session_set_title(params)
@@ -148,13 +151,11 @@ class ProtocolMixin:
             method=method,
         )
 
-    @override
     async def ext_notification(self, method: str, params: dict) -> None:
         # ACP strips the leading "_" before delegating extension notifications here.
         if method == "telemetry/send":
             self._handle_telemetry_notification(params)
 
-    @override
     def on_connect(self, conn: Client) -> None:
         self.client = conn
 

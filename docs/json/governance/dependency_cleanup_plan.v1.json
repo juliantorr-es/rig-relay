@@ -1,0 +1,128 @@
+{
+  "schema_version": "rig.relay.dependency_cleanup_plan.v1",
+  "plan_id": "dep-cleanup-20260521T020000Z",
+  "created_at": "2026-05-21T02:00:00.000000+00:00",
+  "source_audit_id": "dep-audit-20260521T013909Z",
+  "summary": {
+    "audit_remove_candidates": 6,
+    "confirmed_removals": 3,
+    "reclassified_keeps": 4,
+    "justification_resolved": true,
+    "total_pyproject_lines_to_change": 4
+  },
+  "decisions": [
+    {
+      "package": "google-auth-httplib2",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "remove",
+      "new_classification": "removed",
+      "rationale": "Zero Python imports confirmed. google-auth uses requests/urllib3 internally for HTTP transport; the httplib2 adapter is not needed. No subprocess usage. Removing removes a credential-adjacent network surface with no benefit.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": false,
+        "subprocess_files": []
+      },
+      "pyproject_change": "Delete line 33: \"google-auth-httplib2>=0.2.0\"",
+      "risk": "low"
+    },
+    {
+      "package": "pyperclip",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "remove",
+      "new_classification": "removed",
+      "rationale": "Zero Python imports confirmed. No clipboard feature exists in the product. Removing a dependency with no imports, no subprocess usage, and no feature roadmap that would need it.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": false,
+        "subprocess_files": []
+      },
+      "pyproject_change": "Delete line 50: \"pyperclip>=1.11.0\"",
+      "risk": "low"
+    },
+    {
+      "package": "requests",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "remove",
+      "new_classification": "removed",
+      "rationale": "Zero Python imports confirmed. The entire codebase uses httpx (61 import locations) as the HTTP client. requests is a vestigial dependency from pre-httpx migration. Removing eliminates a duplicate HTTP surface.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": false,
+        "subprocess_files": []
+      },
+      "pyproject_change": "Delete line 53: \"requests>=2.20.0\"",
+      "risk": "low"
+    },
+    {
+      "package": "pyrefly",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "keep_reclassified",
+      "new_classification": "canonical_keep",
+      "rationale": "False positive from 0-import metric. pyrefly is used as a CLI subprocess by two production tools: (1) pyrefly_check.py wraps `pyrefly check` for type-checking results; (2) validation_suite.py invokes `uv run pyrefly check` as a validation step. The Python package must be installed for the CLI binary to be available. Falls back to pyright if unavailable, but pyrefly is the preferred backend. Reclassify as canonical_keep with subprocess usage.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": true,
+        "subprocess_files": [
+          "rig_relay/core/tools/pyrefly_check.py",
+          "rig_relay/core/tools/builtins/validation_suite.py"
+        ]
+      },
+      "pyproject_change": "Keep line 69 (\"pyrefly>=0.64.0\"). No change.",
+      "risk": "none"
+    },
+    {
+      "package": "ast-grep-py",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "keep_reclassified",
+      "new_classification": "canonical_keep",
+      "rationale": "False positive from 0-import metric. ast-grep-py provides the `sg` CLI binary used by ast_search.py for AST-aware structural search. The tool checks `shutil.which('sg')` and falls back to ripgrep if unavailable. The package is needed for the `sg` binary to be on PATH. Reclassify as canonical_keep with subprocess usage.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": true,
+        "subprocess_files": [
+          "rig_relay/core/tools/ast_search.py"
+        ]
+      },
+      "pyproject_change": "Keep line 70 (\"ast-grep-py>=0.42.1\"). No change.",
+      "risk": "none"
+    },
+    {
+      "package": "textual-speedups",
+      "audit_classification": "remove_candidate",
+      "plan_decision": "keep_reclassified",
+      "new_classification": "canonical_keep",
+      "rationale": "False positive from 0-import metric. textual-speedups is a C-extension acceleration library auto-detected by the textual TUI framework at runtime. No explicit import is needed — textual discovers it via entry point. Removing would silently degrade TUI rendering performance. Reclassify as canonical_keep with auto-detection usage.",
+      "verification": {
+        "import_count": 0,
+        "import_locations": "none",
+        "subprocess_usage": false,
+        "subprocess_files": []
+      },
+      "pyproject_change": "Keep line 57 (\"textual-speedups>=0.2.1\"). No change.",
+      "risk": "none"
+    },
+    {
+      "package": "sounddevice",
+      "audit_classification": "needs_justification",
+      "plan_decision": "keep_justified",
+      "new_classification": "canonical_keep",
+      "rationale": "sounddevice provides voice interaction (recording via audio_recorder.py, playback via audio_player.py) — a feature inherited from the upstream mistralai/mistral-vibe project. Rig Relay is a derivative product and voice I/O is an established product surface (referenced in AGENTS.md tool hardening section and README features). The import is guarded by OSError try/except with graceful fallback when no audio driver is available, so it never blocks startup. Risk surface (native_extensions) is bounded: audio I/O is opt-in via explicit user invocation and device selection. Reclassify as canonical_keep with voice interaction justification.",
+      "verification": {
+        "import_count": 6,
+        "import_locations": "rig_relay+tests",
+        "subprocess_usage": false,
+        "subprocess_files": [
+          "rig_relay/core/audio_recorder/audio_recorder.py",
+          "rig_relay/core/audio_player/audio_player.py"
+        ]
+      },
+      "pyproject_change": "Keep line 55 (\"sounddevice>=0.5.1\"). No change.",
+      "risk": "low"
+    }
+  ]
+}

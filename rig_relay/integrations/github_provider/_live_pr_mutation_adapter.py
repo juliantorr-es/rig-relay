@@ -237,7 +237,7 @@ def build_live_pr_mutation_attempt(
 
     branch = "rig/security/fix-5"
 
-    for i, step in enumerate(_STEPS):
+    for _i, step in enumerate(_STEPS):
         entry: dict[str, Any] = {
             "step_id": step["id"],
             "step_name": step["name"],
@@ -257,23 +257,23 @@ def build_live_pr_mutation_attempt(
             entry["remote_mutation_attempted"] = True
             if step["id"] == "create_branch":
                 sc, _ = fake_boundary.create_branch(branch, "base_sha")
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                branch_created = sc in (201, 200)
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                branch_created = sc in {201, 200}
             elif step["id"] == "write_file":
                 sc, _ = fake_boundary.write_file("README.md", "candidate_sha")
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                file_written = sc in (201, 200)
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                file_written = sc in {201, 200}
             elif step["id"] == "create_pr":
                 idem_key = _sha256_text(f"live-attempt:{_now_iso()}")
                 sc, _ = fake_boundary.create_pr(
                     "Fix code scanning alert #5", branch, "main", idem_key
                 )
-                entry["remote_mutation_succeeded"] = sc in (201, 200)
-                entry["status"] = "passed" if sc in (201, 200) else f"http_{sc}"
-                pr_created_flag = sc in (201, 200)
-        elif step["id"] in ("write_receipt", "write_rollback", "alert_deferred"):
+                entry["remote_mutation_succeeded"] = sc in {201, 200}
+                entry["status"] = "passed" if sc in {201, 200} else f"http_{sc}"
+                pr_created_flag = sc in {201, 200}
+        elif step["id"] in {"write_receipt", "write_rollback", "alert_deferred"}:
             entry["status"] = "passed"
         else:
             entry["status"] = "passed"

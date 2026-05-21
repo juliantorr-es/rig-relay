@@ -100,7 +100,7 @@ class TestEventStreamOrdering:
                 events.append(e.type)
             return events
 
-        events = _run_async(_run())
+        _run_async(_run())
         assert adapter.context_calls == 1
         assert adapter.llm_turns == 1
         assert len(adapter.turn_outcomes) == 1

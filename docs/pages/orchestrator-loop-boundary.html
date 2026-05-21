@@ -34,7 +34,7 @@
   <p class="doc-summary">Ownership doctrine for Rig Relay runtimes: who may run a full turn loop, 7 principles governing OrchestratorLoop, ConversationRuntime, SubagentRuntime, RalphRuntime, ToolRuntime, and handoff receipts.</p>
   <dl class="doc-meta">
     <dt>Status</dt><dd>active</dd>
-    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Updated</dt><dd>2026-05-20</dd>
     <dt>Source</dt><dd><code>docs/json/governance/orchestrator_loop_boundary.v1.json</code></dd>
   </dl>
 </header>
@@ -65,6 +65,13 @@
 <li><a href="#phase3">Phase 3 Recommendation</a></li>
 <li><a href="#readiness">Phase 3 Readiness Doctrine</a></li>
 <li><a href="#debt">Known Debt</a></li>
+<li><a href="#agentloop-refactor">AgentLoop Refactor — Extracted Runtimes (Waves 2-6)</a></li>
+<li><a href="#refactor-tool-executor">ToolExecutor (rig_relay/core/tool_executor/, 782 lines)</a></li>
+<li><a href="#refactor-session-runtime">SessionRuntime (rig_relay/core/session_runtime.py, 292 lines)</a></li>
+<li><a href="#refactor-governance-runtime">GovernanceRuntime (rig_relay/core/governance_runtime.py, 101 lines)</a></li>
+<li><a href="#refactor-trace-runtime">TraceRuntime (rig_relay/core/trace_runtime.py, 85 lines)</a></li>
+<li><a href="#refactor-turn-envelope">TurnEnvelope (rig_relay/core/conversation_runtime/turn_envelope.py, 58 lines)</a></li>
+<li><a href="#refactor-shell">Shell Hardening &amp; Isolation Guards</a></li>
 <li><a href="#validation">Validation Gates</a></li>
   </ol>
 </nav>
@@ -166,6 +173,63 @@
   <li>AgentLoop still named AgentLoop — rename deferred to OrchestratorLoop</li>
 </ul>
 
+<h2 id="agentloop-refactor" class="disclosure-standard" data-disclosure-level="standard">AgentLoop Refactor — Extracted Runtimes (Waves 2-6)</h2>
+
+<p id="refactor-intro" class="disclosure-standard" data-disclosure-level="standard">Waves 2-6 reduced AgentLoop from 1806 to 991 lines (45% reduction) by extracting 5 standalone runtime modules. Each module owns a coherent domain and is composed into AgentLoop — none use MRO mixin injection. Ownership boundaries are explicit and testable.</p>
+
+<h3 id="refactor-tool-executor" class="disclosure-standard" data-disclosure-level="standard">ToolExecutor (rig_relay/core/tool_executor/, 782 lines)</h3>
+
+<ul id="refactor-te-owns" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Adapter factory — constructs tool adapters from registered tool types</li>
+  <li>Council gating — adversarial multi-provider review before mutation</li>
+  <li>Execution orchestration — single tool invoke with all pre/post hooks</li>
+  <li>Concurrency — parallel tool batch execution with lease coordination</li>
+  <li>Does NOT own approval policy (delegates to GovernanceRuntime)</li>
+</ul>
+
+<h3 id="refactor-session-runtime" class="disclosure-standard" data-disclosure-level="standard">SessionRuntime (rig_relay/core/session_runtime.py, 292 lines)</h3>
+
+<ul id="refactor-sr-owns" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Fork — clone session into isolated lane with bounded message history</li>
+  <li>Compact — collapse message history to conversation digest</li>
+  <li>Clear history — reset message list while preserving session identity</li>
+  <li>Switch agent — rebind profile/model/tools without session teardown</li>
+  <li>Reload — rehydrate session from config with optional initial messages</li>
+  <li>Runtime state — build and update AgentRuntimeState snapshot</li>
+</ul>
+
+<h3 id="refactor-governance-runtime" class="disclosure-standard" data-disclosure-level="standard">GovernanceRuntime (rig_relay/core/governance_runtime.py, 101 lines)</h3>
+
+<ul id="refactor-gr-owns" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Permission gating — per-tool ALWAYS/ASK/NEVER enforcement</li>
+  <li>Approval policy — tool approval callbacks, user prompt construction</li>
+  <li>Write gating — mutation tool legality checks before execution</li>
+  <li>Session rules — per-session policy overrides and constraints</li>
+</ul>
+
+<h3 id="refactor-trace-runtime" class="disclosure-standard" data-disclosure-level="standard">TraceRuntime (rig_relay/core/trace_runtime.py, 85 lines)</h3>
+
+<ul id="refactor-tr-owns" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Correlation IDs — trace/turn/session ID propagation across boundaries</li>
+  <li>OTel spans — span construction, attribute binding, parent-child linking</li>
+  <li>Lifecycle events — session start/end, turn start/end event emission</li>
+</ul>
+
+<h3 id="refactor-turn-envelope" class="disclosure-standard" data-disclosure-level="standard">TurnEnvelope (rig_relay/core/conversation_runtime/turn_envelope.py, 58 lines)</h3>
+
+<ul id="refactor-tue-owns" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Canonical turn result with 11 structured fields</li>
+  <li>Fields: status, outcome, tool_batch_metadata, phase_trace, budget_consumed, model_call_info, middleware_results, tool_results, context_used, evidence_emitted, correlation_id</li>
+  <li>JSON-safe serialization for projection consumers</li>
+</ul>
+
+<h3 id="refactor-shell" class="disclosure-standard" data-disclosure-level="standard">Shell Hardening &amp; Isolation Guards</h3>
+
+<ul id="refactor-shell-list" class="disclosure-standard" data-disclosure-level="standard">
+  <li>17 shell hardening + isolation guard tests pass</li>
+  <li>8 governance fail-open seams all closed (parallel lane, 114 tests)</li>
+</ul>
+
 <h2 id="validation" class="disclosure-standard" data-disclosure-level="standard">Validation Gates</h2>
 
 <ul id="validation-items" class="disclosure-standard" data-disclosure-level="standard">
@@ -173,6 +237,10 @@
   <li>InvokeContext carries tool_runtime and trace_recorder</li>
   <li>ToolRuntime.execute_one() spans finalize on all paths</li>
   <li>Desktop correlation integrated in websocket_server.py</li>
+  <li>5 runtime modules extracted from AgentLoop (ToolExecutor, SessionRuntime, GovernanceRuntime, TraceRuntime, TurnEnvelope)</li>
+  <li>AgentLoop reduced 1806 → 991 lines (45% reduction)</li>
+  <li>17 shell hardening + isolation guard tests pass</li>
+  <li>8 governance fail-open seams all closed (parallel lane, 114 tests)</li>
 </ul>
 
   </article>

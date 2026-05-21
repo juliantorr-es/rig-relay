@@ -45,6 +45,7 @@ async def type_check(
     else:
         cmd.append(".")
 
+    proc = None
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -53,7 +54,8 @@ async def type_check(
             proc.communicate(), timeout=timeout
         )
     except TimeoutError:
-        await _kill_process(proc)
+        if proc is not None:
+            await _kill_process(proc)
         return {
             "backend": "pyrefly",
             "exit_code": -1,

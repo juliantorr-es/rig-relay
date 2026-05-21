@@ -167,8 +167,9 @@ class InitHelpersMixin:
         self._context_packet = None
         try:
             from rig_relay.context.compiler import execute as _ctx_build
+            from rig_relay.context.models import ContextMode
 
-            self._context_packet = _ctx_build(ContextRequest(mode="map"))
+            self._context_packet = _ctx_build(ContextRequest(mode=ContextMode.MAP))
         except Exception:
             pass
 

@@ -20,6 +20,7 @@ from collections.abc import AsyncGenerator
 import time
 from typing import Any
 
+from rig_relay.core.conversation_runtime import _decisions, _trace_hooks
 from rig_relay.core.conversation_runtime.models import (
     ConversationLoopDecision,
     ConversationRuntimeCallbacks,
@@ -140,19 +141,15 @@ class ConversationRuntime:
         status: str | None = None,
         reason: str | None = None,
     ) -> PhaseTraceAttributes:
-        return PhaseTraceAttributes(
-            conversation_session_id=self._session_id,
-            conversation_turn_id=self._turn_id or None,
-            conversation_phase=phase,
-            conversation_previous_phase=previous,
-            conversation_status=status,
-            conversation_reason=reason,
-            conversation_tool_call_count=self._tool_call_count,
-            conversation_duration_ms=(
-                (time.monotonic() - self._start_time) * 1000
-                if self._start_time >= 0
-                else None
-            ),
+        return _trace_hooks.build_trace_attrs(
+            session_id=self._session_id,
+            turn_id=self._turn_id,
+            phase=phase,
+            previous=previous,
+            status=status,
+            reason=reason,
+            tool_call_count=self._tool_call_count,
+            start_time=self._start_time,
             trace_id=self._trace_id,
         )
 
@@ -161,7 +158,7 @@ class ConversationRuntime:
             return
         try:
             attrs = self._build_trace_attrs(str(phase.value), previous=previous)
-            self._trace_hook.on_phase_event(attrs)
+            _trace_hooks.emit_phase_event(self._trace_hook, attrs)
         except Exception:
             logger.debug("Phase trace hook error", exc_info=True)
 
@@ -173,33 +170,24 @@ class ConversationRuntime:
             attrs = self._build_trace_attrs(
                 "finalizing", status=status, reason=self._finish_reason or None
             )
-            self._trace_hook.on_result(attrs)
+            _trace_hooks.emit_result_event(self._trace_hook, attrs)
         except Exception:
             logger.debug("Result trace hook error", exc_info=True)
 
     def _capture_trace_id(self) -> None:
         if self._trace_id is not None:
             return
-        try:
-            from opentelemetry import trace
+        trace_id = _trace_hooks.capture_trace_id()
+        if trace_id is not None:
+            self._trace_id = trace_id
 
-            span = trace.get_current_span()
-            ctx = span.get_span_context() if span else None
-            if ctx is not None and ctx.is_valid:
-                self._trace_id = format(ctx.trace_id, "032x")
-        except Exception:
-            pass
-
-    # ── Decision methods (Phase 2B) ────────────────────────────
-
-    # Phase 2A decisions
+    # ── Decision methods (delegate to _decisions) ──────────────
 
     def decide_after_middleware(self, action: str) -> ConversationLoopDecision:
-        """Middleware STOP → stop_middleware. Otherwise continue."""
-        if action == "STOP":
+        decision = _decisions.decide_after_middleware(action)
+        if decision.kind == "stop_middleware":
             self._finish_decision(TurnOutcome.MIDDLEWARE_STOP)
-            return ConversationLoopDecision.stop_middleware("middleware action STOP")
-        return ConversationLoopDecision.continue_turn("middleware action CONTINUE")
+        return decision
 
     def decide_after_model_turn(
         self,
@@ -207,55 +195,45 @@ class ConversationRuntime:
         assistant_final: bool = True,
         error: str | None = None,
     ) -> ConversationLoopDecision:
-        """After LLM turn: decide to stop, continue, or fail."""
-        if error:
+        decision = _decisions.decide_after_model_turn(
+            user_cancelled=user_cancelled, assistant_final=assistant_final, error=error
+        )
+        if decision.kind == "fail_error":
             self._finish_decision(TurnOutcome.LLM_ERROR)
-            return ConversationLoopDecision.fail_error(error)
-        if user_cancelled:
+        elif decision.kind == "stop_cancelled":
             self._finish_decision(TurnOutcome.USER_CANCELLED)
-            return ConversationLoopDecision.stop_cancelled("user cancelled")
-        if assistant_final:
+        elif decision.kind == "stop_completed":
             self._finish_decision(TurnOutcome.SUCCESS)
-            return ConversationLoopDecision.stop_completed("assistant final reply")
-        return ConversationLoopDecision.run_tools("tool calls present")
+        return decision
 
     def decide_on_exception(self, exc: Exception) -> ConversationLoopDecision:
-        """Exception → fail_error."""
+        decision = _decisions.decide_on_exception(exc)
         self._finish_decision(TurnOutcome.LLM_ERROR)
-        return ConversationLoopDecision.fail_error(
-            str(exc)[:500], attributes={"error_type": type(exc).__name__}
-        )
-
-    # Phase 2B decisions
+        return decision
 
     def decide_after_hook_processing(
         self, hook_returned_user_message: bool = False
     ) -> ConversationLoopDecision:
-        """After processing hooks: retry or accept completion."""
-        if hook_returned_user_message:
+        decision = _decisions.decide_after_hook_processing(
+            hook_returned_user_message=hook_returned_user_message
+        )
+        if decision.kind == "retry_hooks":
             self._finish_outcome = None
             self._finish_reason = ""
-            return ConversationLoopDecision.retry_hooks(
-                "hook returned user message → retry turn"
-            )
-        return ConversationLoopDecision.stop_completed(
-            "hooks processed, no retry message"
-        )
+        return decision
 
     def decide_after_tool_batch(self) -> ConversationLoopDecision:
-        """After tool execution batch: continue the turn loop."""
-        return ConversationLoopDecision.continue_turn("tool batch completed")
+        return _decisions.decide_after_tool_batch()
 
     def decide_after_budget_check(
         self, current_turn: int, max_turns: int | None
     ) -> ConversationLoopDecision:
-        """Check max-turn budget. Fail if exceeded."""
-        if max_turns is not None and current_turn >= max_turns:
+        decision = _decisions.decide_after_budget_check(
+            current_turn=current_turn, max_turns=max_turns
+        )
+        if decision.kind == "fail_budget_exceeded":
             self._finish_decision(TurnOutcome.LLM_ERROR)
-            return ConversationLoopDecision.fail_budget_exceeded(
-                f"max turns {max_turns} reached at turn {current_turn}"
-            )
-        return ConversationLoopDecision.continue_turn("budget ok")
+        return decision
 
     def _finish_decision(self, outcome: TurnOutcome) -> None:
         """Record terminal decision outcome without emitting extra phase."""
@@ -311,7 +289,7 @@ class ConversationRuntime:
                     first_llm_turn = False
                     self._phase(TurnPhase.CONTEXT_BUILDING)
                     adapter.get_turn().advance(TurnPhase.CONTEXT_BUILDING)
-                    envelope = await adapter.build_context_envelope(None)
+                    envelope = await adapter.build_context_envelope(None)  # type: ignore[reportArgumentType]
                     if envelope is not None:
                         adapter.set_context_envelope(envelope)
                     self._phase(TurnPhase.CONTEXT_READY)

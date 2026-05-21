@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.google_workspace.operating_picture.v1",
-  "generated_at": "2026-05-20T07:28:10.703469+00:00",
+  "generated_at": "2026-05-21T02:44:30.046469+00:00",
   "branch": "main",
-  "head": "d02062f6ae91ebf0a90c9c58fa4622c985fb6835",
+  "head": "54aafb1c8cd3af078954837fee6a7b29c2d0890c",
   "content_light": true,
   "remote_mutation": false,
   "source_artifacts": [
@@ -47,9 +47,9 @@
       "artifact_id": "live_auth",
       "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_google_auth_result.v1.json",
       "present": true,
-      "status": "invalid",
-      "artifact_hash": "fe3898497b4f0a999f469734e7ed77838a637a6ec1d7e9e8e27ddafc190e8e18",
-      "schema_version": null,
+      "status": "present",
+      "artifact_hash": "f245c0f5fc4c96e577a4dfe722806166c56b5997b65f21516a266f061adc560c",
+      "schema_version": "rig.google_workspace.live_auth_refusal.v1",
       "summary": {
         "oauth_configured": false,
         "pkce_available": true,
@@ -67,15 +67,14 @@
           "no_auth_configured"
         ]
       },
-      "content_hash": "922d6ecdcdcd84c3543f5824af3a89fa3dd906faa3ec882311b48ca5372af4d0",
-      "error_kind": "schema_version_mismatch"
+      "content_hash": "2248bfde1689dfb5105ae3b0b78a4ff6186d78e8c6ae65db2edf59a93e2a66a5"
     },
     {
       "artifact_id": "read_intake",
       "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/google_workspace_read_intake_v1.v1.json",
       "present": true,
       "status": "present",
-      "artifact_hash": "a6730886b741697d8e8983008d3dbcb29954de4d71a9d9076d5ac1e8073a333e",
+      "artifact_hash": "fbccb747a15e60b39217c5e846414f6d67b89d9c1911d301c853edd43a4664e4",
       "schema_version": "rig.google_workspace.read_intake.v1",
       "summary": {
         "dry_run": true,
@@ -85,7 +84,7 @@
         "refused_surfaces": 2,
         "not_implemented_surfaces": 0
       },
-      "content_hash": "b891a05542befd073d4f6f535247e3738ac7f2669bcd21ac94e64e36e7c967e5"
+      "content_hash": "482c61fdd3594c4d304d5c457815f699e1dc9b2df8544b667ab2f08c377d3def"
     },
     {
       "artifact_id": "scope_manifest",

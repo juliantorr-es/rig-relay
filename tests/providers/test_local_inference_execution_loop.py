@@ -88,7 +88,6 @@ class TestBenchmarkPrompts:
 
     def test_structured_json_prompts_contain_json(self) -> None:
         fixtures = BENCHMARK_PROMPTS["structured_json"]
-        json_keywords = {"json", "{", ":", "}"}
         for msg in fixtures:
             has_json = any(kw in msg["content"].lower() for kw in {"json", "{", "}"})
             assert has_json, f"Missing JSON keywords in: {msg['content']}"

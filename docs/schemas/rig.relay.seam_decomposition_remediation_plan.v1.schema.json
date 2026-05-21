@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.seam_decomposition_remediation_plan.v1.schema.json",
+  "title": "Seam Decomposition Remediation Plan v1",
+  "description": "Structured remediation plan for the 8 highest-seam modules identified in the governance seam audit. Content-light: no raw file contents, paths, or secrets.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "audit_source",
+    "content_light",
+    "modules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.seam_decomposition_remediation_plan.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "audit_source": {
+      "type": "object",
+      "required": ["document_id", "path"],
+      "properties": {
+        "document_id": {"type": "string"},
+        "path": {"type": "string"}
+      }
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_modules_assessed",
+        "total_lines_assessed",
+        "priority_p1_count",
+        "priority_p2_count",
+        "priority_p3_count",
+        "total_lines_to_extract",
+        "total_estimated_new_lines",
+        "estimated_test_impact"
+      ],
+      "properties": {
+        "total_modules_assessed": {"type": "integer"},
+        "total_lines_assessed": {"type": "integer"},
+        "priority_p1_count": {"type": "integer"},
+        "priority_p2_count": {"type": "integer"},
+        "priority_p3_count": {"type": "integer"},
+        "total_lines_to_extract": {"type": "integer"},
+        "total_estimated_new_lines": {"type": "integer"},
+        "estimated_test_impact": {"type": "string"}
+      }
+    },
+    "recommended_sequence": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Recommended slice order for decomposition work"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "module",
+          "current_lines",
+          "current_seam_score",
+          "already_extracted",
+          "remaining_seams",
+          "recommended_extraction_target",
+          "what_to_extract",
+          "estimated_lines_to_extract",
+          "estimated_new_module_lines",
+          "risk",
+          "test_impact",
+          "priority"
+        ],
+        "properties": {
+          "module": {"type": "string"},
+          "current_lines": {"type": "integer"},
+          "current_seam_score": {"type": "string", "enum": ["high", "medium", "low"]},
+          "already_extracted": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "remaining_seams": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "recommended_extraction_target": {"type": "string"},
+          "what_to_extract": {"type": "string"},
+          "estimated_lines_to_extract": {"type": "integer"},
+          "estimated_new_module_lines": {"type": "integer"},
+          "risk": {"type": "string"},
+          "test_impact": {"type": "string"},
+          "priority": {"type": "string", "enum": ["P1", "P2", "P3"]},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "cross_cutting_opportunities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "affected_modules"],
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "affected_modules": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["document_id", "title"],
+        "properties": {
+          "document_id": {"type": "string"},
+          "title": {"type": "string"}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

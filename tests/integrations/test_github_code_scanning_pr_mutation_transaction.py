@@ -194,7 +194,7 @@ def test_recovery_no_auto_rollback():
 
 
 def test_pr_observation_after_create():
-    r = run_transaction_harness("complete_success")
+    run_transaction_harness("complete_success")
     # PR state observed via fake boundary — should exist
     obs_path = (
         REPO_ROOT

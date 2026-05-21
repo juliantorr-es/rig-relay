@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 from acp import PromptResponse
 from acp.helpers import ContentBlock, SessionUpdate
@@ -55,10 +55,13 @@ from rig_relay.core.types import (
 from rig_relay.core.utils import ConversationLimitException
 
 
+def _resolved_user_message_id(message_id: str | None) -> str | None:
+    return message_id
+
+
 class PromptMixin:
     """Mixin for VibeAcpAgentLoop."""
 
-    @override
     async def prompt(
         self,
         prompt: list[ContentBlock],

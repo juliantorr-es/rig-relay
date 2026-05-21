@@ -6,11 +6,6 @@ from typing import Any, cast
 from jsonpatch import JsonPatch, JsonPatchException  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from rig_relay.core.nuage._input_events import InputEventsMixin
-from rig_relay.core.nuage._json_helpers import JsonHelpersMixin
-from rig_relay.core.nuage._output_normalization import OutputNormalizationMixin
-from rig_relay.core.nuage._tool_events import ToolEventsMixin
-from rig_relay.core.nuage._working_events import WorkingEventsMixin
 from rig_relay.core.nuage.agent_models import AgentCompletionState
 from rig_relay.core.nuage.events import (
     CustomTaskCanceled,
@@ -113,93 +108,6 @@ class _RemoteTool(
     remote_name = "remote_tool"
 
     @classmethod
-    def get_name(cls) -> str:
-        return cls.remote_name
-
-    @classmethod
-    def get_status_text(cls) -> str:
-        return f"Running {cls.remote_name}"
-
-    @classmethod
-    def format_call_display(cls, args: RemoteToolArgs) -> Any:
-        from rig_relay.core.tools.ui import ToolCallDisplay
-
-        return ToolCallDisplay(summary=args.summary or cls.remote_name)
-
-    @classmethod
-    def get_result_display(cls, event: ToolResultEvent) -> Any:
-        from rig_relay.core.tools.ui import ToolResultDisplay
-
-        if event.error:
-            return ToolResultDisplay(success=False, message=event.error)
-        if isinstance(event.result, RemoteToolResult):
-            return ToolResultDisplay(
-                success=True, message=event.result.message or cls.remote_name
-            )
-        return ToolResultDisplay(success=True, message=cls.remote_name)
-
-    async def run(
-        self, args: RemoteToolArgs, ctx: Any = None
-    ) -> AsyncGenerator[ToolStreamEvent | RemoteToolResult, None]:
-        raise ToolError("Remote workflow tools cannot be invoked locally")
-        yield  # type: ignore[misc]
-
-
-_REMOTE_TOOL_CACHE: dict[str, type[_RemoteTool]] = {}
-
-
-def _remote_tool_class(tool_name: str) -> type[_RemoteTool]:
-    cached = _REMOTE_TOOL_CACHE.get(tool_name)
-    if cached is not None:
-        return cached
-
-    class_name = "".join(
-        char if char.isalnum() or char == "_" else "_"
-        for char in f"RemoteTool_{tool_name.replace('-', '_')}"
-    )
-    tool_class = type(
-        class_name, (_RemoteTool,), {"remote_name": tool_name, "__module__": __name__}
-    )
-    _REMOTE_TOOL_CACHE[tool_name] = tool_class
-    return tool_class
-
-
-class RemoteWorkflowEventTranslator(
-    ToolEventsMixin,
-    OutputNormalizationMixin,
-    InputEventsMixin,
-    WorkingEventsMixin,
-    JsonHelpersMixin,
-):
-    def __init__(
-        self,
-        *,
-        available_tools: dict[str, type[BaseTool]],
-        stats: AgentStats,
-        merge_message: Callable[[LLMMessage], None],
-    ) -> None:
-        self._available_tools = available_tools
-        self._stats = stats
-        self._merge_message = merge_message
-        self._task_state: dict[str, dict[str, Any]] = {}
-        self._completion_message_ids: dict[str, str] = {}
-        self._seen_tool_call_ids: set[str] = set()
-        self._seen_tool_results: set[str] = set()
-        self._open_tool_calls: dict[str, str] = {}
-        self._input_snapshots: dict[str, str] = {}
-        self._tool_stream_snapshots: dict[str, str] = {}
-        self._pending_tool_progress: dict[str, tuple[str, str]] = {}
-        self._pending_input_request: PendingInputRequest | None = None
-        self._pending_question_prompt: str | None = None
-        self._pending_ask_user_question_call_id: str | None = None
-        self._steer_task_ids: set[str] = set()
-        self._invalid_steer_task_ids: set[str] = set()
-        self._last_status: WorkflowExecutionStatus | None = None
-
-    @property
-
-    # ── Core translator methods ────────────────────────────
-
     def get_name(cls) -> str:
         return cls.remote_name
 

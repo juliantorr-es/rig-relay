@@ -220,13 +220,13 @@ def _make_trace_on_transition(recorder: Any) -> Any:
         reason = kwargs.get("reason")
         attrs_from_kwargs = kwargs.get("attributes", {}) or {}
         attrs: dict[str, object] = {
-            "profile.state.from": from_state.value
+            "profile.state.from": from_state.value  # type: ignore[reportOptionalMemberAccess]
             if hasattr(from_state, "value")
             else str(from_state),
-            "profile.state.to": to_state.value
+            "profile.state.to": to_state.value  # type: ignore[reportOptionalMemberAccess]
             if hasattr(to_state, "value")
             else str(to_state),
-            "profile.event": event.value if hasattr(event, "value") else str(event),
+            "profile.event": event.value if hasattr(event, "value") else str(event),  # type: ignore[reportOptionalMemberAccess]
         }
         if reason:
             attrs["profile.reason"] = str(reason)[:200]

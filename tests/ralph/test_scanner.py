@@ -285,7 +285,7 @@ def test_scanner_output_is_deterministic(tmp_path: Path):
     r2 = scan_projections(findings_path=findings_path)
 
     assert len(r1.ranked_candidates) == len(r2.ranked_candidates)
-    for c1, c2 in zip(r1.ranked_candidates, r2.ranked_candidates):
+    for c1, c2 in zip(r1.ranked_candidates, r2.ranked_candidates, strict=True):
         assert c1.score == c2.score
         assert c1.source_finding_id == c2.source_finding_id
 

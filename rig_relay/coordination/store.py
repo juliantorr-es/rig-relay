@@ -339,6 +339,9 @@ class CoordinationStore:
                         and existing.task_id == task_id
                     )
                     if same_owner:
+                        renewal_payload = build_task_claim_payload(existing)
+                        renewal_payload["renewal"] = True
+                        self._append_event("coord.task.claimed", renewal_payload)
                         return CoordinationClaimResult(
                             allowed=True,
                             claim=existing,
@@ -420,11 +423,13 @@ class CoordinationStore:
         # exclusive_write (mode="write") conflicts with both read and write.
         # shared_read (mode="read") conflicts only with existing write.
         now = datetime.now(UTC)
+        is_renewal = False
         for existing in self._iter_active_reservations_locked(now):
             if existing.status != "active":
                 continue
             # Same-owner renewal is allowed
             if existing.session_id == session_id and existing.task_id == task_id:
+                is_renewal = True
                 continue
             # Read/read coexistence: no conflict
             if mode == "read" and existing.mode == "read":
@@ -485,6 +490,8 @@ class CoordinationStore:
             reservation.model_dump(exclude_none=True),
         )
         reserved_payload = build_path_reserved_payload(reservation)
+        if is_renewal:
+            reserved_payload["renewal"] = True
         self._append_event("coord.path.reserved", reserved_payload)
         return CoordinationReservationResult(allowed=True, reservation=reservation)
 
@@ -512,6 +519,31 @@ class CoordinationStore:
                 reservation.status = "released"
                 self._write_json(lease_path, reservation.model_dump(exclude_none=True))
                 released.extend(normalized)
+            else:
+                self._append_event(
+                    "coord.path.release_denied",
+                    {
+                        "session_id": session_id,
+                        "task_id": task_id,
+                        "event_kind": "release_denied",
+                        "path_hashes": [salted_path_hash(p) for p in normalized],
+                        "path_count": len(normalized),
+                        "reason": "not_owner",
+                        "owner_session_id": reservation.session_id,
+                    },
+                )
+        else:
+            self._append_event(
+                "coord.path.release_denied",
+                {
+                    "session_id": session_id,
+                    "task_id": task_id,
+                    "event_kind": "release_denied",
+                    "path_hashes": [salted_path_hash(p) for p in normalized],
+                    "path_count": len(normalized),
+                    "reason": "lease_not_found",
+                },
+            )
         if released:
             release_payload = build_path_released_payload(session_id, task_id, released)
             self._append_event("coord.path.released", release_payload)

@@ -1,18 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
 
 from rig_relay.core.telemetry.constants import EventName
 
-try:
-    import duckdb
-
-    HAS_DUCKDB = True
-except ImportError:
-    HAS_DUCKDB = False
+HAS_DUCKDB = importlib.util.find_spec("duckdb") is not None
 
 
 @dataclass

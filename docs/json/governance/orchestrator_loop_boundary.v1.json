@@ -6,7 +6,7 @@
   "summary": "Ownership doctrine for Rig Relay runtimes: who may run a full turn loop, 7 principles governing OrchestratorLoop, ConversationRuntime, SubagentRuntime, RalphRuntime, ToolRuntime, and handoff receipts.",
   "status": "active",
   "created_at": "2026-05-18",
-  "updated_at": "2026-05-18",
+  "updated_at": "2026-05-20",
   "source_commit": "aaef6b5b",
   "owners": [
     "maintainer"
@@ -350,6 +350,161 @@
       }
     },
     {
+      "block_id": "agentloop-refactor",
+      "type": "heading",
+      "level": 2,
+      "content": "AgentLoop Refactor — Extracted Runtimes (Waves 2-6)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-intro",
+      "type": "paragraph",
+      "content": "Waves 2-6 reduced AgentLoop from 1806 to 991 lines (45% reduction) by extracting 5 standalone runtime modules. Each module owns a coherent domain and is composed into AgentLoop — none use MRO mixin injection. Ownership boundaries are explicit and testable.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-tool-executor",
+      "type": "heading",
+      "level": 3,
+      "content": "ToolExecutor (rig_relay/core/tool_executor/, 782 lines)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-te-owns",
+      "type": "list",
+      "items": [
+        "Adapter factory — constructs tool adapters from registered tool types",
+        "Council gating — adversarial multi-provider review before mutation",
+        "Execution orchestration — single tool invoke with all pre/post hooks",
+        "Concurrency — parallel tool batch execution with lease coordination",
+        "Does NOT own approval policy (delegates to GovernanceRuntime)"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-session-runtime",
+      "type": "heading",
+      "level": 3,
+      "content": "SessionRuntime (rig_relay/core/session_runtime.py, 292 lines)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-sr-owns",
+      "type": "list",
+      "items": [
+        "Fork — clone session into isolated lane with bounded message history",
+        "Compact — collapse message history to conversation digest",
+        "Clear history — reset message list while preserving session identity",
+        "Switch agent — rebind profile/model/tools without session teardown",
+        "Reload — rehydrate session from config with optional initial messages",
+        "Runtime state — build and update AgentRuntimeState snapshot"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-governance-runtime",
+      "type": "heading",
+      "level": 3,
+      "content": "GovernanceRuntime (rig_relay/core/governance_runtime.py, 101 lines)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-gr-owns",
+      "type": "list",
+      "items": [
+        "Permission gating — per-tool ALWAYS/ASK/NEVER enforcement",
+        "Approval policy — tool approval callbacks, user prompt construction",
+        "Write gating — mutation tool legality checks before execution",
+        "Session rules — per-session policy overrides and constraints"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-trace-runtime",
+      "type": "heading",
+      "level": 3,
+      "content": "TraceRuntime (rig_relay/core/trace_runtime.py, 85 lines)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-tr-owns",
+      "type": "list",
+      "items": [
+        "Correlation IDs — trace/turn/session ID propagation across boundaries",
+        "OTel spans — span construction, attribute binding, parent-child linking",
+        "Lifecycle events — session start/end, turn start/end event emission"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-turn-envelope",
+      "type": "heading",
+      "level": 3,
+      "content": "TurnEnvelope (rig_relay/core/conversation_runtime/turn_envelope.py, 58 lines)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-tue-owns",
+      "type": "list",
+      "items": [
+        "Canonical turn result with 11 structured fields",
+        "Fields: status, outcome, tool_batch_metadata, phase_trace, budget_consumed, model_call_info, middleware_results, tool_results, context_used, evidence_emitted, correlation_id",
+        "JSON-safe serialization for projection consumers"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "refactor-shell",
+      "type": "heading",
+      "level": 3,
+      "content": "Shell Hardening & Isolation Guards",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "refactor-shell-list",
+      "type": "list",
+      "items": [
+        "17 shell hardening + isolation guard tests pass",
+        "8 governance fail-open seams all closed (parallel lane, 114 tests)"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
       "block_id": "validation",
       "type": "heading",
       "level": 2,
@@ -366,7 +521,11 @@
         "SubagentRuntime guard tests block AgentLoop construction in task/subagent/Ralph paths",
         "InvokeContext carries tool_runtime and trace_recorder",
         "ToolRuntime.execute_one() spans finalize on all paths",
-        "Desktop correlation integrated in websocket_server.py"
+        "Desktop correlation integrated in websocket_server.py",
+        "5 runtime modules extracted from AgentLoop (ToolExecutor, SessionRuntime, GovernanceRuntime, TraceRuntime, TurnEnvelope)",
+        "AgentLoop reduced 1806 → 991 lines (45% reduction)",
+        "17 shell hardening + isolation guard tests pass",
+        "8 governance fail-open seams all closed (parallel lane, 114 tests)"
       ],
       "disclosure": {
         "level": "standard"

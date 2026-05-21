@@ -116,7 +116,7 @@ class TestCapabilityManifest:
     """The canonical manifest validates against its schema."""
 
     def test_manifest_validates(self) -> None:
-        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         errors = _validate_fixture(MANIFEST_PATH, CAPABILITY_MANIFEST_SCHEMA)
         assert not errors, f"Manifest schema errors: {errors}"
 

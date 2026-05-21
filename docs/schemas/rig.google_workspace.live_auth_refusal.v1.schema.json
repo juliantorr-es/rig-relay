@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.google_workspace.live_auth_refusal.v1.schema.json",
+  "title": "Google Workspace Live Auth Refusal v1",
+  "description": "Content-light live authentication refusal for Google Workspace. Records that no valid OAuth or service account authentication was configured at probe time. Never stores raw tokens, client secrets, service account keys, or email addresses.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "trace_id",
+    "dry_run",
+    "config_summary",
+    "issues",
+    "live_results",
+    "timestamp_utc"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.google_workspace.live_auth_refusal.v1" },
+    "receipt_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "dry_run": { "type": "boolean" },
+    "config_summary": {
+      "type": "object",
+      "required": ["oauth_configured", "redirect_uri_configured", "service_account_configured", "domain_wide_delegation_configured"],
+      "properties": {
+        "oauth_configured": { "type": "boolean" },
+        "redirect_uri_configured": { "type": "boolean" },
+        "service_account_configured": { "type": "boolean" },
+        "domain_wide_delegation_configured": { "type": "boolean" },
+        "client_id_hash": { "type": "string" },
+        "service_account_email_hash": { "type": "string" },
+        "admin_email_hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "detail"],
+        "properties": {
+          "kind": { "type": "string" },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "live_results": {
+      "type": "object",
+      "required": ["error", "error_description"],
+      "properties": {
+        "schema_version": { "type": "string" },
+        "error": { "type": "string" },
+        "error_description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "timestamp_utc": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

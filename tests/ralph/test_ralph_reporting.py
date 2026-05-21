@@ -59,7 +59,7 @@ def test_store_pending_reports():
 
 def test_mark_delivered():
     store = RalphReportStore()
-    report = store.save_report(RalphReport(report_id="r1"))
+    store.save_report(RalphReport(report_id="r1"))
     updated = store.mark_delivered("r1")
     assert updated.status == "delivered_to_orchestrator"
     assert updated.delivered_at is not None
@@ -74,7 +74,7 @@ def test_mark_reviewed():
 
 def test_accepted_for_adoption_does_not_merge():
     store = RalphReportStore()
-    report = store.save_report(RalphReport(report_id="r1"))
+    store.save_report(RalphReport(report_id="r1"))
     updated = store.mark_accepted_for_adoption("r1")
     assert updated.status == "accepted_for_adoption"
     assert updated.merge_enabled is False

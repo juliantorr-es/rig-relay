@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.github.security_queue.v1",
-  "generated_at": "2026-05-20T17:10:26.388246+00:00",
+  "generated_at": "2026-05-21T02:46:07.663523+00:00",
   "content_light": true,
   "remote_mutation": false,
   "source_artifacts": [
@@ -1598,15 +1598,15 @@
   },
   "permission_summary": {
     "read_permissions": [
-      "metadata:read",
+      "dependabot_alerts:read",
       "security_events:read",
-      "dependabot_alerts:read"
+      "metadata:read"
     ],
     "remediation_permissions": [
-      "security_events:write",
-      "pull_requests:write",
       "contents:write",
-      "dependabot_alerts:write"
+      "security_events:write",
+      "dependabot_alerts:write",
+      "pull_requests:write"
     ],
     "permission_gaps": [
       "contents:write",

@@ -41,6 +41,7 @@ class ToolRuntimeAdapterBuilder:
             context_observe=self._context_observe,
             stats_delta=self._stats_delta,
             subprocess_runner=loop._build_subprocess_runner(),
+            telemetry_client=loop.telemetry_client,
         )
 
     # ── Invoke tool adapter ─────────────────────────────────

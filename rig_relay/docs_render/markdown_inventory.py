@@ -193,11 +193,11 @@ def extract_code_fences(text: str) -> list[dict[str, Any]]:
                     "content": content,
                     "code_sha256": content_sha,
                     "is_mermaid": language.lower() == "mermaid",
-                    "is_json": language.lower() in ("json", "jsonc"),
+                    "is_json": language.lower() in {"json", "jsonc"},
                     "is_schema": "schema" in language.lower()
                     or "schema" in content[:200].lower(),
                     "is_shell": language.lower()
-                    in ("bash", "sh", "shell", "console", "zsh"),
+                    in {"bash", "sh", "shell", "console", "zsh"},
                 })
                 fence_index += 1
         elif in_fence:
@@ -280,7 +280,7 @@ def inventory_markdown(repo_root: Path | None = None) -> dict[str, Any]:
         if any(p in EXCLUDE_DIRS for p in parts):
             continue
 
-        if any(p.startswith(".") and p not in (".github",) for p in parts if p != "."):
+        if any(p.startswith(".") and p not in {".github"} for p in parts if p != "."):
             continue
 
         doc = scan_file(path, root)

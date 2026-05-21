@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Runtime Port Status Normalization — Rig Relay Docs</title>
-<meta name="description" content="Generated: 2026-05-15">
+<meta name="description" content="Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)">
 <link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/runtime-port-status.html">
 <meta property="og:title" content="Runtime Port Status Normalization">
-<meta property="og:description" content="Generated: 2026-05-15">
+<meta property="og:description" content="Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/runtime-port-status.html">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Runtime Port Status Normalization">
-<meta name="twitter:description" content="Generated: 2026-05-15">
+<meta name="twitter:description" content="Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)">
 <meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
 <meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
 <meta name="theme-color" content="#1e3a5f">
@@ -31,10 +31,10 @@
   </nav>
   <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/governance.html">Governance</a></p>
   <h1>Runtime Port Status Normalization</h1>
-  <p class="doc-summary">Generated: 2026-05-15</p>
+  <p class="doc-summary">Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)</p>
   <dl class="doc-meta">
     <dt>Status</dt><dd>active</dd>
-    <dt>Updated</dt><dd>2026-05-16</dd>
+    <dt>Updated</dt><dd>2026-05-20</dd>
     <dt>Source</dt><dd><code>docs/json/governance/runtime-port-status.v1.json</code></dd>
   </dl>
 </header>
@@ -60,6 +60,11 @@
 <li><a href="#h2-11">Provider registry</a></li>
 <li><a href="#h2-13">Workspace runtime</a></li>
 <li><a href="#h2-15">Schema contracts</a></li>
+<li><a href="#h2-17">Context compiler</a></li>
+<li><a href="#h2-s2c">Schema-to-code compiler</a></li>
+<li><a href="#h2-operational">Enterprise Layer 1 — Operational Hardening</a></li>
+<li><a href="#h2-enterprise">Enterprise Layers 2-4 — Policy, Tenancy, Fleet</a></li>
+<li><a href="#h2-spiderweb">Spiderweb Cockpit Integration</a></li>
 <li><a href="#h2-17">Stubs</a></li>
   </ol>
 </nav>
@@ -72,7 +77,12 @@
 <details id="table-4" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="table-4" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
 <thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>AgentLoop conductor</td><td>validated</td><td>MRO mixins, ToolRuntime delegate, turn tracking</td></tr>
+<tr><td>AgentLoop conductor</td><td>validated</td><td>991 lines, thin delegator; owns turn/session topology only</td></tr>
+<tr><td>SessionRuntime</td><td>implemented</td><td>Fork, compact, clear_history, switch_agent, reload, runtime_state</td></tr>
+<tr><td>GovernanceRuntime</td><td>implemented</td><td>Permission gating, approval policy, write gating, mutation legality</td></tr>
+<tr><td>TraceRuntime</td><td>implemented</td><td>Correlation IDs, OTel spans, lifecycle events</td></tr>
+<tr><td>TurnEnvelope</td><td>implemented</td><td>Canonical turn result with 11 structured fields</td></tr>
+<tr><td>ToolExecutor</td><td>implemented</td><td>Adapter factory + council gating + execution + concurrency (782 lines)</td></tr>
 <tr><td>AgentRuntimeState</td><td>implemented</td><td>Snapshot model, `build_runtime_state()`, debug dict</td></tr>
 <tr><td>ConversationTurnRuntime</td><td>implemented</td><td>Phase tracking in `_conversation_loop`, 10 phases</td></tr>
 <tr><td>ToolRuntime</td><td>implemented</td><td>`execute_one()` owns cache→permission→approval→patch→invoke</td></tr>
@@ -174,6 +184,76 @@
 <tr><td>Ralph scan schema</td><td>contract_only</td><td>`rig.ralph_scan.v1.schema.json` exists</td></tr>
 <tr><td>Bash invocation schema</td><td>contract_only</td><td>`rig.bash_invocation.v1.schema.json` exists</td></tr>
 <tr><td>IDE capability manifest</td><td>validated</td><td>`rig.ide.capability_manifest.v1.schema.json`</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-17" class="disclosure-standard" data-disclosure-level="standard">Context compiler</h2>
+
+<table id="table-cc" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Context compiler MAP mode</td><td>validated</td><td>Repo topology + subsystem map</td></tr>
+<tr><td>Context compiler PACKET mode</td><td>validated</td><td>Context packet assembly</td></tr>
+<tr><td>Context compiler HANDOFF mode</td><td>implemented</td><td>rig_relay/compiler/context/handoff.py</td></tr>
+<tr><td>Context compiler COLLISION mode</td><td>implemented</td><td>rig_relay/compiler/context/collision.py</td></tr>
+<tr><td>Context compiler SYMBOLS mode</td><td>implemented</td><td>rig_relay/compiler/context/symbols.py (wires symbol codec)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-s2c" class="disclosure-standard" data-disclosure-level="standard">Schema-to-code compiler</h2>
+
+<table id="table-s2c" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Schema-to-code compiler</td><td>implemented</td><td>Promoted from experiment; 10/10 gates pass</td></tr>
+<tr><td>Compiler gates</td><td>validated</td><td>rig_relay/compiler/schema_to_code/ (10/10)</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-operational" class="disclosure-standard" data-disclosure-level="standard">Enterprise Layer 1 — Operational Hardening</h2>
+
+<table id="table-operational" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>StorageBackend</td><td>implemented</td><td>StorageBackend protocol, LocalFileBackend, MemoryBackend, StorageConfig</td></tr>
+<tr><td>WriteAheadLog</td><td>implemented</td><td>WAL with fsync, commit, recover, truncate</td></tr>
+<tr><td>EventFabricMetrics</td><td>implemented</td><td>14 metrics, Prometheus text export, OTel export</td></tr>
+<tr><td>LogShipper</td><td>implemented</td><td>JSONL rotation with log shipping</td></tr>
+<tr><td>Alerting</td><td>implemented</td><td>6 pre-defined alert rules</td></tr>
+<tr><td>Operational tests</td><td>validated</td><td>50 tests pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-enterprise" class="disclosure-standard" data-disclosure-level="standard">Enterprise Layers 2-4 — Policy, Tenancy, Fleet</h2>
+
+<table id="table-enterprise" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>PolicyEngine</td><td>implemented</td><td>12 gates, attestation signing (HMAC-SHA256)</td></tr>
+<tr><td>Attestation</td><td>implemented</td><td>Sign/verify attestations</td></tr>
+<tr><td>TenantRegistry</td><td>implemented</td><td>Multi-tenant isolation</td></tr>
+<tr><td>TenantEventFabric</td><td>implemented</td><td>Tenant-scoped event dispatch</td></tr>
+<tr><td>TenantTopology</td><td>implemented</td><td>Per-tenant spiderweb projection</td></tr>
+<tr><td>TenantPermissions</td><td>implemented</td><td>Scoped permission model</td></tr>
+<tr><td>FleetController</td><td>implemented</td><td>Bridge fleet orchestration</td></tr>
+<tr><td>HeadlessServer</td><td>implemented</td><td>Tenant-aware headless server</td></tr>
+<tr><td>SecretsManager</td><td>implemented</td><td>5-backend secrets resolution</td></tr>
+<tr><td>Enterprise tests</td><td>validated</td><td>91 tests pass</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-spiderweb" class="disclosure-standard" data-disclosure-level="standard">Spiderweb Cockpit Integration</h2>
+
+<table id="table-spiderweb" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Spiderweb topology projection</td><td>wired</td><td>Wired into backend projection _build_resources()</td></tr>
+<tr><td>Spiderweb cockpit widget</td><td>wired</td><td>Compact/standard/expanded modes in operator layout</td></tr>
+<tr><td>Security lifecycle widget</td><td>wired</td><td>Operator mode cockpit widget</td></tr>
+<tr><td>Static spiderweb HTML</td><td>wired</td><td>Standalone static HTML renderer</td></tr>
+<tr><td>Live mutation readiness</td><td>wired</td><td>12-gate policy engine projection in backend</td></tr>
+<tr><td>ResourceProjection Live Feed</td><td>implemented</td><td>Live feed v1 wired into event fabric</td></tr>
+<tr><td>Mission topology projection</td><td>implemented</td><td>16 nodes, 10 edges via DuckDB</td></tr>
 </tbody>
 </table>
 

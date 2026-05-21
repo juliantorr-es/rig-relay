@@ -6,7 +6,35 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from rig_relay.core.types import BaseEvent, LLMMessage, Role
+from rig_relay.core.nuage.events import (
+    CustomTaskCanceled,
+    CustomTaskCompleted,
+    CustomTaskFailed,
+    CustomTaskInProgress,
+    CustomTaskStarted,
+    CustomTaskTimedOut,
+)
+from rig_relay.core.nuage.remote_workflow_event_models import (
+    AgentToolCallState,
+    AnyToolUIState,
+    CommandUIState,
+    FileUIState,
+    GenericToolUIState,
+)
+from rig_relay.core.tools.base import BaseTool
+from rig_relay.core.types import (
+    BaseEvent,
+    FunctionCall,
+    LLMMessage,
+    Role,
+    ToolCall,
+    ToolCallEvent,
+    ToolResultEvent,
+    ToolStreamEvent,
+)
+
+_ASK_USER_QUESTION_TOOL = "ask_user_question"
+_SEND_USER_MESSAGE_TOOL = "send_user_message"
 
 
 class ToolEventsMixin:
@@ -195,6 +223,10 @@ class ToolEventsMixin:
         ]
         if len(suffix_matches) == 1:
             return suffix_matches[0]
+
+        from rig_relay.core.nuage.remote_workflow_event_translator import (
+            _remote_tool_class,
+        )
 
         return _remote_tool_class(tool_name)
 

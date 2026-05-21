@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.governance.raw_json_remediation_plan.v1.schema.json",
+  "title": "Raw JSON Remediation Plan v1",
+  "description": "Structured plan for remediating raw JSON governance artifacts that are missing schema_version, have invalid schema references, or lack corresponding schemas.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "generated_at",
+    "summary",
+    "artifacts",
+    "schemas_created",
+    "artifacts_archived",
+    "operating_picture_impact",
+    "validation_commands_run",
+    "remaining_seams"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.governance.raw_json_remediation_plan.v1" },
+    "plan_id": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "branch": { "type": ["string", "null"] },
+    "head_before": { "type": ["string", "null"] },
+    "head_after": { "type": ["string", "null"] },
+    "summary": {
+      "type": "object",
+      "required": [
+        "artifacts_audited",
+        "artifacts_fixed",
+        "schemas_created",
+        "artifacts_archived",
+        "artifacts_replaced",
+        "all_artifacts_validated_against_schemas"
+      ],
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_path",
+          "action",
+          "validation_result"
+        ],
+        "properties": {
+          "artifact_path": { "type": "string" },
+          "schema_version_before": { "type": ["string", "null"] },
+          "schema_version_after": { "type": ["string", "null"] },
+          "action": { "type": "string", "enum": ["fix", "validate_only", "archive", "replace"] },
+          "schema_created": { "type": ["string", "null"] },
+          "validation_result": { "type": "string" },
+          "consumer_files": { "type": "array", "items": { "type": "string" } },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "schemas_created": { "type": "array", "items": { "type": "object" } },
+    "artifacts_archived": { "type": "array", "items": { "type": "object" } },
+    "operating_picture_impact": { "type": "object" },
+    "validation_commands_run": { "type": "array", "items": { "type": "string" } },
+    "remaining_seams": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

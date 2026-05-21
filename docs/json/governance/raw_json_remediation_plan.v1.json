@@ -1,0 +1,173 @@
+{
+  "schema_version": "rig.governance.raw_json_remediation_plan.v1",
+  "plan_id": "remediation-2026-05-20-001",
+  "generated_at": "2026-05-20T22:00:00.000000+00:00",
+  "branch": "main",
+  "head_before": null,
+  "head_after": null,
+  "summary": {
+    "artifacts_audited": 7,
+    "artifacts_fixed": 5,
+    "schemas_created": 6,
+    "schemas_validated_total": 388,
+    "artifacts_archived": 0,
+    "artifacts_replaced": 0,
+    "pre_existing_valid": 1,
+    "already_valid_with_schema_created": 1,
+    "all_artifacts_validated_against_schemas": true,
+    "schema_validator_result": "all_schemas_valid"
+  },
+  "artifacts": [
+    {
+      "artifact_path": "docs/json/governance/github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+      "schema_version_before": null,
+      "schema_version_after": "rig.github.live_pr_rehearsal_operator_checklist.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.github.live_pr_rehearsal_operator_checklist.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [
+        "rig_relay/integrations/github_provider/_code_scanning_live_pr_rehearsal.py",
+        "rig_relay/desktop/projection.py",
+        "rig_relay/enterprise/policy_engine.py"
+      ],
+      "note": "Live control-plane input consumed by projection, policy engine, and rehearsal code. Added schema_version at root level. Created schema with 16 required fields matching existing artifact structure."
+    },
+    {
+      "artifact_path": "docs/json/governance/github_code_scanning_alert_state_plan_v1.v1.json",
+      "schema_version_before": null,
+      "schema_version_after": "rig.github.code_scanning_alert_state_plan.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.github.code_scanning_alert_state_plan.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [
+        "rig_relay/integrations/github_provider/_code_scanning_post_pr_lifecycle.py",
+        "rig_relay/integrations/github_provider/_security_lifecycle_consolidation.py",
+        "rig_relay/integrations/github_provider/_security_lifecycle_replay.py"
+      ],
+      "note": "Used by security lifecycle code. _security_lifecycle_consolidation.py already referenced expected schema name rig.github.code_scanning_alert_state_plan.v1 — confirming this was always intended to be schema-governed."
+    },
+    {
+      "artifact_path": "docs/json/governance/github_code_scanning_post_pr_projection_v1.v1.json",
+      "schema_version_before": null,
+      "schema_version_after": "rig.github.code_scanning_post_pr_projection.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.github.code_scanning_post_pr_projection.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [
+        "rig_relay/integrations/github_provider/_code_scanning_post_pr_lifecycle.py"
+      ],
+      "note": "Live control-plane payload consumed by post-PR lifecycle code."
+    },
+    {
+      "artifact_path": "docs/json/governance/github_live_mutation_operator_checklist_v1.v1.json",
+      "schema_version_before": "rig.github.live_mutation_operator_checklist.v1",
+      "schema_version_after": "rig.github.live_mutation_operator_checklist.v1",
+      "action": "validate_only",
+      "schema_created": null,
+      "validation_result": "pass",
+      "consumer_files": [
+        "rig_relay/enterprise/policy_engine.py",
+        "rig_relay/ralph/scanner.py"
+      ],
+      "note": "Already had schema_version and corresponding schema. Validated successfully against rig.github.live_mutation_operator_checklist.v1.schema.json. No changes needed."
+    },
+    {
+      "artifact_path": "docs/json/governance/github_carte_blanche_surface_report_v1.v1.json",
+      "schema_version_before": "rig.github.carte_blanche_surface_report.v1",
+      "schema_version_after": "rig.github.carte_blanche_surface_report.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.github.carte_blanche_surface_report.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [],
+      "note": "Artifact already had schema_version but no schema existed — a dangling reference. Audit claimed this was an empty/null placeholder but the file contained real surface probe data (13 surfaces, 6 probes). Created the missing schema. Not archived because data is authoritative live probe evidence."
+    },
+    {
+      "artifact_path": "docs/json/governance/live_github_auth_result.v1.json",
+      "schema_version_before": null,
+      "schema_version_after": "rig.github.live_auth_result.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.github.live_auth_result.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [
+        "github_operating_picture_v1.v1.json"
+      ],
+      "note": "Operating picture flagged as status=invalid, error_kind=schema_version_mismatch, schema_version=null. Root cause: schema_version was nested inside live_results.installation_access.schema_version but absent at root level. Added schema_version at root level. Created schema matching the existing data structure (receipt, trace, config_summary, live_results, timestamp_utc). No data restructured."
+    },
+    {
+      "artifact_path": "docs/json/governance/live_google_auth_result.v1.json",
+      "schema_version_before": null,
+      "schema_version_after": "rig.google_workspace.live_auth_refusal.v1",
+      "action": "fix",
+      "schema_created": "docs/schemas/rig.google_workspace.live_auth_refusal.v1.schema.json",
+      "validation_result": "pass",
+      "consumer_files": [
+        "google_workspace_operating_picture_v1.v1.json",
+        "provider_operating_picture_registry_v1.v1.json"
+      ],
+      "note": "Operating picture flagged as status=invalid, error_kind=schema_version_mismatch, schema_version=null. Root cause: schema_version was nested inside live_results.schema_version as rig.google_workspace.live_auth_refusal.v1 but absent at root level. This is a legitimate auth refusal (no OAuth or service account configured), not a broken artifact. Added schema_version at root level and created schema."
+    }
+  ],
+  "schemas_created": [
+    {
+      "schema_path": "docs/schemas/rig.github.live_pr_rehearsal_operator_checklist.v1.schema.json",
+      "artifact_served": "github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+      "required_field_count": 16,
+      "json_validation": "pass"
+    },
+    {
+      "schema_path": "docs/schemas/rig.github.code_scanning_alert_state_plan.v1.schema.json",
+      "artifact_served": "github_code_scanning_alert_state_plan_v1.v1.json",
+      "required_field_count": 9,
+      "definitions": ["alert_path"],
+      "json_validation": "pass"
+    },
+    {
+      "schema_path": "docs/schemas/rig.github.code_scanning_post_pr_projection.v1.schema.json",
+      "artifact_served": "github_code_scanning_post_pr_projection_v1.v1.json",
+      "required_field_count": 8,
+      "json_validation": "pass"
+    },
+    {
+      "schema_path": "docs/schemas/rig.github.carte_blanche_surface_report.v1.schema.json",
+      "artifact_served": "github_carte_blanche_surface_report_v1.v1.json",
+      "required_field_count": 7,
+      "json_validation": "pass"
+    },
+    {
+      "schema_path": "docs/schemas/rig.github.live_auth_result.v1.schema.json",
+      "artifact_served": "live_github_auth_result.v1.json",
+      "required_field_count": 8,
+      "json_validation": "pass"
+    },
+    {
+      "schema_path": "docs/schemas/rig.google_workspace.live_auth_refusal.v1.schema.json",
+      "artifact_served": "live_google_auth_result.v1.json",
+      "required_field_count": 7,
+      "json_validation": "pass"
+    }
+  ],
+  "artifacts_archived": [],
+  "operating_picture_impact": {
+    "github_operating_picture": {
+      "path": "docs/json/governance/github_operating_picture_v1.v1.json",
+      "previously_invalid_entries": ["live_auth"],
+      "now_valid": true,
+      "note": "The live_github_auth_result artifact was previously flagged as status=invalid, error_kind=schema_version_mismatch. After remediation, the operating picture may need re-generation to reflect the new schema_version."
+    },
+    "google_workspace_operating_picture": {
+      "path": "docs/json/governance/google_workspace_operating_picture_v1.v1.json",
+      "previously_invalid_entries": ["live_auth"],
+      "now_valid": true,
+      "note": "The live_google_auth_result artifact was previously flagged as status=invalid, error_kind=schema_version_mismatch. After remediation, the operating picture may need re-generation."
+    }
+  },
+  "validation_commands_run": [
+    "uv run python scripts/rig_relay_validate_schemas.py",
+    "uv run python -c 'jsonschema.Draft7Validator artifact vs schema' for all 7 artifacts"
+  ],
+  "remaining_seams": [
+    "Operating picture files still reference old schema_version=null in their cached summary fields. They should be re-generated to pick up the new schema_version values.",
+    "google_workspace_operating_picture references live_google_auth_result with schema_version=null in cached summary. Re-generation recommended but not blocking.",
+    "provider_operating_picture_registry references both auth result files. Should be re-generated."
+  ]
+}

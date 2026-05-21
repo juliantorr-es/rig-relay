@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast, override
+from typing import Any, cast
 
 from acp import SetSessionModelResponse, SetSessionModeResponse
 from acp.schema import (
@@ -67,7 +67,6 @@ class ConfigMixin:
         await self._reload_config(session)
         return True
 
-    @override
     async def set_session_mode(
         self, mode_id: str, session_id: str, **kwargs: Any
     ) -> SetSessionModeResponse | None:
@@ -78,7 +77,6 @@ class ConfigMixin:
 
         return SetSessionModeResponse()
 
-    @override
     async def set_session_model(
         self, model_id: str, session_id: str, **kwargs: Any
     ) -> SetSessionModelResponse | None:
@@ -89,7 +87,6 @@ class ConfigMixin:
 
         return SetSessionModelResponse()
 
-    @override
     async def set_config_option(
         self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
     ) -> SetSessionConfigOptionResponse | None:

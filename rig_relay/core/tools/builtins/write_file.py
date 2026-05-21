@@ -322,7 +322,7 @@ class WriteFile(
         )
 
     @final
-    # ruff: noqa: PLR0914, PLR0911, PLR0915
+    # ruff: noqa: PLR0914, PLR0915
     async def run(
         self, args: WriteFileArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | WriteFileResult, None]:
@@ -438,6 +438,17 @@ class WriteFile(
         )
         if not check.allowed:
             guard.record_refusal(file_path, check.reason)
+            if ctx is not None and ctx.tool_runtime is not None:
+                tc = getattr(ctx.tool_runtime, "telemetry_client", None)
+                if tc is not None:
+                    tc.emit_governance_gate_decision(
+                        gate="dirty_guard",
+                        decision="blocked",
+                        reason=check.reason,
+                        tool_name="write_file",
+                        severity="warning",
+                        mutation_intent=True,
+                    )
             _cls = _classify_write_guard_refusal(check)
             elapsed = (time.perf_counter() - start) * 1000
             yield WriteFileResult(
@@ -454,6 +465,16 @@ class WriteFile(
             )
             return
 
+        if ctx is not None and ctx.tool_runtime is not None:
+            tc = getattr(ctx.tool_runtime, "telemetry_client", None)
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="dirty_guard",
+                    decision="allowed",
+                    reason=check.reason,
+                    tool_name="write_file",
+                    severity="info",
+                )
         guard.mark_touched(file_path)
 
         # ── Prepare write ──

@@ -1,0 +1,157 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "governance-gate-decision-spine-v1-implementation-plan",
+  "document_type": "implementation_plan",
+  "title": "Governance Gate Decision Spine v1 — Implementation Plan",
+  "summary": "Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.",
+  "status": "planned",
+  "created_at": "2026-05-20",
+  "owners": ["maintainer"],
+  "tags": ["governance", "telemetry", "implementation-plan", "decision-spine"],
+  "canonical_path": "docs/json/governance/governance-gate-decision-spine-v1-implementation-plan.v1.json",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Governance Gate Decision Spine — Implementation Plan"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Architecture Decision"
+    },
+    {
+      "block_id": "p-1",
+      "type": "paragraph",
+      "content": "Use one canonical event (rig.relay.governance.gate.decision) with a decision field carrying one of six outcomes. Do NOT create paired event names (allow/block). This aligns with OpenTelemetry semantic conventions, OWASP security logging guidance, and NIST SP 800-92."
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 0: Schema + Emitter + Golden DuckDB Test"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Add rig.relay.governance_gate_decision.v1 schema. Add emit_governance_gate_decision() function — not send_governance_gate_decision() that chooses between separate event names. Write one golden DuckDB projection test that proves the event shape is groupable by gate, decision, reason, tool_name, and severity."
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 1: Cryptographic + Policy-Missing Seams (highest risk)"
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "Crypto gaps are not Phase 4 polish — they are Phase 1. If the local action envelope silently returns False on signature failure, payload hash mismatch, or replay expiry, that is missing security audit evidence at the boundary where Rig claims to be governed."
+    },
+    {
+      "block_id": "table-3",
+      "type": "table",
+      "columns": ["Gate", "Decision", "Severity", "Change"],
+      "rows": [
+        ["Local action envelope — Ed25519 signature failure", "failed_closed", "critical", "emit_governance_gate_decision(decision=failed_closed, reason=signature_verification_failed, severity=critical)"],
+        ["Local action envelope — payload hash mismatch", "failed_closed", "critical", "emit_governance_gate_decision(decision=failed_closed, reason=payload_hash_mismatch, severity=critical)"],
+        ["Local action envelope — replay window expired", "failed_closed", "critical", "emit_governance_gate_decision(decision=failed_closed, reason=replay_window_expired, severity=critical)"],
+        ["Authorization — dev bypass used", "allowed", "warning", "emit_governance_gate_decision(decision=allowed, reason=dev_bypass_used, severity=warning, operator_action_required=false) — leave a receipt-shaped bruise"],
+        ["ToolRuntime — policy_object_missing", "failed_closed", "critical", "emit_governance_gate_decision(decision=failed_closed, reason=policy_object_missing, severity=critical, operator_action_required=true) — do NOT log as ordinary blocked"]
+      ]
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 2: Tool Runtime Core Gates"
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": ["Gate", "File + Line", "Decision Class", "Change"],
+      "rows": [
+        ["Governance engine", "tool_runtime.py:371-401", "allowed when pass, blocked when fail", "emit decision on both paths — GateDecision in-memory only today"],
+        ["Local action envelope", "tool_runtime.py:414-444", "allowed when pass, failed_closed when mismatch", "emit decision on both paths"],
+        ["Profile gate (CapabilityGate)", "tool_runtime.py:326-356", "blocked when locked", "emit decision on failure (blocked); emit allowed on success"],
+        ["Permission check", "tool_runtime.py:446-482", "allowed when pass, blocked when deny, failed_closed when policy_missing", "emit on all three paths"],
+        ["Approval request", "tool_runtime.py:484-511", "allowed when pass, refused when user denies, failed_closed when unavailable", "emit on all three paths"],
+        ["Patch gate", "tool_runtime.py:513-537", "allowed when pass, blocked when proposal required", "emit on both paths"]
+      ]
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 3: Dirty Guard and Write Tools"
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": ["Gate", "File + Line", "Decision Class", "Change"],
+      "rows": [
+        ["Dirty guard capture", "dirty_guard.py:141-153", "allowed when pass, failed_closed when git fails", "emit on both paths"],
+        ["Dirty guard write check", "dirty_guard.py:270-303", "allowed when pass, blocked when protected", "emit on both paths"],
+        ["Dirty guard search_replace check", "dirty_guard.py:305-322", "same as write", "same as write"],
+        ["Write file coordination block", "write_file.py:404-430", "blocked when reserved", "call existing _emit_coord_blocked_trace() which is defined but never called"]
+      ]
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 4: Coordination Renewals and Releases"
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": ["Gate", "File + Line", "Change"],
+      "rows": [
+        ["Task claim same-owner renewal", "store.py:342-346", "Emit coord.task.claimed on renewal (add renewal: true to payload)"],
+        ["Path reservation same-owner renewal", "store.py:428-430", "Emit coord.path.reserved on renewal (add renewal: true to payload)"],
+        ["Path release denied (not owner)", "store.py:511-517", "Emit coord.path.release_denied (new event) when not-owner or not-found"]
+      ]
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Phase 5: Council and Supervisor Gates"
+    },
+    {
+      "block_id": "table-7",
+      "type": "table",
+      "columns": ["Gate", "File + Line", "Decision Class", "Change"],
+      "rows": [
+        ["Council pre-mutation", "executor.py:154-155", "allowed when proceed, blocked when reject, review when uncertain", "emit decision after council consultation returns"],
+        ["Council recommendation", "council_invoker.py:246-266", "allowed/block/review", "emit decision for each outcome"],
+        ["Supervisor governance pass", "supervisor.py:435", "allowed when pass", "emit decision on governance pass (currently only failure traced)"],
+        ["Collision/handoff resolved", "collision.py:177, handoff.py:189", "allowed when resolved, degraded when evidence missing", "emit decision on success path"]
+      ]
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Classification"
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": ["Classification", "What It Proves"],
+      "rows": [
+        ["unit", "Emitter helper enum/field validation. Decision enum stability. Reason code format."],
+        ["contract", "JSON schema validation for rig.relay.governance_gate_decision.v1. Content-light invariant holds. additionalProperties rejected."],
+        ["integration", "Tool runtime paths emit exactly one decision event per gate per invocation. All six decision classes reachable."],
+        ["real-artifact", "JSONL telemetry files are written and DuckDB-groupable. Schema-validated artifacts exist on disk."],
+        ["adversarial", "Cryptographic mismatch emits failed_closed. Expired envelope emits failed_closed. Missing policy object emits failed_closed with operator_action_required=true. Dev bypass emits allowed with severity=warning."],
+        ["substrate", "DuckDB projection over JSONL proves: group by gate, decision, reason, tool_name; count per severity; trending per policy_version."]
+      ]
+    }
+  ],
+  "references": [
+    { "document_id": "governance-gate-decision-spine-v1-audit", "title": "Governance Gate Decision Spine Audit" },
+    { "document_id": "governance-fail-open-inventory", "title": "Governance Fail-Open Inventory" }
+  ]
+}

@@ -338,9 +338,7 @@ def test_runtime_evidence_buffer_is_token_free(
         assert "[REDACTED]" in all_text or True, "redaction check"
 
         hex_pattern = __import__("re").compile(r"[0-9a-fA-F]{64,}")
-        token_messages = [
-            m for m in console_messages if hex_pattern.search(m) and "frontend" not in m
-        ]
+        [m for m in console_messages if hex_pattern.search(m) and "frontend" not in m]
         # Console may have hex from hashes which is fine
     except Exception:
         _capture_browser_failure(page, browser_artifacts, "evidence_token_free")

@@ -258,7 +258,7 @@ def _api_post(
 
 def _execute_dispatch(args: GitHubDispatchArgs, token: str) -> GitHubDispatchResult:
     path = f"/repos/{args.owner}/{args.repo}/actions/workflows/{args.workflow_id}/dispatches"
-    body = {"ref": args.ref}
+    body: dict[str, Any] = {"ref": args.ref}
     if args.inputs:
         body["inputs"] = args.inputs
     _api_post(path, token, body)

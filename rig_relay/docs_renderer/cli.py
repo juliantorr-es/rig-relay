@@ -166,6 +166,111 @@ def _process_json_files(
     return pages, errors
 
 
+def _render_new_system_pages(manifest: dict) -> list[dict]:
+    """Render pages using the Jinja2-backed site_renderer system.
+
+    Processes pages defined in the site_renderer input manifest (if present).
+    Falls back gracefully if any dependencies are unavailable.
+    Returns list of page dicts for the search index and render manifest.
+    """
+    try:
+        from rig_relay.site_renderer.loaders import (
+            load_artifacts_for_page,
+            load_input_manifest,
+            load_page_model,
+        )
+        from rig_relay.site_renderer.renderer import render_page, write_page
+    except ImportError:
+        return []
+
+    input_manifest = load_input_manifest(
+        PAGES_OUT / ".." / "json" / "site_renderer_input_manifest.v1.json"
+    )
+    if not input_manifest:
+        return []
+
+    new_pages: list[dict] = []
+    for entry in input_manifest.get("entries", []):
+        page_id = entry.get("page_id", "")
+        if not page_id:
+            continue
+        try:
+            page_model = load_page_model(page_id)
+            if not page_model:
+                continue
+            html = render_page(page_model)
+            output_path = PAGES_OUT / f"{page_id}.html"
+            write_page(output_path, html)
+            new_pages.append({
+                "document_id": page_id,
+                "title": page_model.get("title", page_id),
+                "summary": page_model.get("description", ""),
+                "_source_path": str(output_path),
+            })
+        except Exception:
+            continue
+    return new_pages
+
+
+def _render_jinja2_pages() -> list[dict]:
+    """Render evidence graph and developer portfolio pages using Jinja2 templates.
+
+    These are product pages (not doc pages). They use the site_renderer
+    base layout for consistent UI.
+    """
+    try:
+        from jinja2 import Environment, FileSystemLoader
+    except ImportError:
+        return []
+
+    templates_dir = (
+        PAGES_OUT.parent.parent / "rig_relay" / "site_renderer" / "templates"
+    )
+    if not templates_dir.exists():
+        return []
+
+    env = Environment(loader=FileSystemLoader(str(templates_dir)), autoescape=True)
+    new_pages: list[dict] = []
+
+    # Evidence graph page
+    try:
+        tpl = env.get_template("codebase_evidence_graph.html.j2")
+        html = tpl.render({
+            "title": "Codebase Evidence Graph",
+            "description": "Searchable graph of 14,000 nodes",
+            "sections": [],
+        })
+        (PAGES_OUT / "codebase-evidence-graph.html").write_text(html, encoding="utf-8")
+        new_pages.append({
+            "document_id": "codebase-evidence-graph",
+            "title": "Codebase Evidence Graph",
+            "summary": "Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies",
+            "_source_path": "docs/pages/codebase-evidence-graph.html",
+        })
+    except Exception:
+        pass
+
+    # Developer portfolio page
+    try:
+        tpl = env.get_template("portfolio.html.j2")
+        html = tpl.render({
+            "title": "Developer Portfolio — Julian Torres",
+            "description": "Evidence-backed developer portfolio",
+            "sections": [],
+        })
+        (PAGES_OUT / "portfolio.html").write_text(html, encoding="utf-8")
+        new_pages.append({
+            "document_id": "portfolio",
+            "title": "Developer Portfolio",
+            "summary": "Evidence-backed developer portfolio — tech stack, projects, governance, and public claims",
+            "_source_path": "docs/pages/portfolio.html",
+        })
+    except Exception:
+        pass
+
+    return new_pages
+
+
 def _render_domain_pages(site_meta: SiteMeta) -> tuple[list[dict], SafetyReport]:
     manifest = load_site_manifest()
     new_pages: list[dict] = []
@@ -354,6 +459,14 @@ def main() -> int:
     site_meta = extract_site_meta(manifest)
     domain_pages, safety_report = _render_domain_pages(site_meta)
     pages.extend(domain_pages)
+
+    # ── New Jinja2-backed site renderer — evidence graph + portfolio pages ──
+    new_pages = _render_new_system_pages(manifest)
+    pages.extend(new_pages)
+
+    # ── Render Jinja2-backed evidence graph and portfolio pages directly ──
+    _new_pages = _render_jinja2_pages()
+    pages.extend(_new_pages)
 
     (DOCS_OUT / "index.html").write_text(render_homepage(manifest), encoding="utf-8")
     (ASSETS_OUT / "site.css").write_text(CSS, encoding="utf-8")

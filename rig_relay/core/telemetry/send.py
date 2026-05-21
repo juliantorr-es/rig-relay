@@ -151,13 +151,13 @@ class TelemetryClient:
         return is_telemetry_enabled()
 
     def get_effective_telemetry_mode(self) -> str:
+        from rig_relay.core.telemetry.local import is_telemetry_enabled
+
         try:
             config = self._config_getter()
             local_enabled = config.enable_local_observability
             remote_enabled = config.enable_remote_telemetry or config.enable_telemetry
         except Exception:
-            from rig_relay.core.telemetry.local import is_telemetry_enabled
-
             if not is_telemetry_enabled():
                 return "disabled"
             return "full"
@@ -971,4 +971,55 @@ class TelemetryClient:
         payload = {"session_id": session_id}
         self.send_telemetry_event(
             EventName.CONTEXT_ENVELOPE_GOVERNED_AD_HOC, payload, receipt_candidate=False
+        )
+
+    def emit_governance_gate_decision(
+        self,
+        *,
+        gate: str,
+        decision: str,
+        reason: str = "",
+        tool_name: str = "",
+        mutation_intent: bool = False,
+        policy_version: str = "v1",
+        severity: str = "info",
+        trace_id: str = "",
+        span_id: str = "",
+        receipt_id: str = "",
+        session_id: str | None = None,
+        turn_id: str = "",
+        operator_action_required: bool = False,
+        renewal: bool = False,
+    ) -> None:
+        if not self._is_local_observability_enabled():
+            return
+        sid = session_id or self.session_id
+        if not sid:
+            return
+        from rig_relay.core.telemetry.local import log_local_event
+
+        payload: dict[str, Any] = {
+            "gate": gate,
+            "decision": decision,
+            "reason": reason,
+            "tool_name": tool_name,
+            "mutation_intent": mutation_intent,
+            "policy_version": policy_version,
+            "severity": severity,
+            "receipt_id": receipt_id,
+            "trace_id": trace_id,
+            "span_id": span_id,
+            "turn_id": turn_id,
+            "content_light": True,
+            "operator_action_required": operator_action_required,
+        }
+        if renewal:
+            payload["renewal"] = True
+
+        log_local_event(
+            sid,
+            EventName.GOVERNANCE_GATE_DECISION,
+            payload,
+            parent_session_id=self.parent_session_id,
+            receipt_candidate=True,
         )

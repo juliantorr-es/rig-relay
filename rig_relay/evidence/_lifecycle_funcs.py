@@ -35,14 +35,6 @@ from rig_relay.governance.mission_envelope import MissionEnvelope
 def default_sessions_root() -> Path:
     return Path.home() / ".rig" / "sessions"
 
-    scanned_files: int
-    total_bytes_before: int
-    protected_files: list[ClassifiedArtifact]
-    refused_files: list[Refusal]
-    compacted_files: list[CompactionResult]
-    deleted_files: list[DeletedArtifact]
-    warnings: list[str]
-
 
 _PROTECTED_NAMES = (
     "receipt",

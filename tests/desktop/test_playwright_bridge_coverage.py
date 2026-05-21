@@ -117,7 +117,6 @@ def test_browser_boots_and_renders_widgets(bridge: BridgeRunner, page) -> None:
         "timestamp": datetime.now(UTC).isoformat(),
     }
 
-    screenshot_path = ""
     try:
         page.goto(
             f"{bridge.frontend_url}?boot_debug=1",

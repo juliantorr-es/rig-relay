@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.github.operating_picture.v1",
-  "generated_at_utc": "2026-05-20T08:27:21.534705+00:00",
+  "generated_at_utc": "2026-05-21T02:44:26.363511+00:00",
   "branch": "main",
-  "head": "635244d78188db3c39197d1da93d382c2f76465c",
+  "head": "54aafb1c8cd3af078954837fee6a7b29c2d0890c",
   "owner": null,
   "repo": null,
   "content_light": true,
@@ -185,9 +185,9 @@
       "artifact_id": "live_auth",
       "path": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/live_github_auth_result.v1.json",
       "present": true,
-      "status": "invalid",
-      "artifact_hash": "8b4df4b3e950497e3b83ff7cc6e6f2a07e4aa51d0e4054fa99b793a5b63623bd",
-      "schema_version": null,
+      "status": "present",
+      "artifact_hash": "98c8e6b703df40105f6310327e629ce1d8fca2f3eaaa6bd088a399252dc0f5f4",
+      "schema_version": "rig.github.live_auth_result.v1",
       "summary": {
         "permission_mode": "development_debug",
         "app_installation_configured": true,
@@ -202,8 +202,7 @@
         "accessible_repo_count": 4,
         "repository_selection": "all"
       },
-      "content_hash": "45b3698aff30c41a9c88ca8e650cd57bc5237626346c66aa0daaa788854d79ca",
-      "error_kind": "schema_version_mismatch"
+      "content_hash": "cddc3ad989dc71d1d4b46fd8f9510c80adc6bb412f4563a9d59214700ae223b3"
     },
     {
       "artifact_id": "security_intake",
@@ -437,9 +436,9 @@
   ],
   "dirty_state_summary": {
     "clean": false,
-    "total_modified_count": 2,
-    "modified_count": 2,
-    "untracked_count": 0,
+    "total_modified_count": 115,
+    "modified_count": 79,
+    "untracked_count": 36,
     "staged_count": 1
   },
   "local_surface_inventory": [
@@ -448,10 +447,10 @@
       "repo_relative_path": "README.md",
       "file_category": "documentation",
       "exists": true,
-      "sha256": "07ad185ad63c7a2c812936f59a225f6da63a153398944d6b400cf62f80238e59",
-      "byte_count": 10380,
-      "line_count": 201,
-      "content_light_summary": "File present at README.md, 10380 bytes",
+      "sha256": "11ea5f6e908a0e973e4a21086659e4f505fd41d3323f78dbd99e66dbc69e0a82",
+      "byte_count": 10998,
+      "line_count": 207,
+      "content_light_summary": "File present at README.md, 10998 bytes",
       "detected_surface_roles": [
         "landing_page",
         "project_description"
@@ -656,10 +655,10 @@
       "repo_relative_path": "README.md",
       "file_category": "documentation",
       "exists": true,
-      "sha256": "07ad185ad63c7a2c812936f59a225f6da63a153398944d6b400cf62f80238e59",
-      "byte_count": 10380,
-      "line_count": 201,
-      "content_light_summary": "File present at README.md, 10380 bytes",
+      "sha256": "11ea5f6e908a0e973e4a21086659e4f505fd41d3323f78dbd99e66dbc69e0a82",
+      "byte_count": 10998,
+      "line_count": 207,
+      "content_light_summary": "File present at README.md, 10998 bytes",
       "detected_surface_roles": [],
       "audit_needed": false,
       "remaining_seams": []

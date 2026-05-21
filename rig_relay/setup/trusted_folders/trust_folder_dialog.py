@@ -40,7 +40,7 @@ def ask_trust_folder(cwd: Path, detected_files: list[Path]) -> bool:
     except (EOFError, KeyboardInterrupt):
         raise TrustDialogQuitException() from None
 
-    if choice in ("y", "yes"):
+    if choice in {"y", "yes"}:
         rprint("[green]Directory trusted.[/]")
         return True
 

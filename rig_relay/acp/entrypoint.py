@@ -16,7 +16,6 @@ from rig_relay.core.config.harness_files import (
 )
 from rig_relay.core.logger import logger
 from rig_relay.core.paths import resolve_history_path
-from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 
 # Configure line buffering for subprocess communication
 sys.stdout.reconfigure(line_buffering=True)  # pyright: ignore[reportAttributeAccessIssue]
@@ -98,14 +97,7 @@ def main() -> None:
     if args.setup:
         from rig_relay.setup.onboarding import run_onboarding
 
-        run_onboarding(
-            entrypoint_metadata=build_entrypoint_metadata(
-                agent_entrypoint="acp",
-                agent_version=__version__,
-                client_name="rig_relay_acp",
-                client_version=__version__,
-            )
-        )
+        run_onboarding()
         sys.exit(0)
 
     try:

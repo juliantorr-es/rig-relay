@@ -136,6 +136,12 @@ and `merge_enabled` and displays them as human labels ("Allowed" / "Blocked" /
 - **Provider onboarding** — Interactive setup for DeepSeek, OpenAI, Anthropic, Google, Mistral, OpenRouter
 - **MCP server** — 16 governed tools across 5 tiers, exposed for Antigravity/VS Code/Zed
 - **ACP agent** — Editor-integrated session control with progress streaming and permission gating
+- **Event Fabric** — DuckDB read-side analytics over event fabric JSONL, Prometheus metrics, WAL durability
+- **Mission Topology** — Spiderweb visualization in cockpit (compact/standard/expanded), static HTML renderer
+- **Live Mutation Readiness** — 12-gate policy engine with HMAC-SHA256 attestation signing
+- **Multi-tenant Isolation** — TenantRegistry, tenant-scoped event dispatch, scoped permissions
+- **Fleet Orchestration** — Bridge fleet controller, mission topology projection (16 nodes, 10 edges)
+- **Enterprise Attestation + RBAC** — Attestation sign/verify, 5-backend secrets resolution, scoped RBAC
 
 ## Configuration
 
@@ -162,7 +168,7 @@ uv run ruff format .           # format
 AGPL-3.0-or-later. Derivative of [mistralai/mistral-vibe](https://github.com/mistralai/mistral-vibe).
 See [LICENSE](LICENSE) and [UPSTREAM.md](UPSTREAM.md).
 
-## Release Candidate Status
+## Development Status
 
 Rig Relay is in alpha (v0.1.0a1). The release-candidate gate is **HOLD** —
 installability smoke tests pass but dogfood operational readiness is not yet proven.

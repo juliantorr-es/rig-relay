@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_auth_result.v1.schema.json",
+  "title": "Live GitHub Auth Result v1",
+  "description": "Content-light live authentication result for GitHub App or OAuth authentication. Records permission posture, token narrowing, installation access, and public-release readiness. Never stores raw tokens, private keys, client secrets, or installation IDs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "trace_id",
+    "dry_run",
+    "config_summary",
+    "issues",
+    "live_results",
+    "permission_mode",
+    "timestamp_utc"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.live_auth_result.v1" },
+    "receipt_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "dry_run": { "type": "boolean" },
+    "config_summary": {
+      "type": "object",
+      "required": ["app_id_configured", "installation_id_configured", "private_key_present", "app_auth_possible", "oauth_auth_possible", "any_auth_configured"],
+      "properties": {
+        "app_id_configured": { "type": "boolean" },
+        "installation_id_configured": { "type": "boolean" },
+        "private_key_source": { "type": "string" },
+        "private_key_present": { "type": "boolean" },
+        "client_id_configured": { "type": "boolean" },
+        "client_secret_configured": { "type": "boolean" },
+        "redirect_uri_configured": { "type": "boolean" },
+        "app_auth_possible": { "type": "boolean" },
+        "oauth_auth_possible": { "type": "boolean" },
+        "any_auth_configured": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "issues": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "live_results": { "type": "object" },
+    "permission_mode": { "type": "string" },
+    "timestamp_utc": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

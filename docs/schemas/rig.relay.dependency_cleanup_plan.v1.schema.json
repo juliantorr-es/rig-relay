@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.dependency_cleanup_plan.v1",
+  "title": "Dependency Cleanup Plan",
+  "description": "Structured plan responding to a dependency surface audit with per-dependency decisions, removals, reclassifications, and justifications.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "created_at", "source_audit_id", "summary", "decisions"],
+  "properties": {
+    "schema_version": { "const": "rig.relay.dependency_cleanup_plan.v1" },
+    "plan_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_audit_id": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": ["audit_remove_candidates", "confirmed_removals", "reclassified_keeps", "justification_resolved", "total_pyproject_lines_to_change"],
+      "properties": {
+        "audit_remove_candidates": { "type": "integer" },
+        "confirmed_removals": { "type": "integer" },
+        "reclassified_keeps": { "type": "integer" },
+        "justification_resolved": { "type": "boolean" },
+        "total_pyproject_lines_to_change": { "type": "integer" }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "audit_classification", "plan_decision", "rationale"],
+        "properties": {
+          "package": { "type": "string" },
+          "audit_classification": { "type": "string" },
+          "plan_decision": {
+            "type": "string",
+            "enum": ["remove", "keep_reclassified", "keep_justified"]
+          },
+          "new_classification": { "type": "string" },
+          "rationale": { "type": "string" },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "import_count": { "type": "integer" },
+              "import_locations": { "type": "string" },
+              "subprocess_usage": { "type": "boolean" },
+              "subprocess_files": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "pyproject_change": { "type": "string" },
+          "risk": { "type": "string" }
+        }
+      }
+    }
+  }
+}

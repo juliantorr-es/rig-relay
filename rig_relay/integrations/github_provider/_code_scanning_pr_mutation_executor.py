@@ -293,6 +293,7 @@ def execute_pr_mutation(
         and allow_remote
         and fake_boundary is not None
         and candidate is not None
+        and readiness is not None
     ):
         remote_attempted = True
 

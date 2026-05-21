@@ -98,7 +98,9 @@ class TestNoBareExceptPass:
                 in_except = True
                 continue
             if in_except and line.strip() == "pass":
-                assert False, f"renderer.py line {i + 1}: bare except:pass not allowed"
+                raise AssertionError(
+                    f"renderer.py line {i + 1}: bare except:pass not allowed"
+                )
             if in_except and line.strip() and not line.strip().startswith("#"):
                 in_except = False
 

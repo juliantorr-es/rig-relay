@@ -39,7 +39,7 @@ def build_lane_proposal(
 
     candidate_id = candidate.get("candidate_id", "")
     title = candidate.get("title", "unnamed")
-    source_kind = candidate.get("source_kind", "unknown")
+    candidate.get("source_kind", "unknown")
 
     if not candidate_id:
         return None, ["candidate_id is required"]

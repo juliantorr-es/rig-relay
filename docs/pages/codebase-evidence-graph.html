@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codebase Evidence Graph — Rig Relay</title>
+<meta name="description" content="Searchable graph of 14,000 nodes">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#1e3a5f">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Codebase Evidence Graph">
+<meta property="og:description" content="Searchable graph of 14,000 nodes">
+<meta property="og:type" content="website">
+
+
+<meta property="og:site_name" content="Rig Relay">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Codebase Evidence Graph">
+<meta name="twitter:description" content="Searchable graph of 14,000 nodes">
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="stylesheet" href="/assets/site.css">
+<meta name="relative-root" content="">
+
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="eyebrow"><a href="/index.html">Rig Relay</a> / Evidence Dossier</div>
+  <h1>Codebase Evidence Graph</h1>
+  
+</header>
+<div class="main-wrapper">
+  <aside class="sidebar-nav">
+    <h2>Evidence Console</h2>
+    <nav aria-label="Evidence dossier navigation">
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item-link active" href="/index.html">
+            <strong>Home</strong>
+            <span>Product overview</span>
+          </a>
+        </li>
+        
+      </ul>
+    </nav>
+  </aside>
+  <main id="main">
+    
+<section class="hero-status">
+  <h2>Codebase Evidence Graph</h2>
+  <div class="status-badge status-info">13,964 nodes · 3,019 edges</div>
+  <p class="summary">Deterministic, content-light graph of files, schemas, artifacts, functions, classes, and dependencies — generated from the Rig Relay repository. Powered by the canonical codebase evidence graph substrate.</p>
+  <div class="metrics">
+    <span>9 node types</span><span>2 edge types</span><span>13,964 nodes</span><span>3,019 edges</span>
+  </div>
+</section>
+
+<section>
+  <h2>Node Type Distribution</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
+      <tbody>
+        <tr><td>function</td><td>6,462</td></tr>
+        <tr><td>file</td><td>4,336</td></tr>
+        <tr><td>class</td><td>1,639</td></tr>
+        <tr><td>module</td><td>857</td></tr>
+        <tr><td>schema</td><td>389</td></tr>
+        <tr><td>artifact</td><td>202</td></tr>
+        <tr><td>dependency</td><td>69</td></tr>
+        <tr><td>release_phase</td><td>7</td></tr>
+        <tr><td>provider</td><td>3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Edge Types</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Edge Type</th><th>Count</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>depends_on</td><td>2,107</td><td>Python import dependencies between modules</td></tr>
+        <tr><td>validates_artifact</td><td>912</td><td>Schema-to-artifact validation edges</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="callout callout-info">
+  <h3>Content-Light Guarantee</h3>
+  <p>All code content is stored as hashes only. Relative paths only — never absolute home paths. No raw source in canonical JSON. No tokens, secrets, or private files. Generated deterministically from committed artifacts.</p>
+</section>
+
+<section>
+  <h2>Projection Modes</h2>
+  <div class="card-grid">
+    <div class="card status-info">
+      <h3>public_static</h3>
+      <div class="card-body">Content-light, no local paths, no session data. Published to GitHub Pages.</div>
+    </div>
+    <div class="card status-info">
+      <h3>cockpit_local</h3>
+      <div class="card-body">Local-safe metadata, branch context. Cockpit dashboard only.</div>
+    </div>
+    <div class="card status-info">
+      <h3>context_digest</h3>
+      <div class="card-body">Compact, deterministic context packet for the assembler. Bounded size.</div>
+    </div>
+    <div class="card status-info">
+      <h3>duckdb_read_side</h3>
+      <div class="card-body">Queryable analytics. Read-only. Zero new dependencies.</div>
+    </div>
+    <div class="card status-info">
+      <h3>impact_analysis</h3>
+      <div class="card-body">Changed-paths-to-adjacent-evidence mapping via git diff.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Regeneration</h2>
+  <p>The graph auto-refreshes on milestone-tagged pushes via the pre-push hook. Manual refresh via:</p>
+  <pre><code>uv run python scripts/rig_codebase_evidence_graph.py --summary
+uv run python scripts/rig_github_maintenance.py graph</code></pre>
+</section>
+
+  </main>
+</div>
+<footer class="site-footer">
+  <p>Rig Relay — Governed local agent platform. Generated .
+  
+  <a href="/index.html">Home</a>.</p>
+</footer>
+</body>
+</html>

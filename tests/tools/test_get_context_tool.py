@@ -215,7 +215,7 @@ class TestGetContextCollisionMode:
             state = BaseToolState()
             tool = GetContext(config_getter=lambda: config, state=state)
             args = GetContextArgs(mode="collision", scope_paths=["test.py"])
-            async for event in tool.run(args):
+            async for _event in tool.run(args):
                 pass
             after = set(tmp_path.rglob("*"))
             assert after - before == set()

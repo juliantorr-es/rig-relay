@@ -166,7 +166,10 @@ def load_artifacts_for_page(  # noqa: PLR0912
             # Optional: validate JSONL rows if schema_path is specified in manifest
             schema_path_key = entry.get("schema_path")
             if schema_path_key:
-                for idx, row in enumerate(artifacts[kind]):
+                loaded = artifacts[kind]
+                if not isinstance(loaded, list):
+                    continue
+                for idx, row in enumerate(loaded):
                     is_valid, err = validate_json_schema(row, schema_path_key, root_r)
                     if not is_valid:
                         raise SchemaValidationError(

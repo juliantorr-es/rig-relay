@@ -2063,6 +2063,15 @@ def _execute_sign_in_poll(
                     },
                 )
 
+            case _:
+                return _build_result(
+                    f"sign_in_{provider_name}_poll",
+                    intent_id,
+                    "failed",
+                    error_code="unknown_status",
+                    summary=f"{provider_name} sign-in unexpected status: {session.status}.",
+                )
+
     except Exception as e:
         return _build_result(
             f"sign_in_{provider_name}_poll",

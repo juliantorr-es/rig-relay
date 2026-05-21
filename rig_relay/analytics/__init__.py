@@ -102,6 +102,7 @@ def connect_in_memory() -> Any:
     """
     if not HAS_DUCKD:
         raise RuntimeError("DuckDB is not available. Install with: uv add duckdb")
+    assert _duckdb is not None  # narrow for pyright after ImportError guard
     return _duckdb.connect(":memory:")
 
 

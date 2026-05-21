@@ -10,6 +10,7 @@ from rig_relay.docs_renderer.metadata import (
     make_head_tags,
     make_og_tags,
 )
+from rig_relay.docs_renderer.models import SiteMeta
 from rig_relay.docs_renderer.paths import REPO_ROOT
 
 

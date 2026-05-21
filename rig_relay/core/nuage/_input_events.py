@@ -8,10 +8,13 @@ from pydantic import ValidationError
 
 from rig_relay.core.logger import logger
 from rig_relay.core.nuage.remote_workflow_event_models import (
+    AskUserQuestionArgs,
     PredefinedAnswersState,
     WaitForInputPayload,
 )
 from rig_relay.core.types import AssistantEvent, BaseEvent, LLMMessage, Role
+
+_ASK_USER_QUESTION_TOOL = "ask_user_question"
 
 
 class InputEventsMixin:

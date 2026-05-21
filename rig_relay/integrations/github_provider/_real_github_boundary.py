@@ -376,7 +376,7 @@ class RealGitHubBoundary:
             )
         async with httpx.AsyncClient() as client:
             try:
-                payload = {"title": title, "body": body}
+                payload: dict[str, Any] = {"title": title, "body": body}
                 if labels:
                     payload["labels"] = labels
                 resp = await client.post(

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_pr_rehearsal_operator_checklist.v1.schema.json",
+  "title": "Live PR Rehearsal Operator Checklist v1",
+  "description": "Pre-flight operator checklist for executing a governed live GitHub PR rehearsal. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "repository",
+    "base_branch",
+    "proposed_branch",
+    "target_file_paths",
+    "candidate_diff_hash",
+    "operation_idempotency_key",
+    "expected_operations",
+    "permissions_required",
+    "permissions_verified",
+    "alert_update_deferred",
+    "pr_merge_deferred",
+    "rollback_guidance",
+    "no_default_branch_write",
+    "no_workflow_paths",
+    "no_raw_vulnerable_content"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.live_pr_rehearsal_operator_checklist.v1" },
+    "repository": { "type": "string" },
+    "base_branch": { "type": "string" },
+    "proposed_branch": { "type": "string" },
+    "target_file_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "candidate_diff_hash": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "operation_idempotency_key": { "type": "string" },
+    "expected_operations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "permissions_required": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "permissions_verified": { "type": "boolean" },
+    "alert_update_deferred": { "type": "boolean" },
+    "pr_merge_deferred": { "type": "boolean" },
+    "rollback_guidance": { "type": "string" },
+    "no_default_branch_write": { "type": "boolean" },
+    "no_workflow_paths": { "type": "boolean" },
+    "no_raw_vulnerable_content": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,286 @@
+{
+  "schema_version": "rig.relay.seam_decomposition_remediation_plan.v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "audit_source": {
+    "document_id": "repo-state-governance-seams-doc-drift-audit",
+    "path": "docs/json/audits/repo-state/governance-seams-doc-drift-audit.v1.json"
+  },
+  "content_light": true,
+  "summary": {
+    "total_modules_assessed": 8,
+    "total_lines_assessed": 6096,
+    "priority_p1_count": 4,
+    "priority_p2_count": 3,
+    "priority_p3_count": 1,
+    "total_lines_to_extract": 1550,
+    "total_estimated_new_lines": 1900,
+    "estimated_test_impact": "45-65 tests to update with delegation verification"
+  },
+  "recommended_sequence": [
+    "P1: compiler.py → ContextRuntime + DigestPacketBuilder (highest seam score; mode dispatch is well-defined)",
+    "P1: bridge_server.py → _bridge_http.py + _bridge_probe.py + _bridge_config.py (monolithic HTTP+WSS+probe bootstrap)",
+    "P1: tool_invocation_execution.py → execute template + lease_gate.py + result_builder.py (50%+ duplicate code across 5 execute_* methods)",
+    "P1: agent_loop.py → _conversation_loop_adapter.py + extract auto-GC (still owning too many coordinator methods)",
+    "P2: conversation_runtime/runtime.py → _decisions.py + _trace_hooks.py (decision methods pure logic, trace is cross-cutting)",
+    "P2: fleet_controller.py → _fleet_projection.py + models.py (spiderweb topology separate from process lifecycle)",
+    "P2: handoff.py + collision.py → _shared.py (duplicate store-path resolution and degraded-trace patterns)",
+    "P3: server_lifecycle_executor.py → _process_manager.py + _health_probe.py (smallest seam; blocking health poll is the risk)"
+  ],
+  "modules": [
+    {
+      "module": "rig_relay/context/compiler.py",
+      "current_lines": 1165,
+      "current_seam_score": "high",
+      "already_extracted": [
+        "compiler/context/handoff.py",
+        "compiler/context/collision.py",
+        "compiler/context/symbols.py"
+      ],
+      "remaining_seams": [
+        "Mode dispatch orchestrator in execute() — 5-mode switch (DIGEST, HANDOFF, COLLISION, SYMBOLS, MAP) with per-mode _build_*_packet() callers",
+        "Digest pipeline: _build_digest_packet → ContextDigester.digest() → ContextCache.is_fresh() → fallback _build_digest_packet_from_store → CoordinationStore.read_state_projection() → _build_packet_from_projection()",
+        "Packet-to-receipt transformation (build_receipt, _estimate_tokens)",
+        "Receipt scanning (_scan_receipts — reads .build/rig-relay/coordination/receipts/)",
+        "Summary building (_build_summary — composes repo, subsystems, lanes, collisions, plan metadata into text)",
+        "Backward-compatibility wrappers (_build_recommended_context, _build_do_not_touch — thin wrappers around _map_selections_to_recommendations / _map_omissions_to_do_not_touch)",
+        "ContextCompiler class (build_envelope — 111-line method composing repo info, active work, warnings)"
+      ],
+      "recommended_extraction_target": "ContextRuntime (new module) + DigestPacketBuilder (new module)",
+      "what_to_extract": "Move execute() and its private _build_*_packet() callers into ContextRuntime class. Move _build_packet_from_digestion, _build_packet_from_projection, _build_digest_packet_from_store into DigestPacketBuilder. Keep ContextCompiler class and compiler.py as public facade that delegates to ContextRuntime.",
+      "estimated_lines_to_extract": 650,
+      "estimated_new_module_lines": 750,
+      "risk": "high — execute() is the public entry point for rig.get_context tool; mode dispatch touches 5 distinct code paths; degradation fallback paths must preserve existing behavior exactly",
+      "test_impact": "12-18 tests — get_context_tool tests, digestion tests, handoff/collision degradation tests",
+      "priority": "P1",
+      "notes": "The digest pipeline alone accounts for ~350 lines (build_digest_packet, build_digest_packet_from_store, build_packet_from_digestion, build_packet_from_projection). These 4 functions form a coherent extraction target. The handoff/collision/symbols wrappers are thin (70-100 lines each) and already delegate to compiler/context/*.py — they stay in compiler.py as simple mode-dispatchers. The backward-compat wrappers (_build_recommended_context, _build_do_not_touch) stay as module-level helpers."
+    },
+    {
+      "module": "rig_relay/core/agent_loop.py",
+      "current_lines": 989,
+      "current_seam_score": "high",
+      "already_extracted": [
+        "ToolExecutor (rig_relay/core/tool_executor/)",
+        "SessionRuntime (rig_relay/core/session_runtime.py)",
+        "GovernanceRuntime (rig_relay/core/governance_runtime.py)",
+        "TraceRuntime (rig_relay/core/trace_runtime.py)",
+        "ConversationRuntime (rig_relay/core/conversation_runtime/runtime.py)",
+        "9 mixins (_llm_call.py, _tool_response.py, _patch_gating.py, _agent_init.py, _session_lifecycle.py, _governance.py, _telemetry.py, _context_envelope.py, _middleware_metadata.py)"
+      ],
+      "remaining_seams": [
+        "_ConversationLoopAdapter class (94 lines) — adapter implementing ConversationRuntimeCallbacks, lives at module bottom but has no extraction",
+        "Auto-GC (_maybe_auto_gc — 35 lines calling storage_lifecycle.compute_storage_summary + run_artifact_gc)",
+        "Tool result caching (_check_tool_result_cache — 30 lines checking determinism_class against cache)",
+        "Symbol alias expansion (_expand_tool_call_args — 18 lines walking dicts/lists/tuples to expand_aliases)",
+        "Tool execution coordinator methods (_perform_llm_turn, _execute_pending_tool_batch, _handle_tool_calls, _run_tools_concurrently) — all thin wrappers delegating to ToolExecutor",
+        "Subprocess runner builder (_build_subprocess_runner)",
+        "Backend selection (_select_backend — 31 lines, includes local_inference airlock path)"
+      ],
+      "recommended_extraction_target": "_conversation_loop_adapter.py + evidence/_auto_gc.py + _tool_resolution.py (new mixin)",
+      "what_to_extract": "Extract _ConversationLoopAdapter into rig_relay/core/_conversation_loop_adapter.py (it's already a self-contained class). Move _maybe_auto_gc into evidence/ package (it only calls evidence/storage_lifecycle). Move _check_tool_result_cache and _expand_tool_call_args into a new _tool_resolution.py mixin.",
+      "estimated_lines_to_extract": 190,
+      "estimated_new_module_lines": 220,
+      "risk": "medium — _ConversationLoopAdapter is called from ConversationRuntime.execute_turn_loop(); extraction is mechanical. Auto-GC extraction touches the evidence package boundary. _tool_resolution mixin is additive",
+      "test_impact": "8-12 tests — adapter delegation tests, auto-GC invocation tests, tool cache tests",
+      "priority": "P1",
+      "notes": "AgentLoop at 989 lines is down from 1806 — the mixin pattern works well. The remaining coordinator methods (_perform_llm_turn, _handle_tool_calls, _run_tools_concurrently) are mostly 5-15 line thin wrappers now that ToolExecutor handles the real logic. They're not worth extracting individually. The adapter class is the biggest remaining seam at 94 lines."
+    },
+    {
+      "module": "rig_relay/desktop/bridge_server.py",
+      "current_lines": 1408,
+      "current_seam_score": "high",
+      "already_extracted": [
+        "ProjectionWebSocketServer",
+        "LifecycleArtifactWriter",
+        "BridgeProbeReport",
+        "DesktopBridgeStateMachine",
+        "DesktopCorrelation",
+        "TraceRecorder"
+      ],
+      "remaining_seams": [
+        "HTTP routing and static file serving (_handle_http — 152 lines with 10 route arms, host/origin validation, service-state gating)",
+        "Probe ladder embedded in start() — 13-step bootstrap (bridge:01 through bridge:14) with inline asset verification, config building, server creation, health probing, static asset probing",
+        "Health check construction (_build_healthz — 63 lines composing bridge + service state into JSON)",
+        "Index HTML injection (_serve_index_html — 37 lines injecting __RIG_RELAY_RUNTIME_CONFIG__ bootstrap script)",
+        "Lifecycle summary writing (write_lifecycle_summary — 31 lines with git HEAD resolution)",
+        "Golden trace event emission (_emit_golden_event — 42 lines building trace events with authority metadata)",
+        "State machine transition helpers (_transition_state, _apply_probe_transition, _apply_frontend_event_transition)",
+        "Module-level security validators (_validate_http_origin, _validate_host_header — 50 lines for DNS-rebinding and origin defense)",
+        "Config models (DesktopBridgeConfig — 30 lines, DesktopBridgeRuntimeConfig — 59 lines) living in same file",
+        "TLS/transport helpers (_tls_trust_state, _transport_label, _unsafe_non_loopback_allowed)"
+      ],
+      "recommended_extraction_target": "_bridge_config.py + _bridge_http.py + _bridge_probe.py + _bridge_security.py",
+      "what_to_extract": "Extract DesktopBridgeConfig and DesktopBridgeRuntimeConfig into _bridge_config.py. Extract _handle_http + _serve_static + _serve_index_html into _bridge_http.py. Extract probe ladder steps from start() + _probe_healthz + _probe_path into _bridge_probe.py. Extract _validate_http_origin + _validate_host_header + _is_loopback_host into _bridge_security.py. DesktopBridgeServer becomes thin orchestrator composing these.",
+      "estimated_lines_to_extract": 550,
+      "estimated_new_module_lines": 620,
+      "risk": "high — start() is the bridge bootstrap entry point; the 13-step probe ladder must preserve exact step IDs (bridge:01 through bridge:14) used by state machine transitions and frontend event correlation. HTTP routing changes must not break static file serving or index.html injection. Security validators are DNS-rebinding defense — must not weaken",
+      "test_impact": "10-15 tests — bridge startup tests, HTTP routing tests, host/origin validation tests, probe ladder tests",
+      "priority": "P1",
+      "notes": "This is the highest-line-count module (1408 lines) and the most diverse in responsibilities. The probe ladder in start() alone is 391 lines with 13 sequential steps. Extraction requires preserving the exact step_id namespace (bridge:01 through bridge:14) because these IDs flow through state machine transitions and frontend correlation. The module-level security validators are self-contained and well-tested — extracting them is low-risk. The _bridge_http extraction is moderate risk because _handle_http has 10 route arms with host/origin/service-state gating interleaved."
+    },
+    {
+      "module": "rig_relay/runtime/tool_invocation_execution.py",
+      "current_lines": 1229,
+      "current_seam_score": "high",
+      "already_extracted": [
+        "RuntimeToolInvocationAdapter",
+        "RuntimeToolRuntimeAdapter",
+        "RuntimeAuditPersistenceStore",
+        "RuntimeContextResolution"
+      ],
+      "remaining_seams": [
+        "5 execute_* methods with structurally identical pre-execution gating: validate tool_name → adapter.prepare() → check BLOCKED/REFUSED → validate envelope schema → (lease for mutation) → execute → build result. 60-80% duplicated across execute_validate, execute_search_replace, execute_write_file, execute_bash, execute_runtime_exec",
+        "Large status-mapping logic in _to_execution_result — 93 lines of match/case cascades converting tool status values into RuntimeToolExecutionStatus",
+        "Lease acquisition/release (_claim_mutation_lease — 82 lines, _release_mutation_lease — 23 lines) with coordination store interaction",
+        "_invoke_tool_runtime — 91 lines with duplicated envelope construction for 4 tools (identical block repeated with only tool_name changed)",
+        "Per-tool _run_*_tool methods (_run_validate_tool, _run_search_replace_tool, _run_write_file_tool, _run_bash_tool) — 4 methods with similar arg-building patterns",
+        "Audit persistence (_persist_if_configured — 28 lines) and receipt attachment (_attach_receipt — 14 lines)",
+        "Schema validation (_validate_envelope_schema — 24 lines with jsonschema.Draft7Validator)"
+      ],
+      "recommended_extraction_target": "_execution_template.py + lease_gate.py + result_builder.py",
+      "what_to_extract": "Refactor the 5 execute_* methods into a shared _execute_with_envelope(tool_name, runner_fn, mutation=False) template to eliminate duplicated gating logic. Extract _claim_mutation_lease + _release_mutation_lease into lease_gate.py. Extract _to_execution_result status mapping into result_builder.py. Refactor _invoke_tool_runtime to use a dispatch map instead of if/elif chains with duplicated envelope construction.",
+      "estimated_lines_to_extract": 400,
+      "estimated_new_module_lines": 450,
+      "risk": "medium — execute_* methods follow a well-defined pattern making template extraction mechanical. The lease gate touches coordination store (mutation gating) — must preserve fail-closed behavior (store errors block mutation, not allow it). _to_execution_result status mapping is pure logic extraction",
+      "test_impact": "8-12 tests — template gating tests, lease gate tests, result builder tests, dispatch map tests",
+      "priority": "P1",
+      "notes": "The 5 execute_* methods share a 6-step pattern: (1) validate tool_name, (2) adapter.prepare(), (3) check BLOCKED/REFUSED status, (4) validate envelope schema, (5) claim lease if mutation, (6) execute tool. Steps 1-4 are identical across all 5 methods. Extracting them into a shared _execute_with_envelope would reduce ~200 lines of duplicate gating. The lease gate extraction is moderate risk because coordination_enabled=False must still skip lease acquisition — backward compat is required."
+    },
+    {
+      "module": "rig_relay/core/conversation_runtime/runtime.py",
+      "current_lines": 385,
+      "current_seam_score": "high",
+      "already_extracted": [
+        "ConversationTurnRuntime",
+        "conversation_runtime/models.py"
+      ],
+      "remaining_seams": [
+        "6 decision methods as pure logic functions: decide_after_middleware, decide_after_model_turn, decide_on_exception, decide_after_hook_processing, decide_after_tool_batch, decide_after_budget_check",
+        "execute_turn_loop — 117-line while-loop owning phase sequencing, middleware, context building, LLM turn, tool batch, hook processing, and budget checking",
+        "Trace emission methods (_build_trace_attrs, _emit_trace, _emit_result_trace, _capture_trace_id — 57 lines) as cross-cutting concern",
+        "Phase tracking (_phase, _finish, build_result — 65 lines) intertwined with trace emission"
+      ],
+      "recommended_extraction_target": "_decisions.py + _trace_hooks.py",
+      "what_to_extract": "Extract the 6 decision methods into _decisions.py — they're pure logic with no I/O, making them ideal for isolation testing. Extract trace emission methods into _trace_hooks.py. Keep execute_turn_loop, _phase, _finish, build_result in runtime.py.",
+      "estimated_lines_to_extract": 120,
+      "estimated_new_module_lines": 150,
+      "risk": "low — decision methods are pure logic with deterministic inputs (action string, booleans, ints). No I/O dependencies. Trace emission extraction is mechanical delegation. execute_turn_loop stays intact",
+      "test_impact": "6-10 tests — decision logic tests (one per decision method), trace hook delegation tests",
+      "priority": "P2",
+      "notes": "At 385 lines this module is already well-factored. The decision methods are the most natural extraction because they're pure functions that take simple inputs and return ConversationLoopDecision objects. The trace emission extraction is less urgent but useful because it separates the cross-cutting tracing concern from the core loop. execute_turn_loop at 117 lines is the right size to stay in runtime.py — it's the canonical loop orchestrator."
+    },
+    {
+      "module": "rig_relay/providers/local_inference/server_lifecycle_executor.py",
+      "current_lines": 237,
+      "current_seam_score": "medium",
+      "already_extracted": [
+        "backend_registry.py",
+        "models.py"
+      ],
+      "remaining_seams": [
+        "Process lifecycle (_find_pid_on_port — lsof dependency, _kill_process — SIGTERM/SIGKILL with 5-second wait)",
+        "Health polling loop in _execute_start — blocking time.sleep(2) polling in sync function (up to 30 seconds)",
+        "Command template expansion in start_server — format() with host/port/model_path/model_id placeholders",
+        "Port availability check (_check_port_free — socket.create_connection probe)",
+        "probe_server_health — standalone httpx GET with timeout"
+      ],
+      "recommended_extraction_target": "_process_manager.py + _health_probe.py",
+      "what_to_extract": "Extract _find_pid_on_port and _kill_process into _process_manager.py. Extract probe_server_health and the health polling loop into _health_probe.py. Keep start_server, _execute_start, stop_server as the lifecycle coordinator.",
+      "estimated_lines_to_extract": 80,
+      "estimated_new_module_lines": 100,
+      "risk": "low — _find_pid_on_port is platform-specific (lsof on macOS/Linux) and already isolated. _kill_process is a standard SIGTERM→SIGKILL escalation. Health polling extraction is mechanical. No coordination or security gate changes",
+      "test_impact": "3-5 tests — process manager tests, health probe tests",
+      "priority": "P2",
+      "notes": "At 237 lines this is the smallest seam. Main risk is not size but the blocking health polling loop in _execute_start: sync time.sleep(2) in a 30-second loop blocks the caller. If Rig Relay ever needs async lifecycle management, this is the bottleneck. The extraction is preparation for future async health polling, not an urgent decomposition need."
+    },
+    {
+      "module": "rig_relay/enterprise/fleet_controller.py",
+      "current_lines": 315,
+      "current_seam_score": "medium",
+      "already_extracted": [],
+      "remaining_seams": [
+        "Spiderweb topology projection (build_spiderweb_fleet_section — 73 lines) mixed with process lifecycle management",
+        "Process lifecycle management embedded in start_instance/stop_instance (subprocess.Popen, signal handling, port management)",
+        "Fleet status projection (fleet_status — 53 lines) with match/case state counting",
+        "Health check polling (health_check — 16 lines) checking subprocess.poll()",
+        "Restart logic (restart_degraded — 13 lines) inline in FleetController"
+      ],
+      "recommended_extraction_target": "_fleet_projection.py + models.py",
+      "what_to_extract": "Extract build_spiderweb_fleet_section into _fleet_projection.py. Move BridgeInstance, BridgeInstanceState, FleetHealthSummary into models.py. Keep start_instance, stop_instance, health_check, restart_degraded, fleet_status in FleetController.",
+      "estimated_lines_to_extract": 100,
+      "estimated_new_module_lines": 120,
+      "risk": "low — spiderweb topology is a read-side projection with no mutation side effects. Model extraction is cosmetic. Process lifecycle management stays in FleetController where it belongs",
+      "test_impact": "3-5 tests — fleet projection tests, model integrity tests",
+      "priority": "P2",
+      "notes": "build_spiderweb_fleet_section is a 73-line method that constructs a complex dictionary with nodes, edges, strand_states, resource_pressure, causal_summary, and cross_tenant_summary. It has no dependencies on process lifecycle — it's pure read-side projection. Extracting it into _fleet_projection.py is clean and low-risk. The model dataclasses and enums already have no dependencies on FleetController logic."
+    },
+    {
+      "module": "rig_relay/compiler/context/handoff.py + rig_relay/compiler/context/collision.py",
+      "current_lines": 368,
+      "current_seam_score": "medium",
+      "already_extracted": [
+        "compiler/context/symbols.py"
+      ],
+      "remaining_seams": [
+        "Duplicate _resolve_store_path implementation (identical in both files — resolves .build/rig-relay/coordination path)",
+        "Duplicate _emit_*_degraded_trace pattern (handoff: _emit_handoff_degraded_trace, collision: _emit_collision_degraded_trace — same pattern with different event_type and correlation keys)",
+        "Duplicate _STORE_SUBDIR constant (Path('.build') / 'rig-relay' / 'coordination' defined in both files)",
+        "handoff.py: _read_handoff_events reads events.jsonl from coordination store — 33 lines of JSONL filtering",
+        "collision.py: _path_in_reservation prefix matching and _severity classification logic — could benefit from shared path-matching utilities"
+      ],
+      "recommended_extraction_target": "compiler/context/_shared.py",
+      "what_to_extract": "Extract _resolve_store_path, _emit_*_degraded_trace (as a parameterized _emit_context_degraded_trace), and _STORE_SUBDIR into _shared.py. Share path-matching utilities if needed. Both handoff.py and collision.py keep their domain-specific logic.",
+      "estimated_lines_to_extract": 60,
+      "estimated_new_module_lines": 50,
+      "risk": "low — purely mechanical deduplication. No behavior change. Both modules already use the same CoordinationStore and CoordinationStateProjection types",
+      "test_impact": "2-4 tests — shared utility tests, degraded trace emission tests",
+      "priority": "P3",
+      "notes": "At 190 and 178 lines respectively, these modules are well-sized. The extraction is cosmetic — removing ~30 lines of duplicated code. The real duplication problem is in compiler.py, not here: _build_handoff_packet and _build_collision_packet in compiler.py each contain 100+ lines of nearly identical wrapper logic (store resolution → delegate → degrade on exception → emit trace → build warnings → build ContextPacket). That duplication in compiler.py accounts for ~200 lines and is addressed in the compiler.py extraction (P1 above)."
+    }
+  ],
+  "cross_cutting_opportunities": [
+    {
+      "name": "Shared process lifecycle management",
+      "description": "bridge_server.py (_kill_process with SIGTERM/SIGKILL escalation), server_lifecycle_executor.py (_kill_process with SIGTERM/SIGKILL), and fleet_controller.py (stop_instance with SIGTERM/SIGKILL) all implement process lifecycle with signal management. A shared _process_controller.py could eliminate ~60 lines of duplicated signal handling across 3 modules.",
+      "affected_modules": [
+        "rig_relay/desktop/bridge_server.py",
+        "rig_relay/providers/local_inference/server_lifecycle_executor.py",
+        "rig_relay/enterprise/fleet_controller.py"
+      ]
+    },
+    {
+      "name": "Mode-dispatcher pattern in compiler.py mirrors tool-dispatcher in tool_invocation_execution.py",
+      "description": "compiler.py's execute() function dispatches 5 context modes via if/elif chains. tool_invocation_execution.py's execute_runtime_exec dispatches 4 sub-tools via if/elif chains. Both could use a registry/map pattern for mode→handler dispatch. Centralizing the dispatch pattern could inform a future ContextDispatcher abstraction.",
+      "affected_modules": [
+        "rig_relay/context/compiler.py",
+        "rig_relay/runtime/tool_invocation_execution.py"
+      ]
+    },
+    {
+      "name": "Health polling blocking pattern",
+      "description": "server_lifecycle_executor.py uses time.sleep(2) in a sync while-loop for health polling. bridge_server.py has probe methods that are async. fleet_controller.py uses time.sleep(0.5) and subprocess.poll(). All three could benefit from a shared async health polling utility with configurable timeouts.",
+      "affected_modules": [
+        "rig_relay/providers/local_inference/server_lifecycle_executor.py",
+        "rig_relay/desktop/bridge_server.py",
+        "rig_relay/enterprise/fleet_controller.py"
+      ]
+    }
+  ],
+  "references": [
+    {
+      "document_id": "repo-state-governance-seams-doc-drift-audit",
+      "title": "Repo State Audit - Governance-Only Surfaces, Prototype Seams, and Doc Drift"
+    },
+    {
+      "document_id": "agent-loop-runtime-module-refactor",
+      "title": "AgentLoop Runtime Module Refactor Report"
+    },
+    {
+      "document_id": "governance-fail-open-inventory",
+      "title": "AgentLoop Governance Fail-Open Inventory and Orchestration Split"
+    },
+    {
+      "document_id": "governance-gate-decision-spine-v1-implementation-plan",
+      "title": "Governance Gate Decision Spine v1 - Implementation Plan"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ def _sha256_text(val: str) -> str:
 
 
 class FakeGitHubBoundary:
-    def __init__(self):
+    def __init__(self) -> None:
         self._traces: list[dict] = []
         self._existing_branches: set[str] = set()
         self._existing_prs: set[str] = set()
@@ -247,7 +247,7 @@ class FakeGitHubBoundary:
         if alert_number not in self._alert_states:
             return self._record("PATCH", route, 404, {"error": "alert_not_found"}), {}
         current = self._alert_states[alert_number]
-        if current in ("fixed", "dismissed"):
+        if current in {"fixed", "dismissed"}:
             return self._record(
                 "PATCH", route, 400, {"error": "alert_already_resolved"}
             ), {}

@@ -318,8 +318,8 @@ class TestDesktopIntentAuthFlow:
         )
 
         store = ProfileStore(root=tmp_path / "profile")
-        profile = store.create_first_launch_profile()
-        profile = store.unlock()
+        store.create_first_launch_profile()
+        store.unlock()
         set_profile_store_override(store)
         yield
         set_profile_store_override(None)

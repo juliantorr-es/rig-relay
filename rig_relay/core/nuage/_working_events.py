@@ -4,7 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from rig_relay.core.types import BaseEvent, LLMMessage, Role
+from rig_relay.core.nuage.events import (
+    CustomTaskCompleted,
+    CustomTaskInProgress,
+    CustomTaskStarted,
+)
+from rig_relay.core.nuage.remote_workflow_event_models import (
+    AnyToolUIState,
+    FileUIState,
+    WorkingState,
+)
+from rig_relay.core.types import BaseEvent, LLMMessage, ReasoningEvent, Role
+
+_SEND_USER_MESSAGE_TOOL = "send_user_message"
 
 
 class WorkingEventsMixin:

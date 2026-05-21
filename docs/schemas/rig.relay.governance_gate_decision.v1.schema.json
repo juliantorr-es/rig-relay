@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.governance_gate_decision.v1",
+  "title": "Governance Gate Decision Event",
+  "description": "Canonical event emitted for every governance gate evaluation. One event shape for all six decision outcomes. Content-light: no raw prompts, completions, secrets, or private data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_name",
+    "gate",
+    "decision",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.relay.governance_gate_decision.v1"
+    },
+    "event_name": {
+      "const": "rig.relay.governance.gate.decision"
+    },
+    "gate": {
+      "type": "string",
+      "description": "Governance gate identifier",
+      "enum": [
+        "council",
+        "profile_gate",
+        "governance_engine",
+        "local_action_envelope",
+        "permission_check",
+        "approval_request",
+        "patch_gate",
+        "dirty_guard",
+        "authorization_receipt",
+        "coordination_task_claim",
+        "coordination_path_reservation",
+        "coordination_path_release",
+        "collision",
+        "handoff",
+        "supervisor_governance",
+        "tool_runtime_policy"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "description": "Gate decision outcome",
+      "enum": [
+        "allowed",
+        "blocked",
+        "refused",
+        "review",
+        "failed_closed",
+        "degraded"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "description": "Machine-readable reason code (e.g. file_was_clean, policy_object_missing, payload_hash_mismatch)"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Tool name if the gate evaluated a tool execution request"
+    },
+    "mutation_intent": {
+      "type": "boolean",
+      "description": "Whether the action being gated is a mutation"
+    },
+    "policy_version": {
+      "type": "string",
+      "description": "Policy version identifier for the active governance configuration"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "error", "critical"]
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Receipt identifier if the decision produced a receipt"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Correlated trace identifier"
+    },
+    "span_id": {
+      "type": "string",
+      "description": "Span identifier within the trace"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "turn_id": {
+      "type": "string",
+      "description": "Turn identifier within the session"
+    },
+    "content_light": {
+      "const": true
+    },
+    "operator_action_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether operator intervention is required (always true for failed_closed; otherwise false)"
+    },
+    "renewal": {
+      "type": "boolean",
+      "description": "Whether this is a renewal of an existing coordination claim/reservation"
+    }
+  }
+}

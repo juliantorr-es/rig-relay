@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.carte_blanche_surface_report.v1.schema.json",
+  "title": "GitHub Carte Blanche Surface Report v1",
+  "description": "Content-light report of GitHub App carte blanche surface probe results. Records which surfaces are proven live, probed read-only, modeled but blocked, or forbidden.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "content_light",
+    "boundary_available",
+    "surfaces",
+    "probes",
+    "redaction_summary",
+    "recommended_next"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.carte_blanche_surface_report.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "content_light": { "type": "boolean", "const": true },
+    "boundary_available": { "type": "boolean" },
+    "surfaces": {
+      "type": "object",
+      "required": ["total_surfaces"],
+      "properties": {
+        "total_surfaces": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["count", "status"],
+        "properties": {
+          "count": { "type": "integer" },
+          "status": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["probed", "status_code"],
+        "properties": {
+          "probed": { "type": "boolean" },
+          "status_code": { "type": "integer" },
+          "count": { "type": "integer" },
+          "has_pages": { "type": "boolean" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "required": ["content_light"],
+      "properties": {
+        "content_light": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "recommended_next": { "type": "string" }
+  },
+  "additionalProperties": true
+}

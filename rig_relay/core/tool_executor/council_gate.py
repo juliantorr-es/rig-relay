@@ -28,6 +28,9 @@ class CouncilGate:
     def __init__(self, *, loop: AgentLoop) -> None:
         self._loop: AgentLoop = loop
 
+    def _get_telemetry_client(self) -> Any | None:
+        return getattr(self._loop, "telemetry_client", None)
+
     async def consult(
         self,
         tool_name: str,
@@ -37,6 +40,7 @@ class CouncilGate:
         """Return ALLOW, BLOCK, or REVIEW. Never ALLOW on failure."""
         loop = self._loop
         turn_id = getattr(loop, "_current_user_message_id", None)
+        tc = self._get_telemetry_client()
 
         if tool_class is None:
             from rig_relay.core.logger import logger
@@ -46,8 +50,26 @@ class CouncilGate:
                 loop.session_id,
                 turn_id,
             )
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="review",
+                    reason="council_unknown_tool",
+                    tool_name=tool_name,
+                    severity="warning",
+                    turn_id=turn_id or "",
+                )
             return "REVIEW"
         if tool_class.__name__ not in _COUNCIL_MUTATION_TOOLS:
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="allowed",
+                    reason="non_mutation_tool",
+                    tool_name=tool_name,
+                    severity="info",
+                    turn_id=turn_id or "",
+                )
             return "ALLOW"
 
         try:
@@ -63,6 +85,16 @@ class CouncilGate:
                     loop.session_id,
                     turn_id,
                 )
+                if tc is not None:
+                    tc.emit_governance_gate_decision(
+                        gate="council",
+                        decision="blocked",
+                        reason="council_gate_blocked",
+                        tool_name=tool_name,
+                        severity="warning",
+                        mutation_intent=True,
+                        turn_id=turn_id or "",
+                    )
                 return "BLOCK"
         except Exception:
             from rig_relay.core.logger import logger
@@ -72,6 +104,16 @@ class CouncilGate:
                 loop.session_id,
                 turn_id,
             )
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="blocked",
+                    reason="council_gate_unavailable",
+                    tool_name=tool_name,
+                    severity="warning",
+                    mutation_intent=True,
+                    turn_id=turn_id or "",
+                )
             return "BLOCK"
 
         configured_providers = [p.name for p in getattr(loop.config, "providers", [])]
@@ -83,6 +125,15 @@ class CouncilGate:
                 loop.session_id,
                 turn_id,
             )
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="review",
+                    reason="council_single_provider",
+                    tool_name=tool_name,
+                    severity="warning",
+                    turn_id=turn_id or "",
+                )
             return "REVIEW"
 
         try:
@@ -109,4 +160,14 @@ class CouncilGate:
                 turn_id,
                 exc,
             )
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="failed_closed",
+                    reason="council_consultation_failed",
+                    tool_name=tool_name,
+                    severity="critical",
+                    mutation_intent=True,
+                    turn_id=turn_id or "",
+                )
             return "REVIEW"

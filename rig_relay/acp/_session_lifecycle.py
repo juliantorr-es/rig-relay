@@ -6,7 +6,7 @@ import asyncio
 import os
 from pathlib import Path
 import sys
-from typing import Any, override
+from typing import Any
 
 from acp import (
     PROTOCOL_VERSION,
@@ -74,7 +74,6 @@ class SessionLifecycleMixin:
                 len(mcp_servers),
             )
 
-    @override
     async def initialize(
         self,
         protocol_version: int,
@@ -205,7 +204,6 @@ class SessionLifecycleMixin:
         )
         return modes_state, modes_config, models_state, models_config
 
-    @override
     async def new_session(
         self,
         cwd: str,
@@ -278,7 +276,6 @@ class SessionLifecycleMixin:
         except Exception as e:
             raise ConfigurationError(str(e)) from e
 
-    @override
     async def load_session(
         self,
         cwd: str,
@@ -339,7 +336,6 @@ class SessionLifecycleMixin:
             config_options=self._build_config_options(session),
         )
 
-    @override
     async def close_session(
         self, session_id: str, **kwargs: Any
     ) -> CloseSessionResponse | None:
@@ -370,7 +366,6 @@ class SessionLifecycleMixin:
         await agent_loop.aclose()
         await agent_loop.telemetry_client.aclose()
 
-    @override
     async def fork_session(
         self,
         cwd: str,
@@ -420,7 +415,6 @@ class SessionLifecycleMixin:
             config_options=self._build_config_options(session),
         )
 
-    @override
     async def resume_session(
         self,
         cwd: str,

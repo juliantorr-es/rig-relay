@@ -89,7 +89,7 @@ def test_simulated_blocked_missing_bridge():
     report = build_live_pr_mutation_attempt(
         allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
     )
-    gates = {g["gate"]: g["passed"] for g in report["gates"]}
+    {g["gate"]: g["passed"] for g in report["gates"]}
     # May pass or fail depending on preflight artifact state; just verify no crash
     assert report["gates_passed"] in (True, False)
 
@@ -199,7 +199,7 @@ def test_partial_failure_rollback():
         "contents:write", False
     )  # branch create succeeds but file write fails
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
-    report = build_live_pr_mutation_attempt(
+    build_live_pr_mutation_attempt(
         allow_execute=True,
         activate_live_gate=True,
         approval_ok=True,

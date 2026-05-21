@@ -1,0 +1,300 @@
+{
+  "schema_version": "rig.relay.codebase_evidence_graph_context_digest.v1",
+  "content_light": true,
+  "changed_paths": [
+    "rig_relay/desktop/projection.py"
+  ],
+  "affected_nodes": [
+    {
+      "node_id": "ff447a69744069245938d018579c5acf6763ee8f2bec9547504fb843ed0d87bf",
+      "node_type": "file",
+      "label": "projection.py",
+      "relative_path": "rig_relay/desktop/projection.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 1408
+    },
+    {
+      "node_id": "8fd94777c53b41cf024b622f8fd6efb71f8a7cb5a9fed0f383ac803aa7d9f0aa",
+      "node_type": "module",
+      "label": "projection",
+      "relative_path": "rig_relay/desktop/projection.py",
+      "source_file_id": "ff447a69744069245938d018579c5acf6763ee8f2bec9547504fb843ed0d87bf",
+      "class_count": 0,
+      "function_count": 28
+    }
+  ],
+  "affected_count": 2,
+  "adjacent_nodes": [
+    {
+      "node_id": "9f77d3ae4492bd720628559cbdf61be259f59e4ea4feeaf1fa239be308284cba",
+      "node_type": "file",
+      "label": "demo_commands.py",
+      "relative_path": "rig_relay/cli/demo_commands.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 1078
+    },
+    {
+      "node_id": "c863010ea2edee500bfd29ed732b3e638c6884e9d5ccc60140bd44f68366d1e0",
+      "node_type": "file",
+      "label": "desktop_cockpit.py",
+      "relative_path": "rig_relay/cli/desktop_cockpit.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 1296
+    },
+    {
+      "node_id": "c863010ea2edee500bfd29ed732b3e638c6884e9d5ccc60140bd44f68366d1e0",
+      "node_type": "file",
+      "label": "desktop_cockpit.py",
+      "relative_path": "rig_relay/cli/desktop_cockpit.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 1296
+    },
+    {
+      "node_id": "a356536398c64c405f9bb1a4aad122de8940393fbdc2de4734743d058fdb1e5d",
+      "node_type": "file",
+      "label": "intents.py",
+      "relative_path": "rig_relay/desktop/intents.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 3006
+    },
+    {
+      "node_id": "92d0a952471c8d1d6b0ab331c07df54c80698e091936c26dcd4110df29d4c087",
+      "node_type": "file",
+      "label": "execution_progress.py",
+      "relative_path": "rig_relay/desktop/execution_progress.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 297
+    },
+    {
+      "node_id": "8048369ecedd7aef6d98d82d7fa973d66a4b91e7685b29370ae85496f0072095",
+      "node_type": "file",
+      "label": "projection_integrity.py",
+      "relative_path": "rig_relay/desktop/projection_integrity.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 284
+    },
+    {
+      "node_id": "77a68e1b2e4ec3f6452ffec87572662422f704e4146cf9933ba359987fff8ca8",
+      "node_type": "file",
+      "label": "policy_engine.py",
+      "relative_path": "rig_relay/enterprise/policy_engine.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 566
+    },
+    {
+      "node_id": "9af049c387be881a17c7205f286bb97a30142f8a6ff2d70514f1328adfdbd885",
+      "node_type": "file",
+      "label": "receipt_index.py",
+      "relative_path": "rig_relay/evidence/receipt_index.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 408
+    },
+    {
+      "node_id": "27783f73abb35621ea7e903a81f7da29891e66b53f7e4f897e87f9f99fbc840b",
+      "node_type": "file",
+      "label": "storage_lifecycle.py",
+      "relative_path": "rig_relay/evidence/storage_lifecycle.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 88
+    },
+    {
+      "node_id": "0a9cfd33232170a359820e0f688134bb99dee1b259e53f75a72d3fa1e4e860ad",
+      "node_type": "file",
+      "label": "state_paths.py",
+      "relative_path": "rig_relay/identity/state_paths.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 56
+    },
+    {
+      "node_id": "5445f2da18cddbdf3dde156b428cff32949610e184d02448d686aebe00727b33",
+      "node_type": "file",
+      "label": "health_check.py",
+      "relative_path": "rig_relay/providers/health_check.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 168
+    },
+    {
+      "node_id": "47022005745bc5a506d6f23b0de11c2a6577503538b6cc1248d5ada11d982339",
+      "node_type": "file",
+      "label": "key_store.py",
+      "relative_path": "rig_relay/providers/key_store.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 244
+    },
+    {
+      "node_id": "30973c295ac136dd79b01a02f035ec9c49e80688994f54b75cf839fd7af039aa",
+      "node_type": "file",
+      "label": "registry.py",
+      "relative_path": "rig_relay/providers/registry.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 110
+    },
+    {
+      "node_id": "0c7498c857b4f95ceb92f8b791105361d3404343a4b61e509672bf8f0bf2c42b",
+      "node_type": "file",
+      "label": "token_store.py",
+      "relative_path": "rig_relay/identity/token_store.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 226
+    },
+    {
+      "node_id": "12a580c2ead675bed01b83cc87de060ce179da8587a4714d087d1809db3ab08c",
+      "node_type": "file",
+      "label": "service_state.py",
+      "relative_path": "rig_relay/governance/service_state.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 396
+    },
+    {
+      "node_id": "7c21c1a6fa35744f680ecc83d265173925c2ae6dd725f1281010d9733f426f26",
+      "node_type": "file",
+      "label": "local.py",
+      "relative_path": "rig_relay/core/telemetry/local.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 193
+    },
+    {
+      "node_id": "04c554c144ad1bd304b96ce4b155f8aa63ca8c957cf38fd7b74f8818ab80f9a6",
+      "node_type": "file",
+      "label": "tool_runtime_ledger.py",
+      "relative_path": "rig_relay/core/tool_runtime_ledger.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 198
+    },
+    {
+      "node_id": "9facec70c0a881a50a28b91d6db1edb68d95eff7e36f3d27cbc367a82a115b28",
+      "node_type": "file",
+      "label": "registry.py",
+      "relative_path": "rig_relay/core/integrations/registry.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 108
+    },
+    {
+      "node_id": "d7bc62fe170c1731ee3cbdc6d065c6f034ab307b6ea3bd244c94347ad3e5a4ca",
+      "node_type": "file",
+      "label": "resource_projection_feed.py",
+      "relative_path": "rig_relay/events/resource_projection_feed.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 105
+    },
+    {
+      "node_id": "865d3b80a9097fde6ba6c0cd7773688ac4894fbd0e9564dc0fa21ef67b2e8487",
+      "node_type": "file",
+      "label": "websocket_server.py",
+      "relative_path": "rig_relay/desktop/websocket_server.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 2152
+    },
+    {
+      "node_id": "0b598e5cf3dfde21775cd22801aa75704ebb39fdc2f10d4670dce7f3e9cfe6fa",
+      "node_type": "file",
+      "label": "rig_relay_desktop_projection.py",
+      "relative_path": "scripts/rig_relay_desktop_projection.py",
+      "extension": ".py",
+      "is_python": true,
+      "is_schema": false,
+      "is_json": false,
+      "line_count": 39
+    }
+  ],
+  "adjacent_count": 21,
+  "related_release_phases": [
+    {
+      "phase_id": "phase_1_governance_coordination",
+      "status": "ready"
+    },
+    {
+      "phase_id": "phase_2_telemetry_privacy",
+      "status": "ready"
+    },
+    {
+      "phase_id": "phase_3_runtime_tools_context_api",
+      "status": "ready"
+    },
+    {
+      "phase_id": "phase_4_ui_docs_ci_packaging",
+      "status": "ready"
+    },
+    {
+      "phase_id": "phase_5_public_docs_licensing",
+      "status": "ready"
+    },
+    {
+      "phase_id": "phase_6_dogfood_operational_readiness",
+      "status": "blocked"
+    },
+    {
+      "phase_id": "phase_7_protocol_surfaces",
+      "status": "blocked"
+    }
+  ],
+  "schema_count": 389,
+  "risk_count": 0,
+  "evidence_paths": [
+    "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/codebase_evidence_graph_v1.v1.json"
+  ],
+  "deterministic": true
+}

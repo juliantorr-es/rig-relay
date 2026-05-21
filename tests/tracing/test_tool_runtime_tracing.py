@@ -81,7 +81,7 @@ async def test_refused_execution_emits_trace_span():
     assert result.status == ToolRuntimeStatus.REFUSED
 
     span_start = [e for e in store.events if e["event_kind"] == "span.start"]
-    span_end = [e for e in store.events if e["event_kind"] == "span.end"]
+    [e for e in store.events if e["event_kind"] == "span.end"]
     assert len(span_start) >= 1
     assert span_start[0]["name"] == "tool_runtime.execute_one"
     assert span_start[0]["attributes"]["tool.name"] == "refused_tool"

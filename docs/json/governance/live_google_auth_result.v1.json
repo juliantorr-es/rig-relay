@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.google_workspace.live_auth_refusal.v1",
   "receipt_id": "c6d7718d-a922-43c1-a5d6-f094fbc95d4d",
   "trace_id": "94ff7423-7500-4e34-bb98-c63e6f07c21e",
   "dry_run": false,

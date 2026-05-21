@@ -49,7 +49,6 @@ class TestContextPacketWarnings:
 
     def test_packet_warnings_excluded_from_canonical_hash(self):
         """Warnings are volatile — excluded from canonical hash."""
-        volatile_fields = ["context_id", "generated_at", "duration_ms", "warnings"]
         # Verify the compiler excludes warnings from canonical hash
         compiler_path = _REPO_ROOT / "rig_relay" / "context" / "compiler.py"
         source = compiler_path.read_text()
@@ -69,7 +68,6 @@ class TestBuildReceiptNoBareExcept:
             elif line.startswith("def ") and in_build_receipt:
                 in_build_receipt = False
             if in_build_receipt and line.strip() == "pass" and "except" in lines[i - 2]:
-                in_except = True
                 for j in range(i - 5, i):
                     if "except Exception:" in lines[j]:
                         violations.append(

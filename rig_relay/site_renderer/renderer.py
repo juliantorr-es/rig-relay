@@ -15,7 +15,7 @@ _env = Environment(
 
 
 def render_page(
-    page_model: dict, nav_pages: list[dict] = None, relative_root: str = "."
+    page_model: dict, nav_pages: list[dict] | None = None, relative_root: str = "."
 ) -> str:
     """Render a page model dict to HTML string using the page.html.j2 template."""
     template = _env.get_template("page.html.j2")
@@ -50,7 +50,7 @@ def render_page(
 def render_index(
     pages: list[dict],
     site_meta: dict,
-    nav_pages: list[dict] = None,
+    nav_pages: list[dict] | None = None,
     relative_root: str = ".",
 ) -> str:
     """Render the homepage index."""

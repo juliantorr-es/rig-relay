@@ -500,7 +500,7 @@ class TestInstallabilityAloneInsufficient:
         self, tmp_path: Path
     ) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(
+        subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
         ).strip()
         _write_minimal_gate(tmp)
@@ -711,7 +711,7 @@ class TestSabotageConsistencyFailures:
 
     def test_missing_evidence_automated_step_fails(self, tmp_path: Path) -> None:
         tmp = _repr_root(tmp_path)
-        head = subprocess.check_output(
+        subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=tmp, text=True
         ).strip()
         _write_minimal_gate(tmp)

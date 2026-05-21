@@ -6,7 +6,7 @@
   "summary": "Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.",
   "status": "active",
   "created_at": "2026-05-18",
-  "updated_at": "2026-05-18",
+  "updated_at": "2026-05-20",
   "source_commit": "aaef6b5b",
   "owners": [
     "maintainer"
@@ -157,11 +157,6 @@
       ],
       "rows": [
         [
-          "SessionRuntime",
-          "rig_relay/core/session_runtime.py",
-          "Fork, compact, reset, clear_history, switch_agent, reload_with_initial_messages"
-        ],
-        [
           "ApprovalRuntime",
           "rig_relay/core/approval_runtime.py",
           "Approval handoff, callbacks, permission rules"
@@ -174,6 +169,64 @@
       ],
       "disclosure": {
         "level": "standard"
+      }
+    },
+    {
+      "block_id": "implemented-runtimes",
+      "type": "heading",
+      "level": 2,
+      "content": "Implemented Runtimes (Waves 2-6)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "implemented-runtimes-text",
+      "type": "paragraph",
+      "content": "AgentLoop refactor Waves 2-6 extracted 5 standalone runtime modules from the monolith (1806 → 991 lines, 45% reduction). Each owns a coherent responsibility domain and is composed into AgentLoop rather than mixed in via MRO.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "implemented-runtimes-table",
+      "type": "table",
+      "columns": [
+        "Component",
+        "Location",
+        "Owns"
+      ],
+      "rows": [
+        [
+          "ToolExecutor",
+          "rig_relay/core/tool_executor/",
+          "Adapter factory, council gating, execution orchestration, concurrency (782 lines)"
+        ],
+        [
+          "SessionRuntime",
+          "rig_relay/core/session_runtime.py",
+          "Fork, compact, clear_history, switch_agent, reload, runtime_state (292 lines)"
+        ],
+        [
+          "GovernanceRuntime",
+          "rig_relay/core/governance_runtime.py",
+          "Permission gating, approval policy, write gating, mutation legality checks (101 lines)"
+        ],
+        [
+          "TraceRuntime",
+          "rig_relay/core/trace_runtime.py",
+          "Correlation IDs, OTel spans, lifecycle event emission (85 lines)"
+        ],
+        [
+          "TurnEnvelope",
+          "rig_relay/core/conversation_runtime/turn_envelope.py",
+          "Canonical turn result with 11 structured fields (58 lines)"
+        ]
+      ],
+      "disclosure": {
+        "level": "detailed",
+        "collapsible": true
       }
     },
     {

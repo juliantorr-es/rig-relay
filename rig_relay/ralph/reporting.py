@@ -58,7 +58,7 @@ class RalphReportStore:
         return [
             r
             for r in self._reports.values()
-            if r.status not in ("reviewed", "deferred", "rejected")
+            if r.status not in {"reviewed", "deferred", "rejected"}
         ]
 
     def list_by_status(self, status: str) -> list[RalphReport]:

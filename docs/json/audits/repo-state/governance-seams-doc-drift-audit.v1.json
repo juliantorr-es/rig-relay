@@ -1,0 +1,465 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "repo-state-governance-seams-doc-drift-audit",
+  "document_type": "audit",
+  "title": "Repo State Audit - Governance-Only Surfaces, Prototype Seams, and Doc Drift",
+  "summary": "Live inventory of governance-only code, prototype or pending surfaces, seam-heavy modules, test-double density, and the newest documentation drift in the current dirty tree.",
+  "status": "active",
+  "created_at": "2026-05-20",
+  "updated_at": "2026-05-20",
+  "source_commit": "54aafb1c",
+  "owners": [
+    "Codex"
+  ],
+  "tags": [
+    "audit",
+    "governance",
+    "prototype",
+    "seams",
+    "documentation"
+  ],
+  "audience": [
+    "maintainer",
+    "agent"
+  ],
+  "canonical_path": "docs/json/audits/repo-state/governance-seams-doc-drift-audit.v1.json",
+  "references": [
+    {
+      "document_id": "governance-gate-decision-spine-v1-audit",
+      "title": "Governance Gate Decision Spine Audit - Symmetry Analysis and Implementation Plan"
+    },
+    {
+      "document_id": "governance-gate-decision-spine-v1-implementation-plan",
+      "title": "Governance Gate Decision Spine v1 - Implementation Plan"
+    },
+    {
+      "document_id": "governance-fail-open-inventory",
+      "title": "AgentLoop Governance Fail-Open Inventory and Orchestration Split"
+    },
+    {
+      "document_id": "agent-loop-runtime-module-refactor",
+      "title": "AgentLoop Runtime Module Refactor Report - Enhanced with Source Analysis"
+    },
+    {
+      "document_id": "github_operating_picture_v1",
+      "title": "GitHub Operating Picture v1"
+    },
+    {
+      "document_id": "github_security_queue_v1",
+      "title": "GitHub Security Queue v1"
+    },
+    {
+      "document_id": "dependency_surface_audit_v1",
+      "title": "Dependency Surface Audit v1"
+    },
+    {
+      "document_id": "google_workspace_operating_picture_v1",
+      "title": "Google Workspace Operating Picture v1"
+    }
+  ],
+  "sections": [
+    {
+      "block_id": "summary-h1",
+      "type": "heading",
+      "level": 1,
+      "content": "Repo State Audit"
+    },
+    {
+      "block_id": "summary-p",
+      "type": "paragraph",
+      "content": "The current tree is structurally healthy but still split between hard governance surfaces, prototype or pending control-plane artifacts, and a few very large orchestration seams. The earlier fail-open runtime issues are mostly closed in-tree now; the bigger remaining risks are seam concentration, raw governance JSON that is still not schema-backed, and a handful of empty or placeholder docs that are already wired into live code."
+    },
+    {
+      "block_id": "inventory-table",
+      "type": "table",
+      "columns": [
+        "Category",
+        "Count",
+        "Interpretation"
+      ],
+      "rows": [
+        [
+          "Governance-only code modules",
+          "14",
+          "rig_relay/governance/* is the pure policy/evidence layer"
+        ],
+        [
+          "Governance docs",
+          "196",
+          "docs/json/governance/* is the largest policy-document corpus"
+        ],
+        [
+          "Prototype-ish code files",
+          "5",
+          "keyword scan over rig_relay/**/*.py"
+        ],
+        [
+          "Prototype/planned/pending docs",
+          "266",
+          "keyword scan over docs/json/**/*.json"
+        ],
+        [
+          "Tests with mocks/fakes",
+          "127",
+          "MagicMock, AsyncMock, and Fake* density is still high"
+        ],
+        [
+          "Stub test files",
+          "7",
+          "tests/stubs/*"
+        ],
+        [
+          "xfail tests",
+          "1",
+          "The suite still carries at least one explicit xfail"
+        ],
+        [
+          "Latest docs missing schema_version",
+          "2",
+          "The newest code-scanning plan/projection docs are still raw"
+        ],
+        [
+          "Raw checklist/projection docs",
+          "3",
+          "Live control-plane artifacts that are not yet schema-backed"
+        ]
+      ]
+    },
+    {
+      "block_id": "closed-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Closed Fail-Opens Already In Tree"
+    },
+    {
+      "block_id": "closed-table",
+      "type": "table",
+      "columns": [
+        "Surface",
+        "Current state",
+        "Why this matters"
+      ],
+      "rows": [
+        [
+          "rig_relay/core/tool_runtime.py + rig_relay/runtime/tool_runtime_adapter.py + rig_relay/runtime/tool_invocation_execution.py",
+          "Fail-closed policy_object wiring is now present; runtime execution is no longer a silent allow path.",
+          "This was the biggest earlier governance bypass and it is no longer the top live risk in the dirty tree."
+        ],
+        [
+          "rig_relay/governance/dirty_guard.py + rig_relay/core/_agent_init.py",
+          "Git status capture failure now blocks mutation instead of being treated as a successful snapshot.",
+          "Mutation tools no longer inherit a false clean baseline when capture fails."
+        ],
+        [
+          "rig_relay/core/tools/builtins/checkpoint.py + rig_relay/governance/auth_receipts.py",
+          "Dev bypass is now explicit and opt-in instead of implicit.",
+          "The checkpoint seam is still a governance surface, but it is no longer an accidental backdoor."
+        ],
+        [
+          "rig_relay/core/subagents/runtime.py + rig_relay/core/tools/builtins/task.py",
+          "Structured refusal is returned when a runtime is not supplied.",
+          "Subagent execution is bounded instead of silently falling back to legacy direct execution."
+        ]
+      ]
+    },
+    {
+      "block_id": "governance-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Governance-Only Code Surfaces"
+    },
+    {
+      "block_id": "governance-table",
+      "type": "table",
+      "columns": [
+        "Path",
+        "Role"
+      ],
+      "rows": [
+        [
+          "rig_relay/governance/__init__.py",
+          "Package export boundary"
+        ],
+        [
+          "rig_relay/governance/auth_receipts.py",
+          "Step-up authorization receipts and dev receipt policy"
+        ],
+        [
+          "rig_relay/governance/context_envelope_bridge.py",
+          "Bridge between context envelopes and governance artifacts"
+        ],
+        [
+          "rig_relay/governance/decisions.py",
+          "Decision vocabulary and policy outcome helpers"
+        ],
+        [
+          "rig_relay/governance/dirty_guard.py",
+          "Dirty-worktree mutation guard"
+        ],
+        [
+          "rig_relay/governance/findings_lifecycle.py",
+          "Findings registry lifecycle"
+        ],
+        [
+          "rig_relay/governance/governance_engine.py",
+          "Core governance decision engine"
+        ],
+        [
+          "rig_relay/governance/local_action_envelope.py",
+          "Local action envelope model"
+        ],
+        [
+          "rig_relay/governance/local_action_gate.py",
+          "Local action gate and policy helpers"
+        ],
+        [
+          "rig_relay/governance/mission_context_compiler.py",
+          "Governance context compiler"
+        ],
+        [
+          "rig_relay/governance/mission_context_duckdb.py",
+          "Governance analytics substrate"
+        ],
+        [
+          "rig_relay/governance/mission_context_packet.py",
+          "Mission context packet model"
+        ],
+        [
+          "rig_relay/governance/mission_envelope.py",
+          "Mission envelope model"
+        ],
+        [
+          "rig_relay/governance/service_state.py",
+          "Capability gate and service state"
+        ]
+      ]
+    },
+    {
+      "block_id": "prototype-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Prototype / Pending Surfaces"
+    },
+    {
+      "block_id": "prototype-table",
+      "type": "table",
+      "columns": [
+        "Cluster",
+        "Representative surfaces",
+        "Why it is still prototype-only"
+      ],
+      "rows": [
+        [
+          "GitHub security and live mutation lane",
+          "docs/json/governance/github_security_queue_v1.v1.json, docs/json/governance/github_security_packet_runner_plan_v1.v1.json, docs/json/governance/github_live_pr_rehearsal_operator_checklist_v1.v1.json, docs/json/governance/github_code_scanning_alert_state_plan_v1.v1.json, docs/json/governance/github_code_scanning_post_pr_projection_v1.v1.json",
+          "The queue has 45 items, 3 blocked, and 0 ready for remediation; the checklist and two projection/plan files are still raw JSON without schema_version."
+        ],
+        [
+          "Google Workspace lane",
+          "docs/json/governance/google_workspace_operating_picture_v1.v1.json, docs/json/governance/google_workspace_read_intake_v1.v1.json, docs/json/integrations/google_workspace_contract_v1.v1.json",
+          "The operating picture says auth is partial and surface health is all_missing; the contract is explicitly contract_only."
+        ],
+        [
+          "Public surface and GitHub Pages lane",
+          "docs/json/governance/github_operating_picture_v1.v1.json, docs/json/governance/github_public_surface_program_v1_report.v1.json, docs/json/governance/github_surface_audit_v1.v1.json",
+          "Preview is not ready, missing surfaces remain, and the public surface program still has live check and publish seams."
+        ],
+        [
+          "Untracked GitHub maintenance lane",
+          "rig_relay/integrations/github_provider/_github_maintenance.py, scripts/rig_github_maintenance.py, scripts/rig_github_pre_push_maintenance.py, scripts/rig_relay_dependency_audit.py",
+          "These are new support-lane implementations, but they still sit beside raw governance artifacts and should be treated as provisional until schema and execution coverage settle."
+        ],
+        [
+          "Prototype docs from earlier research lanes",
+          "docs/json/governance/security_alert_triage_v1.v1.json, docs/json/governance/mission-context-packets.v1.json, docs/json/audits/vscodium-shell-lane/compatibility-with-chatgpt-macos.v1.json",
+          "These remain framed as exploratory or research-stage artifacts rather than production-owned behavior."
+        ]
+      ]
+    },
+    {
+      "block_id": "seams-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Biggest Seams"
+    },
+    {
+      "block_id": "seams-table",
+      "type": "table",
+      "columns": [
+        "Path",
+        "Seam type",
+        "Why it is large"
+      ],
+      "rows": [
+        [
+          "rig_relay/context/compiler.py",
+          "Context assembly / degraded handoff and collision compilation",
+          "Highest seam score in the scan; it composes handoff packets, collision packets, degraded evidence, and warnings across coordination and context layers."
+        ],
+        [
+          "rig_relay/core/agent_loop.py",
+          "Turn orchestration shell",
+          "Still owns conversation loop, streaming, tool scheduling, council consultation, approvals, and auto-GC even after recent extraction work."
+        ],
+        [
+          "rig_relay/desktop/bridge_server.py",
+          "Transport / lifecycle / security / telemetry seam",
+          "Owns HTTP+WSS boot, probe ladder, runtime config, trace emission, and host-header defense in one place."
+        ],
+        [
+          "rig_relay/runtime/tool_invocation_execution.py",
+          "Runtime intent to governed tool execution seam",
+          "Bridges runtime intents, lease handling, ToolRuntime invocation, and receipt persistence."
+        ],
+        [
+          "rig_relay/core/conversation_runtime/runtime.py",
+          "Conversation turn orchestration seam",
+          "High seam score and still a central control plane for the turn lifecycle."
+        ],
+        [
+          "rig_relay/providers/local_inference/server_lifecycle_executor.py",
+          "Local inference lifecycle seam",
+          "Owns server startup/health, capability checks, and graceful degradation paths."
+        ],
+        [
+          "rig_relay/enterprise/fleet_controller.py",
+          "Fleet / bridge process orchestration seam",
+          "Coordinates ports, subprocess lifecycle, and tenant-scoped bridge instances."
+        ],
+        [
+          "rig_relay/compiler/context/handoff.py + rig_relay/compiler/context/collision.py",
+          "Subsidiary context-pack seams",
+          "These are the helper pair behind the compiler's degraded handoff and collision paths."
+        ]
+      ]
+    },
+    {
+      "block_id": "stubs-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Stubs, Mocks, and Pending Status"
+    },
+    {
+      "block_id": "stubs-table",
+      "type": "table",
+      "columns": [
+        "Signal",
+        "Count",
+        "Notes"
+      ],
+      "rows": [
+        [
+          "tests/stubs files",
+          "7",
+          "The repo still relies on a dedicated stub tree for boundary replacement"
+        ],
+        [
+          "Tests with Fake*/Mock/MagicMock/AsyncMock",
+          "127",
+          "Mocks are still concentrated in agent, tool, and tracing tests"
+        ],
+        [
+          "xfail tests",
+          "1",
+          "There is still at least one explicit expected failure"
+        ],
+        [
+          "Docs with planned/proposal/pending/future/stub/mock language",
+          "266",
+          "This is the broad prototype surface in docs/json"
+        ],
+        [
+          "Latest docs missing schema_version",
+          "2",
+          "The newest code-scanning plan and projection artifacts are still raw payloads"
+        ],
+        [
+          "Raw checklist/projection docs missing schema_version",
+          "3",
+          "Live control-plane inputs are still stored as schema-less JSON blobs"
+        ]
+      ]
+    },
+    {
+      "block_id": "docs-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Latest Docs and Overlooked Issues"
+    },
+    {
+      "block_id": "docs-table",
+      "type": "table",
+      "columns": [
+        "Path",
+        "Issue",
+        "Why it matters"
+      ],
+      "rows": [
+        [
+          "docs/json/governance/github_live_pr_rehearsal_operator_checklist_v1.v1.json",
+          "Raw checklist JSON with no schema_version or status",
+          "It is already consumed by projection and policy code, so this is not just a note file; it is a live control-plane input."
+        ],
+        [
+          "docs/json/governance/github_code_scanning_alert_state_plan_v1.v1.json",
+          "Raw alert-state plan with no schema_version or status",
+          "Used by security lifecycle code as a plan/projection artifact, but still not canonical page-shaped JSON."
+        ],
+        [
+          "docs/json/governance/github_code_scanning_post_pr_projection_v1.v1.json",
+          "Raw post-PR projection with no schema_version or status",
+          "This is another live control-plane payload that still needs schema wrapping."
+        ],
+        [
+          "docs/json/governance/github_carte_blanche_surface_report_v1.v1.json",
+          "Committed as an effectively empty/null placeholder",
+          "A null report is easy to mistake for an authoritative surface snapshot."
+        ],
+        [
+          "docs/json/governance/dependency_surface_audit_v1.v1.json",
+          "Summary shows 6 unused direct dependencies and 1 justification gap",
+          "This is a concrete maintainability debt item, not a stylistic nit."
+        ],
+        [
+          "README.md + docs/json/governance/github_operating_picture_v1.v1.json",
+          "The audit artifact's public-claim warning reads too strongly against the current README",
+          "The README now explicitly says alpha and HOLD, so this should be treated as interpretation drift, not a product overclaim."
+        ],
+        [
+          "docs/json/governance/github_security_queue_v1.v1.json",
+          "45 queue items, 3 blocked, 0 ready for remediation",
+          "This is a visibility artifact, not yet an execution backlog."
+        ],
+        [
+          "docs/json/governance/google_workspace_operating_picture_v1.v1.json",
+          "Auth is partial and surface health is all_missing",
+          "This lane is still contract-only and should be treated as prototype-only."
+        ],
+        [
+          "docs/json/governance/live_github_auth_result.v1.json and docs/json/governance/live_google_auth_result.v1.json",
+          "Invalid / schema_version mismatch artifacts",
+          "The operating pictures already flag these as invalid; they need repair if they are intended to remain canonical."
+        ]
+      ]
+    },
+    {
+      "block_id": "next-h1",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommended Next Slices"
+    },
+    {
+      "block_id": "next-list",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Convert the raw live mutation / code-scanning checklist and projection JSON blobs into schema-backed page artifacts, or move them out of the canonical docs tree if they are only intermediate evidence.",
+        "Keep decomposing AgentLoop into a thin orchestration shell; the next highest-value extraction targets are context/compiler.py, desktop/bridge_server.py, and conversation_runtime/runtime.py.",
+        "Treat dependency_surface_audit_v1 as a real cleanup slice: remove the unused direct dependencies or justify the remaining one.",
+        "Correct the documentation wording around public readiness so the audit artifacts and README tell the same conservative story.",
+        "Replace the empty/null surface report placeholder with a populated report or delete it if the lane is not ready to publish one.",
+        "Do not reopen the closed fail-open seams in ToolRuntime, DirtyGuard, checkpoint auth, or the subagent runtime path when patching adjacent modules."
+      ]
+    }
+  ]
+}

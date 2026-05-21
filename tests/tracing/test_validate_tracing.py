@@ -51,7 +51,7 @@ async def test_validate_state_transitions_emit_events():
     ctx = InvokeContext(tool_call_id="v2", trace_recorder=recorder)
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
-    async for item in tool.run(ValidateArgs(profile="quick"), ctx=ctx):
+    async for _item in tool.run(ValidateArgs(profile="quick"), ctx=ctx):
         pass
 
     transitions = [
@@ -89,7 +89,7 @@ async def test_validate_trace_has_no_raw_cwd():
     ctx = InvokeContext(tool_call_id="v4", trace_recorder=recorder)
     config = ValidateToolConfig()
     tool = Validate(config_getter=lambda: config, state=BaseToolState())
-    async for item in tool.run(ValidateArgs(profile="quick"), ctx=ctx):
+    async for _item in tool.run(ValidateArgs(profile="quick"), ctx=ctx):
         pass
 
     for event in store.events:

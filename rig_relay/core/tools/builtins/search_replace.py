@@ -614,6 +614,17 @@ class SearchReplace(
         )
         if not check.allowed:
             guard.record_refusal(file_path, check.reason)
+            if ctx is not None and ctx.tool_runtime is not None:
+                tc = getattr(ctx.tool_runtime, "telemetry_client", None)
+                if tc is not None:
+                    tc.emit_governance_gate_decision(
+                        gate="dirty_guard",
+                        decision="blocked",
+                        reason=check.reason,
+                        tool_name="search_replace",
+                        severity="warning",
+                        mutation_intent=True,
+                    )
             yield SearchReplaceResult(
                 file=str(file_path),
                 blocks_applied=0,
@@ -632,6 +643,16 @@ class SearchReplace(
             )
             return
 
+        if ctx is not None and ctx.tool_runtime is not None:
+            tc = getattr(ctx.tool_runtime, "telemetry_client", None)
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="dirty_guard",
+                    decision="allowed",
+                    reason=check.reason,
+                    tool_name="search_replace",
+                    severity="info",
+                )
         guard.mark_touched(file_path)
 
         try:

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.code_scanning_post_pr_projection.v1.schema.json",
+  "title": "Code Scanning Post-PR Projection v1",
+  "description": "Post-PR lifecycle projection. Captures the state of a code scanning alert after a PR has been created, including pending gates and next safe action.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "alert_number",
+    "pr_state",
+    "alert_state",
+    "pending_gates",
+    "next_safe_action",
+    "human_review_required",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.code_scanning_post_pr_projection.v1" },
+    "alert_number": { "type": "integer", "minimum": 1 },
+    "pr_state": { "type": "string", "enum": ["no_pr", "pr_created", "pr_merged", "pr_closed"] },
+    "alert_state": { "type": "string" },
+    "pending_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "next_safe_action": { "type": "string" },
+    "human_review_required": { "type": "boolean" },
+    "generated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

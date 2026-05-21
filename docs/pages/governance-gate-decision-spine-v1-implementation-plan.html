@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance Gate Decision Spine v1 — Implementation Plan — Rig Relay Docs</title>
+<meta name="description" content="Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/governance-gate-decision-spine-v1-implementation-plan.html">
+<meta property="og:title" content="Governance Gate Decision Spine v1 — Implementation Plan">
+<meta property="og:description" content="Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/governance-gate-decision-spine-v1-implementation-plan.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Governance Gate Decision Spine v1 — Implementation Plan">
+<meta name="twitter:description" content="Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.">
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+    <h1>Governance Gate Decision Spine v1 — Implementation Plan</h1>
+  <p class="doc-summary">Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>planned</dd>
+    <dt>Updated</dt><dd>2026-05-20</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/governance-gate-decision-spine-v1-implementation-plan.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">Governance Gate Decision Spine — Implementation Plan</h1>
+
+<h2 id="h2-1" class="disclosure-standard" data-disclosure-level="standard">Architecture Decision</h2>
+
+<p id="p-1" class="disclosure-standard" data-disclosure-level="standard">Use one canonical event (rig.relay.governance.gate.decision) with a decision field carrying one of six outcomes. Do NOT create paired event names (allow/block). This aligns with OpenTelemetry semantic conventions, OWASP security logging guidance, and NIST SP 800-92.</p>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Phase 0: Schema + Emitter + Golden DuckDB Test</h2>
+
+<p id="p-2" class="disclosure-standard" data-disclosure-level="standard">Add rig.relay.governance_gate_decision.v1 schema. Add emit_governance_gate_decision() function — not send_governance_gate_decision() that chooses between separate event names. Write one golden DuckDB projection test that proves the event shape is groupable by gate, decision, reason, tool_name, and severity.</p>
+
+<h2 id="h2-3" class="disclosure-standard" data-disclosure-level="standard">Phase 1: Cryptographic + Policy-Missing Seams (highest risk)</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Crypto gaps are not Phase 4 polish — they are Phase 1. If the local action envelope silently returns False on signature failure, payload hash mismatch, or replay expiry, that is missing security audit evidence at the boundary where Rig claims to be governed.</p>
+
+<table id="table-3" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>Decision</th><th>Severity</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Local action envelope — Ed25519 signature failure</td><td>failed_closed</td><td>critical</td><td>emit_governance_gate_decision(decision=failed_closed, reason=signature_verification_failed, severity=critical)</td></tr>
+<tr><td>Local action envelope — payload hash mismatch</td><td>failed_closed</td><td>critical</td><td>emit_governance_gate_decision(decision=failed_closed, reason=payload_hash_mismatch, severity=critical)</td></tr>
+<tr><td>Local action envelope — replay window expired</td><td>failed_closed</td><td>critical</td><td>emit_governance_gate_decision(decision=failed_closed, reason=replay_window_expired, severity=critical)</td></tr>
+<tr><td>Authorization — dev bypass used</td><td>allowed</td><td>warning</td><td>emit_governance_gate_decision(decision=allowed, reason=dev_bypass_used, severity=warning, operator_action_required=false) — leave a receipt-shaped bruise</td></tr>
+<tr><td>ToolRuntime — policy_object_missing</td><td>failed_closed</td><td>critical</td><td>emit_governance_gate_decision(decision=failed_closed, reason=policy_object_missing, severity=critical, operator_action_required=true) — do NOT log as ordinary blocked</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-4" class="disclosure-standard" data-disclosure-level="standard">Phase 2: Tool Runtime Core Gates</h2>
+
+<table id="table-4" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>File + Line</th><th>Decision Class</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Governance engine</td><td>tool_runtime.py:371-401</td><td>allowed when pass, blocked when fail</td><td>emit decision on both paths — GateDecision in-memory only today</td></tr>
+<tr><td>Local action envelope</td><td>tool_runtime.py:414-444</td><td>allowed when pass, failed_closed when mismatch</td><td>emit decision on both paths</td></tr>
+<tr><td>Profile gate (CapabilityGate)</td><td>tool_runtime.py:326-356</td><td>blocked when locked</td><td>emit decision on failure (blocked); emit allowed on success</td></tr>
+<tr><td>Permission check</td><td>tool_runtime.py:446-482</td><td>allowed when pass, blocked when deny, failed_closed when policy_missing</td><td>emit on all three paths</td></tr>
+<tr><td>Approval request</td><td>tool_runtime.py:484-511</td><td>allowed when pass, refused when user denies, failed_closed when unavailable</td><td>emit on all three paths</td></tr>
+<tr><td>Patch gate</td><td>tool_runtime.py:513-537</td><td>allowed when pass, blocked when proposal required</td><td>emit on both paths</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Phase 3: Dirty Guard and Write Tools</h2>
+
+<table id="table-5" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>File + Line</th><th>Decision Class</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Dirty guard capture</td><td>dirty_guard.py:141-153</td><td>allowed when pass, failed_closed when git fails</td><td>emit on both paths</td></tr>
+<tr><td>Dirty guard write check</td><td>dirty_guard.py:270-303</td><td>allowed when pass, blocked when protected</td><td>emit on both paths</td></tr>
+<tr><td>Dirty guard search_replace check</td><td>dirty_guard.py:305-322</td><td>same as write</td><td>same as write</td></tr>
+<tr><td>Write file coordination block</td><td>write_file.py:404-430</td><td>blocked when reserved</td><td>call existing _emit_coord_blocked_trace() which is defined but never called</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-6" class="disclosure-standard" data-disclosure-level="standard">Phase 4: Coordination Renewals and Releases</h2>
+
+<table id="table-6" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>File + Line</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Task claim same-owner renewal</td><td>store.py:342-346</td><td>Emit coord.task.claimed on renewal (add renewal: true to payload)</td></tr>
+<tr><td>Path reservation same-owner renewal</td><td>store.py:428-430</td><td>Emit coord.path.reserved on renewal (add renewal: true to payload)</td></tr>
+<tr><td>Path release denied (not owner)</td><td>store.py:511-517</td><td>Emit coord.path.release_denied (new event) when not-owner or not-found</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-7" class="disclosure-standard" data-disclosure-level="standard">Phase 5: Council and Supervisor Gates</h2>
+
+<table id="table-7" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Gate</th><th>File + Line</th><th>Decision Class</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>Council pre-mutation</td><td>executor.py:154-155</td><td>allowed when proceed, blocked when reject, review when uncertain</td><td>emit decision after council consultation returns</td></tr>
+<tr><td>Council recommendation</td><td>council_invoker.py:246-266</td><td>allowed/block/review</td><td>emit decision for each outcome</td></tr>
+<tr><td>Supervisor governance pass</td><td>supervisor.py:435</td><td>allowed when pass</td><td>emit decision on governance pass (currently only failure traced)</td></tr>
+<tr><td>Collision/handoff resolved</td><td>collision.py:177, handoff.py:189</td><td>allowed when resolved, degraded when evidence missing</td><td>emit decision on success path</td></tr>
+</tbody>
+</table>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Test Classification</h2>
+
+<table id="table-8" class="disclosure-standard" data-disclosure-level="standard">
+<thead><tr><th>Classification</th><th>What It Proves</th></tr></thead>
+<tbody>
+<tr><td>unit</td><td>Emitter helper enum/field validation. Decision enum stability. Reason code format.</td></tr>
+<tr><td>contract</td><td>JSON schema validation for rig.relay.governance_gate_decision.v1. Content-light invariant holds. additionalProperties rejected.</td></tr>
+<tr><td>integration</td><td>Tool runtime paths emit exactly one decision event per gate per invocation. All six decision classes reachable.</td></tr>
+<tr><td>real-artifact</td><td>JSONL telemetry files are written and DuckDB-groupable. Schema-validated artifacts exist on disk.</td></tr>
+<tr><td>adversarial</td><td>Cryptographic mismatch emits failed_closed. Expired envelope emits failed_closed. Missing policy object emits failed_closed with operator_action_required=true. Dev bypass emits allowed with severity=warning.</td></tr>
+<tr><td>substrate</td><td>DuckDB projection over JSONL proves: group by gate, decision, reason, tool_name; count per severity; trending per policy_version.</td></tr>
+</tbody>
+</table>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/governance-gate-decision-spine-v1-implementation-plan.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

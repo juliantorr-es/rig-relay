@@ -196,7 +196,7 @@ def test_repeated_run_same_hashes(tmp_path: Path):
     docs2 = json.loads((out2 / "markdown_documents.json").read_text())
     assert docs1["document_count"] == docs2["document_count"]
 
-    for d1, d2 in zip(docs1["documents"], docs2["documents"]):
+    for d1, d2 in zip(docs1["documents"], docs2["documents"], strict=True):
         assert d1["sha256"] == d2["sha256"]
         assert d1["body_sha256"] == d2["body_sha256"]
 

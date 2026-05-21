@@ -103,7 +103,7 @@ def save_installation_config(
     return True
 
 
-def get_installation_status() -> dict[str, str | None]:
+def get_installation_status() -> dict[str, str | bool | None]:
     """Check current GitHub App installation status."""
     from dotenv import load_dotenv
 

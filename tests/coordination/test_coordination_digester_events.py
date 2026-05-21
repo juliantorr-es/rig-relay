@@ -188,7 +188,7 @@ def test_mark_lease_stale_no_race_with_reserve(tmp_path: Path) -> None:
     proj = store_final.read_state_projection()
 
     active_leases = list(proj.active_path_reservations.values())
-    stale_count = sum(1 for r in results if "stale" in str(r))
+    sum(1 for r in results if "stale" in str(r))
     error_count = sum(1 for r in results if "error" in str(r))
 
     assert error_count == 0, f"Errors during concurrent ops: {results}"

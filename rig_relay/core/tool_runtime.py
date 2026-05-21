@@ -132,10 +132,12 @@ class ToolRuntime:
         trace_recorder: Any | None = None,
         source_label: str = "agent_loop",
         policy_object: ToolRuntimePolicy | None = None,
+        telemetry_client: Any | None = None,
     ) -> None:
         self._invoke_tool = invoke_tool or self._default_invoke_tool
         self._cache_check = cache_check or (lambda t, a: (False, None))
         self._cache_store = cache_store or (lambda t, a, r: None)
+        self.telemetry_client = telemetry_client
 
         # ── Governance callbacks: fail-closed by default ─────────
         if policy_object is not None:
@@ -161,6 +163,13 @@ class ToolRuntime:
             )
             self._dirty_guard_satisfied = policy_object.dirty_guard_satisfied
             self._policy_provided = True
+            if self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="tool_runtime_policy",
+                    decision="allowed",
+                    reason="policy_object_present",
+                    severity="info",
+                )
         else:
             self._permission_decision = permission_decision or (
                 lambda t, a, c: _async_deny(t, a, c)
@@ -176,6 +185,15 @@ class ToolRuntime:
             self._local_action_envelope_required = False
             self._dirty_guard_satisfied = False
             self._policy_provided = bool(permission_decision and approval_request)
+            if self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="tool_runtime_policy",
+                    decision="failed_closed",
+                    reason="policy_object_missing",
+                    severity="critical",
+                    operator_action_required=True,
+                    mutation_intent=True,
+                )
 
         self._expand_args = expand_args or (lambda a: a)
         self._receipt_build = receipt_build or (lambda tn, rm: None)
@@ -323,12 +341,26 @@ class ToolRuntime:
             )
 
         # ── 1.5. Profile gate check ─────────────────────────────
+        is_mutation = request.execution_mode in {
+            ToolRuntimeExecutionMode.MUTATION_EXECUTION,
+            ToolRuntimeExecutionMode.MUTATION_PROPOSAL,
+        }
         profile_gate = _get_profile_gate()
         if profile_gate is not None:
             allowed, reason = profile_gate.check_tool_execution(
                 tool_name=tn, execution_mode=request.execution_mode
             )
             if not allowed:
+                if self.telemetry_client is not None:
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="profile_gate",
+                        decision="blocked",
+                        reason="capability_gated",
+                        tool_name=tn,
+                        mutation_intent=is_mutation,
+                        severity="warning",
+                        turn_id=request.turn_id or "",
+                    )
                 self._stats_delta("tool_calls_rejected", 1)
                 _finalize_span(
                     status_str="refused",
@@ -354,6 +386,15 @@ class ToolRuntime:
                         "runtime_envelope_sha256": request.runtime_envelope_sha256,
                     }
                 )
+            elif self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="profile_gate",
+                    decision="allowed",
+                    reason="profile_unlocked",
+                    tool_name=tn,
+                    severity="info",
+                    turn_id=request.turn_id or "",
+                )
 
         # ── 1.6. Governance engine check for mutation tools ────
         if request.execution_mode in {
@@ -369,6 +410,21 @@ class ToolRuntime:
                 allow_mutation=True,
             )
             if decision.decision == GovernanceDecisionKind.BLOCKED:
+                block_msg = (
+                    decision.blocked_intents[0].reason
+                    if decision.blocked_intents
+                    else "Governance blocked"
+                )
+                if self.telemetry_client is not None:
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="governance_engine",
+                        decision="blocked",
+                        reason=block_msg,
+                        tool_name=tn,
+                        mutation_intent=True,
+                        severity="warning",
+                        turn_id=request.turn_id or "",
+                    )
                 self._stats_delta("tool_calls_rejected", 1)
                 _finalize_span(
                     status_str="refused",
@@ -376,11 +432,6 @@ class ToolRuntime:
                         "tool.status": "refused",
                         "tool.refusal_code": "governance_blocked",
                     },
-                )
-                block_msg = (
-                    decision.blocked_intents[0].reason
-                    if decision.blocked_intents
-                    else "Governance blocked"
                 )
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
@@ -399,6 +450,15 @@ class ToolRuntime:
                         "runtime_envelope_sha256": request.runtime_envelope_sha256,
                     }
                 )
+            elif self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="governance_engine",
+                    decision="allowed",
+                    reason="all_checks_passed",
+                    tool_name=tn,
+                    severity="info",
+                    turn_id=request.turn_id or "",
+                )
 
         # ── 1.7. Local action envelope gate ────────────────────
         if request.execution_mode == ToolRuntimeExecutionMode.MUTATION_EXECUTION:
@@ -415,6 +475,16 @@ class ToolRuntime:
                 reason_msg = (
                     decision.reasons[0].message if decision.reasons else "blocked"
                 )
+                if self.telemetry_client is not None:
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="rig_relay.gate.local_action_envelope",
+                        decision="blocked",
+                        reason=reason_msg,
+                        tool_name=tn,
+                        mutation_intent=True,
+                        severity="error",
+                        turn_id=request.turn_id or "",
+                    )
                 self._stats_delta("tool_calls_rejected", 1)
                 _finalize_span(
                     status_str="refused",
@@ -442,6 +512,16 @@ class ToolRuntime:
                         "runtime_envelope_sha256": request.runtime_envelope_sha256,
                     }
                 )
+            elif self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="rig_relay.gate.local_action_envelope",
+                    decision="allowed",
+                    reason="envelope_verified",
+                    tool_name=tn,
+                    mutation_intent=True,
+                    severity="info",
+                    turn_id=request.turn_id or "",
+                )
 
         # ── 2. Permission check ─────────────────────────────────
         if not request.bypass_permissions:
@@ -454,6 +534,16 @@ class ToolRuntime:
                         tool_name=tn,
                         session_id=request.session_id,
                         turn_id=request.turn_id,
+                    )
+                if self.telemetry_client is not None:
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="permission_check",
+                        decision="blocked",
+                        reason=reason or "permission_denied",
+                        tool_name=tn,
+                        mutation_intent=is_mutation,
+                        severity="warning",
+                        turn_id=request.turn_id or "",
                     )
                 self._stats_delta("tool_calls_rejected", 1)
                 _finalize_span(
@@ -480,10 +570,40 @@ class ToolRuntime:
                         "runtime_envelope_sha256": request.runtime_envelope_sha256,
                     }
                 )
+            elif self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="permission_check",
+                    decision="allowed",
+                    reason="permission_granted",
+                    tool_name=tn,
+                    severity="info",
+                    turn_id=request.turn_id or "",
+                )
 
         # ── 3. Approval request ─────────────────────────────────
         approved, reason = await self._approval_request(tn, request.tool_args, cid)
         if not approved:
+            if self.telemetry_client is not None:
+                if "unavailable" in (reason or "").lower():
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="approval_request",
+                        decision="failed_closed",
+                        reason="approval_unavailable",
+                        tool_name=tn,
+                        mutation_intent=is_mutation,
+                        severity="critical",
+                        turn_id=request.turn_id or "",
+                    )
+                else:
+                    self.telemetry_client.emit_governance_gate_decision(
+                        gate="approval_request",
+                        decision="refused",
+                        reason=reason or "approval_denied",
+                        tool_name=tn,
+                        mutation_intent=is_mutation,
+                        severity="warning",
+                        turn_id=request.turn_id or "",
+                    )
             self._stats_delta("tool_calls_rejected", 1)
             _finalize_span(
                 status_str="refused",
@@ -509,10 +629,29 @@ class ToolRuntime:
                     "runtime_envelope_sha256": request.runtime_envelope_sha256,
                 }
             )
+        elif self.telemetry_client is not None:
+            self.telemetry_client.emit_governance_gate_decision(
+                gate="approval_request",
+                decision="allowed",
+                reason="approved",
+                tool_name=tn,
+                severity="info",
+                turn_id=request.turn_id or "",
+            )
 
         # ── 4. Patch gate ───────────────────────────────────────
         gating = self._patch_gate_check(request, None)
         if gating is not None:
+            if self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="patch_gate",
+                    decision="blocked",
+                    reason="patch_proposal_required",
+                    tool_name=tn,
+                    mutation_intent=True,
+                    severity="warning",
+                    turn_id=request.turn_id or "",
+                )
             self._stats_delta("tool_calls_rejected", 1)
             _finalize_span(
                 status_str="refused",
@@ -534,6 +673,15 @@ class ToolRuntime:
                     "source_id": request.source_id,
                     "runtime_envelope_sha256": request.runtime_envelope_sha256,
                 }
+            )
+        elif self.telemetry_client is not None:
+            self.telemetry_client.emit_governance_gate_decision(
+                gate="patch_gate",
+                decision="allowed",
+                reason="no_patch_proposal_needed",
+                tool_name=tn,
+                severity="info",
+                turn_id=request.turn_id or "",
             )
 
         self._stats_delta("tool_calls_agreed", 1)

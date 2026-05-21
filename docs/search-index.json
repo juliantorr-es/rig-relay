@@ -24,6 +24,22 @@
     "path": "pages/agent-loop-ownership-audit.html"
   },
   {
+    "document_id": "agent-loop-runtime-module-refactor",
+    "title": "AgentLoop Runtime Module Refactor Report \u2014 Enhanced with Source Analysis",
+    "summary": "Audit date: 2026-05-20. Enhanced 2026-05-21 with full source analysis across 7 reference documents and 1798-line AgentLoop inspection. Maps every responsibility to exact line numbers, documents fail-open seams with severity, and provides a concrete 6-wave refactor execution plan.",
+    "tags": [
+      "agent-loop",
+      "runtime",
+      "refactor",
+      "orchestration",
+      "governance",
+      "tracing",
+      "fail-open",
+      "source-analysis"
+    ],
+    "path": "pages/agent-loop-runtime-module-refactor.html"
+  },
+  {
     "document_id": "architecture-guards-proposal",
     "title": "Architecture guard tests \u2014 proposed (not implemented)",
     "summary": "Proposed date: 2026-05-15",
@@ -50,6 +66,20 @@
     "summary": "Audit date: 2026-05-15",
     "tags": [],
     "path": "pages/conversation-runtime-phase-2b-decision-policy.html"
+  },
+  {
+    "document_id": "agent-loop-governance-fail-open-inventory",
+    "title": "AgentLoop Governance Fail-Open Inventory and Orchestration Split",
+    "summary": "Audit date: 2026-05-20. Documents the current governance fail-open seams and the minimum orchestration split needed to patch them safely.",
+    "tags": [
+      "agent-loop",
+      "governance",
+      "fail-open",
+      "orchestration",
+      "tracing",
+      "degradation"
+    ],
+    "path": "pages/agent-loop-governance-fail-open-inventory.html"
   },
   {
     "document_id": "phase3-readiness-reconciliation",
@@ -314,6 +344,19 @@
     "path": "pages/inventory.html"
   },
   {
+    "document_id": "governance-gate-decision-spine-v1-audit",
+    "title": "Governance Gate Decision Spine Audit \u2014 Symmetry Analysis and Implementation Plan",
+    "summary": "Codebase-wide audit of 22 governance gates across AgentLoop, ToolRuntime, Coordination, Council, DirtyGuard, AuthReceipts, and ContextCompiler. Identifies emission gaps where gate decisions lack canonical telemetry records. Proposes a single canonical event shape (rig.relay.governance.gate.decision) with six decision classes.",
+    "tags": [
+      "governance",
+      "telemetry",
+      "audit",
+      "decision-spine",
+      "symmetric-tracing"
+    ],
+    "path": "pages/governance-gate-decision-spine-v1-audit.html"
+  },
+  {
     "document_id": "pi-harness-extension-health-audit",
     "title": "Pi Harness Extension Health Audit",
     "summary": "Audit of extension entry points, loading model, crash containment, and session finalization boundary.",
@@ -385,6 +428,19 @@
       "public-release"
     ],
     "path": "pages/release-candidate-convergence-spine.html"
+  },
+  {
+    "document_id": "repo-state-governance-seams-doc-drift-audit",
+    "title": "Repo State Audit - Governance-Only Surfaces, Prototype Seams, and Doc Drift",
+    "summary": "Live inventory of governance-only code, prototype or pending surfaces, seam-heavy modules, test-double density, and the newest documentation drift in the current dirty tree.",
+    "tags": [
+      "audit",
+      "governance",
+      "prototype",
+      "seams",
+      "documentation"
+    ],
+    "path": "pages/repo-state-governance-seams-doc-drift-audit.html"
   },
   {
     "document_id": "rig-intake-cannibalization-plan",
@@ -1252,6 +1308,18 @@
     "path": "pages/future-passkey-plan.html"
   },
   {
+    "document_id": "governance-gate-decision-spine-v1-implementation-plan",
+    "title": "Governance Gate Decision Spine v1 \u2014 Implementation Plan",
+    "summary": "Phased implementation plan to wire canonical governance gate decision events (rig.relay.governance.gate.decision) across all 22 governance gates, with classification into six decision outcomes and four test classifications.",
+    "tags": [
+      "governance",
+      "telemetry",
+      "implementation-plan",
+      "decision-spine"
+    ],
+    "path": "pages/governance-gate-decision-spine-v1-implementation-plan.html"
+  },
+  {
     "document_id": "identity-provider-policy",
     "title": "Identity Provider Policy",
     "summary": "**Draft.** Identity provider scaffold for Rig Relay alpha testing.",
@@ -1408,7 +1476,7 @@
   {
     "document_id": "runtime-port-status",
     "title": "Runtime Port Status Normalization",
-    "summary": "Generated: 2026-05-15",
+    "summary": "Generated: 2026-05-15. Updated: 2026-05-20 (Waves 2-6 AgentLoop refactor, Enterprise Layers 1-4, spiderweb cockpit, unified compiler)",
     "tags": [],
     "path": "pages/runtime-port-status.html"
   },
@@ -1938,5 +2006,19 @@
     "summary": "Index of all JSON schemas in the project with validation status.",
     "tags": [],
     "path": "pages/schemas.html"
+  },
+  {
+    "document_id": "codebase-evidence-graph",
+    "title": "Codebase Evidence Graph",
+    "summary": "Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies",
+    "tags": [],
+    "path": "pages/codebase-evidence-graph.html"
+  },
+  {
+    "document_id": "portfolio",
+    "title": "Developer Portfolio",
+    "summary": "Evidence-backed developer portfolio \u2014 tech stack, projects, governance, and public claims",
+    "tags": [],
+    "path": "pages/portfolio.html"
   }
 ]

@@ -68,3 +68,5 @@ class EventName(StrEnum):
     # Context envelope governance events
     CONTEXT_ENVELOPE_GOVERNED_COMPILED = "rig.relay.context_envelope.governed_compiled"
     CONTEXT_ENVELOPE_GOVERNED_AD_HOC = "rig.relay.context_envelope.governed_ad_hoc"
+    # Governance gate decision events
+    GOVERNANCE_GATE_DECISION = "rig.relay.governance.gate.decision"

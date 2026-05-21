@@ -1,0 +1,80 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<section class="hero-public">
+  <div class="hero-content">
+    <h1>Julian Torres</h1>
+    <p class="tagline">Building governed agent infrastructure — desktop cockpit, MCP server, ACP agent, receipt-backed evidence.</p>
+    <div class="hero-actions">
+      <a href="https://github.com/juliantorr-es/rig-relay" class="action-card"><strong>Rig Relay</strong><span>Governed local server with desktop cockpit</span></a>
+      <a href="https://github.com/juliantorr-es" class="action-card"><strong>GitHub Profile</strong><span>Projects, contributions, and evidence</span></a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Tech Stack</h2>
+  <div class="card-grid">
+    <div class="card"><h3>Python 3.12+</h3><div class="card-body">Primary language. Strict type checking via pyright.</div></div>
+    <div class="card"><h3>GitHub API</h3><div class="card-body">13 API surfaces, 12 endpoints, governed with receipts.</div></div>
+    <div class="card"><h3>Desktop Cockpit</h3><div class="card-body">pywebview-based operator console with widget system.</div></div>
+    <div class="card"><h3>MCP Server</h3><div class="card-body">16 governed tools across 5 permission tiers.</div></div>
+    <div class="card"><h3>ACP Agent</h3><div class="card-body">Editor-integrated agent sessions with progress streaming.</div></div>
+    <div class="card"><h3>WebSocket</h3><div class="card-body">Local projection stream for the desktop cockpit.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Projects</h2>
+  <div class="card-grid">
+    <div class="card status-info">
+      <h3><a href="https://github.com/juliantorr-es/rig-relay">Rig Relay</a></h3>
+      <div class="card-body">Governed local server/control-plane with desktop cockpit. Coordinates agent work, produces structured evidence, exposes MCP tools and ACP sessions. AGPL-3.0, alpha v0.1.0a1.</div>
+    </div>
+    <div class="card status-info">
+      <h3>GitHub Integration</h3>
+      <div class="card-body">Governed GitHub chief-of-staff — profile maintenance, security remediation, PR management, Pages publishing. 13 API surfaces, all gated with receipts. Live-proven on PR #7.</div>
+    </div>
+    <div class="card status-info">
+      <h3>Cross-Provider Registry</h3>
+      <div class="card-body">Operating pictures for GitHub, Google Workspace, and Meta. Schema-governed, content-light, cross-provider readiness matrix.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Security & Governance</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Scope</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td>Live runtime mutation</td><td>Always blocked</td></tr>
+        <tr><td>Merge</td><td>Requires adoption approval</td></tr>
+        <tr><td>Alert dismissal</td><td>Separate gate, evidence required</td></tr>
+        <tr><td>PR merge</td><td>Forbidden by default</td></tr>
+        <tr><td>Remote mutation</td><td>Explicit flags + gates + approval</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="callout callout-info">
+  <h3>Content-Light Evidence</h3>
+  <p>Every claim is backed by evidence from the canonical claims index. No raw code, no secrets, no private data in governance artifacts. All public surfaces are generated from committed JSON/JSONL/CSV artifacts.</p>
+</section>
+
+<section>
+  <h2>Stats</h2>
+  <div class="metrics">
+    <span>370+ tests</span><span>13 GitHub surfaces</span><span>3 live-proven write lanes</span><span>9 node types in evidence graph</span>
+  </div>
+</section>
+
+<section>
+  <h2>Links</h2>
+  <div class="card-grid">
+    <div class="card"><h3><a href="https://github.com/juliantorr-es/rig-relay">Repository</a></h3><div class="card-body">Source code, issues, and documentation.</div></div>
+    <div class="card"><h3><a href="https://juliantorr-es.github.io/rig-relay/">Project Site</a></h3><div class="card-body">GitHub Pages documentation site.</div></div>
+    <div class="card"><h3><a href="https://github.com/juliantorr-es/rig-relay/wiki">Wiki</a></h3><div class="card-body">Architecture, governance, and integration guides.</div></div>
+  </div>
+</section>
+{% endblock %}

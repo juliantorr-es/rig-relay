@@ -145,7 +145,7 @@ def test_report_no_forbidden_fields():
     report = json.loads(serialized)
     # Extract redaction patterns from the redaction_summary documentation to exclude them from scan
     redaction = report.get("redaction_summary", {})
-    documented_patterns = redaction.get("forbidden_patterns", "")
+    redaction.get("forbidden_patterns", "")
     # Only check for forbidden fields as JSON keys, not documentation strings
     forbidden_keys = [
         '"access_token"',

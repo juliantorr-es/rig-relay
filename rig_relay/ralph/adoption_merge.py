@@ -81,7 +81,7 @@ def execute_adoption_merge(
             merge_enabled=False,
         )
 
-    if target_branch in ("main", "master") and not policy.allow_push_to_preproduction:
+    if target_branch in {"main", "master"} and not policy.allow_push_to_preproduction:
         return AdoptionMergeResult(
             status="refused",
             source_branch=source_branch,

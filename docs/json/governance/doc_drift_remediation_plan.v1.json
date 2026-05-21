@@ -1,0 +1,204 @@
+{
+  "schema_version": "rig.governance.doc_drift_remediation_plan.v1",
+  "generated_at": "2026-05-20T08:45:00Z",
+  "parent_audit_path": "docs/json/audits/repo-state/governance-seams-doc-drift-audit.v1.json",
+  "content_light": true,
+  "summary": {
+    "total_issues_audited": 5,
+    "issues_with_remediation": 4,
+    "issues_resolved_as_non_issue": 1,
+    "next_recommended_action": "triage_prototype_docs"
+  },
+  "issues": [
+    {
+      "issue_id": "drift-001",
+      "title": "README vs operating picture — public_claim warning",
+      "audit_claim": "README claims release-candidate readiness but operating_picture shows public_release_ready=false",
+      "investigation_result": "misleading_heading_only",
+      "detail": "The README section heading 'Release Candidate Status' could be misinterpreted, but the body text explicitly says 'Rig Relay is in alpha (v0.1.0a1). The release-candidate gate is HOLD.' This aligns with operating_picture fields: public_release_ready=false, permission_mode=development_debug. There is no factual discrepancy.",
+      "remediation_decision": "rename_heading",
+      "remediation_suggestion": "Rename README section heading from 'Release Candidate Status' to 'Development Status' or 'Project Maturity' to eliminate the heading/content tension. No body-text changes needed.",
+      "readme_line_range": [171, 174],
+      "operating_picture_evidence": {
+        "field": "auth_summary.public_release_ready",
+        "value": false,
+        "field2": "auth_summary.permission_mode",
+        "value2": "development_debug"
+      },
+      "severity": "cosmetic",
+      "status": "deferred"
+    },
+    {
+      "issue_id": "drift-002",
+      "title": "README feature list — implicit production-readiness signals",
+      "audit_claim": "README features section lists production-grade capabilities without qualification",
+      "investigation_result": "spread_too_wide",
+      "detail": "The Features section (lines 128-144) lists 15 features in present-tense declarative form. While many are implemented, some are in dev-debug/alpha state (e.g., Live Mutation Readiness with HMAC-SHA256 is permission_mode=development_debug; Enterprise Attestation+RBAC is likely partial). The alpha/HOLD caveat in the Release Candidate Status section is not visually adjacent to the feature list, creating a latent expectation of production readiness.",
+      "remediation_decision": "add_feature_maturity_column",
+      "remediation_suggestion": "Add a maturity annotation to the Features bullet list. Three options: (A) add '(alpha)' / '(dev)' tags inline to each bullet, (B) add a one-line preamble above the list stating all features are alpha-grade, (C) add a footnote. Recommend option (B) — lowest maintenance cost, clearest signal. Do not remove feature bullets; the features exist in code.",
+      "readme_line_range": [128, 144],
+      "severity": "low",
+      "status": "deferred"
+    },
+    {
+      "issue_id": "drift-003",
+      "title": "github_carte_blanche_surface_report — audit claims empty/null placeholder",
+      "audit_claim": "File is an empty/null placeholder that should be replaced or deleted",
+      "investigation_result": "audit_claim_is_wrong",
+      "detail": "The file at docs/json/governance/github_carte_blanche_surface_report_v1.v1.json is NOT empty or null. It contains real data: 13 surfaces across 4 categories (proven_live: 3, probed_read_only: 6, modeled_alert_management: 2, forbidden: 2), 6 live probes with real HTTP 200 status codes (issues, releases, actions, pages, webhooks, collaborators), and a concrete recommendation ('enable gated writes for issues + releases'). The file is referenced by production code (rig_relay/desktop/projection.py, rig_relay/integrations/github_provider/_carte_blanche_governed_lanes.py) and by the doc drift audit itself.",
+      "remediation_decision": "no_action",
+      "remediation_suggestion": "No remediation needed. The audit claim is incorrect. Mark this issue as 'audit_claim_refuted'. Update the parent audit to remove or correct this finding.",
+      "file_sha256": "TBD — will be computed at plan execution",
+      "production_references": [
+        "rig_relay/desktop/projection.py",
+        "rig_relay/integrations/github_provider/_carte_blanche_governed_lanes.py"
+      ],
+      "severity": "none (false positive)",
+      "status": "resolved_audit_refuted"
+    },
+    {
+      "issue_id": "drift-004",
+      "title": "dependency_surface_audit — being handled by another delegate",
+      "audit_claim": "Has real data (6 unused deps), needs remediation",
+      "investigation_result": "delegated",
+      "detail": "docs/json/governance/dependency_surface_audit_v1.v1.json contains a complete audit of 49 direct deps + 15 dev deps + 3 optional deps, identifying 6 removal candidates (google-auth-httplib2, pyperclip, requests, textual-speedups, pyrefly, ast-grep-py) and 1 needs-justification (sounddevice). This is already being handled by another delegate.",
+      "remediation_decision": "delegate_handoff",
+      "remediation_suggestion": "No action in this plan. Track completion via coordination ledger.",
+      "severity": "low (already in flight)",
+      "status": "delegated"
+    },
+    {
+      "issue_id": "drift-005",
+      "title": "266 docs with prototype/planning language — large prototype surface",
+      "audit_claim": "266 docs contain planned/proposal/pending/future/stub/mock language indicating large prototype/incomplete surface",
+      "investigation_result": "confirmed_large_surface",
+      "detail": "A content scan found 249 files in docs/json/ matching prototype-keyword patterns (planned, proposal, pending, future, stub, mock, placeholder, TBD, not yet, roadmap, phase, research). This is consistent with the audit's 266 estimate. The files represent both: (a) legitimate governance/planning artifacts (roadmaps, risk registers, research reports, phase plans), and (b) potentially stale or never-completed artifacts that should be triaged.",
+      "remediation_decision": "triage_by_cluster",
+      "remediation_suggestion": "Do not enumerate all 266 individually. Perform a cluster-level triage using the categories below. Each cluster should produce a mini-inventory JSONL in docs/json/audits/prototype-triage/ recording per-file decisions: keep_as_planning, keep_as_roadmap, keep_as_research, merge_into_canonical, archive, or mark_as_stale.",
+      "clusters": [
+        {
+          "cluster_id": "github_security",
+          "description": "Code scanning, PR mutation, security lifecycle, mission candidates/packets, packet runner, security intake/queue/remediation",
+          "estimated_file_count": 55,
+          "subdirectory": "docs/json/governance/ (github_security_*, github_code_scanning_*, github_security_*)",
+          "triage_approach": "Most files are legitimate security governance artifacts (intake results, mission candidates, packet indexes, runner plans). Some PR mutation projection/replay/recovery docs may be ephemeral run artifacts. Triage: keep intake/candidate/packet chain (canonical), archive replay/recovery projections if stale."
+        },
+        {
+          "cluster_id": "github_live_mutation",
+          "description": "Live PR mutation phase3, preflight, operator checklists, replays, rate limits, runbook, rollback plans, rehearsal receipts, write execution receipts",
+          "estimated_file_count": 20,
+          "subdirectory": "docs/json/governance/ (github_live_*, github_live_pr_*)",
+          "triage_approach": "Mix of governance artifacts (runbook, operator checklists) and ephemeral run evidence (individual write receipts, rehearsal receipts). Keep canonical governance docs; move run evidence to .build/rig-relay/evidence/ if they are single-run artifacts."
+        },
+        {
+          "cluster_id": "github_carte_blanche",
+          "description": "Carte blanche surface report, endpoint matrix, expansion plan, mutation lanes, permission value matrix, product roadmap, research, risk register, surface lane matrix, webhook matrix",
+          "estimated_file_count": 12,
+          "subdirectory": "docs/json/governance/ (github_carte_blanche_*)",
+          "triage_approach": "These are legitimate multi-surface governance artifacts for the carte blanche governed lanes feature. Most are canonical planning/audit docs. Keep all unless individual files are superseded."
+        },
+        {
+          "cluster_id": "github_surface",
+          "description": "Surface audit, surface packets, surface preview, profile README, claims index, maintenance projection, public surface program report",
+          "estimated_file_count": 10,
+          "subdirectory": "docs/json/governance/ (github_surface_*, github_profile_readme_*, github_maintenance_*, github_evidence_backed_claims_*)",
+          "triage_approach": "Governance artifacts for the GitHub public surface program. Keep surface audit, claims index, surface packets as canonical. Profile README previews may be ephemeral."
+        },
+        {
+          "cluster_id": "distribution_release",
+          "description": "API matrix, channel matrix, credential matrix, mutation lane matrix, research, risk register, roadmap, validation matrix",
+          "estimated_file_count": 8,
+          "subdirectory": "docs/json/governance/ (distribution_release_*)",
+          "triage_approach": "Planning/roadmap docs for future distribution release channels. Keep as planning artifacts; mark as 'incomplete' if data gaps exist."
+        },
+        {
+          "cluster_id": "local_inference",
+          "description": "Airlock, runtime evaluation, selection policy, shadow scenarios, task profiles",
+          "estimated_file_count": 6,
+          "subdirectory": "docs/json/governance/ (local_inference_*)",
+          "triage_approach": "Research/planning for local inference routing. Keep as research artifacts unless superseded by implementation."
+        },
+        {
+          "cluster_id": "google_workspace",
+          "description": "Operating picture, read intake, surface packets",
+          "estimated_file_count": 5,
+          "subdirectory": "docs/json/governance/ (google_workspace_*)",
+          "triage_approach": "Integration governance for Google Workspace. Likely incomplete — needs population or archival if integration is deferred."
+        },
+        {
+          "cluster_id": "meta_integration",
+          "description": "Meta integration groundwork, operating picture, permissions inventory, surface audit",
+          "estimated_file_count": 5,
+          "subdirectory": "docs/json/governance/ (meta_*)",
+          "triage_approach": "Integration governance for Meta/Facebook. Likely incomplete — needs population or archival if integration is deferred."
+        },
+        {
+          "cluster_id": "governance_core",
+          "description": "Agent execution, agent loop boundary, coordination, fleet, orchestrator, runtime, session lifecycle, telemetry, context compiler/optimization, desktop cockpit/HITL, frontend rendering/bridge, validation scheduler, worktree manager, textual retirement, vibe legacy",
+          "estimated_file_count": 35,
+          "subdirectory": "docs/json/governance/ (various _policy, _doctrine, _readiness, _boundary, _contract files)",
+          "triage_approach": "Core governance docs. Most are canonical policy/doctrine/contract artifacts. Phase/readiness docs may need updating to reflect current state. Keep all, review phase gate docs for staleness."
+        },
+        {
+          "cluster_id": "site_and_static_site",
+          "description": "Site pages (compiler, contracts, frontend, hardening, integrations, proof_chain, protocol, release_candidate, seams, testing), static site compiler contract/refinement, launch experience, page artifacts, input manifests",
+          "estimated_file_count": 18,
+          "subdirectory": "docs/json/site/, docs/json/site_renderer/",
+          "triage_approach": "Static site rendering infrastructure. Most are active development artifacts. The 'static_site_compiler_refinement_v0' and 'static_site_experience_elevation' may be planning docs. Keep active docs, archive superseded refinement plans."
+        },
+        {
+          "cluster_id": "release_candidate_and_gate",
+          "description": "RC golden path, installability verdict, reviewer checklist, final report, security repository hygiene, capability gate matrix, RC blockers/deferred risks/validation runs, golden path reconciliation",
+          "estimated_file_count": 16,
+          "subdirectory": "docs/json/release_candidate/, docs/json/release_gate/",
+          "triage_approach": "Release gate governance. These are canonical RC evidence. Keep all. The golden path reconciliation and mission reports may be single-run artifacts — consider whether they are evidence or governance."
+        },
+        {
+          "cluster_id": "protocols",
+          "description": "A2A promotion readiness, IDE capability map, IDE sidecar IPC, MCP context tools",
+          "estimated_file_count": 4,
+          "subdirectory": "docs/json/protocols/",
+          "triage_approach": "Protocol governance. A2A promotion readiness is likely a planning doc (A2A is not yet shipped). Keep as planning; review if A2A has been deferred."
+        },
+        {
+          "cluster_id": "integrations_provider",
+          "description": "DeepSeek lane policy/feature audit/usage reports, GitHub provider manifests/contracts, Google Drive/Workspace manifests/contracts/scopes, integration permission policy",
+          "estimated_file_count": 14,
+          "subdirectory": "docs/json/integrations/",
+          "triage_approach": "Mixed: some are canonical manifests, some are research/usage reports. DeepSeek usage reports may be ephemeral run artifacts. Keep manifests; archive usage reports if stale."
+        },
+        {
+          "cluster_id": "miscellaneous",
+          "description": "Desktop (5 files: final report, intent orchestration, layout shell repair, polish validation, product path validation), compiler (3 files: feasibility, research, schema spine), otel (2 files), publishing, telemetry (1 file), tracing (2 files), troubleshooting (1 file), evidence (2 files), dogfood (1 file), findings (1 file), legal (2 files), security (2 files), architecture (1 file), testing (6 files), demo (3 files), research (1 file), top-level docs (~15 files)",
+          "estimated_file_count": 49,
+          "subdirectory": "docs/json/ (various subdirectories)",
+          "triage_approach": "Wide scatter across 20+ subdirectories. Each subdirectory needs its own mini-triage. Most desktop mission reports are single-run evidence; most compiler/research/otel are planning; testing is canonical inventory; legal is canonical; top-level site/protocol docs are canonical."
+        }
+      ],
+      "triage_approach": {
+        "strategy": "cluster-level_triage",
+        "output_directory": "docs/json/audits/prototype-triage/",
+        "output_format": "per-cluster JSONL files with schema rig.governance.prototype_triage_entry.v1",
+        "decision_vocabulary": ["keep_as_planning", "keep_as_roadmap", "keep_as_research", "keep_as_canonical", "merge_into_canonical", "archive_to_build", "mark_as_stale", "delete"],
+        "phase_1_clusters": ["github_security", "github_live_mutation", "github_carte_blanche", "github_surface", "governance_core"],
+        "phase_1_rationale": "These 5 clusters account for ~132 of ~266 files. Triage them first.",
+        "phase_2_clusters": ["distribution_release", "local_inference", "google_workspace", "meta_integration", "integrations_provider"],
+        "phase_2_rationale": "Provider/integration planning and research. ~38 files total.",
+        "phase_3_clusters": ["site_and_static_site", "release_candidate_and_gate", "protocols", "miscellaneous"],
+        "phase_3_rationale": "Remaining ~96 files across active site rendering, release evidence, and misc domains."
+      },
+      "severity": "medium",
+      "status": "requires_triage"
+    }
+  ],
+  "schema_validation": {
+    "parent_audit_validated": false,
+    "note": "Parent audit (doc-drift-audit.v1.json) should be validated against its schema if applicable."
+  },
+  "evidence_paths": [
+    "docs/json/governance/github_operating_picture_v1.v1.json",
+    "docs/json/governance/github_carte_blanche_surface_report_v1.v1.json",
+    "docs/json/governance/dependency_surface_audit_v1.v1.json",
+    "README.md"
+  ]
+}

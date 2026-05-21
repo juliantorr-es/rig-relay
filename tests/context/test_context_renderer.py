@@ -64,7 +64,6 @@ class TestPrivacyHardening:
         renderer.add_stable_section(
             "test", "key=sk-secret token=abc123 password=hunter2", "repo_map"
         )
-        rendered = renderer.rendered_content
         # Stable sections pass through raw content — this is expected.
         # The renderer API provides privacy through which section builders
         # callers use (e.g., add_repo_section uses hashes).
@@ -105,7 +104,7 @@ class TestCompression:
             "The Rig Relay context assembler module provides deterministic context rendering.",
             "repo_map",
         )
-        applied = renderer.apply_compression()
+        renderer.apply_compression()
         # May or may not apply depending on text length
         # Just verify it doesn't crash
         assert True

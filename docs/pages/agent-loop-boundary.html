@@ -34,7 +34,7 @@
   <p class="doc-summary">Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.</p>
   <dl class="doc-meta">
     <dt>Status</dt><dd>active</dd>
-    <dt>Updated</dt><dd>2026-05-18</dd>
+    <dt>Updated</dt><dd>2026-05-20</dd>
     <dt>Source</dt><dd><code>docs/json/governance/agent_loop_boundary.v1.json</code></dd>
   </dl>
 </header>
@@ -56,6 +56,7 @@
 <li><a href="#purpose">Purpose</a></li>
 <li><a href="#components">Runtime Components</a></li>
 <li><a href="#future">Future Runtimes (Planned)</a></li>
+<li><a href="#implemented-runtimes">Implemented Runtimes (Waves 2-6)</a></li>
 <li><a href="#forbidden">Forbidden Dependencies</a></li>
 <li><a href="#direction">Dependency Direction</a></li>
 <li><a href="#add-new">Adding New Runtime Components</a></li>
@@ -93,11 +94,25 @@
 <table id="future-table" class="disclosure-standard" data-disclosure-level="standard">
 <thead><tr><th>Component</th><th>Future Location</th><th>Will Own</th></tr></thead>
 <tbody>
-<tr><td>SessionRuntime</td><td>rig_relay/core/session_runtime.py</td><td>Fork, compact, reset, clear_history, switch_agent, reload_with_initial_messages</td></tr>
 <tr><td>ApprovalRuntime</td><td>rig_relay/core/approval_runtime.py</td><td>Approval handoff, callbacks, permission rules</td></tr>
 <tr><td>MissionEnvelopeBridge</td><td>rig_relay/core/mission_envelope.py</td><td>Mission metadata to AgentLoop context/runtime wiring</td></tr>
 </tbody>
 </table>
+
+<h2 id="implemented-runtimes" class="disclosure-standard" data-disclosure-level="standard">Implemented Runtimes (Waves 2-6)</h2>
+
+<p id="implemented-runtimes-text" class="disclosure-standard" data-disclosure-level="standard">AgentLoop refactor Waves 2-6 extracted 5 standalone runtime modules from the monolith (1806 → 991 lines, 45% reduction). Each owns a coherent responsibility domain and is composed into AgentLoop rather than mixed in via MRO.</p>
+
+<details id="implemented-runtimes-table" class="disclosure-collapsible disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true" open><summary></summary><table id="implemented-runtimes-table" class="disclosure-detailed" data-disclosure-level="detailed" data-collapsible="true">
+<thead><tr><th>Component</th><th>Location</th><th>Owns</th></tr></thead>
+<tbody>
+<tr><td>ToolExecutor</td><td>rig_relay/core/tool_executor/</td><td>Adapter factory, council gating, execution orchestration, concurrency (782 lines)</td></tr>
+<tr><td>SessionRuntime</td><td>rig_relay/core/session_runtime.py</td><td>Fork, compact, clear_history, switch_agent, reload, runtime_state (292 lines)</td></tr>
+<tr><td>GovernanceRuntime</td><td>rig_relay/core/governance_runtime.py</td><td>Permission gating, approval policy, write gating, mutation legality checks (101 lines)</td></tr>
+<tr><td>TraceRuntime</td><td>rig_relay/core/trace_runtime.py</td><td>Correlation IDs, OTel spans, lifecycle event emission (85 lines)</td></tr>
+<tr><td>TurnEnvelope</td><td>rig_relay/core/conversation_runtime/turn_envelope.py</td><td>Canonical turn result with 11 structured fields (58 lines)</td></tr>
+</tbody>
+</table></details>
 
 <h2 id="forbidden" class="disclosure-standard" data-disclosure-level="standard">Forbidden Dependencies</h2>
 

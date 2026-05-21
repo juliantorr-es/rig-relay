@@ -73,7 +73,7 @@ def execute_in_lane(
             status="refused", error="execution not enabled for this plan"
         )
 
-    if lane.status not in ("worktree_created", "active"):
+    if lane.status not in {"worktree_created", "active"}:
         return LaneExecutionResult(
             status="refused", error=f"lane not ready: {lane.status}"
         )
@@ -92,7 +92,7 @@ def execute_in_lane(
     commits: list[str] = []
     validations: list[str] = []
 
-    if plan.execution_mode in ("patch_in_lane", "read_only"):
+    if plan.execution_mode in {"patch_in_lane", "read_only"}:
         for allowed in plan.allowed_paths[: plan.max_changed_files]:
             path = wt / allowed
             if _is_allowed_path(wt, path) and not _is_forbidden_path(
@@ -105,7 +105,7 @@ def execute_in_lane(
                 except OSError as e:
                     return LaneExecutionResult(status="failed", error=str(e))
 
-    if plan.execution_mode in ("validation_only", "patch_in_lane"):
+    if plan.execution_mode in {"validation_only", "patch_in_lane"}:
         for v in plan.required_validations[:5]:
             try:
                 result = subprocess.run(

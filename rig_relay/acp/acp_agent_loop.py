@@ -237,6 +237,17 @@ class VibeAcpAgentLoop(
 SESSION_CLOSED_FLUSH_TIMEOUT_SECONDS = 1.0
 
 
+class TelemetrySendNotification(BaseModel):
+    session_id: str
+    event: str
+    properties: dict[str, Any] = {}
+
+    model_config = {"extra": "allow"}
+
+
+_EVENT_DISPATCHERS: dict[str, Any] = {}
+
+
 def run_acp_server() -> None:
     agent = VibeAcpAgentLoop()
     install_sigterm_flush = TelemetryClient(config_getter=VibeConfig.load).is_active()

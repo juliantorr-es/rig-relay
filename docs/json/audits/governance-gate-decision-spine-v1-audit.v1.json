@@ -1,0 +1,149 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "governance-gate-decision-spine-v1-audit",
+  "document_type": "audit",
+  "title": "Governance Gate Decision Spine Audit — Symmetry Analysis and Implementation Plan",
+  "summary": "Codebase-wide audit of 22 governance gates across AgentLoop, ToolRuntime, Coordination, Council, DirtyGuard, AuthReceipts, and ContextCompiler. Identifies emission gaps where gate decisions lack canonical telemetry records. Proposes a single canonical event shape (rig.relay.governance.gate.decision) with six decision classes.",
+  "status": "active",
+  "created_at": "2026-05-20",
+  "updated_at": "2026-05-20",
+  "owners": ["maintainer"],
+  "tags": ["governance", "telemetry", "audit", "decision-spine", "symmetric-tracing"],
+  "canonical_path": "docs/json/audits/governance-gate-decision-spine-v1-audit.v1.json",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Governance Gate Decision Spine Audit"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Finding"
+    },
+    {
+      "block_id": "p-1",
+      "type": "paragraph",
+      "content": "The gap is emission, not infrastructure. Rig Relay already has telemetry events, trace spans, receipts, structured logs, and DuckDB projections. The governance failure paths use them. The governance success paths do not. This means you can debug refusals but cannot study governance behavior — you can answer 'why did this fail?' more often than 'how often did the right gate allow, block, degrade, or require review under comparable conditions?'"
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Event Shape"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Do not create paired event names (allow/block). Use one canonical event: rig.relay.governance.gate.decision with a decision field carrying one of six outcomes."
+    },
+    {
+      "block_id": "code-1",
+      "type": "code",
+      "language": "json",
+      "content": "{\n  \"schema_version\": \"rig.relay.governance_gate_decision.v1\",\n  \"event_name\": \"rig.relay.governance.gate.decision\",\n  \"gate\": \"dirty_guard\",\n  \"decision\": \"allowed\",\n  \"reason\": \"file_was_clean\",\n  \"tool_name\": \"write_file\",\n  \"mutation_intent\": true,\n  \"policy_version\": \"v1\",\n  \"severity\": \"info\",\n  \"receipt_id\": \"rcpt_abc123\",\n  \"trace_id\": \"tr_abc123\",\n  \"span_id\": \"sp_abc123\",\n  \"content_light\": true,\n  \"operator_action_required\": false\n}"
+    },
+    {
+      "block_id": "h3-3",
+      "type": "heading",
+      "level": 3,
+      "content": "Decision Class Semantics"
+    },
+    {
+      "block_id": "table-3",
+      "type": "table",
+      "columns": ["Decision", "Meaning", "Severity", "Example"],
+      "rows": [
+        ["allowed", "Gate evaluated and passed", "info", "dirty_guard: file_was_clean"],
+        ["blocked", "Gate evaluated and intentionally stopped execution", "warning", "profile_gate: profile_locked"],
+        ["refused", "User/approval/policy denied the action", "warning", "approval_request: user_denied"],
+        ["review", "Gate declined to decide automatically; requires human review", "warning", "council: single_provider"],
+        ["failed_closed", "Infrastructure/configuration broke; Rig denied by safety default", "critical", "tool_runtime: policy_object_missing"],
+        ["degraded", "System continued with reduced guarantees", "warning", "context: collision_evidence_missing"]
+      ]
+    },
+    {
+      "block_id": "h3-4",
+      "type": "heading",
+      "level": 3,
+      "content": "Why One Event, Not Paired Events"
+    },
+    {
+      "block_id": "list-4",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Aligned with OpenTelemetry semantic-conventions: common names and stable attributes make telemetry comparable across traces, metrics, logs, and resources.",
+        "OWASP security logging guidance: security controls should be logged whether they succeed or fail, in a format log-management systems can consume.",
+        "NIST SP 800-92: audit records should include successful and failed authentication attempts, file accesses, policy changes, and privilege use.",
+        "DuckDB groupability: one event name with decision/severity/gate/reason columns is directly queryable without UNION or event-name prefix matching."
+      ]
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Gate Inventory (22 gates, 4 security-critical)"
+    },
+    {
+      "block_id": "table-5",
+      "type": "table",
+      "columns": ["#", "Gate", "File", "Current Success Trace", "Current Failure Trace", "Gap"],
+      "rows": [
+        ["1", "Council pre-mutation", "council_gate.py:41-112", "Silent", "logger.warning + ToolResultEvent(skipped)", "No canonical event for ALLOW or REVIEW+approve"],
+        ["2", "Council recommendation", "council_invoker.py:246-266", "Returns bare string", "Returns bare string", "ALLOW/BLOCK/REVIEW all untraced"],
+        ["3", "Council provider degradation", "council_invoker.py:82-152", "NormalizedConsultation with opinion=None", "Sha256 sentinel strings", "Degraded opinions silently shift recommendation toward ALLOW"],
+        ["4", "Profile gate", "tool_runtime.py:326-356", "Silent", "TraceSpan(refused) + CAPABILITY_GATED", "No success span event"],
+        ["5", "Governance engine", "governance_engine.py:98-288", "Silent", "TraceSpan(governance_blocked)", "GateDecision in-memory only, never persisted"],
+        ["6", "Local action envelope", "local_action_gate.py:94-166", "Silent", "TraceSpan(refused) + LOCAL_ACTION_ENVELOPE_REQUIRED", "No envelope accepted event"],
+        ["7", "Envelope Ed25519 signature", "local_action_envelope.py:294-295", "Silent", "Returns False silently", "SECURITY: no audit on crypto failure"],
+        ["8", "Envelope payload hash", "local_action_envelope.py:352-359", "Silent", "Returns False silently", "SECURITY: tampering indicator untraced"],
+        ["9", "Envelope expiry (replay)", "local_action_envelope.py:372-379", "Silent", "Returns False silently", "SECURITY: replay attempt untraced"],
+        ["10", "Permission check", "tool_runtime.py:446-482", "Silent", "TraceSpan(permission_denied) + RefusalResult", "No permission_granted event"],
+        ["11", "Approval request", "tool_runtime.py:484-511", "Silent", "TraceSpan(approval_denied) + RefusalResult", "No approval_granted event"],
+        ["12", "Patch gate", "tool_runtime.py:513-537", "Silent + PatchProposal saved", "TraceSpan(patch_gate) + RefusalResult", "No success trace"],
+        ["13", "Dirty guard capture", "dirty_guard.py:141-153", "Silent", "logger.error + _capture_failed=True", "Success silent; failure log-only, no canonical event"],
+        ["14", "Dirty guard write check", "dirty_guard.py:270-322", "WriteGuardResult in-memory", "WriteGuardResult in-memory", "Both paths untraced"],
+        ["15", "Dirty guard search_replace check", "dirty_guard.py:305-322", "WriteGuardResult in-memory", "WriteGuardResult in-memory", "Same as write"],
+        ["16", "Auth receipts validate", "auth_receipts.py:207-220", "AuthorizationResult in-memory", "AuthorizationResult in-memory", "Dev bypass grants silently"],
+        ["17", "Auth receipts dev bypass", "auth_receipts.py:217-220", "AuthorizationResult(authorized=True)", "—", "SECURITY: no audit trail for bypass use"],
+        ["18", "Coordination task claim renewal", "store.py:342-346", "No event emitted", "coord.task.claim_refused emitted", "Same-owner renewal invisible"],
+        ["19", "Coordination path reservation renewal", "store.py:428-430", "No event emitted", "coord.path.reservation_refused emitted", "Same-owner renewal invisible"],
+        ["20", "Coordination path release denied", "store.py:511-517", "coord.path.released emitted", "No event emitted", "Release denied produces no trace"],
+        ["21", "Collision/handoff success", "collision.py:136-177, handoff.py:173-189", "Silent", "context.collision_degraded / context.handoff_degraded emitted", "Success untraced"],
+        ["22", "Supervisor governance pass", "supervisor.py:393-435", "Silent", "RuntimeFailureEvent + trace_end(error)", "Governance pass has no explicit trace attribute"]
+      ]
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Volume Management"
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "Success tracing can become noisy. Following Google SRE guidance, Rig should emit all governance decisions to structured JSONL/telemetry but alert only on critical classes. Analyze allowed/refused distributions through DuckDB/reporting, not through alert spam."
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": ["Decision Class", "Emit to JSONL", "Alert/Page", "DuckDB Analysis"],
+      "rows": [
+        ["allowed", "Yes", "No", "Yes (distribution, rate, trending)"],
+        ["blocked", "Yes", "No", "Yes (top reasons, per-tool, per-profile)"],
+        ["refused", "Yes", "No", "Yes (user behavior patterns)"],
+        ["review", "Yes", "No", "Yes (council effectiveness)"],
+        ["failed_closed", "Yes", "YES", "Yes (operator action required)"],
+        ["degraded", "Yes", "No", "Yes (substrate health trending)"]
+      ]
+    }
+  ],
+  "references": [
+    { "document_id": "governance-fail-open-inventory", "title": "Governance Fail-Open Inventory" },
+    { "document_id": "usage-data-doctrine", "title": "Usage Data Doctrine" },
+    { "document_id": "cross-session-coordination", "title": "Cross-Session Coordination" }
+  ]
+}

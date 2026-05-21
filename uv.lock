@@ -14,7 +14,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-12T23:42:20.801832Z"
+exclude-newer = "2026-05-14T02:44:13.400443Z"
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
@@ -2033,15 +2033,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyperclip"
-version = "1.11.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e8/52/d87eba7cb129b81563019d1679026e7a112ef76855d6159d24754dbd2a51/pyperclip-1.11.0.tar.gz", hash = "sha256:244035963e4428530d9e3a6101a1ef97209c6825edab1567beac148ccc1db1b6", size = 12185, upload-time = "2025-09-26T14:40:37.245Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/80/fc9d01d5ed37ba4c42ca2b55b4339ae6e200b456be3a1aaddf4a9fa99b8c/pyperclip-1.11.0-py3-none-any.whl", hash = "sha256:299403e9ff44581cb9ba2ffeed69c7aa96a008622ad0c46cb575ca75b5b84273", size = 11063, upload-time = "2025-09-26T14:40:36.069Z" },
-]
-
-[[package]]
 name = "pyrefly"
 version = "0.64.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2591,7 +2582,6 @@ dependencies = [
     { name = "giturlparse" },
     { name = "google-api-python-client" },
     { name = "google-auth" },
-    { name = "google-auth-httplib2" },
     { name = "google-auth-oauthlib" },
     { name = "httpx" },
     { name = "jinja2" },
@@ -2611,12 +2601,10 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
-    { name = "pyperclip" },
     { name = "pyrefly" },
     { name = "python-dotenv" },
     { name = "pywebview" },
     { name = "pyyaml" },
-    { name = "requests" },
     { name = "rich" },
     { name = "sounddevice" },
     { name = "textual" },
@@ -2676,7 +2664,6 @@ requires-dist = [
     { name = "giturlparse", specifier = ">=0.14.0" },
     { name = "google-api-python-client", specifier = ">=2.0.0" },
     { name = "google-auth", specifier = ">=2.0.0" },
-    { name = "google-auth-httplib2", specifier = ">=0.2.0" },
     { name = "google-auth-oauthlib", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2", specifier = ">=3.1.0" },
@@ -2698,12 +2685,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
-    { name = "pyperclip", specifier = ">=1.11.0" },
     { name = "pyrefly", specifier = ">=0.64.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pywebview", specifier = ">=4.10" },
     { name = "pyyaml", specifier = ">=6.0.0" },
-    { name = "requests", specifier = ">=2.20.0" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "sounddevice", specifier = ">=0.5.1" },
     { name = "textual", specifier = "==8.2.4" },

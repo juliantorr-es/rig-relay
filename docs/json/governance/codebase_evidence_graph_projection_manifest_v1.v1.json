@@ -1,0 +1,32 @@
+{
+  "schema_version": "rig.relay.codebase_evidence_graph_projection_manifest.v1",
+  "content_light": true,
+  "graph_schema_version": "rig.relay.codebase_evidence_graph.v1",
+  "graph_generated_at": "2026-05-21T03:14:02.452659+00:00",
+  "total_nodes": 13964,
+  "total_edges": 3019,
+  "node_type_counts": {
+    "artifact": 202,
+    "schema": 389,
+    "file": 4336,
+    "class": 1639,
+    "function": 6462,
+    "module": 857,
+    "release_phase": 7,
+    "provider": 3,
+    "dependency": 69
+  },
+  "edge_type_counts": {
+    "validates_artifact": 912,
+    "depends_on": 2107
+  },
+  "available_modes": [
+    "public_static",
+    "cockpit_local",
+    "context_digest",
+    "duckdb_read_side",
+    "impact_analysis"
+  ],
+  "public_safe": true,
+  "source_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/codebase_evidence_graph_v1.v1.json"
+}

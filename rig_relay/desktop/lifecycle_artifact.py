@@ -187,7 +187,7 @@ class LifecycleArtifactWriter:
             last_step = e.step_id
             if e.source == "frontend":
                 frontend_count += 1
-            elif e.source in ("backend", "websocket"):
+            elif e.source in {"backend", "websocket"}:
                 backend_count += 1
 
             try:
@@ -195,7 +195,7 @@ class LifecycleArtifactWriter:
             except ValueError:
                 continue
 
-            if e.status in ("ok", "started"):
+            if e.status in {"ok", "started"}:
                 completed.add(step)
 
             if e.status == "failed" and not first_failure:

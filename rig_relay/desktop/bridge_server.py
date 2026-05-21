@@ -20,17 +20,43 @@ from __future__ import annotations
 
 import json
 import logging
-import mimetypes
-import os
 from pathlib import Path
-import ssl
 import time
 from typing import Any
 
 from websockets.asyncio.server import Server, ServerConnection, serve
-from websockets.http11 import Headers, Request, Response
+from websockets.http11 import Request, Response
 
 from rig_relay.core.logger import logger
+from rig_relay.desktop._bridge_config import (
+    DesktopBridgeConfig,
+    DesktopBridgeRuntimeConfig,
+    _is_loopback_host,
+    _tls_trust_state,
+    _unsafe_non_loopback_allowed,
+)
+from rig_relay.desktop._bridge_http import (
+    _FRONTEND_EVENT_TO_TRANSITION,
+    _empty_response,
+    _extract_qs_value,
+    _json_response,
+    _WebSocketNoiseFilter,
+    build_healthz_response,
+    compute_readiness,
+    gate_route_by_service_state,
+    serve_file,
+    serve_index_html,
+    serve_static,
+)
+from rig_relay.desktop._bridge_probe import (
+    apply_probe_transition,
+    probe_healthz,
+    probe_path,
+)
+from rig_relay.desktop._bridge_security import (
+    validate_local_origin,
+    validate_localhost_header,
+)
 from rig_relay.desktop.bridge_diagnostics import BridgeProbeReport
 from rig_relay.desktop.bridge_state_machine import (
     DesktopBridgeEvent,
@@ -38,7 +64,7 @@ from rig_relay.desktop.bridge_state_machine import (
     InvalidBridgeTransitionError,
     TerminalBridgeStateError,
 )
-from rig_relay.desktop.correlation import DesktopCorrelation, new_correlation_id
+from rig_relay.desktop.correlation import DesktopCorrelation
 from rig_relay.desktop.lifecycle_artifact import LifecycleArtifactWriter
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
@@ -50,191 +76,7 @@ from scripts.rig_relay_trace_handshake import (
     format_handshake_trace,
 )
 
-mimetypes.init()
-
 HTTP_OK = 200
-
-_JSON_HEADERS = Headers({"Content-Type": "application/json"})
-
-_FRONTEND_EVENT_TO_TRANSITION: dict[str, DesktopBridgeEvent] = {
-    "frontend_boot_started": DesktopBridgeEvent.WEBVIEW_CREATED,
-    "frontend_runtime_config_loaded": DesktopBridgeEvent.FRONTEND_CONFIG_LOADED,
-    "frontend_first_projection_rendered": DesktopBridgeEvent.PROJECTION_RENDERED,
-}
-
-# Allowed HTTP origins for browser requests. DNS-rebinding domains and remote
-# origins are rejected. Missing Origin is allowed for local tools (curl, health probes).
-# Only pywebview-style local origins and explicit loopback are permitted.
-ALLOWED_HTTP_ORIGINS: frozenset[str] = frozenset({
-    "http://127.0.0.1",
-    "https://127.0.0.1",
-    "http://localhost",
-    "https://localhost",
-})
-
-
-class _WebSocketNoiseFilter(logging.Filter):
-    """Downgrade non-WebSocket HTTP request errors to warnings.
-
-    The websockets library's Request.parse() validates GET method before
-    process_request() runs. Non-GET requests (POST, OPTIONS, etc.) trigger
-    ValueError with full traceback. This filter downgrades those specific
-    errors to WARNING level — they are expected noise from browser
-    breadcrumbs / pywebview preflight, not real WebSocket failures.
-    """
-
-    _SUPPRESS_PATTERNS = (
-        "unsupported HTTP method",
-        "unsupported protocol",
-        "invalid HTTP request line",
-    )
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        msg = record.getMessage()
-        if any(pattern in msg for pattern in self._SUPPRESS_PATTERNS):
-            record.levelno = logging.WARNING
-            record.levelname = "WARNING"
-            record.exc_info = None
-        return True
-
-
-def _extract_qs_token(path: str) -> str:
-    """Extract ?token=... from a raw request path."""
-    import urllib.parse
-
-    if "?" not in path:
-        return ""
-    qs = path.split("?", 1)[1]
-    return urllib.parse.parse_qs(qs).get("token", [""])[0]
-
-
-def _extract_qs_value(path: str, key: str) -> str:
-    import urllib.parse
-
-    if "?" not in path:
-        return ""
-    qs = path.split("?", 1)[1]
-    return urllib.parse.parse_qs(qs).get(key, [""])[0]
-
-
-def _json_response(data: dict[str, Any], status_code: int = 200) -> Response:
-    return Response(
-        status_code=status_code,
-        reason_phrase="OK" if status_code == HTTP_OK else "Error",
-        headers=_JSON_HEADERS,
-        body=json.dumps(data).encode(),
-    )
-
-
-def _empty_response(status_code: int, reason_phrase: str) -> Response:
-    return Response(
-        status_code=status_code,
-        reason_phrase=reason_phrase,
-        headers=Headers({}),
-        body=b"",
-    )
-
-
-def _bytes_response(body: bytes, content_type: str, status_code: int = 200) -> Response:
-    return Response(
-        status_code=status_code,
-        reason_phrase="OK" if status_code == HTTP_OK else "Error",
-        headers=Headers({"Content-Type": content_type}),
-        body=body,
-    )
-
-
-class DesktopBridgeConfig:
-    """Configuration for the single bridge server."""
-
-    def __init__(  # noqa: PLR0913
-        self,
-        *,
-        host: str = "127.0.0.1",
-        port: int | None = None,
-        frontend_dir: Path | None = None,
-        auth_token: str = "",
-        ssl_context: ssl.SSLContext | None = None,
-        tls_mode: str | None = None,
-        cert_fingerprint_sha256: str | None = None,
-        build_root: Path | None = None,
-        chat_state_provider: Any | None = None,
-        chat_message_handler: Any | None = None,
-        pywebview_loopback_mode: bool = False,
-    ) -> None:
-        self.host = host
-        self.port = port
-        self.frontend_dir = frontend_dir
-        self.auth_token = auth_token
-        self.ssl_context = ssl_context
-        self.tls_enabled = ssl_context is not None
-        self.tls_mode = tls_mode or ("tls" if self.tls_enabled else "insecure")
-        self.cert_fingerprint_sha256 = cert_fingerprint_sha256
-        self.build_root = build_root
-        self.chat_state_provider = chat_state_provider
-        self.chat_message_handler = chat_message_handler
-        self.pywebview_loopback_mode = pywebview_loopback_mode
-
-
-class DesktopBridgeRuntimeConfig:
-    """Runtime config delivered to frontend via JS API bridge."""
-
-    def __init__(
-        self,
-        *,
-        host: str,
-        port: int,
-        tls_enabled: bool,
-        tls_mode: str,
-        auth_token: str,
-        cert_fingerprint_sha256: str | None = None,
-        app_version: str = "dev",
-        tls_trust_state: str = "disabled",
-        handshake_id: str | None = None,
-    ) -> None:
-        scheme = "https" if tls_enabled else "http"
-        ws_scheme = "wss" if tls_enabled else "ws"
-        self.frontend_url = f"{scheme}://{host}:{port}/index.html"
-        self.ws_url = f"{ws_scheme}://{host}:{port}/ws"
-        self.bridge_origin = f"{scheme}://{host}:{port}"
-        self.bridge_host = host
-        self.bridge_port = port
-        self.tls_enabled = tls_enabled
-        self.tls_mode = tls_mode
-        self.cert_fingerprint_sha256 = cert_fingerprint_sha256
-        self.tls_trust_state = tls_trust_state
-        self.transport_label = _transport_label(tls_enabled, tls_trust_state)
-        self.handshake_id = handshake_id or new_correlation_id()
-        self.local_mode = True
-        self.merge_enabled = False
-        self.push_enabled = False
-        self.auth_required = True
-        self.auth_token = auth_token
-        self.app_version = app_version
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "schema_version": "rig.desktop.runtime_config.v1",
-            "frontend_url": self.frontend_url,
-            "ws_url": self.ws_url,
-            "bridge_origin": self.bridge_origin,
-            "bridge_host": self.bridge_host,
-            "bridge_port": self.bridge_port,
-            "tls_enabled": self.tls_enabled,
-            "tls_mode": self.tls_mode,
-            "tls_trust_state": self.tls_trust_state,
-            "cert_fingerprint_sha256": self.cert_fingerprint_sha256,
-            "transport_label": self.transport_label,
-            "handshake_id": self.handshake_id,
-            "local_mode": self.local_mode,
-            "merge_enabled": self.merge_enabled,
-            "push_enabled": self.push_enabled,
-            "auth_required": self.auth_required,
-            "token_present": bool(self.auth_token),
-            "auth_token": self.auth_token,
-            "token": self.auth_token,
-            "app_version": self.app_version,
-        }
 
 
 class DesktopBridgeServer:
@@ -536,7 +378,7 @@ class DesktopBridgeServer:
 
         def _on_ws_probe(step_id: str, label: str, details: dict[str, Any]) -> None:
             report.add_ok(step_id, label, details=details, message=label)
-            self._apply_probe_transition(step_id, details)
+            self._on_ws_probe_transition(step_id, details)
 
         self._ws_server = ProjectionWebSocketServer(
             build_root=self._config.build_root,
@@ -645,7 +487,7 @@ class DesktopBridgeServer:
         )
 
         # ── bridge:07 probe /healthz ─────────────────────────────────
-        await self._probe_healthz(report)
+        await probe_healthz(report, self._build_healthz)
         self._emit_golden_event("desktop.bridge.health_probe_passed")
         self._lifecycle_writer.write_event(
             step_id="bridge_health_probed",
@@ -660,25 +502,39 @@ class DesktopBridgeServer:
         )
 
         # ── bridge:08 probe /index.html ──────────────────────────────
-        await self._probe_path(
-            report, "/index.html", "bridge:08", "probe /index.html", "text/html"
+        await probe_path(
+            report,
+            "/index.html",
+            "bridge:08",
+            "probe /index.html",
+            "text/html",
+            self._handle_http,
+            frontend_dir,
         )
         self._emit_golden_event("desktop.bridge.index_probe_passed")
 
         # ── bridge:09 probe /js/main.js (compat module) ─────────
-        await self._probe_path(
-            report, "/js/main.js", "bridge:09", "probe /js/main.js", "javascript"
+        await probe_path(
+            report,
+            "/js/main.js",
+            "bridge:09",
+            "probe /js/main.js",
+            "javascript",
+            self._handle_http,
+            frontend_dir,
         )
 
         # ── bridge:09a probe active entrypoint ──────────────────────
         orchestrator_js = frontend_dir / "js" / "boot" / "orchestrator.js"
         if orchestrator_js.is_file():
-            await self._probe_path(
+            await probe_path(
                 report,
                 "/js/boot/orchestrator.js",
                 "bridge:09a",
                 "probe active entrypoint",
                 "javascript",
+                self._handle_http,
+                frontend_dir,
             )
             asset_details["active_entrypoint"] = "/js/boot/orchestrator.js"
             asset_details["compat_module"] = "/js/main.js"
@@ -694,8 +550,14 @@ class DesktopBridgeServer:
         css_files = sorted(css_dir.glob("*.css")) if css_dir.is_dir() else []
         if css_files:
             first_css = f"/css/{css_files[0].name}"
-            await self._probe_path(
-                report, first_css, "bridge:10", f"probe {first_css}", "css"
+            await probe_path(
+                report,
+                first_css,
+                "bridge:10",
+                f"probe {first_css}",
+                "css",
+                self._handle_http,
+                frontend_dir,
             )
         else:
             report.add_warn(
@@ -750,7 +612,7 @@ class DesktopBridgeServer:
             host_header = request.headers.get("Host", "")
 
         # Validate Host header (DNS-rebinding defense)
-        host_ok, host_reason = _validate_host_header(host_header, self._config.host)
+        host_ok, host_reason = validate_localhost_header(host_header, self._config.host)
         if not host_ok:
             logger.warning(
                 "audit.host.rejected reason=%s host=%s", host_reason, host_header
@@ -764,7 +626,7 @@ class DesktopBridgeServer:
         if hasattr(request, "headers") and request.headers:
             origin = request.headers.get("Origin", "")
 
-        origin_ok, origin_reason = _validate_http_origin(
+        origin_ok, origin_reason = validate_local_origin(
             origin, self._config.host, self._bound_port
         )
         if not origin_ok:
@@ -894,128 +756,24 @@ class DesktopBridgeServer:
         return self._serve_static(path, frontend_dir)
 
     def _serve_file(self, file_path: Path) -> Response | None:
-        if not file_path.is_file():
-            return _empty_response(404, "Not Found")
-
-        mime_type, _ = mimetypes.guess_type(str(file_path))
-        content_type = mime_type or "application/octet-stream"
-
-        try:
-            body = file_path.read_bytes()
-            return _bytes_response(body, content_type)
-        except OSError:
-            return _empty_response(500, "Internal Server Error")
+        return serve_file(file_path)
 
     def _serve_index_html(self, file_path: Path) -> Response | None:
-        response = self._serve_file(file_path)
-        if (
-            response is None
-            or self._runtime_config is None
-            or not isinstance(response.body, bytes)
-        ):
-            return response
-        try:
-            html = response.body.decode("utf-8")
-        except UnicodeDecodeError:
-            return response
-        bootstrap = {
-            "schema_version": "rig.desktop.runtime_config.v1",
-            "frontend_url": self._runtime_config.frontend_url,
-            "ws_url": self._runtime_config.ws_url,
-            "ws_protocol": "wss" if self._runtime_config.tls_enabled else "ws",
-            "static_protocol": "https" if self._runtime_config.tls_enabled else "http",
-            "tls_enabled": self._runtime_config.tls_enabled,
-            "tls_mode": self._runtime_config.tls_mode,
-            "tls_trust_state": self._runtime_config.tls_trust_state,
-            "transport_label": self._runtime_config.transport_label,
-            "handshake_id": self._runtime_config.handshake_id,
-            "local_mode": True,
-            "token_present": bool(self._runtime_config.auth_token),
-            "token": self._runtime_config.auth_token,
-        }
-        script = (
-            "<script>window.__RIG_RELAY_RUNTIME_CONFIG__ = "
-            + json.dumps(bootstrap)
-            + ";</script>"
-        )
-        if "</head>" in html:
-            html = html.replace("</head>", f"{script}</head>", 1)
-        else:
-            html = script + html
-        return _bytes_response(html.encode("utf-8"), "text/html")
+        return serve_index_html(file_path, self._runtime_config)
 
     def _serve_static(self, path: str, frontend_dir: Path) -> Response | None:
-        """Serve static assets from frontend_dir. Prevents path traversal."""
-        normalized = (
-            Path(path).resolve() if path.startswith("/") else Path("/" + path).resolve()
-        )
-        requested = frontend_dir / normalized.relative_to("/")
-
-        try:
-            requested.resolve().relative_to(frontend_dir.resolve())
-        except ValueError:
-            return _empty_response(403, "Forbidden")
-
-        if not requested.is_file():
-            return _empty_response(404, "Not Found")
-
-        return self._serve_file(requested)
+        return serve_static(path, frontend_dir)
 
     def _gate_route_by_service_state(self, path: str) -> Response | None:
-        """Gate sensitive HTTP routes by service state.
+        return gate_route_by_service_state(path)
 
-        Returns None if the route is allowed, or a 403 JSON response if gated.
-        When the profile is setup_required or locked, sensitive routes are
-        blocked even with valid token/origin.
-        """
-        from rig_relay.governance.service_state import get_capability_gate
+    def _build_healthz(self) -> Response:
+        return build_healthz_response(
+            self._config, self._bound_port, self._runtime_config, self._state_machine
+        )
 
-        gate = get_capability_gate()
-        state_summary = gate.state_summary()
-        service_state = state_summary.get("service_state", "")
-        profile_state = state_summary.get("profile_state", "")
-
-        # Always allowed routes (never gated)
-        if path in {
-            "/",
-            "/index.html",
-            "/healthz",
-            "/runtime-config.json",
-            "/runtime-config",
-            "/ws",
-            "/websocket.js",
-        }:
-            return None
-        if (
-            path.startswith("/js/")
-            or path.startswith("/css/")
-            or path.startswith("/assets/")
-        ):
-            return None
-        if path == "/frontend-event":
-            return None
-
-        # In ready/degraded state, all routes are allowed
-        if service_state in {"ready", "degraded"}:
-            return None
-
-        # In setup_required or locked state, block sensitive routes
-        if service_state in {"setup_required", "locked"}:
-            message = f"Service is {service_state}. Route '{path}' is not available until profile is unlocked."
-            logger.warning(
-                "audit.route.gated service_state=%s path=%s", service_state, path
-            )
-            return _json_response(
-                {
-                    "error": "service_gated",
-                    "service_state": service_state,
-                    "profile_state": profile_state,
-                    "message": message,
-                },
-                status_code=403,
-            )
-
-        return None
+    def _compute_readiness(self, state_summary: dict[str, Any]) -> str:
+        return compute_readiness(state_summary)
 
     def write_lifecycle_summary(self) -> dict[str, Any]:
         """Write and return the lifecycle summary artifact."""
@@ -1095,120 +853,10 @@ class DesktopBridgeServer:
             return
         await self._ws_server._handle_connection(conn)
 
-    async def _probe_healthz(self, report: BridgeProbeReport) -> None:
-        try:
-            resp = self._build_healthz()
-            body = json.loads(resp.body) if isinstance(resp.body, bytes) else {}
-            report.add_ok(
-                "bridge:07",
-                "probe /healthz",
-                details={"status": resp.status_code, "ok": body.get("ok")},
-                message=f"HTTP {resp.status_code}, ok={body.get('ok')}",
-            )
-        except Exception as exc:
-            report.add_warn(
-                "bridge:07",
-                "probe /healthz",
-                message=f"Self-probe failed: {exc}",
-                remediation="Bridge is running but /healthz is not responding.",
-            )
-
-    async def _probe_path(
-        self,
-        report: BridgeProbeReport,
-        path: str,
-        step_id: str,
-        label: str,
-        expected_content_type: str,
-    ) -> None:
-        try:
-            resp = self._handle_http(
-                Request(path=path, headers=Headers({})),
-                self._config.frontend_dir or Path("."),
-            )
-            if resp is None:
-                report.add_fail(
-                    step_id,
-                    label,
-                    details={"path": path},
-                    message="No response (WebSocket upgrade intercepted?)",
-                    remediation=f"Check route for {path}.",
-                )
-                return
-            ct = resp.headers.get("Content-Type", "")
-            ok_status = resp.status_code == HTTP_OK
-            if (
-                ok_status
-                and expected_content_type == "javascript"
-                and "text/html" in ct
-            ):
-                report.add_fail(
-                    step_id,
-                    label,
-                    details={
-                        "path": path,
-                        "status": resp.status_code,
-                        "content_type": ct,
-                    },
-                    message=f"Returned {ct}; expected javascript",
-                    remediation=f"Check that {path} is served as static file, not index.html fallback.",
-                )
-            elif ok_status:
-                report.add_ok(
-                    step_id,
-                    label,
-                    details={
-                        "path": path,
-                        "status": resp.status_code,
-                        "content_type": ct,
-                    },
-                    message=f"HTTP {resp.status_code}, {ct}",
-                )
-            else:
-                report.add_fail(
-                    step_id,
-                    label,
-                    details={"path": path, "status": resp.status_code},
-                    message=f"HTTP {resp.status_code}",
-                    remediation=f"Check that {path} exists under frontend_dir.",
-                )
-        except Exception as exc:
-            report.add_fail(
-                step_id,
-                label,
-                message=f"Probe failed: {exc}",
-                remediation=f"Check server is running and {path} is accessible.",
-            )
-
-    def _apply_probe_transition(
+    def _on_ws_probe_transition(
         self, step_id: str, details: dict[str, Any] | None = None
     ) -> None:
-        payload = {"step_id": step_id, **(details or {})}
-        match step_id:
-            case "bridge:15":
-                self._transition_state(
-                    DesktopBridgeEvent.WEBSOCKET_CONNECTED,
-                    reason="websocket auth message received",
-                    attributes=payload,
-                )
-            case "bridge:16":
-                self._transition_state(
-                    DesktopBridgeEvent.AUTHENTICATED,
-                    reason="websocket auth accepted",
-                    attributes=payload,
-                )
-            case "bridge:17":
-                self._transition_state(
-                    DesktopBridgeEvent.PROJECTION_SENT,
-                    reason="first projection sent",
-                    attributes=payload,
-                )
-            case "bridge:18":
-                self._transition_state(
-                    DesktopBridgeEvent.PROJECTION_RENDERED,
-                    reason="projection rendered",
-                    attributes=payload,
-                )
+        apply_probe_transition(self._state_machine, step_id, details)
 
     def _apply_frontend_event_transition(
         self, event: DesktopBridgeEvent, detail: str, event_type: str
@@ -1218,87 +866,6 @@ class DesktopBridgeServer:
             reason=f"frontend event: {event_type}",
             attributes={"detail": detail, "source": "frontend-event"},
         )
-
-    def _build_healthz(self) -> Response:
-        from rig_relay.governance.service_state import get_capability_gate
-
-        gate = get_capability_gate()
-        state_summary = gate.state_summary()
-        return _json_response({
-            "ok": True,
-            "schema_version": "rig.desktop.healthz.v1",
-            "bridge_mode": "single",
-            "bridge_host": self._config.host,
-            "bridge_port": self._bound_port,
-            "tls_enabled": self._config.tls_enabled,
-            "tls_mode": self._config.tls_mode,
-            "transport_label": (
-                self._runtime_config.transport_label
-                if self._runtime_config
-                else "unknown"
-            ),
-            "ws_path": "/ws",
-            "auth_required": True,
-            "frontend_url": (
-                self._runtime_config.frontend_url if self._runtime_config else ""
-            ),
-            "ws_url": (self._runtime_config.ws_url if self._runtime_config else ""),
-            "bridge_state": self._state_machine.current_state.value,
-            "bridge_previous_state": (
-                self._state_machine.export_projection()["previous_state"]
-            ),
-            "bridge_last_event": self._state_machine.export_projection()["last_event"],
-            "bridge_failed_step": self._state_machine.export_projection()[
-                "failed_step"
-            ],
-            "bridge_transition_count": self._state_machine.export_projection()[
-                "transition_count"
-            ],
-            "frontend_dir_exists": (
-                self._config.frontend_dir.is_dir()
-                if self._config.frontend_dir
-                else False
-            ),
-            "index_exists": (
-                (self._config.frontend_dir / "index.html").is_file()
-                if self._config.frontend_dir
-                else False
-            ),
-            "main_js_exists": (
-                (self._config.frontend_dir / "js" / "main.js").is_file()
-                if self._config.frontend_dir
-                else False
-            ),
-            "css_dir_exists": (
-                (self._config.frontend_dir / "css").is_dir()
-                if self._config.frontend_dir
-                else False
-            ),
-            "active_ws_clients": 0,
-            "last_ws_error": None,
-            "service_state": state_summary.get("service_state", "unknown"),
-            "readiness_state": self._compute_readiness(state_summary),
-            "profile_exists": state_summary.get("profile_exists", False),
-            "profile_state": state_summary.get("profile_state", "setup_required"),
-            "local_auth_enabled": state_summary.get("local_auth_enabled", False),
-        })
-
-    def _compute_readiness(self, state_summary: dict[str, Any]) -> str:  # noqa: PLR0911
-        """Map service state to readiness state for frontend consumption."""
-        service_state = state_summary.get("service_state", "setup_required")
-        if service_state in {"starting"}:
-            return "starting"
-        if service_state == "setup_required":
-            return "setup_required"
-        if service_state == "locked":
-            return "locked"
-        if service_state == "ready":
-            return "ready"
-        if service_state == "degraded":
-            return "degraded"
-        if service_state == "failed":
-            return "failed"
-        return service_state
 
     def _print_handshake_trace(self) -> None:
         trace_path = (
@@ -1325,84 +892,3 @@ class DesktopBridgeServer:
 
 
 __all__ = ["DesktopBridgeConfig", "DesktopBridgeRuntimeConfig", "DesktopBridgeServer"]
-
-
-def _is_loopback_host(host: str) -> bool:
-    return host in {"127.0.0.1", "localhost", "::1"}
-
-
-def _validate_http_origin(origin: str, host: str, bound_port: int) -> tuple[bool, str]:  # noqa: PLR0911
-    """Validate HTTP Origin header for local bridge requests.
-
-    Returns (allowed, reason).
-    - Missing Origin is allowed (curl, health probes, pywebview with no origin).
-    - null origin is allowed (pywebview sends null origin for file:// loads).
-    - file:// origins are never allowed.
-    - Loopback origins matching expected host:port are allowed.
-    - DNS-rebinding hostnames (non-loopback in Origin) are rejected.
-    """
-    if not origin:
-        return True, ""
-    origin_lower = origin.lower()
-    if origin_lower == "null":
-        return True, ""
-    if origin_lower.startswith("file://"):
-        return False, "file:// origins are not allowed"
-    if origin in ALLOWED_HTTP_ORIGINS:
-        return True, ""
-    # Allow any origin containing 127.0.0.1 or localhost with matching port
-    for loopback in {"127.0.0.1", "localhost"}:
-        if loopback in origin_lower:
-            return True, ""
-    if bound_port and f":{bound_port}" in origin:
-        for loopback in {"127.0.0.1", "localhost", "::1"}:
-            if loopback in origin_lower:
-                return True, ""
-    return False, f"Origin '{origin}' is not a local origin"
-
-
-def _validate_host_header(host_header: str, bind_host: str) -> tuple[bool, str]:
-    """Validate Host header for DNS-rebinding defense.
-
-    Returns (allowed, reason).
-    The Host must be localhost, 127.0.0.1, ::1, or match the bind host.
-    DNS-rebinding hostnames (e.g. evil.example.com resolving to 127.0.0.1) are rejected.
-    Missing Host is allowed (local tools).
-    """
-    if not host_header:
-        return True, ""
-    host_clean = host_header.split(":")[0].lower()
-    if host_clean in {"127.0.0.1", "localhost", "::1"}:
-        return True, ""
-    if host_clean == bind_host:
-        return True, ""
-    return False, f"Host '{host_header}' is not a localhost address"
-
-
-def _unsafe_non_loopback_allowed() -> bool:
-    return os.getenv("RIG_RELAY_ALLOW_NON_LOOPBACK_LOCAL_BRIDGE", "").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-
-
-def _tls_trust_state(config: DesktopBridgeConfig) -> str:
-    if not config.tls_enabled:
-        return "disabled"
-    if config.tls_mode == "mkcert":
-        return "unknown"
-    if config.tls_mode in {"adhoc_local", "self_signed"}:
-        return "self_signed"
-    return "unknown"
-
-
-def _transport_label(tls_enabled: bool, tls_trust_state: str) -> str:
-    if not tls_enabled:
-        return "Loopback Token Bridge"
-    if tls_trust_state == "trusted":
-        return "TLS Loopback Bridge"
-    if tls_trust_state in {"self_signed", "untrusted", "development"}:
-        return "Untrusted Development TLS Bridge"
-    return "TLS Loopback Bridge"

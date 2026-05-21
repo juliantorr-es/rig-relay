@@ -12,6 +12,7 @@ receives the result from the dedicated tool as if it had called it.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import hashlib
 import re
 import shlex
@@ -25,7 +26,7 @@ from rig_relay.core.types import ToolStreamEvent
 
 RerouteEntry = tuple[
     str,  # tool_name
-    callable,  # arg_builder(command: str, tokens: list[str]) -> dict | None
+    Callable[..., Any],  # arg_builder(command: str, tokens: list[str]) -> dict | None
     str,  # description for the reroute message
 ]
 
@@ -185,7 +186,7 @@ def detect_and_advertise_reroute(command: str) -> str | None:
     return None
 
 
-def _category_from_builder(builder: callable) -> str:
+def _category_from_builder(builder: Any) -> str:
     """Map a reroute builder function to its original_command_category."""
     if builder is _reroute_read_file:
         return "file_read"

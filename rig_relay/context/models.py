@@ -163,7 +163,7 @@ class ContextPacket(BaseModel):
     mode: ContextMode = ContextMode.MAP
     request_sha256: str = ""
     generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    repo: RepoInfo = Field(default_factory=RepoInfo)
+    repo: RepoInfo = Field(default_factory=RepoInfo)  # type: ignore[reportArgumentType]
     subsystems: list[SubsystemEntry] = Field(default_factory=list)
     active_work: dict[str, Any] = Field(
         default_factory=lambda: {"lanes": [], "collision_warnings": []}

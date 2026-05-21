@@ -158,6 +158,11 @@ class DirtyFileGuard:
                 self.dirty_snapshots[snapshot.relative_path] = snapshot
 
         self._captured = True
+        logger.info(
+            "dirty_guard.capture succeeded baseline_id=%s dirty_file_count=%s",
+            self.baseline_id,
+            len(self.dirty_snapshots),
+        )
 
     def recapture(
         self,

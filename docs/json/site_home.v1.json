@@ -45,6 +45,8 @@
     {"label": "Contributor", "description": "Code schemas, development practices, and contribution guide", "href": "/rig-relay/pages/rig-integration-contract.html"}
   ],
   "featured_links": [
+    {"title": "Codebase Evidence Graph", "href": "/rig-relay/pages/codebase-evidence-graph.html", "summary": "Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies"},
+    {"title": "Developer Portfolio", "href": "/rig-relay/pages/portfolio.html", "summary": "Evidence-backed developer portfolio — tech stack, projects, governance, and public claims"},
     {"title": "Static Site v1 Readiness", "href": "/rig-relay/pages/static-site-v1-readiness.html", "summary": "Proof that the documentation site is live, rendered, and validated"},
     {"title": "Security Threat Model v0", "href": "/rig-relay/pages/rig-relay-threat-model-v0.html", "summary": "Machine-readable threat model with 17 threats, 14 assets, and 11 trust boundaries"},
     {"title": "Desktop Golden Path", "href": "/rig-relay/pages/desktop-golden-path-trace.html", "summary": "Canonical bridge startup and handshake trace for the local golden path"},

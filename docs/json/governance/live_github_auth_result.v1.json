@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.github.live_auth_result.v1",
   "receipt_id": "d002ece3-26bb-4f34-859b-04209f001101",
   "trace_id": "4e6032a3-1bad-4be9-93c1-ee7b87bfd680",
   "dry_run": false,

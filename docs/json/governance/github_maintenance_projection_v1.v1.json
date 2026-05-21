@@ -1,0 +1,9 @@
+{
+  "available": true,
+  "last_run": "2026-05-21T02:46:07.663523+00:00",
+  "tasks_run": 5,
+  "tasks_refreshed": 4,
+  "next_scheduled": "manual — run `uv run python scripts/rig_github_maintenance.py`",
+  "remote_mutation": false,
+  "raw_payloads_exposed": false
+}

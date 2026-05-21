@@ -215,7 +215,7 @@ def _determine_alert_state(
         return "alert_unknown"
     if isinstance(data, dict):
         raw_state = data.get("state", "open")
-        if raw_state in ("fixed", "dismissed"):
+        if raw_state in {"fixed", "dismissed"}:
             return "alert_closed_deferred"
         return "alert_open"
     return "alert_open"

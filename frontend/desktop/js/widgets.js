@@ -2479,29 +2479,94 @@ function renderLiveMutationExpanded(container, lm) {
 registerWidget('carteBlancheDashboard', (container, level) => {
   const p = state.projection;
   if (!p || !p.carte_blanche_dashboard || !p.carte_blanche_dashboard.available) return;
-
   const d = p.carte_blanche_dashboard;
   const probes = d.surface_probes || {};
-  let h = '<div style="font-size:0.85em">';
 
-  h += `<div style="margin-bottom:6px"><strong>13 GitHub surfaces</strong> | ${d.live_proven_write_lanes} live-proven | ${d.read_verified_surfaces} read-verified | ${d.gated_write_lanes} write-lanes wired</div>`;
+  // Try to load maintenance data
+  const maint = state.projection && state.projection.github_maintenance;
 
-  h += '<table style="font-size:0.85em;width:100%"><tr><th>Surface</th><th>Status</th><th>API</th></tr>';
-  for (const [name, probe] of Object.entries(probes)) {
-    const sc = probe.status_code || '—';
-    const cls = sc === 200 ? 'success' : sc > 0 ? 'warn' : 'dimmed';
-    h += `<tr><td>${name}</td><td class="${cls}">${sc}</td><td>${probe.probed ? 'live' : 'not probed'}</td></tr>`;
+  let h = '';
+
+  // ── Header stats ──
+  h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">`;
+  const statCards = [
+    {label:'Write Lanes', value:`${d.live_proven_write_lanes} proven`, cls:'proven'},
+    {label:'Read Surfaces', value:`${d.read_verified_surfaces} verified`, cls:'read'},
+    {label:'API Endpoints', value:'12', cls:'endpoints'},
+    {label:'Last Refresh', value:maint && maint.last_run ? maint.last_run.substring(0,10) : '—', cls:'maint'}
+  ];
+  for (const sc of statCards) {
+    h += `<div style="background:var(--bg-alt, #161b22);border:1px solid var(--border, #30363d);border-radius:6px;padding:8px;text-align:center"><div style="font-size:1.4em;font-weight:700;color:var(--accent, #58a6ff)">${sc.value}</div><div style="font-size:0.75em;color:var(--dim, #8b949e)">${sc.label}</div></div>`;
   }
-  h += '<tr><td>branch/file/PR</td><td class="success">201</td><td>live-proven</td></tr>';
-  h += '<tr><td>release/create</td><td class="success">201</td><td>live-proven</td></tr>';
-  h += '<tr><td>alert/update</td><td class="warn">gated</td><td>wired</td></tr>';
-  h += '<tr><td>issue/create</td><td class="warn">410</td><td>repo config</td></tr>';
-  h += '</table>';
-  h += '</div>';
+  h += `</div>`;
 
-  if (level === 'expanded') {
-    renderExpandedWidget(container, 'Carte Blanche Dashboard', h);
+  if (level === 'compact') {
+    renderCompactChip(container, 'GitHub Integration', () => ({
+      text: `${d.live_proven_write_lanes} write lanes proven · ${d.read_verified_surfaces} surfaces verified`,
+      cls: 'success'
+    }));
     return;
   }
-  renderStandardCard(container, 'Carte Blanche Dashboard', h, 'carteBlancheDashboard', 'success');
+
+  // ── Pipeline visualization ──
+  const pipeline = [
+    {id:'intake', label:'Security Intake', cls:'done'},
+    {id:'queue', label:'Queue', cls:'done'},
+    {id:'remediation', label:'Remediation', cls:'done'},
+    {id:'patch', label:'Patch Plan', cls:'done'},
+    {id:'preview', label:'Preview', cls:'done'},
+    {id:'source', label:'Source', cls:'done'},
+    {id:'diff', label:'Candidate Diff', cls:'done'},
+    {id:'prplan', label:'PR Plan', cls:'done'},
+    {id:'readiness', label:'Readiness', cls:'done'},
+    {id:'execute', label:'Execute', cls:'proven'},
+    {id:'lifecycle', label:'Lifecycle', cls:'done'},
+    {id:'maintain', label:'Maintain', cls:'active'}
+  ];
+  h += `<div style="margin-bottom:8px"><strong>Pipeline</strong></div>`;
+  h += `<div style="display:flex;align-items:center;gap:2px;margin-bottom:16px;flex-wrap:wrap;font-size:0.75em">`;
+  for (let i=0; i<pipeline.length; i++) {
+    const stg = pipeline[i];
+    const bg = {'done':'#238636','proven':'#1f6feb','active':'#d29922'}[stg.cls] || '#30363d';
+    h += `<span style="background:${bg};color:#fff;padding:3px 8px;border-radius:4px;white-space:nowrap">${stg.label}</span>`;
+    if (i < pipeline.length-1) h += `<span style="color:var(--dim)">→</span>`;
+  }
+  h += `</div>`;
+
+  // ── Surface grid ──
+  h += `<div style="margin-bottom:8px"><strong>Surfaces</strong></div>`;
+  h += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-bottom:12px">`;
+  const surfaces = [
+    {name:'Contents', sc: 200, cls:'success', note:'read+write'},
+    {name:'Refs', sc: 201, cls:'success', note:'branch create'},
+    {name:'Pull Requests', sc: 201, cls:'success', note:'pr create'},
+    {name:'Issues', sc: probes.issues && probes.issues.status_code || '—', cls:'warn', note:'repo config'},
+    {name:'Releases', sc: 201, cls:'success', note:'create'},
+    {name:'Actions', sc: 200, cls:'success', note:'read'},
+    {name:'Pages', sc: 200, cls:'success', note:'read'},
+    {name:'Webhooks', sc: 200, cls:'success', note:'read'},
+    {name:'Collaborators', sc: 200, cls:'success', note:'read'},
+    {name:'Code Scanning', sc:'gated', cls:'warn', note:'alert state'},
+    {name:'Dependabot', sc:'refused', cls:'dimmed', note:'deferred'},
+    {name:'Secret Scanning', sc:'refused', cls:'dimmed', note:'deferred'},
+  ];
+  for (const s of surfaces) {
+    const clr = s.cls === 'success' ? '#238636' : s.cls === 'warn' ? '#d29922' : '#484f58';
+    h += `<div style="background:var(--bg-alt, #161b22);border:1px solid var(--border, #30363d);border-radius:6px;padding:8px"><div style="font-weight:600;font-size:0.85em">${s.name}</div><div style="color:${clr};font-size:0.8em">${s.sc} ${s.note ? '· '+s.note : ''}</div></div>`;
+  }
+  h += `</div>`;
+
+  // ── Maintenance ──
+  if (maint) {
+    h += `<div style="background:var(--bg-alt, #161b22);border:1px solid var(--border, #30363d);border-radius:6px;padding:10px;margin-bottom:8px">`;
+    h += `<div style="font-size:0.85em"><strong>Maintenance</strong> · last run: ${maint.last_run ? maint.last_run.substring(0,16) : 'never'}</div>`;
+    h += `<div style="font-size:0.8em;color:var(--dim);margin-top:4px">Run: <code style="background:var(--bg);padding:1px 6px;border-radius:3px;font-size:0.85em">uv run python scripts/rig_github_maintenance.py all</code></div>`;
+    h += `</div>`;
+  }
+
+  if (level === 'expanded') {
+    renderExpandedWidget(container, 'GitHub Integration', h);
+    return;
+  }
+  renderStandardCard(container, 'GitHub Integration', h, 'carteBlancheDashboard', 'success');
 });

@@ -111,7 +111,7 @@ class TransactionHarness:
         self,
         fake_boundary: FakeGitHubBoundary | None = None,
         scenario: str = "complete_success",
-    ):
+    ) -> None:
         self.fb = fake_boundary or FakeGitHubBoundary()
         self.scenario = scenario
         self.transaction_id = _sha256_text(f"txn:{_now_iso()}")
@@ -182,7 +182,7 @@ class TransactionHarness:
         if sc == "branch_created_file_fails" and step == "write_file":
             self.fb.set_permission("contents:write", False)
             return 403, False
-        if sc == "branch_file_ok_pr_fails" and step in ("create_branch", "write_file"):
+        if sc == "branch_file_ok_pr_fails" and step in {"create_branch", "write_file"}:
             return 201, False
         if sc == "branch_file_ok_pr_fails":
             self.fb.set_permission("pull_requests:write", False)
@@ -190,10 +190,10 @@ class TransactionHarness:
         if sc == "branch_exists_from_prior" and step == "create_branch":
             self.fb.add_existing_branch(self.branch)
             return 422, False
-        if sc == "branch_file_ok_pr_missing" and step in (
+        if sc == "branch_file_ok_pr_missing" and step in {
             "create_branch",
             "write_file",
-        ):
+        }:
             return 201, False
         if sc == "branch_file_ok_pr_missing":
             self.fb.add_existing_pr(self.idem_key)
@@ -231,7 +231,7 @@ class TransactionHarness:
             ("create_pr", "remote_mutation"),
         ]:
             sc, ambiguous = self._apply_scenario(step_name)
-            step_ok = sc in (201, 200)
+            step_ok = sc in {201, 200}
             self._ledger(
                 "mutation",
                 step_name,
