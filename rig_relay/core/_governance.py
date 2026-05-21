@@ -3,6 +3,8 @@
 Extracted from agent_loop.py. Provides approval callbacks, tool
 permission management, and session-level allow/deny rules. No LLM
 or tool runtime dependency — purely policy configuration.
+
+Wave 4: Delegates to GovernanceRuntime when available.
 """
 
 from __future__ import annotations
@@ -23,6 +25,11 @@ class GovernanceMixin:
 
     def set_approval_callback(self, callback: object) -> None:
         self.approval_callback = callback
+        if (
+            hasattr(self, "_governance_runtime")
+            and self._governance_runtime is not None
+        ):
+            self._governance_runtime.approval_callback = callback
 
     def set_user_input_callback(self, callback: object) -> None:
         self.user_input_callback = callback
@@ -41,7 +48,11 @@ class GovernanceMixin:
         self.config.tools[tool_name]["permission"] = permission.value
 
     def _add_session_rule(self, rule: ApprovedRule) -> None:
-        self._session_rules.append(rule)
+        if (
+            hasattr(self, "_governance_runtime")
+            and self._governance_runtime is not None
+        ):
+            self._governance_runtime.add_session_rule(rule)
 
     def _is_permission_covered(self, tool_name: str, rp: RequiredPermission) -> bool:
         return any(
