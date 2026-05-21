@@ -10,10 +10,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import time
-import urllib.parse
-import webbrowser
 from pathlib import Path
+import webbrowser
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DOTENV_PATH = Path.home() / ".rig" / "relay" / ".env"
@@ -172,10 +170,10 @@ def complete_onboarding(
 
 __all__ = [
     "GitHubAppOnboardingError",
-    "get_app_install_url",
-    "save_installation_config",
-    "get_installation_status",
-    "generate_permission_manifest",
-    "open_install_page",
     "complete_onboarding",
+    "generate_permission_manifest",
+    "get_app_install_url",
+    "get_installation_status",
+    "open_install_page",
+    "save_installation_config",
 ]

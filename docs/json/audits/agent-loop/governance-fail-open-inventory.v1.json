@@ -1,0 +1,396 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "agent-loop-governance-fail-open-inventory",
+  "document_type": "audit",
+  "title": "AgentLoop Governance Fail-Open Inventory and Orchestration Split",
+  "summary": "Audit date: 2026-05-20. Documents the current governance fail-open seams and the minimum orchestration split needed to patch them safely.",
+  "status": "active",
+  "created_at": "2026-05-20",
+  "updated_at": "2026-05-20",
+  "source_commit": "b70b9130",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "agent-loop",
+    "governance",
+    "fail-open",
+    "orchestration",
+    "tracing",
+    "degradation"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer",
+    "agent"
+  ],
+  "canonical_path": "docs/json/audits/agent-loop/governance-fail-open-inventory.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "AgentLoop Governance Fail-Open Inventory and Orchestration Split"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Audit date: 2026-05-20. This document captures the governance paths that currently fail open, the graceful-degradation behavior each one should use instead, and the orchestration split needed to keep AgentLoop from absorbing more policy and tracing logic."
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Scope"
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "In scope: `rig_relay/core/agent_loop.py`, `rig_relay/core/_agent_init.py`, `rig_relay/governance/dirty_guard.py`, `rig_relay/governance/auth_receipts.py`, `rig_relay/core/tools/builtins/checkpoint.py`, `rig_relay/core/tool_runtime.py`, `rig_relay/runtime/tool_invocation_execution.py`, `rig_relay/runtime/tool_runtime_adapter.py`, `rig_relay/core/tools/builtins/write_file.py`, `rig_relay/core/tools/builtins/search_replace.py`, `rig_relay/compiler/context/collision.py`, `rig_relay/compiler/context/handoff.py`, and `rig_relay/context/compiler.py`."
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Fail-Open Inventory"
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Seam",
+        "Current fail-open behavior",
+        "Graceful degradation",
+        "Severity",
+        "Evidence"
+      ],
+      "rows": [
+        [
+          "GO-1",
+          "AgentLoop permission, approval, patch gate",
+          "Exceptions in `permission_decision()` and `approval_request()` return allow; patch-gate lookup failures return `None`, which lets mutation continue.",
+          "Return typed refusals such as `permission_unavailable`, `approval_unavailable`, or `patch_gate_unavailable`; keep read-only tools available, but never convert a gate failure into allow.",
+          "critical",
+          "`rig_relay/core/agent_loop.py:455-500,575-577`"
+        ],
+        [
+          "GO-2",
+          "AgentLoop council consult",
+          "Capability-gate failures, single-provider short-circuits, and council consultation exceptions all map to `ALLOW`.",
+          "Return `BLOCK` or `REVIEW` with `council_unavailable`; mutation tools should pause for manual review or no-op instead of continuing silently.",
+          "critical",
+          "`rig_relay/core/agent_loop.py:1003-1049,1108-1129`"
+        ],
+        [
+          "GO-3",
+          "Dirty guard capture",
+          "`git status` failures are swallowed, `_captured` is set, and init uses `WARN_ALLOW` for non-subagent sessions.",
+          "Record `dirty_guard_capture_failed`, block mutation tools, and leave read-only inspection available until the guard can be recaptured.",
+          "high",
+          "`rig_relay/governance/dirty_guard.py:78-144`, `rig_relay/core/_agent_init.py:135-148`"
+        ],
+        [
+          "GO-4",
+          "Checkpoint authorization",
+          "The default policy allows dev bypass, and checkpoint auto-mints a dev receipt when none is provided.",
+          "Require an explicit dev-mode policy flag; otherwise refuse missing receipts with a clear authorization failure and no implicit minting.",
+          "high",
+          "`rig_relay/governance/auth_receipts.py:18-50,146-182`, `rig_relay/core/tools/builtins/checkpoint.py:218-230`"
+        ],
+        [
+          "GO-5",
+          "ToolRuntime constructor defaults",
+          "Bare `ToolRuntime` defaults permission, approval, and patch gating to allow/none.",
+          "Require an explicit governance policy object or default to fail-closed for mutation when the policy callbacks are absent.",
+          "critical",
+          "`rig_relay/core/tool_runtime.py:116-135,392-452`"
+        ],
+        [
+          "GO-6",
+          "Runtime execution wiring",
+          "The runtime execution runner creates `ToolRuntime` without permission/approval/patch-gate callbacks; adapter policy hints are metadata only.",
+          "Pass a policy object through the runner and refuse mutation dispatch if the policy is missing or incomplete.",
+          "critical",
+          "`rig_relay/runtime/tool_invocation_execution.py:176-210`, `rig_relay/runtime/tool_runtime_adapter.py:66-78,116-132`"
+        ],
+        [
+          "GO-7",
+          "Coordination claims for write tools",
+          "Missing coordination state returns `False`, and the tool continues instead of treating the missing lease context as a blocker.",
+          "If a mutation cannot establish coordination, fall back to an explicit dry-run/read-only refusal unless the caller opted into a non-coordinated mode.",
+          "medium",
+          "`rig_relay/core/tools/builtins/write_file.py:228-255`, `rig_relay/core/tools/builtins/search_replace.py:286-312`, `rig_relay/runtime/tool_invocation_execution.py:1012-1028`"
+        ],
+        [
+          "GO-8",
+          "Collision and handoff packet compilation",
+          "Missing coordination store or compile failure returns empty packets or `safe_paths=requesting_paths` with `overall_risk=\"none\"`.",
+          "Emit `overall_risk=\"unknown\"`, do not report safe paths when evidence is missing, and require manual review before downstream mutation guidance is trusted.",
+          "high",
+          "`rig_relay/compiler/context/collision.py:96-113`, `rig_relay/compiler/context/handoff.py:132-147`, `rig_relay/context/compiler.py:880-916,988-1004`"
+        ]
+      ]
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Shared Degradation Rules"
+    },
+    {
+      "block_id": "list-8",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Mutation gate failures resolve to `BLOCK`, `REVIEW`, or `DEGRADED`, never `ALLOW`.",
+        "Read-only tools may continue when the only problem is governance availability.",
+        "Missing evidence must surface as `unknown`, not `none`.",
+        "Dev bypass is only acceptable when it is explicitly enabled and labeled in the policy path and receipt path.",
+        "Policy hints remain advisory until a policy object is injected into the executor.",
+        "Coordination failure should produce a dry-run or refusal, not an unleased write."
+      ]
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Orchestration Split"
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": [
+        "Target module",
+        "Owns",
+        "Moves out of AgentLoop",
+        "Why it helps"
+      ],
+      "rows": [
+        [
+          "`OrchestratorLoop` or `TurnOrchestrator`",
+          "Turn/session topology, message pump, model turn sequencing, lifecycle cleanup",
+          "The loop itself should remain thin, but policy decisions should not accumulate here.",
+          "Keeps the compatibility shell focused on orchestration instead of governance mechanics."
+        ],
+        [
+          "`GovernanceOrchestrator`",
+          "Dirty guard, permission, approval, council consult, patch gate, typed fallback decisions",
+          "All branchy policy classification and failure handling.",
+          "Centralizes fail-open prevention and makes degraded outcomes explicit and testable."
+        ],
+        [
+          "`ToolExecutor`",
+          "ToolRuntime wiring, governed tool invocation, result normalization, receipts",
+          "The executor should not decide policy defaults by itself.",
+          "Keeps execution authority inside the runtime boundary while preserving a single policy object."
+        ],
+        [
+          "`ContextEnvelopeAssembler`",
+          "Context build, collision/handoff packet degradation, context evidence shaping",
+          "Context compilation and safe-path logic.",
+          "Lets missing evidence become an explicit degraded packet instead of a fabricated safe packet."
+        ],
+        [
+          "`TracePropagationContext`",
+          "Correlation keys and hashes that span turns, tools, leases, receipts, and refusals",
+          "Ad hoc propagation through closure arguments and local temp variables.",
+          "Improves correlated tracing and makes failure chains debuggable across the whole stack."
+        ]
+      ]
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Correlation and Propagation"
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": [
+        "Field",
+        "Why it must propagate",
+        "Typical owners"
+      ],
+      "rows": [
+        [
+          "`session_id`",
+          "Joins turn history, dirty-guard state, coordination state, and receipts.",
+          "AgentLoop, dirty guard, runtime requests, evidence emitters"
+        ],
+        [
+          "`turn_id`",
+          "Separates each orchestration iteration and its downstream tool batch.",
+          "Conversation runtime, orchestration shell"
+        ],
+        [
+          "`tool_call_id` / `invocation_id`",
+          "Correlates the request, execution result, refusal, and receipt for one tool action.",
+          "AgentLoop, ToolRuntime, runtime audit events"
+        ],
+        [
+          "`runtime_envelope_sha256`",
+          "Binds the tool request payload to the execution and evidence chain.",
+          "Runtime request builders, audit records"
+        ],
+        [
+          "`receipt_sha256`",
+          "Lets degraded or refused operations still be traced without raw payload leakage.",
+          "Receipt builders, telemetry, audit stores"
+        ],
+        [
+          "`baseline_id`",
+          "Connects mutation checks to the dirty-file snapshot that existed at mission start.",
+          "Dirty guard, write/refusal records"
+        ],
+        [
+          "`task_id` / coordination reservation keys",
+          "Binds leases and coordination reservations to a specific mutation attempt.",
+          "Coordination store, write tools, runtime lease claims"
+        ]
+      ]
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Patch Order"
+    },
+    {
+      "block_id": "list-14",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Convert the fail-open branches to typed degraded refusals before adding any new orchestration split.",
+        "Make `ToolRuntime` require an explicit policy object or fail closed when the policy is missing.",
+        "Thread the policy object through the runtime execution runner so metadata hints are enforced, not just recorded.",
+        "Extract governance decisions out of `AgentLoop` into a dedicated governance boundary.",
+        "Add tests for the fail-open, degraded, and trace-propagation paths before renaming or flattening the shell."
+      ]
+    },
+    {
+      "block_id": "h2-15",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation Gates"
+    },
+    {
+      "block_id": "table-16",
+      "type": "table",
+      "columns": [
+        "Gate",
+        "What it proves"
+      ],
+      "rows": [
+        [
+          "Fail-open regression tests",
+          "Each gate failure returns a typed refusal or degraded outcome instead of `ALLOW`."
+        ],
+        [
+          "Governance wiring test",
+          "`ToolRuntime` refuses mutation when no policy object is injected."
+        ],
+        [
+          "Coordination fallback test",
+          "Missing coordination context produces dry-run or refusal behavior, not an unleased write."
+        ],
+        [
+          "Collision/handoff packet test",
+          "Missing evidence yields `unknown` risk and no fabricated safe paths."
+        ],
+        [
+          "Trace propagation test",
+          "The correlation keys survive degraded and refusal paths."
+        ],
+        [
+          "Schema validation",
+          "The new audit document validates against `rig.documentation.page.v1`."
+        ]
+      ]
+    }
+  ],
+  "references": [
+    {
+      "document_id": "agent-loop-boundary",
+      "title": "Agent Loop Boundary"
+    },
+    {
+      "document_id": "tool-runtime-boundary",
+      "title": "ToolRuntime Boundary"
+    },
+    {
+      "document_id": "conversation-runtime-extraction-plan",
+      "title": "ConversationRuntime extraction plan"
+    },
+    {
+      "document_id": "phase4-architecture-map",
+      "title": "Phase 4 Architecture Map"
+    },
+    {
+      "document_id": "release-gate-findings-lifecycle",
+      "title": "Release Gate Findings Lifecycle"
+    }
+  ],
+  "related_documents": [
+    {
+      "document_id": "agent-loop-boundary",
+      "title": "Agent Loop Boundary",
+      "relationship": "boundary precedent"
+    },
+    {
+      "document_id": "tool-runtime-boundary",
+      "title": "ToolRuntime Boundary",
+      "relationship": "executor boundary precedent"
+    },
+    {
+      "document_id": "conversation-runtime-extraction-plan",
+      "title": "ConversationRuntime extraction plan",
+      "relationship": "orchestration extraction precedent"
+    },
+    {
+      "document_id": "phase4-architecture-map",
+      "title": "Phase 4 Architecture Map",
+      "relationship": "near-term decomposition map"
+    },
+    {
+      "document_id": "release-gate-findings-lifecycle",
+      "title": "Release Gate Findings Lifecycle",
+      "relationship": "governed-finding lifecycle precedent"
+    }
+  ],
+  "provenance": {
+    "author": "OpenAI Codex",
+    "source_files": [
+      "rig_relay/core/agent_loop.py",
+      "rig_relay/core/_agent_init.py",
+      "rig_relay/governance/dirty_guard.py",
+      "rig_relay/governance/auth_receipts.py",
+      "rig_relay/core/tools/builtins/checkpoint.py",
+      "rig_relay/core/tool_runtime.py",
+      "rig_relay/runtime/tool_invocation_execution.py",
+      "rig_relay/runtime/tool_runtime_adapter.py",
+      "rig_relay/core/tools/builtins/write_file.py",
+      "rig_relay/core/tools/builtins/search_replace.py",
+      "rig_relay/compiler/context/collision.py",
+      "rig_relay/compiler/context/handoff.py",
+      "rig_relay/context/compiler.py"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": [
+      "summary",
+      "standard",
+      "detailed",
+      "exhaustive"
+    ],
+    "render_strategy": "linear",
+    "show_table_of_contents": true,
+    "progressive_summary": "Audit the AgentLoop governance fail-open seams, list the typed degraded outcomes each one should use instead, and separate orchestration, governance, execution, context assembly, and trace propagation into narrower modules."
+  }
+}

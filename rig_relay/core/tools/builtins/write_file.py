@@ -36,6 +36,8 @@ from rig_relay.core.tools.permissions import PermissionContext
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.tools.utils import resolve_file_tool_permission, sha256_file_bytes
 from rig_relay.core.types import ToolResultEvent, ToolStreamEvent
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
 
 
 class WriteFileArgs(BaseModel):
@@ -214,6 +216,31 @@ class WriteFile(
         return refusal_reason
 
     @staticmethod
+    def _emit_coord_blocked_trace(
+        ctx: InvokeContext | None, tool_name: str, file_path: str
+    ) -> None:
+        try:
+            store = get_default_trace_store()
+            event = build_golden_path_event(
+                event_type="coord.write_blocked_missing_lease",
+                correlation={
+                    "session_id": ctx.session_dir.name
+                    if ctx and ctx.session_dir
+                    else "",
+                    "coordination_store_available": False,
+                },
+                payload={
+                    "tool_name": tool_name,
+                    "file_path": file_path,
+                    "tool_call_id": ctx.tool_call_id if ctx else "",
+                    "parent_turn_id": ctx.parent_turn_id if ctx else "",
+                },
+            )
+            store.write(event)
+        except Exception:
+            pass
+
+    @staticmethod
     def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
         if ctx is None or ctx.session_dir is None:
             return None
@@ -295,7 +322,7 @@ class WriteFile(
         )
 
     @final
-    # ruff: noqa: PLR0914
+    # ruff: noqa: PLR0914, PLR0911, PLR0915
     async def run(
         self, args: WriteFileArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | WriteFileResult, None]:
@@ -377,9 +404,11 @@ class WriteFile(
         # ── Coordination ──
         coordination_store = self._coordination_store(ctx)
         coordination = self._build_coordination_context(ctx, file_path)
-        reservation_allowed = self._maybe_claim_coordination(
-            coordination_store, coordination
-        )
+        reservation_allowed = True
+        if coordination_store is not None and coordination is not None:
+            reservation_allowed = self._maybe_claim_coordination(
+                coordination_store, coordination
+            )
         if (
             not reservation_allowed
             and coordination_store is not None

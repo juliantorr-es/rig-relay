@@ -12,8 +12,26 @@ from typing import Any
 
 from rig_relay.coordination.models import CoordinationStateProjection, salted_path_hash
 from rig_relay.coordination.store import CoordinationStore
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
 
 _STORE_SUBDIR = Path(".build") / "rig-relay" / "coordination"
+
+
+def _emit_handoff_degraded_trace(session_id: str) -> None:
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(
+            event_type="context.handoff_degraded",
+            correlation={
+                "session_id": session_id,
+                "coordination_store_available": False,
+            },
+            payload={"evidence_status": "missing"},
+        )
+        store.write(event)
+    except Exception:
+        pass
 
 
 def _resolve_store_path(coordination_store_path: Path | None) -> Path:
@@ -140,6 +158,7 @@ def compile_handoff_packet(
     store_root = _resolve_store_path(coordination_store_path)
 
     if not store_root.is_dir():
+        _emit_handoff_degraded_trace(session_id)
         return {
             "active_agents": [],
             "file_leases": [],
@@ -148,6 +167,7 @@ def compile_handoff_packet(
             "pending_handoffs": [],
             "do_not_touch_paths": [],
             "recommended_next_paths": [],
+            "evidence_status": "missing",
         }
 
     store = CoordinationStore(store_root)

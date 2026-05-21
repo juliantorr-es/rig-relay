@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from rig_relay.governance.context_envelope_bridge import compile_governed_context
 
 

@@ -640,6 +640,7 @@ class VibeConfig(BaseSettings):
     otel_endpoint: str = Field(default="", exclude=True)
 
     governed_context_enabled: bool = False
+    checkpoint_dev_bypass_enabled: bool = False
     enable_experimental_hooks: bool = Field(default=False, exclude=True)
 
     providers: list[ProviderConfig] = Field(

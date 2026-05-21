@@ -71,7 +71,8 @@ def test_create_real_boundary_with_token_manager():
 
 def test_token_manager_config_summary():
     """Config summary never exposes raw key or token."""
-    import os, tempfile
+    import os
+    import tempfile
 
     # Create a temp key file
     key_file = tempfile.NamedTemporaryFile(suffix=".pem", delete=False, mode="w")

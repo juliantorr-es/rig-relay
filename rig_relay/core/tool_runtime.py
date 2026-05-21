@@ -31,6 +31,7 @@ from rig_relay.core.tool_runtime_models import (
     ToolRuntimeResult,
     ToolRuntimeStatus,
 )
+from rig_relay.core.tool_runtime_policy import ToolRuntimePolicy
 from rig_relay.core.tool_subprocess import ToolSubprocessRunner
 from rig_relay.core.tools.base import ToolPermissionError
 from rig_relay.governance.decisions import GovernanceDecisionKind
@@ -94,6 +95,12 @@ async def _async_allow() -> tuple[bool, str]:
     return True, ""
 
 
+async def _async_deny(
+    tool_name: str, args_dict: dict[str, Any], call_id: str
+) -> tuple[bool, str]:
+    return False, "policy_object_missing"
+
+
 class ToolRuntime:
     """Governed tool execution runtime.
 
@@ -124,15 +131,52 @@ class ToolRuntime:
         subprocess_runner: ToolSubprocessRunner | None = None,
         trace_recorder: Any | None = None,
         source_label: str = "agent_loop",
+        policy_object: ToolRuntimePolicy | None = None,
     ) -> None:
         self._invoke_tool = invoke_tool or self._default_invoke_tool
         self._cache_check = cache_check or (lambda t, a: (False, None))
         self._cache_store = cache_store or (lambda t, a, r: None)
-        self._permission_decision = permission_decision or (
-            lambda t, a, c: _async_allow()
-        )
-        self._approval_request = approval_request or (lambda t, a, c: _async_allow())
-        self._patch_gate_check = patch_gate_check or (lambda tc, ti: None)
+
+        # ── Governance callbacks: fail-closed by default ─────────
+        if policy_object is not None:
+            self._permission_decision = (
+                permission_decision
+                or policy_object.permission_decision
+                or (lambda t, a, c: _async_deny(t, a, c))
+            )
+            self._approval_request = (
+                approval_request
+                or policy_object.approval_request
+                or (lambda t, a, c: _async_deny(t, a, c))
+            )
+            self._patch_gate_check = (
+                patch_gate_check
+                or policy_object.patch_gate_check
+                or (lambda tc, ti: "policy_object_missing")
+            )
+            self._governance_engine = policy_object.governance_engine
+            self._council_enabled = policy_object.council_enabled
+            self._local_action_envelope_required = (
+                policy_object.local_action_envelope_required
+            )
+            self._dirty_guard_satisfied = policy_object.dirty_guard_satisfied
+            self._policy_provided = True
+        else:
+            self._permission_decision = permission_decision or (
+                lambda t, a, c: _async_deny(t, a, c)
+            )
+            self._approval_request = approval_request or (
+                lambda t, a, c: _async_deny(t, a, c)
+            )
+            self._patch_gate_check = patch_gate_check or (
+                lambda tc, ti: "policy_object_missing"
+            )
+            self._governance_engine = None
+            self._council_enabled = False
+            self._local_action_envelope_required = False
+            self._dirty_guard_satisfied = False
+            self._policy_provided = bool(permission_decision and approval_request)
+
         self._expand_args = expand_args or (lambda a: a)
         self._receipt_build = receipt_build or (lambda tn, rm: None)
         self._receipt_capture = receipt_capture or (lambda s, t, r: None)
@@ -185,6 +229,18 @@ class ToolRuntime:
         """Close a trace span. No-op if recorder or span is None."""
         if recorder is not None and span is not None:
             recorder.end_span(span, status=status, attributes=attrs)
+
+    @staticmethod
+    def _emit_policy_missing_event(
+        *, tool_name: str, session_id: str | None, turn_id: str | None
+    ) -> None:
+        logger.warning(
+            "governance.tool_runtime_policy_missing session_id=%s turn_id=%s "
+            "tool_name=%s severity=critical",
+            session_id or "",
+            turn_id or "",
+            tool_name,
+        )
 
     # ── Internal sequence ───────────────────────────────────────────
 
@@ -393,6 +449,12 @@ class ToolRuntime:
                 tn, request.tool_args, cid
             )
             if not permitted:
+                if reason == "policy_object_missing" and not self._policy_provided:
+                    self._emit_policy_missing_event(
+                        tool_name=tn,
+                        session_id=request.session_id,
+                        turn_id=request.turn_id,
+                    )
                 self._stats_delta("tool_calls_rejected", 1)
                 _finalize_span(
                     status_str="refused",

@@ -10,10 +10,15 @@ from rig_relay.core.tool_runtime_models import (
     ToolRuntimeExecutionMode,
     ToolRuntimeRequest,
 )
+from rig_relay.core.tool_runtime_policy import ToolRuntimePolicy
 from rig_relay.runtime.tool_invocation_adapter import (
     RuntimeToolInvocationEnvelope,
     RuntimeToolName,
 )
+
+_MUTATION_TOOLS: frozenset[str] = frozenset({"search_replace", "write_file"})
+_SHELL_TOOLS: frozenset[str] = frozenset({"bash"})
+_READ_ONLY_TOOLS: frozenset[str] = frozenset({"validate"})
 
 
 @dataclass(frozen=True)
@@ -118,6 +123,44 @@ class RuntimeToolRuntimeAdapter:
 
     def _patch_proposal_required(self, tool_name: RuntimeToolName) -> bool:
         return tool_name in {RuntimeToolName.SEARCH_REPLACE, RuntimeToolName.WRITE_FILE}
+
+    def build_policy(self) -> ToolRuntimePolicy:
+        """Build a ToolRuntimePolicy that enforces read/mutation separation.
+
+        Read-only tools (validate) are allowed. Mutation tools
+        (search_replace, write_file) and shell tools (bash) are
+        denied with ``policy_object_missing`` because the runtime
+        path has no governance/approval wired.
+        """
+
+        async def _permission_decision(
+            tool_name: str, args_dict: dict, call_id: str
+        ) -> tuple[bool, str]:
+            if tool_name in _READ_ONLY_TOOLS:
+                return True, ""
+            return False, "policy_object_missing"
+
+        async def _approval_request(
+            tool_name: str, args_dict: dict, call_id: str
+        ) -> tuple[bool, str]:
+            if tool_name in _READ_ONLY_TOOLS:
+                return True, ""
+            return False, "policy_object_missing"
+
+        def _patch_gate_check(
+            tool_call_ref: object, tool_instance_ref: object
+        ) -> str | None:
+            return None
+
+        return ToolRuntimePolicy(
+            permission_decision=_permission_decision,
+            approval_request=_approval_request,
+            patch_gate_check=_patch_gate_check,
+            governance_engine=None,
+            council_enabled=False,
+            local_action_envelope_required=False,
+            dirty_guard_satisfied=False,
+        )
 
 
 __all__ = ["RuntimeToolRuntimeAdapter", "RuntimeToolRuntimeRequestBundle"]

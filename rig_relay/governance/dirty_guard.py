@@ -63,6 +63,7 @@ class DirtyFileGuard:
 
     dirty_snapshots: dict[str, DirtyFileSnapshot] = field(default_factory=dict)
     _captured: bool = False
+    _capture_failed: bool = False
     _repo_root: Path | None = None
     _capture_error: str | None = None
 
@@ -139,8 +140,16 @@ class DirtyFileGuard:
             )
         except Exception as exc:
             self._capture_error = str(exc)
+            self._captured = False
+            self._capture_failed = True
+            self.baseline_id = ""
             logger.warning("DirtyFileGuard: git status failed: %s", exc)
-            self._captured = True
+            logger.error(
+                "dirty_guard.capture_failed "
+                "baseline_id= session_id= "
+                "error_class=%s severity=critical",
+                type(exc).__name__,
+            )
             return
 
         for line in result.stdout.splitlines():
@@ -180,11 +189,13 @@ class DirtyFileGuard:
 
     @property
     def capture_succeeded(self) -> bool:
-        return self._captured and self._capture_error is None
+        return (
+            self._captured and not self._capture_failed and self._capture_error is None
+        )
 
     @property
     def capture_failed(self) -> bool:
-        return self._captured and self._capture_error is not None
+        return self._capture_failed
 
     def is_protected(self, path: str | Path) -> bool:
         """Return True if *path* was dirty at mission start."""
@@ -199,11 +210,11 @@ class DirtyFileGuard:
         return self.dirty_snapshots.get(key)
 
     def _check_capture_failed(self) -> WriteGuardResult | None:
-        """Return a refusal if capture failed under FAIL_CLOSED_FOR_MUTATION, else None."""
-        if (
-            self.capture_failed
-            and self.failure_policy == DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
-        ):
+        """Return a refusal if capture failed, else None.
+
+        Capture failure always blocks mutation writes regardless of failure_policy.
+        """
+        if self._capture_failed:
             return WriteGuardResult(
                 allowed=False,
                 reason="dirty_guard_capture_failed",
@@ -404,6 +415,7 @@ class DirtyFileGuard:
             "repo_root": str(self._repo_root) if self._repo_root else None,
             "capture_method": "git status --porcelain=v1",
             "capture_succeeded": self.capture_succeeded,
+            "capture_failed": self._capture_failed,
             "capture_error": self._capture_error,
             "failure_policy": self.failure_policy.value,
             "dirty_files_before_mission": pre_existing,

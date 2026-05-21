@@ -451,6 +451,36 @@ class AgentLoop(
                     determinism_class=determinism_str,
                 )
 
+        # ── Helper: is this a mutation-capable tool? ────────────
+        def _is_mutation_tool(tool_name: str) -> bool:
+            """Return True when the tool can mutate workspace state.
+
+            Read-only, evidence-only, and temp-only tools are safe to
+            allow during governance degradation. Everything else is
+            treated as mutation (fail-closed).
+
+            Uses available_tools (class registry) rather than get()
+            to avoid instantiation, since get() may itself fail
+            during governance degradation.
+            """
+            try:
+                tool_class = self.tool_manager.available_tools.get(tool_name)
+                if tool_class is None:
+                    return True
+
+                mc = getattr(tool_class, "mutation_class", None)
+                if mc is None:
+                    return False
+                mc_val = str(mc.value) if hasattr(mc, "value") else str(mc)
+                return mc_val not in {
+                    "read_only",
+                    "writes_evidence_only",
+                    "writes_temp_only",
+                    "unknown",
+                }
+            except Exception:
+                return True
+
         # ── Permission decision ─────────────────────────────────
         async def permission_decision(
             tool_name: str, args_dict: dict, call_id: str
@@ -468,6 +498,17 @@ class AgentLoop(
                     return False, decision.feedback or "Tool execution skipped"
                 return True, ""
             except Exception:
+                reason = "permission_unavailable"
+                turn_id = getattr(self, "_current_user_message_id", None)
+                logger.warning(
+                    "governance.degraded: reason=%s session=%s turn=%s invocation=%s",
+                    reason,
+                    self.session_id,
+                    turn_id,
+                    call_id,
+                )
+                if _is_mutation_tool(tool_name):
+                    return False, reason
                 return True, ""
 
         # ── Approval adapter ────────────────────────────────────
@@ -485,6 +526,17 @@ class AgentLoop(
                 )
                 return response == ApprovalResponse.YES, feedback or ""
             except Exception:
+                reason = "approval_unavailable"
+                turn_id = getattr(self, "_current_user_message_id", None)
+                logger.warning(
+                    "governance.degraded: reason=%s session=%s turn=%s invocation=%s",
+                    reason,
+                    self.session_id,
+                    turn_id,
+                    call_id,
+                )
+                if _is_mutation_tool(tool_name):
+                    return False, reason
                 return True, ""
 
         # ── Patch gate adapter ──────────────────────────────────
@@ -496,7 +548,15 @@ class AgentLoop(
             try:
                 tool_instance = self.tool_manager.get(tool_name)
             except Exception:
-                return None
+                reason = "patch_gate_unavailable"
+                turn_id = getattr(self, "_current_user_message_id", None)
+                logger.warning(
+                    "governance.degraded: reason=%s session=%s turn=%s",
+                    reason,
+                    self.session_id,
+                    turn_id,
+                )
+                return reason
             return self._check_patch_proposal_gating(tool_call_ref, tool_instance)
 
         # ── Expand args adapter ─────────────────────────────────
@@ -1006,10 +1066,19 @@ class AgentLoop(
         """Consult the council before executing a mutation tool.
 
         Checks the capability gate and configured providers. Returns
-        "ALLOW", "BLOCK", or "REVIEW".
+        "ALLOW", "BLOCK", or "REVIEW".  Degraded paths fail closed:
+        unknown tools, blocked gates, missing providers, and consultation
+        errors all result in REVIEW or BLOCK rather than ALLOW.
         """
+        turn_id = getattr(self, "_current_user_message_id", None)
+
         if tool_class is None:
-            return "ALLOW"
+            logger.warning(
+                "governance.degraded: reason=council_unknown_tool session=%s turn=%s",
+                self.session_id,
+                turn_id,
+            )
+            return "REVIEW"
         if tool_class.__name__ not in _COUNCIL_MUTATION_TOOLS:
             return "ALLOW"
 
@@ -1019,13 +1088,28 @@ class AgentLoop(
             gate = get_capability_gate()
             allowed, _ = gate.is_allowed("council_consult")
             if not allowed:
-                return "ALLOW"
+                logger.warning(
+                    "governance.degraded: reason=council_gate_blocked session=%s turn=%s",
+                    self.session_id,
+                    turn_id,
+                )
+                return "BLOCK"
         except Exception:
-            return "ALLOW"
+            logger.warning(
+                "governance.degraded: reason=council_gate_unavailable session=%s turn=%s",
+                self.session_id,
+                turn_id,
+            )
+            return "BLOCK"
 
         configured_providers = [p.name for p in getattr(self.config, "providers", [])]
         if len(configured_providers) <= 1:
-            return "ALLOW"
+            logger.warning(
+                "governance.degraded: reason=council_single_provider session=%s turn=%s",
+                self.session_id,
+                turn_id,
+            )
+            return "REVIEW"
 
         try:
             from rig_relay.coordination.council_invoker import (
@@ -1045,8 +1129,13 @@ class AgentLoop(
             )
             return determine_council_recommendation(receipt)
         except Exception as exc:
-            logger.warning("Council consultation failed for tool=%s: %s", tn, exc)
-            return "ALLOW"
+            logger.warning(
+                "governance.degraded: reason=council_consultation_failed session=%s turn=%s error=%s",
+                self.session_id,
+                turn_id,
+                exc,
+            )
+            return "REVIEW"
 
     async def _execute_tool_call(
         self, span: trace.Span, tool_call: ResolvedToolCall

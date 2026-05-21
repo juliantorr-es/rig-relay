@@ -143,7 +143,10 @@ class InitHelpersMixin:
                 if is_subagent
                 else GuardCaptureReason.AGENT_LOOP_INIT
             )
-            get_guard().capture(reason=reason, failure_policy=policy)
+            guard = get_guard()
+            guard.capture(reason=reason, failure_policy=policy)
+            if guard._capture_failed:
+                guard.failure_policy = DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
         except Exception:
             pass
 

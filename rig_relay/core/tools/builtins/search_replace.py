@@ -37,6 +37,8 @@ from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIDa
 from rig_relay.core.tools.utils import resolve_file_tool_permission, sha256_file_bytes
 from rig_relay.core.types import ToolResultEvent, ToolStreamEvent
 from rig_relay.core.utils.io import ReadSafeResult, read_safe_async
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
 
 SEARCH_REPLACE_BLOCK_RE = re.compile(
     r"<{5,} SEARCH\r?\n(.*?)\r?\n?={5,}\r?\n(.*?)\r?\n?>{5,} REPLACE", flags=re.DOTALL
@@ -263,6 +265,29 @@ class SearchReplace(
     @classmethod
     def get_status_text(cls) -> str:
         return "Editing files"
+
+    @staticmethod
+    def _emit_coord_blocked_trace(ctx: InvokeContext | None, file_path: str) -> None:
+        try:
+            store = get_default_trace_store()
+            event = build_golden_path_event(
+                event_type="coord.write_blocked_missing_lease",
+                correlation={
+                    "session_id": ctx.session_dir.name
+                    if ctx and ctx.session_dir
+                    else "",
+                    "coordination_store_available": False,
+                },
+                payload={
+                    "tool_name": "search_replace",
+                    "file_path": file_path,
+                    "tool_call_id": ctx.tool_call_id if ctx else "",
+                    "parent_turn_id": ctx.parent_turn_id if ctx else "",
+                },
+            )
+            store.write(event)
+        except Exception:
+            pass
 
     @staticmethod
     def _coordination_store(ctx: InvokeContext | None) -> CoordinationStore | None:
@@ -555,7 +580,11 @@ class SearchReplace(
         coordination_store, coordination = self._build_coordination_state(
             ctx, file_path
         )
-        reservation_allowed = self._claim_coordination(coordination_store, coordination)
+        reservation_allowed = True
+        if coordination_store is not None and coordination is not None:
+            reservation_allowed = self._claim_coordination(
+                coordination_store, coordination
+            )
         if (
             not reservation_allowed
             and coordination_store is not None

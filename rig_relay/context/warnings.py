@@ -22,6 +22,8 @@ class ContextWarningCode:
     PLANNER_SAFE_FIND_FAILED = "planner_safe_find_failed"
     SYMBOL_DIGEST_FAILED = "symbol_digest_failed"
     SYMBOL_MANIFEST_FAILED = "symbol_manifest_failed"
+    COLLISION_DEGRADED = "collision_degraded"
+    HANDOFF_DEGRADED = "handoff_degraded"
 
 
 def build_warning(

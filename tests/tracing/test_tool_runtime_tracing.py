@@ -41,6 +41,7 @@ async def test_completed_execution_emits_trace_span():
         cache_store=_fake_cache_store,
         permission_decision=lambda t, a, c: _fake_allow(),
         approval_request=lambda t, a, c: _fake_allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=recorder,
     )
     result = await runtime.execute_one(
@@ -71,6 +72,7 @@ async def test_refused_execution_emits_trace_span():
         cache_store=_fake_cache_store,
         permission_decision=deny,
         approval_request=lambda t, a, c: _fake_allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=recorder,
     )
     result = await runtime.execute_one(
@@ -92,6 +94,7 @@ async def test_disabled_tracing_does_not_fail_execution():
         cache_check=_fake_cache_check,
         permission_decision=lambda t, a, c: _fake_allow(),
         approval_request=lambda t, a, c: _fake_allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=None,
     )
     result = await runtime.execute_one(
@@ -114,6 +117,7 @@ async def test_cached_result_emits_hit_event():
         cache_store=_fake_cache_store,
         permission_decision=lambda t, a, c: _fake_allow(),
         approval_request=lambda t, a, c: _fake_allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=recorder,
     )
     result = await runtime.execute_one(
@@ -136,6 +140,7 @@ async def test_tool_args_are_not_in_trace():
         cache_store=_fake_cache_store,
         permission_decision=lambda t, a, c: _fake_allow(),
         approval_request=lambda t, a, c: _fake_allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=recorder,
     )
     await runtime.execute_one(

@@ -197,6 +197,7 @@ class RuntimeToolExecutionRunner:
             receipt_capture=self._capture_runtime_receipt,
             subprocess_runner=self._build_subprocess_runner(),
             source_label="runtime_intent",
+            policy_object=self._runtime_adapter.build_policy(),
         )
 
     def _build_subprocess_runner(self) -> Any:

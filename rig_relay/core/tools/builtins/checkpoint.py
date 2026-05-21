@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field
 
 from rig_relay.coordination.store import CoordinationStore
+from rig_relay.core.config import VibeConfig
 from rig_relay.core.guard import DirtyFileGuard, get_guard
 from rig_relay.core.telemetry.local import dump_canonical_json
 from rig_relay.core.telemetry.tool_contract import (
@@ -200,6 +201,25 @@ class Checkpoint(
             receipt_candidate=True,
         )
 
+    def _emit_authorization_refused(
+        self, args: CheckpointArgs, reason: str, guard: DirtyFileGuard
+    ) -> None:
+        from rig_relay.core.telemetry.local import log_local_event
+
+        guard_report = guard.report()
+        payload: dict[str, Any] = {
+            "session_id": args.session_id or "unknown",
+            "reason": reason,
+            "baseline_id": guard_report.get("baseline_id"),
+        }
+        log_local_event(
+            session_id=args.session_id or "unknown",
+            event_name="governance.checkpoint_authorization_refused",
+            payload=payload,
+            parent_session_id=None,
+            receipt_candidate=True,
+        )
+
     def _validate_preconditions(
         self,
         args: CheckpointArgs,
@@ -211,26 +231,45 @@ class Checkpoint(
     ) -> CheckpointResult | None:
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"
+        config = VibeConfig()
         if args.authorization_receipt:
             valid, reason = self._validate_receipt(args.authorization_receipt, action)
             if not valid:
+                self._emit_authorization_refused(args, reason, guard)
                 return CheckpointResult(
                     ok=False,
                     message=f"Checkpoint refused: {reason}",
                     refusal_reason=reason,
                 )
-        else:
-            # Dev bypass: generate dev receipt internally
-            from rig_relay.core.auth.receipt import generate_dev_receipt
+        elif config.checkpoint_dev_bypass_enabled:
+            # Dev bypass enabled: generate dev receipt internally
+            from rig_relay.governance.auth_receipts import mint_dev_receipt
 
-            dev_receipt = generate_dev_receipt(action, ttl_seconds=60)
+            dev_receipt = mint_dev_receipt(
+                action, ttl_seconds=60, checkpoint_dev_bypass_enabled=True
+            )
+            if dev_receipt is None:
+                self._emit_authorization_refused(args, "dev_bypass_disabled", guard)
+                return CheckpointResult(
+                    ok=False,
+                    message="Checkpoint refused: dev_bypass_disabled",
+                    refusal_reason="dev_bypass_disabled",
+                )
             valid, reason = self._validate_receipt(json.dumps(dev_receipt), action)
             if not valid:
+                self._emit_authorization_refused(args, reason, guard)
                 return CheckpointResult(
                     ok=False,
                     message=f"Checkpoint refused (dev bypass failed): {reason}",
                     refusal_reason=reason,
                 )
+        else:
+            self._emit_authorization_refused(args, "missing_receipt", guard)
+            return CheckpointResult(
+                ok=False,
+                message="Checkpoint refused: checkpoint requires authorization receipt",
+                refusal_reason="missing_receipt",
+            )
 
         if not requested and not args.allow_partial:
             return CheckpointResult(

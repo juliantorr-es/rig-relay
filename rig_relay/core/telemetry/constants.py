@@ -45,6 +45,7 @@ class EventName(StrEnum):
     # Checkpoint commit events
     CHECKPOINT_COMMITTED = "rig.relay.checkpoint.committed"
     CHECKPOINT_REFUSED = "rig.relay.checkpoint.refused"
+    CHECKPOINT_AUTHORIZATION_REFUSED = "governance.checkpoint_authorization_refused"
     # Model observation events
     MODEL_OBSERVATION_CAPTURED = "rig.relay.model_observation.captured"
     # Tool receipt events

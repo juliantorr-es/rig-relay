@@ -9,11 +9,20 @@ Usage:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 import secrets
 from typing import Any
+
+
+@dataclass
+class AuthorizationResult:
+    authorized: bool
+    receipt: dict[str, Any] | None = None
+    reason: str | None = None
+
 
 DEFAULT_POLICY: dict[str, Any] = {
     "schema_version": "rig.relay.authorization_policy.v1",
@@ -182,11 +191,54 @@ def generate_dev_receipt(
     return receipt
 
 
+def resolve_authorization(
+    action: str,
+    receipt_json: str | None = None,
+    action_scope: dict[str, Any] | None = None,
+    policy: dict[str, Any] | None = None,
+    checkpoint_dev_bypass_enabled: bool = False,
+) -> AuthorizationResult:
+    if policy is None:
+        policy = DEFAULT_POLICY
+
+    if receipt_json:
+        try:
+            receipt = json.loads(receipt_json)
+        except json.JSONDecodeError:
+            return AuthorizationResult(authorized=False, reason="Invalid receipt JSON")
+        valid, reason = validate_receipt(receipt, action, action_scope, policy)
+        if not valid:
+            return AuthorizationResult(authorized=False, reason=reason)
+        return AuthorizationResult(authorized=True, receipt=receipt)
+
+    if not checkpoint_dev_bypass_enabled:
+        return AuthorizationResult(authorized=False, reason="dev_bypass_disabled")
+
+    dev_receipt = generate_dev_receipt(
+        action, action_scope, policy.get("receipt_ttl_seconds", 300)
+    )
+    return AuthorizationResult(authorized=True, receipt=dev_receipt)
+
+
+def mint_dev_receipt(
+    action: str,
+    action_scope: dict[str, Any] | None = None,
+    ttl_seconds: int = 300,
+    checkpoint_dev_bypass_enabled: bool = False,
+) -> dict[str, Any] | None:
+    if not checkpoint_dev_bypass_enabled:
+        return None
+    return generate_dev_receipt(action, action_scope, ttl_seconds)
+
+
 __all__ = [
     "DEFAULT_POLICY",
     "READ_ONLY_ACTIONS",
+    "AuthorizationResult",
     "action_requires_authorization",
     "generate_dev_receipt",
     "is_read_only_action",
+    "mint_dev_receipt",
+    "resolve_authorization",
     "validate_receipt",
 ]

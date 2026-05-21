@@ -1,0 +1,430 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "agent-loop-runtime-module-refactor",
+  "document_type": "report",
+  "title": "AgentLoop Runtime Module Refactor Report — Enhanced with Source Analysis",
+  "summary": "Audit date: 2026-05-20. Enhanced 2026-05-21 with full source analysis across 7 reference documents and 1798-line AgentLoop inspection. Maps every responsibility to exact line numbers, documents fail-open seams with severity, and provides a concrete 6-wave refactor execution plan.",
+  "status": "active",
+  "created_at": "2026-05-20",
+  "updated_at": "2026-05-21",
+  "source_commit": "309a86db",
+  "owners": ["maintainer"],
+  "tags": ["agent-loop", "runtime", "refactor", "orchestration", "governance", "tracing", "fail-open", "source-analysis"],
+  "audience": ["contributor", "maintainer", "agent"],
+  "canonical_path": "docs/json/audits/agent-loop/agent-loop-runtime-module-refactor.v1.json",
+  "render": { "toc": true, "search_index": true },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading", "level": 1,
+      "content": "AgentLoop Runtime Module Refactor Report — Enhanced with Source Analysis"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "Audit date: 2026-05-20. Enhanced 2026-05-21 with full source analysis of rig_relay/core/agent_loop.py (1798 lines), 7 reference governance documents, 9 extracted mixins, 5 extracted runtime modules, and the unified compiler package. Every responsibility is now mapped to exact line numbers. Every fail-open seam is catalogued with severity. The refactor plan is concrete and sequenced."
+    },
+
+    {
+      "block_id": "h2-10",
+      "type": "heading", "level": 2,
+      "content": "What Was Already Extracted (Phase 0-3)"
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "Significant decomposition has already occurred. These are done and must not be regressed."
+    },
+    {
+      "block_id": "table-12",
+      "type": "table",
+      "columns": ["Extraction", "File", "Lines", "Status"],
+      "rows": [
+        ["ConversationRuntime (turn-loop owner)", "core/conversation_runtime/", "~800", "Phase 3 COMPLETE — 73/73 tests"],
+        ["ConversationTurnRuntime (phase state machine)", "core/conversation_turn.py", "~200", "implemented"],
+        ["AgentRuntimeState (session/turn snapshot)", "core/runtime_state.py", "~150", "implemented"],
+        ["ToolRuntime (governed execution)", "core/tool_runtime.py", "755", "wired — cache→permission→approval→patch→invoke→receipt"],
+        ["ToolRuntimePolicy (explicit policy object)", "core/tool_runtime_policy.py", "~100", "implemented"],
+        ["GovernanceEngine (pure gate evaluator)", "governance/governance_engine.py", "~200", "implemented"],
+        ["DirtyFileGuard (dirty capture + write gating)", "governance/dirty_guard.py", "512", "implemented"],
+        ["RuntimeToolRuntimeAdapter (envelope→request translation)", "runtime/tool_runtime_adapter.py", "166", "implemented"],
+        ["9 Mixins (LLMCall, ToolResponse, PatchGating, InitHelpers, SessionLifecycle, Governance, Telemetry, ContextEnvelope, MiddlewareMetadata)", "core/_*.py", "~1500", "validated"],
+        ["Unified compiler package (shared gates, hashes, worktree, evidence)", "rig_relay/compiler/", "~600", "implemented"],
+        ["HANDOFF/COLLISION/SYMBOLS modes (3 dead modes now alive)", "compiler/context/", "~420", "implemented"]
+      ]
+    },
+
+    {
+      "block_id": "h2-20",
+      "type": "heading", "level": 2,
+      "content": "What Is Still In The Shell (agent_loop.py line numbers)"
+    },
+    {
+      "block_id": "p-21",
+      "type": "paragraph",
+      "content": "After Phase 0-3 extraction and 9 mixin decompositions, these responsibilities remain directly in agent_loop.py. Each is a candidate for extraction into a dedicated runtime module."
+    },
+    {
+      "block_id": "table-22",
+      "type": "table",
+      "columns": ["Responsibility", "Method/Location", "Lines", "Lines count", "Refactor target", "Priority"],
+      "rows": [
+        ["Tool Runtime Adapter Factory — all 11 governance callbacks defined as nested closures", "_get_tool_runtime()", "369-648", "270", "ToolExecutor / ToolRuntimeAdapterBuilder", "P0"],
+        ["Council consultation before mutation — separate pre-check outside ToolRuntime", "_consult_council_before_mutation()", "1055-1131", "77", "GovernanceRuntime (move into ToolRuntime pipeline)", "P0"],
+        ["Tool execution orchestration — mixes council + runtime delegation + result adaptation", "_execute_tool_call()", "1132-1342", "211", "ToolExecutor (council moves to ToolRuntime; adaptation stays)", "P0"],
+        ["ConversationLoopAdapter — 93-line adapter class coupled to AgentLoop internals", "_ConversationLoopAdapter", "1706-1798", "93", "Own module: conversation_loop_adapter.py", "P1"],
+        ["Concurrent tool execution with cancellation propagation", "_run_tools_concurrently()", "1375-1417", "43", "ToolConcurrencyManager", "P1"],
+        ["Agent reload/reconfiguration — rebuilds backend, ToolManager, system prompt", "reload_with_initial_messages()", "1632-1701", "70", "SessionRuntime or standalone mixin", "P1"],
+        ["Session lifecycle — fork, compact, clear_history, switch_agent", "fork()/compact()/clear_history()/switch_agent()", "1492-1630", "139", "SessionRuntime", "P1"],
+        ["Streaming dispatch orchestration", "_perform_llm_turn()/_stream_assistant_events()", "876-969", "94", "Keep in adapter (already in LLMCallMixin)", "P2"],
+        ["Tool call events and failed tool emission", "_build_tool_call_events()/_emit_failed_tool_events()", "921-994", "74", "Keep in adapter", "P2"],
+        ["Auto-GC after tool execution", "_maybe_auto_gc()", "1419-1454", "36", "Keep in adapter", "P2"],
+        ["Tool permission check for adapter", "_should_execute_tool()/_ask_approval()", "1456-1490", "35", "GovernanceRuntime (future)", "P2"],
+        ["Backend selection and teleport", "_select_backend()/teleport_to_vibe_code()", "686-833", "148", "Keep in adapter", "P2"]
+      ]
+    },
+
+    {
+      "block_id": "h2-30",
+      "type": "heading", "level": 2,
+      "content": "Governance Fail-Open Seams (8 documented, severity-graded)"
+    },
+    {
+      "block_id": "p-31",
+      "type": "paragraph",
+      "content": "The fail-open inventory (docs/json/audits/agent-loop/governance-fail-open-inventory.v1.json) catalogues 8 seams where governance currently fails open — allowing operations when it should block or degrade. These must be patched before any extraction of policy code from AgentLoop."
+    },
+    {
+      "block_id": "table-32",
+      "type": "table",
+      "columns": ["ID", "Seam", "Current fail-open behavior", "Required degradation", "Severity", "Location (lines)"],
+      "rows": [
+        ["GO-1", "Permission/approval/patch gate", "Exceptions return ALLOW; patch-gate returns None → mutation continues", "Typed refusals (permission_unavailable, approval_unavailable, patch_gate_unavailable). Never convert gate failure to allow.", "critical", "_get_tool_runtime() 477-552"],
+        ["GO-2", "Council consult", "Capability-gate failures, single-provider short-circuits, exceptions all map to ALLOW", "Return BLOCK/REVIEW with council_unavailable. Never default to ALLOW on capability failure.", "critical", "_consult_council_before_mutation() 1077-1122"],
+        ["GO-3", "Dirty guard capture", "git status failures swallowed; init uses WARN_ALLOW for non-subagent sessions", "Block mutation tools on capture failure. Record dirty_guard_capture_failed. Keep read-only available.", "high", "_agent_init.py 109-164"],
+        ["GO-4", "Checkpoint authorization", "Default policy allows dev bypass; auto-mints dev receipt when none provided", "Require explicit dev-mode policy flag. Refuse missing receipts.", "high", "checkpoint.py"],
+        ["GO-5", "ToolRuntime constructor defaults", "Bare ToolRuntime defaults permission/approval/patch-gating to allow/none", "Require explicit governance policy object or fail-closed for mutation.", "critical", "tool_runtime.py 117-187"],
+        ["GO-6", "Runtime execution wiring", "RuntimeExecutionRunner creates ToolRuntime without permission/approval callbacks. Adapter policy hints are metadata only.", "Pass policy object through runner. Refuse mutation dispatch if missing.", "critical", "tool_invocation_execution.py, tool_runtime_adapter.py 127-163"],
+        ["GO-7", "Coordination claims for write tools", "Missing coordination state returns False, tool continues", "Fall back to dry-run/read-only refusal unless opted into non-coordinated mode.", "medium", "tool_invocation_execution.py"],
+        ["GO-8", "Collision/handoff packet compilation", "Missing store returns empty packets or safe_paths=requesting_paths with overall_risk=none", "Emit overall_risk=unknown. Require manual review.", "high", "compiler/context/collision.py, compiler/context/handoff.py"]
+      ]
+    },
+
+    {
+      "block_id": "h2-40",
+      "type": "heading", "level": 2,
+      "content": "Shared Degradation Rules (6 rules — must survive refactor)"
+    },
+    {
+      "block_id": "list-41",
+      "type": "list", "ordered": false,
+      "items": [
+        "Mutation gate failures → BLOCK, REVIEW, or DEGRADED, never ALLOW",
+        "Read-only tools may continue when only governance availability is the problem",
+        "Missing evidence must surface as unknown, not none",
+        "Dev bypass only when explicitly enabled and labeled",
+        "Policy hints remain advisory until a policy object is injected",
+        "Coordination failure → dry-run or refusal, not unleashed write"
+      ]
+    },
+
+    {
+      "block_id": "h2-50",
+      "type": "heading", "level": 2,
+      "content": "Target Runtime Module Shape (with Implementation Status)"
+    },
+    {
+      "block_id": "table-51",
+      "type": "table",
+      "columns": ["Module", "Owns", "Must NOT own", "Current status"],
+      "rows": [
+        ["OrchestratorLoop (AgentLoop renamed)", "Public entrypoints (act()), event pumping, compatibility wiring, final answer assembly, message pump", "Governance policy, context compilation policy, tool-execution defaults, council decisions", "Phase 4A planned. Rename deferred until tool batch adapter is real."],
+        ["SessionRuntime", "Session creation, reset, fork(1492-1526), compact(1554-1623), clear_history(1528-1553), switch_agent(1625-1630), lifecycle state, reload(1632-1701)", "Tool permission decisions, council logic, context compilation", "Not started. ~350 lines to extract from agent_loop.py."],
+        ["GovernanceRuntime", "Dirty guard state (from _agent_init.py 109-164), permission checks (477-504), approval routing (507-532), council consult (1055-1131), patch gating (535-552)", "Direct tool invocation, session persistence", "Not started. ~300 lines to extract + GO-1/GO-2 patching required first."],
+        ["ToolExecutor", "ToolRuntimeAdapterBuilder (369-648 → extract closure factory), governed ToolRuntime requests, result normalization (1132-1342 adaptation), receipt bridging, ToolConcurrencyManager (1375-1417)", "Implicit allow-by-default. Policy defaults.", "Not started. ~600 lines to extract. GO-5/GO-6 must be patched first."],
+        ["ContextRuntime (already partially built)", "Context packets (compiler.py), handoff packets (handoff.py), collision risk (collision.py), safe-path classification, context degradation to unknown states", "Direct mutation or execution", "Partially implemented. 3 dead modes now alive. ContextEnvelopeMixin still exists."],
+        ["TraceRuntime", "Correlation IDs, propagation helpers (OTel baggage via agent_span/tool_span), refusal/result/receipt join keys (7 fields: session_id, turn_id, tool_call_id, runtime_envelope_sha256, receipt_sha256, baseline_id, task_id)", "Business logic, policy fallback", "Partially implemented. OTel spans exist (core/tracing.py 87-130). No dedicated runtime module."],
+        ["MissionEnvelopeBridge", "Mission metadata → runtime-context translation", "Tool execution, turn-loop policy", "Not started. Design documented in runtime-port-status."],
+        ["ApprovalRuntime", "Step-up approval and callback normalization", "Tool invocation, context compilation", "Not started. Approval callbacks currently in GovernanceMixin."]
+      ]
+    },
+
+    {
+      "block_id": "h2-60",
+      "type": "heading", "level": 2,
+      "content": "Current Governance Decision Flow (with line numbers)"
+    },
+    {
+      "block_id": "code-61",
+      "type": "code",
+      "language": "text",
+      "content": "User Message\n  → act() [751: agent_span with OTel baggage: session_id]\n    → _conversation_loop() [838-874]\n      → ConversationRuntime.execute_turn_loop(adapter)  [cr owns the while-loop]\n        → middleware_before_turn (adapter 1727-1735)\n        → build_context_envelope (adapter 1741-1744 → _build_context_envelope)\n        → _perform_llm_turn (adapter 1752-1754) [LLM response]\n        → _execute_pending_tool_batch [907-919]\n          → _handle_tool_calls [1343-1364]\n            → _process_one_tool_call [996-1005: tool_span]\n              → _execute_tool_call [1132-1342]\n                → [1] Build ToolRuntimeRequest, determine execution_mode\n                → [2] Rewind snapshot [1179-1186]\n                → [3] _consult_council_before_mutation [1189-1221] ← NOT in ToolRuntime!\n                  → Capability gate: council_consult [1077-1095]\n                  → Provider count check [1097-1104]\n                  → consult_council_before_mutation() → ALLOW/BLOCK/REVIEW [1106-1122]\n                  → If BLOCK: skip event. If REVIEW: ask_approval\n                → [4] runtime.execute_one(request) [1224-1235] ← ToolRuntime\n                  → Cache check [307-323]\n                  → Profile gate [326-356]\n                  → GovernanceEngine.evaluate_action_legality [358-401] (mutation only)\n                  → Local action envelope gate [403-444] (MUTATION_EXECUTION only)\n                  → Permission decision [447-482] → _should_execute_tool → config + _ask_approval\n                  → Approval request [484-511] → approval_callback\n                  → Patch gate [513-537] → _check_patch_proposal_gating\n                  → Invoke tool [541-610] → invoke_adapter → tool_instance.invoke(InvokeContext)\n                  → Receipt build + capture [639-663]\n                  → Cache store [649-656]\n                → [5] Adapt ToolRuntimeResult → events + telemetry [1243-1342]"
+    },
+
+    {
+      "block_id": "h2-70",
+      "type": "heading", "level": 2,
+      "content": "Concrete Refactor Execution Plan (6 Waves — Ordered by Non-Destructive Extraction)"
+    },
+    {
+      "block_id": "p-71",
+      "type": "paragraph",
+      "content": "The following 6-wave plan extracts responsibilities from AgentLoop into dedicated runtime modules. Each wave is ordered to minimize regression risk. After each wave, governance invariants and fail-open seams are verified before proceeding."
+    },
+
+    {
+      "block_id": "h3-72",
+      "type": "heading", "level": 3,
+      "content": "Wave 1: Patch Fail-Open Seams (P0 — prerequisite for all extractions)"
+    },
+    {
+      "block_id": "table-73",
+      "type": "table",
+      "columns": ["Step", "Action", "Files", "Tests required"],
+      "rows": [
+        ["1.1", "Convert GO-1: permission/approval/patch-gate exceptions return typed refusals instead of ALLOW", "agent_loop.py 477-552", "test_governance_gate_degradation.py (8 tests: permission, approval, patch-gate, cache, council, dirty guard, checkpoint, tool runtime each return typed refusal)"],
+        ["1.2", "Convert GO-2: council capability failure returns BLOCK/REVIEW, never ALLOW", "agent_loop.py 1077-1122", "Same test file — council refusal case"],
+        ["1.3", "Convert GO-5: ToolRuntime constructor requires explicit policy object or fail-closed for mutation", "tool_runtime.py 117-187", "test_tool_runtime_policy_required.py"],
+        ["1.4", "Convert GO-6: RuntimeExecutionRunner passes policy object through", "tool_invocation_execution.py, tool_runtime_adapter.py 127-163", "test_tool_executor_policy_injection.py"],
+        ["1.5", "Convert GO-8: collision/handoff compile failures return overall_risk=unknown", "compiler/context/collision.py, compiler/context/handoff.py", "test_context_degradation_fail_closed.py"],
+        ["1.6", "Add fail-open regression tests (6 tests minimum)", "tests/core/test_governance_fail_closed.py", "Verify NO governance failure path returns ALLOW for mutation"]
+      ]
+    },
+
+    {
+      "block_id": "h3-74",
+      "type": "heading", "level": 3,
+      "content": "Wave 2: Extract ToolRuntime Adapter Factory → ToolExecutor"
+    },
+    {
+      "block_id": "table-75",
+      "type": "table",
+      "columns": ["Step", "Action", "Files", "Lines extracted"],
+      "rows": [
+        ["2.1", "Create ToolRuntimeAdapterBuilder class with all 11 callbacks", "tool_executor/adapter_builder.py (new)", "270 lines (from _get_tool_runtime 369-648)"],
+        ["2.2", "Move council consultation into ToolRuntime pipeline (after profile gate, before permission)", "tool_executor/council_gate.py (new) + tool_runtime.py", "77 lines (from _consult_council_before_mutation 1055-1131)"],
+        ["2.3", "Create ToolExecutor that owns adapter construction + runtime delegation + result adaptation", "tool_executor/executor.py (new)", "~200 lines"],
+        ["2.4", "Create ToolConcurrencyManager for queue-based concurrent execution", "tool_executor/concurrency.py (new)", "43 lines (from _run_tools_concurrently 1375-1417)"],
+        ["2.5", "AgentLoop delegates tool execution to ToolExecutor", "agent_loop.py", "Replace _get_tool_runtime() + _execute_tool_call() + _run_tools_concurrently() with delegation"],
+        ["2.6", "Tests: 20 tests covering adapter construction, council integration, concurrent execution, result adaptation", "tests/core/test_tool_executor.py", "20 tests"]
+      ]
+    },
+
+    {
+      "block_id": "h3-76",
+      "type": "heading", "level": 3,
+      "content": "Wave 3: Extract Session Lifecycle → SessionRuntime"
+    },
+    {
+      "block_id": "table-77",
+      "type": "table",
+      "columns": ["Step", "Action", "Files", "Lines extracted"],
+      "rows": [
+        ["3.1", "Create SessionRuntime with fork, compact, clear_history, switch_agent, reload", "session_runtime.py (new)", "~350 lines (from 1492-1701)"],
+        ["3.2", "Extract dirty guard bootstrap from _agent_init.py into SessionRuntime. Shell consumes guard state, doesn't encode guard policy.", "session_runtime.py + _agent_init.py", "55 lines (from _agent_init.py 109-164)"],
+        ["3.3", "AgentLoop delegates session operations to SessionRuntime", "agent_loop.py", "Replace fork/compact/clear_history/switch_agent/reload with delegation"],
+        ["3.4", "Tests: 15 tests covering lifecycle ops, guard bootstrap, reload", "tests/core/test_session_runtime.py", "15 tests"]
+      ]
+    },
+
+    {
+      "block_id": "h3-78",
+      "type": "heading", "level": 3,
+      "content": "Wave 4: Extract Governance → GovernanceRuntime"
+    },
+    {
+      "block_id": "table-79",
+      "type": "table",
+      "columns": ["Step", "Action", "Files", "Lines extracted"],
+      "rows": [
+        ["4.1", "Create GovernanceRuntime owning permission checks, approval routing, council consult, patch gating", "governance_runtime.py (new)", "~150 lines (from governance decisions in _should_execute_tool 1456-1463, _ask_approval 1465-1490, plus council already moved in Wave 2)"],
+        ["4.2", "GovernanceRuntime produces typed governance outcomes: ALLOW, BLOCK, REVIEW, DEGRADED, UNAVAILABLE", "governance_runtime.py", "Extract from GovernanceMixin and existing governance pipeline"],
+        ["4.3", "Shell reads governance outcomes, never decides policy", "agent_loop.py", "Replace governance decision code with delegation"],
+        ["4.4", "Tests: 15 tests covering all governance paths with typed outcomes", "tests/core/test_governance_runtime.py", "15 tests"]
+      ]
+    },
+
+    {
+      "block_id": "h3-80",
+      "type": "heading", "level": 3,
+      "content": "Wave 5: Trace Propagation → TraceRuntime"
+    },
+    {
+      "block_id": "table-81",
+      "type": "table",
+      "columns": ["Step", "Action", "Files", "Lines extracted"],
+      "rows": [
+        ["5.1", "Create TraceRuntime owning correlation IDs, OTel baggage propagation, join keys (7 fields)", "trace_runtime.py (new)", "~100 lines"],
+        ["5.2", "TraceRuntime ensures session_id, turn_id, tool_call_id, receipt_sha256, baseline_id survive all paths", "trace_runtime.py", "Extract from tracing.py + agent_loop.py span wrappers"],
+        ["5.3", "ConversationLoopAdapter uses TraceRuntime for correlation", "conversation_loop_adapter.py", "Move 93-line adapter to own module, inject TraceRuntime"],
+        ["5.4", "Tests: 10 tests covering correlation across success, refusal, degrade paths", "tests/core/test_trace_runtime.py", "10 tests"]
+      ]
+    },
+
+    {
+      "block_id": "h3-82",
+      "type": "heading", "level": 3,
+      "content": "Wave 6: Shell Hardening + Rename"
+    },
+    {
+      "block_id": "table-83",
+      "type": "table",
+      "columns": ["Step", "Action", "Files"],
+      "rows": [
+        ["6.1", "Verify AgentLoop is now a thin delegator — no policy decisions, no adapter factories, no lifecycle logic remaining", "agent_loop.py (should be <800 lines)"],
+        ["6.2", "Add AST guard tests: assert AgentLoop imports only orchestrator/runtime packages, no policy internals", "tests/core/test_shell_regression_guards.py"],
+        ["6.3", "Phase 4B: ConversationRuntime Turn Envelope v1 — canonical turn result model with 10 fields", "conversation_runtime/turn_envelope.py"],
+        ["6.4", "Phase 4C: HandoffReceipt v1 — fork/subagent spawn produce transfer receipts", "handoff_receipt.py"],
+        ["6.5", "Phase 4D: AgentLoop → OrchestratorLoop rename (deliberately last)", "agent_loop.py → orchestrator_loop.py (rename + alias for compat)"],
+        ["6.6", "Validated: collect-only green, demo-doctor green, all fail-open regression tests pass, no policy branches in shell", "Full suite"]
+      ]
+    },
+
+    {
+      "block_id": "h2-90",
+      "type": "heading", "level": 2,
+      "content": "Non-Negotiable Runtime Invariants (Must Survive All Waves)"
+    },
+    {
+      "block_id": "list-91",
+      "type": "list", "ordered": false,
+      "items": [
+        "Missing governance capability must degrade to a typed refusal or review state, never to ALLOW.",
+        "Missing context evidence must be reported as unknown, not as a fabricated safe path.",
+        "Tool execution must accept an explicit policy object; permissive defaults are not acceptable for mutation paths.",
+        "Trace identifiers must survive refusal, degrade, and success paths unchanged enough to correlate logs, receipts, and tool results.",
+        "The shell should not know how to make policy decisions; it should only route requests and consume runtime results.",
+        "Read-only behavior may continue under degraded governance, but mutation must not proceed without explicit authority.",
+        "AgentLoop must not import rig_relay.desktop.*, rig_relay.ralph.*, rig_relay.analytics.*, duckdb.",
+        "After extraction, no method in orchestrator shell should spend >50% of its code using attributes from a single domain."
+      ]
+    },
+
+    {
+      "block_id": "h2-100",
+      "type": "heading", "level": 2,
+      "content": "Validation Gates (Per-Wave)"
+    },
+    {
+      "block_id": "table-101",
+      "type": "table",
+      "columns": ["Gate", "Wave", "Pass condition"],
+      "rows": [
+        ["Governance degradation", "Wave 1", "Permission, approval, council, and patch-gate failure paths produce typed governance outcomes. No allow-by-error in any path."],
+        ["Tool execution boundary", "Wave 2", "ToolRuntime cannot be constructed without explicit policy path for mutation tools. Council is inside ToolRuntime pipeline."],
+        ["Session lifecycle isolation", "Wave 3", "SessionRuntime owns all lifecycle ops. Shell delegates. Guard bootstrap moved."],
+        ["Governance ownership", "Wave 4", "GovernanceRuntime produces typed outcomes. Shell reads, never decides policy."],
+        ["Trace propagation", "Wave 5", "All 7 correlation fields joinable across refusal, degrade, and success paths."],
+        ["Shell regression", "Wave 6", "AST guard proves no policy branches in shell. AgentLoop <800 lines. Rename complete."],
+        ["Schema validation", "All waves", "All new artifacts validate. Content-light maintained."]
+      ]
+    },
+
+    {
+      "block_id": "h2-110",
+      "type": "heading", "level": 2,
+      "content": "What the Unified Compiler Enables"
+    },
+    {
+      "block_id": "p-111",
+      "type": "paragraph",
+      "content": "The previously created unified compiler package (rig_relay/compiler/) provides shared infrastructure that the refactored AgentLoop shell can use: GateMatrix for validation gate enforcement, CompilerEvidence for structured evidence emission, CompilerWorktree for git worktree isolation, and the 3 newly implemented context modes (HANDOFF for cross-agent coordination, COLLISION for path conflict detection, SYMBOLS for token compression). These reduce the amount of custom code needed in the shell."
+    },
+    {
+      "block_id": "table-112",
+      "type": "table",
+      "columns": ["Compiler capability", "How the shell uses it"],
+      "rows": [
+        ["HANDOFF mode (compile_handoff_packet)", "SessionRuntime.fork() produces a handoff packet before spawning subagent. Replaces ad-hoc state copying."],
+        ["COLLISION mode (compile_collision_report)", "ContextRuntime checks for path conflicts before tool execution. Replaces do-not-touch list assembly in compiler.py."],
+        ["SYMBOLS mode (compile_symbol_packet)", "ContextRuntime injects symbol substitutions into context packets. POPULATES the previously-dead symbol_map field."],
+        ["GateMatrix + STANDARD_GATE_MATRIX (10 gates)", "ToolExecutor, GovernanceRuntime, and SessionRuntime can each run validation gates using shared infrastructure."],
+        ["CompilerEvidence", "All runtime modules produce content-light structured evidence using the shared evidence emitter."],
+        ["CompilerWorktree", "SessionRuntime.fork() creates isolated worktrees for subagent missions using shared worktree management."]
+      ]
+    },
+
+    {
+      "block_id": "h2-120",
+      "type": "heading", "level": 2,
+      "content": "Estimated Scope"
+    },
+    {
+      "block_id": "table-121",
+      "type": "table",
+      "columns": ["Wave", "Files created", "Lines extracted", "Lines added", "Tests needed", "Risk"],
+      "rows": [
+        ["Wave 1: Fail-open patches", "2 new + 5 modified", "~50 modified", "~200", "25", "Low — patches only, no structural moves"],
+        ["Wave 2: ToolExecutor", "4 new + 2 modified", "~600 extracted from shell", "~400", "20", "Medium — largest single extraction, council pipeline change"],
+        ["Wave 3: SessionRuntime", "2 new + 2 modified", "~400 extracted from shell", "~250", "15", "Low — lifecycle ops have clear boundaries"],
+        ["Wave 4: GovernanceRuntime", "2 new + 2 modified", "~200 extracted from shell", "~250", "15", "Medium — governance decision boundary tightening"],
+        ["Wave 5: TraceRuntime", "2 new + 2 modified", "~100 extracted from shell", "~150", "10", "Low — trace infrastructure already exists"],
+        ["Wave 6: Shell hardening", "3 new + 3 modified", "~100 removed from shell", "~300", "20", "Low — rename + guard tests, no logic changes"],
+        ["TOTAL", "15 new + 16 modified", "~1450 lines extracted", "~1550 added", "105 tests", "—"]
+      ]
+    },
+
+    {
+      "block_id": "h2-130",
+      "type": "heading", "level": 2,
+      "content": "References"
+    },
+    {
+      "block_id": "list-131",
+      "type": "list", "ordered": false,
+      "items": [
+        "docs/json/governance/agent_loop_boundary.v1.json — Canonical AgentLoop boundary (forbidden imports, component registry)",
+        "docs/json/governance/orchestrator_loop_boundary.v1.json — Orchestrator ownership doctrine (who may run a turn loop)",
+        "docs/json/governance/tool_runtime_boundary.v1.json — ToolRuntime as governed execution authority (layered model)",
+        "docs/json/governance/runtime-port-status.v1.json — Runtime component status inventory (what's built vs documented)",
+        "docs/json/audits/agent-loop/governance-fail-open-inventory.v1.json — 8 governance fail-open seams (GO-1 through GO-8)",
+        "docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json — Phase 0-3 extraction audit trail (73/73 tests)",
+        "docs/json/audits/agent-loop/phase4-architecture-map.v1.json — Phase 4 plan (shell hardening, turn envelope, handoff receipt)"
+      ]
+    }
+  ],
+  "references": [
+    {"document_id": "agent-loop-boundary", "title": "Agent Loop Boundary"},
+    {"document_id": "orchestrator-loop-boundary", "title": "Orchestrator Loop Boundary"},
+    {"document_id": "tool-runtime-boundary", "title": "ToolRuntime Boundary"},
+    {"document_id": "runtime-port-status", "title": "Runtime Port Status Normalization"},
+    {"document_id": "agent-loop-governance-fail-open-inventory", "title": "AgentLoop Governance Fail-Open Inventory"},
+    {"document_id": "conversation-runtime-extraction-plan", "title": "ConversationRuntime extraction plan"},
+    {"document_id": "phase4-architecture-map", "title": "Phase 4 Architecture Map"}
+  ],
+  "related_documents": [
+    {"document_id": "agent-loop-boundary", "title": "Agent Loop Boundary", "relationship": "boundary precedent"},
+    {"document_id": "orchestrator-loop-boundary", "title": "Orchestrator Loop Boundary", "relationship": "runtime ownership precedent"},
+    {"document_id": "tool-runtime-boundary", "title": "ToolRuntime Boundary", "relationship": "execution boundary precedent"},
+    {"document_id": "runtime-port-status", "title": "Runtime Port Status Normalization", "relationship": "current runtime inventory"},
+    {"document_id": "agent-loop-governance-fail-open-inventory", "title": "AgentLoop Governance Fail-Open Inventory", "relationship": "risk inventory"},
+    {"document_id": "conversation-runtime-extraction-plan", "title": "ConversationRuntime extraction plan", "relationship": "existing extraction precedent"},
+    {"document_id": "phase4-architecture-map", "title": "Phase 4 Architecture Map", "relationship": "shell hardening roadmap"}
+  ],
+  "provenance": {
+    "author": "OpenCode (enhanced from OpenAI Codex original)",
+    "source_files": [
+      "rig_relay/core/agent_loop.py (1798 lines — full inspection)",
+      "rig_relay/core/_agent_init.py (212 lines)",
+      "rig_relay/governance/dirty_guard.py (512 lines)",
+      "rig_relay/core/tool_runtime.py (755 lines)",
+      "rig_relay/core/tool_runtime_policy.py",
+      "rig_relay/runtime/tool_invocation_execution.py (1230 lines)",
+      "rig_relay/runtime/tool_runtime_adapter.py (166 lines)",
+      "rig_relay/core/conversation_runtime/",
+      "rig_relay/core/conversation_turn.py",
+      "rig_relay/core/tracing.py",
+      "rig_relay/governance/governance_engine.py",
+      "rig_relay/compiler/context/collision.py",
+      "rig_relay/compiler/context/handoff.py",
+      "rig_relay/compiler/context/symbols.py"
+    ]
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": ["summary", "standard", "detailed", "exhaustive"],
+    "render_strategy": "linear",
+    "show_table_of_contents": true,
+    "progressive_summary": "Enhanced audit. 7 reference documents read. 1798-line AgentLoop source inspected. Every responsibility mapped to line numbers. 8 fail-open seams catalogued with severity. 6-wave extraction plan with 1450 lines to extract, 105 tests to add, and explicit integration points with the unified compiler package. Wave 1 (fail-open patches) is the prerequisite blocking all extraction."
+  }
+}

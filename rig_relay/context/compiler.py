@@ -899,19 +899,50 @@ def _build_handoff_packet(
 ) -> ContextPacket:
     store_root = root / ".build" / "rig-relay" / "coordination"
     session_id = getattr(request, "session_id", "") or ""
+    handoff: dict[str, Any] = {}
     try:
         from rig_relay.compiler.context.handoff import compile_handoff_packet
 
         handoff = compile_handoff_packet(session_id, store_root)
     except Exception as e:
+        _emit_context_trace(
+            "context.handoff_degraded",
+            session_id=session_id,
+            payload={
+                "coordination_store_available": False,
+                "error": exception_class_name(e),
+            },
+        )
         warnings.append(
             build_warning(
-                ContextWarningCode.REPO_SCAN_FAILED,
+                ContextWarningCode.HANDOFF_DEGRADED,
                 detail=f"{exception_class_name(e)}: handoff compile failed",
                 source="compiler._build_handoff_packet",
             )
         )
-        handoff = {}
+        handoff = {
+            "evidence_status": "degraded",
+            "degraded_reason": f"handoff compilation failed: {exception_class_name(e)}",
+        }
+
+    handoff_evidence = handoff.get("evidence_status")
+    if handoff_evidence in {"missing", "degraded"}:
+        _emit_context_trace(
+            "context.handoff_degraded",
+            session_id=session_id,
+            payload={
+                "coordination_store_available": False,
+                "evidence_status": handoff_evidence,
+                "degraded_reason": handoff.get("degraded_reason", ""),
+            },
+        )
+        warnings.append(
+            build_warning(
+                ContextWarningCode.HANDOFF_DEGRADED,
+                detail=f"handoff evidence {handoff_evidence}",
+                source="compiler._build_handoff_packet",
+            )
+        )
 
     active_agents = handoff.get("active_agents", [])
     file_leases = handoff.get("file_leases", [])
@@ -979,14 +1010,22 @@ def _build_collision_packet(
 ) -> ContextPacket:
     store_root = root / ".build" / "rig-relay" / "coordination"
     requesting_paths = request.scope.paths if request.scope.paths else []
+    collision: dict[str, Any] = {}
     try:
         from rig_relay.compiler.context.collision import compile_collision_report
 
         collision = compile_collision_report(requesting_paths, store_root)
     except Exception as e:
+        _emit_context_trace(
+            "context.collision_degraded",
+            payload={
+                "coordination_store_available": False,
+                "error": exception_class_name(e),
+            },
+        )
         warnings.append(
             build_warning(
-                ContextWarningCode.REPO_SCAN_FAILED,
+                ContextWarningCode.COLLISION_DEGRADED,
                 detail=f"{exception_class_name(e)}: collision compile failed",
                 source="compiler._build_collision_packet",
             )
@@ -995,10 +1034,30 @@ def _build_collision_packet(
             "requested_paths": requesting_paths,
             "conflicting_paths": [],
             "conflict_detail": [],
-            "safe_paths": requesting_paths,
+            "safe_paths": [],
             "recommended_actions": [],
-            "overall_risk": "none",
+            "overall_risk": "unknown",
+            "evidence_status": "degraded",
+            "degraded_reason": f"collision compilation failed: {exception_class_name(e)}",
         }
+
+    coll_evidence = collision.get("evidence_status")
+    if coll_evidence in {"missing", "degraded"}:
+        _emit_context_trace(
+            "context.collision_degraded",
+            payload={
+                "coordination_store_available": False,
+                "evidence_status": coll_evidence,
+                "degraded_reason": collision.get("degraded_reason", ""),
+            },
+        )
+        warnings.append(
+            build_warning(
+                ContextWarningCode.COLLISION_DEGRADED,
+                detail=f"collision evidence {coll_evidence}",
+                source="compiler._build_collision_packet",
+            )
+        )
 
     conflicting = collision.get("conflicting_paths", [])
     conflict_detail = collision.get("conflict_detail", [])

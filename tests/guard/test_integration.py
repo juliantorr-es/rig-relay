@@ -208,13 +208,16 @@ async def test_write_file_refuses_protected_file_without_flag(tmp_path, monkeypa
     get_guard().capture()
 
     tool = _make_wf()
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(
-                WriteFileArgs(path="dirty.py", content="new content\n", overwrite=True)
-            )
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(path="dirty.py", content="new content\n", overwrite=True)
         )
-    assert "refused" in str(exc.value).lower() or "protected" in str(exc.value).lower()
+    )
+    assert result.status == "refused"
+    assert (
+        "refused" in str(result.error_kind).lower()
+        or "protected" in str(result.error_kind).lower()
+    )
 
 
 @pytest.mark.asyncio
@@ -258,19 +261,21 @@ async def test_write_file_refuses_protected_file_with_stale_hash(tmp_path, monke
     get_guard().capture()
 
     tool = _make_wf()
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(
-                WriteFileArgs(
-                    path="dirty.py",
-                    content="new content\n",
-                    overwrite=True,
-                    allow_overwrite_protected=True,
-                    expected_before_sha256="sha256:" + "0" * 64,
-                )
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(
+                path="dirty.py",
+                content="new content\n",
+                overwrite=True,
+                allow_overwrite_protected=True,
+                expected_before_sha256="sha256:" + "0" * 64,
             )
         )
-    assert "stale" in str(exc.value).lower() or "refused" in str(exc.value).lower()
+    )
+    assert (
+        "stale" in str(result.error_kind).lower()
+        or "refused" in str(result.error_kind).lower()
+    )
 
 
 # ── tool integration: search_replace ─────────────────────────────
@@ -336,12 +341,11 @@ def hello():
     return "world"
 >>>>>>> REPLACE
 """)
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(
-                SearchReplaceArgs(
-                    file_path="dirty.py",
-                    content="""
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(
+                file_path="dirty.py",
+                content="""
 <<<<<<< SEARCH
 def hello():
     return 1
@@ -350,10 +354,10 @@ def hello():
     return "world"
 >>>>>>> REPLACE
 """,
-                )
             )
         )
-    assert "refused" in str(exc.value).lower() or "protected" in str(exc.value).lower()
+    )
+    assert result.status == "refused"
 
 
 @pytest.mark.asyncio
@@ -419,12 +423,11 @@ def hello():
     return "world"
 >>>>>>> REPLACE
 """)
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(
-                SearchReplaceArgs(
-                    file_path="dirty.py",
-                    content="""
+    result = await collect_result(
+        tool.run(
+            SearchReplaceArgs(
+                file_path="dirty.py",
+                content="""
 <<<<<<< SEARCH
 def hello():
     return 1
@@ -433,11 +436,14 @@ def hello():
     return "world"
 >>>>>>> REPLACE
 """,
-                    expected_before_sha256="sha256:" + "0" * 64,
-                )
+                expected_before_sha256="sha256:" + "0" * 64,
             )
         )
-    assert "stale" in str(exc.value).lower() or "refused" in str(exc.value).lower()
+    )
+    assert (
+        "stale" in str(result.error_kind).lower()
+        or "refused" in str(result.error_kind).lower()
+    )
 
 
 # ── new file creation tests ──────────────────────────────────────
@@ -475,17 +481,14 @@ async def test_write_file_refuses_overwrite_of_untracked_protected_file(
     get_guard().capture()
 
     tool = _make_wf()
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(
-                WriteFileArgs(
-                    path="untracked.py",
-                    content="overwriting untracked\n",
-                    overwrite=True,
-                )
+    result = await collect_result(
+        tool.run(
+            WriteFileArgs(
+                path="untracked.py", content="overwriting untracked\n", overwrite=True
             )
         )
-    assert "refused" in str(exc.value).lower() or "protected" in str(exc.value).lower()
+    )
+    assert result.status == "refused"
 
 
 # ── report tests ─────────────────────────────────────────────────
@@ -537,13 +540,12 @@ async def test_fail_closed_write_file_refuses_all_mutations(tmp_path, monkeypatc
     guard._capture_error = "simulated failure"
 
     tool = _make_wf()
-    with pytest.raises(Exception) as exc:
-        await collect_result(
-            tool.run(WriteFileArgs(path="clean.py", content="new\n", overwrite=True))
-        )
+    result = await collect_result(
+        tool.run(WriteFileArgs(path="clean.py", content="new\n", overwrite=True))
+    )
     assert (
-        "dirty_guard_capture_failed" in str(exc.value).lower()
-        or "capture" in str(exc.value).lower()
+        "dirty_guard_capture_failed" in str(result.error_kind).lower()
+        or "capture" in str(result.error_kind).lower()
     )
 
 

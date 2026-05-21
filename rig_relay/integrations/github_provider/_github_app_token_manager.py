@@ -7,11 +7,11 @@ Content-light: never persists raw tokens, keys, or auth headers in artifacts.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import importlib
 import os
-import time
-from datetime import UTC, datetime
 from pathlib import Path
+import time
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]

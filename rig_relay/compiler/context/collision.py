@@ -13,9 +13,27 @@ from typing import Any
 
 from rig_relay.coordination.models import CoordinationPathReservation, salted_path_hash
 from rig_relay.coordination.store import CoordinationStore
+from rig_relay.tracing.golden_path import build_golden_path_event
+from rig_relay.tracing.store import get_default_trace_store
 
 _STORE_SUBDIR = Path(".build") / "rig-relay" / "coordination"
 _HIGH_SEVERITY_THRESHOLD = 2
+
+
+def _emit_collision_degraded_trace(requesting_paths: list[str]) -> None:
+    try:
+        store = get_default_trace_store()
+        event = build_golden_path_event(
+            event_type="context.collision_degraded",
+            correlation={"coordination_store_available": False},
+            payload={
+                "requesting_paths_count": len(requesting_paths),
+                "evidence_status": "missing",
+            },
+        )
+        store.write(event)
+    except Exception:
+        pass
 
 
 def _resolve_store_path(coordination_store_path: Path | None) -> Path:
@@ -104,13 +122,15 @@ def compile_collision_report(
     store_root = _resolve_store_path(coordination_store_path)
 
     if not store_root.is_dir():
+        _emit_collision_degraded_trace(requesting_paths)
         return {
             "requested_paths": requesting_paths,
             "conflicting_paths": [],
             "conflict_detail": [],
-            "safe_paths": requesting_paths,
+            "safe_paths": [],
             "recommended_actions": [],
-            "overall_risk": "none",
+            "overall_risk": "unknown",
+            "evidence_status": "missing",
         }
 
     store = CoordinationStore(store_root)

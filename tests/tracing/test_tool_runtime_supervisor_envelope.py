@@ -42,6 +42,7 @@ async def test_tool_runtime_span_uses_supervisor_envelope_classification() -> No
         cache_store=lambda t, a, r: None,
         permission_decision=lambda t, a, c: _allow(),
         approval_request=lambda t, a, c: _allow(),
+        patch_gate_check=lambda tc, ti: None,
         trace_recorder=recorder,
     )
 

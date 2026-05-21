@@ -122,6 +122,9 @@ class TestSpanFinalization:
         recorder, store = _recording_recorder()
         rt = ToolRuntime(
             invoke_tool=lambda a: _invoke_raises(RuntimeError("boom")),
+            permission_decision=lambda t, a, c: _async_allow(),
+            approval_request=lambda t, a, c: _async_allow(),
+            patch_gate_check=lambda tc, ti: None,
             trace_recorder=recorder,
         )
         import asyncio
@@ -134,7 +137,13 @@ class TestSpanFinalization:
 
     def test_no_result_closes_span(self) -> None:
         recorder, store = _recording_recorder()
-        rt = ToolRuntime(invoke_tool=lambda a: _invoke_empty(), trace_recorder=recorder)
+        rt = ToolRuntime(
+            invoke_tool=lambda a: _invoke_empty(),
+            permission_decision=lambda t, a, c: _async_allow(),
+            approval_request=lambda t, a, c: _async_allow(),
+            patch_gate_check=lambda tc, ti: None,
+            trace_recorder=recorder,
+        )
         import asyncio
 
         result = asyncio.run(rt.execute_one(_make_request()))
@@ -147,7 +156,7 @@ class TestSpanFinalization:
         recorder, store = _recording_recorder()
 
         class _Result:
-            def model_dump(self):
+            def model_dump(self, **kwargs):  # type: ignore[no-untyped-def]
                 return {"ok": True}
 
             supervisor_result_envelope = None
@@ -155,7 +164,11 @@ class TestSpanFinalization:
             supervisor_result_classification = None
 
         rt = ToolRuntime(
-            invoke_tool=lambda a: _invoke_returns(_Result()), trace_recorder=recorder
+            invoke_tool=lambda a: _invoke_returns(_Result()),
+            permission_decision=lambda t, a, c: _async_allow(),
+            approval_request=lambda t, a, c: _async_allow(),
+            patch_gate_check=lambda tc, ti: None,
+            trace_recorder=recorder,
         )
         import asyncio
 

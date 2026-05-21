@@ -380,7 +380,7 @@ def test_guard_skipped_cleared_on_touch(tmp_path, monkeypatch):
 # ── failure policy tests ─────────────────────────────────────────
 
 
-def test_capture_failure_warn_allow_allows_write(tmp_path, monkeypatch):
+def test_capture_failure_warn_allow_refuses_write(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     subprocess.run(
         ["git", "init", "-b", "main"], cwd=tmp_path, capture_output=True, check=True
@@ -388,12 +388,12 @@ def test_capture_failure_warn_allow_allows_write(tmp_path, monkeypatch):
 
     guard = DirtyFileGuard()
     guard.failure_policy = DirtyGuardFailurePolicy.WARN_ALLOW
-    # Simulate capture failure by setting error directly
-    guard._captured = True
+    guard._capture_failed = True
     guard._capture_error = "simulated git failure"
 
     result = guard.check_write_file("any_file.py")
-    assert result.allowed
+    assert not result.allowed
+    assert result.reason == "dirty_guard_capture_failed"
 
 
 def test_capture_failure_fail_closed_refuses_write_file(tmp_path, monkeypatch):
@@ -404,7 +404,7 @@ def test_capture_failure_fail_closed_refuses_write_file(tmp_path, monkeypatch):
 
     guard = DirtyFileGuard()
     guard.failure_policy = DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
-    guard._captured = True
+    guard._capture_failed = True
     guard._capture_error = "simulated git failure"
 
     result = guard.check_write_file("any_file.py")
@@ -420,7 +420,7 @@ def test_capture_failure_fail_closed_refuses_search_replace(tmp_path, monkeypatc
 
     guard = DirtyFileGuard()
     guard.failure_policy = DirtyGuardFailurePolicy.FAIL_CLOSED_FOR_MUTATION
-    guard._captured = True
+    guard._capture_failed = True
     guard._capture_error = "simulated git failure"
 
     result = guard.check_search_replace("any_file.py")
