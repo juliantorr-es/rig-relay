@@ -1,0 +1,586 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "roadmap_id": "frontend-cli-protocol-surface-roadmap-v1",
+  "title": "Frontend / CLI / Protocol Surface Roadmap v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "content_light": true,
+  "revision": 1,
+  "items": [
+    {
+      "item_id": "roadmap-001",
+      "title": "Surface inventory and authority taxonomy (this audit)",
+      "priority": "P0",
+      "description": "Catalog every external surface (Frontend/Cockpit, CLI, MCP, ACP, A2A, WebSocket, static docs) with authority tiers, identity models, and maturity ratings. Without this taxonomy, surface-specific governance is impossible and composition risk is invisible. This audit is the prerequisite for all other roadmap items.",
+      "affected_modules": ["rig_relay/cli/", "rig_relay/desktop/", "rig_relay/protocols/", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/governance/surface_authority_taxonomy_audit.v1.json",
+        "docs/json/governance/surface_authority_taxonomy_map.v1.json",
+        "docs/json/governance/frontend_cli_protocol_surface_roadmap_v1.v1.json",
+        "docs/json/governance/frontend_cli_protocol_surface_test_strategy_v1.v1.json",
+        "docs/json/governance/protocol_composition_risk_register.v1.json",
+        "docs/schemas/rig.relay.surface_authority_taxonomy.v1.schema.json",
+        "docs/schemas/rig.relay.protocol_composition_risk_register.v1.schema.json"
+      ],
+      "expected_tests": [
+        "Schema validation for all surface taxonomy artifacts",
+        "Cross-reference integrity between audit, map, register, and test strategy"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.surface_taxonomy_audit_completed",
+        "rig.relay.governance.protocol_composition_risk_register_created"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "in_progress"
+    },
+    {
+      "item_id": "roadmap-002",
+      "title": "Common envelope and schema spine for all protocol surfaces",
+      "priority": "P0",
+      "description": "Define a shared JSON envelope schema that every protocol surface (MCP, ACP, A2A, WebSocket) MUST use for structured responses. Without a common envelope, each surface invents its own error format, making cross-surface governance impossible. The envelope carries event_sha256, surface_authority_tier, and content_light flags.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/protocols/acp/", "rig_relay/protocols/a2a/", "rig_relay/desktop/"],
+      "expected_artifacts": [
+        "docs/schemas/rig.relay.common_envelope.v1.schema.json"
+      ],
+      "expected_tests": [
+        "Every protocol response validates against common envelope schema",
+        "Error responses conform to envelope contract across all surfaces"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.common_envelope_validation_failed"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-003",
+      "title": "Frontend intent hardening: status indicators and trust spine gating",
+      "priority": "P0",
+      "description": "Implement all 9 cockpit status indicators as backend-enforced projection fields, not frontend-inferred. Wire trust spine gating into WebSocket message handling so the frontend cannot bypass approval for mutation intents. The frontend remains a dumb renderer; all policy lives in the backend.",
+      "affected_modules": ["rig_relay/desktop/", "rig_relay/desktop/projection.py", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/governance/trust_spine_gating_spec.v1.json"
+      ],
+      "expected_tests": [
+        "All 9 status indicators surface correctly in projection",
+        "Trust spine rejects forged approval tokens from frontend",
+        "Frontend cannot mutate projection to show false approval state"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.trust_spine_rejected",
+        "rig.relay.desktop.status_indicator_mismatch"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-004",
+      "title": "CLI command taxonomy unification with dry-run defaults",
+      "priority": "P0",
+      "description": "Unify all CLI entry points (rig-relay, rig-relay-acp, rig-relay-cockpit, rig-relay-ide-sidecar) under a shared command taxonomy with consistent flags, exit codes, and structured output. Every CLI command must default to dry-run-safe behavior and produce JSON output unless interactive mode is requested.",
+      "affected_modules": ["rig_relay/cli/"],
+      "expected_artifacts": [
+        "docs/json/governance/cli_command_taxonomy.v1.json"
+      ],
+      "expected_tests": [
+        "All entry points share consistent --dry-run and --output flags",
+        "Exit codes match documented semantic contract",
+        "JSON output validates against entry-point-specific schemas"
+      ],
+      "telemetry_implications": [
+        "rig.relay.cli.command_invoked",
+        "rig.relay.cli.exit_code_mismatch"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-005",
+      "title": "MCP read-only surface hardening: real tool dispatch, descriptor integrity, content-light scanning",
+      "priority": "P0",
+      "description": "Harden the MCP read-only tier with real tool dispatch (not stub responses), enforced descriptor integrity (reject tampered tool manifests), and content-light output scanning (no secrets in tool responses). This is the first protocol surface that external hosts connect to; it must be production-grade before any mutation tier is exposed.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/core/tools/", "rig_relay/runtime/"],
+      "expected_artifacts": [
+        "docs/json/governance/mcp_read_only_hardening_spec.v1.json"
+      ],
+      "expected_tests": [
+        "MCP tool dispatch returns real results for all 16 governed tools",
+        "Tampered tool descriptor triggers rejection and telemetry",
+        "Content-light scanner redacts secrets from tool responses",
+        "Roots boundary enforced per-tool and per-session"
+      ],
+      "telemetry_implications": [
+        "rig.relay.mcp.descriptor_integrity_violation",
+        "rig.relay.mcp.content_light_scan_failed",
+        "rig.relay.mcp.roots_boundary_violation"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-006",
+      "title": "Scripts governance gating prevents CLI bypass of cockpit approval",
+      "priority": "P0",
+      "description": "Implement governance gate that blocks CLI-invoked mutations while cockpit approval is pending or denied. Scripts must not be able to bypass the human-in-the-loop approval flow that the cockpit enforces. This closes a critical side-channel where automation could mutate the workspace without operator consent.",
+      "affected_modules": ["rig_relay/governance/", "rig_relay/cli/", "rig_relay/runtime/"],
+      "expected_artifacts": [
+        "docs/json/governance/scripts_governance_gating_spec.v1.json"
+      ],
+      "expected_tests": [
+        "CLI mutation blocked while cockpit approval is pending",
+        "CLI mutation blocked when cockpit approval was denied",
+        "Governance gate emits telemetry event on rejection",
+        "Gate does not block read-only CLI operations"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.scripts_bypass_blocked",
+        "rig.relay.governance.scripts_approval_state_conflict"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-007",
+      "title": "CLI evidence pack and admin commands with structured output",
+      "priority": "P1",
+      "description": "Build a CLI evidence pack: commands that produce structured JSON/JSONL evidence artifacts (not Markdown). Include admin commands for session management, fleet status, and coordination state. All output must be schema-validated and machine-consumable for downstream analytics.",
+      "affected_modules": ["rig_relay/cli/", "rig_relay/evidence/", "rig_relay/reports/"],
+      "expected_artifacts": [
+        "docs/json/cli/evidence_pack_commands.v1.json"
+      ],
+      "expected_tests": [
+        "All evidence commands produce JSON output",
+        "No evidence command produces Markdown",
+        "Admin commands respect RBAC boundaries",
+        "Output validates against evidence schemas"
+      ],
+      "telemetry_implications": [
+        "rig.relay.cli.evidence_command_invoked",
+        "rig.relay.cli.evidence_output_schema_mismatch"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-008",
+      "title": "Cockpit status indicators: all 9 states implemented and tested",
+      "priority": "P1",
+      "description": "Complete the implementation of all 9 cockpit status indicators as defined in the trust spine gating spec. Each indicator must be a backend-projected field with clear enumeration, tested for cross-state transitions, and validated against the projection schema.",
+      "affected_modules": ["rig_relay/desktop/projection.py", "rig_relay/desktop/websocket_server.py"],
+      "expected_artifacts": [],
+      "expected_tests": [
+        "All 9 status indicator states render correctly",
+        "State transitions produce correct projection diffs",
+        "Invalid state transitions are rejected by backend",
+        "Status indicators survive WebSocket reconnect"
+      ],
+      "telemetry_implications": [
+        "rig.relay.desktop.status_indicator_state_transition"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-009",
+      "title": "MCP per-user authorization enforcement",
+      "priority": "P1",
+      "description": "Enforce per-user authorization scoping on MCP server sessions. Each authenticated user session must only access tools and resources scoped to that user's RBAC profile. Cross-tenant or cross-user tool access must be blocked and logged.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/governance/", "rig_relay/identity/"],
+      "expected_artifacts": [
+        "docs/json/governance/mcp_per_user_auth_spec.v1.json"
+      ],
+      "expected_tests": [
+        "User A cannot access User B scoped tools",
+        "RBAC profile changes take effect within session",
+        "Auth boundary violations emit telemetry"
+      ],
+      "telemetry_implications": [
+        "rig.relay.mcp.per_user_auth_violation",
+        "rig.relay.mcp.rbac_profile_loaded"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-010",
+      "title": "ACP transport server implementation integrated with governance engine",
+      "priority": "P1",
+      "description": "Build the ACP transport server that integrates with the governance engine and RuntimeSupervisor. The server must enforce mission scope, session lifecycle, and permission gating as defined in the ACP spec. This is the editor-integrated surface; it must match the governance guarantees of the cockpit.",
+      "affected_modules": ["rig_relay/acp/", "rig_relay/governance/", "rig_relay/runtime/"],
+      "expected_artifacts": [
+        "docs/json/acp/transport_server_implementation_spec.v1.json"
+      ],
+      "expected_tests": [
+        "ACP session lifecycle matches spec",
+        "Mission scope enforcement rejects out-of-scope tools",
+        "Permission gating mirrors cockpit approval flow",
+        "Cancellation and timeout release all resources"
+      ],
+      "telemetry_implications": [
+        "rig.relay.acp.session_started",
+        "rig.relay.acp.mission_scope_violation",
+        "rig.relay.acp.permission_gating_denied"
+      ],
+      "dependency_implications": "Depends on agent-client-protocol==0.9.0 (already in dependencies).",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-011",
+      "title": "IDE sidecar convergence with ACP transport",
+      "priority": "P1",
+      "description": "Converge the IDE sidecar IPC protocol with the ACP transport protocol so that IDE-hosted agent sessions share the same governance spine as standalone ACP sessions. The 42 IDE capabilities defined in the manifest must map cleanly to ACP tool scopes.",
+      "affected_modules": ["rig_relay/cli/ide_sidecar.py", "rig_relay/acp/", "rig_relay/extensions/"],
+      "expected_artifacts": [
+        "docs/json/ide/sidecar_acp_convergence_spec.v1.json"
+      ],
+      "expected_tests": [
+        "IDE sidecar messages validate against ACP message schema",
+        "All 42 IDE capabilities map to ACP tool scopes",
+        "Governance engine applies same rules to IDE and standalone ACP sessions"
+      ],
+      "telemetry_implications": [
+        "rig.relay.ide.sidecar_acp_convergence_event"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-012",
+      "title": "Protocol composition risk tests",
+      "priority": "P1",
+      "description": "Implement the 7 composition risk tests from the test strategy (surf-test-029 through surf-test-035). These tests verify that cross-surface escalation paths are blocked: MCP-to-GitHub, A2A-to-GitHub, frontend-to-MCP, ACP-to-subagent, hosted-to-debug, SSH-to-local, and static-docs-to-public leaks.",
+      "affected_modules": ["rig_relay/governance/", "rig_relay/protocols/", "rig_relay/desktop/", "rig_relay/cli/", "rig_relay/docs_renderer/"],
+      "expected_artifacts": [],
+      "expected_tests": [
+        "All 7 composition risk tests implemented and passing",
+        "Cross-surface escalation paths blocked at governance spine",
+        "Telemetry emitted for every blocked composition attack"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.composition_risk_blocked",
+        "rig.relay.governance.cross_surface_escalation_detected"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-013",
+      "title": "A2A Agent Card discovery and attestation",
+      "priority": "P2",
+      "description": "Implement A2A Agent Card discovery with cryptographic attestation. Remote agents must publish signed agent cards with declared trust tiers. Local A2A client must verify signatures, validate trust tier claims, and reject cards that fail attestation.",
+      "affected_modules": ["rig_relay/protocols/a2a/", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/a2a/agent_card_attestation_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Valid agent card with signature passes attestation",
+        "Tampered agent card rejected",
+        "Trust tier mismatch triggers downgrade",
+        "Expired card rejected"
+      ],
+      "telemetry_implications": [
+        "rig.relay.a2a.agent_card_attestation_failed",
+        "rig.relay.a2a.trust_tier_downgraded"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-014",
+      "title": "MCP resources and prompts real backend wiring",
+      "priority": "P2",
+      "description": "Wire MCP resources and prompts to real backend data sources instead of stub responses. Resources must reflect live coordination state, fleet status, and evidence artifacts. Prompts must be governed and receipt-backed like tools.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/coordination/", "rig_relay/evidence/"],
+      "expected_artifacts": [],
+      "expected_tests": [
+        "MCP resources return live data from coordination store",
+        "MCP prompts are governed by same permission model as tools",
+        "Resource and prompt responses are content-light scanned"
+      ],
+      "telemetry_implications": [
+        "rig.relay.mcp.resource_accessed",
+        "rig.relay.mcp.prompt_executed"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-015",
+      "title": "SSH read-only diagnostics: command allowlist, key management, session recording",
+      "priority": "P2",
+      "description": "Design and implement an SSH read-only diagnostics surface with a strict command allowlist, SSH key management, and session recording. This surface allows remote operators to run diagnostic commands without mutation capability. All sessions must be recorded for audit.",
+      "affected_modules": ["rig_relay/protocols/ssh/"],
+      "expected_artifacts": [
+        "docs/json/ssh/diagnostics_surface_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Allowlisted commands execute successfully",
+        "Non-allowlisted commands rejected",
+        "Session recording captures full transcript",
+        "Key rotation does not interrupt active sessions"
+      ],
+      "telemetry_implications": [
+        "rig.relay.ssh.diagnostics_command_executed",
+        "rig.relay.ssh.allowlist_violation"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-016",
+      "title": "Frontend CSP/XSS hardening",
+      "priority": "P2",
+      "description": "Harden the cockpit frontend against XSS with strict Content Security Policy headers, input sanitization on all projection fields, and automated XSS regression tests. The frontend renders user-provided content (file paths, commit messages, agent outputs) and must not trust any of it.",
+      "affected_modules": ["rig_relay/desktop/"],
+      "expected_artifacts": [],
+      "expected_tests": [
+        "CSP headers present and restrictive",
+        "XSS payload in projection field neutralized",
+        "XSS payload in chat message neutralized",
+        "XSS payload in file path neutralized"
+      ],
+      "telemetry_implications": [
+        "rig.relay.desktop.xss_attempt_caught"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-017",
+      "title": "Static docs public/private split enforcement",
+      "priority": "P2",
+      "description": "Enforce a public/private split on the static docs renderer so that internal-only JSON artifacts (governance specs, security architecture) are never published to the public GitHub Pages site. The renderer must maintain a denylist of private artifact paths.",
+      "affected_modules": ["rig_relay/docs_renderer/", "scripts/render_static_docs.py"],
+      "expected_artifacts": [
+        "docs/json/docs/public_private_split_manifest.v1.json"
+      ],
+      "expected_tests": [
+        "Private artifacts excluded from public site",
+        "Denylist update triggers renderer reconvergence",
+        "Public site does not contain internal-only paths"
+      ],
+      "telemetry_implications": [
+        "rig.relay.docs.public_private_split_violation"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-018",
+      "title": "Hosted team mode design with Postgres operational substrate",
+      "priority": "P3",
+      "description": "Design the hosted team mode architecture: Postgres as the operational substrate for multi-tenant coordination, shared session state, and team-level governance. This is the design phase only; implementation comes after the governance spine is proven in single-tenant mode.",
+      "affected_modules": ["rig_relay/coordination/", "rig_relay/governance/", "rig_relay/desktop/"],
+      "expected_artifacts": [
+        "docs/json/hosted/team_mode_architecture.v1.json"
+      ],
+      "expected_tests": [
+        "Architecture design review completed",
+        "Schema design for multi-tenant coordination tables"
+      ],
+      "telemetry_implications": [],
+      "dependency_implications": "May require asyncpg or psycopg (not yet added).",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-019",
+      "title": "Tenant isolation and RBAC for multi-tenant deployments",
+      "priority": "P3",
+      "description": "Design and implement tenant isolation with scoped RBAC for multi-tenant deployments. Each tenant must have isolated coordination state, session storage, and tool scoping. Cross-tenant data leakage must be prevented at the storage and API layers.",
+      "affected_modules": ["rig_relay/governance/", "rig_relay/coordination/", "rig_relay/identity/"],
+      "expected_artifacts": [
+        "docs/json/governance/tenant_isolation_rbac_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Tenant A cannot access Tenant B coordination state",
+        "Tenant A cannot access Tenant B sessions",
+        "RBAC roles enforced per-tenant",
+        "Cross-tenant queries blocked at storage layer"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.tenant_isolation_violation",
+        "rig.relay.governance.cross_tenant_access_blocked"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-020",
+      "title": "Hosted API airlock for external access",
+      "priority": "P3",
+      "description": "Design a hosted API airlock that mediates all external access to the Rig Relay control plane in hosted team mode. The airlock must enforce rate limiting, authentication, and content-light scanning before any request reaches the governance spine.",
+      "affected_modules": ["rig_relay/governance/", "rig_relay/protocols/"],
+      "expected_artifacts": [
+        "docs/json/hosted/api_airlock_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Airlock enforces rate limiting",
+        "Airlock enforces authentication before governance spine",
+        "Content-light scanning applied to all external requests",
+        "Airlock degrades gracefully under load"
+      ],
+      "telemetry_implications": [
+        "rig.relay.hosted.airlock_request_blocked",
+        "rig.relay.hosted.airlock_rate_limit_hit"
+      ],
+      "dependency_implications": "May require an ASGI server (already available via anyio).",
+      "implementation_risk": "medium",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-021",
+      "title": "Enterprise SSO/SCIM planning",
+      "priority": "P3",
+      "description": "Plan enterprise SSO (OIDC/SAML) and SCIM provisioning integration for hosted team mode. This is a planning-only item; implementation depends on hosted team mode being operational. The plan must cover identity federation, group-to-RBAC mapping, and just-in-time provisioning.",
+      "affected_modules": ["rig_relay/identity/"],
+      "expected_artifacts": [
+        "docs/json/hosted/enterprise_sso_scim_plan.v1.json"
+      ],
+      "expected_tests": [
+        "SSO architecture review completed",
+        "SCIM provisioning flow documented",
+        "Group-to-RBAC mapping designed"
+      ],
+      "telemetry_implications": [],
+      "dependency_implications": "No new dependencies at planning stage.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-022",
+      "title": "MCP mutation tools with approval receipt enforcement",
+      "priority": "P4",
+      "description": "Expose MCP mutation tools (tiers 4 and 5) with mandatory approval receipt enforcement. Every mutation tool call must carry a valid, unexpired approval receipt signed by the governance engine. Without an approval receipt, the tool call is rejected before execution.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/mcp/mutation_tools_approval_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Mutation tool without receipt rejected",
+        "Expired receipt rejected",
+        "Tampered receipt rejected",
+        "Valid receipt allows single-use mutation"
+      ],
+      "telemetry_implications": [
+        "rig.relay.mcp.mutation_approval_receipt_missing",
+        "rig.relay.mcp.mutation_approval_receipt_expired",
+        "rig.relay.mcp.mutation_approved"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-023",
+      "title": "A2A federation with remote agent trust tiers",
+      "priority": "P4",
+      "description": "Implement A2A federation supporting remote agent connections with trust tier-based capability scoping. Remote agents at lower trust tiers get read-only access; higher trust tiers may request mutation with approval receipt. Federation must support agent card discovery and attestation from roadmap-013.",
+      "affected_modules": ["rig_relay/protocols/a2a/", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/a2a/federation_trust_tiers_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Trust tier 1 remote agent gets read-only access",
+        "Trust tier 3 remote agent can request mutation with receipt",
+        "Federation handshake validates agent card attestation",
+        "Remote agent disconnection cleans up leases"
+      ],
+      "telemetry_implications": [
+        "rig.relay.a2a.federation_handshake_completed",
+        "rig.relay.a2a.trust_tier_escalation_denied"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-024",
+      "title": "SSH remote mutation with supervisor wrapping",
+      "priority": "P4",
+      "description": "Extend the SSH surface from read-only diagnostics to supervised remote mutation. All mutation commands must be wrapped by the RuntimeSupervisor, carry approval receipts, and produce session recordings. This is the highest-risk surface; it must not be implemented before the governance spine is proven.",
+      "affected_modules": ["rig_relay/protocols/ssh/", "rig_relay/runtime/", "rig_relay/governance/"],
+      "expected_artifacts": [
+        "docs/json/ssh/remote_mutation_supervisor_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Mutation command without receipt rejected",
+        "Supervisor wraps all mutation commands",
+        "Session recording captures full mutation transcript",
+        "Supervisor enforces tool permission model"
+      ],
+      "telemetry_implications": [
+        "rig.relay.ssh.mutation_executed",
+        "rig.relay.ssh.mutation_receipt_missing"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "high",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-025",
+      "title": "MCP/ACP/A2A marketplace and ecosystem extensions",
+      "priority": "P5",
+      "description": "Design a marketplace for community-contributed MCP tools, ACP agent profiles, and A2A agent cards. This is a long-term ecosystem play; the marketplace must enforce the same governance spine as built-in surfaces and require attestation for all third-party contributions.",
+      "affected_modules": ["rig_relay/protocols/mcp/", "rig_relay/protocols/acp/", "rig_relay/protocols/a2a/"],
+      "expected_artifacts": [
+        "docs/json/ecosystem/marketplace_design.v1.json"
+      ],
+      "expected_tests": [
+        "Marketplace design review completed",
+        "Attestation requirement documented for third-party contributions"
+      ],
+      "telemetry_implications": [],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    },
+    {
+      "item_id": "roadmap-026",
+      "title": "Public static site differentiation from internal docs",
+      "priority": "P5",
+      "description": "Design and implement clear differentiation between the public static site (GitHub Pages) and the internal docs surface. The public site must have a distinct visual identity, a restricted artifact set, and no links to internal governance artifacts. This prevents accidental exposure of internal architecture to public visitors.",
+      "affected_modules": ["rig_relay/docs_renderer/", "scripts/render_static_docs.py"],
+      "expected_artifacts": [
+        "docs/json/docs/public_site_spec.v1.json"
+      ],
+      "expected_tests": [
+        "Public site does not link to internal governance artifacts",
+        "Public site has distinct visual identity",
+        "Internal-only paths return 404 on public site"
+      ],
+      "telemetry_implications": [],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low",
+      "current_status": "not_started"
+    }
+  ],
+  "do_not_overrun_guards": [
+    "Do NOT build ACP transport server before the common envelope and schema spine (roadmap-002) is implemented.",
+    "Do NOT expose MCP mutation tools (roadmap-022) before MCP read-only surface hardening (roadmap-005) is complete and passing all tests.",
+    "Do NOT implement A2A federation (roadmap-023) before A2A Agent Card discovery and attestation (roadmap-013) is proven.",
+    "Do NOT implement SSH remote mutation (roadmap-024) before the governance spine is proven across all other surfaces.",
+    "Do NOT implement hosted team mode (roadmap-018) before single-tenant governance is proven with all P0 and P1 items complete.",
+    "Do NOT add any new protocol surface without first updating the surface authority taxonomy audit and registering it in the composition risk register.",
+    "Do NOT ship any surface that emits Markdown as structured evidence; all output must be JSON/JSONL/CSV per the evidence doctrine.",
+    "Do NOT bypass the content-light requirement for any protocol surface; every external response must be scanned for secrets before transmission."
+  ]
+}
