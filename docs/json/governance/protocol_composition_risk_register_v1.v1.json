@@ -1,0 +1,118 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "register_id": "protocol-composition-risk-register-v1",
+  "title": "Protocol Composition Risk Register v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "revision": 1,
+  "risks": [
+    {
+      "risk_id": "PCR-001",
+      "name": "MCP mutation bypasses cockpit approval",
+      "attack_path": "An MCP client with mutation-tier permissions issues a write tool call that bypasses the desktop cockpit's approval gate, because MCP tool authorization runs through the MCP server's tiered permission model rather than the cockpit's interactive approval flow.",
+      "current_mitigation": "MCP server enforces tiered permissions with read-only → analysis → validation → patch proposal → mutation progression; mutation tier requires explicit grant.",
+      "missing_mitigation": "No cross-surface enforcement that requires cockpit-originated approval receipts before honoring MCP mutation calls. The cockpit approval gate and MCP mutation gate operate independently.",
+      "required_schema_receipt": "cross-surface-approval-receipt",
+      "required_test": "test_mcp_mutation_requires_cockpit_approval_receipt",
+      "blocking_status": "non_blocking_warning"
+    },
+    {
+      "risk_id": "PCR-002",
+      "name": "ACP bypasses CLI policy",
+      "attack_path": "An ACP peer agent issues an edit proposal that the ACP server accepts under its own governance rules, without consulting CLI-level policy (e.g., dry-run mode, tool permission overrides, provider restrictions).",
+      "current_mitigation": "ACP server runs with its own AgentLoop instance and shares the same tool permission model.",
+      "missing_mitigation": "ACP does not read or enforce CLI-level policy flags. A `--dry-run` flag on the CLI does not prevent ACP-initiated mutations.",
+      "required_schema_receipt": "cli-policy-consultation-receipt",
+      "required_test": "test_acp_respects_cli_dry_run_policy",
+      "blocking_status": "blocking"
+    },
+    {
+      "risk_id": "PCR-003",
+      "name": "A2A bypasses mission scope",
+      "attack_path": "A remote A2A agent receives a task dispatch but exceeds its declared mission scope by accessing files or tools outside the task boundary, because A2A task descriptors lack enforceable scope constraints.",
+      "current_mitigation": "A2A agent cards declare capabilities; the orchestrator filters task dispatch by declared capability.",
+      "missing_mitigation": "No runtime enforcement that A2A agents stay within their declared mission boundary. File access and tool invocation are not scope-validated at the A2A protocol layer.",
+      "required_schema_receipt": "a2a-mission-scope-attestation",
+      "required_test": "test_a2a_agent_rejects_out_of_scope_file_access",
+      "blocking_status": "non_blocking_warning"
+    },
+    {
+      "risk_id": "PCR-004",
+      "name": "SSH bypasses local supervisor",
+      "attack_path": "An SSH host identity executes commands on the local machine that bypass the Rig Relay supervisor's subprocess governance, because SSH command execution goes through the system shell rather than the controlled tool runtime.",
+      "current_mitigation": "SSH connections are gated by identity verification; tool execution through SSH is not currently supported.",
+      "missing_mitigation": "If SSH-originated commands are routed through the tool runtime, they must pass through environment scrubbing, binary rejection, and symlink protection. Currently no SSH→supervisor bridge exists.",
+      "required_schema_receipt": "ssh-supervisor-bridge-attestation",
+      "required_test": "test_ssh_commands_pass_through_supervisor_guards",
+      "blocking_status": "deferred"
+    },
+    {
+      "risk_id": "PCR-005",
+      "name": "Hosted API bypasses local evidence",
+      "attack_path": "A hosted tenant user admin interacts with Rig Relay via a remote API (e.g., management plane) and performs actions that are not captured in the local evidence ledger, breaking the local-first telemetry commitment.",
+      "current_mitigation": "Hosted API requests go through the same observability pipeline when routed through the local event fabric.",
+      "missing_mitigation": "No guarantee that hosted API requests are always routed through the local event fabric. A disconnected or cached API response could skip local evidence recording.",
+      "required_schema_receipt": "hosted-api-evidence-receipt",
+      "required_test": "test_hosted_api_produces_local_evidence",
+      "blocking_status": "deferred"
+    },
+    {
+      "risk_id": "PCR-006",
+      "name": "WebSocket frontend bypasses backend auth",
+      "attack_path": "The WebSocket projection stream exposes session data to the desktop cockpit frontend. If an attacker compromises the frontend renderer (e.g., XSS in a widget), they could observe projection data beyond their authorization scope.",
+      "current_mitigation": "WebSocket is localhost-only and token-gated. Projection is content-light by design.",
+      "missing_mitigation": "No per-widget authorization scoping. All widgets in the cockpit share the same WebSocket connection and receive the same projection stream, regardless of the operator's role.",
+      "required_schema_receipt": "frontend-widget-auth-scope-receipt",
+      "required_test": "test_websocket_projection_respects_widget_auth_scopes",
+      "blocking_status": "non_blocking_warning"
+    },
+    {
+      "risk_id": "PCR-007",
+      "name": "GitHub provider mutation bypasses trust spine",
+      "attack_path": "The GitHub provider integration (code scanning, PR mutation) performs mutations on GitHub repositories without passing through the live mutation readiness gate and HMAC-SHA256 attestation signing that protects local mutations.",
+      "current_mitigation": "GitHub provider has its own governance layer (carte blanche governed lanes, code scanning PR mutation readiness).",
+      "missing_mitigation": "No unified trust spine that requires the same HMAC-SHA256 attestation chain for remote GitHub mutations as for local worktree mutations. Two parallel governance paths.",
+      "required_schema_receipt": "github-provider-trust-spine-attestation",
+      "required_test": "test_github_mutation_passes_trust_spine_attestation",
+      "blocking_status": "blocking"
+    },
+    {
+      "risk_id": "PCR-008",
+      "name": "Telemetry export leaks raw content",
+      "attack_path": "When telemetry export is enabled, raw content (file contents, tool outputs, prompt data) could be included in exported telemetry bundles despite the content-light doctrine, because the export path does not validate that only SHA256 hashes are present.",
+      "current_mitigation": "Telemetry is local-first and opt-in. Content-derived data uses SHA256 hashes by policy.",
+      "missing_mitigation": "No automated export-time redaction scan that validates exported telemetry bundles contain only SHA256 hashes and no raw content before transmission.",
+      "required_schema_receipt": "telemetry-export-redaction-receipt",
+      "required_test": "test_telemetry_export_contains_no_raw_content",
+      "blocking_status": "non_blocking_warning"
+    },
+    {
+      "risk_id": "PCR-009",
+      "name": "Debug packet leaks raw context",
+      "attack_path": "Debug-level telemetry packets (session lifecycle, context observations) could contain raw context data (file contents, tool parameters, prompt fragments) that violate the content-light doctrine and the usage data doctrine.",
+      "current_mitigation": "Debug logging is configurable via LOG_LEVEL. Default is WARNING which suppresses debug output.",
+      "missing_mitigation": "No structural guarantee that debug-level packets are content-light. If LOG_LEVEL=DEBUG is set, raw context could be emitted without redaction.",
+      "required_schema_receipt": "debug-packet-content-light-receipt",
+      "required_test": "test_debug_packets_contain_no_raw_content",
+      "blocking_status": "non_blocking_warning"
+    },
+    {
+      "risk_id": "PCR-010",
+      "name": "Static docs exposes private projections",
+      "attack_path": "The static documentation renderer generates HTML pages from JSON artifacts. If the renderer processes artifacts containing private projections (e.g., internal roadmaps, release gate evidence), those projections could be exposed in the public GitHub Pages site.",
+      "current_mitigation": "Static site renderer operates on committed docs/json/ content. Private projections are stored in .build/ or ~/.rig/ and are not committed.",
+      "missing_mitigation": "No automated check that the static renderer's input set excludes uncommitted or private-flagged artifacts. A misconfiguration could include private content in the public site.",
+      "required_schema_receipt": "static-docs-privacy-filter-receipt",
+      "required_test": "test_static_docs_excludes_private_projections",
+      "blocking_status": "non_blocking_warning"
+    }
+  ],
+  "content_light": {
+    "sha256": "sha256:placeholder_recalculate_after_final_review",
+    "no_raw_file_contents": true,
+    "no_raw_secrets": true,
+    "no_raw_prompt_data": true,
+    "no_raw_code": true,
+    "no_raw_telemetry_payloads": true
+  }
+}

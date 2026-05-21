@@ -1,0 +1,127 @@
+{
+  "schema_version": "rig.relay.analytics_hardening_lane.v1",
+  "roadmap_id": "analytics-data-lake-hardening-lane",
+  "title": "Analytics Data Lake Hardening Lane",
+  "generated_at": "2026-05-21T06:13:00Z",
+  "status": "planned",
+  "postgresql_integration_dependency": {
+    "completed": false,
+    "completion_date": "2026-06-15T00:00:00Z",
+    "description": "This hardening lane is scheduled to run immediately after the completion of the comprehensive PostgreSQL database integration."
+  },
+  "modules": [
+    {
+      "module_id": "module_1_state_isolation_ui_mode",
+      "title": "Module 1: State Isolation & UI Integration",
+      "description": "Fix frontend-backend state conflicts by isolating the analytics state in the desktop cockpit UI, converting list-based widget payloads into camelCase key-value mappings, and wiring subscription actions.",
+      "objectives": [
+        "Separate analytics state from the main desktop projection by storing it under state.analytics in the frontend.",
+        "Convert the backend's list-based widgets payload to a camelCase key-value mapping expected by frontend widgets.",
+        "Wire the analytics_subscribe WebSocket action in the UI mode-selector to establish a reliable server subscription."
+      ],
+      "proposed_changes": [
+        {
+          "file": "frontend/desktop/js/projection.js",
+          "action": "MODIFY",
+          "description": "Prevent analytics projections from overwriting the main state.projection by routing them to state.analytics."
+        },
+        {
+          "file": "frontend/desktop/js/widgets/analytics.js",
+          "action": "MODIFY",
+          "description": "Update widget render methods to consume the camelCase widget mapping instead of a flat list."
+        },
+        {
+          "file": "frontend/desktop/js/main.js",
+          "action": "MODIFY",
+          "description": "Send an analytics_subscribe WebSocket event when the user switches to the analytics dashboard view."
+        }
+      ],
+      "verification_plan": {
+        "automated_tests": [
+          "pytest tests/desktop/test_websocket_server.py to ensure the server processes analytics_subscribe requests.",
+          "Add front-end integration tests to verify state.analytics update sequences."
+        ],
+        "manual_verification": [
+          "Launch Desktop Cockpit in analytics mode and check console log for successful analytics_subscribe message.",
+          "Verify widgets render without causing other panels to go blank."
+        ]
+      }
+    },
+    {
+      "module_id": "module_2_routing_drilldowns",
+      "title": "Module 2: Multi-Provider Routing & Interactive Drilldowns",
+      "description": "Establish dynamic analytical query routing between the PostgreSQL remote server and the local DuckDB memory fallback, and implement drilldown layouts in the UI.",
+      "objectives": [
+        "Build a multi-provider router in the analytics engine to route queries to PostgreSQL when available, falling back to local DuckDB.",
+        "Implement interactive drilldown events from compact chip and standard card states to expanded full-page layouts.",
+        "Maintain content-light security guarantees by enforcing SHA256 hashing on all queries routed to remote providers."
+      ],
+      "proposed_changes": [
+        {
+          "file": "rig_relay/analytics/engine.py",
+          "action": "MODIFY",
+          "description": "Introduce a routing layer capable of coordinating queries across PostgreSQL and memory-only DuckDB."
+        },
+        {
+          "file": "rig_relay/desktop/analytics_projection.py",
+          "action": "MODIFY",
+          "description": "Allow drilldown state indicators to trigger WebSocket updates requesting specific database records."
+        },
+        {
+          "file": "frontend/desktop/js/layout/analytics.js",
+          "action": "MODIFY",
+          "description": "Implement clickable components on cards that transition the view to high-disclosure tables."
+        }
+      ],
+      "verification_plan": {
+        "automated_tests": [
+          "pytest tests/analytics/test_analytics_engine.py to verify routing logic and fallback mechanisms.",
+          "Test hashing rules on test queries to ensure no raw prompts are leaked."
+        ],
+        "manual_verification": [
+          "Manually disconnect the remote PostgreSQL database and check that the app falls back to local DuckDB.",
+          "Click on the 'Governance Gate' standard card to verify that it expands to the detailed table view."
+        ]
+      }
+    },
+    {
+      "module_id": "module_3_atomic_ingestion_schemas",
+      "title": "Module 3: Ingestion Resilience & Telemetry Schema Normalization",
+      "description": "Ensure robust importing of telemetry data into the analytics lake through transaction-wrapped atomic ingestion and normalized schema structures.",
+      "objectives": [
+        "Wrap all telemetry file ingestion sequences in database transactions to prevent partial updates and data pollution on error.",
+        "Normalize telemetry payload formats into standard relational views for unified analytical compilation.",
+        "Enforce strict schema validation rules using Pydantic models prior to analytical indexing."
+      ],
+      "proposed_changes": [
+        {
+          "file": "rig_relay/analytics/engine.py",
+          "action": "MODIFY",
+          "description": "Enclose ingestion loops in transaction blocks and roll back on ingestion errors."
+        },
+        {
+          "file": "rig_relay/analytics/views.py",
+          "action": "MODIFY",
+          "description": "Refactor SQL templates to map and join normalized telemetry columns consistently."
+        },
+        {
+          "file": "rig_relay/core/telemetry/artifacts.py",
+          "action": "MODIFY",
+          "description": "Add strict validation rules to telemetry collection objects prior to serializing."
+        }
+      ],
+      "verification_plan": {
+        "automated_tests": [
+          "pytest tests/analytics/test_analytics_engine.py to verify that transactions roll back on malformed lines.",
+          "Validate schemas on generated ingestion models using jsonschema."
+        ],
+        "manual_verification": [
+          "Inject a corrupt JSON line into observability.jsonl and run ingestion to confirm no records are imported.",
+          "Confirm that standard queries succeed once log corruption is fixed."
+        ]
+      }
+    }
+  ],
+  "content_light": true,
+  "revision": "v1"
+}

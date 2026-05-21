@@ -73,7 +73,6 @@ if TYPE_CHECKING:
 from rig_relay.core._agent_helpers import requires_init
 from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision
-from rig_relay.core._auto_gc import maybe_auto_gc as _maybe_auto_gc_helper
 from rig_relay.core._context_envelope import ContextEnvelopeMixin
 from rig_relay.core._errors import AgentLoopError, TeleportError
 from rig_relay.core._governance import GovernanceMixin
@@ -92,6 +91,7 @@ from rig_relay.core.session_runtime import SessionRuntime
 from rig_relay.core.tool_executor import (
     CouncilGate,
     ToolConcurrencyManager,
+    ToolExecutionContext,
     ToolExecutor,
     ToolRuntimeAdapterBuilder,
 )
@@ -177,12 +177,6 @@ class AgentLoop(
         self._init_context_compiler(defer_heavy_init)
         self._tool_runtime: ToolRuntime | None = None
         self._tool_result_sink = self._make_result_sink()
-        self._tool_executor: ToolExecutor = ToolExecutor(
-            loop=self,
-            adapter_builder=ToolRuntimeAdapterBuilder(loop=self),
-            council_gate=CouncilGate(loop=self),
-            concurrency=ToolConcurrencyManager(),
-        )
 
         self._session_rules: list[ApprovedRule] = []
         self._approval_lock = asyncio.Lock()
@@ -205,6 +199,26 @@ class AgentLoop(
 
         self._session_runtime = SessionRuntime(agent_loop=self)
         self._trace_runtime = TraceRuntime(session_id=self.session_id)
+
+        self._exec_ctx = ToolExecutionContext(
+            session_id=self.session_id,
+            workspace_root=self._workspace_root,
+            config=self.config,
+            tool_manager=self.tool_manager,
+            trace_runtime=self._trace_runtime,
+            rewind_manager=self.rewind_manager,
+            approval_callback=self.approval_callback,
+            result_sink=self._tool_result_sink,
+            stats=self.stats,
+            handle_tool_response=self._handle_tool_response,
+        )
+
+        self._tool_executor: ToolExecutor = ToolExecutor(
+            ctx=self._exec_ctx,
+            adapter_builder=ToolRuntimeAdapterBuilder(loop=self, ctx=self._exec_ctx),
+            council_gate=CouncilGate(ctx=self._exec_ctx),
+            concurrency=ToolConcurrencyManager(),
+        )
 
         if defer_heavy_init:
             self._start_deferred_init()
@@ -605,7 +619,15 @@ class AgentLoop(
             return
         self._pending_tool_resolved = None
         profile_before = self.agent_profile.name
-        async for event in self._handle_tool_calls(resolved):  # type: ignore[reportArgumentType]
+
+        self._exec_ctx.update_turn(
+            turn_id=str(getattr(self._current_turn, "turn_id", "")),
+            user_message_id=self._current_user_message_id or "",
+            bypass_permissions=self.bypass_tool_permissions,
+            current_turn=self._current_turn,
+        )
+
+        async for event in self._tool_executor.execute_batch(resolved):
             yield event
         if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.advance(TurnPhase.TOOL_CALLS_COMPLETED)
@@ -687,12 +709,6 @@ class AgentLoop(
                 )
             )
 
-    async def _process_one_tool_call(
-        self, tool_call: ResolvedToolCall
-    ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
-        async for event in self._tool_executor.execute_one_tool(tool_call):
-            yield event
-
     def _expand_tool_call_args(self, args: Any) -> Any:
         envelope = self._current_context_envelope
         if envelope is None or envelope.symbol_manifest is None:
@@ -708,75 +724,6 @@ class AgentLoop(
                 key: self._expand_tool_call_args(value) for key, value in args.items()
             }
         return args
-
-    def _check_tool_result_cache(
-        self, tool_call: ResolvedToolCall
-    ) -> ToolResultEvent | None:
-        """Check the deterministic tool result cache. Returns cached result event or None."""
-        determinism_cls = getattr(tool_call.tool_class, "determinism_class", None)
-        if determinism_cls is None:
-            return None
-
-        from rig_relay.core.tools.cache import get_cached_result
-
-        determinism_str = str(determinism_cls.value)
-        if determinism_str not in {"DETERMINISTIC_PURE", "DETERMINISTIC_REPO_STATE"}:
-            return None
-
-        cached = get_cached_result(
-            tool_name=tool_call.tool_name,
-            args_dict=tool_call.args_dict,
-            determinism_class=determinism_str,
-        )
-        if cached is None:
-            return None
-
-        _args_model, _result_model_cls = tool_call.tool_class._get_type_hints()
-        result_model = _result_model_cls(**cached)
-        return ToolResultEvent(
-            tool_name=tool_call.tool_name,
-            tool_class=tool_call.tool_class,
-            result=result_model,
-            cached=True,
-            tool_call_id=tool_call.call_id,
-        )
-
-    async def _consult_council_before_mutation(
-        self, tn: str, tool_args: dict[str, Any], tool_class: type[BaseTool] | None
-    ) -> str:
-        return await self._tool_executor.council_gate.consult(tn, tool_args, tool_class)
-
-    async def _execute_tool_call(
-        self, span: trace.Span, tool_call: ResolvedToolCall
-    ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
-        async for event in self._tool_executor.execute_one_tool(tool_call):
-            yield event
-
-    async def _handle_tool_calls(
-        self, resolved: ResolvedMessage
-    ) -> AsyncGenerator[ToolCallEvent | ToolResultEvent | ToolStreamEvent]:
-        """Execute tool batch — delegates to ToolExecutor.execute_batch."""
-        async for event in self._tool_executor.execute_batch(resolved):
-            yield event
-
-    async def _execute_tool_to_queue(
-        self,
-        tc: ResolvedToolCall,
-        queue: asyncio.Queue[ToolCallEvent | ToolResultEvent | ToolStreamEvent | None],
-    ) -> None:
-        """Run a single tool call, sending events to the queue."""
-        async for event in self._process_one_tool_call(tc):
-            await queue.put(event)
-
-    async def _run_tools_concurrently(
-        self, tool_calls: list[ResolvedToolCall]
-    ) -> AsyncGenerator[ToolCallEvent | ToolResultEvent | ToolStreamEvent]:
-        async for event in self._tool_executor.execute_concurrently(tool_calls):
-            yield event
-
-    async def _maybe_auto_gc(self) -> None:
-        """Passive GC: delegates to standalone helper."""
-        await _maybe_auto_gc_helper(self.config, self._workspace_root, self.stats)
 
     async def _should_execute_tool(
         self, tool: BaseTool, args: BaseModel, tool_call_id: str

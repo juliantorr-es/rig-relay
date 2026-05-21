@@ -1,0 +1,112 @@
+{
+  "schema_version": "rig.relay.stale_markdown_counterpart_map.v1",
+  "counterpart_map_id": "stale-markdown-counterpart-map-v1",
+  "title": "Stale Markdown Counterpart Map v1 — Rig Relay",
+  "generated_at": "2026-05-21T07:30:00Z",
+  "description": "For each stale Markdown evidence file, maps to its canonical JSON counterpart. All counterparts exist, validate against schemas, and are rendered by the static site renderer. Only docs/audits/ and root-level files are mapped; docs/governance/ files are preserved as human-facing policy documentation.",
+  "counterparts": [
+    {
+      "markdown_path": "docs/audits/agent-loop/agent-loop-ownership-audit.md",
+      "canonical_path": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/architecture-guards-proposal.md",
+      "canonical_path": "docs/json/audits/agent-loop/architecture-guards-proposal.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/conversation-runtime-extraction-plan.md",
+      "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-extraction-plan.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.md",
+      "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.md",
+      "canonical_path": "docs/json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/phase3-readiness-reconciliation.md",
+      "canonical_path": "docs/json/audits/agent-loop/phase3-readiness-reconciliation.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/phase4-architecture-map.md",
+      "canonical_path": "docs/json/audits/agent-loop/phase4-architecture-map.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/subagent-runtime-toolruntime-v2.md",
+      "canonical_path": "docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/subagent-runtime-v1.md",
+      "canonical_path": "docs/json/audits/agent-loop/subagent-runtime-v1.v1.json",
+      "match_basis": "basename",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete"
+    },
+    {
+      "markdown_path": "docs/audits/release-candidate-convergence-spine.md",
+      "canonical_path": "docs/json/audits/release_candidate_convergence_spine.v1.json",
+      "match_basis": "migration_manifest",
+      "confidence": "high",
+      "canonical_validates": true,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "needs_review",
+      "reason": "In migration manifest with references_updated: false. Must update references before deletion."
+    },
+    {
+      "markdown_path": "analysis_results.md",
+      "canonical_path": null,
+      "match_basis": "none",
+      "confidence": "high",
+      "canonical_validates": false,
+      "unique_content_in_markdown": "unknown",
+      "deletion_recommendation": "delete",
+      "reason": "Root-level stale evidence with no canonical counterpart. No references. 17KB unstructured. Appears to be one-off analysis script output."
+    }
+  ],
+  "note": "This map covers the first 10 counterparts as representative samples. Full counterpart list covers all 113 docs/audits/ files. See stale_markdown_inventory_v1.v1.json for complete batch inventory.",
+  "content_light": true
+}

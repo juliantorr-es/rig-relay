@@ -1,0 +1,310 @@
+{
+  "schema_version": "rig.relay.security_architecture_gap_map.v1",
+  "gap_map_id": "enterprise-security-architecture-gap-map-v1",
+  "title": "Enterprise Security Architecture Gap Map v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "security_areas": [
+    {
+      "area_id": "SA01",
+      "area_name": "Threat Model Completeness",
+      "current_state": "Threat model v0 with 17 threats, 6 mitigations, 5 release gates. References OWASP LLM Top 10 and WebSocket Cheat Sheet.",
+      "gaps": [
+        "No prompt injection defense (T01, T02 critical/open)",
+        "No data exfiltration prevention (T03 critical/open)",
+        "No generated docs XSS scan (T12, T13 high/open)",
+        "No supply-chain scanning (T16 low/open)"
+      ],
+      "risk_level": "high",
+      "remediation": "Implement prompt injection classifier. Add automated XSS scan. Implement dependency vulnerability scanning.",
+      "evidence_paths": [
+        "docs/json/security/threat_model_v0.v1.json"
+      ]
+    },
+    {
+      "area_id": "SA02",
+      "area_name": "Local API Airlock",
+      "current_state": "Loopback-only binding (127.0.0.1). TLS available. WebSocket requires auth token. Message validation with size limits (64KB). Invalid message guard (3 strikes).",
+      "gaps": [
+        "No rate limiting on WebSocket",
+        "No per-message scope enforcement",
+        "No CSRF protection on HTTP routes (non-WS)"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add rate limiting. Add per-subscription scope enforcement. Add CSRF tokens for HTTP routes.",
+      "evidence_paths": [
+        "rig_relay/desktop/websocket_server.py",
+        "tests/desktop/test_websocket_server.py"
+      ]
+    },
+    {
+      "area_id": "SA03",
+      "area_name": "Tool Invocation Boundaries",
+      "current_state": "Tool permission gating (ALWAYS/ASK/NEVER). Patch gating for mutation tools. Bash pattern detection. Environment scrubbing (28 vars). Binary rejection. Symlink protection. Sensitive path blocking.",
+      "gaps": [
+        "No tool argument validation against schema before execution",
+        "No mission-scoped tool permission profiles",
+        "No tool call budget/rate limiting",
+        "No automated secret detection in tool output"
+      ],
+      "risk_level": "high",
+      "remediation": "Add tool argument validation. Implement mission-scoped permissions. Add tool call rate limiting. Add post-hoc secret scan.",
+      "evidence_paths": [
+        "rig_relay/core/tools/security.py",
+        "rig_relay/core/tools/reroute.py",
+        "rig_relay/core/tools/base.py"
+      ]
+    },
+    {
+      "area_id": "SA04",
+      "area_name": "Mutation Approval Gates",
+      "current_state": "Dirty-file preservation. Collision warnings. Checkpoint-only commits. No git amend/force-push/reset. Patch gating for mutation tools. Desktop intent API requires authorization.",
+      "gaps": [
+        "No atomic worktree merge validation",
+        "No cross-lane mutation guard",
+        "No pre-write file ownership check"
+      ],
+      "risk_level": "medium",
+      "remediation": "Implement atomic worktree merge validation. Add cross-lane mutation detection. Add pre-write ownership check.",
+      "evidence_paths": [
+        "rig_relay/governance/dirty_guard.py",
+        "rig_relay/core/_patch_gating.py",
+        "rig_relay/desktop/intents.py"
+      ]
+    },
+    {
+      "area_id": "SA05",
+      "area_name": "Dirty-File Protection",
+      "current_state": "Implemented and enforced. Protected files cannot be discarded. Additive edits preferred. Cross-session coordination tracks path reservations.",
+      "gaps": [
+        "No automated verification that dirty files are never modified by agents",
+        "Collision detection is warning-only, not blocking"
+      ],
+      "risk_level": "low",
+      "remediation": "Add automated dirty-file integrity tests. Consider making collision detection blocking for write reservations.",
+      "evidence_paths": [
+        "AGENTS.md",
+        "rig_relay/governance/dirty_guard.py",
+        "rig_relay/coordination/file_markers.py"
+      ]
+    },
+    {
+      "area_id": "SA06",
+      "area_name": "Destructive Command Denial",
+      "current_state": "Bash pattern detection blocks command substitution, inline execution, env injection, backslash-escaped paths. Sensitive path blocking. Bash rerouting to safer tools.",
+      "gaps": [
+        "No explicit denylist of destructive commands (rm -rf, format, dd, etc.)",
+        "Pattern detection may have bypasses",
+        "No filesystem operation journaling"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add explicit destructive command denylist. Audit pattern detection for bypasses. Consider filesystem snapshots before mutations.",
+      "evidence_paths": [
+        "rig_relay/core/tools/reroute.py",
+        "rig_relay/core/tools/security.py"
+      ]
+    },
+    {
+      "area_id": "SA07",
+      "area_name": "Credential and Token Storage",
+      "current_state": "OS keychain preferred. .env file fallback. Token redaction in all traces/docs/frontend. No token in URLs. ProviderKeyStore with multiple backends.",
+      "gaps": [
+        "No key rotation support",
+        "No token usage audit",
+        "No automated token scanning on persisted files",
+        ".env file is plaintext (acceptable for local dev, not enterprise)"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add key rotation workflow. Add token usage audit trail. Add automated token scanning. Document credential storage best practices.",
+      "evidence_paths": [
+        "rig_relay/providers/key_store.py",
+        "rig_relay/identity/token_store.py",
+        "docs/governance/identity-provider-policy.md"
+      ]
+    },
+    {
+      "area_id": "SA08",
+      "area_name": "OAuth and Provider Integration Boundaries",
+      "current_state": "GitHub and Google OAuth providers. Loopback server for OAuth redirect. Token store with encryption preference. Consent store. Step-up authorization for sensitive actions.",
+      "gaps": [
+        "No OAuth token revocation on session end",
+        "No provider permission scope verification at runtime",
+        "No OAuth PKCE enforcement (optional in some flows)"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add token revocation on session end. Add runtime scope verification. Enforce PKCE for all OAuth flows.",
+      "evidence_paths": [
+        "rig_relay/identity/github.py",
+        "rig_relay/identity/google.py",
+        "rig_relay/identity/oauth_loopback.py"
+      ]
+    },
+    {
+      "area_id": "SA09",
+      "area_name": "GitHub Integration Permissions",
+      "current_state": "GitHub App permission posture documented in JSON. 53-file integration package with code scanning, PR mutation, security lifecycle. Permission matrix artifact exists.",
+      "gaps": [
+        "No runtime permission scope validation for GitHub tokens",
+        "No procurement-facing permission summary",
+        "No least-privilege enforcement for different operations"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add runtime scope verification. Produce procurement-facing GitHub App permission summary. Implement per-operation least-privilege.",
+      "evidence_paths": [
+        "docs/json/governance/github_app_permission_posture_v1.v1.json",
+        "rig_relay/integrations/github_provider/"
+      ]
+    },
+    {
+      "area_id": "SA10",
+      "area_name": "Telemetry Redaction",
+      "current_state": "Content-light doctrine comprehensive. Four-category model: product telemetry (first-party, default-on, opt-out), remote telemetry contribution (settings-controlled, consent-gated), local operational observability (mandatory for governed operation), enterprise audit/evidence (mandatory in enterprise mode). Redaction validator on all export paths. Three-tier retention model. Content-light guarantee enforced at bundle creation.",
+      "gaps": [
+        "No automated continuous verification that all emission paths comply",
+        "No independent audit of content-light guarantee",
+        "Redaction validator scope limited to export paths, not all write paths",
+        "No automated enforcement that product-telemetry opt-out preserves audit/evidence continuity"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add CI-based content-light verification on all artifact writes. Expand redaction validator to cover all persistence paths. Add tests proving product-telemetry opt-out does not disable governance/audit/evidence records.",
+      "evidence_paths": [
+        "docs/governance/usage-data-doctrine.md",
+        "rig_relay/evidence/redaction.py",
+        "rig_relay/core/telemetry/"
+      ]
+    },
+    {
+      "area_id": "SA11",
+      "area_name": "Debug Bundle Safety",
+      "current_state": "Two bundle scripts (chatgpt_dev, telemetry). Both content-light. No raw prompts, model outputs, source code, diffs, or secrets. Debug bundle command deferred.",
+      "gaps": [
+        "No unified debug bundle command",
+        "No enterprise quarantine workflow",
+        "No support ticket integration",
+        "No debug bundle retention policy"
+      ],
+      "risk_level": "low",
+      "remediation": "Unify debug bundle scripts. Add enterprise quarantine workflow. Document support packet policy.",
+      "evidence_paths": [
+        "docs/governance/debug-bundle-policy.md",
+        "scripts/rig_relay_create_telemetry_bundle.py"
+      ]
+    },
+    {
+      "area_id": "SA12",
+      "area_name": "Static Docs Content-Light Guarantees",
+      "current_state": "HTML escaping on content. No raw HTML blocks in JSON docs. Path redaction in renderer. Generated content validated. No script injection from source JSON possible.",
+      "gaps": [
+        "No CSP headers on generated HTML",
+        "No automated XSS scan of generated output",
+        "No regular scan for absolute paths or token-like strings in static HTML"
+      ],
+      "risk_level": "high",
+      "remediation": "Add CSP meta tag. Implement automated XSS scan in CI. Add content-light scan for generated HTML.",
+      "evidence_paths": [
+        "docs/json/security/security_policy_v0.v1.json",
+        "docs/governance/frontend-rendering-safety.md"
+      ]
+    },
+    {
+      "area_id": "SA13",
+      "area_name": "Cockpit Frontend XSS/CSP Posture",
+      "current_state": "Frontend rendering safety doctrine (8 rules). textContent for untrusted content. No eval(). No dynamic code execution. All mutations through backend intent API. No raw tokens in frontend storage.",
+      "gaps": [
+        "No CSP headers served by bridge server",
+        "No Content-Type enforcement on static assets",
+        "No XSS test suite for frontend components",
+        "innerHTML permitted for backend-authored widgets (trust boundary risk)"
+      ],
+      "risk_level": "high",
+      "remediation": "Add CSP headers to bridge server. Add XSS test suite. Audit backend-authored widget HTML for injection.",
+      "evidence_paths": [
+        "docs/governance/frontend-rendering-safety.md",
+        "rig_relay/desktop/bridge_server.py"
+      ]
+    },
+    {
+      "area_id": "SA14",
+      "area_name": "WebSocket Transport and Auth Posture",
+      "current_state": "Loopback-only. TLS available. Auth token required. Origin validation (allow loopback HTTP/HTTPS, reject foreign/file/null). Auth-before-subscribe enforced. Message validation (non-JSON/array/scalar rejected, missing type rejected, token-on-non-auth rejected). Invalid message guard (3 strikes, connection close). MAX_MESSAGE_BYTES=64KB.",
+      "gaps": [
+        "No per-message MAC/signing",
+        "No message replay protection",
+        "No WebSocket connection rate limiting",
+        "No token rotation during session"
+      ],
+      "risk_level": "low",
+      "remediation": "Add message signing for high-integrity messages. Add connection rate limiting. Consider token rotation.",
+      "evidence_paths": [
+        "rig_relay/desktop/websocket_server.py",
+        "tests/desktop/test_websocket_server.py"
+      ]
+    },
+    {
+      "area_id": "SA15",
+      "area_name": "Subprocess and Runtime Supervision",
+      "current_state": "RuntimeSupervisor with asyncio.create_subprocess_exec (no shell). Timeout enforcement. Bounded stdout/stderr buffers. Cancel → terminate → kill escalation. Content-light completion/failure summaries with SHA256 hashes.",
+      "gaps": [
+        "No resource limits (CPU, memory) on subprocesses",
+        "No network egress controls for subprocesses",
+        "No process tree cleanup guarantee (grandchildren may survive)",
+        "No seccomp/sandbox on Linux"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add resource limits (rlimit). Add network egress controls. Implement process group cleanup. Consider seccomp sandboxing.",
+      "evidence_paths": [
+        "rig_relay/runtime/supervisor.py",
+        "rig_relay/core/tool_subprocess.py"
+      ]
+    },
+    {
+      "area_id": "SA16",
+      "area_name": "Context Assembler Privacy Boundaries",
+      "current_state": "Trust tier labeling on context sources. Content assembly SHA256-hashed. Excludes generated HTML from context packs. Code schema authority hash verification.",
+      "gaps": [
+        "No content sanitization before context injection",
+        "No user-visible summary of what context is sent to each provider",
+        "No injection scan on repo content before assembly",
+        "Stale schema detection not automated"
+      ],
+      "risk_level": "high",
+      "remediation": "Add content sanitization. Show context summary to user. Add injection scan. Automate stale schema detection.",
+      "evidence_paths": [
+        "rig_relay/context/assembler.py",
+        "rig_relay/context/compiler.py",
+        "docs/governance/context-observability.md"
+      ]
+    },
+    {
+      "area_id": "SA17",
+      "area_name": "Log and Trace Redaction",
+      "current_state": "Content-light trace doctrine. No raw file contents, secrets, or private code in telemetry. SHA256 hashes for content-derived values. Structured logging with positional args (not f-strings).",
+      "gaps": [
+        "No automated secret scan on trace writes",
+        "No trace content size limits",
+        "No log-level-based redaction (DEBUG may contain sensitive data)",
+        "No log retention policy for DEBUG logs"
+      ],
+      "risk_level": "medium",
+      "remediation": "Add automated secret scanner for trace events. Add trace size limits. Document log-level safety. Add log retention policy.",
+      "evidence_paths": [
+        "rig_relay/core/telemetry/",
+        "rig_relay/core/logger.py",
+        "docs/governance/usage-data-doctrine.md"
+      ]
+    }
+  ],
+  "summary": {
+    "total_areas": 17,
+    "high_risk_gaps": 5,
+    "medium_risk_gaps": 9,
+    "low_risk_gaps": 3,
+    "critical_findings": [
+      "No prompt injection defenses implemented (threat model T01, T02 open/critical)",
+      "No XSS/CSP on frontend or static docs",
+      "No data exfiltration prevention for tool-calling agents",
+      "No content sanitization before context injection",
+      "No automated security scanning across all emission paths"
+    ]
+  },
+  "content_light": true
+}

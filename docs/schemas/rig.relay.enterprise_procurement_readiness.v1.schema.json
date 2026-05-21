@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.enterprise_procurement_readiness.v1.schema.json",
+  "title": "Enterprise Procurement Readiness Audit v1",
+  "description": "Structured audit of Rig Relay enterprise procurement readiness across 10 dimensions.",
+  "type": "object",
+  "required": ["schema_version", "audit_id", "title", "generated_at", "branch", "head_commit", "dimensions", "summary", "content_light"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.enterprise_procurement_readiness.v1" },
+    "audit_id": { "type": "string" },
+    "title": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "branch": { "type": "string" },
+    "head_commit": { "type": "string" },
+    "dirty_state_before": { "type": "string" },
+    "dirty_state_after": { "type": "string" },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "A_procurement_gate_taxonomy": { "type": "object" },
+        "B_control_mapping": { "type": "object" },
+        "C_data_inventory_privacy": { "type": "object" },
+        "D_postgres_readiness": { "type": "object" },
+        "E_supply_chain_build": { "type": "object" },
+        "F_security_architecture": { "type": "object" },
+        "G_admin_enterprise_ux": { "type": "object" },
+        "H_legal_commercial": { "type": "object" },
+        "I_evidence_pack_design": { "type": "object" },
+        "J_test_validation": { "type": "object" },
+        "K_telemetry_operational_evidence_boundary": {
+          "type": "object",
+          "description": "Explicit doctrinal boundary: product telemetry, remote telemetry contribution, local operational observability, enterprise audit/evidence substrate."
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_gates": { "type": "integer" },
+        "blocker_count": { "type": "integer" },
+        "high_count": { "type": "integer" },
+        "medium_count": { "type": "integer" },
+        "low_count": { "type": "integer" },
+        "overall_verdict": { "type": "string" }
+      }
+    },
+    "artifacts_produced": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

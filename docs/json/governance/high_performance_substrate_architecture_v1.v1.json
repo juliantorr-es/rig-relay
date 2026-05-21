@@ -1,0 +1,108 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_architecture.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Substrate — Proposed Architecture Pipeline",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "pipeline_overview": "JSON/JSONL/CSV canonical artifacts → schema validation / redaction scan → optional Arrow in-memory batches → optional Parquet derived snapshots → PostgreSQL operational projection → DuckDB analytical views → cockpit/static docs/procurement packs → optional pgvector semantic retrieval over approved/redacted/content-light representations",
+  "pipeline_stages": [
+    {
+      "stage": 1,
+      "name": "Canonical Artifact Layer",
+      "description": "JSON/JSONL/CSV files remain the portable, inspectable, diffable, replayable, schema-governed source-of-truth artifacts.",
+      "owning_module": "rig_relay/evidence/receipt_store.py, rig_relay/reports/report_store.py, rig_relay/events/store.py, rig_relay/coordination/store.py",
+      "artifact_boundary": "All writes produce canonical artifacts. All reads originate from canonical artifacts.",
+      "schema_boundary": "All artifacts validated against docs/schemas/*.schema.json via jsonschema.",
+      "redaction_boundary": "rig_relay/evidence/redaction.py — all artifacts scanned for forbidden content before write.",
+      "failure_mode": "Corrupted artifacts are quarantined — written to quarantine log, not ingested.",
+      "replay_behavior": "All downstream stages can be fully rebuilt from canonical artifacts.",
+      "test_requirement": "Artifact roundtrip tests: write → read → validate → write → SHA256 match."
+    },
+    {
+      "stage": 2,
+      "name": "Schema Validation & Redaction Scan",
+      "description": "All data crossing the boundary from runtime to storage passes through schema validation (jsonschema) and content-light redaction scan (redaction.py).",
+      "owning_module": "rig_relay/evidence/redaction.py, rig_relay/evidence/validation_scheduler.py",
+      "artifact_boundary": "Consumes canonical artifacts, produces validation records (artifact_validation).",
+      "schema_boundary": "jsonschema.Draft7Validator against schema_registry entries.",
+      "redaction_boundary": "Forbidden field patterns (token, secret, private_key, raw_prompt, raw_completion, file_content, diff, patch) rejected. No raw content crosses into downstream stages.",
+      "failure_mode": "Invalid artifacts are quarantined with structured error record. Valid artifacts pass through.",
+      "replay_behavior": "Validation runs are replayable — same input always produces same validation result.",
+      "test_requirement": "Content-light enforcement tests: insert known forbidden payloads, verify rejection."
+    },
+    {
+      "stage": 3,
+      "name": "Arrow In-Memory Batches (prototype — Phase 3)",
+      "description": "Optional Arrow table representation for efficient in-memory data interchange between subsystems. Not a persistent format.",
+      "owning_module": "rig_relay/adapters/arrow_projection_bridge.py (new, behind ProjectionStorePort)",
+      "artifact_boundary": "Arrow is transient in-memory — never persisted as canonical artifact.",
+      "schema_boundary": "Arrow schema derived from Pydantic models via pyarrow.Schema.from_pydantic() or manual definition.",
+      "redaction_boundary": "Arrow batches only contain content-light fields — same enforcement as JSON artifacts.",
+      "failure_mode": "Arrow conversion failure falls back to dict-of-dicts. Never a hard dependency.",
+      "replay_behavior": "Not replayable — transient in-memory. Always rebuildable from canonical artifacts.",
+      "test_requirement": "Arrow ↔ dict roundtrip preserves schema-governed fields. Arrow ↔ Pydantic model roundtrip."
+    },
+    {
+      "stage": 4,
+      "name": "Parquet Derived Snapshots",
+      "description": "Cold/warm derived analytical snapshots in Parquet format. Not canonical event truth — canonical artifacts remain JSON/JSONL/CSV.",
+      "owning_module": "scripts/rig_relay_compact_artifacts.py (existing), scripts/rig_relay_sessions_compact.py (existing)",
+      "artifact_boundary": "Parquet snapshots are derived — never source-of-truth. Always rebuildable from canonical JSONL artifacts.",
+      "schema_boundary": "Parquet schema matches canonical artifact schema. DuckDB COPY FORMAT PARQUET preserves column types.",
+      "redaction_boundary": "Parquet snapshots produced from already-validated, redaction-passed JSONL. Defense-in-depth: Parquet read path should still validate content-light.",
+      "failure_mode": "Corrupted Parquet snapshots are discarded and rebuilt from canonical JSONL.",
+      "replay_behavior": "Parquet snapshots can be rolled back by rebuilding from canonical artifacts. Not replayable in the audit sense.",
+      "test_requirement": "Parquet snapshot never becomes canonical event truth. Parquet → JSONL roundtrip preserves content-light fields. Parquet → DuckDB query parity."
+    },
+    {
+      "stage": 5,
+      "name": "PostgreSQL Operational Projection",
+      "description": "Postgres tables (event_log, receipt_envelope, coordination_lease, finding, release_gate_decision, enterprise_audit_event, etc.) are operational read replicas. Canonical authority remains with JSON/JSONL/CSV artifacts.",
+      "owning_module": "rig_relay/adapters/postgres_*.py (Phase 3), behind ports (Phase 2)",
+      "artifact_boundary": "Postgres operational tables are downstream projections. Artifacts remain canonical. Postgres tables can be fully rebuilt from artifacts via COPY import.",
+      "schema_boundary": "Postgres tables use generated columns from JSONB payloads. CHECK constraints enforce content-light and schema_version format. Staging table + constraint promotion absorbs COPY imports.",
+      "redaction_boundary": "INSERT triggers reject forbidden field keys. CHECK constraints validate content-light patterns. Defense in depth with application-layer redaction.",
+      "failure_mode": "Postgres unavailable → fail-closed. PostgresUnavailableError raised. No silent fallback.",
+      "replay_behavior": "Full replay from canonical artifacts via psycopg COPY import. Export back to canonical JSONL via COPY export.",
+      "test_requirement": "Postgres COPY import validates staging table constraints. Postgres COPY export roundtrips to canonical JSONL. Generated column values match JSONB source."
+    },
+    {
+      "stage": 6,
+      "name": "DuckDB Analytical Views",
+      "description": "In-memory DuckDB reads local JSONL/Parquet files for ad-hoc analytical queries. Postgres operational tables for dashboard materialized views when Postgres is configured.",
+      "owning_module": "rig_relay/analytics/engine.py (DuckDB path), rig_relay/analytics/views.py (VIEW_FUNCTIONS)",
+      "artifact_boundary": "DuckDB is read-side only — never writes back to artifacts. Postgres path reads from materialized views.",
+      "schema_boundary": "DuckDB queries extract envelope-level fields only. Postgres path uses typed generated columns.",
+      "redaction_boundary": "DuckDB queries only select content-light columns. Postgres views only expose content-light materialized views.",
+      "failure_mode": "DuckDB unavailable → AnalyticsEngine raises RuntimeError. Postgres unavailable → fail-closed in enterprise mode. Local mode falls back to DuckDB.",
+      "replay_behavior": "DuckDB projections are ephemeral. Postgres materialized views are rebuildable.",
+      "test_requirement": "DuckDB vs Postgres projection parity. DuckDB reads content-light only."
+    },
+    {
+      "stage": 7,
+      "name": "Cockpit / Static Docs / Procurement Packs",
+      "description": "Cockpit projection assembly, static documentation rendering, and procurement evidence pack generation consume content-light data from upstream stages.",
+      "owning_module": "rig_relay/desktop/projection.py, rig_relay/docs_renderer/, rig_relay/enterprise/export_manager.py (future)",
+      "artifact_boundary": "Cockpit projections are runtime-only. Static docs are derived HTML. Procurement packs are derived JSON bundles.",
+      "schema_boundary": "All outputs validated against their declared schemas. No raw content in any output.",
+      "redaction_boundary": "Static docs safety scan (safety.py) detects token/secret leaks before publish. Procurement packs are content-light by construction.",
+      "failure_mode": "Projection assembly failure → widget shows 'Unavailable'. Static docs render failure → build fails. Procurement pack failure → partial pack with error manifest.",
+      "replay_behavior": "All outputs rebuildable from upstream canonical artifacts.",
+      "test_requirement": "Projection overwrite regression tests. Static docs scan catches absolute paths/tokens/source snippets. Procurement pack uses content-light derived summaries only."
+    },
+    {
+      "stage": 8,
+      "name": "pgvector Semantic Retrieval (park — Phase 6)",
+      "description": "Vector similarity search over content-light reports, findings, and remediation plans. Embeddings over private repo content are sensitive derived data — must be local-only and policy-approved.",
+      "owning_module": "rig_relay/enterprise/semantic_retrieval.py (future)",
+      "artifact_boundary": "Embeddings are derived data. Canonical artifacts remain JSON/JSONL/CSV.",
+      "schema_boundary": "pgvector vector columns store embeddings. Embedding metadata (model, dimension, content_sha256) stored as typed columns.",
+      "redaction_boundary": "Embeddings over private repo content are classified as sensitive derived data. Must be local-only. Must not be exported to product telemetry. Must be covered by sensitive-derived-data policy.",
+      "failure_mode": "pgvector unavailable → semantic search returns empty. Standard FTS and GIN index queries continue to work.",
+      "replay_behavior": "Embeddings can be regenerated from canonical artifacts. Not replayable in the audit sense — embeddings are lossy.",
+      "test_requirement": "Embeddings never store raw private repo text unless explicitly local-only and policy-approved. Embedding records classified as sensitive derived data."
+    }
+  ],
+  "revision": "1.0.0"
+}

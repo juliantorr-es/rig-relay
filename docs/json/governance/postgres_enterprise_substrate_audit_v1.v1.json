@@ -1,0 +1,892 @@
+{
+  "schema_version": "rig.relay.postgres_enterprise_substrate_audit.v1",
+  "audit_id": "postgres-enterprise-substrate-audit-v1",
+  "title": "PostgreSQL Enterprise Substrate Audit v1 — Rig Relay",
+  "generated_at": "2026-05-20T18:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "executive_summary": "Rig Relay's current data architecture is entirely filesystem-backed (JSONL, JSON, CSV) with DuckDB as the sole in-memory analytical substrate. This is correct for local-first operation and artifact portability, but insufficient for enterprise procurement readiness. Postgres should become the enterprise operational substrate while JSON/JSONL/CSV artifacts remain the portable, schema-governed source of truth.",
+  "sections": {
+    "current_architecture_inventory": {
+      "storage_patterns": [
+        {
+          "module": "rig_relay/analytics/engine.py",
+          "backend": "DuckDB in-memory",
+          "reads_from": "JSONL files (observability.jsonl, receipts.jsonl, trace_events.jsonl, reports.jsonl)",
+          "writes_to": "nothing (read-side only)",
+          "role": "Disposable analytical substrate for cockpit widgets"
+        },
+        {
+          "module": "rig_relay/evidence/receipt_store.py",
+          "backend": "Filesystem (JSON envelopes sharded by envelope_id prefix)",
+          "reads_from": "Filesystem manifest.jsonl + envelope JSON files",
+          "writes_to": "File write (atomic temp + rename)",
+          "role": "Canonical receipt envelope persistence"
+        },
+        {
+          "module": "rig_relay/coordination/store.py",
+          "backend": "Filesystem (JSON + JSONL) with fcntl advisory locks",
+          "reads_from": "Filesystem sessions/, tasks/, leases/paths/, artifacts/, conflicts/ directories",
+          "writes_to": "File write + events.jsonl append with fsync",
+          "role": "Cross-process coordination store"
+        },
+        {
+          "module": "rig_relay/reports/report_store.py",
+          "backend": "Filesystem (JSONL append)",
+          "reads_from": "Linear scan of .rig/reports/reports.jsonl",
+          "writes_to": "JSONL append",
+          "role": "Report ledger (append-only)"
+        },
+        {
+          "module": "rig_relay/governance/findings_lifecycle.py",
+          "backend": "Filesystem (JSONL read, Markdown write for status updates)",
+          "reads_from": "Linear scan of docs/findings/out-of-scope-findings.jsonl",
+          "writes_to": "Markdown index only (JSONL is immutable)",
+          "role": "Findings lifecycle tracking"
+        },
+        {
+          "module": "rig_relay/events/store.py",
+          "backend": "Filesystem (JSONL append)",
+          "reads_from": ".build/rig-relay/events/event_fabric_v1.jsonl",
+          "writes_to": "JSONL append with redaction enforcement",
+          "role": "Event fabric persistence"
+        },
+        {
+          "module": "rig_relay/desktop/projection.py",
+          "backend": "Filesystem (reads JSON files from .build/rig-relay/ and docs/json/)",
+          "reads_from": "Various JSON artifacts across build directory and docs tree",
+          "writes_to": "Computed projection dict (never persisted directly; sent via WebSocket)",
+          "role": "Cockpit projection assembly"
+        }
+      ],
+      "key_observations": [
+        "Every store is filesystem-backed with JSON/JSONL as canonical format.",
+        "DuckDB is the only database component — in-memory, never persisted, acts as a disposable read-side analytical view.",
+        "CoordinationStore uses fcntl for cross-process locking — works on same machine, fails across containers.",
+        "Report store, findings lifecycle, and receipt store all use linear file scans for querying — O(N) per query.",
+        "Projection assembly is entirely reactive (read all files, compute projection, push via WebSocket) — no cache invalidation mechanism.",
+        "No tenant isolation, no role-based access, no audit trail for admin operations.",
+        "Content-light enforcement exists only at application boundary (events/store.py redact fields), not at storage boundary."
+      ]
+    },
+    "dependency_audit": {
+      "current_dependencies": {
+        "duckdb": {"version": ">=1.5.0", "used_in": "rig_relay/analytics/engine.py", "role": "in-memory analytical queries over JSONL files"},
+        "anyio": {"version": ">=4.12.0", "used_in": "async paths", "role": "async I/O framework (useful for asyncpg)"},
+        "httpx": {"version": ">=0.28.1", "used_in": "HTTP client", "role": "useful for Postgres HTTP proxy if needed"},
+        "pydantic": {"version": ">=2.12.4", "used_in": "all models", "role": "useful for JSONB serialization/validation at boundary"},
+        "jsonschema": {"version": ">=4.23.0", "used_in": "schema validation", "role": "useful for JSONB payload validation in CHECK constraints"},
+        "platformdirs": {"version": ">=4.9.6", "used_in": "path resolution", "role": "useful for Postgres socket/config path resolution"}
+      },
+      "recommended_additions": [
+        {
+          "package": "psycopg[binary]>=3.2",
+          "justification": "psycopg 3 is the modern Postgres adapter. Binary package includes libpq. Preferred over asyncpg for this codebase because: (1) supports both sync and async via psycopg.AsyncConnection, (2) native integration with anyio via async mode, (3) COPY protocol for bulk JSONL ingest, (4) LISTEN/NOTIFY support, (5) connection pool built-in, (6) maintained by Postgres core team. psycopg 3 is the strategic Postgres driver for Python.",
+          "dependency_cost": "~2MB wheel, no system dependencies beyond libpq (included in binary package)"
+        },
+        {
+          "package": "None additional for Phase 0-2 — raw SQL migrations",
+          "justification": "Phase 0-2 use raw SQL migration files executed via psycopg. Alembic/SQLAlchemy add ORM overhead and migration lock-in that conflicts with Rig Relay's commitment to raw-SQL transparency. Re-evaluate Alembic at Phase 5 if migration complexity warrants it.",
+          "dependency_cost": "zero additional dependencies for Phase 0-2"
+        }
+      ],
+      "evaluated_and_rejected": [
+        {
+          "package": "asyncpg",
+          "reason": "Excellent performance but requires a separate event loop integration. psycopg 3 provides comparable performance with better ecosystem integration (anyio-compatible, built-in pool, COPY protocol)."
+        },
+        {
+          "package": "SQLAlchemy + Alembic",
+          "reason": "ORM overhead conflicts with Rig Relay's raw-SQL transparency principle. Alembic adds migration framework dependency with its own DSL. Raw SQL migrations are more auditable, portable, and align with Rig Relay's governance culture. Re-evaluate at Phase 5."
+        },
+        {
+          "package": "SQLite",
+          "reason": "Forbidden per existing architecture policy. SQLite is no substitute for Postgres enterprise features (RLS, advisory locks, LISTEN/NOTIFY, logical replication, partitioning, materialized views)."
+        }
+      ]
+    },
+    "proposed_data_model": {
+      "tables": [
+        {
+          "name": "artifact_registry",
+          "purpose": "Registry of all known canonical JSON/JSONL/CSV artifacts with their schema identity, SHA256 hash, and content-light classification",
+          "canonical_source_relationship": "Read-only index into artifact files. Files remain canonical.",
+          "primary_key": "artifact_sha256 CHAR(64) PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(artifact_path)"],
+          "typed_columns": [
+            "artifact_sha256 CHAR(64) NOT NULL",
+            "artifact_path TEXT NOT NULL",
+            "artifact_kind TEXT NOT NULL (e.g., 'receipt_envelope', 'release_gate_decision', 'finding', 'event_fabric', 'coordination_event')",
+            "schema_id TEXT NOT NULL (references schema_registry.schema_id)",
+            "schema_version TEXT NOT NULL",
+            "artifact_format TEXT NOT NULL CHECK(artifact_format IN ('json', 'jsonl', 'csv', 'generated_html'))",
+            "content_light BOOLEAN NOT NULL DEFAULT false",
+            "secret_bearing BOOLEAN NOT NULL DEFAULT false",
+            "byte_size BIGINT NOT NULL",
+            "line_count INTEGER (for JSONL/CSV)",
+            "first_observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "last_validated_at TIMESTAMPTZ",
+            "producer TEXT (e.g., 'rig.report', 'tool_invocation', 'coordination_store')"
+          ],
+          "jsonb_columns": [
+            "metadata JSONB (optional extra metadata: tags, owners, audience, permissions)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_artifact_registry_kind ON artifact_registry(artifact_kind)",
+            "CREATE INDEX idx_artifact_registry_schema ON artifact_registry(schema_id, schema_version)",
+            "CREATE INDEX idx_artifact_registry_content_light ON artifact_registry(content_light) WHERE NOT content_light",
+            "CREATE INDEX idx_artifact_registry_path ON artifact_registry USING GIN(to_tsvector('english', artifact_path))"
+          ],
+          "retention_export_policy": "Indefinite retention. Artifact registry rows are immutable — insert new row on artifact re-observation with updated hash. Export as CSV for artifact inventory audit.",
+          "content_light_guarantees": "CHECK(content_light = true OR artifact_kind = 'secret_bearing') — all registered artifacts must declare content_light or secret_bearing classification",
+          "replay_export_behavior": "Export entire registry as JSONL artifact: .build/rig-relay/enterprise/artifact_registry_export.jsonl",
+          "owning_module": "rig_relay/evidence/artifact_registry.py (new)"
+        },
+        {
+          "name": "artifact_validation",
+          "purpose": "Validation results for canonical artifacts against their declared JSON Schema",
+          "canonical_source_relationship": "Read-only log of validation runs. Validation output files remain canonical.",
+          "primary_key": "validation_id UUID PRIMARY KEY DEFAULT gen_random_uuid()",
+          "unique_constraints": ["UNIQUE(artifact_sha256, schema_id, validated_at)"],
+          "typed_columns": [
+            "artifact_sha256 CHAR(64) NOT NULL REFERENCES artifact_registry(artifact_sha256)",
+            "schema_id TEXT NOT NULL",
+            "passed BOOLEAN NOT NULL",
+            "error_count INTEGER NOT NULL DEFAULT 0",
+            "warning_count INTEGER NOT NULL DEFAULT 0",
+            "validated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "validator_version TEXT"
+          ],
+          "jsonb_columns": [
+            "errors JSONB (content-light: error messages only, no instance data)",
+            "warnings JSONB (content-light: warning messages only)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_artifact_validation_hash ON artifact_validation(artifact_sha256)",
+            "CREATE INDEX idx_artifact_validation_passed ON artifact_validation(passed) WHERE NOT passed",
+            "CREATE INDEX idx_artifact_validation_time ON artifact_validation(validated_at DESC)"
+          ],
+          "retention_export_policy": "90-day retention. Export as CSV for compliance evidence: .build/rig-relay/enterprise/validation_history.csv",
+          "content_light_guarantees": "errors/warnings JSONB columns contain error messages only — never include the raw JSON instance that failed validation",
+          "replay_export_behavior": "Export as JSONL: .build/rig-relay/enterprise/validation_export.jsonl",
+          "owning_module": "rig_relay/evidence/validation_scheduler.py (existing, to be extended)"
+        },
+        {
+          "name": "event_log",
+          "purpose": "Operational copy of session observability events for dashboard queries. Envelope-level fields extracted as generated columns from content-light JSONB payload.",
+          "canonical_source_relationship": "Downstream operational projection. ~/.rig/relay/sessions/<id>/observability.jsonl is canonical.",
+          "primary_key": "event_id TEXT PRIMARY KEY",
+          "unique_constraints": [
+            "UNIQUE(session_id, event_name, event_sequence)"
+          ],
+          "typed_columns": [
+            "event_id TEXT NOT NULL",
+            "event_name TEXT NOT NULL GENERATED ALWAYS AS (payload->>'event_name') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "event_sequence BIGINT GENERATED ALWAYS AS ((payload->>'sequence')::BIGINT) STORED",
+            "created_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'created_at')::TIMESTAMPTZ) STORED",
+            "sensitivity_class TEXT NOT NULL DEFAULT 'internal_operational' CHECK(sensitivity_class IN ('public', 'internal_operational', 'telemetry_opt_in', 'redaction_required'))"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light envelope: event metadata only, no raw prompts/completions/file contents)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_event_log_session ON event_log(session_id, created_at DESC)",
+            "CREATE INDEX idx_event_log_name ON event_log(event_name, created_at DESC)",
+            "CREATE INDEX idx_event_log_payload_gin ON event_log USING GIN(payload jsonb_path_ops)",
+            "CREATE INDEX idx_event_log_recent ON event_log(created_at DESC) WHERE created_at > NOW() - INTERVAL '7 days'"
+          ],
+          "partitioning": "PARTITION BY RANGE(created_at) — monthly partitions",
+          "retention_export_policy": "30-day online retention. Monthly partitions detached and exported as JSONL to cold storage: .build/rig-relay/archive/events/. Can be replayed from canonical observability.jsonl files if cold storage lost.",
+          "content_light_guarantees": "INSERT trigger: raise exception if payload contains any forbidden key (token, secret, private_key, raw_prompt, raw_completion, file_content, diff, patch)",
+          "replay_export_behavior": "Export partition as gzipped JSONL artifact: events_2026_05.jsonl.gz",
+          "owning_module": "rig_relay/events/store.py (postgres adapter)"
+        },
+        {
+          "name": "receipt_envelope",
+          "purpose": "Operational copy of ReceiptEnvelope objects for querying by receipt_kind, session_id, actor, and subject. Enables non-repudiation audit and tool invocation correlation.",
+          "canonical_source_relationship": "Downstream operational projection. ~/.rig/relay/receipts/envelopes/<id>.json is canonical.",
+          "primary_key": "envelope_id TEXT PRIMARY KEY",
+          "unique_constraints": [
+            "UNIQUE(receipt_sha256)"
+          ],
+          "typed_columns": [
+            "envelope_id TEXT NOT NULL",
+            "receipt_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'receipt_kind') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "created_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'created_at')::TIMESTAMPTZ) STORED",
+            "receipt_sha256 CHAR(64) NOT NULL GENERATED ALWAYS AS (payload->>'receipt_sha256') STORED",
+            "actor_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->'actor'->>'actor_kind') STORED",
+            "subject_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->'subject'->>'subject_kind') STORED",
+            "decision_kind TEXT GENERATED ALWAYS AS (payload->'decision'->>'decision_kind') STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light ReceiptEnvelope.model_dump() output)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_receipt_envelope_session ON receipt_envelope(session_id, created_at DESC)",
+            "CREATE INDEX idx_receipt_envelope_kind ON receipt_envelope(receipt_kind, created_at DESC)",
+            "CREATE INDEX idx_receipt_envelope_actor ON receipt_envelope(actor_kind, subject_kind)",
+            "CREATE INDEX idx_receipt_envelope_payload_gin ON receipt_envelope USING GIN(payload jsonb_path_ops)",
+            "CREATE INDEX idx_receipt_envelope_sha256 ON receipt_envelope(receipt_sha256)"
+          ],
+          "retention_export_policy": "90-day retention for operational querying. Indefinite retention of canonical envelope JSON files on filesystem.",
+          "content_light_guarantees": "ReceiptEnvelope model already enforces content-light by construction (no raw_content, no stdout, no stderr, no diffs, no secrets in payload). Postgres CHECK constraint validates payload keys against allowlist.",
+          "replay_export_behavior": "Can be fully rebuilt from canonical envelope JSON files on filesystem via batch import.",
+          "owning_module": "rig_relay/evidence/receipt_store.py (postgres adapter)"
+        },
+        {
+          "name": "trace_event",
+          "purpose": "Distributed tracing events linking tool invocations to LLM turns to provider calls. Enables latency root cause analysis and provider performance comparison.",
+          "canonical_source_relationship": "Downstream operational projection. ~/.rig/relay/trace_events.jsonl is canonical.",
+          "primary_key": "span_id TEXT PRIMARY KEY",
+          "unique_constraints": [],
+          "typed_columns": [
+            "span_id TEXT NOT NULL",
+            "trace_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'trace_id') STORED",
+            "parent_span_id TEXT GENERATED ALWAYS AS (payload->>'parent_span_id') STORED",
+            "span_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'span_kind') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "tool_name TEXT GENERATED ALWAYS AS (payload->>'tool_name') STORED",
+            "provider TEXT GENERATED ALWAYS AS (payload->>'provider') STORED",
+            "started_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'started_at')::TIMESTAMPTZ) STORED",
+            "duration_ms DOUBLE PRECISION GENERATED ALWAYS AS ((payload->>'duration_ms')::DOUBLE PRECISION) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light span metadata: trace IDs, timing, status codes, error_kind. No raw I/O.)",
+            "attributes JSONB (content-light key-value span attributes)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_trace_event_trace ON trace_event(trace_id, started_at)",
+            "CREATE INDEX idx_trace_event_session ON trace_event(session_id, started_at DESC)",
+            "CREATE INDEX idx_trace_event_span_kind ON trace_event(span_kind, started_at DESC)",
+            "CREATE INDEX idx_trace_recent ON trace_event(started_at DESC) WHERE started_at > NOW() - INTERVAL '7 days'"
+          ],
+          "partitioning": "PARTITION BY RANGE(started_at) — weekly partitions",
+          "retention_export_policy": "14-day online retention. Weekly partitions exported as gzipped JSONL to cold storage.",
+          "content_light_guarantees": "Span payloads contain timing and status metadata only. CHECK constraint: no keys matching forbidden redact field names.",
+          "replay_export_behavior": "Can be rebuilt from canonical trace_events.jsonl file.",
+          "owning_module": "rig_relay/events/store.py (postgres adapter)"
+        },
+        {
+          "name": "coordination_lease",
+          "purpose": "Active path reservations and task claims for cross-session coordination. Replaces file-based CoordinationStore for operational hot path.",
+          "canonical_source_relationship": "Dual authority: Postgres is operational store for active leases. events.jsonl is canonical replay log.",
+          "primary_key": "lease_id TEXT PRIMARY KEY",
+          "unique_constraints": [],
+          "typed_columns": [
+            "lease_id TEXT NOT NULL",
+            "session_id TEXT NOT NULL",
+            "task_id TEXT NOT NULL",
+            "lease_kind TEXT NOT NULL CHECK(lease_kind IN ('task_claim', 'path_reservation'))",
+            "mode TEXT CHECK(mode IN ('read', 'write'))",
+            "status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'released', 'stale', 'expired'))",
+            "path_hashes TEXT[] DEFAULT '{}'",
+            "ttl_seconds INTEGER NOT NULL DEFAULT 120",
+            "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "expires_at TIMESTAMPTZ NOT NULL",
+            "released_at TIMESTAMPTZ"
+          ],
+          "jsonb_columns": [
+            "scope JSONB (content-light scope definition: allowed_paths hashes only, no raw paths)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_coordination_lease_session ON coordination_lease(session_id, status)",
+            "CREATE INDEX idx_coordination_lease_active ON coordination_lease(status) WHERE status = 'active'",
+            "CREATE INDEX idx_coordination_lease_expires ON coordination_lease(expires_at) WHERE status = 'active'",
+            "CREATE INDEX idx_coordination_lease_path ON coordination_lease USING GIN(path_hashes)"
+          ],
+          "retention_export_policy": "Released/stale leases archived after 7 days. Active leases retained until released.",
+          "content_light_guarantees": "path_hashes are salted SHA256 hashes of paths — no raw filesystem paths stored. scope JSONB contains path_hashes and mode only.",
+          "replay_export_behavior": "All lease operations are also written to events.jsonl for canonical replay.",
+          "owning_module": "rig_relay/coordination/store.py (postgres adapter)"
+        },
+        {
+          "name": "workstream_event",
+          "purpose": "Task lifecycle events (claimed, released, heartbeat) and mission progress tracking for fleet orchestration visibility.",
+          "canonical_source_relationship": "Downstream operational projection. coord.* events in events.jsonl are canonical.",
+          "primary_key": "event_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(session_id, task_id, event_sequence)"],
+          "typed_columns": [
+            "event_id TEXT NOT NULL",
+            "event_name TEXT NOT NULL GENERATED ALWAYS AS (payload->>'event_name') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "task_id TEXT GENERATED ALWAYS AS (payload->>'task_id') STORED",
+            "event_sequence BIGINT GENERATED ALWAYS AS ((payload->>'sequence')::BIGINT) STORED",
+            "created_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'created_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light coordination event payload)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_workstream_event_session ON workstream_event(session_id, created_at DESC)",
+            "CREATE INDEX idx_workstream_event_task ON workstream_event(task_id, created_at DESC) WHERE task_id IS NOT NULL",
+            "CREATE INDEX idx_workstream_event_name ON workstream_event(event_name, created_at DESC)",
+            "CREATE UNIQUE INDEX idx_workstream_event_seq ON workstream_event(session_id, task_id, event_sequence)"
+          ],
+          "retention_export_policy": "30-day retention. Exportable as JSONL artifact.",
+          "content_light_guarantees": "Coordination events are content-light by construction — only event metadata, session IDs, task IDs, path hashes.",
+          "replay_export_behavior": "Export as JSONL: .build/rig-relay/coordination/workstream_events_export.jsonl",
+          "owning_module": "rig_relay/coordination/store.py (postgres adapter)"
+        },
+        {
+          "name": "finding",
+          "purpose": "Operational query surface for out-of-scope findings lifecycle. JSONL remains append-only canonical record.",
+          "canonical_source_relationship": "Downstream operational projection. docs/findings/out-of-scope-findings.jsonl is canonical.",
+          "primary_key": "finding_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(dedupe_key)"],
+          "typed_columns": [
+            "finding_id TEXT NOT NULL",
+            "dedupe_key CHAR(32) NOT NULL",
+            "kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'kind') STORED",
+            "severity TEXT NOT NULL GENERATED ALWAYS AS (payload->>'severity') STORED CHECK(severity IN ('low', 'medium', 'high', 'critical'))",
+            "status TEXT NOT NULL GENERATED ALWAYS AS (payload->>'status') STORED CHECK(status IN ('open', 'acknowledged', 'triaged', 'accepted', 'deferred', 'blocked', 'in_progress', 'resolved', 'wont_fix', 'superseded', 'duplicate', 'invalid'))",
+            "created_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'created_at')::TIMESTAMPTZ) STORED",
+            "updated_at TIMESTAMPTZ GENERATED ALWAYS AS ((payload->>'updated_at')::TIMESTAMPTZ) STORED",
+            "scope_relation TEXT GENERATED ALWAYS AS (payload->>'scope_relation') STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light finding: title, description, affected_paths hashes, language_subsystem, best_practice_anchor, recommended_slice)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_finding_status_severity ON finding(status, severity) WHERE status IN ('open', 'in_progress', 'blocked')",
+            "CREATE INDEX idx_finding_kind ON finding(kind, status)",
+            "CREATE INDEX idx_finding_created ON finding(created_at DESC)",
+            "CREATE INDEX idx_finding_dedupe ON finding(dedupe_key)",
+            "CREATE INDEX idx_finding_fts ON finding USING GIN(to_tsvector('english', COALESCE(payload->>'title', '') || ' ' || COALESCE(payload->>'description', '')))"
+          ],
+          "retention_export_policy": "Indefinite retention. Resolved findings move to cold storage partition after 90 days.",
+          "content_light_guarantees": "Finding payload contains only metadata and descriptions — no raw file contents, diffs, or snippets. CHECK constraint validates this.",
+          "replay_export_behavior": "Can be fully rebuilt from canonical JSONL file.",
+          "owning_module": "rig_relay/governance/findings_lifecycle.py (postgres adapter)"
+        },
+        {
+          "name": "release_gate_decision",
+          "purpose": "Operational query surface for release gate decisions, blocker tracking, and RC readiness dashboards.",
+          "canonical_source_relationship": "Downstream operational projection. docs/json/release_gate/*.v1.json is canonical.",
+          "primary_key": "decision_id TEXT PRIMARY KEY",
+          "unique_constraints": [],
+          "typed_columns": [
+            "decision_id TEXT NOT NULL",
+            "gate_name TEXT NOT NULL GENERATED ALWAYS AS (payload->>'gate_name') STORED",
+            "decision_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'decision_kind') STORED CHECK(decision_kind IN ('blocked', 'requires_review', 'allowed', 'not_applicable'))",
+            "severity TEXT NOT NULL GENERATED ALWAYS AS (payload->>'severity') STORED CHECK(severity IN ('info', 'warning', 'error', 'critical'))",
+            "status TEXT NOT NULL GENERATED ALWAYS AS (payload->>'status') STORED CHECK(status IN ('open', 'in_progress', 'resolved', 'deferred', 'accepted'))",
+            "created_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'created_at')::TIMESTAMPTZ) STORED",
+            "resolved_at TIMESTAMPTZ GENERATED ALWAYS AS ((payload->>'resolved_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light gate decision: reasons[], recommendations[], affected artifacts, evidence refs)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_release_gate_status ON release_gate_decision(status) WHERE status IN ('open', 'in_progress')",
+            "CREATE INDEX idx_release_gate_severity ON release_gate_decision(severity, status)",
+            "CREATE INDEX idx_release_gate_name ON release_gate_decision(gate_name, decision_kind)",
+            "CREATE INDEX idx_release_gate_created ON release_gate_decision(created_at DESC)"
+          ],
+          "retention_export_policy": "Indefinite retention for compliance evidence.",
+          "content_light_guarantees": "Gate decisions contain reasons and recommendations — metadata only. No raw test output, code snippets, or configuration secrets.",
+          "replay_export_behavior": "Can be rebuilt from canonical JSON files.",
+          "owning_module": "rig_relay/governance/governance_engine.py (postgres adapter)"
+        },
+        {
+          "name": "provider_packet",
+          "purpose": "Provider integration status, capability manifests, and auth state snapshots for cockpit provider health dashboards.",
+          "canonical_source_relationship": "Downstream operational projection. docs/json/governance/*provider*.v1.json is canonical.",
+          "primary_key": "packet_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(provider, packet_kind, captured_at)"],
+          "typed_columns": [
+            "packet_id TEXT NOT NULL",
+            "provider TEXT NOT NULL GENERATED ALWAYS AS (payload->>'provider') STORED",
+            "packet_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'packet_kind') STORED",
+            "status TEXT GENERATED ALWAYS AS (payload->>'status') STORED",
+            "captured_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'captured_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light provider metadata: status, capabilities, rate limits, auth state indicator — never raw tokens)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_provider_packet_provider ON provider_packet(provider, captured_at DESC)",
+            "CREATE INDEX idx_provider_packet_kind ON provider_packet(packet_kind, captured_at DESC)"
+          ],
+          "retention_export_policy": "90-day rolling window. Older snapshots exported as JSONL.",
+          "content_light_guarantees": "Provider packets never contain raw API keys, tokens, or secrets. CHECK constraint validates payload keys.",
+          "replay_export_behavior": "Export as JSONL: .build/rig-relay/enterprise/provider_packet_export.jsonl",
+          "owning_module": "rig_relay/providers/ (postgres adapter for operating picture persistence)"
+        },
+        {
+          "name": "provider_operating_picture",
+          "purpose": "Current operating picture snapshot for each provider — capability matrix, trust tier, health status.",
+          "canonical_source_relationship": "Downstream operational projection. Provider operating picture JSON files are canonical.",
+          "primary_key": "picture_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(provider, updated_at)"],
+          "typed_columns": [
+            "picture_id TEXT NOT NULL",
+            "provider TEXT NOT NULL GENERATED ALWAYS AS (payload->>'provider') STORED",
+            "provider_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'provider_kind') STORED",
+            "trust_tier TEXT NOT NULL GENERATED ALWAYS AS (payload->>'trust_tier') STORED",
+            "health_status TEXT NOT NULL GENERATED ALWAYS AS (payload->>'health_status') STORED",
+            "updated_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'updated_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light operating picture: capability matrix, health indicators, rate limit snapshots)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_operating_picture_provider ON provider_operating_picture(provider, updated_at DESC)",
+            "CREATE INDEX idx_operating_picture_health ON provider_operating_picture(health_status) WHERE health_status != 'available'"
+          ],
+          "retention_export_policy": "Latest snapshot only. Historical snapshots via provider_packet table.",
+          "content_light_guarantees": "Operating pictures contain capability and health metadata only. CHECK constraint validates.",
+          "replay_export_behavior": "Export latest snapshot as JSON artifact.",
+          "owning_module": "rig_relay/providers/ (postgres adapter)"
+        },
+        {
+          "name": "tool_invocation",
+          "purpose": "Tool invocation records for audit, latency analysis, and permission enforcement evidence. SHA256 hashes link to canonical receipt envelopes.",
+          "canonical_source_relationship": "Downstream operational projection. Receipt envelopes (subject_kind=tool_invocation) are canonical.",
+          "primary_key": "invocation_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(receipt_sha256)"],
+          "typed_columns": [
+            "invocation_id TEXT NOT NULL",
+            "tool_name TEXT NOT NULL GENERATED ALWAYS AS (payload->>'tool_name') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "receipt_sha256 CHAR(64) NOT NULL GENERATED ALWAYS AS (payload->>'receipt_sha256') STORED",
+            "status TEXT NOT NULL GENERATED ALWAYS AS (payload->>'status') STORED CHECK(status IN ('success', 'failed', 'permission_denied', 'timeout', 'cancelled', 'dry_run'))",
+            "latency_ms DOUBLE PRECISION GENERATED ALWAYS AS ((payload->>'latency_ms')::DOUBLE PRECISION) STORED",
+            "invoked_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'invoked_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light invocation metadata: tool_name, status, latency_ms, permission decision, arg_hashes — never raw args or outputs)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_tool_invocation_session ON tool_invocation(session_id, invoked_at DESC)",
+            "CREATE INDEX idx_tool_invocation_name ON tool_invocation(tool_name, invoked_at DESC)",
+            "CREATE INDEX idx_tool_invocation_latency ON tool_invocation(tool_name, latency_ms) WHERE status = 'success'",
+            "CREATE INDEX idx_tool_invocation_sha256 ON tool_invocation(receipt_sha256)"
+          ],
+          "retention_export_policy": "90-day retention. Export as JSONL: .build/rig-relay/tool_invocations/tool_invocation_export.jsonl",
+          "content_light_guarantees": "Tool invocation records contain hashes only — never raw args, raw stdout, raw stderr, or raw file contents. CHECK constraint validates.",
+          "replay_export_behavior": "Full replay from canonical receipt envelope files.",
+          "owning_module": "rig_relay/runtime/tool_invocation_execution.py (postgres adapter for invocation logging)"
+        },
+        {
+          "name": "mutation_receipt",
+          "purpose": "Live mutation audit trail: which agent mutated which files in which worktree, with adoption/merge decision evidence.",
+          "canonical_source_relationship": "Downstream operational projection. Receipt envelopes (subject_kind=worktree) are canonical.",
+          "primary_key": "mutation_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(worktree_id, file_path_hash, mutated_at)"],
+          "typed_columns": [
+            "mutation_id TEXT NOT NULL",
+            "worktree_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'worktree_id') STORED",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "task_id TEXT GENERATED ALWAYS AS (payload->>'task_id') STORED",
+            "agent_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'agent_id') STORED",
+            "mutation_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'mutation_kind') STORED CHECK(mutation_kind IN ('file_create', 'file_modify', 'file_delete', 'patch_apply', 'search_replace'))",
+            "file_path_hash TEXT NOT NULL GENERATED ALWAYS AS (payload->>'file_path_hash') STORED",
+            "content_sha256 CHAR(64) GENERATED ALWAYS AS (payload->>'content_sha256') STORED",
+            "adoption_status TEXT GENERATED ALWAYS AS (payload->>'adoption_status') STORED CHECK(adoption_status IN ('pending', 'approved', 'rejected', 'merged', 'rolled_back'))",
+            "mutated_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'mutated_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light mutation metadata: file_path_hash, content_sha256, adoption decision. Never raw file contents or diffs.)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_mutation_receipt_worktree ON mutation_receipt(worktree_id, mutated_at DESC)",
+            "CREATE INDEX idx_mutation_receipt_session ON mutation_receipt(session_id, mutated_at DESC)",
+            "CREATE INDEX idx_mutation_receipt_adoption ON mutation_receipt(adoption_status) WHERE adoption_status = 'pending'"
+          ],
+          "retention_export_policy": "Indefinite retention for mutation audit trail.",
+          "content_light_guarantees": "Mutation receipts store file_path_hash (salted SHA256) and content_sha256 — never raw paths or file contents.",
+          "replay_export_behavior": "Full replay from canonical receipt envelope files.",
+          "owning_module": "rig_relay/ralph/adoption_merge.py (postgres adapter for mutation tracking)"
+        },
+        {
+          "name": "context_artifact",
+          "purpose": "Context assembly metadata: symbol indexes, repo map hashes, compression plans. Enables cross-session context reuse and token budget optimization.",
+          "canonical_source_relationship": "Dual authority: JSON artifact files are canonical; Postgres stores assembly metadata for efficient reuse.",
+          "primary_key": "context_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(session_id, context_mode, generated_at)"],
+          "typed_columns": [
+            "context_id TEXT NOT NULL",
+            "session_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'session_id') STORED",
+            "context_mode TEXT NOT NULL GENERATED ALWAYS AS (payload->>'context_mode') STORED CHECK(context_mode IN ('map', 'packet', 'handoff', 'collision', 'symbols', 'digest'))",
+            "compression_mode TEXT GENERATED ALWAYS AS (payload->>'compression_mode') STORED",
+            "symbol_count INTEGER GENERATED ALWAYS AS ((payload->>'symbol_count')::INTEGER) STORED",
+            "token_count INTEGER GENERATED ALWAYS AS ((payload->>'token_count')::INTEGER) STORED",
+            "repo_map_sha256 CHAR(64) GENERATED ALWAYS AS (payload->>'repo_map_sha256') STORED",
+            "generated_at TIMESTAMPTZ NOT NULL GENERATED ALWAYS AS ((payload->>'generated_at')::TIMESTAMPTZ) STORED"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light context metadata: mode, symbol names, path_hashes, token counts. Never file contents.)",
+            "symbol_index JSONB (symbol name -> path_hash mapping, content-light)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_context_artifact_session ON context_artifact(session_id, generated_at DESC)",
+            "CREATE INDEX idx_context_artifact_mode ON context_artifact(context_mode, generated_at DESC)"
+          ],
+          "retention_export_policy": "7-day retention for operational reuse. Export as JSON: .build/rig-relay/context/context_manifest.json",
+          "content_light_guarantees": "Context artifacts contain symbol names and path_hashes only — never raw file contents or import bodies.",
+          "replay_export_behavior": "Export as JSONL: .build/rig-relay/context/context_artifact_export.jsonl",
+          "owning_module": "rig_relay/context/assembler.py (postgres adapter for context caching)"
+        },
+        {
+          "name": "cockpit_projection",
+          "purpose": "Computed projection state for cockpit dashboard rendering. Signed SHA256 projection blobs pushed via WebSocket.",
+          "canonical_source_relationship": "Runtime-only computed state. Can be rebuilt from canonical artifacts.",
+          "primary_key": "projection_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(projection_kind, projection_sha256)"],
+          "typed_columns": [
+            "projection_id TEXT NOT NULL",
+            "projection_kind TEXT NOT NULL CHECK(projection_kind IN ('full', 'analytics', 'coordination', 'provider', 'release_gate', 'findings', 'patch'))",
+            "projection_sha256 CHAR(64) NOT NULL",
+            "schema_version TEXT NOT NULL",
+            "generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "source_artifact_sha256 CHAR(64) NOT NULL (SHA256 of the source data that produced this projection)",
+            "invalidated_by TEXT (event that invalidated this projection)"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light projection: widget data, computed aggregates. No raw content.)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_cockpit_projection_kind ON cockpit_projection(projection_kind, generated_at DESC)",
+            "CREATE INDEX idx_cockpit_projection_sha256 ON cockpit_projection(projection_sha256)"
+          ],
+          "retention_export_policy": "Latest projection per kind retained (overwrite). Historical projections not needed — rebuildable.",
+          "content_light_guarantees": "Projections are content-light by construction — aggregates, counts, SHA256 hashes only.",
+          "replay_export_behavior": "Not exported — always rebuilt from canonical artifacts on demand.",
+          "owning_module": "rig_relay/desktop/projection.py (postgres adapter for projection caching)"
+        },
+        {
+          "name": "cockpit_ui_state",
+          "purpose": "User layout preferences, widget visibility, disclosure levels for cockpit UI persistence.",
+          "canonical_source_relationship": "Runtime-only ephemeral state.",
+          "primary_key": "state_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(session_id, state_key)"],
+          "typed_columns": [
+            "state_id TEXT NOT NULL",
+            "session_id TEXT NOT NULL",
+            "state_key TEXT NOT NULL CHECK(state_key IN ('layout_mode', 'widget_visibility', 'disclosure_levels', 'favorite_views', 'panel_widths'))",
+            "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+          ],
+          "jsonb_columns": [
+            "state_value JSONB NOT NULL (content-light UI state: key-value preferences, boolean flags, integer dimensions)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_cockpit_ui_session ON cockpit_ui_state(session_id, state_key)"
+          ],
+          "retention_export_policy": "Per-session ephemeral. Deleted on session close.",
+          "content_light_guarantees": "UI state is layout metadata only — no file paths, no user data, no PII.",
+          "replay_export_behavior": "Not exported.",
+          "owning_module": "rig_relay/desktop/websocket_server.py (postgres adapter for UI state)"
+        },
+        {
+          "name": "telemetry_aggregate",
+          "purpose": "Precomputed content-light telemetry aggregates for dashboard widgets and SLO reporting. Materialized views over event_log, tool_invocation, and receipt_envelope.",
+          "canonical_source_relationship": "Derived from canonical observability.jsonl via Postgres materialized views.",
+          "primary_key": "aggregate_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(aggregate_kind, computed_at, period_start)"],
+          "typed_columns": [
+            "aggregate_id TEXT NOT NULL",
+            "aggregate_kind TEXT NOT NULL CHECK(aggregate_kind IN ('session_health', 'tool_latency_p50_p95_p99', 'error_rate', 'event_volume', 'provider_latency', 'tool_usage_top_n', 'session_duration', 'tenant_usage'))",
+            "period_start TIMESTAMPTZ NOT NULL",
+            "period_end TIMESTAMPTZ NOT NULL",
+            "computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "total_sessions INTEGER",
+            "total_events BIGINT",
+            "avg_latency_ms DOUBLE PRECISION",
+            "p50_latency_ms DOUBLE PRECISION",
+            "p95_latency_ms DOUBLE PRECISION",
+            "p99_latency_ms DOUBLE PRECISION",
+            "error_rate DOUBLE PRECISION"
+          ],
+          "jsonb_columns": [
+            "breakdown JSONB (content-light dimension breakdowns: by tool_name, by provider, by session)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_telemetry_aggregate_kind ON telemetry_aggregate(aggregate_kind, period_start DESC)",
+            "CREATE INDEX idx_telemetry_aggregate_computed ON telemetry_aggregate(computed_at DESC)"
+          ],
+          "retention_export_policy": "90-day retention for operational aggregates. Export as CSV for SLO reporting: .build/rig-relay/enterprise/telemetry_aggregates.csv",
+          "content_light_guarantees": "Aggregates are counts, rates, and percentile latencies — no raw event data, no PII, no user content.",
+          "replay_export_behavior": "Export as CSV: .build/rig-relay/enterprise/telemetry_aggregates_export.csv",
+          "owning_module": "rig_relay/analytics/engine.py (postgres adapter for aggregate computation)"
+        },
+        {
+          "name": "enterprise_audit_event",
+          "purpose": "Enterprise audit trail: admin actions, tenant provisioning, permission changes, consent changes, configuration mutations. Content-light, immutable append-only.",
+          "canonical_source_relationship": "Dual authority: Postgres is operational store for querying. Canonical audit_log.jsonl exported periodically.",
+          "primary_key": "audit_event_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(audit_event_sha256)"],
+          "typed_columns": [
+            "audit_event_id TEXT NOT NULL",
+            "audit_event_sha256 CHAR(64) NOT NULL",
+            "event_kind TEXT NOT NULL GENERATED ALWAYS AS (payload->>'event_kind') STORED CHECK(event_kind IN ('admin_action', 'tenant_provision', 'tenant_deprovision', 'permission_change', 'consent_change', 'config_mutation', 'role_assignment', 'backup_operation', 'export_operation'))",
+            "actor_id TEXT NOT NULL GENERATED ALWAYS AS (payload->>'actor_id') STORED",
+            "tenant_id TEXT GENERATED ALWAYS AS (payload->>'tenant_id') STORED",
+            "target_kind TEXT GENERATED ALWAYS AS (payload->>'target_kind') STORED",
+            "target_id TEXT GENERATED ALWAYS AS (payload->>'target_id') STORED",
+            "action TEXT NOT NULL GENERATED ALWAYS AS (payload->>'action') STORED",
+            "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+          ],
+          "jsonb_columns": [
+            "payload JSONB NOT NULL (content-light audit event: what changed, before/after SHA256 hashes, reason, evidence refs)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_enterprise_audit_kind ON enterprise_audit_event(event_kind, created_at DESC)",
+            "CREATE INDEX idx_enterprise_audit_actor ON enterprise_audit_event(actor_id, created_at DESC)",
+            "CREATE INDEX idx_enterprise_audit_tenant ON enterprise_audit_event(tenant_id, created_at DESC) WHERE tenant_id IS NOT NULL",
+            "CREATE INDEX idx_enterprise_audit_time ON enterprise_audit_event(created_at DESC)"
+          ],
+          "partitioning": "PARTITION BY RANGE(created_at) — monthly partitions",
+          "retention_export_policy": "Indefinite retention. Monthly partitions archived to cold storage. Export as gzipped JSONL for compliance: .build/rig-relay/enterprise/audit_events_<year>_<month>.jsonl.gz",
+          "content_light_guarantees": "Audit events contain what changed (field names + SHA256 hashes), who, when, why. Never raw configuration values, credentials, or PII. CHECK constraint validates.",
+          "replay_export_behavior": "Export as gzipped JSONL: .build/rig-relay/enterprise/audit_events_export.jsonl.gz",
+          "owning_module": "rig_relay/evidence/audit_trail.py (postgres adapter)"
+        },
+        {
+          "name": "schema_registry",
+          "purpose": "Registry of all JSON Schema files in the repo with schema_id, version, file path, and content SHA256. Powers schema discovery and automated validation.",
+          "canonical_source_relationship": "Read-only index. docs/schemas/*.schema.json files are canonical.",
+          "primary_key": "schema_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(schema_id, schema_version)"],
+          "typed_columns": [
+            "schema_id TEXT NOT NULL",
+            "schema_version TEXT NOT NULL",
+            "schema_path TEXT NOT NULL",
+            "content_sha256 CHAR(64) NOT NULL",
+            "title TEXT",
+            "description TEXT",
+            "artifact_kinds TEXT[] (which artifact tables this schema governs)",
+            "first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+          ],
+          "jsonb_columns": [
+            "schema_metadata JSONB (additional schema metadata from $defs, properties enumeration, required fields)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_schema_registry_version ON schema_registry(schema_id, schema_version)",
+            "CREATE INDEX idx_schema_registry_kind ON schema_registry USING GIN(artifact_kinds)",
+            "CREATE INDEX idx_schema_registry_fts ON schema_registry USING GIN(to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(description, '')))"
+          ],
+          "retention_export_policy": "Indefinite retention.",
+          "content_light_guarantees": "Schema files contain schema definitions only — no instance data, no secrets.",
+          "replay_export_behavior": "Export as JSONL: .build/rig-relay/enterprise/schema_registry_export.jsonl",
+          "owning_module": "rig_relay/evidence/validation_scheduler.py (postgres adapter for schema registry)"
+        },
+        {
+          "name": "projection_invalidation",
+          "purpose": "Log of projection invalidation events. When a canonical artifact changes, a NOTIFY is emitted and an invalidation event is recorded here. Cockpit backend listens and recomputes affected projections.",
+          "canonical_source_relationship": "Runtime-only operational log.",
+          "primary_key": "invalidation_id TEXT PRIMARY KEY",
+          "unique_constraints": [],
+          "typed_columns": [
+            "invalidation_id TEXT NOT NULL",
+            "projection_kind TEXT NOT NULL",
+            "artifact_sha256 CHAR(64) NOT NULL",
+            "artifact_path TEXT NOT NULL",
+            "invalidation_reason TEXT NOT NULL CHECK(invalidation_reason IN ('artifact_updated', 'new_event', 'lease_changed', 'finding_status_changed', 'gate_decision_changed', 'provider_status_changed', 'manual_refresh'))",
+            "invalidated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "recomputed_at TIMESTAMPTZ",
+            "recomputed_sha256 CHAR(64)"
+          ],
+          "jsonb_columns": [
+            "metadata JSONB (content-light: what changed, source details)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_projection_invalidation_kind ON projection_invalidation(projection_kind, invalidated_at DESC)",
+            "CREATE INDEX idx_projection_invalidation_time ON projection_invalidation(invalidated_at DESC)"
+          ],
+          "retention_export_policy": "24-hour retention. Short-lived operational log only — rebuildable.",
+          "content_light_guarantees": "Invalidation events contain artifact_sha256 and path references — no artifact content.",
+          "replay_export_behavior": "Not exported. Runtime-only.",
+          "owning_module": "rig_relay/desktop/projection.py (postgres adapter for invalidation tracking)"
+        },
+        {
+          "name": "export_manifest",
+          "purpose": "Manifest of all artifact exports from Postgres back to canonical JSON/JSONL/CSV files. Verifies export completeness and replay equivalence.",
+          "canonical_source_relationship": "Generated artifact. Each export run produces a manifest record.",
+          "primary_key": "manifest_id TEXT PRIMARY KEY",
+          "unique_constraints": ["UNIQUE(export_run_id, table_name)"],
+          "typed_columns": [
+            "manifest_id TEXT NOT NULL",
+            "export_run_id TEXT NOT NULL",
+            "table_name TEXT NOT NULL",
+            "row_count BIGINT NOT NULL",
+            "export_sha256 CHAR(64) NOT NULL",
+            "source_sha256 CHAR(64) (SHA256 of canonical source if applicable)",
+            "export_format TEXT NOT NULL CHECK(export_format IN ('json', 'jsonl', 'csv', 'jsonl_gz'))",
+            "export_path TEXT NOT NULL",
+            "verification_passed BOOLEAN NOT NULL DEFAULT false",
+            "exported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+          ],
+          "jsonb_columns": [
+            "verification_details JSONB (content-light: checksums, row count matches, schema_ids verified)"
+          ],
+          "indexes": [
+            "CREATE INDEX idx_export_manifest_run ON export_manifest(export_run_id)",
+            "CREATE INDEX idx_export_manifest_table ON export_manifest(table_name, exported_at DESC)"
+          ],
+          "retention_export_policy": "Indefinite retention for export audit trail.",
+          "content_light_guarantees": "Export manifests contain counts and hashes — no exported data content.",
+          "replay_export_behavior": "Manifests are themselves JSONL artifacts.",
+          "owning_module": "rig_relay/enterprise/export_manager.py (new)"
+        }
+      ],
+      "materialized_views": [
+        {
+          "name": "mv_session_health_scorecard",
+          "purpose": "Precomputed session health indicators for cockpit widget. Replaces DuckDB query in view_session_health_scorecard().",
+          "refresh_interval": "60 seconds",
+          "owning_module": "rig_relay/analytics/views.py"
+        },
+        {
+          "name": "mv_tool_latency_heatmap",
+          "purpose": "Precomputed tool latency distribution (p50, p95, p99) by tool_name. Replaces DuckDB query in view_tool_latency_heatmap().",
+          "refresh_interval": "120 seconds",
+          "owning_module": "rig_relay/analytics/views.py"
+        },
+        {
+          "name": "mv_release_gate_blocker_burndown",
+          "purpose": "Precomputed open release gate blocker counts by severity and status. Replaces DuckDB query in view_release_gate_blocker_burndown().",
+          "refresh_interval": "300 seconds",
+          "owning_module": "rig_relay/analytics/views.py"
+        },
+        {
+          "name": "mv_correlation_integrity",
+          "purpose": "Precomputed cross-store correlation integrity checks. Replaces DuckDB query in view_correlation_integrity().",
+          "refresh_interval": "120 seconds",
+          "owning_module": "rig_relay/analytics/views.py"
+        }
+      ]
+    },
+    "interface_port_strategy": {
+      "ports": [
+        {
+          "port": "ArtifactRegistryPort",
+          "signature": "Protocol with async methods: register_artifact(ArtifactRef), get_artifact(sha256) -> ArtifactRef, list_by_kind(kind) -> list[ArtifactRef], validate_artifact(sha256, schema_id) -> ValidationResult",
+          "existing_module_dependency": "rig_relay/evidence/receipt_store.py (ReceiptStore protocol), rig_relay/evidence/validation_scheduler.py",
+          "postgres_adapter": "PostgresArtifactRegistry implements ArtifactRegistryPort using psycopg"
+        },
+        {
+          "port": "EventIngestPort",
+          "signature": "Protocol with async methods: ingest_event(event: dict) -> event_id, ingest_batch(events: list[dict]) -> list[str], query_events(filter: EventFilter) -> list[dict]",
+          "existing_module_dependency": "rig_relay/events/store.py (current file-based store), rig_relay/analytics/engine.py (DuckDB ingestion)",
+          "postgres_adapter": "PostgresEventIngest implements EventIngestPort using psycopg COPY protocol for batch ingest"
+        },
+        {
+          "port": "ReceiptStorePort",
+          "signature": "Protocol (already exists as ReceiptStore in rig_relay/evidence/receipt_store.py): append(envelope) -> Path, get(envelope_id) -> ReceiptEnvelope, list(...), list_by_session(...), count()",
+          "existing_module_dependency": "rig_relay/evidence/receipt_store.py (FilesystemReceiptStore already implements ReceiptStore protocol)",
+          "postgres_adapter": "PostgresReceiptStore implements ReceiptStore protocol. append() writes to Postgres AND filesystem (dual authority). get() reads from Postgres. list() uses indexed queries."
+        },
+        {
+          "port": "CoordinationStorePort",
+          "signature": "Protocol with async methods: claim_task(...), reserve_paths(...), release_paths(...), publish_artifact(...), report_conflict(...), read_state_projection()",
+          "existing_module_dependency": "rig_relay/coordination/store.py (CoordinationStore dataclass)",
+          "postgres_adapter": "PostgresCoordinationStore implements same API. Uses pg_advisory_lock() instead of fcntl. Maintains dual writes to events.jsonl for canonical replay."
+        },
+        {
+          "port": "ProjectionStorePort",
+          "signature": "Protocol with async methods: get_latest_projection(kind) -> Projection, invalidate_projection(kind, reason) -> None, subscribe_invalidation(kinds: list[str]) -> AsyncIterator[InvalidationEvent]",
+          "existing_module_dependency": "rig_relay/desktop/projection.py (projection assembly), rig_relay/desktop/websocket_server.py (WebSocket push)",
+          "postgres_adapter": "PostgresProjectionStore implements ProjectionStorePort. subscribe_invalidation() uses psycopg async LISTEN/NOTIFY via AsyncConnection."
+        },
+        {
+          "port": "TelemetryProjectionPort",
+          "signature": "Protocol with async methods: compute_aggregate(kind, period_start, period_end) -> Aggregate, refresh_materialized_view(view_name) -> None, query_dashboard(widget_id) -> list[dict]",
+          "existing_module_dependency": "rig_relay/analytics/engine.py (DuckDB compute_view), rig_relay/analytics/views.py (VIEW_FUNCTIONS)",
+          "postgres_adapter": "PostgresTelemetryProjection computes aggregates in Postgres, refreshes materialized views, and returns dashboard query results."
+        },
+        {
+          "port": "MigrationRunnerPort",
+          "signature": "Protocol with async methods: run_migrations(target_version: str) -> MigrationReport, validate_migration_consistency() -> bool, get_migration_history() -> list[MigrationRecord]",
+          "existing_module_dependency": "New module. No existing migration infrastructure.",
+          "postgres_adapter": "PostgresMigrationRunner executes raw SQL migration files in order, uses advisory lock for exclusive migration access."
+        },
+        {
+          "port": "ExportReplayPort",
+          "signature": "Protocol with async methods: export_table_to_artifact(table_name) -> ExportManifest, replay_from_artifact(artifact_path) -> ReplayVerification, verify_export_equivalence(table_name) -> bool",
+          "existing_module_dependency": "New module. No existing export infrastructure.",
+          "postgres_adapter": "PostgresExportReplay exports tables to JSONL via COPY TO, verifies SHA256 equivalence between exported artifacts and canonical source artifacts."
+        }
+      ],
+      "adapter_registration": "All adapters registered via a lightweight registry pattern consistent with rig_relay/provider_registry/. Adapters are lazy-loaded — Postgres adapters only initialized when Postgres connection string is configured. File-based adapters remain the default for local-first operation."
+    },
+    "migration_strategy": {
+      "phases": [
+        {"phase": 0, "name": "Audit (current)", "description": "This audit. No code changes.", "deliverable": "This JSON artifact set"},
+        {"phase": 1, "name": "Schema Contracts", "description": "JSON Schema contracts for Postgres projection manifests. Defines the interface between artifact authority and Postgres operational projections.", "deliverable": "docs/schemas/rig.relay.postgres_*.v1.schema.json files. Migration SQL files generated from schemas.", "code_changes": false},
+        {"phase": 2, "name": "File-backed Reference Adapter", "description": "Implement all Port interfaces with file-backed reference adapters. FilesystemReceiptStore already implements ReceiptStore. Create FileArtifactRegistry, FileProjectionStore, etc. All adapters produce equivalent results.", "deliverable": "Working port interfaces + file-backed adapters + contract tests", "code_changes": true},
+        {"phase": 3, "name": "Postgres Adapter", "description": "Implement Postgres adapters behind same ports. Create migration runner. Postgres schema created from Phase 1 migration SQL.", "deliverable": "Working Postgres adapters + migration runner + integration tests", "code_changes": true},
+        {"phase": 4, "name": "Replay Equivalence Tests", "description": "Verify file-backed adapter and Postgres adapter produce equivalent semantic projections when consuming the same canonical artifact corpus.", "deliverable": "Equivalence test suite passing. Real artifact fixtures.", "code_changes": false},
+        {"phase": 5, "name": "Cockpit Integration", "description": "Desktop cockpit uses ProjectionStorePort for projections instead of ad-hoc projection blob assembly. LISTEN/NOTIFY for real-time projection invalidation.", "deliverable": "Cockpit queries Postgres materialized views. WebSocket invalidation via NOTIFY channels.", "code_changes": true},
+        {"phase": 6, "name": "Enterprise Mode", "description": "When enterprise mode is enabled (Postgres connection string configured), Postgres becomes operational substrate. File-backends remain available for local mode. Dual-write ensures canonical artifacts are always exported.", "deliverable": "Enterprise mode toggle. Export manager running periodic artifact exports. Admin dashboard.", "code_changes": true},
+        {"phase": 7, "name": "Procurement Documentation", "description": "Backup/restore runbooks, admin query cookbook, retention policy documentation, incident investigation guides, tenant provisioning guides.", "deliverable": "docs/json/governance/postgres_procurement_docs.v1.json set", "code_changes": false}
+      ]
+    }
+  },
+    "telemetry_operational_state_boundary": {
+      "doctrine_id": "telemetry-operational-state-boundary-v1",
+      "principle": "Postgres enterprise substrate is not merely analytics. Postgres owns operational queryability, projection invalidation, audit/event correlation, enterprise admin debuggability, and replay/export orchestration. Product telemetry is a separate policy layer that must not be conflated with operational correctness or enterprise evidence continuity.",
+      "postgres_roles": [
+        "Postgres is the enterprise operational substrate, not merely an analytics engine.",
+        "Postgres owns operational queryability of receipts, events, leases, findings, and audit records.",
+        "Postgres owns projection invalidation via LISTEN/NOTIFY — an operational mechanism, not a telemetry mechanism.",
+        "Postgres owns enterprise admin debuggability and audit/event correlation.",
+        "Postgres owns replay/export orchestration through ExportReplayPort."
+      ],
+      "artifact_roles": [
+        "JSON/JSONL/CSV remain the portable, diffable, replayable, schema-governed source-of-truth artifacts.",
+        "Artifacts are the canonical authority for all content-bearing data.",
+        "DuckDB remains the disposable analytical microscope for ad-hoc queries over local artifact files.",
+        "DuckDB does not replace Postgres for operational dashboards, cockpit widgets, or audit queries."
+      ],
+      "state_boundaries": {
+        "product_telemetry_disabled": {
+          "description": "Product-learning telemetry is disabled. Adaptive features (Ralph ranking, orchestrator refinement, suggested tool sequences) visibly degrade. Remote contribution and cross-user aggregate intelligence are offline.",
+          "what_must_not_happen": "Receipt persistence, mutation receipts, release-gate decisions, schema validation records, export manifests, enterprise audit events, content-light incident investigation records, or Postgres operational substrate features must NOT stop or degrade.",
+          "what_is_affected": "Product-learning analytics, adaptive recommendations, cross-org aggregate telemetry, hosted product-learning dashboards.",
+          "cockpit_status": "product_telemetry_disabled — info-level indicator. Not an error."
+        },
+        "postgres_unavailable": {
+          "description": "Postgres is configured (RIG_RELAY_POSTGRES_DSN is set) but unreachable (connection refused, timeout, auth failure).",
+          "what_must_happen": "Fail-closed. Adapters raise PostgresUnavailableError. Cockpit shows 'Enterprise substrate unavailable' degradation state. No silent fallback to file-backed adapters. No data written to Postgres.",
+          "what_is_affected": "All Postgres-dependent operations: event_log ingestion, receipt_envelope queries, coordination_lease acquisition, projection invalidation via LISTEN/NOTIFY, enterprise audit event writes.",
+          "cockpit_status": "enterprise_substrate_unavailable — error-level indicator."
+        },
+        "local_diagnostics_disabled": {
+          "description": "Local operational observability is explicitly disabled via a separate local_diagnostics setting (distinct from product telemetry consent).",
+          "what_is_affected": "Local event collection, trace spans, cockpit health metrics. Audit/evidence tables may still be intact if enterprise mode is enabled.",
+          "cockpit_status": "local_observability_degraded — warning-level indicator."
+        }
+      },
+      "non_conflation_rule": "Telemetry-disabled mode must not be confused with Postgres-unavailable mode. Product telemetry-disabled is degraded-but-operational. Postgres-unavailable in enterprise mode is fail-closed. Local diagnostics-disabled is distinct from both. Cockpit must surface these as separately distinguishable states."
+    },
+    "remaining_seams": [
+    {
+      "seam": "CoordinationStore dual-write consistency",
+      "description": "PostgresCoordinationStore must maintain dual writes to events.jsonl for canonical replay. If Postgres write succeeds but file write fails (or vice versa), the two authorities diverge.",
+      "mitigation": "Write to Postgres first, then write to events.jsonl. If events.jsonl write fails, mark Postgres row as 'pending_replay' and retry with exponential backoff. Monitor for drift via coordination integrity check."
+    },
+    {
+      "seam": "DuckDB vs Postgres projection divergence",
+      "description": "During Phase 2-4, DuckDB reads from raw JSONL while Postgres reads from operational tables. Schema migration or data transformation could cause divergence in computed projections.",
+      "mitigation": "Phase 4 equivalence tests must run on every commit. Projection comparison test fetches same widget from both DuckDB and Postgres and asserts strict equality on content-light fields."
+    },
+    {
+      "seam": "LISTEN/NOTIFY loss on connection failure",
+      "description": "If Postgres connection drops between NOTIFY and LISTEN processing, projection invalidation events are lost. Cockpit shows stale data.",
+      "mitigation": "ProjectionStorePort.subscribe_invalidation() must detect connection loss and trigger a full projection recomputation on reconnect. Projection TTL (30-300 seconds depending on widget) provides safety net."
+    },
+    {
+      "seam": "Postgres unavailable fail-closed behavior",
+      "description": "If Postgres is configured but unreachable, all adapters must fail closed, not silently degrade to file-backed modes. Silently falling back to file backends would hide Postgres infrastructure issues.",
+      "mitigation": "Adapters raise PostgresUnavailableError with clear diagnostics. Cockpit shows 'Enterprise substrate unavailable' degradation state. Local mode disables all Postgres features."
+    },
+    {
+      "seam": "Generated column staleness",
+      "description": "Generated columns are STORED — they recalculate on INSERT/UPDATE only. If an application updates the JSONB column without explicitly setting the generated column, the two diverge.",
+      "mitigation": "All writes go through typed INSERT statements that explicitly set both JSONB and source values. No direct JSONB-only updates. Migration tests validate generated column values match JSONB source."
+    }
+  ],
+  "revision": "1.0.0"
+}

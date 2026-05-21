@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.stale_markdown_inventory.v1.schema.json",
+  "title": "Stale Markdown Inventory v1",
+  "description": "Structured inventory of Markdown files with stale evidence classifications.",
+  "type": "object",
+  "required": ["schema_version", "inventory_id", "title", "generated_at", "summary", "content_light"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.stale_markdown_inventory.v1" },
+    "inventory_id": { "type": "string" },
+    "title": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "summary": { "type": "object" },
+    "canonical_docs_in_scope": { "type": "array", "items": { "type": "object" } },
+    "stale_evidence_batches": { "type": "array", "items": { "type": "object" } },
+    "preserved_batches": { "type": "array", "items": { "type": "object" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,1323 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-workflow-map-v1",
+  "title": "GitHub Integration Workflow Map v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "workflows": [
+    {
+      "workflow_id": "issue-to-mission-candidate",
+      "title": "Issue → Mission Candidate",
+      "desired_user_experience": "A user opens a GitHub issue describing a feature or bug. Ralph scans the issue body, classifies the work, and produces a ranked mission candidate with scope, effort estimate, and suggested agent profile. The candidate appears in the cockpit mission topology without any remote mutation.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/issues/{issue_number}",
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/labels",
+        "GraphQL: repository.issue"
+      ],
+      "rig_relay_governance_gates": [
+        "Read-only access verified before fetch",
+        "Issue content classified before candidate generation",
+        "No remote mutation triggered",
+        "Scope boundary check against workspace"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.mission_candidate report)",
+        ".rig/reports/indexes/mission_candidates.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "github_issues (cache table)",
+        "mission_candidates",
+        "issue_labels",
+        "issue_comments_cache"
+      ],
+      "duckdb_use": [
+        "SELECT candidate_kind, COUNT(*) FROM mission_candidates GROUP BY candidate_kind",
+        "SELECT AVG(score) FROM mission_candidates WHERE source = 'github_issue'",
+        "Correlate issue labels → agent profile selection accuracy"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.issue_fetched",
+        "rig.relay.ralph.candidate_created",
+        "rig.relay.ralph.candidate_ranked"
+      ],
+      "remote_mutation_rules": "No remote mutation permitted. Entirely read-only across GitHub APIs and local filesystem projections.",
+      "human_in_the_loop_boundary": "User reviews mission candidate in cockpit, selects agent profile, approves dispatch before any subagent spawns.",
+      "failure_modes": [
+        "GitHub API rate limit exceeded mid-scan",
+        "Issue body is empty or only contains images",
+        "Issue references deleted/private repos",
+        "Label vocabulary mismatch (custom labels not in known set)",
+        "Issue edited while scan is in progress (stale read)"
+      ],
+      "tests_needed": [
+        "test_issue_to_mission_candidate_rate_limited",
+        "test_issue_to_mission_candidate_empty_body",
+        "test_issue_to_mission_candidate_cross_repo_reference",
+        "test_issue_to_mission_candidate_stale_read",
+        "test_issue_to_mission_candidate_no_remote_mutation"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "issue-to-context-packet",
+      "title": "Issue → Context Packet",
+      "desired_user_experience": "Given a mission candidate linked to a GitHub issue, the system assembles a context packet containing the issue body, linked PRs, referenced files, and repo topology context. The agent receives this as initial context without needing to independently fetch GitHub data.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/issues/{issue_number}",
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline",
+        "GraphQL: repository.issue.timelineItems",
+        "GET /repos/{owner}/{repo}/pulls (find PRs that reference this issue)"
+      ],
+      "rig_relay_governance_gates": [
+        "Context envelope size limit enforced",
+        "Private repo content never included in context unless explicitly scoped",
+        "Issue cross-references validated before inclusion",
+        "Sensitive path patterns filtered from context"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.context_packet report)",
+        ".rig/reports/indexes/context_packets.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "context_packets",
+        "github_issue_references",
+        "repo_topology_snapshots"
+      ],
+      "duckdb_use": [
+        "Measure context packet size distribution",
+        "Correlate context packet size → agent task completion rate",
+        "Track most-referenced files per issue domain"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.context.packet_assembled",
+        "rig.relay.github.issue_timeline_fetched",
+        "rig.relay.context.cross_reference_resolved"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only GitHub API calls for context assembly.",
+      "human_in_the_loop_boundary": "No direct human gate — automated context assembly. User reviews context content in cockpit before agent loop starts.",
+      "failure_modes": [
+        "Issue timeline too large (thousands of events)",
+        "Linked PR spans a fork (permission boundary)",
+        "Referenced files deleted since issue creation",
+        "Rate limit consumed by timeline pagination"
+      ],
+      "tests_needed": [
+        "test_issue_to_context_packet_oversized_timeline",
+        "test_issue_to_context_packet_private_repo_filtered",
+        "test_issue_to_context_packet_fork_reference",
+        "test_issue_to_context_packet_sensitive_path_filtered"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "issue-to-implementation-plan",
+      "title": "Issue → Implementation Plan",
+      "desired_user_experience": "The orchestrator profile analyzes the issue and context packet, then produces a structured implementation plan: files to touch, tests to write, dependencies to update. The plan is rendered as a report artifact and displayed in the cockpit. No code is written until the user approves the plan.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/contents/{path} (read referenced files)",
+        "GET /repos/{owner}/{repo}/git/trees/{tree_sha}?recursive=1",
+        "GraphQL: repository.defaultBranchRef.target.tree"
+      ],
+      "rig_relay_governance_gates": [
+        "Plan must be reviewed and approved before any file mutation",
+        "Plan scope must not exceed mission candidate boundaries",
+        "Planned file paths validated against workspace",
+        "Dependency update proposals must pass vulnerability check"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.implementation_plan report)",
+        ".rig/reports/indexes/implementation_plans.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "implementation_plans",
+        "planned_file_touches",
+        "plan_approval_log"
+      ],
+      "duckdb_use": [
+        "Plan approval rate by agent profile",
+        "Plan-to-execution fidelity (planned files vs actual files touched)",
+        "Average plan review cycle time"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.orchestrator.plan_generated",
+        "rig.relay.governance.plan_approved",
+        "rig.relay.governance.plan_rejected"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only file content inspection from GitHub API (or local workspace if available).",
+      "human_in_the_loop_boundary": "User must approve plan in cockpit before builder subagent is dispatched. Plan approval is a hard gate.",
+      "failure_modes": [
+        "Plan references files the agent cannot read (permission denied)",
+        "Repo tree too large to enumerate",
+        "Planned dependency update conflicts with existing PRs",
+        "Agent hallucinates file paths not present in repo"
+      ],
+      "tests_needed": [
+        "test_issue_to_plan_approval_gate",
+        "test_issue_to_plan_hallucinated_paths_rejected",
+        "test_issue_to_plan_permission_boundary",
+        "test_issue_to_plan_dependency_conflict_detected"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "code-scanning-alert-to-investigation-packet",
+      "title": "Code Scanning Alert → Investigation Packet",
+      "desired_user_experience": "A GitHub Code Scanning alert fires (CodeQL, third-party). Ralph picks it up, fetches the alert details, the affected code path, and any existing fix suggestions. An investigation packet is assembled so an agent can understand what went wrong and where.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}",
+        "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+        "GET /repos/{owner}/{repo}/code-scanning/analyses",
+        "GraphQL: repository.vulnerabilityAlerts"
+      ],
+      "rig_relay_governance_gates": [
+        "Alert severity triaged before agent dispatch",
+        "False-positive heuristic check run before context assembly",
+        "Affected code path validated to exist in current workspace",
+        "No raw alert data leaked into telemetry beyond SHA256"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.code_scanning_investigation report)",
+        ".rig/reports/indexes/code_scanning_investigations.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "code_scanning_alerts",
+        "alert_instances",
+        "investigation_packets"
+      ],
+      "duckdb_use": [
+        "Alert type distribution by severity",
+        "Median time-to-investigate by tool (CodeQL vs ThirdParty)",
+        "False-positive rate by alert rule"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.code_scanning_alert_fetched",
+        "rig.relay.ralph.investigation_packet_assembled",
+        "rig.relay.governance.alert_triaged"
+      ],
+      "remote_mutation_rules": "No remote mutation. Fetch-only for alert data and affected file content. Never POST to code-scanning endpoints.",
+      "human_in_the_loop_boundary": "Auto-assembly of investigation packet is allowed. User reviews investigation before agent begins remediation planning.",
+      "failure_modes": [
+        "Alert already dismissed or fixed by the time packet is assembled",
+        "Code scanning tool not enabled on repo (empty response)",
+        "Instance paths reference deleted branches",
+        "SARIF upload in progress while reading (partial data)"
+      ],
+      "tests_needed": [
+        "test_code_scanning_alert_to_investigation_dismissed_alert",
+        "test_code_scanning_alert_to_investigation_disabled_tool",
+        "test_code_scanning_alert_to_investigation_deleted_branch",
+        "test_code_scanning_alert_to_investigation_no_leaked_severity_in_telemetry"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "code-scanning-alert-to-remediation-plan",
+      "title": "Code Scanning Alert → Remediation Plan",
+      "desired_user_experience": "After reviewing the investigation packet, the agent produces a remediation plan: which files to change, what the fix looks like (with SARIF-provided fix suggestions honored), and what tests validate the fix. The plan is a report artifact awaiting human approval.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}",
+        "GET /repos/{owner}/{repo}/contents/{path} (read affected files)",
+        "GraphQL: repository.vulnerabilityAlert.dismissReason (check if already dismissed)"
+      ],
+      "rig_relay_governance_gates": [
+        "Remediation plan must not introduce new security regressions",
+        "Plan must reference exact SARIF rule ID for traceability",
+        "All affected code paths must be covered by the plan",
+        "Plan must include test strategy before execution gate"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.code_scanning_remediation_plan report)",
+        ".rig/reports/indexes/remediation_plans.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "remediation_plans",
+        "remediation_plan_file_targets",
+        "alert_remediation_mappings"
+      ],
+      "duckdb_use": [
+        "Remediation plan approval rate by alert severity",
+        "Average time from alert → approved plan",
+        "Plan rejection reasons frequency"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.governance.remediation_plan_generated",
+        "rig.relay.governance.remediation_plan_approved",
+        "rig.relay.github.code_scanning_remediation_mapped"
+      ],
+      "remote_mutation_rules": "No remote mutation. The plan is a local artifact only. Remote mutation only occurs in the subsequent Governed PR workflow.",
+      "human_in_the_loop_boundary": "User must approve the remediation plan before the governed PR workflow can begin. Approval is recorded with HMAC-SHA256 signature.",
+      "failure_modes": [
+        "SARIF fix suggestion is inapplicable to current code version",
+        "Remediation requires changes outside workspace boundary",
+        "Alert severity escalated while plan was under review",
+        "Plan proposes unsafe fix (e.g., disabling the check instead of fixing root cause)"
+      ],
+      "tests_needed": [
+        "test_remediation_plan_approval_gate",
+        "test_remediation_plan_stale_sarif_suggestion",
+        "test_remediation_plan_severity_escalation_during_review",
+        "test_remediation_plan_requires_test_strategy"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "remediation-plan-to-governed-pr",
+      "title": "Remediation Plan → Governed PR",
+      "desired_user_experience": "Once a remediation plan is approved, the builder subagent executes the plan in an isolated worktree. After validation passes, a governed PR is created on GitHub with clear provenance markers, no marketing text, and explicit human review required before merge.",
+      "exact_github_primitives_used": [
+        "POST /repos/{owner}/{repo}/pulls",
+        "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+        "PATCH /repos/{owner}/{repo}/pulls/{pull_number} (labels, assignees only)",
+        "GraphQL: createPullRequest mutation"
+      ],
+      "rig_relay_governance_gates": [
+        "Dry-run/rehearsal must pass before remote mutation",
+        "PR body must pass content policy (no marketing text, no unreviewed generated comments)",
+        "Co-author attribution must be explicit and opt-in",
+        "Branch protection policies respected (no force-push to protected branches)",
+        "Validation suite must pass locally before PR creation",
+        "HMAC-SHA256 attestation of planned changes matches actual changes"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.governed_pr report)",
+        ".rig/reports/indexes/governed_prs.json",
+        ".build/rig-relay/evidence/pr_dry_run_results.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "governed_prs",
+        "pr_mutation_transactions",
+        "pr_review_assignments",
+        "dry_run_results"
+      ],
+      "duckdb_use": [
+        "PR creation rate by agent profile",
+        "Dry-run → PR creation success rate",
+        "Median time from plan approval to PR open",
+        "PR merge rate (reviewer adoption)"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.pr_created",
+        "rig.relay.governance.pr_dry_run_passed",
+        "rig.relay.governance.pr_dry_run_failed",
+        "rig.relay.governance.pr_content_policy_passed",
+        "rig.relay.governance.pr_attestation_verified"
+      ],
+      "remote_mutation_rules": "Remote mutation (PR creation, reviewer assignment) is ONLY allowed after: dry-run passes, validation suite passes, content policy passes, attestation is verified, and the human approves. PR creation is an explicit remote write with full audit trail.",
+      "human_in_the_loop_boundary": "User must explicitly approve the PR creation in the cockpit. The approve button is disabled until dry-run, validation, content policy, and attestation all pass.",
+      "failure_modes": [
+        "Dry-run passes but remote mutation fails due to network/token issues",
+        "Branch protection rules changed between dry-run and mutation",
+        "PR body exceeds GitHub character limit",
+        "Concurrent PR modifies same files causing merge conflict",
+        "Validation suite passes locally but fails CI (environment difference)",
+        "GitHub App token expired during mutation"
+      ],
+      "tests_needed": [
+        "test_governed_pr_remote_mutation_failure_rolls_back",
+        "test_governed_pr_branch_protection_changed_during_execution",
+        "test_governed_pr_content_policy_rejects_marketing_text",
+        "test_governed_pr_content_policy_rejects_unreviewed_comments",
+        "test_governed_pr_no_coauthor_without_opt_in",
+        "test_governed_pr_dry_run_must_pass_before_mutation",
+        "test_governed_pr_attestation_mismatch_blocks_creation"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "remote_mutation_blocking_requirements": [
+        "trust_spine_v1_complete",
+        "dry_run_rehearsal_executed",
+        "explicit_human_approval",
+        "signed_approval_receipt",
+        "branch_protection_ruleset_preflight",
+        "no_surprise_mutation_sabotage_tests_passing",
+        "content_policy_scan_for_pr_comment_release_text",
+        "rollback_reconciliation_receipt"
+      ]
+    },
+    {
+      "workflow_id": "pr-to-risk-summary",
+      "title": "PR → Risk Summary",
+      "desired_user_experience": "When an external contributor opens a PR (or an agent creates one in a governed lane), Ralph produces a risk summary: changed files, complexity score, security-sensitive paths touched, test coverage delta, and merge conflict likelihood. The summary is projected in the cockpit and available to reviewers.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/commits",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+        "GraphQL: repository.pullRequest"
+      ],
+      "rig_relay_governance_gates": [
+        "Risk summary must not bias toward approval or rejection",
+        "Changed files in sensitive paths must be flagged",
+        "Complexity score must be reproducible (no model hallucination)",
+        "Risk summary must not include raw code content in telemetry"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.pr_risk_summary report)",
+        ".rig/reports/indexes/pr_risk_summaries.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "pr_risk_summaries",
+        "pr_changed_files",
+        "sensitive_path_flags",
+        "complexity_scores"
+      ],
+      "duckdb_use": [
+        "Average risk score by PR author type (human vs agent)",
+        "Correlation between risk score and merge duration",
+        "Most frequently flagged sensitive paths",
+        "Rejection rate by risk score quartile"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.pr_fetched",
+        "rig.relay.ralph.risk_summary_generated",
+        "rig.relay.governance.sensitive_path_flagged"
+      ],
+      "remote_mutation_rules": "No remote mutation. Entirely read-only analysis of existing PR data.",
+      "human_in_the_loop_boundary": "Risk summary is auto-generated and displayed in cockpit. No human approval needed for the summary itself — it's informational. The human uses it to make review decisions.",
+      "failure_modes": [
+        "PR has 10,000+ changed files (pagination limits)",
+        "PR is from a fork with restricted access to some file diffs",
+        "Complexity score engine runs OOM on large diff",
+        "PR was force-pushed while analysis was running (stale result)"
+      ],
+      "tests_needed": [
+        "test_pr_to_risk_summary_mega_pr_pagination",
+        "test_pr_to_risk_summary_restricted_fork_diff",
+        "test_pr_to_risk_summary_stale_pr_detected",
+        "test_pr_to_risk_summary_complexity_reproducible",
+        "test_pr_to_risk_summary_no_code_content_in_telemetry"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "pr-to-review-packet",
+      "title": "PR → Review Packet",
+      "desired_user_experience": "Building on the risk summary, the system assembles a full review packet: risk summary, changed file contents (with diff), related issues, CI status, code scanning results on the PR, and existing reviews. This is presented to the human reviewer as a unified view, reducing tab-switching across GitHub UI.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments",
+        "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
+        "GET /repos/{owner}/{repo}/commits/{ref}/statuses",
+        "GraphQL: repository.pullRequest.reviews, repository.pullRequest.commits"
+      ],
+      "rig_relay_governance_gates": [
+        "Review packet must not duplicate existing GitHub UI; it augments",
+        "CI status interpretation must not override human judgment",
+        "All content from private repos is shielded from telemetry",
+        "Review comments from other reviewers are included verbatim"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.review_packet report)",
+        ".rig/reports/indexes/review_packets.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "review_packets",
+        "pr_review_threads",
+        "ci_check_results",
+        "code_scanning_pr_results"
+      ],
+      "duckdb_use": [
+        "Average review packet assembly time",
+        "Review decision rate after packet viewed",
+        "CI failure rate detected per review packet",
+        "Most common code scanning findings on PRs"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.pr_review_packet_assembled",
+        "rig.relay.github.ci_status_fetched",
+        "rig.relay.github.pr_code_scanning_checked"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only aggregation of existing GitHub data.",
+      "human_in_the_loop_boundary": "Review packet is auto-assembled. The human reviewer uses the packet to make approval/change-request decisions. The packet does not auto-submit reviews.",
+      "failure_modes": [
+        "CI check runs have not completed yet (incomplete picture)",
+        "Code scanning analysis queued but not started",
+        "Review comments thread too large to usefully summarize",
+        "PR target branch changed during packet assembly"
+      ],
+      "tests_needed": [
+        "test_pr_to_review_packet_incomplete_ci",
+        "test_pr_to_review_packet_pending_code_scanning",
+        "test_pr_to_review_packet_no_auto_submit_review",
+        "test_pr_to_review_packet_target_branch_changed_mid_assembly"
+      ],
+      "current_status": "partial",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "pr-comments-to-agent-response-queue",
+      "title": "PR Comments → Agent Response Queue",
+      "desired_user_experience": "When a reviewer leaves comments on a governed PR, the system captures them, classifies their intent (blocking review, suggestion, question), and queues an agent response task. The agent drafts a response or code change, which is held for human review before being posted back to the PR.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments",
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+        "Webhook: pull_request_review_comment.created",
+        "Webhook: pull_request_review.submitted"
+      ],
+      "rig_relay_governance_gates": [
+        "Agent response must be reviewed by human before posting to GitHub",
+        "Agent must not auto-resolve conversations",
+        "Response must not contain marketing text or unreviewed claims",
+        "Agent must not respond to its own comments (loop prevention)",
+        "Response must be scoped to the comment thread context"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.pr_comment_agent_response report)",
+        ".rig/reports/indexes/agent_response_queue.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "pr_comment_events",
+        "agent_response_queue",
+        "comment_classifications",
+        "response_approval_log"
+      ],
+      "duckdb_use": [
+        "Agent response approval rate",
+        "Median time from comment → approved response",
+        "Comment classification accuracy audit",
+        "Loop detection events (agent responding to agent)"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.pr_comment_received",
+        "rig.relay.governance.agent_response_queued",
+        "rig.relay.governance.agent_response_approved",
+        "rig.relay.governance.agent_response_rejected",
+        "rig.relay.governance.agent_self_response_blocked"
+      ],
+      "remote_mutation_rules": "Remote mutation (posting comment to PR) is ONLY allowed after: human approves the response content, content policy passes, and the comment is verified not to be a self-response loop. Comments are posted via POST /repos/{owner}/{repo}/pulls/{pull_number}/comments or POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews.",
+      "human_in_the_loop_boundary": "Every agent-drafted response must be explicitly approved by a human before posting. No auto-post. The cockpit shows a pending response queue with approve/reject/edit actions.",
+      "failure_modes": [
+        "Comment thread deleted while agent is drafting response",
+        "Human approves response but PR is closed before posting",
+        "Rate limit prevents posting (queue backing up)",
+        "Agent misclassifies comment intent leading to wrong response type",
+        "Response references deleted code paths"
+      ],
+      "tests_needed": [
+        "test_pr_comments_to_agent_response_approval_gate",
+        "test_pr_comments_to_agent_response_loop_prevention",
+        "test_pr_comments_to_agent_response_pr_closed_during_approval",
+        "test_pr_comments_to_agent_response_content_policy",
+        "test_pr_comments_to_agent_response_misclassification_handling"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "remote_mutation_blocking_requirements": [
+        "trust_spine_v1_complete",
+        "dry_run_rehearsal_executed",
+        "explicit_human_approval",
+        "signed_approval_receipt",
+        "branch_protection_ruleset_preflight",
+        "no_surprise_mutation_sabotage_tests_passing",
+        "content_policy_scan_for_pr_comment_release_text",
+        "rollback_reconciliation_receipt"
+      ]
+    },
+    {
+      "workflow_id": "failed-action-to-diagnosis-packet",
+      "title": "Failed Action → Diagnosis Packet",
+      "desired_user_experience": "A GitHub Actions workflow run fails. The system fetches the run logs, identifies the failing step, and assembles a diagnosis packet: error output, relevant file changes in the triggering commit, and any similar past failures. This helps the developer understand the failure faster than reading raw logs.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/actions/runs/{run_id}",
+        "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+        "GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
+        "GET /repos/{owner}/{repo}/commits/{ref}",
+        "GraphQL: repository.object (commit with checkSuites)"
+      ],
+      "rig_relay_governance_gates": [
+        "Workflow log content must not be leaked to telemetry beyond error fingerprints",
+        "Only public workflow run data accessible (token scope gated)",
+        "Diagnosis must not recommend unsafe fixes (e.g., bypassing CI checks)",
+        "Similar failure detection must use hashed error patterns, not raw logs"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.action_diagnosis report)",
+        ".rig/reports/indexes/action_diagnoses.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "action_runs",
+        "action_jobs",
+        "diagnosis_packets",
+        "error_patterns",
+        "similar_failure_index"
+      ],
+      "duckdb_use": [
+        "Most frequent action failure modes",
+        "Mean time to diagnosis by error category",
+        "Failure recurrence rate (same error, different runs)",
+        "Correlation: file changes → failure probability"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.action_run_fetched",
+        "rig.relay.ralph.diagnosis_packet_assembled",
+        "rig.relay.analytics.error_pattern_matched"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only access to Actions API for log retrieval and analysis.",
+      "human_in_the_loop_boundary": "Diagnosis packet is auto-generated. No human gate for assembly. Human reviews diagnosis before any fix plan is created.",
+      "failure_modes": [
+        "Action run logs expired/archived (GitHub retention policy)",
+        "Logs too large (>10 MB) to fully analyze",
+        "Self-hosted runner failure (no GitHub-managed logs)",
+        "Workflow uses reusable workflows across repos (permission boundary)",
+        "Job logs contain secrets (must be redacted before any processing)"
+      ],
+      "tests_needed": [
+        "test_failed_action_to_diagnosis_logs_expired",
+        "test_failed_action_to_diagnosis_logs_too_large",
+        "test_failed_action_to_diagnosis_secrets_redacted",
+        "test_failed_action_to_diagnosis_self_hosted_runner",
+        "test_failed_action_to_diagnosis_cross_repo_workflow"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "failed-action-to-fix-plan",
+      "title": "Failed Action → Fix Plan",
+      "desired_user_experience": "After reviewing the diagnosis packet, the agent proposes a fix plan: which files to change, what the root cause is, and what validation ensures the action passes on the next run. The fix plan is a report artifact awaiting human approval before any code changes.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/contents/{path} (read workflow files)",
+        "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}",
+        "GET /repos/{owner}/{repo}/commits/{ref} (triggering commit diff)"
+      ],
+      "rig_relay_governance_gates": [
+        "Fix plan must not propose disabling CI checks or security gates",
+        "Fix must be scoped to root cause, not symptom suppression",
+        "Workflow file changes must be validated against workflow schema",
+        "Fix plan must include a rollback strategy"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.action_fix_plan report)",
+        ".rig/reports/indexes/action_fix_plans.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "action_fix_plans",
+        "workflow_definitions",
+        "fix_plan_approval_log"
+      ],
+      "duckdb_use": [
+        "Fix plan approval rate by error category",
+        "Fix success rate on next run after plan execution",
+        "Most common fix categories"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.governance.action_fix_plan_generated",
+        "rig.relay.governance.action_fix_plan_approved",
+        "rig.relay.governance.action_fix_plan_rejected"
+      ],
+      "remote_mutation_rules": "No remote mutation. The fix plan is a local artifact. Execution of the fix goes through the Governed PR workflow.",
+      "human_in_the_loop_boundary": "User must approve the fix plan before the governed PR workflow can begin. Approval gate is hard.",
+      "failure_modes": [
+        "Agent proposes fix that makes CI pass but breaks actual functionality",
+        "Workflow file is in a protected branch requiring additional permissions",
+        "Fix requires changing a reusable workflow in a different repo",
+        "Root cause is external (npm outage, Docker Hub rate limit) — unfixable locally"
+      ],
+      "tests_needed": [
+        "test_failed_action_to_fix_plan_approval_gate",
+        "test_failed_action_to_fix_plan_no_ci_bypass",
+        "test_failed_action_to_fix_plan_protected_branch_workflow",
+        "test_failed_action_to_fix_plan_external_root_cause_detected"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "dependabot-alert-to-update-plan",
+      "title": "Dependabot Alert → Update Plan",
+      "desired_user_experience": "Dependabot opens an alert for a vulnerable dependency. The system captures the alert, evaluates the severity and exploitability, checks if the suggested version bump is compatible, and produces an update plan. The plan includes impact analysis (breaking changes, affected call sites) before proposing a version bump.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/dependabot/alerts",
+        "GET /repos/{owner}/{repo}/dependency-graph/dependencies",
+        "GraphQL: repository.vulnerabilityAlerts, repository.dependencyGraphManifests",
+        "GET /repos/{owner}/{repo}/contents/{path} (read lockfiles)"
+      ],
+      "rig_relay_governance_gates": [
+        "Version bump must be validated for breaking changes before proposal",
+        "Dependency graph must be re-resolved after proposed bump",
+        "Must not propose downgrade to version with different vulnerabilities",
+        "Lockfile-only changes must be distinguished from API-breaking changes"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.dependabot_update_plan report)",
+        ".rig/reports/indexes/dependabot_update_plans.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "dependabot_alerts",
+        "dependency_graph",
+        "update_plans",
+        "breaking_change_impact",
+        "call_site_inventory"
+      ],
+      "duckdb_use": [
+        "Mean time from Dependabot alert → update plan",
+        "Breaking change rate per ecosystem (npm, pip, cargo, etc.)",
+        "Update plan → merge rate",
+        "Most frequent vulnerable packages"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.dependabot_alert_fetched",
+        "rig.relay.governance.dependency_update_plan_generated",
+        "rig.relay.governance.breaking_change_detected",
+        "rig.relay.governance.dependency_update_plan_approved"
+      ],
+      "remote_mutation_rules": "No remote mutation during planning. The update plan is a local artifact. Execution happens through the Governed PR workflow if the plan involves code changes, or through Dependabot's own PR if it's a simple version bump.",
+      "human_in_the_loop_boundary": "Update plan is auto-generated. Human reviews and approves before any PR is created. For simple Dependabot PRs (patch version bumps with no breaking changes), human can configure auto-merge policy.",
+      "failure_modes": [
+        "Dependency graph is stale (last updated hours ago)",
+        "Suggested version introduces a different CVE",
+        "Breaking change analysis is incomplete (dynamic imports not detected)",
+        "Lockfile format not parseable (new lockfile version)",
+        "Transitive dependency conflict (two packages require incompatible versions)"
+      ],
+      "tests_needed": [
+        "test_dependabot_alert_to_update_plan_breaking_change",
+        "test_dependabot_alert_to_update_plan_transitive_conflict",
+        "test_dependabot_alert_to_update_plan_new_cve_in_target",
+        "test_dependabot_alert_to_update_plan_stale_dependency_graph",
+        "test_dependabot_alert_to_update_plan_auto_merge_policy_respected"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "release-tag-to-evidence-regeneration",
+      "title": "Release Tag → Evidence Regeneration",
+      "desired_user_experience": "When a new release tag is pushed, the system triggers evidence regeneration: re-runs test suites, refreshes static analysis reports, updates the SBOM, regenerates the documentation site, and appends to the evidence provenance ledger. The release is enriched with structural proof without manual effort.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/releases/tags/{tag}",
+        "GET /repos/{owner}/{repo}/releases/{release_id}",
+        "GET /repos/{owner}/{repo}/git/ref/tags/{tag}",
+        "POST /repos/{owner}/{repo}/releases/{release_id} (update release body with evidence links)",
+        "Webhook: release.published"
+      ],
+      "rig_relay_governance_gates": [
+        "Evidence regeneration must be idempotent (re-running on same tag produces same hashes)",
+        "Release body updates must append evidence, never overwrite existing release notes",
+        "SBOM regeneration must use signed dependency graph data",
+        "Test suite must pass before evidence is attached to release"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.release_evidence report)",
+        ".build/rig-relay/evidence/{tag}/test_results.json",
+        ".build/rig-relay/evidence/{tag}/sbom.json",
+        ".build/rig-relay/evidence/{tag}/static_analysis.json",
+        ".build/rig-relay/evidence/{tag}/provenance.jsonl",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "release_tags",
+        "release_evidence",
+        "sbom_entries",
+        "test_result_snapshots",
+        "provenance_ledger"
+      ],
+      "duckdb_use": [
+        "Evidence coverage per release (tests, SAST, SBOM)",
+        "Release-to-release evidence delta",
+        "Test pass rate trend across releases",
+        "SBOM vulnerability drift between releases"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.release_tag_detected",
+        "rig.relay.evidence.regeneration_triggered",
+        "rig.relay.evidence.sbom_regenerated",
+        "rig.relay.evidence.test_suite_rerun",
+        "rig.relay.evidence.provenance_appended"
+      ],
+      "remote_mutation_rules": "Remote mutation (updating release body with evidence links) is allowed ONLY after: all local evidence regeneration passes, SBOM is signed, test suite passes. Release body update is an append-only operation — existing release notes are never replaced.",
+      "human_in_the_loop_boundary": "Evidence regeneration is auto-triggered on tag detection (configurable). Human review is required before evidence links are posted to the GitHub release body. The cockpit shows a pending release enrichment with approve/reject.",
+      "failure_modes": [
+        "Test suite fails on release tag (tag should not have been created)",
+        "SBOM generation tool crashes on new dependency format",
+        "Evidence directory grows unbounded (GC policy needed)",
+        "Release deleted while evidence is being generated",
+        "Rate limit on release body update API"
+      ],
+      "tests_needed": [
+        "test_release_tag_to_evidence_idempotent",
+        "test_release_tag_to_evidence_append_only_release_body",
+        "test_release_tag_to_evidence_sbom_regeneration_failure",
+        "test_release_tag_to_evidence_release_deleted_during_gen",
+        "test_release_tag_to_evidence_test_suite_must_pass"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "remote_mutation_blocking_requirements": [
+        "trust_spine_v1_complete",
+        "dry_run_rehearsal_executed",
+        "explicit_human_approval",
+        "signed_approval_receipt",
+        "branch_protection_ruleset_preflight",
+        "no_surprise_mutation_sabotage_tests_passing",
+        "content_policy_scan_for_pr_comment_release_text",
+        "rollback_reconciliation_receipt"
+      ]
+    },
+    {
+      "workflow_id": "milestone-to-static-docs-refresh",
+      "title": "Milestone → Static Docs Refresh",
+      "desired_user_experience": "When a GitHub milestone is closed (all issues completed), the system triggers a static documentation site refresh: pulls the latest docs, regenerates the static render, and optionally publishes via GitHub Pages. The milestone's completed issues are summarized in the documentation changelog.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/milestones/{milestone_number}",
+        "GET /repos/{owner}/{repo}/issues?milestone={milestone_number}&state=closed",
+        "GET /repos/{owner}/{repo}/pulls?milestone={milestone_number}&state=closed",
+        "POST /repos/{owner}/{repo}/pages/builds",
+        "Webhook: milestone.closed"
+      ],
+      "rig_relay_governance_gates": [
+        "Static docs refresh must validate against docs schema before publishing",
+        "Changelog entry must not include unreviewed generated content",
+        "GitHub Pages deployment must not overwrite manual pages",
+        "Refresh must be idempotent"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.docs_refresh report)",
+        "docs/index.html (regenerated)",
+        "docs/pages/ (regenerated)",
+        "docs/assets/ (regenerated)",
+        "docs/search-index.json (regenerated)",
+        "docs/render-manifest.json (updated)",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "milestones",
+        "milestone_issues",
+        "static_docs_versions",
+        "changelog_entries"
+      ],
+      "duckdb_use": [
+        "Docs refresh frequency per milestone cadence",
+        "Page count trend across milestones",
+        "Search index coverage metrics"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.milestone_closed_detected",
+        "rig.relay.docs.static_refresh_triggered",
+        "rig.relay.docs.render_completed",
+        "rig.relay.docs.schema_validation_passed"
+      ],
+      "remote_mutation_rules": "Remote mutation (triggering Pages build) is allowed after: docs schema validation passes, changelog content policy passes, and the generated site passes local render verification. Pages deployment is the only remote write.",
+      "human_in_the_loop_boundary": "Docs refresh is auto-triggered but the resulting static site is previewed in local render before GitHub Pages deployment. Human must approve the Pages deployment in cockpit.",
+      "failure_modes": [
+        "GitHub Pages already disabled on repo",
+        "Static renderer produces broken HTML (JS error)",
+        "Milestone contains unrelated issues (no docs impact)",
+        "Search index generation fails (JSON parse error)",
+        "Pages build rate limit"
+      ],
+      "tests_needed": [
+        "test_milestone_to_docs_refresh_pages_disabled",
+        "test_milestone_to_docs_refresh_broken_renderer",
+        "test_milestone_to_docs_refresh_no_docs_impact_milestone",
+        "test_milestone_to_docs_refresh_approval_gate",
+        "test_milestone_to_docs_refresh_idempotent"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "remote_mutation_blocking_requirements": [
+        "trust_spine_v1_complete",
+        "dry_run_rehearsal_executed",
+        "explicit_human_approval",
+        "signed_approval_receipt",
+        "branch_protection_ruleset_preflight",
+        "no_surprise_mutation_sabotage_tests_passing",
+        "content_policy_scan_for_pr_comment_release_text",
+        "rollback_reconciliation_receipt"
+      ]
+    },
+    {
+      "workflow_id": "repo-onboarding-to-permission-audit",
+      "title": "Repository Onboarding → Permission/Protection Audit",
+      "desired_user_experience": "When a repository is connected to Rig Relay for the first time, the system performs a comprehensive audit: branch protection rules, required reviewers, required status checks, CODEOWNERS file, secret scanning status, and collaborator permissions. Results are projected as a report with hardening recommendations.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection",
+        "GET /repos/{owner}/{repo}/branches?protected=true",
+        "GET /repos/{owner}/{repo}/collaborators?affiliation=direct",
+        "GET /repos/{owner}/{repo}/collaborators?affiliation=outside",
+        "GET /repos/{owner}/{repo}/contents/.github/CODEOWNERS",
+        "GET /repos/{owner}/{repo}/vulnerability-alerts",
+        "GET /repos/{owner}/{repo}/secret-scanning/alerts",
+        "GET /repos/{owner}/{repo}/rulesets",
+        "GET /orgs/{org}/rulesets (if org-level)",
+        "GraphQL: repository.collaborators, repository.branchProtectionRules"
+      ],
+      "rig_relay_governance_gates": [
+        "Permission audit must run before any agent is given tool access to the repo",
+        "Outside collaborators must be flagged",
+        "Missing branch protection must be flagged as P0",
+        "Audit results must be stored and versioned (diffable across audits)"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.repo_permission_audit report)",
+        ".rig/reports/indexes/repo_permission_audits.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "repo_onboarding_audits",
+        "branch_protection_rules",
+        "collaborator_inventory",
+        "ruleset_audit",
+        "codeowners_validation"
+      ],
+      "duckdb_use": [
+        "Percentage of repos with branch protection",
+        "Outside collaborator count per repo",
+        "Most common missing protections across onboarded repos",
+        "Audit score trend over time (re-audit deltas)"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.repo_onboarding_started",
+        "rig.relay.governance.permission_audit_completed",
+        "rig.relay.governance.branch_protection_missing_flagged",
+        "rig.relay.governance.outside_collaborator_flagged"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only audit of repository settings. Recommendations are local artifacts.",
+      "human_in_the_loop_boundary": "Audit is auto-generated. Human reviews the audit report and can choose to apply hardening recommendations (which triggers a separate workflow through the governed PR mechanism for CODEOWNERS changes, or direct API for protection rule changes if permissions allow).",
+      "failure_modes": [
+        "GitHub App lacks admin:org scope (cannot read branch protection)",
+        "Repo is archived/disabled (audit irrelevant)",
+        "CODEOWNERS file is invalid syntax",
+        "Rulesets at org level not visible without org-level token",
+        "Large team with thousands of collaborators (pagination + rate limit)"
+      ],
+      "tests_needed": [
+        "test_repo_onboarding_to_audit_insufficient_permissions",
+        "test_repo_onboarding_to_audit_archived_repo",
+        "test_repo_onboarding_to_audit_no_branch_protection",
+        "test_repo_onboarding_to_audit_outside_collaborators_flagged",
+        "test_repo_onboarding_to_audit_ruleset_visibility_boundary"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "org-onboarding-to-multi-repo-portfolio-map",
+      "title": "Org Onboarding → Multi-Repo Portfolio Map",
+      "desired_user_experience": "When Rig Relay is connected to a GitHub organization, the system maps all accessible repositories into a portfolio view: repo types (service, library, infra), dependency relationships, active PRs, open issues, security alert counts, and team ownership. This provides an operational picture of the entire org's codebase surface.",
+      "exact_github_primitives_used": [
+        "GET /orgs/{org}",
+        "GET /orgs/{org}/repos?type=all&sort=updated",
+        "GET /orgs/{org}/teams",
+        "GET /orgs/{org}/members",
+        "GraphQL: organization.repositories, organization.teams",
+        "GET /repos/{owner}/{repo}/dependency-graph/dependencies (per repo)"
+      ],
+      "rig_relay_governance_gates": [
+        "Portfolio map must not expose private repo names in telemetry (use repo_id hashes)",
+        "Only repos visible to the authenticated GitHub App are included",
+        "Portfolio map must be regenerated on schedule, not per-request (rate limit safety)",
+        "Dependency graph resolution must respect repo visibility boundaries"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.org_portfolio_map report)",
+        ".rig/reports/indexes/org_portfolio_maps.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "org_portfolio_maps",
+        "repo_inventory",
+        "team_inventory",
+        "cross_repo_dependencies",
+        "org_security_posture"
+      ],
+      "duckdb_use": [
+        "Repo count by type (service, library, infra)",
+        "Dependency graph centrality (most depended-on repos)",
+        "Security alert density per repo",
+        "Team coverage gaps (repos with no team ownership)"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.org_onboarding_started",
+        "rig.relay.ralph.portfolio_map_generated",
+        "rig.relay.governance.repo_visibility_respected"
+      ],
+      "remote_mutation_rules": "No remote mutation. Read-only multi-repo scan. Portfolio map is a local projection only.",
+      "human_in_the_loop_boundary": "Portfolio map is auto-generated on org onboarding and on a configurable refresh schedule. No human gate for generation. Human reviews the map to identify gaps and risks.",
+      "failure_modes": [
+        "Org has 10,000+ repos (pagination and rate limit exhaustion)",
+        "GitHub App only installed on subset of repos (partial view)",
+        "Dependency graph feature not enabled on some repos",
+        "Rate limit consumed before all repos scanned",
+        "Private repo included in map leaked through error messages"
+      ],
+      "tests_needed": [
+        "test_org_onboarding_to_portfolio_map_large_org_pagination",
+        "test_org_onboarding_to_portfolio_map_partial_installation",
+        "test_org_onboarding_to_portfolio_map_rate_limit_safety",
+        "test_org_onboarding_to_portfolio_map_private_repo_not_leaked",
+        "test_org_onboarding_to_portfolio_map_dependency_graph_disabled"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "branch-protection-ruleset-audit-to-hardening-plan",
+      "title": "Branch Protection/Ruleset Audit → Recommended Hardening Plan",
+      "desired_user_experience": "Periodically (or on-demand), the system audits branch protection rules and repository rulesets against a configurable hardening baseline. Missing protections (no required PR reviews, no status checks, no signed commits requirement) are surfaced in a prioritized hardening plan with specific recommendations.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/branches?protected=true",
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection",
+        "GET /repos/{owner}/{repo}/rulesets",
+        "GET /orgs/{org}/rulesets",
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks",
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews",
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures",
+        "GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+      ],
+      "rig_relay_governance_gates": [
+        "Hardening plan must not propose disabling existing protections",
+        "Recommended rules must be validated against GitHub's ruleset schema",
+        "Plan must distinguish between repo-level and org-level rule changes",
+        "Hardening must not lock out legitimate workflows (e.g., release branches)"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.branch_protection_hardening_plan report)",
+        ".rig/reports/indexes/hardening_plans.json",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "branch_protection_audits",
+        "ruleset_audits",
+        "hardening_plans",
+        "hardening_baseline"
+      ],
+      "duckdb_use": [
+        "Hardening plan generation frequency",
+        "Most common missing protections across org",
+        "Protection drift detection (rules removed between audits)",
+        "Mean time to implement hardening recommendations"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.github.branch_protection_audit_run",
+        "rig.relay.governance.hardening_plan_generated",
+        "rig.relay.governance.protection_gap_flagged",
+        "rig.relay.governance.protection_drift_detected"
+      ],
+      "remote_mutation_rules": "No remote mutation for audit/planning. The hardening plan is a local artifact. Applying hardening rules is a separate governed workflow requiring explicit human approval and org-level admin permissions.",
+      "human_in_the_loop_boundary": "Audit and plan are auto-generated on schedule or on-demand. Human reviews the hardening plan and explicitly approves any rule changes. Rule application via GitHub API requires org-admin level token, which is a separate permission scope.",
+      "failure_modes": [
+        "Hardening baseline is too strict for repo's workflow (false positive recommendations)",
+        "Org-level rulesets override repo-level settings (conflict detection missed)",
+        "Ruleset API returns partial data for complex nested conditions",
+        "Audit runs while admin is mid-migration (stale state)",
+        "Push rulesets (pre-receive hooks) not detectable via API"
+      ],
+      "tests_needed": [
+        "test_branch_protection_audit_to_hardening_plan_detects_drift",
+        "test_branch_protection_audit_to_hardening_plan_org_repo_rule_conflict",
+        "test_branch_protection_audit_to_hardening_plan_no_disable_existing",
+        "test_branch_protection_audit_to_hardening_plan_false_positive_rate",
+        "test_branch_protection_audit_to_hardening_plan_approval_gate"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "read_only_requirements": [
+        "content_light_evidence_produced",
+        "data_freshness_marker",
+        "rate_limit_budget_consumed",
+        "stale_data_indicator_if_ttl_exceeded"
+      ]
+    },
+    {
+      "workflow_id": "github-pages-static-docs-to-evidence-site",
+      "title": "GitHub Pages/Static Docs → Generated Evidence Site",
+      "desired_user_experience": "When the static documentation site is regenerated (via Milestone workflow or manual trigger), the system produces a companion evidence site: rendered test results, coverage reports, SBOM viewer, provenance timeline, and audit trail browser. Both the docs site and evidence site are deployed side-by-side on GitHub Pages.",
+      "exact_github_primitives_used": [
+        "GET /repos/{owner}/{repo}/pages",
+        "POST /repos/{owner}/{repo}/pages/builds",
+        "PUT /repos/{owner}/{repo}/pages (configure source branch)",
+        "GET /repos/{owner}/{repo}/pages/builds/latest",
+        "GraphQL: repository.pages"
+      ],
+      "rig_relay_governance_gates": [
+        "Evidence site must not expose raw secrets, tokens, or private code",
+        "All evidence content must be derived from SHA256-hashed sources",
+        "Evidence site HTML/JS must pass content-security validation",
+        "GitHub Pages source must be explicitly configured (no auto-overwrite)"
+      ],
+      "artifacts_generated": [
+        ".rig/reports/reports.jsonl (rig.evidence_site_generated report)",
+        ".build/rig-relay/evidence-site/index.html",
+        ".build/rig-relay/evidence-site/test-results/",
+        ".build/rig-relay/evidence-site/sbom/",
+        ".build/rig-relay/evidence-site/provenance/",
+        ".build/rig-relay/evidence-site/audit-trail/",
+        "~/.rig/relay/sessions/{session_id}/observability.jsonl"
+      ],
+      "postgres_use": [
+        "evidence_site_deployments",
+        "github_pages_config",
+        "evidence_site_content_registry"
+      ],
+      "duckdb_use": [
+        "Evidence site deployment frequency",
+        "Evidence site page count trend",
+        "Deployment failure rate by cause"
+      ],
+      "telemetry_emitted": [
+        "rig.relay.docs.evidence_site_generated",
+        "rig.relay.github.pages_deploy_triggered",
+        "rig.relay.github.pages_deploy_completed",
+        "rig.relay.governance.evidence_content_policy_passed"
+      ],
+      "remote_mutation_rules": "Remote mutation (GitHub Pages deploy) is allowed after: evidence content policy passes, no secrets detected in generated HTML, explicit human approval. Pages source branch configuration is a separate permission scope.",
+      "human_in_the_loop_boundary": "Human must approve GitHub Pages deployment in cockpit. Preview of generated evidence site is available locally before deployment approval.",
+      "failure_modes": [
+        "GitHub Pages disabled at org level",
+        "Evidence site build exceeds Pages size limit (1 GB)",
+        "CNAME/DNS misconfiguration after Pages source switch",
+        "Previous Pages deployment is mid-build (concurrent build conflict)",
+        "Generated JS has XSS vector caught by content policy"
+      ],
+      "tests_needed": [
+        "test_pages_to_evidence_site_content_policy",
+        "test_pages_to_evidence_site_no_secrets_in_html",
+        "test_pages_to_evidence_site_pages_disabled",
+        "test_pages_to_evidence_site_concurrent_build_conflict",
+        "test_pages_to_evidence_site_approval_gate"
+      ],
+      "current_status": "not_implemented",
+      "trust_spine_prerequisites": ["permission_probe", "rate_limit_budget", "content_light_scan"],
+      "permission_probe_requirement": "required",
+      "rate_limit_budget_requirement": "required",
+      "webhook_idempotency_requirement": "required",
+      "content_light_scan_requirement": "required",
+      "telemetry_evidence_boundary_behavior": "product_telemetry_disabled_degrades_adaptive_behavior_but_preserves_governance_evidence",
+      "remote_mutation_blocking_requirements": [
+        "trust_spine_v1_complete",
+        "dry_run_rehearsal_executed",
+        "explicit_human_approval",
+        "signed_approval_receipt",
+        "branch_protection_ruleset_preflight",
+        "no_surprise_mutation_sabotage_tests_passing",
+        "content_policy_scan_for_pr_comment_release_text",
+        "rollback_reconciliation_receipt"
+      ]
+    }
+  ],
+  "content_light": {
+    "description": "Human-readable summary of the workflow map for cockpit projection.",
+    "total_workflows": 18,
+    "implemented_count": 0,
+    "partial_count": 8,
+    "not_implemented_count": 10,
+    "workflow_dependencies": {
+      "governed_pr": [
+        "issue-to-mission-candidate",
+        "issue-to-context-packet",
+        "issue-to-implementation-plan",
+        "code-scanning-alert-to-investigation-packet",
+        "code-scanning-alert-to-remediation-plan",
+        "remediation-plan-to-governed-pr",
+        "dependabot-alert-to-update-plan"
+      ],
+      "evidence_site": [
+        "release-tag-to-evidence-regeneration",
+        "milestone-to-static-docs-refresh",
+        "github-pages-static-docs-to-evidence-site"
+      ],
+      "review_assistance": [
+        "pr-to-risk-summary",
+        "pr-to-review-packet",
+        "pr-comments-to-agent-response-queue"
+      ],
+      "observability": [
+        "failed-action-to-diagnosis-packet",
+        "failed-action-to-fix-plan"
+      ],
+      "governance_posture": [
+        "repo-onboarding-to-permission-audit",
+        "org-onboarding-to-multi-repo-portfolio-map",
+        "branch-protection-ruleset-audit-to-hardening-plan"
+      ]
+    },
+    "critical_path": "issue-to-mission-candidate → issue-to-implementation-plan → remediation-plan-to-governed-pr → pr-to-risk-summary → pr-comments-to-agent-response-queue",
+    "highest_risk_workflows": [
+      "remediation-plan-to-governed-pr (remote mutation gateway)",
+      "pr-comments-to-agent-response-queue (agent communication with humans)",
+      "github-pages-static-docs-to-evidence-site (content deployment)"
+    ]
+  },
+  "revision": 2
+}

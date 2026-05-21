@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.high_performance_substrate_docs_alignment.v1",
+  "title": "High-Performance Substrate Documentation Alignment Schema",
+  "description": "Schema for the high-performance substrate documentation alignment report — tracks which docs were inspected, which were patched, which were intentionally left untouched, and what doctrine decisions were propagated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "audit_id",
+    "title",
+    "generated_at",
+    "status",
+    "content_light",
+    "source_audit_artifacts",
+    "docs_inspected",
+    "doctrine_decisions_propagated",
+    "validation_results",
+    "remaining_seams",
+    "revision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.high_performance_substrate_docs_alignment.v1"
+    },
+    "audit_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "completed"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "source_audit_artifacts": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "docs_inspected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role"],
+        "properties": {
+          "path": {"type": "string"},
+          "role": {"type": "string"},
+          "needs_update": {"type": "boolean"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "stale_statements_found": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "stale_text", "problem", "correction"],
+        "properties": {
+          "path": {"type": "string"},
+          "location": {"type": "string"},
+          "stale_text": {"type": "string"},
+          "problem": {"type": "string"},
+          "correction": {"type": "string"},
+          "corrected": {"type": "boolean"}
+        }
+      }
+    },
+    "docs_updates_applied": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "change"],
+        "properties": {
+          "path": {"type": "string"},
+          "change": {"type": "string"},
+          "type": {"type": "string", "enum": ["edit", "new"]}
+        }
+      }
+    },
+    "docs_intentionally_untouched": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "reason"],
+        "properties": {
+          "path": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "doctrine_decisions_propagated": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "links_nav_additions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "validation_results": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "stale_markdown_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "status"],
+        "properties": {
+          "path": {"type": "string"},
+          "canonical_replacement": {"type": "string"},
+          "status": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    },
+    "remaining_seams": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "revision": {
+      "type": "string"
+    }
+  }
+}

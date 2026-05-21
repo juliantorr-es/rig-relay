@@ -1,0 +1,62 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "mcp-surface-audit-v1",
+  "title": "MCP Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "current_state": {
+    "summary": "RigMCPServer implements a 5-tier tool model over JSON-RPC via stdio. 16 tools (10 read-only tier 0-2, 3 patch proposal tier 3, 1 mutation tier 4, 1 git/release tier 5), 6 resources (read-only), 3 prompts. Refusal adapter evaluates tool requests against known tiers. Auth metadata with provenance hashes. Tool descriptor suspicious classification detects rug-pull/drift. Per-user authorization model defined but not enforced.",
+    "maturity": "v1 server implemented with models, auth metadata, and refusal adapter. Real tool dispatch is mostly stub. Transport is stdio only. Streamable HTTP deferred. No real auth enforcement."
+  },
+  "what_rig_should_expose_as_mcp_first": {
+    "priority_order": [
+      "1. Read-only tools (tier 0): rig.current_mission, rig.search_evidence, rig.read_receipt, rig.list_worktrees, rig.inspect_schema, rig.summarize_dirty_state, rig.run_readonly_doctor — all safe, all stub-implemented; need real backend wiring",
+      "2. Read-only resources (tier 0): 6 resources exposing mission envelopes, receipts, worktree status, schemas, projections, council findings — low risk, high value for agent context",
+      "3. Analysis tools (tier 1): rig.build_context_packet, rig.create_consult_packet, rig.compare_provider_opinions — produce content-light artifacts, no mutation",
+      "4. Validation tools (tier 2): rig.run_validator, rig.check_merge_friendly, rig.audit_dirty_state — bounded execution with known validators, produces receipts",
+      "5. Capability surface and permission transparency as MCP resources before any mutation tools",
+      "6. GitHub provider trust spine as MCP resources (permission posture, rate-limit budget, webhook verification status)",
+      "7. Patch proposal (tier 3): rig.propose_patch — only after all tier 0-2 tools are real and approval flow is implemented in cockpit",
+      "8. Mutation tools (tier 4): NEVER exposed by default. Only after backend approval receipts and cockpit approval flow exist.",
+      "9. Git/release tools (tier 5): NEVER exposed by default. Enterprise-only gated feature."
+    ]
+  },
+  "what_should_be_forbidden": [
+    "Raw mutation authority without approval receipt — tier 4 and 5 tools must always require authorization_receipt parameter",
+    "Direct file system access from MCP — no rig.write_file, rig.search_replace, rig.bash tools exposed via MCP",
+    "Raw agent loop access — MCP must not expose the ability to run arbitrary agent turns",
+    "Telemetry export without admin authorization — no rig.export_telemetry unless admin role verified",
+    "Config mutation without admin approval — MCP must never expose rig.configure_postgres or similar admin tools",
+    "Workspace boundary bypass — MCP roots must enforce workspace scope; no access outside workspace",
+    "Raw file content in MCP resources — all file content must be SHA256-hashed; no raw content in MCP transport",
+    "Secret-bearing data in any MCP response — content-light scan required on all tool outputs",
+    "Tool descriptor modification without diffable evidence — descriptor changes must produce audit artifacts"
+  ],
+  "mcp_security_doctrine": {
+    "tool_descriptor_integrity": "Tool descriptors must be signed or hash-pinned. compute_tool_provenance_hash() exists and produces canonical hashes from name+description+input_schema+server_identity. Descriptor changes must be detected and produce diffable evidence. classify_tool_descriptor_suspicious() detects rug-pull patterns but is not integrated into the request flow — it must be called on every tools/list response and on every descriptor change.",
+    "tool_poisoning_protection": "Tool descriptors must be scanned for prompt injection patterns (overly-long descriptions, misleading readOnlyHint for destructive tools, foreign capability claims outside rig.* namespace, dual-hint shadowing). classify_tool_descriptor_suspicious() implements these checks. Must be integrated into request flow.",
+    "roots_workspace_boundary": "MCP roots must be enforced to prevent workspace boundary bypass. Proposed roots must be validated against known workspace paths. Tool operations must be scoped to approved roots. Workspace trust must be verified before allowing file-system-adjacent operations.",
+    "content_light_guarantees": "MCP must distinguish 5 content classes: public-safe, private-local, sensitive-metadata, secret-bearing (never serve), forbidden-raw (never serve). All tool outputs must pass content-light scan. Tool outputs with secret fragments or raw file content must be refused with structured refusal.",
+    "auth_authorization": "JSON-RPC itself provides no auth. MCP transport (even stdio) must add per-user authorization. MCPPerUserAuthorization model exists (user_id_hash, scopes_granted, authorization_status, content_light). Must be enforced: every tool call must check authorization status, scopes, and expiry. Tier 4+ tools must require explicit authorization receipt. Bearer/OAuth supported in metadata but not yet implemented.",
+    "mutation_tool_policy": "Mutation tools (tier 4-5) must never rely on client UI alone for authorization. Authorization receipts must be backend-verified. Receipts must be time-bound and scope-bound. No MCP mutation tool should execute without a valid, unexpired, scope-matching authorization receipt that was issued by Rig Relay's governance engine."
+  },
+  "mcp_tests_required": [
+    "test_mcp_tool_descriptor_integrity_on_change — sabotage: modify descriptor, verify detection",
+    "test_mcp_tool_poisoning_detection — adversarial: inject poisoned descriptor, verify classified as suspicious",
+    "test_mcp_roots_workspace_boundary — sabotage: request tool with path outside roots, verify blocked",
+    "test_mcp_content_light_scan_on_output — adversarial: tool returns secret fragment, verify refusal",
+    "test_mcp_mutation_blocked_without_approval_receipt — sabotage: call tier4 tool without receipt, verify blocked",
+    "test_mcp_mutation_blocked_with_expired_receipt — sabotage: call with expired receipt, verify blocked",
+    "test_mcp_mutation_blocked_with_wrong_scope_receipt — sabotage: call with wrong scope receipt, verify blocked",
+    "test_mcp_per_user_authorization_enforced — contract: different users get different tool access",
+    "test_mcp_descriptor_rug_pull_detection — adversarial: change readOnlyHint from true to false on destructive tool, verify detected",
+    "test_mcp_no_raw_file_content_in_resources — adversarial: resource returns raw file, verify content-light scan blocks it"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

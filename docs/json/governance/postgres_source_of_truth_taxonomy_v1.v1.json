@@ -1,0 +1,402 @@
+{
+  "schema_version": "rig.relay.postgres_source_of_truth_taxonomy.v1",
+  "audit_id": "postgres-enterprise-substrate-audit-v1",
+  "title": "PostgreSQL Enterprise Substrate — Source-of-Truth Taxonomy",
+  "generated_at": "2026-05-20T18:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "principle": "JSON/JSONL/CSV artifacts remain the portable, inspectable, diffable, replayable, schema-governed source-of-truth artifacts. Postgres is the enterprise operational substrate, never the sole authority for any content-bearing artifact. JSONB inside Postgres is a schema-governed representation of canonical envelopes, not an untyped dumping ground.",
+  "data_classes": [
+    {
+      "class_id": "session_events",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/sessions/<session_id>/observability.jsonl",
+      "postgres_shape": "event_table",
+      "postgres_table": "event_log",
+      "replay_rule": "can rebuild from artifacts; Postgres is operational read replica",
+      "security_class": "content-light",
+      "procurement_relevance": "Session lifecycle audit trail, incident investigation, operational telemetry. No raw prompts/completions/file contents in this table.",
+      "notes": "Observability JSONL is the canonical authority. Postgres event_log is an operational projection for dashboard queries and incident forensics. Never store raw user content in Postgres."
+    },
+    {
+      "class_id": "observability_jsonl",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/sessions/<session_id>/observability.jsonl",
+      "postgres_shape": "dual",
+      "postgres_table": "event_log",
+      "replay_rule": "artifacts are source of truth; Postgres is downstream operational replica",
+      "security_class": "content-light",
+      "procurement_relevance": "Operational monitoring, SLO dashboards, admin forensics, tenant usage reporting",
+      "notes": "Same physical source as session_events. Postgres stores envelope-level fields; raw payloads remain in artifact files only."
+    },
+    {
+      "class_id": "receipt_envelopes",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/receipts/envelopes/<envelope_id>.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "receipt_envelope",
+      "replay_rule": "can rebuild from envelope JSON files; Postgres stores envelope metadata + JSONB for querying by receipt_kind, session_id, actor",
+      "security_class": "content-light",
+      "procurement_relevance": "Non-repudiation, tool invocation audit, compliance evidence",
+      "notes": "ReceiptStore protocol (rig_relay/evidence/receipt_store.py) currently filesystem-only. Postgres adapter implements same protocol for operational querying."
+    },
+    {
+      "class_id": "trace_events",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/trace_events.jsonl",
+      "postgres_shape": "event_table",
+      "postgres_table": "trace_event",
+      "replay_rule": "can rebuild from trace_events.jsonl; Postgres stores trace_id, event_name, span metadata for correlation queries",
+      "security_class": "content-light",
+      "procurement_relevance": "Distributed tracing correlation, latency root cause analysis, provider performance comparison",
+      "notes": "Trace events link tool invocations to LLM turns to provider calls. Postgres enables efficient span-search and GIN-indexed payload queries."
+    },
+    {
+      "class_id": "coordination_leases",
+      "canonical_authority": "dual",
+      "artifact_format": "JSONL",
+      "artifact_path": ".build/rig-relay/coordination/events.jsonl",
+      "postgres_shape": "hybrid",
+      "postgres_table": "coordination_lease",
+      "replay_rule": "can rebuild state from events.jsonl; Postgres is operational store for active leases, conflicts, and projections",
+      "security_class": "content-light",
+      "procurement_relevance": "Cross-session coordination, multi-agent lane management, path reservation audit, lease lifecycle forensics",
+      "notes": "File-based CoordinationStore (rig_relay/coordination/store.py) uses fcntl digester locks. Postgres advisory locks can replace this for cross-process coordination. Dual authority: events.jsonl remains canonical replay log; Postgres is operational hot path for lease acquisition and path conflict detection."
+    },
+    {
+      "class_id": "workstream_ledgers",
+      "canonical_authority": "dual",
+      "artifact_format": "JSONL",
+      "artifact_path": ".build/rig-relay/coordination/events.jsonl (coord.* events)",
+      "postgres_shape": "event_table",
+      "postgres_table": "workstream_event",
+      "replay_rule": "can rebuild workflow timeline from events; Postgres enables efficient task-to-path-to-session correlation queries",
+      "security_class": "content-light",
+      "procurement_relevance": "Fleet orchestration visibility, mission progress tracking, subagent workstream audit, task lifecycle management",
+      "notes": "Subset of coordination events specific to task claims, heartbeats, releases. Postgres enables efficient JOIN across sessions, tasks, paths, and artifacts."
+    },
+    {
+      "class_id": "release_gate_artifacts",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "docs/json/release_gate/*.v1.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "release_gate_decision",
+      "replay_rule": "artifacts are canonical; Postgres stores structured gate decisions for dashboard queries and compliance reporting",
+      "security_class": "content-light",
+      "procurement_relevance": "RC readiness tracking, blocker burndown, compliance gate evidence, auditor-accessible gate history",
+      "notes": "Release gate JSON files are the canonical record. Postgres table provides fast lookup for cockpit blocker burndown widget and procurement compliance dashboards."
+    },
+    {
+      "class_id": "findings_lifecycle_records",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "docs/findings/out-of-scope-findings.jsonl",
+      "postgres_shape": "hybrid",
+      "postgres_table": "finding",
+      "replay_rule": "JSONL is append-only source of truth; Postgres is operational query surface for status/severity/staleness aggregation",
+      "security_class": "sensitive_metadata",
+      "procurement_relevance": "Debt tracking, finding lifecycle management, triage workflow automation",
+      "notes": "JSONL is immutable by convention. Postgres stores finding_id, status, severity, kind, created_at for efficient queries. Postgres never mutates the JSONL."
+    },
+    {
+      "class_id": "telemetry_aggregates",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": ".build/rig-relay/derived/telemetry_aggregates.json",
+      "postgres_shape": "materialized_view",
+      "postgres_table": "telemetry_aggregate",
+      "replay_rule": "can rebuild from source observability JSONL files; Postgres materialized views for dashboard widgets",
+      "security_class": "content-light",
+      "procurement_relevance": "SLO dashboards, usage trend analysis, tenant billing/usage reports, capacity planning",
+      "notes": "These are derived aggregates — counts, percentiles, rates with SHA256 hashed groupings only. No raw payloads. Postgres materialized views refresh from event_log for dashboard latency."
+    },
+    {
+      "class_id": "context_assembler_artifacts",
+      "canonical_authority": "dual",
+      "artifact_format": "JSON",
+      "artifact_path": ".build/rig-relay/context/*.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "context_artifact",
+      "replay_rule": "JSON files are canonical; Postgres stores assembly metadata (symbol index, repo map hashes, compression plan) for context reuse across sessions",
+      "security_class": "sensitive_metadata",
+      "procurement_relevance": "Context assembly efficiency, cross-session symbol reuse, token budget optimization",
+      "notes": "Context artifacts contain symbol names and path hashes, not file contents. Postgres enables cross-session symbol index reuse and assembly plan caching."
+    },
+    {
+      "class_id": "tool_invocation_envelopes",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/receipts/envelopes/<envelope_id>.json (subject_kind=tool_invocation)",
+      "postgres_shape": "hybrid",
+      "postgres_table": "tool_invocation",
+      "replay_rule": "envelope JSON files are canonical; Postgres stores tool_name, session_id, status, latency_ms, sha256 hashes for query and analytics",
+      "security_class": "content-light",
+      "procurement_relevance": "Tool invocation audit, permission enforcement evidence, latency SLO tracking",
+      "notes": "Envelope metadata only. Raw tool args, outputs, file content, and diffs never stored in Postgres. SHA256 hashes link back to envelope files."
+    },
+    {
+      "class_id": "mutation_receipts",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/receipts/envelopes/<envelope_id>.json (subject_kind=worktree)",
+      "postgres_shape": "hybrid",
+      "postgres_table": "mutation_receipt",
+      "replay_rule": "envelope JSON files are canonical; Postgres stores mutation metadata for preproduction audit",
+      "security_class": "content-light",
+      "procurement_relevance": "Live mutation audit trail, adoption merge history, preproduction gate evidence",
+      "notes": "Mutation receipts capture which agent mutated which files in which worktree. Postgres enables query across mutations, worktrees, and adoption decisions."
+    },
+    {
+      "class_id": "github_provider_packets",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "docs/json/governance/github_*.v1.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "provider_packet",
+      "replay_rule": "JSON files are canonical; Postgres stores packet metadata for provider health dashboards and status queries",
+      "security_class": "sensitive_metadata",
+      "procurement_relevance": "Provider integration health, capability status, auth state, rate limit tracking",
+      "notes": "Provider packets contain integration status and capability manifests. No raw API keys, tokens, or private user data in Postgres."
+    },
+    {
+      "class_id": "provider_operating_picture_artifacts",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "docs/json/governance/*operating_picture*.v1.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "provider_operating_picture",
+      "replay_rule": "JSON files are canonical; Postgres stores snapshot metadata for cockpit provider health widgets",
+      "security_class": "content-light",
+      "procurement_relevance": "Multi-provider health monitoring, capability comparison, vendor evaluation dashboard",
+      "notes": "Operating picture snapshots show provider status, not secrets."
+    },
+    {
+      "class_id": "cockpit_projection_state",
+      "canonical_authority": "runtime-only",
+      "artifact_format": "none",
+      "postgres_shape": "hybrid",
+      "postgres_table": "cockpit_projection",
+      "replay_rule": "can rebuild from source artifacts; Postgres stores computed projection blobs for WebSocket push and dashboard rendering",
+      "security_class": "content-light",
+      "procurement_relevance": "Cockpit performance, projection cache invalidation, admin dashboard latency",
+      "notes": "Projection state is computed from canonical artifacts. Postgres enables efficient projection cache invalidation via LISTEN/NOTIFY. Projection blobs are signed SHA256 hashes, rebuilt on source artifact change."
+    },
+    {
+      "class_id": "cockpit_ui_state",
+      "canonical_authority": "runtime-only",
+      "artifact_format": "none",
+      "postgres_shape": "hybrid",
+      "postgres_table": "cockpit_ui_state",
+      "replay_rule": "runtime-only ephemeral state; no export need",
+      "security_class": "content-light",
+      "procurement_relevance": "Multi-user cockpit preferences (future), admin layout persistence",
+      "notes": "User layout preferences, widget visibility, disclosure levels. Local only. In enterprise hosted mode, scoped per tenant/session."
+    },
+    {
+      "class_id": "user_preferences",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/preferences.json",
+      "postgres_shape": "dual",
+      "postgres_table": "user_preference",
+      "replay_rule": "can rebuild from preferences JSON; Postgres stores structured preferences for hosted multi-user scenarios",
+      "security_class": "sensitive_metadata",
+      "procurement_relevance": "Multi-user preference management, SSO integration, profile migration between instances",
+      "notes": "Preferences JSON is local-first. Postgres stores preferences for enterprise hosted mode with user identity scoping."
+    },
+    {
+      "class_id": "telemetry_consent_opt_out_state",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/telemetry_consent.json",
+      "postgres_shape": "dual",
+      "postgres_table": "telemetry_consent",
+      "replay_rule": "can rebuild from consent JSON; Postgres stores consent state for enterprise audit",
+      "security_class": "sensitive_metadata",
+      "procurement_relevance": "GDPR/CCPA consent audit trail, enterprise opt-out enforcement evidence",
+      "notes": "Consent state must be auditable per tenant. Postgres stores consent history with timestamps for compliance."
+    },
+    {
+      "class_id": "identity_account_org_metadata",
+      "canonical_authority": "dual",
+      "artifact_format": "JSON",
+      "artifact_path": "~/.rig/relay/identity/*.json",
+      "postgres_shape": "normalized",
+      "postgres_table": "identity_metadata",
+      "replay_rule": "can export back to JSON; Postgres is canonical for enterprise identity operations",
+      "security_class": "secret-bearing",
+      "procurement_relevance": "Enterprise SSO, org/tenant provisioning, RBAC roles, user lifecycle management",
+      "notes": "Identity metadata (org IDs, tenant mappings, role assignments) is stored normalized in Postgres for enterprise operations. Never store raw credentials or tokens in Postgres — only reference keys to the credential store."
+    },
+    {
+      "class_id": "enterprise_audit_logs",
+      "canonical_authority": "dual",
+      "artifact_format": "JSONL",
+      "artifact_path": ".build/rig-relay/enterprise/audit_log.jsonl",
+      "postgres_shape": "event_table",
+      "postgres_table": "enterprise_audit_event",
+      "replay_rule": "can rebuild from audit_log.jsonl; Postgres enables efficient querying for compliance and incident investigation",
+      "security_class": "content-light",
+      "procurement_relevance": "SOC 2 audit trail, access review, incident investigation, compliance reporting",
+      "notes": "Enterprise audit events capture who did what (admin actions, tenant provisioning, permission changes, consent changes). SHA256 hashes link to source artifacts. No raw content or secrets."
+    },
+    {
+      "class_id": "static_docs_site_projection_metadata",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": "docs/json/*.v1.json, docs/schemas/*.schema.json",
+      "postgres_shape": "materialized_view",
+      "postgres_table": "schema_registry",
+      "replay_rule": "artifacts are canonical; Postgres stores schema metadata for schema discovery and validation automation",
+      "security_class": "content-light",
+      "procurement_relevance": "Schema governance, documentation index, automated validation pipeline metadata",
+      "notes": "Schema registry stores schema_id, version, file path, SHA256 hash of schema content. Enables automated schema discovery and validation report generation."
+    },
+    {
+      "class_id": "schema_validation_outputs",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON",
+      "artifact_path": ".build/rig-relay/validation/*.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "artifact_validation",
+      "replay_rule": "can rebuild from validation output files; Postgres stores validation results for dashboard and trend analysis",
+      "security_class": "content-light",
+      "procurement_relevance": "Continuous compliance evidence, schema drift detection, procurement validation gate",
+      "notes": "Validation results store schema_id, instance_sha256, passed/failed, error_messages[] (content-light: no raw instance content)."
+    },
+    {
+      "class_id": "debug_packets",
+      "canonical_authority": "runtime-only",
+      "artifact_format": "none",
+      "postgres_shape": "none",
+      "replay_rule": "runtime-only ephemeral; must not be persisted to Postgres",
+      "security_class": "private_content_forbidden",
+      "procurement_relevance": "N/A — debug packets are runtime-only and never shipped",
+      "notes": "Debug packets may contain raw prompts, completions, file content during debugging. Must never be stored in Postgres or exported. Local temporary files only, covered by debug-bundle-policy."
+    },
+    {
+      "class_id": "local_inference_benchmark_evidence",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSON/JSONL",
+      "artifact_path": ".build/rig-relay/local_inference/benchmarks/*.json",
+      "postgres_shape": "hybrid",
+      "postgres_table": "local_inference_benchmark",
+      "replay_rule": "JSON artifacts are canonical; Postgres stores benchmark metadata for capability comparison and routing decisions",
+      "security_class": "content-light",
+      "procurement_relevance": "Model selection justification, local inference capability evidence, procurement evaluation data",
+      "notes": "Benchmark results store model_id, benchmark_kind, scores, latency stats. No raw prompts or completions."
+    },
+    {
+      "class_id": "product_telemetry_events",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/sessions/<session_id>/observability.jsonl (events with sensitivity_class=telemetry_opt_in)",
+      "postgres_shape": "event_table",
+      "postgres_table": "event_log (sensitivity_class='telemetry_opt_in' partition)",
+      "replay_rule": "can rebuild from artifacts; Postgres is operational read replica. Partition may be empty when product telemetry is disabled.",
+      "security_class": "content-light",
+      "procurement_relevance": "Product improvement analytics, agent-tool optimization, Ralph ranking refinement. Not required for audit or governance.",
+      "opt_out_behavior": "When product telemetry consent is disabled, no telemetry_opt_in events are appended. Existing telemetry_opt_in partitions remain queryable but stale. No audit/evidence tables are affected.",
+      "may_enter_product_telemetry": true,
+      "must_remain_when_telemetry_disabled": false
+    },
+    {
+      "class_id": "local_operational_observability_events",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/sessions/<session_id>/observability.jsonl (events with sensitivity_class=internal_operational)",
+      "postgres_shape": "event_table",
+      "postgres_table": "event_log (sensitivity_class='internal_operational' partition)",
+      "replay_rule": "can rebuild from artifacts; Postgres is operational read replica. These events are required for governed operation.",
+      "security_class": "content-light",
+      "procurement_relevance": "Operational monitoring, incident investigation, local diagnostics, SLO dashboards. Required for enterprise operational correctness.",
+      "opt_out_behavior": "NOT disabled by product telemetry opt-out. Only disabled by an explicit local_diagnostics setting (distinct from telemetry consent). Must remain available for governance, diagnostics, auditability, and cockpit correctness.",
+      "may_enter_product_telemetry": false,
+      "must_remain_when_telemetry_disabled": true
+    },
+    {
+      "class_id": "enterprise_audit_evidence_events",
+      "canonical_authority": "dual",
+      "artifact_format": "JSONL",
+      "artifact_path": ".build/rig-relay/enterprise/audit_log.jsonl",
+      "postgres_shape": "event_table",
+      "postgres_table": "enterprise_audit_event",
+      "replay_rule": "can rebuild from audit_log.jsonl; Postgres enables efficient querying for compliance and incident investigation",
+      "security_class": "content-light",
+      "procurement_relevance": "SOC 2 audit trail, compliance evidence, access review, incident investigation",
+      "opt_out_behavior": "Must function even when product telemetry is disabled. Enterprise audit/evidence tables are mandatory in enterprise mode. Disabling product telemetry must not weaken auditability, compliance evidence, incident investigation, or governance gates.",
+      "may_enter_product_telemetry": false,
+      "must_remain_when_telemetry_disabled": true
+    },
+    {
+      "class_id": "cockpit_projection_invalidation_events",
+      "canonical_authority": "runtime-only",
+      "artifact_format": "none",
+      "postgres_shape": "hybrid",
+      "postgres_table": "projection_invalidation",
+      "replay_rule": "runtime-only operational log; not exported. Rebuildable from source artifact state.",
+      "security_class": "content-light",
+      "procurement_relevance": "Cockpit performance, projection cache correctness, WebSocket push integrity",
+      "opt_out_behavior": "LISTEN/NOTIFY-based projection invalidation is an operational substrate feature, not a telemetry feature. It must continue to function when product telemetry is disabled (assuming Postgres is enabled). Projection invalidation only degrades when enterprise_substrate_unavailable.",
+      "may_enter_product_telemetry": false,
+      "must_remain_when_telemetry_disabled": true
+    },
+    {
+      "class_id": "adaptive_ux_learning_signals",
+      "canonical_authority": "artifact",
+      "artifact_format": "JSONL",
+      "artifact_path": "~/.rig/relay/sessions/<session_id>/observability.jsonl (events with sensitivity_class=telemetry_opt_in, event_name LIKE '%.adaptive.%')",
+      "postgres_shape": "event_table",
+      "postgres_table": "event_log (sensitivity_class='telemetry_opt_in', event_name LIKE '%.adaptive.%')",
+      "replay_rule": "can rebuild from artifacts; not required for operational correctness",
+      "security_class": "content-light",
+      "procurement_relevance": "Product learning: adaptive tool suggestions, Ralph mission-candidate ranking refinement, orchestrator subagent optimization",
+      "opt_out_behavior": "When product telemetry is disabled, adaptive learning signals are not generated. Cockpit adaptive UI features visibly degrade. Existing adaptive signal partitions remain queryable but stale. No audit/evidence tables are affected.",
+      "may_enter_product_telemetry": true,
+      "must_remain_when_telemetry_disabled": false
+    }
+  ],
+  "taxonomy_exclusions": [
+    {
+      "class_id": "raw_llm_prompts",
+      "reason": "Private content forbidden. May contain user code, secrets accidentally pasted, proprietary business logic.",
+      "storage": "Session memory only (agent loop context). Never persisted to disk or Postgres beyond encrypted session state."
+    },
+    {
+      "class_id": "raw_llm_completions",
+      "reason": "Private content forbidden. Contains generated code, reasoning, potential sensitive content.",
+      "storage": "Session memory only. Factor into SHA256 hashed telemetry metadata only."
+    },
+    {
+      "class_id": "raw_file_contents",
+      "reason": "Private content forbidden. Repository files contain proprietary code, configuration, potential secrets.",
+      "storage": "Never stored in Postgres. SHA256 hashes at most for change detection."
+    },
+    {
+      "class_id": "api_keys_and_credentials",
+      "reason": "Secret-bearing. Provider API keys, OAuth tokens, GitHub tokens.",
+      "storage": "Keyring (macOS) or encrypted credential store only. Reference IDs only in Postgres."
+    },
+    {
+      "class_id": "raw_git_diffs_and_patches",
+      "reason": "Private content forbidden. Diffs contain proprietary code, file paths, potentially secrets.",
+      "storage": "SHA256 hashes and file count metadata only. Raw diffs in worktree-local files only."
+    },
+    {
+      "class_id": "stdout_stderr_from_tool_execution",
+      "reason": "Private content forbidden. May contain secrets, file paths, proprietary output.",
+      "storage": "Tool invocation receipts store SHA256 hashes and exit codes only. Raw output never in Postgres."
+    }
+  ],
+  "duckdb_lifecycle": {
+    "current_role": "Disposable analytical/read-side substrate over JSON/JSONL/CSV artifacts. In-memory DuckDB connection reads from artifact files via read_json_auto/read_csv_auto.",
+    "post_migration_role": "Remains as disposable analytical substrate for ad-hoc queries against local artifact files. Postgres replaces DuckDB for operational dashboards, cockpit widgets with materialized views, and cross-session correlation queries requiring indexed access.",
+    "coexistence_principle": "DuckDB reads raw JSONL files directly (zero-copy from filesystem). Postgres ingests structured envelope fields. Both produce content-light projections. Projection comparison tests validate equivalence."
+  },
+  "revision": "1.0.0"
+}

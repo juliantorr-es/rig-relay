@@ -1,0 +1,57 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "acp-surface-audit-v1",
+  "title": "ACP Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "current_state": {
+    "summary": "RigACPAgent implements ACP models: sessions, progress events, edit proposals, permission requests, terminal output, plans. Models are well-designed with content-light guards (touched_path_hashes, diff_sha256, output_sha256). No transport server exists. Entrypoint (rig_relay/cli/acp_entrypoint.py) delegates to legacy vibe.*. IDE sidecar runs ACP agent on separate asyncio task but ACP transport is not integrated. ACP capability profile shows authenticate_supported=false, resume_supported=false, content_light=true.",
+    "maturity": "partial — models implemented, agent class skeleton exists, no transport server, no session persistence, no integration with mission system"
+  },
+  "acp_role_recommendation": {
+    "primary_role": "Rig Relay should act as an ACP server (agent) that editors can drive. It should NOT act as an ACP client consuming other agents — that role belongs to the orchestrator via A2A.",
+    "secondary_role": "ACP may also serve as a client for consuming editor context (workspace snapshot, selection, diagnostics) to enrich agent context. This is already partially done via IDE sidecar.",
+    "not_recommended": "ACP as a peer-to-peer agent communication protocol — that's A2A's job. ACP as a replacement for MCP tool access — MCP is better suited for tools/resources/prompts; ACP is for session-oriented coding agent interaction."
+  },
+  "message_categories": {
+    "allowed": ["session initialization/resume", "progress events (planning/exploration/building/validation/review)", "edit proposals (content-light, diff_sha256, never direct write)", "permission requests (gated through governance engine)", "terminal output (output_sha256, content-light)", "plans (phased mission plans)"],
+    "forbidden": ["direct file write without edit proposal + approval", "raw file content in progress events", "raw diff content outside edit proposals", "telemetry export requests", "admin/configuration changes", "bypass of mission scope or governance gates"]
+  },
+  "how_acp_differs_from_mcp": {
+    "mcp_purpose": "Tool/resource/prompt access for AI clients. Stateless request/response over JSON-RPC. Good for: search evidence, read receipts, run validators, propose patches.",
+    "acp_purpose": "Session-oriented coding agent interaction for editor integration. Stateful sessions with progress streaming, edit proposals, permission requests. Good for: IDE-driven missions, progress tracking, interactive code editing with human review.",
+    "acp_vs_a2a": "ACP is for human-in-the-loop editor-agent interaction. A2A is for agent-to-agent delegation across trust boundaries. ACP sessions involve human approval. A2A delegations involve agent trust tiers."
+  },
+  "acp_design_requirements": [
+    "ACP transport must be separate from MCP transport — different concerns, different auth models",
+    "ACP sessions must persist to coordination store — session state must survive restart",
+    "ACP must integrate with mission system — ACP sessions map to Rig missions",
+    "ACP edit proposals must produce patch_proposal artifacts in the same format as MCP rig.propose_patch",
+    "ACP permission requests must flow through GovernanceEngine — same path as cockpit intents",
+    "ACP terminal output must use RuntimeSupervisor — same subprocess supervision as local tool execution",
+    "ACP must NOT bypass cockpit approval for mutations — if cockpit is active, ACP requests should queue for cockpit review",
+    "ACP resume must be supported — sessions must be resumable from coordination store",
+    "ACP must produce receipts for every message category — session receipts, proposal receipts, permission receipts, terminal receipts"
+  ],
+  "ide_sidecar_convergence": {
+    "current": "IDE sidecar bridges VSCodium extension with ACP agent over stdin/stdout JSONL. 42 capabilities with per-capability risk and policy. Capability manifest is single authority.",
+    "convergence_path": "IDE sidecar should become the primary ACP transport implementation. Currently sidecar uses its own IPC protocol. Should converge to standard ACP message format so other editors (JetBrains, Zed) can use the same ACP transport."
+  },
+  "acp_tests_required": [
+    "test_acp_session_persistence_across_restart — substrate: session state survives restart",
+    "test_acp_edit_proposal_never_direct_write — sabotage: attempt direct write via ACP, verify blocked",
+    "test_acp_permission_request_flows_through_governance — contract: permission request evaluated by GovernanceEngine",
+    "test_acp_terminal_output_uses_runtime_supervisor — contract: terminal command executed via RuntimeSupervisor",
+    "test_acp_cannot_bypass_cockpit_approval — integration: cockpit active, ACP mutation requests queued",
+    "test_acp_message_schema_validation — contract: invalid ACP messages rejected",
+    "test_acp_resume_session — contract: resumed session has correct state",
+    "test_acp_receipt_for_every_message_category — contract: every message produces receipt"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

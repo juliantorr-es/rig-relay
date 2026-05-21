@@ -1,0 +1,433 @@
+{
+  "schema_version": "rig.relay.procurement_test_strategy.v1",
+  "document_id": "enterprise-procurement-test-strategy-v1",
+  "title": "Enterprise Procurement Test Strategy v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "existing_test_infrastructure": {
+    "framework": "pytest + pytest-asyncio + pytest-xdist (parallel) + respx (HTTP mock)",
+    "ci_pipeline": "GitHub Actions: schema validation, static site renderer, CodeQL, release gate (advisory), build-and-upload with smoke tests",
+    "test_markers": ["smoke", "contract", "integration", "e2e", "adversarial", "packaging", "slow", "legacy", "flaky", "network", "provider", "destructive", "migration", "quarantine", "sabotage", "real_artifact", "substrate"],
+    "known_test_paths": ["tests/context/test_context_security_boundaries.py", "tests/desktop/test_websocket_server.py", "tests/repository/test_code_schema_library.py", "tests/repository/test_security_threat_model.py", "tests/frontend/test_frontend_trace_endpoint.py", "tests/integrations/test_github_live_auth.py"]
+  },
+  "proposed_test_suites": [
+    {
+      "suite_id": "TEST-SUITE-01",
+      "theme": "Telemetry Redaction and Opt-Out Degradation",
+      "classification": ["contract", "adversarial"],
+      "tests": [
+        {
+          "test_name": "test_no_raw_prompts_in_observability",
+          "classification": ["contract", "adversarial"],
+          "description": "Verify observability.jsonl never contains raw prompt text."
+        },
+        {
+          "test_name": "test_no_raw_completions_in_observability",
+          "classification": ["contract", "adversarial"],
+          "description": "Verify observability.jsonl never contains raw model output text."
+        },
+        {
+          "test_name": "test_no_secrets_in_observability",
+          "classification": ["contract", "adversarial"],
+          "description": "Verify observability.jsonl never contains API keys, tokens, or secrets."
+        },
+        {
+          "test_name": "test_content_light_guarantee_on_all_artifact_paths",
+          "classification": ["contract"],
+          "description": "Scan all artifact output paths for forbidden content patterns."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_degrades_adaptive_recommendations",
+          "classification": ["integration", "contract"],
+          "description": "Verify product-telemetry opt-out visibly degrades adaptive/product-learning recommendations."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_degrades_ux_optimization_feedback",
+          "classification": ["integration"],
+          "description": "Verify product-telemetry opt-out degrades UX optimization feedback."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_receipt_persistence",
+          "classification": ["contract", "integration", "substrate"],
+          "description": "Verify product-telemetry opt-out does not disable receipt persistence. Receipts are enterprise audit evidence, not product telemetry."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_release_gate_records",
+          "classification": ["contract", "integration"],
+          "description": "Verify product-telemetry opt-out does not disable release-gate record generation."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_mutation_receipts",
+          "classification": ["contract", "integration", "substrate"],
+          "description": "Verify product-telemetry opt-out does not disable mutation receipt recording."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_schema_validation_records",
+          "classification": ["contract", "integration"],
+          "description": "Verify product-telemetry opt-out does not disable schema validation record generation."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_export_manifests",
+          "classification": ["contract", "integration"],
+          "description": "Verify product-telemetry opt-out does not disable export manifest generation."
+        },
+        {
+          "test_name": "test_product_telemetry_disabled_preserves_enterprise_audit_events",
+          "classification": ["contract", "integration", "substrate"],
+          "description": "Verify product-telemetry opt-out does not disable enterprise audit event recording. Audit evidence is mandatory in enterprise mode regardless of telemetry state."
+        },
+        {
+          "test_name": "test_remote_telemetry_disabled_blocks_remote_contribution",
+          "classification": ["contract"],
+          "description": "Verify remote telemetry contribution setting disabled blocks remote bundle upload."
+        },
+        {
+          "test_name": "test_remote_telemetry_disabled_preserves_local_operational_observability",
+          "classification": ["contract", "integration"],
+          "description": "Verify disabling remote telemetry contribution does not disable local operational observability events."
+        },
+        {
+          "test_name": "test_cockpit_status_distinguishes_telemetry_evidence_states",
+          "classification": ["contract", "integration"],
+          "description": "Verify cockpit status indicators distinguish product-telemetry-enabled, remote-contribution-disabled, local-observability-degraded, and enterprise-evidence-unavailable states independently."
+        },
+        {
+          "test_name": "test_consent_required_for_remote_sharing",
+          "classification": ["contract"],
+          "description": "Verify no remote bundle upload without explicit consent scopes for remote telemetry contribution."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-02",
+      "theme": "Schema Validation of Procurement Artifacts",
+      "classification": ["contract", "real_artifact"],
+      "tests": [
+        {
+          "test_name": "test_procurement_audit_schema_valid",
+          "classification": ["contract"],
+          "description": "Validate all procurement audit artifacts against their schemas."
+        },
+        {
+          "test_name": "test_control_mapping_schema_valid",
+          "classification": ["contract"],
+          "description": "Validate control mapping artifact against its schema."
+        },
+        {
+          "test_name": "test_data_inventory_schema_valid",
+          "classification": ["contract"],
+          "description": "Validate data inventory artifact against its schema."
+        },
+        {
+          "test_name": "test_evidence_pack_artifact_schemas_consistent",
+          "classification": ["contract"],
+          "description": "Verify all evidence pack artifact schemas are consistent and complete."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-03",
+      "theme": "Evidence Pack Generation",
+      "classification": ["integration", "real_artifact"],
+      "tests": [
+        {
+          "test_name": "test_evidence_pack_generates_all_artifacts",
+          "classification": ["integration"],
+          "description": "Verify evidence pack command generates all expected artifacts."
+        },
+        {
+          "test_name": "test_evidence_pack_content_light",
+          "classification": ["adversarial"],
+          "description": "Verify no forbidden content in generated evidence pack."
+        },
+        {
+          "test_name": "test_evidence_pack_from_real_repo_artifacts",
+          "classification": ["real_artifact"],
+          "description": "Generate evidence pack from actual repo state and validate."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-04",
+      "theme": "Provider Permission Matrix Consistency",
+      "classification": ["contract"],
+      "tests": [
+        {
+          "test_name": "test_provider_registry_permissions_consistent",
+          "classification": ["contract"],
+          "description": "Verify provider registry permissions match documented capability matrix."
+        },
+        {
+          "test_name": "test_github_app_permissions_documented",
+          "classification": ["contract"],
+          "description": "Verify GitHub App permission posture artifact matches actual token scopes."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-05",
+      "theme": "Cockpit Projection Safety",
+      "classification": ["contract", "adversarial"],
+      "tests": [
+        {
+          "test_name": "test_projection_no_token_in_output",
+          "classification": ["contract"],
+          "description": "Verify projection payloads never contain auth tokens."
+        },
+        {
+          "test_name": "test_projection_no_raw_file_contents",
+          "classification": ["contract"],
+          "description": "Verify projection payloads never contain raw file contents."
+        },
+        {
+          "test_name": "test_projection_content_light_fields",
+          "classification": ["contract"],
+          "description": "Verify all projection fields comply with content-light doctrine."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-06",
+      "theme": "WebSocket Auth and Frontend Rendering Safety",
+      "classification": ["contract", "adversarial"],
+      "tests": [
+        {
+          "test_name": "test_websocket_auth_token_never_logged",
+          "classification": ["contract"],
+          "description": "Verify WebSocket auth token never appears in bridge logs."
+        },
+        {
+          "test_name": "test_frontend_no_innerHTML_for_untrusted_content",
+          "classification": ["adversarial"],
+          "description": "Verify frontend uses textContent, not innerHTML, for untrusted content."
+        },
+        {
+          "test_name": "test_frontend_no_eval_or_dynamic_execution",
+          "classification": ["contract"],
+          "description": "Verify frontend code never uses eval(), new Function(), or dynamic code execution."
+        },
+        {
+          "test_name": "test_frontend_no_token_in_storage",
+          "classification": ["contract"],
+          "description": "Verify no auth tokens in localStorage, sessionStorage, or IndexedDB."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-07",
+      "theme": "Static Docs Content-Light Scanning",
+      "classification": ["adversarial", "real_artifact"],
+      "tests": [
+        {
+          "test_name": "test_static_docs_no_absolute_paths",
+          "classification": ["adversarial"],
+          "description": "Scan generated HTML for absolute file paths from build machine."
+        },
+        {
+          "test_name": "test_static_docs_no_script_tags_outside_allowlist",
+          "classification": ["adversarial"],
+          "description": "Verify no unexpected script tags in generated HTML."
+        },
+        {
+          "test_name": "test_static_docs_no_token_like_strings",
+          "classification": ["adversarial"],
+          "description": "Scan generated HTML for token-like strings (API key patterns)."
+        },
+        {
+          "test_name": "test_static_docs_html_escaping",
+          "classification": ["contract"],
+          "description": "Verify all content fields are HTML-escaped in generated pages."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-08",
+      "theme": "Release Artifact Provenance",
+      "classification": ["contract", "real_artifact"],
+      "tests": [
+        {
+          "test_name": "test_release_manifest_exists_and_valid",
+          "classification": ["contract"],
+          "description": "Verify release manifest is generated and schema-valid."
+        },
+        {
+          "test_name": "test_release_checksums_verifiable",
+          "classification": ["contract"],
+          "description": "Verify release artifact checksums match actual artifacts."
+        },
+        {
+          "test_name": "test_slsa_provenance_generated",
+          "classification": ["contract"],
+          "description": "Verify SLSA provenance attestation is generated for builds."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-09",
+      "theme": "Dependency and SBOM Validation",
+      "classification": ["contract", "real_artifact"],
+      "tests": [
+        {
+          "test_name": "test_sbom_generated_and_valid",
+          "classification": ["contract"],
+          "description": "Verify SBOM generation produces valid SPDX JSON."
+        },
+        {
+          "test_name": "test_no_known_vulnerabilities_in_dependencies",
+          "classification": ["contract"],
+          "description": "Verify pip-audit reports zero known vulnerabilities."
+        },
+        {
+          "test_name": "test_dependency_licenses_compatible",
+          "classification": ["contract"],
+          "description": "Verify no dependency has incompatible license with AGPL-3.0."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-10",
+      "theme": "Dirty-File and Destructive Command Governance",
+      "classification": ["contract", "adversarial", "sabotage"],
+      "tests": [
+        {
+          "test_name": "test_dirty_file_never_overwritten",
+          "classification": ["contract"],
+          "description": "Verify agents cannot overwrite pre-existing dirty files."
+        },
+        {
+          "test_name": "test_destructive_bash_commands_blocked",
+          "classification": ["sabotage"],
+          "description": "Verify dangerous bash patterns are detected and blocked."
+        },
+        {
+          "test_name": "test_bash_rerouting_enforced",
+          "classification": ["contract"],
+          "description": "Verify bash commands are rerouted to safer tools when applicable."
+        },
+        {
+          "test_name": "test_sensitive_paths_blocked",
+          "classification": ["adversarial"],
+          "description": "Verify tools cannot read identity/token/config paths."
+        },
+        {
+          "test_name": "test_environment_scrubbing_effective",
+          "classification": ["contract"],
+          "description": "Verify 28 sensitive environment variables are stripped before subprocess."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-11",
+      "theme": "Debug Packet Quarantine and Redaction",
+      "classification": ["contract", "adversarial"],
+      "tests": [
+        {
+          "test_name": "test_debug_bundle_no_raw_prompts",
+          "classification": ["contract"],
+          "description": "Verify debug bundles never contain raw prompts."
+        },
+        {
+          "test_name": "test_debug_bundle_no_secrets",
+          "classification": ["contract"],
+          "description": "Verify debug bundles never contain secrets or tokens."
+        },
+        {
+          "test_name": "test_debug_bundle_no_file_contents",
+          "classification": ["contract"],
+          "description": "Verify debug bundles never contain raw file contents."
+        },
+        {
+          "test_name": "test_debug_bundle_quarantine_workflow",
+          "classification": ["integration"],
+          "description": "Verify debug bundle creation → quarantine → review → share workflow."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-12",
+      "theme": "Identity and Token Storage Boundaries",
+      "classification": ["contract", "adversarial"],
+      "tests": [
+        {
+          "test_name": "test_oauth_tokens_not_in_telemetry",
+          "classification": ["contract"],
+          "description": "Verify OAuth tokens never appear in any telemetry event."
+        },
+        {
+          "test_name": "test_identity_data_not_in_exports",
+          "classification": ["contract"],
+          "description": "Verify identity/account data never appears in derived datasets."
+        },
+        {
+          "test_name": "test_token_store_encrypted_or_os_protected",
+          "classification": ["contract"],
+          "description": "Verify tokens are stored encrypted or via OS keychain, not plaintext."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-13",
+      "theme": "Postgres Schema and Replay Equivalence (future)",
+      "classification": ["contract", "integration", "substrate"],
+      "deferred": true,
+      "deferred_reason": "Postgres integration not yet implemented.",
+      "tests": [
+        {
+          "test_name": "test_postgres_schema_migration_up_and_down",
+          "classification": ["contract"],
+          "description": "Verify Alembic migrations apply and rollback cleanly."
+        },
+        {
+          "test_name": "test_jsonl_to_postgres_replay_equivalence",
+          "classification": ["integration"],
+          "description": "Verify JSONL → Postgres → JSONL round-trip produces identical data."
+        },
+        {
+          "test_name": "test_duckdb_postgres_query_parity",
+          "classification": ["integration"],
+          "description": "Verify DuckDB and Postgres analytical queries produce identical results."
+        }
+      ]
+    },
+    {
+      "suite_id": "TEST-SUITE-14",
+      "theme": "Admin Policy Enforcement",
+      "classification": ["contract", "integration"],
+      "tests": [
+        {
+          "test_name": "test_config_validation_rejects_invalid_policies",
+          "classification": ["contract"],
+          "description": "Verify enterprise config validation rejects malformed policies."
+        },
+        {
+          "test_name": "test_rbac_enforcement_blocks_unauthorized_actions",
+          "classification": ["integration"],
+          "description": "Verify RBAC model prevents unauthorized mutations."
+        },
+        {
+          "test_name": "test_tenant_isolation_boundaries",
+          "classification": ["integration"],
+          "description": "Verify tenants cannot access each other's data."
+        }
+      ]
+    }
+  ],
+  "test_classification_taxonomy": {
+    "unit": "Tests a single function/class in isolation. No I/O, no network, no filesystem.",
+    "contract": "Tests a boundary contract: schema validation, API contract, protocol compliance.",
+    "integration": "Tests multiple components working together. May use real filesystem or mock services.",
+    "e2e": "Full end-to-end test through multiple subsystems.",
+    "real_artifact": "Uses real file artifacts from the repository (not generated test doubles).",
+    "adversarial": "Tests security boundaries with malicious or malformed inputs.",
+    "sabotage": "Tests resilience against corruption, injection, or deliberate misuse.",
+    "concurrency": "Tests behavior under concurrent or parallel execution.",
+    "substrate": "Tests storage, cache, or infrastructure substrate correctness."
+  },
+  "summary": {
+    "total_proposed_suites": 14,
+    "total_proposed_tests": 50,
+    "immediately_actionable_suites": 12,
+    "deferred_suites": 2,
+    "deferred_reason": "Postgres suite (TEST-SUITE-13) deferred until Postgres integration. RBAC suite (TEST-SUITE-14 admin policy) deferred until RBAC model implemented."
+  },
+  "content_light": true
+}

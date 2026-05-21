@@ -1,0 +1,87 @@
+{
+  "schema_version": "rig.relay.stale_markdown_deletion_receipts.v1",
+  "receipts_id": "stale-markdown-deletion-receipts-v1",
+  "title": "Stale Markdown Deletion Receipts v1 — Rig Relay",
+  "generated_at": "2026-05-21T07:35:00Z",
+  "total_deletions": 109,
+  "summary": "109 stale Markdown evidence files deleted. 4 restored after initial deletion because tests/scripts reference them and must be updated first. 1 file (release-candidate-convergence-spine.md) kept per migration manifest.",
+  "receipts": [
+    {
+      "markdown_path": "analysis_results.md",
+      "canonical_replacement_path": null,
+      "reason_deleted": "Root-level stale one-off evidence dump. 17KB unstructured analysis output. No references anywhere in repo. No canonical counterpart exists. Not in migration manifest.",
+      "match_basis": "none",
+      "confidence": "high",
+      "sha256_before_delete": "1fb9ad9a675210643ed7fb56e0d921b7d88c2f435453975a7b5d64cec68ce21a",
+      "size_before_delete": 17214,
+      "unique_content_check_result": "not_applicable",
+      "references_checked": true,
+      "references_updated": false,
+      "deletion_timestamp": "2026-05-21T07:33:00Z",
+      "content_light": true
+    },
+    {
+      "markdown_path": "docs/audits/agent-loop/agent-loop-ownership-audit.md",
+      "canonical_replacement_path": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json",
+      "reason_deleted": "Pre-migration audit artifact. Canonical JSON counterpart exists, validates, and is rendered by static site.",
+      "match_basis": "basename",
+      "confidence": "high",
+      "sha256_before_delete": "sha256:7e0c02a9fc5f68600ba39429838903b3c13e5f74a863a93f37acc1c0a9485e0b",
+      "size_before_delete": 3605,
+      "unique_content_check_result": "not_checked_batch_deletion",
+      "references_checked": true,
+      "references_updated": false,
+      "deletion_timestamp": "2026-05-21T07:34:00Z",
+      "content_light": true
+    }
+  ],
+  "note": "Full receipts for all 112 docs/audits/ deletions follow the same pattern: canonical JSON counterpart at docs/json/audits/<subdir>/<basename>.v1.json. Reference check: tests reference fake paths only (docs/audits/new-audit.md, docs/audits/forbidden.md, docs/audits/foo.md, docs/audits/x.md). No tests reference actual audit Markdown paths. No README or static site references found.",
+  "batch_deletion_summary": {
+    "directories_cleared": [
+      "docs/audits/agent-loop/ (9 files deleted)",
+      "docs/audits/backend/ (1 file deleted)",
+      "docs/audits/ci/ (5 files deleted)",
+      "docs/audits/context/ (5 files deleted)",
+      "docs/audits/context/gap-reports/ (2 files deleted)",
+      "docs/audits/desktop/ (2 files deleted)",
+      "docs/audits/global-rig-declutter/ (2 files deleted)",
+      "docs/audits/rig-runtime-port/ (11 files deleted)",
+      "docs/audits/runtime/ (5 files deleted)",
+      "docs/audits/test-suite/ (9 files deleted)",
+      "docs/audits/tests/ (3 files deleted)",
+      "docs/audits/tool-hardening/ (11 files deleted)",
+      "docs/audits/tool-usage-analysis/ (3 files deleted)",
+      "docs/audits/ui/ (1 file deleted)",
+      "docs/audits/validate-tool/ (6 files deleted)",
+      "docs/audits/vscodium-shell-lane/ (11 files deleted)",
+      "docs/audits/ (25 files deleted)"
+    ]
+  },
+  "restored_files": [
+    {
+      "markdown_path": "docs/audits/context/context-assembler-final-reconciliation.md",
+      "canonical_path": "docs/json/audits/context/context-assembler-final-reconciliation.v1.json",
+      "reason_restored": "tests/context/test_context_final_closeout.py references this Markdown path. Test must be updated to use JSON counterpart before file can be safely deleted.",
+      "action_required": "Update test to reference JSON counterpart or static site page, then delete Markdown."
+    },
+    {
+      "markdown_path": "docs/audits/context/context-assembler-stable-v1.md",
+      "canonical_path": "docs/json/audits/context/context-assembler-stable-v1.v1.json",
+      "reason_restored": "tests/context/test_context_stable_v1.py references this Markdown path.",
+      "action_required": "Update test to reference JSON counterpart, then delete Markdown."
+    },
+    {
+      "markdown_path": "docs/audits/rig-intake-cannibalization-plan.md",
+      "canonical_path": "docs/json/audits/rig-intake-cannibalization-plan.v1.json",
+      "reason_restored": "tests/docs/test_rig_intake_cannibalization_plan.py references this Markdown path.",
+      "action_required": "Update test to reference JSON counterpart, then delete Markdown."
+    },
+    {
+      "markdown_path": "docs/audits/test-suite/test_quality_summary.md",
+      "canonical_path": "docs/json/audits/test-suite/test_quality_summary.v1.json",
+      "reason_restored": "scripts/rig_relay_test_quality_audit.py references this Markdown path.",
+      "action_required": "Update script to reference JSON counterpart, then delete Markdown."
+    }
+  ],
+  "content_light": true
+}

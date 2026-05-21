@@ -1,0 +1,495 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-product-segment-map-v1",
+  "title": "GitHub Integration Product Segment Map v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "segments": [
+    {
+      "segment_id": "solo-developer",
+      "name": "Solo Developer",
+      "description": "Individual developer working on personal, freelance, or indie projects. Uses GitHub for version control, issue tracking, CI, and occasionally static hosting.",
+      "pain_points": [
+        "Browser-tab fragmentation: issues in one tab, PRs in another, Actions in a third, security alerts in a fourth \u2014 no unified view of repo health",
+        "GitHub CLI covers basic operations but has no dashboard, triage, or alert summarization",
+        "Context-switching between code editor and GitHub UI breaks flow and reduces productivity",
+        "No local-first evidence when things go wrong \u2014 debugging failed Actions or rejected PRs requires hunting through GitHub web UI",
+        "Free-tier limitations: GitHub Advanced Security not available, leaving code scanning and secret scanning gaps for solo developers who cannot afford GHAS"
+      ],
+      "rig_relay_opportunity": [
+        "Single cockpit unifying issues, PRs, Actions, security alerts, and repo health in one local desktop surface",
+        "Local-first evidence: every GitHub operation produces a content-light receipt stored locally, auditable without GitHub web UI",
+        "Governed mutations: dry-run-first, human-in-the-loop approval for any write operation \u2014 no surprise pushes",
+        "Agent-assisted issue triage: AI help with labeling, prioritization, and context collection without ever touching the repo without permission",
+        "Offline-capable: evidence and projections available even when GitHub is unreachable"
+      ],
+      "required_ux_primitives": [
+        "Compact repo health chip: single visual element showing open issues, open PRs, failed Actions, unread security alerts",
+        "Issue-to-mission one-click: convert a GitHub issue into a governed Rig Relay mission with context packet pre-populated",
+        "PR status inline: show PR CI status, review state, and mergeability without leaving cockpit",
+        "Action failure notification: proactive alert when a workflow run fails, linked to relevant logs",
+        "Security alert digest: daily/weekly summary of new code scanning, secret scanning, and Dependabot alerts"
+      ],
+      "required_github_permissions": [
+        "Read: metadata, issues, pull requests, code scanning alerts, repository contents (public repos unauthenticated; private repos via token/OAuth)",
+        "Write: gated behind explicit approval \u2014 issues (create/update), pull requests (create/review), repository contents (push, if owned)",
+        "No write permission by default; every mutation requires human confirmation in cockpit"
+      ],
+      "required_governance_boundaries": [
+        "Dry-run-first: every planned GitHub mutation produces a preview before execution; human must approve each step",
+        "Human-in-the-loop: no automated pushes, PR merges, or issue modifications without explicit cockpit confirmation",
+        "Content-light receipts: every API call produces a receipt with SHA256 hashes of content; raw content never stored in telemetry",
+        "No-surprise attribution: all agent-generated content explicitly labeled as such; co-authored-by headers transparent",
+        "Local operational evidence remains available; product telemetry is first-party and opt-out by default; remote contribution can be disabled; product telemetry opt-out degrades adaptive assistance but preserves governance evidence"
+      ],
+      "telemetry_opportunity": [
+        "Feature adoption patterns: which GitHub surfaces does the solo developer use most in cockpit vs. browser?",
+        "Frustration-signal detection: repeated browser tab opens for GitHub operations that could be in-cockpit",
+        "Workflow completion rates: how often do issue-to-mission and PR pipelines complete successfully?",
+        "Time savings measurement: reduction in context-switching by comparing cockpit usage vs. browser tab count",
+        "C1 note: 'no telemetry shared externally' term not present independently in segment map; remote telemetry contribution is separately controlled and enterprise-configurable"
+      ],
+      "enterprise_procurement_implications": "Free for solo use, local-only. No enterprise procurement needed. Open-source (AGPL-3.0). No vendor lock-in: evidence artifacts are portable JSON/JSONL. GitHub account required for private repos; public repos work without auth.",
+      "what_would_make_them_switch": [
+        "Unified cockpit eliminates 4-5 browser tabs for routine GitHub operations",
+        "Governed agent assistance that never surprises: dry-run previews before any write",
+        "Local-first evidence archive that makes GitHub web UI feel slow and fragmented by comparison",
+        "Offline access to repo state, issues, and PRs when GitHub is down or network is slow",
+        "Free and open-source, unlike GitHub Advanced Security or paid CI dashboards"
+      ]
+    },
+    {
+      "segment_id": "open-source-maintainer",
+      "name": "Open-Source Maintainer",
+      "description": "Maintainer of one or more open-source projects with community contributors. Manages issues, PRs, releases, security, and community health.",
+      "pain_points": [
+        "Triage overload: popular repos receive dozens of issues and PRs daily; manual triage doesn't scale",
+        "Spam PRs: low-quality or malicious PRs waste maintainer time and pollute the review queue",
+        "Security alert fatigue: Dependabot and code scanning produce many alerts; prioritization is manual and error-prone",
+        "Contributor onboarding friction: CLA checking, first-contribution guidance, and style-guide enforcement are fragmented across tools",
+        "No transparent provenance: when using AI assistance, unclear what was human-written vs. agent-generated, risking community trust erosion"
+      ],
+      "rig_relay_opportunity": [
+        "Automated triage queue: AI-assisted labeling, priority scoring, and spam detection for issues and PRs",
+        "Code scanning alert prioritization: rank alerts by exploitability, reachability, and blast radius \u2014 not just severity",
+        "Dependabot batch update planning: group related dependency updates, test them together, and produce a single governed PR",
+        "Contributor CLA/permission audit: verify CLA signature, check contribution history, and flag first-time contributors for extra guidance",
+        "Transparent agent provenance: every agent-generated line is attributed; no hidden co-authorship; community trust preserved"
+      ],
+      "required_ux_primitives": [
+        "Security queue with severity scoring: ranked list of code scanning, secret scanning, and Dependabot alerts with Rich context packets",
+        "PR review packet with risk summary: per-PR summary of change size, test status, CLA status, code scanning results, and review complexity score",
+        "Stale issue detection: auto-flag issues with no activity beyond threshold, propose closing or re-triage",
+        "Contributor dashboard: per-contributor stats, CLA status, first-PR flag, and contribution quality trends",
+        "Release checklist panel: verify all gates (tests pass, changelog updated, version bumped, security advisories reviewed) before tagging"
+      ],
+      "required_github_permissions": [
+        "Read: public repos unrestricted; all issue/PR/security alert metadata; repository contents for owned repos",
+        "Write: gated for owned repos only \u2014 issue management (label/close/assign), PR management (request changes/approve), branch operations (create/delete)",
+        "No write access to forked contributor repos; all mutations require explicit maintainer approval"
+      ],
+      "required_governance_boundaries": [
+        "Explicit attribution on all generated content: every agent-authored comment, review, or PR description carries visible attribution",
+        "No marketing in PRs/comments: agent-generated content must not include promotional language, product pitches, or irrelevant links",
+        "Community-trust preservation: agent behavior must match the project's code of conduct; never dismissive, never spammy",
+        "Dry-run for all automated responses: proposed issue responses and PR reviews shown as previews before posting",
+        "No autonomous commenting: agent may draft responses but never posts them without maintainer approval",
+        "Community trust and provenance remain independent of telemetry settings; governance evidence continuity is mandatory regardless of telemetry opt-out status"
+      ],
+      "telemetry_opportunity": [
+        "Community health metrics: response time to new issues, PR review turnaround, contributor retention rate",
+        "Alert resolution velocity: time from code scanning alert publication to remediation PR merge",
+        "Triage efficiency: percentage of issues/PRs correctly auto-labeled, auto-assigned, or auto-prioritized",
+        "Spam detection accuracy: false positive rate for PR spam detection, reviewed manually"
+      ],
+      "enterprise_procurement_implications": "Free for open-source use. No GitHub Advanced Security license required for Rig Relay's own scanning and prioritization (consumes existing public alert data). GitHub App install for private repos uses free-tier permissions. No vendor lock-in: all triage decisions, alert states, and agent receipts are portable JSONL artifacts.",
+      "what_would_make_them_switch": [
+        "AI-assisted triage that actually reduces inbox zero time, not adds noise",
+        "Governed agent PRs that never pollute: every automated change is previewed, attributed, and reversible",
+        "Transparent provenance for every agent-assisted action \u2014 community trust is non-negotiable",
+        "Batch security alert remediation planning that groups related fixes into single, testable PRs",
+        "Free for open source; no per-seat or per-repo pricing"
+      ]
+    },
+    {
+      "segment_id": "small-team",
+      "name": "Small Team (2-15)",
+      "description": "Co-located or distributed small engineering team building a product together. Uses GitHub for collaboration, CI/CD, and project management.",
+      "pain_points": [
+        "Inconsistent code review quality: different team members apply different review standards; no shared checklist or risk-scoring framework",
+        "Missed security alerts: alerts buried in GitHub notifications; no team-level visibility into who owns which alert",
+        "Deployment coordination: no shared view of what's in pre-production vs. production across branches and environments",
+        "Knowledge silos: one person knows the CI config, another knows the deployment pipeline; no shared operating picture",
+        "Fragmented notifications: GitHub emails, Slack mentions, in-app notifications \u2014 no unified, prioritized feed"
+      ],
+      "rig_relay_opportunity": [
+        "Team-shared cockpit projections: WebSocket-projected repo state visible to all team members in real time",
+        "PR review packet standardization: every PR gets the same structured risk summary, test results, and review checklist",
+        "Security posture dashboard: team-level view of open alerts, assigned owners, and resolution timelines",
+        "Release readiness panel: shared checklist showing all gates (tests, security, changelog, approvals) for every pending release",
+        "Unified notification feed: GitHub events normalized into a single, prioritized, governable stream with team assignment"
+      ],
+      "required_ux_primitives": [
+        "Team activity feed: chronological, filterable stream of GitHub events (commits, PRs, issues, alerts, deployments) with owner tags",
+        "Review queue: prioritized list of PRs needing review, sorted by urgency (security fixes first), with risk summaries",
+        "Branch protection health: visual indicator of which branches have protection rules enabled and whether CI passes on latest commit",
+        "Deployment status: per-environment status (dev, staging, production) showing which commit is deployed and whether checks passed",
+        "Security ownership matrix: per-alert-type assignment showing who owns code scanning, secret scanning, and Dependabot triage"
+      ],
+      "required_github_permissions": [
+        "Read: repository metadata, issues, pull requests, code scanning alerts, Actions workflow runs, branch protection rules (team-scoped GitHub App install)",
+        "Write: gated \u2014 PR review (approve/request changes/comment), issue assignment/labeling, branch creation (protected branches need admin approval)",
+        "Admin: gated for designated team leads \u2014 branch protection changes, repository settings modifications"
+      ],
+      "required_governance_boundaries": [
+        "Team-level approval chains: mutations requiring admin access need designated approver sign-off",
+        "Audit trail for all agent actions: every agent-assisted review, comment, or label change produces a receipt visible to the whole team",
+        "No silent mutations: any agent-originated change must be visible in the team feed with clear attribution",
+        "Permission escalation prevention: no agent or team member can escalate their own permissions without admin approval",
+        "Review quality standards: agent-assisted reviews must meet team-defined checklist criteria; below-threshold reviews flagged",
+        "Operational dashboards use local/enterprise evidence; product telemetry opt-out does not remove team audit trail or governance evidence"
+      ],
+      "telemetry_opportunity": [
+        "Team velocity: issue-to-merge cycle time, PR review turnaround, deployment frequency",
+        "Review cycle time: time from PR open to first review, from first review to merge, segmented by reviewer",
+        "Security debt trend: open alerts over time, resolution velocity, mean time to remediate by severity",
+        "Knowledge-silo detection: which repos/paths have only one active contributor, flagging bus-factor risk"
+      ],
+      "enterprise_procurement_implications": "Small-team tier: free or low-cost per-seat. GitHub App install scoped to team repos. Portable JSONL evidence enables compliance readiness without enterprise procurement overhead. No vendor lock-in: all projections, review packets, and audit trails are exportable.",
+      "what_would_make_them_switch": [
+        "Replaces fragmented GitHub notifications with a structured, prioritized, governed team feed",
+        "Standardized PR review packets enforce consistent quality without adding process overhead",
+        "Team-wide security posture visibility eliminates 'I thought you were handling that' alert gaps",
+        "Shared cockpit projections give every team member the same operating picture, dissolving knowledge silos",
+        "Agent-assisted reviews that save time without compromising quality or attribution"
+      ]
+    },
+    {
+      "segment_id": "startup-engineering-org",
+      "name": "Startup Engineering Org (15-100)",
+      "description": "Growing startup with multiple engineering teams, several repos, and increasing compliance and operational maturity requirements.",
+      "pain_points": [
+        "Velocity vs. security tradeoffs: pressure to ship fast leads to skipped reviews, bypassed branch protection, and ignored security alerts",
+        "Compliance readiness: investors, enterprise customers, or auditors ask for security posture evidence that doesn't exist in organized form",
+        "Multi-repo coordination: changes span multiple repos; no unified view of cross-repo PRs, releases, or deployments",
+        "On-call noise: Actions failures, deployment rollbacks, and incident alerts are fragmented across tools; no single pane for investigation",
+        "Tool sprawl: separate tools for code review, CI visibility, security scanning, project management, and incident response"
+      ],
+      "rig_relay_opportunity": [
+        "Multi-repo portfolio view: unified dashboard showing health, security posture, and release status across all org repos",
+        "Compliance posture dashboard: SOC2/ISO27001 evidence generation from content-light GitHub data \u2014 alerts, reviews, deployments, access changes",
+        "Incident timeline reconstruction: correlated timeline of commits, PRs, deployments, and alerts for any incident investigation period",
+        "Enterprise procurement readiness: start building the evidence pack now so enterprise sales conversations don't stall on security reviews",
+        "Tool consolidation: replace fragmented CI dashboards, security scanners, and project trackers with a single governed cockpit"
+      ],
+      "required_ux_primitives": [
+        "Org-level security posture: aggregated alert counts, remediation velocity, and compliance score across all repos",
+        "Release readiness across repos: per-repo and cross-repo release checklist showing gate status for all pending releases",
+        "Cost/rate-limit dashboard: GitHub API rate-limit consumption, Actions minutes used, and projected costs",
+        "Cross-repo PR tracker: view all open PRs across repos with dependency ordering (PR B depends on PR A being merged first)",
+        "Incident reconstruction timeline: select a time window, see all GitHub events (commits, merges, deployments, alerts) in chronological order"
+      ],
+      "required_github_permissions": [
+        "Read: org-scoped GitHub App with metadata, issues, pull requests, code scanning alerts, Actions, branch protection, and audit log events",
+        "Write: gated \u2014 PR review, issue management, branch operations (protected branches need separate approval)",
+        "Admin: org-level changes gated behind CTO/engineering-lead approval; no agent access to org admin APIs",
+        "Least-privilege: separate GitHub App installations for read-only projection vs. governed mutation lanes"
+      ],
+      "required_governance_boundaries": [
+        "SOC2/ISO27001 evidence generation: every governed action produces structured evidence mapped to compliance control frameworks",
+        "Change approval workflows: mutations that affect protected branches, environments, or org settings require multi-party approval",
+        "Audit trail completeness: every GitHub API call through Rig Relay produces a timestamped, SHA256-hashed receipt",
+        "Separation of duties: projection (read-only) and mutation (write) paths use separate GitHub App tokens with different permission scopes",
+        "Immutable evidence: JSONL artifacts are append-only; no evidence can be modified or deleted after creation",
+        "Compliance evidence generation is not disabled by product telemetry opt-out; enterprise audit continuity is mandatory"
+      ],
+      "telemetry_opportunity": [
+        "Compliance posture trends: security debt over time, review coverage percentage, branch protection compliance rate",
+        "Security debt velocity: new alerts per week vs. alerts resolved per week; trend direction indicates security maturity",
+        "Cross-repo dependency health: how often cross-repo PR chains break; which repos are most coupled",
+        "Tool consolidation savings: reduction in paid tools replaced by Rig Relay cockpit \u2014 direct cost savings metric"
+      ],
+      "enterprise_procurement_implications": "Startup tier: per-seat pricing with compliance evidence pack included. GitHub App installs across org repos. Portable evidence artifacts support enterprise sales security reviews. Migration path to enterprise tier when org crosses 100 engineers. No vendor lock-in: all compliance evidence is exportable JSONL/CSV.",
+      "what_would_make_them_switch": [
+        "Demonstrates enterprise-grade security posture without enterprise overhead \u2014 passes customer security reviews",
+        "Unified multi-repo cockpit replaces 3-5 separate tools, reducing both cost and cognitive load",
+        "Compliance evidence generation is automatic, not a manual quarterly scramble",
+        "Incident investigation that takes minutes instead of hours by correlating all GitHub events in one timeline",
+        "Governed agent behavior that accelerates development without sacrificing security or review quality"
+      ]
+    },
+    {
+      "segment_id": "security-conscious-enterprise",
+      "name": "Security-Conscious Enterprise",
+      "description": "Enterprise with dedicated security team, compliance requirements (SOC2, ISO27001, FedRAMP), and zero-trust architecture. Uses GitHub Advanced Security.",
+      "pain_points": [
+        "GitHub Advanced Security cost: per-committer pricing scales poorly for large organizations; many repos go unprotected due to budget",
+        "Alert fatigue at scale: thousands of code scanning, secret scanning, and Dependabot alerts with no effective triage or prioritization",
+        "Compliance audit overhead: auditors request evidence of review processes, access controls, and change management \u2014 GitHub audit log is verbose and hard to query",
+        "Permission sprawl: GitHub App permissions are coarse-grained; no visibility into which integrations have what access across repos",
+        "Provenance gaps: when using AI coding assistants, no chain of custody from prompt to commit to PR to merge \u2014 compliance teams cannot attest to code origin"
+      ],
+      "rig_relay_opportunity": [
+        "Governed security pipeline: intake, triage, prioritization, remediation planning, and governed PR creation \u2014 all producing content-light evidence",
+        "Permission posture reporting: catalog every GitHub App installation across orgs, their permission scopes, last-used timestamps, and risk scores",
+        "Audit-log ingestion and enrichment: consume GitHub audit log events, normalize them, and produce queryable, timeline-correlated evidence",
+        "Least-privilege enforcement: Rig Relay's own GitHub App uses read-only defaults; every write operation requires explicit approval and produces a receipt",
+        "Provenance chain: from agent prompt to SHA256-hashed commit to governed PR to merge \u2014 every step produces immutable evidence suitable for compliance attestation"
+      ],
+      "required_ux_primitives": [
+        "Security posture panel: org-wide dashboard of open alerts by type, severity, repo, and age; remediation velocity trends; SLA compliance",
+        "Permission matrix viewer: interactive grid showing every GitHub App, its permissions, which repos it accesses, last activity, and risk classification",
+        "Audit event timeline: queryable, filterable timeline of all GitHub audit log events, enriched with Rig Relay governance receipts",
+        "Code scanning/secret scanning/Dependabot triage queue: unified alert queue with Rich context packets, severity scoring, and assignment",
+        "Branch protection compliance report: per-repo and org-wide view of branch protection rule status, violations, and drift detection"
+      ],
+      "required_github_permissions": [
+        "Read: read-only GitHub App default for metadata, code scanning alerts, secret scanning alerts, Dependabot alerts, audit log, branch protection rules, repository content (for analysis)",
+        "Write: gated behind explicit approval with attestation signing \u2014 PR creation, issue management, branch operations",
+        "Admin: no admin access by default; admin operations require separate approval workflow with multi-party sign-off",
+        "Token scoping: separate token profiles for read-only analysis, governed mutation, and admin operations"
+      ],
+      "required_governance_boundaries": [
+        "HMAC-SHA256 attestation signing: every governed mutation is cryptographically signed; attestations are verifiable independently of Rig Relay",
+        "Append-only JSONL evidence: all security pipeline artifacts, permission changes, and agent actions are recorded in immutable JSONL streams",
+        "Replayable audit trail: entire security pipeline history can be replayed from JSONL evidence for auditor review",
+        "Product telemetry is first-party and opt-out by default; remote contribution is separately controlled and enterprise-configurable; enterprise audit/evidence continuity is mandatory; no raw repo content, tokens, secrets, prompts, completions, diffs, Actions logs, or secret fragments in any data stream",
+        "Explicit human review for all mutations: no agent can create a PR, modify a branch, or change permissions without human approval in cockpit",
+        "Product telemetry disabled must not disable enterprise GitHub audit/evidence continuity"
+      ],
+      "telemetry_opportunity": [
+        "Security posture trends: alert volume over time, MTTR by severity, SLA compliance percentage",
+        "Permission hygiene: stale App installations, over-privileged tokens, unused permissions detected",
+        "Pipeline efficiency: intake-to-remediation cycle time, false positive rate for auto-prioritization",
+        "Compliance readiness score: percentage of required evidence artifacts available and valid"
+      ],
+      "enterprise_procurement_implications": "Enterprise tier: per-seat pricing with volume discounts. Security questionnaire evidence pack included (architecture diagram, data flow, encryption at rest/transit, access controls, audit trail, incident response). Data residency: all evidence artifacts are local-first; no data leaves the enterprise boundary unless explicitly configured. SOC2/ISO27001 mapping available. Penetration test evidence available. Procurement review package includes RBAC model, tenant isolation architecture, attestation signing specification, and redaction policy.",
+      "what_would_make_them_switch": [
+        "Content-light, auditable, replayable evidence that GitHub native audit log cannot match \u2014 auditors can verify independently",
+        "Governed agent behavior with no surprise mutation \u2014 every agent action is previewed, approved, and receipted",
+        "Permission posture visibility across all GitHub Apps \u2014 finally answering 'who has access to what?'",
+        "Security alert prioritization that cuts through fatigue by ranking by exploitability, not just severity",
+        "No raw content leakage in telemetry \u2014 enterprise can prove to auditors that Rig Relay never exposed source code"
+      ]
+    },
+    {
+      "segment_id": "massive-technology-corporation",
+      "name": "Massive Technology Corporation (1000+)",
+      "description": "Large enterprise with GitHub Enterprise Cloud or Server, multiple organizations, thousands of repositories, dedicated platform engineering and security teams.",
+      "pain_points": [
+        "GitHub Enterprise Cloud/Server fragmentation: some teams on Cloud, others on Server; no unified governance or visibility across instances",
+        "Multi-org governance: each organization has its own GitHub App installs, permission models, and security policies \u2014 no central enforcement point",
+        "Thousands of repos: impossible to manually audit branch protection, security alert status, or permission hygiene across all repos",
+        "Compliance at scale: auditors demand consistent evidence across all orgs and repos; manual collection is infeasible",
+        "Procurement complexity: enterprise buyers need security architecture diagrams, pen-test results, SOC2 reports, data-flow maps, and integration compatibility matrices before purchase"
+      ],
+      "rig_relay_opportunity": [
+        "Multi-org portfolio analytics: fleet-wide dashboard aggregating security posture, compliance status, and operational health across all orgs and instances",
+        "Enterprise policy engine: define security and governance policies centrally; enforce them across all orgs; detect and report drift",
+        "Fleet orchestration: governed agent lanes that operate across orgs with scoped permissions per org, producing unified evidence",
+        "Centralized evidence store: all GitHub-derived evidence (alerts, audit logs, permission postures, agent receipts) stored in a single queryable substrate",
+        "Enterprise procurement pack: comprehensive security and architecture documentation generated from the same content-light evidence pipeline"
+      ],
+      "required_ux_primitives": [
+        "Enterprise admin panel: central console for managing GitHub App installs, permission profiles, policy definitions, and compliance reports across all orgs",
+        "Org-level compliance dashboard: per-org and fleet-wide compliance scores, drift detection, and remediation recommendations",
+        "Fleet-wide security posture: aggregated alert counts, remediation velocity, and SLA compliance across all orgs",
+        "Rate-limit budget across orgs: monitor and allocate GitHub API rate-limit consumption across orgs to prevent noisy-neighbor issues",
+        "Repository allowlist/denylist management: centrally control which repos Rig Relay can access across all orgs"
+      ],
+      "required_github_permissions": [
+        "Read: enterprise-scoped GitHub App with metadata, audit log, code/secret/Dependabot alerts, branch protection, and repository contents across all authorized orgs",
+        "Write: per-org, per-repo gating with separate approval workflows; no cross-org write capability",
+        "Admin: enterprise-level admin operations require designated platform-engineering-team approval",
+        "Allowlist/denylist: centrally managed repository access control; repos outside allowlist are invisible to Rig Relay"
+      ],
+      "required_governance_boundaries": [
+        "SSO/SAML/SCIM-adjacent planning: Rig Relay must integrate with enterprise identity providers for authentication and authorization",
+        "Enterprise audit-log ingestion: consume and normalize GitHub Enterprise audit log events across all orgs",
+        "Data residency controls: evidence artifacts stored in enterprise-controlled infrastructure; no data leaves approved regions",
+        "Cross-org isolation: agent operations in one org must never leak data or permissions into another org",
+        "Policy-as-code: security and governance policies defined as version-controlled configuration, not UI checkboxes",
+        "Enterprise policy may disable remote telemetry contribution; enterprise audit/evidence remains mandatory regardless"
+      ],
+      "telemetry_opportunity": [
+        "Fleet-wide health: aggregated metrics across orgs \u2014 alert resolution velocity, compliance drift rate, permission hygiene score",
+        "Platform adoption: which orgs and teams are using Rig Relay; which GitHub surfaces are most used",
+        "Policy enforcement rate: percentage of repos compliant with enterprise policies; drift detection frequency",
+        "Rate-limit efficiency: API call volume by org, by operation type; optimization recommendations"
+      ],
+      "enterprise_procurement_implications": "Enterprise volume licensing: per-seat pricing with fleet-wide discounts. Dedicated procurement evidence pack: security architecture, pen-test results, SOC2/ISO27001 mapping, data-flow diagrams, RBAC model, tenant isolation documentation, attestation signing specification. Support for GitHub Enterprise Cloud and Server. Data residency: all evidence artifacts local-first with enterprise-controlled storage. SSO/SAML/SCIM integration support. Dedicated onboarding and migration support. Custom policy engine configuration.",
+      "what_would_make_them_switch": [
+        "Unified governance across GitHub Enterprise Cloud and Server \u2014 no other tool provides single-pane visibility across instances",
+        "Portable evidence artifacts that survive tool changes \u2014 JSONL evidence is forever, regardless of which vendor provides the cockpit",
+        "Fleet-wide agent orchestration with per-org permission boundaries \u2014 governed AI at enterprise scale",
+        "Centralized compliance dashboard eliminates months of manual evidence collection for annual audits",
+        "Procurement evidence pack that answers security team questions before they're asked \u2014 accelerates enterprise buying cycles"
+      ]
+    },
+    {
+      "segment_id": "agency-consultant",
+      "name": "Agency/Consultant Managing Many Repos",
+      "description": "Development agency, consultancy, or freelance collective managing GitHub repos for multiple clients simultaneously.",
+      "pain_points": [
+        "Context-switching across client repos: different orgs, different permission models, different security postures \u2014 no unified operating picture",
+        "Inconsistent security posture: each client has different security requirements; agency cannot enforce consistent standards across all managed repos",
+        "Billing/procurement complexity: agency needs to show client-specific value, not aggregate metrics; evidence of work done per client is manual",
+        "Accidental cross-client contamination: risk of pushing to wrong client's repo, using wrong credentials, or leaking client A's code to client B's environment",
+        "Permission management overhead: adding/removing team members across multiple GitHub orgs is error-prone and time-consuming"
+      ],
+      "rig_relay_opportunity": [
+        "Multi-client portfolio view: one cockpit with per-client tabs, each showing that client's repos, security posture, and agent activity",
+        "Per-client permission boundaries: separate GitHub App installs per client with isolated authentication; impossible to cross-contaminate",
+        "Automated security scanning across all managed repos: uniform security posture assessment regardless of client's own GitHub configuration",
+        "Per-client evidence packs: generate client-specific reports showing work done, security improvements, and agent activity \u2014 no raw data leakage between clients",
+        "Team management: assign agency team members to specific client lanes with scoped permissions"
+      ],
+      "required_ux_primitives": [
+        "Client-switching cockpit: quick-switch between client contexts; each context shows only that client's repos, alerts, and activity",
+        "Per-client security dashboard: security posture, open alerts, and remediation progress scoped to each client",
+        "Billing/procurement evidence pack: per-client summary of governed operations, security improvements, and agent activity suitable for client reporting",
+        "Cross-client isolation indicator: always-visible indicator confirming which client context is active; prevent accidental cross-client operations",
+        "Team assignment matrix: per-client, per-repo assignment of agency team members with role-based access"
+      ],
+      "required_github_permissions": [
+        "Read: per-client GitHub App installs with isolated authentication; each client's data is completely separated",
+        "Write: per-client gating \u2014 PR creation, issue management, and branch operations scoped to specific client repos only",
+        "No shared credentials across clients: each client connection uses a distinct GitHub App installation with its own token lifecycle"
+      ],
+      "required_governance_boundaries": [
+        "Tenant-scoped evidence: all JSONL artifacts, audit trails, and agent receipts are tagged with client identifier; cross-client access is impossible at the data layer",
+        "Cross-client data isolation: agency operators cannot view client A's data while in client B's context; enforced at both UI and data layers",
+        "Per-client dry-run and approval: mutations for each client require approval within that client's context",
+        "No client-data aggregation: analytics and telemetry are per-client; no aggregate view that could leak competitive information between clients",
+        "Clear client attribution: all agent-generated content (PRs, issues, comments) carries client-appropriate attribution, not agency branding"
+      ],
+      "telemetry_opportunity": [
+        "Per-client velocity: issue resolution time, PR merge rate, security alert response time \u2014 all per-client, never cross-client",
+        "Agency efficiency: average time per client context-switch, tool adoption across clients",
+        "Security improvement tracking: per-client security posture trend over time, demonstrating agency value",
+        "Client retention signals: which features drive continued engagement; which friction points precede client churn"
+      ],
+      "enterprise_procurement_implications": "Agency tier: per-client-seat pricing. Multi-client GitHub App management built in. Per-client evidence exports for client billing and reporting. No vendor lock-in: each client's evidence artifacts are portable and can be handed to the client if the agency relationship ends. Cross-client isolation is architecturally enforced, not just policy-enforced \u2014 auditable by third parties.",
+      "what_would_make_them_switch": [
+        "One cockpit for N clients \u2014 eliminates the mental overhead of managing multiple GitHub orgs across multiple browser windows",
+        "Per-client governed agent lanes that never leak data or permissions between clients",
+        "Client-specific evidence packs that demonstrate value and justify retainers \u2014 automated, not manual",
+        "Architecturally enforced cross-client isolation that passes client security reviews",
+        "Uniform security posture assessment across all clients regardless of their own GitHub configuration"
+      ]
+    },
+    {
+      "segment_id": "ai-agent-heavy-team",
+      "name": "AI-Agent-Heavy Engineering Team",
+      "description": "Engineering team that heavily uses AI coding assistants (Copilot, Cursor, Claude, etc.) and needs governance, audit, and control over agent GitHub activity.",
+      "pain_points": [
+        "Agent-produced PR pollution: AI tools create PRs with unclear provenance, unverified correctness, and no review accountability",
+        "Unclear authorship: who wrote this code \u2014 the human, the agent, or a mix? Compliance, legal, and open-source licensing implications are unclear",
+        "Surprise mutations: agents pushing commits, creating branches, or opening PRs without explicit human intent or approval",
+        "Permission overreach: AI tools request broad GitHub permissions (read/write all repos) with no least-privilege scoping",
+        "Provenance gaps: when something goes wrong, there's no chain of custody from prompt to commit to merge; impossible to audit agent behavior"
+      ],
+      "rig_relay_opportunity": [
+        "Governed agent lanes: every AI agent operates within explicitly permissioned boundaries; no agent can access GitHub beyond its assigned scope",
+        "Agent-produced evidence timeline: every agent action (prompt received, tool called, API request sent, response received) produces an immutable receipt",
+        "Agent attribution and provenance: every commit, PR, and comment carries explicit agent attribution; no hidden or ambiguous authorship",
+        "Agent behavior audit: queryable timeline of all agent GitHub activity across the team \u2014 what did each agent do, when, and with what permissions?",
+        "Permission scoping per agent: different agents get different GitHub App token profiles; code reviewers get read-only, code generators get gated write"
+      ],
+      "required_ux_primitives": [
+        "Agent activity feed: chronological stream of all agent GitHub actions (reads, writes, reviews, comments) with agent identity, permission used, and outcome",
+        "Agent permission matrix: grid showing each registered agent, its GitHub App permissions, which repos it can access, and when permissions were last verified",
+        "Agent-produced PR queue with risk summary: PRs created by agents shown with risk scoring, change size, test status, and approval required",
+        "Agent governance dashboard: team-level view of agent activity metrics, policy violations, and permission hygiene",
+        "Agent context viewer: for any agent-produced artifact, view the chain of prompts, tool calls, and receipts that produced it"
+      ],
+      "required_github_permissions": [
+        "Read: per-agent read-only token profiles for code exploration, review, and analysis agents",
+        "Write: per-agent gated write profiles for code generation agents \u2014 PR creation, branch operations, issue management",
+        "No agent gets write access by default; every write-enabled agent requires explicit team-lead approval",
+        "Per-repo scoping: agents are assigned to specific repos, not org-wide access"
+      ],
+      "required_governance_boundaries": [
+        "Every agent action produces a receipt: prompts, tool calls, API requests, and responses are recorded as immutable JSONL artifacts",
+        "Agent mutations blocked by default: no agent can create a PR, push a commit, or modify a branch without explicit human approval",
+        "Human review required for remote mutations: before any agent-created PR is submitted to GitHub, a human reviews and approves in cockpit",
+        "Attribution transparency: all agent-generated content (commits, PR descriptions, comments, reviews) carries visible agent attribution",
+        "Permission escalation impossible: agents cannot request, escalate, or modify their own GitHub permissions; only human admins can change agent permissions",
+        "Agent behavior telemetry used for optimization unless disabled; no raw repo content, prompts, completions, or secrets leave the local boundary; remote telemetry contribution is separately controlled"
+      ],
+      "telemetry_opportunity": [
+        "Agent productivity: PRs created, issues resolved, reviews completed per agent \u2014 with human-approval rate overlay",
+        "Agent safety metrics: percentage of agent actions blocked by governance, approval denial rate, permission hygiene score",
+        "Agent drift detection: changes in agent behavior patterns over time \u2014 is an agent getting more aggressive? requesting more permissions?",
+        "Team adoption: which agents are most used, which permission profiles are most common, what approval patterns emerge"
+      ],
+      "enterprise_procurement_implications": "Included in enterprise tier. Per-agent seat pricing if distinct from human seats. Agent governance evidence pack included: agent activity audit, permission matrix, provenance chains, attestation signatures. Integration with enterprise SSO/RBAC for agent identity. Procurement evidence demonstrating agent governance superiority over raw GitHub Copilot or direct API access.",
+      "what_would_make_them_switch": [
+        "Rig Relay is the only tool that governs agent GitHub access with content-light, auditable, replayable evidence",
+        "Agent permission scoping that gives teams confidence to use AI without fear of surprise mutations",
+        "Complete provenance chain for every agent action \u2014 satisfies legal, compliance, and open-source licensing requirements",
+        "Agent governance dashboard gives team leads visibility they currently lack over AI coding assistant behavior",
+        "Per-agent permission profiles eliminate the 'one token to rule them all' problem of direct GitHub App installations"
+      ]
+    },
+    {
+      "segment_id": "non-expert-business-owner",
+      "name": "Non-Expert Business Owner (Static Site)",
+      "description": "Business owner, content creator, or non-technical stakeholder who needs to manage a GitHub Pages website without learning Git or GitHub.",
+      "pain_points": [
+        "GitHub too technical: Git concepts (commit, push, branch, merge, PR) are intimidating and unnecessary for simple content updates",
+        "Pages deployment confusing: understanding Jekyll, GitHub Actions, or YAML frontmatter is a barrier to making simple text changes",
+        "Content updates require developer help: every typo fix or content change needs a developer's time, creating bottlenecks and cost",
+        "No visibility into what changed: after making a change, unclear whether it deployed, what the live site looks like now, or what changed",
+        "Fear of breaking things: accidental deletion, wrong formatting, or broken links are hard to detect and harder to fix without developer help"
+      ],
+      "rig_relay_opportunity": [
+        "Governed static site editing: simple content editor with preview, version history, and one-click deploy \u2014 no Git knowledge required",
+        "One-click deploy with preview: see exactly what the site will look like before publishing; deploy with a single button",
+        "Content-light evidence of changes: every edit produces a receipt showing what changed, when, and by whom \u2014 transparent without Git jargon",
+        "Safe editing: dry-run preview means nothing goes live without explicit confirmation; impossible to accidentally break the site",
+        "Developer handoff when needed: for complex changes beyond content editing, generate a governed mission for a developer agent"
+      ],
+      "required_ux_primitives": [
+        "Simple content editor: WYSIWYG or plain-text editor for static site content (markdown, HTML, text) with live preview",
+        "Preview panel: render the site as it will appear on GitHub Pages, with navigation, styling, and responsive layout preview",
+        "Deploy button: single-click deployment with progress indicator; no Git commands, no PR workflow, no YAML configuration",
+        "Change history: timeline of all content changes with before/after previews and receipts \u2014 like a simplified git log",
+        "Help-request button: when something is beyond content editing, generate a governed mission for a developer agent to handle"
+      ],
+      "required_github_permissions": [
+        "Read: repository contents limited to Pages source directory (configurable per repo)",
+        "Write: gated content updates to Pages source only \u2014 no access to code, configuration, workflows, or other repo content",
+        "No branch or PR operations exposed; deployment uses a governed pipeline that abstracts away Git mechanics"
+      ],
+      "required_governance_boundaries": [
+        "Limited scope: Rig Relay's GitHub access is restricted to the Pages content directory; no access to source code, CI, or repo settings",
+        "Dry-run deploy preview: every content change previews the full site before any write to GitHub",
+        "No Git exposure: the UI never shows branches, commits, merges, or PRs; all deployment is abstracted into 'publish' or 'revert'",
+        "Revert capability: one-click undo for recent content changes \u2014 internally a git revert, but presented as 'undo last change'",
+        "Shared access control: business owner can grant content-editor access to team members without granting full GitHub access"
+      ],
+      "telemetry_opportunity": [
+        "Content update frequency: how often business users make changes without developer help",
+        "Preview-to-publish rate: how often a previewed change is actually published vs. abandoned",
+        "Developer handoff rate: how often a help-request mission is generated for content beyond the editor's capability",
+        "Adoption and retention: do non-technical users continue using the cockpit after initial onboarding?"
+      ],
+      "enterprise_procurement_implications": "Included in team/startup/enterprise tiers as a value-add for non-technical stakeholders. For agencies managing client sites, available as a client-facing content editor portal. No separate pricing tier \u2014 this segment benefits the developer segments by reducing their support burden.",
+      "what_would_make_them_switch": [
+        "Makes GitHub Pages accessible to non-developers without exposing raw GitHub complexity",
+        "One-click deploy with preview eliminates the fear of breaking the live site",
+        "No more waiting for developer availability to fix a typo or update content",
+        "Change history gives visibility and accountability without requiring Git knowledge",
+        "Safe editing with dry-run preview means business owners can experiment without risk"
+      ]
+    }
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 2
+}

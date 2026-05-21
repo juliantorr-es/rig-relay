@@ -1,0 +1,614 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-test-strategy-v1",
+  "title": "GitHub Integration Test Strategy v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "tests": [
+    {
+      "test_id": "test-trust-spine-001",
+      "test_name": "test_live_permission_probe_all_declared_capabilities",
+      "classifications": ["integration", "real-artifact"],
+      "what_it_catches": "Permission probe does not cover all 30 declared capability families. Missing permission data causes false assumptions in cockpit and mutation preflight.",
+      "github_seam_tested": "GitHub App permission introspection",
+      "proposed_file_path": "tests/integrations/test_github_trust_spine.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-002",
+      "test_name": "test_permission_probe_detects_escalation",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Permission escalation not detected by probe. An org admin silently adds write permissions; Rig Relay must detect and alert.",
+      "github_seam_tested": "GitHub App permission change detection",
+      "proposed_file_path": "tests/integrations/test_github_trust_spine.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-003",
+      "test_name": "test_permission_probe_detects_missing_scope",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Permission probe reports a capability as available when the required scope is missing. False-positive capability reporting leads to failed API calls.",
+      "github_seam_tested": "GitHub App permission scope enumeration",
+      "proposed_file_path": "tests/integrations/test_github_trust_spine.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-004",
+      "test_name": "test_rate_limit_budget_prioritizes_security_and_audit_paths",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Non-critical enrichment starves security/audit paths of rate-limit budget. Security scanning and audit log ingestion must never be blocked by UI enrichment queries.",
+      "github_seam_tested": "Rate-limit budget allocation",
+      "proposed_file_path": "tests/integrations/test_github_rate_limit_budget.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-005",
+      "test_name": "test_rate_limit_exhaustion_does_not_silently_drop_events",
+      "classifications": ["adversarial", "substrate"],
+      "what_it_catches": "Rate-limit exhaustion silently drops events instead of deferring/failing gracefully. Silent data loss violates evidence continuity.",
+      "github_seam_tested": "Rate-limit exhaustion behavior",
+      "proposed_file_path": "tests/integrations/test_github_rate_limit_budget.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-006",
+      "test_name": "test_webhook_signature_hmac_sha256_required",
+      "classifications": ["contract", "sabotage"],
+      "what_it_catches": "Webhook payloads processed without HMAC-SHA256 signature verification. An attacker could send forged webhooks that corrupt evidence.",
+      "github_seam_tested": "X-Hub-Signature-256 verification",
+      "proposed_file_path": "tests/integrations/test_github_webhook_security.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-007",
+      "test_name": "test_webhook_signature_constant_time_compare",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "HMAC comparison uses non-constant-time comparison. Timing side-channel could leak signature information.",
+      "github_seam_tested": "hmac.compare_digest usage",
+      "proposed_file_path": "tests/integrations/test_github_webhook_security.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-008",
+      "test_name": "test_webhook_idempotency_ledger_blocks_duplicate_delivery",
+      "classifications": ["integration", "concurrency"],
+      "what_it_catches": "Duplicate webhook delivery causes duplicate evidence artifacts. Idempotency ledger must suppress re-delivery of the same event.",
+      "github_seam_tested": "X-GitHub-Delivery idempotency",
+      "proposed_file_path": "tests/integrations/test_github_webhook_idempotency.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-009",
+      "test_name": "test_polling_and_webhook_dedup_use_same_event_identity",
+      "classifications": ["integration", "concurrency"],
+      "what_it_catches": "Same event ingested via both polling and webhook creates duplicate artifacts. Dedup must span ingestion sources.",
+      "github_seam_tested": "Cross-source event deduplication",
+      "proposed_file_path": "tests/integrations/test_github_event_dedup.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-010",
+      "test_name": "test_invalid_webhook_payload_quarantined",
+      "classifications": ["adversarial", "substrate"],
+      "what_it_catches": "Invalid webhook payloads are processed instead of quarantined. Corrupt payloads must never reach evidence artifacts.",
+      "github_seam_tested": "Webhook payload validation + quarantine",
+      "proposed_file_path": "tests/integrations/test_github_webhook_quarantine.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-011",
+      "test_name": "test_github_derived_projection_content_light_scan_blocks_raw_secret_fragment",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Secret scanning alert data containing raw secret fragment passes content-light scan. Must block any ghp_/gho_/etc. patterns before artifact creation.",
+      "github_seam_tested": "Content-light scan for secret fragments",
+      "proposed_file_path": "tests/integrations/test_github_content_light_scan.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-012",
+      "test_name": "test_github_derived_projection_content_light_scan_blocks_actions_log_body",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Raw Actions log body passes content-light scan and enters telemetry. Log bodies frequently contain secrets, tokens, and private file paths.",
+      "github_seam_tested": "Content-light scan for Actions log bodies",
+      "proposed_file_path": "tests/integrations/test_github_content_light_scan.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-013",
+      "test_name": "test_private_repo_name_hashing_in_product_telemetry",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Private repository names appear in plaintext in product telemetry. Must be SHA256-hashed before entering telemetry bundles.",
+      "github_seam_tested": "Telemetry redaction of private repo identifiers",
+      "proposed_file_path": "tests/integrations/test_github_telemetry_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-014",
+      "test_name": "test_product_telemetry_disabled_preserves_github_receipts",
+      "classifications": ["contract", "substrate"],
+      "what_it_catches": "Disabling product telemetry accidentally disables GitHub operation receipts. Receipts are governance evidence, not telemetry.",
+      "github_seam_tested": "Telemetry vs evidence boundary enforcement",
+      "proposed_file_path": "tests/integrations/test_github_telemetry_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-015",
+      "test_name": "test_product_telemetry_disabled_preserves_github_permission_probe_records",
+      "classifications": ["contract", "substrate"],
+      "what_it_catches": "Disabling product telemetry disables permission probe record emission. Permission probes are operational observability, not optional telemetry.",
+      "github_seam_tested": "Operational observability vs telemetry boundary",
+      "proposed_file_path": "tests/integrations/test_github_telemetry_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-016",
+      "test_name": "test_product_telemetry_disabled_preserves_github_audit_evidence",
+      "classifications": ["contract", "substrate"],
+      "what_it_catches": "Disabling product telemetry disables GitHub audit evidence. Enterprise audit continuity must be mandatory regardless of telemetry opt-out.",
+      "github_seam_tested": "Enterprise audit evidence continuity",
+      "proposed_file_path": "tests/integrations/test_github_telemetry_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-017",
+      "test_name": "test_remote_contribution_disabled_blocks_upload_but_preserves_local_operational_evidence",
+      "classifications": ["contract", "substrate"],
+      "what_it_catches": "Remote contribution disabled also blocks local operational evidence emission. Remote sharing and local evidence must be independently controllable.",
+      "github_seam_tested": "Remote contribution vs local evidence separation",
+      "proposed_file_path": "tests/integrations/test_github_telemetry_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-018",
+      "test_name": "test_cockpit_distinguishes_telemetry_remote_contribution_operational_observability_enterprise_evidence_rate_limit_permission_staleness",
+      "classifications": ["integration", "E2E"],
+      "what_it_catches": "Cockpit shows a single 'telemetry disabled' indicator without distinguishing between product telemetry, remote contribution, operational observability, enterprise evidence, rate-limit, and permission staleness states.",
+      "github_seam_tested": "Cockpit telemetry/evidence state distinction",
+      "proposed_file_path": "tests/desktop/test_github_cockpit_telemetry_states.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-019",
+      "test_name": "test_branch_protection_unknown_blocks_pr_mutation",
+      "classifications": ["sabotage", "integration"],
+      "what_it_catches": "PR mutation proceeds when branch protection state cannot be read. Unknown protection must block mutation, not silently proceed.",
+      "github_seam_tested": "Branch protection preflight in mutation lanes",
+      "proposed_file_path": "tests/integrations/test_github_mutation_preflight.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "test-trust-spine-020",
+      "test_name": "test_ruleset_unknown_blocks_pr_mutation",
+      "classifications": ["sabotage", "integration"],
+      "what_it_catches": "PR mutation proceeds when ruleset state cannot be read. Unknown rules must block mutation; ruleset ambiguity produces blocked/incomplete state.",
+      "github_seam_tested": "Ruleset preflight in mutation lanes",
+      "proposed_file_path": "tests/integrations/test_github_mutation_preflight.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-001",
+      "test_name": "GitHub Provider Packet Schema Validation",
+      "classifications": ["unit", "contract"],
+      "what_it_catches": "Malformed provider packets from GitHub API responses that would corrupt downstream ingestion pipelines",
+      "github_seam_tested": "GitHub provider packet data model",
+      "proposed_file_path": "tests/integrations/github_provider/test_packet_schema_validation.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-002",
+      "test_name": "GitHub App Permission Profile Contract Tests",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Permission drift between declared GitHub App permissions and actual API surface access",
+      "github_seam_tested": "GitHub App permission model",
+      "proposed_file_path": "tests/integrations/github_provider/test_permission_profile_contract.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-003",
+      "test_name": "Code Scanning Alert Ingestion using Real Captured Content-Light Fixtures",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Schema incompatibilities between real GitHub CodeQL alerts and Rig Relay's normalized alert model",
+      "github_seam_tested": "Code scanning alerts API",
+      "proposed_file_path": "tests/integrations/github_provider/test_code_scanning_alert_ingestion.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-004",
+      "test_name": "Secret Scanning Alert Redaction Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Secret material leaking through ingestion pipeline into telemetry, logs, or projections",
+      "github_seam_tested": "Secret scanning alerts API",
+      "proposed_file_path": "tests/integrations/github_provider/test_secret_scanning_redaction.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-005",
+      "test_name": "Dependabot Alert Normalization Tests",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Dependabot alert fields that don't map cleanly to Rig Relay's normalized vulnerability model",
+      "github_seam_tested": "Dependabot alerts API",
+      "proposed_file_path": "tests/integrations/github_provider/test_dependabot_alert_normalization.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-006",
+      "test_name": "Workflow Run/Job/Log Ingestion Redaction Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Secrets, tokens, or PII in GitHub Actions logs leaking through Rig Relay telemetry or projections",
+      "github_seam_tested": "Actions workflow runs/logs API",
+      "proposed_file_path": "tests/integrations/github_provider/test_workflow_log_redaction.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-007",
+      "test_name": "Rate-Limit Budget Tests",
+      "classifications": ["integration", "concurrency"],
+      "what_it_catches": "Rate-limit exhaustion causing silent data loss or degraded functionality without graceful degradation",
+      "github_seam_tested": "GitHub API rate limiting",
+      "proposed_file_path": "tests/integrations/github_provider/test_rate_limit_budget.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-008",
+      "test_name": "Webhook Replay/Idempotency Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Duplicate webhook deliveries causing double-processing of alerts, events, or mutations",
+      "github_seam_tested": "GitHub webhook delivery",
+      "proposed_file_path": "tests/integrations/github_provider/test_webhook_idempotency.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-009",
+      "test_name": "Duplicate Event Suppression Tests",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Duplicate events from any source (API polling + webhook overlap) creating false duplicates in evidence store",
+      "github_seam_tested": "Event ingestion deduplication",
+      "proposed_file_path": "tests/integrations/github_provider/test_duplicate_event_suppression.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-010",
+      "test_name": "Remote Mutation Dry-Run/Rehearsal Tests",
+      "classifications": ["integration", "real-artifact"],
+      "what_it_catches": "Mutation proposals that pass local validation but fail against real GitHub API constraints",
+      "github_seam_tested": "GitHub mutation APIs (PR create, issue create, branch create)",
+      "proposed_file_path": "tests/integrations/github_provider/test_mutation_dry_run.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-011",
+      "test_name": "Remote Mutation Rollback Receipt Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Mutations that cannot be rolled back or whose rollback is not properly receipted",
+      "github_seam_tested": "GitHub mutation rollback paths",
+      "proposed_file_path": "tests/integrations/github_provider/test_mutation_rollback_receipt.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-012",
+      "test_name": "No-Surprise-Mutation Sabotage Tests",
+      "classifications": ["sabotage", "adversarial"],
+      "what_it_catches": "Mutated repository state that bypasses adoption-approval gates or differs from what was approved",
+      "github_seam_tested": "Mutation governance gates",
+      "proposed_file_path": "tests/integrations/github_provider/test_no_surprise_mutation.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-013",
+      "test_name": "PR Comment Pollution Prevention Tests",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Agent comments on PRs that are misleading, spammy, incorrectly attributed, or leak internal state",
+      "github_seam_tested": "PR comment creation via API",
+      "proposed_file_path": "tests/integrations/github_provider/test_pr_comment_pollution.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-014",
+      "test_name": "No Hidden Attribution Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Agent-authored GitHub content (PRs, comments, commits) that hides or misrepresents its agent origin",
+      "github_seam_tested": "Git commit/PR/comment authorship",
+      "proposed_file_path": "tests/integrations/github_provider/test_no_hidden_attribution.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-015",
+      "test_name": "Branch Protection/Ruleset Respect Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "Agent mutations that bypass branch protection rules, required reviewers, or status checks",
+      "github_seam_tested": "Branch protection rules and rulesets",
+      "proposed_file_path": "tests/integrations/github_provider/test_branch_protection_respect.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-016",
+      "test_name": "Cockpit Projection Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "Cockpit UI rendering incorrect or stale GitHub data due to projection desync",
+      "github_seam_tested": "All GitHub provider → cockpit projection paths",
+      "proposed_file_path": "tests/integrations/github_provider/test_cockpit_projection.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-017",
+      "test_name": "Static Docs Public/Private Split Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Private repository data leaking into public static documentation pages",
+      "github_seam_tested": "Static site rendering pipeline with GitHub data",
+      "proposed_file_path": "tests/integrations/github_provider/test_static_docs_split.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-018",
+      "test_name": "Postgres Replay-Equivalence Tests",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Divergence between local file-backed evidence store and PostgreSQL-backed store for same input",
+      "github_seam_tested": "Evidence store adapter (Postgres path)",
+      "proposed_file_path": "tests/integrations/github_provider/test_postgres_replay_equivalence.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-019",
+      "test_name": "DuckDB Analytics Comparison Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "Analytics queries producing different results between DuckDB and PostgreSQL backends",
+      "github_seam_tested": "Analytics query engine (DuckDB path)",
+      "proposed_file_path": "tests/integrations/github_provider/test_duckdb_analytics_comparison.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-020",
+      "test_name": "GitHub Enterprise Compatibility Shape Tests",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "API differences between github.com and GitHub Enterprise Server that break ingestion",
+      "github_seam_tested": "GitHub Enterprise Server API compatibility",
+      "proposed_file_path": "tests/integrations/github_provider/test_ghe_compatibility.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-021",
+      "test_name": "Provider Operating Picture Freshness Tests",
+      "classifications": ["integration"],
+      "what_it_catches": "Stale cached provider data persisting in cockpit beyond freshness TTL",
+      "github_seam_tested": "Provider data freshness/caching layer",
+      "proposed_file_path": "tests/integrations/github_provider/test_provider_freshness.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-022",
+      "test_name": "Multi-Repo/Org Portfolio Projection Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "Cross-repo aggregation producing incorrect totals, missed repos, or split-brain state",
+      "github_seam_tested": "Multi-repo/org aggregation engine",
+      "proposed_file_path": "tests/integrations/github_provider/test_portfolio_projection.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-023",
+      "test_name": "Content-Light Telemetry Leak Detection Tests",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Raw file contents, secrets, tokens, or PII appearing in telemetry bundles despite content-light design",
+      "github_seam_tested": "Telemetry emission pipeline",
+      "proposed_file_path": "tests/integrations/github_provider/test_telemetry_leak_detection.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-024",
+      "test_name": "GitHub App Token Refresh Edge-Case Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Expired tokens, refresh failures, clock skew, and concurrent refresh races causing silent auth failures",
+      "github_seam_tested": "GitHub App token lifecycle",
+      "proposed_file_path": "tests/integrations/github_provider/test_token_refresh_edge_cases.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-025",
+      "test_name": "Permission Escalation Sabotage Tests",
+      "classifications": ["sabotage", "adversarial"],
+      "what_it_catches": "Agent obtaining or using permissions beyond what the GitHub App installation grants",
+      "github_seam_tested": "GitHub App permission enforcement",
+      "proposed_file_path": "tests/integrations/github_provider/test_permission_escalation.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-026",
+      "test_name": "Webhook Signature Verification Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Spoofed or tampered webhook payloads accepted without proper HMAC verification",
+      "github_seam_tested": "Webhook signature verification (HMAC-SHA256)",
+      "proposed_file_path": "tests/integrations/github_provider/test_webhook_signature.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-027",
+      "test_name": "Rate-Limit Exhaustion Graceful Degradation Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Application crash, data corruption, or silent failure when GitHub rate limits are exhausted",
+      "github_seam_tested": "Rate-limit exhaustion handling",
+      "proposed_file_path": "tests/integrations/github_provider/test_rate_limit_graceful_degradation.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-028",
+      "test_name": "Issue-to-Mission Candidate Routing Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "GitHub issues that don't route correctly to mission candidates in Ralph scanner",
+      "github_seam_tested": "Issue ingestion → Ralph mission candidate pipeline",
+      "proposed_file_path": "tests/integrations/github_provider/test_issue_mission_routing.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-029",
+      "test_name": "PR Risk Summary Accuracy Tests",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "PR risk summaries that are misleadingly optimistic (false negatives) or alarmist (false positives)",
+      "github_seam_tested": "PR risk analysis engine",
+      "proposed_file_path": "tests/integrations/github_provider/test_pr_risk_summary_accuracy.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-030",
+      "test_name": "Branch Protection Policy Compliance Tests",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Rig Relay's understanding of branch protection policies diverging from GitHub's actual enforcement",
+      "github_seam_tested": "Branch protection policy interpretation",
+      "proposed_file_path": "tests/integrations/github_provider/test_branch_protection_policy_compliance.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-031",
+      "test_name": "Enterprise Audit Log Normalization Tests",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "GitHub Enterprise audit log events that fail to normalize into Rig Relay's event model",
+      "github_seam_tested": "GitHub Enterprise audit log API",
+      "proposed_file_path": "tests/integrations/github_provider/test_audit_log_normalization.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-032",
+      "test_name": "SSO/SAML Configuration Shape Tests",
+      "classifications": ["contract"],
+      "what_it_catches": "SSO/SAML enforcement configurations that Rig Relay doesn't understand and silently ignores",
+      "github_seam_tested": "Organization SSO/SAML configuration",
+      "proposed_file_path": "tests/integrations/github_provider/test_sso_configuration_shape.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-033",
+      "test_name": "Data Residency Boundary Enforcement Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Data from one GitHub org/data-residency zone leaking into another's evidence store or telemetry",
+      "github_seam_tested": "Data residency/tenant isolation",
+      "proposed_file_path": "tests/integrations/github_provider/test_data_residency_boundary.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-034",
+      "test_name": "Backup/Restore Round-Trip Tests",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Evidence store backup not restorable to a functionally equivalent state",
+      "github_seam_tested": "Evidence store backup/restore",
+      "proposed_file_path": "tests/integrations/github_provider/test_backup_restore_round_trip.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-035",
+      "test_name": "Cross-Org Tenant Isolation Tests",
+      "classifications": ["integration", "adversarial"],
+      "what_it_catches": "Cross-org data leakage through shared caches, connection pools, or projection views",
+      "github_seam_tested": "Multi-tenant isolation layer",
+      "proposed_file_path": "tests/integrations/github_provider/test_cross_org_tenant_isolation.py",
+      "priority": "P3",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-036",
+      "test_name": "GitHub Provider Code Scanning Triage Queue Contract Tests",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Code scanning alert data format changes breaking the triage queue projection",
+      "github_seam_tested": "Code scanning alerts → triage queue projection",
+      "proposed_file_path": "tests/integrations/github_provider/test_code_scanning_triage_queue.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-037",
+      "test_name": "Dependabot Triage Queue Contract Tests",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Dependabot alert data format changes breaking the triage queue projection",
+      "github_seam_tested": "Dependabot alerts → triage queue projection",
+      "proposed_file_path": "tests/integrations/github_provider/test_dependabot_triage_queue.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-038",
+      "test_name": "Secret Scanning Triage Queue Contract Tests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Secret scanning alerts leaking secret material through the triage queue UI or API",
+      "github_seam_tested": "Secret scanning alerts → triage queue projection",
+      "proposed_file_path": "tests/integrations/github_provider/test_secret_scanning_triage_queue.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-039",
+      "test_name": "PR Read Pipeline with Risk Summary Contract Tests",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "PR data ingestion missing risk-relevant fields (changed files, review status, CI status)",
+      "github_seam_tested": "PR read pipeline",
+      "proposed_file_path": "tests/integrations/github_provider/test_pr_read_pipeline.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "gh-test-040",
+      "test_name": "Actions Workflow Failure Cockpit Projection Tests",
+      "classifications": ["integration", "contract"],
+      "what_it_catches": "Workflow failure data not rendering correctly in cockpit or missing correlation with related PRs",
+      "github_seam_tested": "Actions workflow runs → cockpit projection",
+      "proposed_file_path": "tests/integrations/github_provider/test_actions_cockpit_projection.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    }
+  ],
+  "content_light": {
+    "principle": "This test strategy contains only test descriptions, classifications, and file paths. No source code, secrets, credentials, or internal implementation details are included. All test scenarios are derived from publicly documented GitHub APIs and competitive analysis.",
+    "redaction_note": "No redactions applied — all content is test-plan metadata derived from public API surfaces."
+  },
+  "revision": 2
+}

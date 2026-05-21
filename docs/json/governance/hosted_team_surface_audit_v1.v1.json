@@ -1,0 +1,77 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "hosted-team-surface-audit-v1",
+  "title": "Hosted / Team Mode Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "current_state": {
+    "summary": "Hosted/team mode does not exist in Rig Relay. Fleet controller (enterprise/fleet_controller.py) runs multiple instances via subprocess spawn — not true multi-tenancy. Headless server exists for single-instance headless mode. Tenant concept exists (TenantRegistry, tenant-scoped event dispatch, TenantPermissionEvaluator with 6 permission levels) but there is no hosted API, no multi-user session model, no remote WebSocket auth, no SSO/SCIM, no data residency controls, no billing model, and no hosted GitHub integration. Postgres adapter is not yet implemented.",
+    "maturity": "partial — tenant models exist; fleet controller for subprocess-based multi-instance; no true hosted mode"
+  },
+  "hosted_architecture_options": [
+    {
+      "option": "local_only",
+      "description": "Each user runs their own Rig Relay instance locally. Evidence local-first. No shared state. No team features.",
+      "recommended_for": "solo developers, open-source maintainers",
+      "status": "current default"
+    },
+    {
+      "option": "hybrid_local_first",
+      "description": "Users run local Rig Relay instances. Team state shared via coordination store (Postgres-backed). Evidence local-first but synchronized. Cockpit can view team projections. Hosted instance optional for shared WebSocket.",
+      "recommended_for": "small teams (2-15), privacy-conscious startups",
+      "status": "P2 design target"
+    },
+    {
+      "option": "hosted_single_instance",
+      "description": "Single hosted Rig Relay instance serves a team via WebSocket. Evidence stored in hosted Postgres. Users authenticate via hosted API. Admin manages tenants, permissions, rate limits.",
+      "recommended_for": "startups (15-100), teams wanting zero local setup",
+      "status": "P3 design target"
+    },
+    {
+      "option": "hosted_multi_tenant",
+      "description": "Hosted Rig Relay serves multiple tenants with full isolation. Postgres row-level security or schema-per-tenant. Per-tenant rate limits, evidence stores, and admin panels. SSO/SCIM integration.",
+      "recommended_for": "enterprises, agencies managing multiple clients",
+      "status": "P4 design target"
+    }
+  ],
+  "recommended_v1_hosted_boundary": {
+    "boundary": "hybrid_local_first (option 2)",
+    "what_remains_local": "user's workspace (file system, git repo, subprocess execution); agent loop execution; tool invocation; mission execution; local evidence artifacts (JSONL source-of-truth)",
+    "what_moves_to_postgres": "coordination store (sessions, tasks, leases, artifacts, conflicts); team projections; permission profiles; rate-limit budgets; mission topology; fleet health",
+    "what_remains_file_artifact_truth": "all evidence artifacts (JSONL); all receipts; all audit logs; all permission probe results; all schema validation results; all procurement packs",
+    "what_apis_are_needed": "WebSocket auth for remote clients (mutual TLS or token-based); coordination sync API; projection sync API; tenant management API (admin only); telemetry policy API",
+    "what_not_to_host_yet": "agent loop execution (stays local); tool invocation (stays local); GitHub App auth (stays local per-user); workspace file system (stays local)"
+  },
+  "hosted_requirements": [
+    {"requirement": "tenant_isolation", "status": "partial — TenantRegistry exists; no query/connection-level isolation", "priority": "P0 for multi-tenant"},
+    {"requirement": "rbac_admin_approval", "status": "partial — TenantPermissionEvaluator exists; no role hierarchy", "priority": "P1"},
+    {"requirement": "product_telemetry_opt_out_preserves_evidence", "status": "not_enforced", "priority": "P0"},
+    {"requirement": "remote_contribution_disabled_preserves_local_operational_evidence", "status": "not_enforced", "priority": "P0"},
+    {"requirement": "postgres_unavailable_fail_closed", "status": "N/A — Postgres not yet integrated", "priority": "P1"},
+    {"requirement": "backup_export_delete_per_tenant", "status": "not_implemented", "priority": "P2"},
+    {"requirement": "sso_scim_integration", "status": "not_implemented", "priority": "P3"},
+    {"requirement": "data_residency_controls", "status": "not_implemented", "priority": "P3"},
+    {"requirement": "hosted_github_integration", "status": "not_implemented", "priority": "P3"},
+    {"requirement": "ghes_private_network_support", "status": "not_implemented", "priority": "P3"},
+    {"requirement": "billing_subscription_boundary", "status": "not_implemented", "priority": "P3"},
+    {"requirement": "incident_investigation_timeline", "status": "partial — evidence artifacts support this; no hosted UI", "priority": "P2"},
+    {"requirement": "support_debug_workflow", "status": "partial — telemetry bundles exist; no hosted debug export", "priority": "P2"}
+  ],
+  "hosted_tests_required": [
+    "test_tenant_isolation_data_level — sabotage: tenant A query returns tenant B data, verify blocked",
+    "test_tenant_isolation_query_level — sabotage: tenant A connection accesses tenant B schema, verify blocked",
+    "test_rbac_admin_role_enforcement — sabotage: non-admin performs admin action, verify blocked",
+    "test_product_telemetry_opt_out_preserves_evidence — contract: disable telemetry, verify receipts and audit logs still emitted",
+    "test_remote_contribution_disabled_preserves_local_evidence — contract: disable remote contribution, verify local evidence intact",
+    "test_postgres_unavailable_fail_closed — substrate: kill Postgres, verify cockpit degrades gracefully and blocks mutations",
+    "test_backup_export_delete_per_tenant — substrate: backup tenant A, verify tenant B data not included",
+    "test_cross_tenant_event_policy_enforcement — adversarial: tenant A publishes cross-tenant event without permission, verify blocked"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

@@ -1,0 +1,149 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_roadmap.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Substrate — Phased Implementation Roadmap",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "principle": "Postgres migration (docs/json/governance/postgres_*.v1.v1.json) is a separate parallel track. This roadmap adds high-performance adjacent tooling alongside Postgres integration, not instead of it. No phase should add a dependency that replaces or undermines Postgres operational authority or artifact-first doctrine.",
+  "phases": [
+    {
+      "phase": 0,
+      "name": "Audit (current)",
+      "duration": "current milestone",
+      "description": "This audit. No code changes. No dependency changes. Produce governance JSON artifacts that classify 19 tools, define fit matrix, architecture pipeline, dependency doctrine, test strategy, and security review.",
+      "deliverables": [
+        "high_performance_substrate_audit_v1.v1.json",
+        "high_performance_substrate_tool_taxonomy_v1.v1.json",
+        "high_performance_substrate_fit_matrix_v1.v1.json",
+        "high_performance_substrate_architecture_v1.v1.json",
+        "high_performance_substrate_dependency_plan_v1.v1.json",
+        "high_performance_substrate_roadmap_v1.v1.json",
+        "high_performance_substrate_test_strategy_v1.v1.json",
+        "high_performance_substrate_security_privacy_review_v1.v1.json"
+      ],
+      "dependencies": "zero new",
+      "exit_criteria": "All deliverables validated as syntactically correct JSON. Schema validation passes (no regressions).",
+      "rollback": "N/A — no code changes"
+    },
+    {
+      "phase": 1,
+      "name": "Measurement Harness & Low-Hanging Fruit",
+      "duration": "2-3 days",
+      "description": "Identify actual bottlenecks before adding any tools. Expand Zstandard usage and Pydantic exploitation — zero new dependencies. Runs parallel to Postgres Phase 1 (Schema Contracts).",
+      "tasks": [
+        {"task": "Measure JSONL parse times for 10k, 100k, 1M row corpora using stdlib json", "outcome": "baseline parse throughput"},
+        {"task": "Measure DuckDB projection compute times for each cockpit widget query", "outcome": "baseline projection latency"},
+        {"task": "Benchmark receipt_store list() with 1k, 10k, 100k envelopes", "outcome": "manifest scan bottleneck quantification"},
+        {"task": "Benchmark event_store read() with 10k, 100k, 1M events", "outcome": "event fabric read bottleneck quantification"},
+        {"task": "Measure static docs render time for current page count vs projected 500+ pages", "outcome": "render scalability forecast"},
+        {"task": "Measure procurement evidence pack generation time for sample artifact set", "outcome": "pack generation bottleneck quantification"},
+        {"task": "Expand Zstandard: replace gzip in session lifecycle finalize with zstd", "outcome": "session compaction 20-40% smaller, 3-5x faster"},
+        {"task": "Expand Zstandard: add zstd option to rig_relay_create_telemetry_bundle.py", "outcome": "bundle compression 20-40% smaller"},
+        {"task": "Expand Pydantic: replace stdlib json in receipt_store manifest lines with Pydantic model", "outcome": "type-safe manifest entries"},
+        {"task": "Expand Pydantic: replace stdlib json in event_store append with EventEnvelope model serialization", "outcome": "type-safe event writes"}
+      ],
+      "dependencies": "zero new",
+      "deliverables": "Measurement report JSON artifact. Zstandard-expanded session/bundle compression code. Pydantic-expanded module boundaries.",
+      "exit_criteria": "All bottlenecks quantified. Zstandard expansion tested (roundtrip compress/decompress). Pydantic expansion pyright-clean. No regression in existing tests.",
+      "rollback": "Revert zstd expansion to gzip (already coexisting). Revert Pydantic expansion to stdlib json (simple code revert)."
+    },
+    {
+      "phase": 2,
+      "name": "Port Definition & File-Backed Adapters",
+      "duration": "5-7 days",
+      "description": "Define Port interfaces. Implement file-backed reference adapters. Runs parallel to Postgres Phase 2 (Port Definition & File Adapters). This phase is SHARED with Postgres migration — same ports, same file adapters.",
+      "tasks": [
+        {"task": "Define all Port protocols (same as Postgres audit Phase 2)", "outcome": "unified port layer"},
+        {"task": "Implement file-backed adapters", "outcome": "reference implementations for contract tests"},
+        {"task": "Exploit Pydantic: all adapter boundaries use model_validate/model_dump_json, never raw json.loads/dumps", "outcome": "type-safe adapter boundaries"}
+      ],
+      "dependencies": "zero new",
+      "deliverables": "Port protocols + file-backed adapters + contract tests. Pydantic-typed boundaries.",
+      "exit_criteria": "All file adapters pass contract tests. Pydantic exploited at all adapter boundaries. Existing tests pass.",
+      "rollback": "Remove rig_relay/adapters/ directory. Existing stores unchanged."
+    },
+    {
+      "phase": 3,
+      "name": "Postgres Adapters + COPY + Arrow Prototype",
+      "duration": "7-10 days",
+      "description": "Implement Postgres adapters. Add psycopg 3. Implement COPY-based ingest/export with staging table pattern. Prototype Arrow in-memory interchange behind ProjectionStorePort. Formalize Parquet derived snapshot doctrine. Runs parallel to Postgres Phase 3.",
+      "dependencies": ["uv add 'psycopg[binary]>=3.2'", "uv add 'pyarrow>=19.0' (optional [arrow] extra)"],
+      "tasks": [
+        {"task": "Add psycopg 3", "outcome": "Postgres connectivity"},
+        {"task": "Implement Postgres adapters with COPY bulk ingest/export", "outcome": "staging table + constraint promotion pattern"},
+        {"task": "Prototype Arrow table behind ProjectionStorePort (optional [arrow] extra)", "outcome": "columnar in-memory projection interchange"},
+        {"task": "Formalize Parquet derived snapshot doctrine in tests", "outcome": "Parquet-never-canonical contract test"}
+      ],
+      "deliverables": "Postgres adapters + COPY pipeline + Arrow prototype (if justified) + Parquet doctrine tests.",
+      "exit_criteria": "Postgres adapters pass integration tests. COPY staging table validates constraints. Arrow prototype produces equivalent projections to dict-of-dicts (if promoted from park). Parquet-never-canonical test passes.",
+      "rollback": "Remove psycopg, pyarrow (if added). Remove Postgres adapters. Run down migrations."
+    },
+    {
+      "phase": 4,
+      "name": "Replay Equivalence & Cross-Adapter Contract Tests",
+      "duration": "5-7 days",
+      "description": "Verify file-backed and Postgres adapters produce equivalent projections. Verify DuckDB and Postgres produce equivalent analytical views. Runs parallel to Postgres Phase 4.",
+      "dependencies": "zero new",
+      "deliverables": "Equivalence test suite. DuckDB vs Postgres projection parity tests. Arrow vs dict projection parity (if Arrow prototype exists).",
+      "exit_criteria": "Equivalence tests pass for all canonical artifact types. DuckDB and Postgres projections match. Arrow and dict projections match (if Arrow exists).",
+      "rollback": "No schema changes. Remove test files if needed."
+    },
+    {
+      "phase": 5,
+      "name": "Cockpit Integration + Zstandard Bundles",
+      "duration": "7-10 days",
+      "description": "Desktop cockpit uses ProjectionStorePort. Zstandard-compressed evidence bundles and export packages. Cockpit projection performance measured against baseline. Runs parallel to Postgres Phase 5 (Cockpit Integration).",
+      "dependencies": "zero new (pg_jsonschema is Postgres extension, not Python dep — parked, not implemented)",
+      "deliverables": "Cockpit queries Postgres materialized views. Zstandard-compressed bundles. Projection performance report.",
+      "exit_criteria": "Cockpit widgets render from Postgres views. Zstandard bundles pass roundtrip decompress + content-light scan. Projection performance meets baseline or improves.",
+      "rollback": "Cockpit falls back to file-backed projection. Zstandard falls back to gzip."
+    },
+    {
+      "phase": 6,
+      "name": "Enterprise Mode + pgvector Audit",
+      "duration": "10-14 days",
+      "description": "Enterprise mode with Postgres operational substrate. pgvector semantic retrieval audit (parked — evaluate as separate slice). Audit requires: sensitive-derived-data policy for embeddings, embedding model selection, local-only boundary. Runs parallel to Postgres Phase 6 (Enterprise Mode).",
+      "dependencies": "pgvector Python client if promoted from park to prototype",
+      "tasks": [
+        {"task": "Enterprise mode toggle", "outcome": "Postgres operational in enterprise mode"},
+        {"task": "Audit pgvector for semantic retrieval over content-light report corpus", "outcome": "pgvector feasibility report"},
+        {"task": "Define sensitive-derived-data policy for embeddings", "outcome": "policy artifact"}
+      ],
+      "deliverables": "Enterprise mode. pgvector audit report. Sensitive-derived-data policy.",
+      "exit_criteria": "Enterprise mode toggle works. pgvector audit complete. Sensitive-derived-data policy defined and validated.",
+      "rollback": "Unset RIG_RELAY_POSTGRES_DSN for local mode."
+    },
+    {
+      "phase": 7,
+      "name": "Procurement Docs + SQLGlot Linting",
+      "duration": "5-7 days",
+      "description": "Procurement-grade documentation. SQLGlot linting for DuckDB ↔ Postgres SQL parity (parked — evaluate as optional validation tool). Runs parallel to Postgres Phase 7 (Procurement Documentation).",
+      "dependencies": "sqlglot if promoted from park",
+      "deliverables": "Procurement documentation. SQLGlot linting report (if promoted).",
+      "exit_criteria": "Procurement docs validated. SQLGlot detects dialect-specific SQL if promoted.",
+      "rollback": "N/A — documentation only."
+    },
+    {
+      "phase": 8,
+      "name": "Park Candidates Re-evaluation",
+      "duration": "ongoing",
+      "description": "Re-evaluate parked candidates (Polars, Ibis, DataFusion, ADBC, Iceberg) based on measured bottlenecks from Phase 1 and operational experience from Phases 3-7.",
+      "dependencies": "none — re-evaluation only",
+      "deliverables": "Updated fit matrix with operational data.",
+      "exit_criteria": "Bottleneck evidence justifies promotion or confirms park/reject.",
+      "rollback": "N/A."
+    }
+  ],
+  "parallel_track_alignment": {
+    "postgres_phase_0": "runs parallel with substrate Phase 0 (both audits)",
+    "postgres_phase_1": "runs parallel with substrate Phase 1 (measurement + Zstandard + Pydantic expansion)",
+    "postgres_phase_2": "runs parallel with substrate Phase 2 (both define ports + file adapters)",
+    "postgres_phase_3": "runs parallel with substrate Phase 3 (psycopg added in both, Arrow prototype in substrate)",
+    "postgres_phase_4": "runs parallel with substrate Phase 4 (both equivalence tests)",
+    "postgres_phase_5": "runs parallel with substrate Phase 5 (cockpit integration in both)",
+    "postgres_phase_6": "runs parallel with substrate Phase 6 (enterprise mode in both, pgvector in substrate)",
+    "postgres_phase_7": "runs parallel with substrate Phase 7 (procurement docs in both, SQLGlot in substrate)"
+  },
+  "revision": "1.0.0"
+}

@@ -1,0 +1,361 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "strategy_id": "frontend-cli-protocol-surface-test-strategy-v1",
+  "title": "Frontend / CLI / Protocol Surface Test Strategy v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "content_light": true,
+  "revision": 1,
+  "tests": [
+    {
+      "test_id": "surf-test-001",
+      "test_name": "Frontend intent gating rejects unapproved mutation intents",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Cockpit sends a mutation intent without approval; backend must reject with 403 and log refusal event",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_intent_gating.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-002",
+      "test_name": "Widget evidence links resolve to valid receipt SHA256",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Widget panels display evidence links that reference nonexistent receipts or malformed SHA256 values",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_widget_evidence_links.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-003",
+      "test_name": "XSS injection through projection fields is neutralized",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Malicious HTML/JS injected into projection data fields renders in cockpit; CSP headers missing or permissive",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_xss_csp.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-004",
+      "test_name": "Stale projection data does not show phantom worktrees",
+      "classifications": ["integration", "concurrency"],
+      "what_it_catches": "Projection snapshot from a deleted worktree lingers in cockpit after worktree GC; backend sends stale state",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_stale_projection.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-005",
+      "test_name": "Status indicators reflect all 9 defined states correctly",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Status indicator enum mismatches between backend projection and frontend rendering; missing states cause display errors",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_status_indicators.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-006",
+      "test_name": "Trust spine gating prevents frontend from bypassing approval flow",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "Frontend sends a mutation command with forged approval token; trust spine rejects and emits telemetry event",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_trust_spine_gating.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-007",
+      "test_name": "Postgres degraded mode shows warning indicators in cockpit",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Postgres connection drops; cockpit continues with degraded projection but shows clear warning chips",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_postgres_degraded.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-008",
+      "test_name": "Hosted team indicators display correct tenant and RBAC info",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Multi-tenant cockpit shows wrong tenant context or exposes cross-tenant projection data",
+      "surface_tested": "Frontend/Cockpit",
+      "proposed_file_path": "tests/cockpit/test_hosted_indicators.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-009",
+      "test_name": "CLI dry-run mode produces structured JSON output by default",
+      "classifications": ["contract"],
+      "what_it_catches": "CLI emits unstructured text instead of JSON in dry-run mode; downstream tooling breaks",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_dry_run_json_output.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-010",
+      "test_name": "CLI JSON schema matches documented contract",
+      "classifications": ["contract"],
+      "what_it_catches": "CLI output JSON does not validate against its published schema; schema drift undetected",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_json_schema_validation.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-011",
+      "test_name": "CLI exit codes follow documented semantic contract",
+      "classifications": ["contract"],
+      "what_it_catches": "CLI exits with 0 on partial failure or wrong exit code for permission denial; scripts misinterpret results",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_exit_codes.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-012",
+      "test_name": "CLI never emits Markdown as structured evidence output",
+      "classifications": ["contract"],
+      "what_it_catches": "CLI outputs markdown report instead of JSONL/JSON evidence artifact; violates evidence doctrine",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_no_markdown_evidence.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-013",
+      "test_name": "Scripts governance gating prevents CLI bypass of cockpit approval",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "A script invokes mutation via CLI while cockpit approval is pending; governance gate rejects",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_scripts_governance_gating.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-014",
+      "test_name": "Dry-run mode exercises all CLI code paths without side effects",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "Dry-run flag skipped; side-effecting code runs during dry-run; dry-run coverage gaps",
+      "surface_tested": "CLI",
+      "proposed_file_path": "tests/cli/test_dry_run_coverage.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-015",
+      "test_name": "MCP tool descriptor integrity enforced against tampered manifests",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "MCP server sends a tampered tool descriptor; descriptor integrity check rejects and logs",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_descriptor_integrity.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-016",
+      "test_name": "MCP tool poisoning via overlapping names is prevented",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Two MCP servers expose tools with the same name; namespace collision poisons tool dispatch",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_tool_poisoning.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-017",
+      "test_name": "MCP roots boundary rejects file access outside declared roots",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "MCP tool accesses a file path outside declared roots; boundary enforcement rejects",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_roots_boundary.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-018",
+      "test_name": "MCP mutation tools are gated behind approval receipt requirement",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "MCP host invokes a mutation tool without a valid approval receipt; gate blocks execution",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_mutation_gating.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-019",
+      "test_name": "MCP content-light output enforces no secret leakage in tool responses",
+      "classifications": ["adversarial", "integration"],
+      "what_it_catches": "MCP tool response inadvertently includes raw file contents with secrets; content-light scanner catches and redacts",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_content_light_output.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-020",
+      "test_name": "MCP per-user authorization scopes tool access correctly",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "User A's MCP session accesses tools scoped to User B; per-user auth boundary fails",
+      "surface_tested": "MCP",
+      "proposed_file_path": "tests/mcp/test_per_user_auth.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-021",
+      "test_name": "ACP message schema rejection for malformed session requests",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "ACP client sends malformed JSON that passes transport parsing but violates message schema; server rejects with structured error",
+      "surface_tested": "ACP",
+      "proposed_file_path": "tests/acp/test_message_schema.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-022",
+      "test_name": "ACP mission scope enforcement rejects out-of-scope tool calls",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "ACP session requests a tool outside its declared mission scope; scope enforcement rejects",
+      "surface_tested": "ACP",
+      "proposed_file_path": "tests/acp/test_mission_scope.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-023",
+      "test_name": "ACP session cancellation and timeout release resources",
+      "classifications": ["integration", "concurrency"],
+      "what_it_catches": "ACP session hangs after cancel; tool leases leak; timeout does not trigger cleanup",
+      "surface_tested": "ACP",
+      "proposed_file_path": "tests/acp/test_cancellation_timeout.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-024",
+      "test_name": "ACP receipt persistence survives server restart",
+      "classifications": ["integration", "substrate"],
+      "what_it_catches": "ACP-produced receipts are lost on server restart; WAL durability guarantees broken",
+      "surface_tested": "ACP",
+      "proposed_file_path": "tests/acp/test_receipt_persistence.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-025",
+      "test_name": "A2A malicious agent card causes safe rejection",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Attacker publishes an agent card with forged capabilities or spoofed trust tier; A2A client rejects",
+      "surface_tested": "A2A",
+      "proposed_file_path": "tests/a2a/test_malicious_card.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-026",
+      "test_name": "A2A scope enforcement prevents remote agent from escalating privileges",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "Remote A2A agent requests a tool tier above its declared trust level; scope enforcement rejects",
+      "surface_tested": "A2A",
+      "proposed_file_path": "tests/a2a/test_scope_enforcement.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-027",
+      "test_name": "A2A trust tier downgrade on suspicious behavior",
+      "classifications": ["adversarial", "integration"],
+      "what_it_catches": "Remote agent exhibits anomalous request patterns; trust tier dynamically downgraded; further requests blocked",
+      "surface_tested": "A2A",
+      "proposed_file_path": "tests/a2a/test_trust_tier.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-028",
+      "test_name": "A2A timeout and budget enforcement caps remote agent consumption",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Remote A2A agent exceeds allocated token budget or time budget; enforcement caps and reports",
+      "surface_tested": "A2A",
+      "proposed_file_path": "tests/a2a/test_timeout_budget.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-029",
+      "test_name": "MCP to GitHub bypass is blocked by composition guard",
+      "classifications": ["adversarial", "sabotage", "integration"],
+      "what_it_catches": "Agent uses MCP tool chain to reach GitHub mutation API without cockpit approval; composition guard detects cross-surface escalation",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_mcp_to_github_bypass.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-030",
+      "test_name": "A2A to GitHub bypass is blocked by composition guard",
+      "classifications": ["adversarial", "sabotage", "integration"],
+      "what_it_catches": "Remote A2A agent chains through local MCP server to reach GitHub mutation; cross-surface check rejects",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_a2a_to_github_bypass.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-031",
+      "test_name": "Hosted team debug endpoint does not leak production secrets",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Debug endpoint in hosted team mode exposes API keys, env vars, or session tokens; content-light filter catches",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_hosted_to_debug_leak.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-032",
+      "test_name": "Frontend to MCP bypass is blocked by governance spine",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Frontend injects a WebSocket message that triggers MCP mutation without approval; governance spine intercepts",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_frontend_to_mcp_bypass.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-033",
+      "test_name": "ACP to subagent bypass blocked by mission scope composition guard",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "ACP session spawns subagent with escalated tool permissions; composition guard enforces parent scope on subagent",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_acp_to_subagent_bypass.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-034",
+      "test_name": "SSH to local bypass blocked by future supervisor wrapping",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "SSH channel provides remote mutation access that bypasses local governance; future supervisor wrapping planned",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_ssh_to_local_bypass.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "surf-test-035",
+      "test_name": "Static docs site does not leak internal-only content",
+      "classifications": ["adversarial", "integration"],
+      "what_it_catches": "Static doc renderer includes internal-only JSON artifacts in public site; public/private split fails",
+      "surface_tested": "Composition",
+      "proposed_file_path": "tests/composition/test_static_docs_to_public_leak.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    }
+  ]
+}

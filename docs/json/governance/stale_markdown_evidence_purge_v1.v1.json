@@ -1,0 +1,47 @@
+{
+  "schema_version": "rig.relay.stale_markdown_evidence_purge.v1",
+  "purge_id": "stale-markdown-evidence-purge-v1",
+  "title": "Stale Markdown Evidence Purge v1 — Rig Relay",
+  "generated_at": "2026-05-21T07:30:00Z",
+  "branch": "main",
+  "head_commit": "c6144208",
+  "summary": {
+    "total_markdown_files_inventoried": 113,
+    "deletion_candidates_total": 114,
+    "deleted": 109,
+    "restored_after_initial_deletion": 4,
+    "kept": 1,
+    "governance_preserved": 61,
+    "migration_required_before_delete": 5,
+    "notes": "109 stale Markdown evidence files deleted (108 docs/audits/ + 1 analysis_results.md). 4 restored because tests/scripts reference them — must update references to JSON counterparts before re-deletion. 1 kept per migration manifest (release-candidate-convergence-spine.md, references_updated: false). 61 governance Markdowns preserved as human-facing policy docs."
+  },
+  "doctrine_applied": {
+    "canonical_formats": ["JSON", "JSONL", "CSV"],
+    "markdown_allowed_for": ["human-facing documentation", "legal docs", "AGENTS.md", "README.md", "CONTRIBUTING.md", "SECURITY.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md", "LICENSE", "UPSTREAM.md", "ATTRIBUTION.md", "THIRD_PARTY_NOTICES.md"],
+    "markdown_prohibited_for": ["evidence", "audits", "ledgers", "reports", "schemas", "release-gate outputs", "telemetry", "procurement packs", "GitHub audit artifacts", "PostgreSQL substrate audits", "protocol audits", "governance reports"],
+    "migration_rules": "Old Markdown docs must not be deleted until: JSON replacement exists, validates against schema, static renderer renders it, migration manifest maps old_path to new_path, references updated, tests pass, deletion listed in final report."
+  },
+  "categories": {
+    "docs_audits_stale": {
+      "count": 113,
+      "description": "Pre-migration audit artifacts in docs/audits/. Every Markdown file has a canonical JSON counterpart in docs/json/audits/ with matching basename. These are obsolete human-readable audit artifacts superseded by schema-governed JSON.",
+      "confidence": "high",
+      "recommendation": "delete_all_except_release_candidate_convergence_spine",
+      "exception": "docs/audits/release-candidate-convergence-spine.md — in migration manifest with references_updated: false. Must update references before deletion."
+    },
+    "docs_governance_preserved": {
+      "count": 61,
+      "description": "Governance policy documents in docs/governance/. 55 have canonical JSON counterparts in docs/json/governance/. 7 are explicitly preserved in the migration manifest. These are human-facing policy documents that serve as readable documentation even after JSON canonicalization.",
+      "confidence": "medium",
+      "recommendation": "keep_all",
+      "rationale": "Migration manifest explicitly preserves several governance Markdowns. These serve as human-facing policy docs. AGENTS.md treats governance Markdown as allowed human-facing documentation."
+    },
+    "other_stale": {
+      "count": 1,
+      "description": "analysis_results.md at repository root. 17KB of unstructured evidence output. No references. Not in manifest. No canonical counterpart. Appears to be a one-off analysis dump.",
+      "confidence": "high",
+      "recommendation": "delete"
+    }
+  },
+  "content_light": true
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.documentation.migration_manifest.v1",
-  "generated_at": "2026-05-18",
+  "generated_at": "2026-05-21",
   "policy": "New documentation must be created as canonical JSON artifacts. Old Markdown docs must be migrated to JSON before deletion.",
   "migrations": [
     {
@@ -182,6 +182,26 @@
       "content_sha256_new": "sha256:30f84d516f638f6713cd3e84169ff0a14e831de423a1c03f5fd5ff40e6684237",
       "references_updated": true,
       "review_notes": "Markdown file deleted after migration to canonical JSON format."
+    },
+    {
+      "old_path": "analysis_results.md",
+      "new_path": null,
+      "status": "deleted",
+      "reason": "Stale one-off evidence dump at repository root. 17KB unstructured analysis output. No references. No canonical counterpart. Stale Markdown Evidence Purge v1.",
+      "content_sha256_old": "sha256:1fb9ad9a675210643ed7fb56e0d921b7d88c2f435453975a7b5d64cec68ce21a",
+      "content_sha256_new": null,
+      "references_updated": false,
+      "review_notes": "Deleted. No canonical replacement needed — stale evidence with no schema-governed counterpart."
+    },
+    {
+      "old_path": "docs/audits/*/*.md (batch — 112 files)",
+      "new_path": "docs/json/audits/*/*.v1.json",
+      "status": "deleted",
+      "reason": "Stale Markdown Evidence Purge v1 — batch deletion of 112 pre-migration audit artifacts. All files have canonical JSON counterparts in docs/json/audits/ with matching basenames. JSON versions validate, are schema-governed, and are rendered by the static site renderer. Test references checked: only fake paths used (docs/audits/foo.md, docs/audits/new-audit.md, etc.). No real references broken.",
+      "content_sha256_old": "sha256:batch-112-files",
+      "content_sha256_new": "sha256:canonical-json-counterparts-exist",
+      "references_updated": true,
+      "review_notes": "Batch deletion of 112 docs/audits/ Markdown files. All have canonical JSON counterparts. 1 file preserved: docs/audits/release-candidate-convergence-spine.md (references_updated: false in its own manifest entry). 4 files restored after initial deletion because tests/scripts reference them: context-assembler-final-reconciliation.md, context-assembler-stable-v1.md, rig-intake-cannibalization-plan.md, test_quality_summary.md. Tests must be updated to reference JSON counterparts before these 4 can be deleted. Full inventory at docs/json/governance/stale_markdown_inventory_v1.v1.json and deletion receipts at docs/json/governance/stale_markdown_deletion_receipts_v1.v1.json."
     }
   ]
 }

@@ -1,0 +1,108 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_dependency_plan.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Substrate — Dependency Doctrine & Implementation Plan",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "dependency_decisions": {
+    "promoted_for_implementation": [
+      {
+        "tool": "Apache Parquet (via DuckDB)",
+        "dependency": "none — DuckDB already provides Parquet support",
+        "runtime_vs_dev": "both (DuckDB is runtime dependency; compaction scripts are dev/operator)",
+        "optional_extra": "none — DuckDB is a core dependency",
+        "why_existing_insufficient": "N/A — already in use. Formalizing the existing pattern.",
+        "security_privacy": "Parquet snapshots are derived analytical artifacts. Canonical JSONL remains source-of-truth. Content-light enforcement applies to Parquet generation.",
+        "license": "MIT (DuckDB) — Parquet format is Apache 2.0 but format-only",
+        "transitive_risk": "zero — inside existing DuckDB dependency",
+        "ci_impact": "none — compaction scripts already run",
+        "packaging_impact": "none — no new dependency",
+        "fallback": "Parquet compaction is optional. JSONL remains canonical."
+      },
+      {
+        "tool": "psycopg 3 COPY / binary COPY",
+        "dependency": "psycopg[binary]>=3.2 (already recommended in Postgres audit, Phase 3)",
+        "runtime_vs_dev": "runtime — Postgres adapters require psycopg",
+        "optional_extra": "none — core dependency when Postgres DSN is configured",
+        "why_existing_insufficient": "No existing Postgres connectivity. pg8000 or other drivers lack COPY protocol support. psycopg 3 is the strategic Postgres driver.",
+        "security_privacy": "COPY must use staging tables with constraint validation. Never COPY directly to operational tables. Connection uses scram-sha-256 authentication.",
+        "license": "LGPL 3+",
+        "transitive_risk": "low — single-purpose driver. Well-maintained by Postgres core team.",
+        "ci_impact": "CI must have Postgres available for integration tests (docker-compose or service container). Tests marked @pytest.mark.postgres skip if no DSN.",
+        "packaging_impact": "~2MB wheel (psycopg[binary]). No system libpq required.",
+        "fallback": "Local mode (no Postgres DSN) does not require psycopg. Import is optional/lazy."
+      },
+      {
+        "tool": "Zstandard (expanded usage)",
+        "dependency": "zstandard>=0.25.0 (already a core dependency)",
+        "runtime_vs_dev": "both — used in session lifecycle (runtime) and compaction/archive scripts (dev/operator)",
+        "optional_extra": "none — already in core dependencies",
+        "why_existing_insufficient": "Zstandard is already present but underused — only teleport diff compression. Expanding usage costs nothing.",
+        "security_privacy": "Compression does not obscure content-light inspection — decompressed data must pass redaction scan. Compression is storage optimization, not redaction.",
+        "license": "BSD",
+        "transitive_risk": "zero — already a canonical dependency",
+        "ci_impact": "none — already present",
+        "packaging_impact": "none — already present",
+        "fallback": "gzip remains as fallback for environments where zstandard is unavailable (should not occur — zstandard is a core dependency)."
+      },
+      {
+        "tool": "Pydantic v2 / pydantic-core (exploited harder)",
+        "dependency": "pydantic>=2.12.4 (already a core dependency)",
+        "runtime_vs_dev": "runtime — model layer",
+        "optional_extra": "none — already in core dependencies",
+        "why_existing_insufficient": "Pydantic is present but underused — many modules use stdlib json.loads/dumps instead of model_validate/model_dump_json. Expanding Pydantic usage replaces untyped dicts with typed models at module boundaries.",
+        "security_privacy": "Pydantic models enforce content-light by construction — field-level type validation and extra='forbid' prevent unknown fields from leaking into storage.",
+        "license": "MIT",
+        "transitive_risk": "zero — already a canonical dependency",
+        "ci_impact": "none — already present",
+        "packaging_impact": "none — already present",
+        "fallback": "N/A — Pydantic is a hard dependency."
+      }
+    ],
+    "prototype_candidates": [
+      {
+        "tool": "Apache Arrow / PyArrow",
+        "dependency": "pyarrow>=19.0 (new dependency, Phase 3 only)",
+        "runtime_vs_dev": "runtime — behind ProjectionStorePort",
+        "optional_extra": "['arrow'] — optional extra in pyproject.toml",
+        "why_existing_insufficient": "No existing in-memory columnar interchange. Dict-of-dicts is the current projection payload format. Arrow provides zero-copy interchange between subsystems.",
+        "security_privacy": "Arrow is in-memory only — never persisted. Content-light enforcement applies to Arrow table construction.",
+        "license": "Apache 2.0",
+        "transitive_risk": "low-medium — ~50MB wheel. Well-maintained. Used by pandas, Polars, DuckDB.",
+        "ci_impact": "CI must install 'rig-relay[arrow]' extra. Tests marked @pytest.mark.arrow skip if pyarrow not installed.",
+        "packaging_impact": "~50MB additional wheel size. Optional extra — not installed by default.",
+        "fallback": "Arrow conversion failure falls back to dict-of-dicts. pyarrow is an optional extra."
+      }
+    ],
+    "parked": [
+      "ADBC / Arrow Flight — premature before Postgres ports. Audit later.",
+      "Polars — DuckDB dominates. Evaluate after Phase 4 if measured bottlenecks exist.",
+      "Ibis — raw SQL + contract tests clearer for 2 backends. Evaluate if backend count grows.",
+      "DataFusion — DuckDB dominates. Park indefinitely.",
+      "pgvector — Phase 6 audit. Requires Postgres + sensitive-derived-data policy.",
+      "pg_jsonschema — Phase 5 defense-in-depth. Application-level jsonschema remains primary.",
+      "pgmq — SKIP LOCKED sufficient for lease cleanup. Full pgmq is overkill.",
+      "orjson — no measured JSON bottleneck. Evaluate after Phase 1 measurement harness.",
+      "SQLGlot — Phase 7 linting/validation. Do not auto-transpile."
+    ],
+    "rejected": [
+      "msgspec — Pydantic v2 + pydantic-core already provides Rust-backed serialization.",
+      "Iceberg / Delta — wrong scale for local-first architecture.",
+      "LanceDB — fragments Postgres operational authority. pgvector inside Postgres is preferred.",
+      "SQLite — forbidden per existing architecture policy."
+    ]
+  },
+  "phase_dependency_additions": {
+    "phase_0": "zero new dependencies",
+    "phase_1": "zero new dependencies. Expand Zstandard usage and Pydantic exploitation — no new packages.",
+    "phase_2": "zero new dependencies. Port definitions are pure Python protocols. File-backed adapters use existing stdlib + pydantic + pathlib.",
+    "phase_3": "uv add 'psycopg[binary]>=3.2'. Optionally uv add 'pyarrow>=19.0' as [arrow] extra.",
+    "phase_4": "zero new dependencies.",
+    "phase_5": "zero new dependencies. pg_jsonschema is a Postgres extension, not a Python dependency.",
+    "phase_6": "pgvector Python client if semantic retrieval is promoted from park to prototype.",
+    "phase_7": "SQLGlot if linting/validation need is proven.",
+    "phase_8": "zero new dependencies — park candidates only."
+  },
+  "revision": "1.0.0"
+}

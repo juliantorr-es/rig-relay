@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from rig_relay.core.tool_executor.adapter_builder import ToolRuntimeAdapterBuilder
 from rig_relay.core.tool_executor.concurrency import ToolConcurrencyManager
+from rig_relay.core.tool_executor.context import ToolExecutionContext
 from rig_relay.core.tool_executor.council_gate import CouncilGate
 from rig_relay.core.tool_runtime_models import (
     ToolRuntimeExecutionMode,
@@ -19,33 +20,33 @@ from rig_relay.core.utils import (
 )
 
 if TYPE_CHECKING:
-    from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.core.llm.format import ResolvedToolCall
     from rig_relay.core.types import ToolResultEvent, ToolStreamEvent
 
 
 class ToolExecutor:
-    """Orchestrates single-tool execution and concurrent tool execution.
+    """Orchestrates single-tool and concurrent tool execution.
 
-    Composes ToolRuntimeAdapterBuilder, CouncilGate, and
-    ToolConcurrencyManager. Owns the full execution flow from
-    request building through result adaptation.
+    Composes adapter_builder, council_gate, and concurrency manager.
+    Receives all runtime state via ToolExecutionContext — no
+    reach-through to AgentLoop internals.
 
     Replaces AgentLoop._execute_tool_call, _process_one_tool_call,
-    _run_tools_concurrently, and _execute_tool_to_queue.
+    _run_tools_concurrently, _execute_tool_to_queue, _handle_tool_calls,
+    _maybe_auto_gc, and _consult_council_before_mutation.
     """
 
-    __slots__ = ("_loop", "adapter_builder", "council_gate", "concurrency")
+    __slots__ = ("_ctx", "adapter_builder", "council_gate", "concurrency")
 
     def __init__(
         self,
         *,
-        loop: AgentLoop,
+        ctx: ToolExecutionContext,
         adapter_builder: ToolRuntimeAdapterBuilder,
         council_gate: CouncilGate,
         concurrency: ToolConcurrencyManager,
     ) -> None:
-        self._loop: AgentLoop = loop
+        self._ctx = ctx
         self.adapter_builder = adapter_builder
         self.council_gate = council_gate
         self.concurrency = concurrency
@@ -54,9 +55,17 @@ class ToolExecutor:
         self, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
         """Execute a single tool call with span, council gating, and result adaptation."""
-        loop = self._loop
+        ctx = self._ctx
+        assert ctx.trace_runtime is not None, (
+            "ToolExecutionContext.trace_runtime not set"
+        )
+        assert ctx.tool_manager is not None, "ToolExecutionContext.tool_manager not set"
+        assert ctx.rewind_manager is not None, (
+            "ToolExecutionContext.rewind_manager not set"
+        )
+        assert ctx.result_sink is not None, "ToolExecutionContext.result_sink not set"
 
-        async with loop._trace_runtime.tool_span(
+        async with ctx.trace_runtime.tool_span(
             tool_name=tool_call.tool_name,
             call_id=tool_call.call_id,
             arguments=tool_call.validated_args.model_dump_json(),
@@ -65,7 +74,6 @@ class ToolExecutor:
             tn = tool_call.tool_name
             cid = tool_call.call_id
 
-            # ── Build request ───────────────────────────────────────
             exec_mode = ToolRuntimeExecutionMode.UNKNOWN
             if tool_call.tool_class is not None:
                 mut_cls = getattr(tool_call.tool_class, "mutation_class", None)
@@ -83,9 +91,9 @@ class ToolExecutor:
                     exec_mode = ToolRuntimeExecutionMode.READ_ONLY
 
             try:
-                loop.tool_manager.get(tn)
+                ctx.tool_manager.get(tn)
             except Exception as exc:
-                yield loop._tool_failure_event(
+                yield self._tool_failure_event(
                     tool_call, f"Error getting tool '{tn}': {exc}", span=span
                 )
                 return
@@ -94,27 +102,25 @@ class ToolExecutor:
                 tool_name=tn,
                 tool_args=tool_call.args_dict,
                 tool_call_id=cid,
-                turn_id=loop._current_user_message_id,
-                session_id=loop.session_id,
+                turn_id=ctx.user_message_id,
+                session_id=ctx.session_id,
                 execution_mode=exec_mode,
-                bypass_permissions=loop.bypass_tool_permissions,
+                bypass_permissions=ctx.bypass_permissions,
             )
 
-            # ── Rewind snapshot (pre-invocation) ─────────────────────
             try:
-                of_interest = loop.tool_manager.get(tn)
+                of_interest = ctx.tool_manager.get(tn)
                 snapshot = of_interest.get_file_snapshot(tool_call.validated_args)
                 if snapshot is not None:
-                    loop.rewind_manager.add_snapshot(snapshot)
+                    ctx.rewind_manager.add_snapshot(snapshot)
             except Exception:
                 pass
 
-            # ── Council consultation (pre-mutation) ──────────────────
             recommendation = await self.council_gate.consult(
                 tn, tool_call.args_dict, tool_call.tool_class
             )
             if recommendation == "BLOCK":
-                turn = getattr(loop, "_current_turn", None)
+                turn = ctx.current_turn
                 if turn is not None:
                     turn.tool_skip_count += 1
                 from rig_relay.core.types import ToolResultEvent as TRE
@@ -128,14 +134,14 @@ class ToolExecutor:
                     tool_call_id=cid,
                 )
                 return
-            if recommendation == "REVIEW" and loop.approval_callback is not None:
+            if recommendation == "REVIEW" and ctx.approval_callback is not None:
                 from rig_relay.core.types import ApprovalResponse
 
-                response, feedback = await loop.approval_callback(
+                response, feedback = await ctx.approval_callback(
                     tn, tool_call.validated_args, cid, []
                 )
                 if response != ApprovalResponse.YES:
-                    turn = getattr(loop, "_current_turn", None)
+                    turn = ctx.current_turn
                     if turn is not None:
                         turn.tool_skip_count += 1
                     from rig_relay.core.types import ToolResultEvent as TRE
@@ -150,26 +156,23 @@ class ToolExecutor:
                     )
                     return
 
-            # ── Governed execution ───────────────────────────────────
             try:
                 result = await runtime.execute_one(request)
             except asyncio.CancelledError:
                 cancel = str(
                     get_user_cancellation_message(CancellationReason.TOOL_INTERRUPTED)
                 )
-                turn = getattr(loop, "_current_turn", None)
+                turn = ctx.current_turn
                 if turn is not None:
                     turn.tool_failure_count += 1
-                yield loop._tool_failure_event(
+                yield self._tool_failure_event(
                     tool_call, cancel, None, cancelled=True, span=span
                 )
                 raise
 
-            # ── Adapt result ─────────────────────────────────────────
-            turn = getattr(loop, "_current_turn", None)
-            if turn is not None:
-                if result.duration_ms is not None:
-                    turn.tool_total_duration_ms += result.duration_ms
+            turn = ctx.current_turn
+            if turn is not None and result.duration_ms is not None:
+                turn.tool_total_duration_ms += result.duration_ms
 
             match result.status:
                 case ToolRuntimeStatus.CACHED:
@@ -184,9 +187,8 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_success_count += 1
-                    loop._tool_result_sink.record(result)
+                    ctx.result_sink.record(result)
                     yield cached_event
-                    return
 
                 case ToolRuntimeStatus.COMPLETED | ToolRuntimeStatus.DEGRADED:
                     for ev in result.tool_events:
@@ -197,25 +199,27 @@ class ToolExecutor:
                         result.duration_ms / 1000 if result.duration_ms else 0
                     )
 
+                    text = ""
+                    result_dict: dict[str, Any] = {}
                     if response_model is not None and hasattr(
                         response_model, "model_dump"
                     ):
                         result_dict = response_model.model_dump()
                         text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
                         try:
-                            of_interest = loop.tool_manager.get(tn)
+                            of_interest = ctx.tool_manager.get(tn)
                             extra = of_interest.get_result_extra(response_model)
                             if extra:
                                 text += "\n\n" + extra
                         except Exception:
                             pass
 
-                        loop._handle_tool_response(
-                            tool_call,
-                            text,
-                            "success",
-                            None,
-                            result_dict,
+                    if ctx.handle_tool_response is not None:
+                        ctx.handle_tool_response(
+                            tool_call=tool_call,
+                            text=text,
+                            status="success",
+                            result=result_dict,
                             span=span,
                             duration_ms=duration_sec * 1000,
                         )
@@ -236,8 +240,7 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_success_count += 1
-                    loop._tool_result_sink.record(result)
-                    return
+                    ctx.result_sink.record(result)
 
                 case ToolRuntimeStatus.REFUSED:
                     refusal = result.refusal
@@ -257,11 +260,14 @@ class ToolExecutor:
                     if turn is not None:
                         turn.tool_skip_count += 1
                     yield skip_event
-                    loop._handle_tool_response(
-                        tool_call, reason_text, "skipped", None, span=span
-                    )
-                    loop._tool_result_sink.record(result)
-                    return
+                    if ctx.handle_tool_response is not None:
+                        ctx.handle_tool_response(
+                            tool_call=tool_call,
+                            text=reason_text,
+                            status="skipped",
+                            span=span,
+                        )
+                    ctx.result_sink.record(result)
 
                 case ToolRuntimeStatus.FAILED:
                     error_msg = (
@@ -270,11 +276,10 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_failure_count += 1
-                    yield loop._tool_failure_event(
+                    yield self._tool_failure_event(
                         tool_call, error_msg, None, span=span
                     )
-                    loop._tool_result_sink.record(result)
-                    return
+                    ctx.result_sink.record(result)
 
                 case _:
                     error_msg = (
@@ -283,23 +288,53 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_failure_count += 1
-                    yield loop._tool_failure_event(
+                    yield self._tool_failure_event(
                         tool_call, error_msg, None, span=span
                     )
 
+    def _tool_failure_event(
+        self,
+        tool_call: ResolvedToolCall,
+        error_msg: str,
+        decision: Any = None,
+        cancelled: bool = False,
+        span: Any = None,
+    ) -> Any:
+        ctx = self._ctx
+        if ctx.handle_tool_response is not None:
+            ctx.handle_tool_response(
+                tool_call=tool_call, text=error_msg, status="failure", span=span
+            )
+        from rig_relay.core.types import ToolResultEvent
+
+        return ToolResultEvent(
+            tool_name=tool_call.tool_name,
+            tool_class=tool_call.tool_class,
+            error=error_msg,
+            cancelled=cancelled,
+            tool_call_id=tool_call.call_id,
+        )
+
     async def execute_batch(self, resolved: Any) -> AsyncGenerator[Any]:
-        """Execute the full tool batch: failed events, tool-call events, concurrent
-        execution, and passive auto-GC.
+        """Execute the full tool batch: failed events, tool-call events,
+        concurrent execution, and passive auto-GC."""
+        ctx = self._ctx
 
-        Delegates failed-tool-event emission to the AgentLoop's
-        ``_emit_failed_tool_events`` and concurrent execution to
-        ``execute_concurrently``.  After all tools finish, runs passive GC
-        via ``maybe_auto_gc`` if the storage budget is over threshold.
-        """
-        loop = self._loop
+        for failed in resolved.failed_calls:
+            error_msg = (
+                f"<{TOOL_ERROR_TAG}>{failed.tool_name}: {failed.error}"
+                f"</{TOOL_ERROR_TAG}>"
+            )
+            from rig_relay.core.types import ToolResultEvent
 
-        async for event in loop._emit_failed_tool_events(resolved.failed_calls):
-            yield event
+            yield ToolResultEvent(
+                tool_name=failed.tool_name,
+                tool_class=None,
+                error=error_msg,
+                tool_call_id=failed.call_id,
+            )
+            if ctx.stats is not None:
+                ctx.stats.tool_calls_failed += 1
 
         if not resolved.tool_calls:
             return
@@ -319,7 +354,10 @@ class ToolExecutor:
 
         from rig_relay.core._auto_gc import maybe_auto_gc
 
-        await maybe_auto_gc(loop.config, loop._workspace_root, loop.stats)
+        assert ctx.workspace_root is not None, (
+            "ToolExecutionContext.workspace_root not set"
+        )
+        await maybe_auto_gc(ctx.config, ctx.workspace_root, ctx.stats)
 
     async def execute_concurrently(
         self, tool_calls: list[ResolvedToolCall]

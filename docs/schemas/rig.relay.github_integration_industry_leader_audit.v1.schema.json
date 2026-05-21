@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.github_integration_industry_leader_audit.v1.schema.json",
+  "title": "GitHub Integration Industry-Leader Audit v1",
+  "description": "Schema for the comprehensive GitHub integration industry-leader audit artifacts. Governs the main audit document and its companion maps (product segment, capability, UX surface, workflow, trust/governance, enterprise readiness, storage architecture, competitive, test strategy, roadmap).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "audit_id",
+    "title",
+    "generated_at",
+    "status",
+    "sections",
+    "companion_artifacts",
+    "content_light",
+    "revision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.github_integration_industry_leader_audit.v1"
+    },
+    "audit_id": {
+      "type": "string",
+      "description": "Unique identifier for this audit instance."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable audit title."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of audit generation."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "in_review", "approved", "published"],
+      "description": "Audit lifecycle status."
+    },
+    "sections": {
+      "type": "array",
+      "description": "Audit sections (A through L).",
+      "items": {
+        "type": "object",
+        "required": ["section_id", "title", "body"],
+        "properties": {
+          "section_id": { "type": "string" },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "subsections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["subsection_id", "title", "body"],
+              "properties": {
+                "subsection_id": { "type": "string" },
+                "title": { "type": "string" },
+                "body": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "companion_artifacts": {
+      "type": "object",
+      "description": "Map of companion artifact IDs to their file paths and descriptions.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "description"],
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "content_light": {
+      "type": "object",
+      "description": "Content-light posture verification for this audit.",
+      "required": ["sha256", "no_raw_tokens", "no_raw_secrets", "no_source_code"],
+      "properties": {
+        "sha256": { "type": "string" },
+        "no_raw_tokens": { "type": "boolean", "const": true },
+        "no_raw_secrets": { "type": "boolean", "const": true },
+        "no_source_code": { "type": "boolean", "const": true },
+        "redaction_note": { "type": "string" }
+      }
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic revision counter."
+    }
+  }
+}

@@ -10,7 +10,7 @@ _COUNCIL_MUTATION_TOOLS = frozenset({
 })
 
 if TYPE_CHECKING:
-    from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.tool_executor.context import ToolExecutionContext
     from rig_relay.core.tools.base import BaseTool
 
 
@@ -21,15 +21,18 @@ class CouncilGate:
     allowing mutation tool execution. Fail-closed: unknown tools,
     blocked gates, missing providers, and consultation errors all
     result in REVIEW or BLOCK rather than ALLOW.
+
+    Receives all runtime state via ToolExecutionContext — no
+    reach-through to AgentLoop internals.
     """
 
-    __slots__ = ("_loop",)
+    __slots__ = ("_ctx",)
 
-    def __init__(self, *, loop: AgentLoop) -> None:
-        self._loop: AgentLoop = loop
+    def __init__(self, *, ctx: ToolExecutionContext) -> None:
+        self._ctx = ctx
 
     def _get_telemetry_client(self) -> Any | None:
-        return getattr(self._loop, "telemetry_client", None)
+        return getattr(self._ctx, "telemetry_client", None)
 
     async def consult(
         self,
@@ -38,8 +41,8 @@ class CouncilGate:
         tool_class: type[BaseTool] | None,
     ) -> str:
         """Return ALLOW, BLOCK, or REVIEW. Never ALLOW on failure."""
-        loop = self._loop
-        turn_id = getattr(loop, "_current_user_message_id", None)
+        ctx = self._ctx
+        turn_id = ctx.user_message_id
         tc = self._get_telemetry_client()
 
         if tool_class is None:
@@ -47,7 +50,7 @@ class CouncilGate:
 
             logger.warning(
                 "governance.degraded: reason=council_unknown_tool session=%s turn=%s",
-                loop.session_id,
+                ctx.session_id,
                 turn_id,
             )
             if tc is not None:
@@ -82,7 +85,7 @@ class CouncilGate:
 
                 logger.warning(
                     "governance.degraded: reason=council_gate_blocked session=%s turn=%s",
-                    loop.session_id,
+                    ctx.session_id,
                     turn_id,
                 )
                 if tc is not None:
@@ -101,7 +104,7 @@ class CouncilGate:
 
             logger.warning(
                 "governance.degraded: reason=council_gate_unavailable session=%s turn=%s",
-                loop.session_id,
+                ctx.session_id,
                 turn_id,
             )
             if tc is not None:
@@ -116,13 +119,13 @@ class CouncilGate:
                 )
             return "BLOCK"
 
-        configured_providers = [p.name for p in getattr(loop.config, "providers", [])]
+        configured_providers = [p.name for p in getattr(ctx.config, "providers", [])]
         if len(configured_providers) <= 1:
             from rig_relay.core.logger import logger
 
             logger.warning(
                 "governance.degraded: reason=council_single_provider session=%s turn=%s",
-                loop.session_id,
+                ctx.session_id,
                 turn_id,
             )
             if tc is not None:
@@ -142,7 +145,7 @@ class CouncilGate:
                 determine_council_recommendation,
             )
 
-            context_summary = f"Tool: {tool_name}. Turn: {loop._current_user_message_id or 'unknown'}."
+            context_summary = f"Tool: {tool_name}. Turn: {turn_id or 'unknown'}."
             receipt = await consult_council_before_mutation(
                 tool_name=tool_name,
                 tool_args=tool_args,
@@ -167,7 +170,7 @@ class CouncilGate:
 
             logger.warning(
                 "governance.degraded: reason=council_consultation_failed session=%s turn=%s error=%s",
-                loop.session_id,
+                ctx.session_id,
                 turn_id,
                 exc,
             )

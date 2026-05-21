@@ -1,0 +1,397 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-trust-governance-map-v1",
+  "title": "GitHub Integration Trust & Governance Map v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "trust_requirements": [
+    {
+      "requirement_id": "no-surprise-remote-mutation",
+      "requirement": "No surprise remote mutation",
+      "current_status": "addressed_by_design",
+      "gap_description": "Architecture correctly gates all remote mutations (PR creation, comment posting, release body updates, Pages deploys) behind explicit human approval in the cockpit. Dry-run/rehearsal runs before every remote write. Tokens are scoped to minimum required permissions. Current gap: the dry-run framework exists in design but has incomplete implementation coverage across all 18 workflows. Only the governed PR workflow has partial dry-run infrastructure. Workflows 11-18 lack dry-run scaffolding entirely.",
+      "artifact_evidence_required": [
+        "Dry-run result JSON for every remote mutation (schema: rig.relay.governance.dry_run_result.v1)",
+        "Human approval receipt with HMAC-SHA256 signature (schema: rig.relay.governance.approval_receipt.v1)",
+        "Token scope audit log showing minimum permissions granted per workflow",
+        "Mutation event log with before/after SHA256 of affected GitHub resources"
+      ],
+      "tests_required": [
+        "Every remote mutation endpoint must have a test that verifies dry-run blocks when it fails",
+        "Test that each workflow cannot bypass the approval gate (mock cockpit to never approve, assert no mutation)",
+        "Test that token scope reduction does not break legitimate operations",
+        "Contract test that approval receipt format is validatable against schema",
+        "Adversarial test: attempt mutation with expired/revoked token — must refuse"
+      ],
+      "ui_disclosure_required": "Cockpit must show a 'Remote mutation pending' badge with: (a) which workflow, (b) what GitHub endpoint will be hit, (c) dry-run result summary, (d) approval button. The approve button must be visibly disabled until all gates pass (dry-run ok, validation ok, content policy ok, attestation ok). After mutation, cockpit must show the GitHub API response and the new resource URL.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "no-hidden-co-author-attribution",
+      "requirement": "No hidden co-author attribution",
+      "current_status": "addressed_by_design",
+      "gap_description": "Design specifies that co-author attribution in git commits is opt-in only, never automatic. Agent commits in worktrees are authored by the configured agent identity (not the human). When a governed PR is created, the PR description must disclose that it was produced by an agent but must not add `Co-authored-by:` trailers to commits unless the human explicitly opts in. Gap: the content policy enforcer that scans for co-author trailer injection is not yet implemented. There is no automated check that commit messages leaving the worktree are free of hidden co-author metadata.",
+      "artifact_evidence_required": [
+        "Commit message content policy scan results for every governed PR",
+        "Co-author opt-in toggle state in cockpit (persistent per-session)",
+        "PR body template validation showing no injected co-author lines",
+        "git log --format='%an %ae %b' audit trail for agent-authored commits"
+      ],
+      "tests_required": [
+        "Test that agent commits do not contain Co-authored-by: trailers by default",
+        "Test that opt-in co-author toggle adds attribution correctly and only when enabled",
+        "Test that content policy rejects PRs with unauthorized co-author lines",
+        "Test that commit author email is the configured agent email, not the human's",
+        "Adversarial test: inject co-author trailer in commit body via tool input — must be stripped"
+      ],
+      "ui_disclosure_required": "Cockpit must show the commit author identity for every commit in the governed PR. A toggle 'Co-author this PR' must be off by default with a warning: 'Enabling co-authorship associates your GitHub identity with agent-authored commits.'",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "no-pr-pollution",
+      "requirement": "No PR pollution",
+      "current_status": "addressed_by_design",
+      "gap_description": "Agents must not create PRs on repos outside their mission scope, must not modify PR descriptions of unrelated PRs, must not add labels to PRs they did not create, and must not request reviewers without explicit human approval. The governed PR workflow constrains mutation to a single PR per mission. Gap: there is no hard scope enforcement at the API call level — the token has repo-level access and relies on agent behavior enforcement (prompt engineering) rather than runtime permission checking per API call. A buggy or adversarial agent could call the GitHub API to modify other PRs if the token scope allows it.",
+      "artifact_evidence_required": [
+        "Per-call GitHub API audit log with resource target verification",
+        "Mission scope boundary definition in coordination store",
+        "API call diff: requested resource vs. allowed resources per mission"
+      ],
+      "tests_required": [
+        "Test that agent cannot access PRs outside its mission scope (runtime enforcement)",
+        "Test that label modification on non-owned PRs is blocked",
+        "Test that reviewer assignment without approval is blocked",
+        "Adversarial test: agent attempts to close unrelated PR — must be blocked at API gateway"
+      ],
+      "ui_disclosure_required": "Cockpit must show 'Scope: PR #123 on repo owner/repo' for every active mission. Any GitHub API call targeting a different PR must flash a warning and require explicit confirmation.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "no-marketing-text-in-prs-comments",
+      "requirement": "No marketing text in PRs/comments",
+      "current_status": "gap",
+      "gap_description": "The content policy gate is specified in design but not implemented. There is no automated scanner that detects marketing language (superlatives, promotional phrases, emoji overuse, vague claims like 'revolutionary' or 'game-changing') in generated PR descriptions or comments. Current implementation relies solely on prompt engineering ('do not include marketing text') which is not a security boundary. An adversarial or misaligned model could produce marketing text despite prompt instructions.",
+      "artifact_evidence_required": [
+        "Content policy scan results for every PR description and comment before posting",
+        "Pattern library of blocked phrases with regex/token matching rules",
+        "Appeal log: when content policy blocks, what was blocked and why",
+        "False-positive tuning log: blocked content that was legitimate"
+      ],
+      "tests_required": [
+        "Test that PR body containing 'revolutionary new feature' is rejected",
+        "Test that PR body containing 'game-changing performance' is rejected",
+        "Test that PR body containing 'best-in-class' is rejected",
+        "Test that legitimate technical description is not falsely blocked",
+        "Adversarial test: inject marketing text via Unicode homoglyphs or zero-width characters"
+      ],
+      "ui_disclosure_required": "When content policy blocks a PR description or comment, cockpit must show: (a) the blocked content, (b) which rule was triggered, (c) an edit field to revise. The user can override with explicit approval but the override is logged as a governance event.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "no-unreviewed-generated-comments",
+      "requirement": "No unreviewed generated comments",
+      "current_status": "gap",
+      "gap_description": "The PR Comments → Agent Response Queue workflow (workflow 9) is marked 'not_implemented'. Without this workflow, there is no systematic gating of agent-drafted comments before they are posted to GitHub. If an agent is given comment-posting capability through any other path, it could post unreviewed comments. The review queue infrastructure (queue, classification, approval log) does not exist yet. This is a critical gap because agent communication on PRs is a high-visibility, high-trust surface.",
+      "artifact_evidence_required": [
+        "Agent response queue with pending/approved/rejected states",
+        "Comment approval receipt for every posted comment",
+        "Comment content policy scan results",
+        "Self-response loop detection log"
+      ],
+      "tests_required": [
+        "Test that agent cannot post comment without human approval",
+        "Test that comment queue shows diff between agent draft and final posted version",
+        "Test that agent cannot auto-resolve review conversations",
+        "Test that agent cannot respond to its own comments",
+        "Adversarial test: agent attempts to post comment via raw API call bypassing queue"
+      ],
+      "ui_disclosure_required": "Cockpit must show a 'Pending Responses' queue with: (a) the PR comment being responded to, (b) the agent's draft response, (c) approve/reject/edit buttons. Each draft must show a 'Generated by [agent profile]' provenance label.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "no-unexplained-permission-escalation",
+      "requirement": "No unexplained permission escalation",
+      "current_status": "partial",
+      "gap_description": "The GitHub App installation flow scopes permissions at install time, but there is no runtime permission visibility in the cockpit. The user cannot see what permissions the agent currently has. If a token is refreshed with broader scope (due to App manifest change or re-installation), there is no alert. The Repository Onboarding → Permission Audit workflow (workflow 15) is 'not_implemented', so the baseline permission inventory does not exist. Without a baseline, escalation detection is impossible.",
+      "artifact_evidence_required": [
+        "GitHub App permission manifest snapshot at install time",
+        "Runtime token scope inventory (refreshed on token rotation)",
+        "Permission diff: current scope vs. last known scope",
+        "Escalation alert log with timestamps"
+      ],
+      "tests_required": [
+        "Test that permission escalation is detected on token refresh",
+        "Test that new permissions require explicit human re-approval",
+        "Test that the cockpit shows current permissions with human-readable descriptions",
+        "Test that operations requiring permissions beyond granted scope fail gracefully"
+      ],
+      "ui_disclosure_required": "Cockpit settings panel must show 'GitHub App Permissions' with: (a) each permission and its scope (read/write/admin), (b) when it was granted, (c) a warning badge if scope has changed since last review. Permission escalation must trigger a modal requiring explicit confirmation.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "no-raw-prompt-completion-leakage-into-github",
+      "requirement": "No raw prompt/completion leakage into GitHub",
+      "current_status": "addressed_by_design",
+      "gap_description": "Design specifies that only structured, content-policy-vetted outputs are posted to GitHub — never raw LLM completions. The content policy gate and the agent response queue (both not yet implemented) are the enforcement mechanisms. Without them, an agent could theoretically include its own reasoning traces or prompt fragments in a PR description or comment. Gap: the content policy must include a 'no raw LLM output' check that detects prompt-like patterns (instructional language, 'Assistant:', 'User:', markdown artifacts from the chat interface). Content policy scan is required before any GitHub text write (PR body, comment, review, issue). No raw prompt/completion leakage check must be included in PR/comment/release body validation.",
+      "artifact_evidence_required": [
+        "Content policy scan results showing no raw LLM output detected",
+        "Pattern list for detecting prompt/completion fragments",
+        "Post-mortem log for any blocked content that contained LLM artifacts"
+      ],
+      "tests_required": [
+        "Test that PR body containing 'Here is my step-by-step reasoning' is flagged",
+        "Test that PR body containing 'Based on my analysis of the codebase' is OK (legitimate)",
+        "Test that PR body containing 'Assistant: I will now' is rejected",
+        "Test that PR body containing 'User asked me to' is rejected",
+        "Adversarial test: inject reasoning trace via HTML comments or hidden markdown"
+      ],
+      "ui_disclosure_required": "When content policy detects possible LLM artifact leakage, cockpit must show a prominent warning: 'This content may contain raw AI reasoning. Review carefully before approving.' The user can still approve after explicit confirmation.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "no-private-repo-content-leakage-into-telemetry",
+      "requirement": "No private repo content leakage into telemetry",
+      "current_status": "partial",
+      "gap_description": "The telemetry doctrine specifies SHA256 hashing for all content-derived data and prohibits raw file content in observability events. However, there is no automated scanner that validates telemetry output against this policy. A bug in a tool or context assembler could inadvertently include private repo file content in a telemetry event. The telemetry redaction pipeline needs a verification step that scans outgoing telemetry for patterns that look like source code (indentation, keywords, file extensions) and flags them for redaction. Additionally, repo names of private repos must be hashed, not stored in plaintext in telemetry. No private repo content leakage check applies to telemetry, cockpit projection, static docs, procurement packs, and evidence bundles.",
+      "artifact_evidence_required": [
+        "Telemetry redaction verification scan results",
+        "SHA256 hash → original content mapping (stored locally, never transmitted)",
+        "Private repo name hash registry",
+        "Pattern list for source code detection in telemetry"
+      ],
+      "tests_required": [
+        "Test that telemetry events do not contain raw source code from private repos",
+        "Test that private repo names are hashed in telemetry",
+        "Test that telemetry redaction catches file content in error messages",
+        "Test that telemetry redaction catches code snippets in tool output events",
+        "Adversarial test: inject private code via Unicode or base64 encoding in observation"
+      ],
+      "ui_disclosure_required": "Cockpit settings must show 'Telemetry Privacy' status: (a) which event types are emitted, (b) a sample of the last N events with content redaction visible, (c) a 'View what Rig Relay shares' page showing exactly what data leaves the machine. Private repo usage must show a lock icon with 'Content hashed, never transmitted'.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "clear-authorship-provenance",
+      "requirement": "Clear authorship/provenance",
+      "current_status": "partial",
+      "gap_description": "Design specifies that agent-authored content (commits, PRs, comments) must carry explicit provenance markers. The governed PR workflow has partial support: commit authorship is configured via agent identity, and PR descriptions are intended to include an 'Authored by [agent profile]' footer. Gaps: (1) there is no standard provenance footer template enforced by content policy, (2) there is no cryptographic provenance chain linking agent tool calls → commit → PR, (3) the provenance marker is not machine-verifiable (it's just text), and (4) the migration manifest and docs renderer workflows do not include provenance markers.",
+      "artifact_evidence_required": [
+        "Provenance marker in every PR description following a standard template",
+        "Provenance chain: tool call receipt SHA256 → commit SHA256 → PR number",
+        "Agent identity registry (which agent profile, which session, which mission)",
+        "Machine-verifiable provenance: HMAC-signed statement of authorship"
+      ],
+      "tests_required": [
+        "Test that every governed PR contains a provenance footer",
+        "Test that provenance footer matches the actual agent that performed the work",
+        "Test that provenance chain is complete (no missing links)",
+        "Test that provenance is not forgeable (HMAC signature verified)",
+        "Test that provenance footer cannot be stripped by subsequent edits without detection"
+      ],
+      "ui_disclosure_required": "Cockpit PR view must show: 'Author: [agent profile name] | Session: [session_id] | Mission: [mission_id] | Provenance: verified/unverified'. The provenance chain must be expandable to show each link (tool call → commit → PR).",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "dry-run-rehearsal-before-remote-mutation",
+      "requirement": "Dry-run/rehearsal before remote mutation",
+      "current_status": "partial",
+      "gap_description": "The architecture mandates dry-run before every remote mutation, and the governed PR workflow (workflow 6) references dry-run in its gates. However: (1) the dry-run framework is only partially implemented for PR creation, (2) dry-run is not implemented at all for comment posting, release body updates, Pages deployment, or any other remote mutation, (3) the dry-run does not simulate GitHub's actual response — it is a local-only validation (file content, test suite, content policy), and (4) there is no network-level rehearsal mode that sends the API request to a sandbox or validates it against the GitHub API schema before allowing the real call. A local dry-run cannot catch GitHub-specific rejections (e.g., branch protection rule preventing push, PR already exists, rate limit).",
+      "artifact_evidence_required": [
+        "Dry-run result JSON for every remote mutation type (not just PR creation)",
+        "GitHub API schema validator that checks the outgoing request payload",
+        "Network rehearsal mode: send request with dry-run header if GitHub supports it",
+        "Dry-run vs. actual diff: what changed between rehearsal and real execution"
+      ],
+      "tests_required": [
+        "Test that every remote mutation workflow has a dry-run step",
+        "Test that dry-run failure blocks the real mutation",
+        "Test that dry-run for PR creation catches branch protection violations",
+        "Test that dry-run for release body update validates against GitHub's API schema",
+        "Test that dry-run cannot be skipped by agent (enforced at runtime, not in prompt)"
+      ],
+      "ui_disclosure_required": "Cockpit must show a 'Dry-run results' panel before every remote mutation approval: (a) what was tested locally, (b) what GitHub-side validations are unknown, (c) a warning if dry-run coverage is incomplete for this workflow type. The approve button must show 'Dry-run: PASSED (N/N checks)' or 'Dry-run: INCOMPLETE (N/M checks)'.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "explicit-human-review-boundary",
+      "requirement": "Explicit human review boundary",
+      "current_status": "partial",
+      "gap_description": "The design clearly separates read-only workflows (auto) from mutation workflows (requires human approval). However: (1) the human review boundary is currently enforced by cockpit UI disable states, not by backend policy enforcement — a buggy frontend or direct API call could bypass the approval gate, (2) the approval receipt signing (HMAC-SHA256) is referenced in design but not implemented across all workflows, (3) there is no time-limited approval window — once approved, an agent could delay the mutation and execute it much later when context has changed, and (4) there is no approval scope — approving a PR creation should not implicitly approve comment posting on that PR. Backend must enforce human review server-side, not only through cockpit disabled states. Approval receipts must be time-bound and scope-bound.",
+      "artifact_evidence_required": [
+        "HMAC-SHA256 signed approval receipt for every remote mutation",
+        "Approval scope definition (what exactly was approved)",
+        "Approval timestamp and validity window",
+        "Backend policy enforcement log showing rejected mutations without valid approval"
+      ],
+      "tests_required": [
+        "Test that backend rejects mutation without valid approval receipt",
+        "Test that expired approval (outside time window) is rejected",
+        "Test that approval for PR creation does not authorize comment posting",
+        "Test that frontend disable state is backed by backend enforcement",
+        "Adversarial test: craft valid-looking approval receipt without actual cockpit approval — must be rejected"
+      ],
+      "ui_disclosure_required": "Cockpit must show a clear boundary line between read-only and mutation operations. Read-only: green 'Auto' badge. Mutation: red 'Approval Required' badge. The approval dialog must show: (a) exactly what will happen, (b) to which resource, (c) the approval expires in N minutes, (d) a SHA256 of what was approved.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "reversible-mutations",
+      "requirement": "Reversible mutations",
+      "current_status": "partial",
+      "gap_description": "Some GitHub mutations are inherently reversible (close a PR, delete a comment, delete a release) while others have irreversible side effects (notification emails already sent, webhook events already fired). The design acknowledges reversibility as a principle but does not: (1) classify each mutation type by reversibility, (2) provide a 'rollback' action for reversible mutations, (3) warn the user before irreversible mutations, or (4) implement automated rollback on dry-run/post-mutation mismatch detection. The governed PR workflow could close the PR if validation fails post-creation, but this is not implemented.",
+      "artifact_evidence_required": [
+        "Mutation reversibility classification matrix (reversible, partially-reversible, irreversible)",
+        "Rollback action implementation for each reversible mutation type",
+        "Pre-mutation warning for irreversible operations",
+        "Post-mutation mismatch detection and automatic rollback triggers"
+      ],
+      "tests_required": [
+        "Test that PR created by agent can be automatically closed if post-creation validation fails",
+        "Test that irreversible mutations show a distinct warning before approval",
+        "Test that comment posted by agent can be deleted (minimized) on rollback",
+        "Test that rollback is logged with full audit trail"
+      ],
+      "ui_disclosure_required": "Cockpit mutation approval dialog must show: 'This operation is [reversible | partially reversible — notifications already sent | irreversible]'. After mutation, cockpit must show a 'Rollback' button for reversible operations with a confirmation dialog.",
+      "priority": "P2"
+    },
+    {
+      "requirement_id": "rate-limit-safety",
+      "requirement": "Rate-limit safety",
+      "current_status": "partial",
+      "gap_description": "The architecture acknowledges GitHub API rate limits but does not implement systematic rate-limit safety. Current gaps: (1) there is no pre-flight rate limit check before batch operations (e.g., org onboarding scanning 10,000+ repos), (2) there is no exponential backoff with jitter on 429 responses, (3) the secondary rate limit (abuse detection) is not monitored — rapid successive calls could trigger a temporary ban, (4) there is no rate limit budget allocation across concurrent workflows — two workflows could collectively exhaust the limit, and (5) there is no cached secondary data source (e.g., local repo snapshot) to reduce API calls.",
+      "artifact_evidence_required": [
+        "Rate limit budget tracking per GitHub App installation",
+        "Pre-flight rate limit check before any batch operation",
+        "429 response handler with exponential backoff + jitter timing log",
+        "Rate limit consumption dashboard (per workflow, per hour)"
+      ],
+      "tests_required": [
+        "Test that rate limit exhaustion is detected before batch operations start",
+        "Test that exponential backoff with jitter is applied on 429 responses",
+        "Test that secondary rate limit (403/abuse) is detected and surfaced",
+        "Test that concurrent workflows do not exceed combined rate limit budget",
+        "Test that local cache is used when rate limit is low (graceful degradation)"
+      ],
+      "ui_disclosure_required": "Cockpit must show a rate limit gauge: 'GitHub API: 4,320 / 5,000 requests remaining (resets in 42 min)'. When rate limit is below 20%, show a yellow warning. When rate limit is exhausted, show a red banner and block all non-critical API calls. Batch operations must show an estimated API call count before starting.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "branch-protection-respect",
+      "requirement": "Branch protection respect",
+      "current_status": "partial",
+      "gap_description": "The architecture references branch protection rules in the governed PR workflow and the branch protection audit workflow. However: (1) the governed PR workflow does not programmatically check branch protection rules before attempting a push — it relies on GitHub rejecting the push, (2) there is no pre-flight validation that the proposed changes comply with branch protection (required reviewers, required status checks, signed commits), (3) the agent could propose changes to a protected branch directly instead of creating a PR, and (4) the branch protection audit workflow (workflow 17) that would surface rule violations is 'not_implemented'. Without the audit, there is no visibility into what protection rules exist.",
+      "artifact_evidence_required": [
+        "Pre-flight branch protection compliance check for every governed PR",
+        "Branch protection rules snapshot at time of mutation attempt",
+        "Protected branch access attempt log (blocked attempts)",
+        "Branch protection audit report (workflow 17 artifact)"
+      ],
+      "tests_required": [
+        "Test that agent cannot push directly to a protected branch",
+        "Test that governed PR creation validates branch protection rules pre-flight",
+        "Test that required status checks are met before PR is created",
+        "Test that signed commit requirement is checked pre-flight",
+        "Test that branch protection rule changes during workflow are detected"
+      ],
+      "ui_disclosure_required": "Cockpit must show the target branch's protection status: 'main — protected: requires 1 review, requires status checks (CI/build), requires signed commits'. If the agent proposes changes that would violate protection, show a red warning. If the workflow is creating a PR (not pushing to protected), show a green 'PR on separate branch — protection rules apply at merge time'.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "github-app-permission-transparency",
+      "requirement": "GitHub App permission transparency",
+      "current_status": "gap",
+      "gap_description": "There is no user-facing view of what permissions the GitHub App has. The user installs the App through GitHub's OAuth flow and the permission set is determined by the App manifest at install time, but Rig Relay does not surface this in the cockpit. The user cannot see: (a) which repositories the App is installed on, (b) what read/write/admin permissions the App has on each resource (issues, pull requests, contents, actions, pages, administration, etc.), (c) when permissions were last changed, or (d) what each permission enables (human-readable descriptions). This is a significant trust gap — the user is being asked to approve agent mutations without knowing what the agent can actually do.",
+      "artifact_evidence_required": [
+        "GitHub App permission manifest rendered in cockpit with human-readable descriptions",
+        "Installation scope: list of repos the App is installed on",
+        "Permission change history log",
+        "Permission ↔ capability mapping (e.g., 'contents: write' → 'can create commits')"
+      ],
+      "tests_required": [
+        "Test that cockpit shows all granted permissions with descriptions",
+        "Test that permission changes are detected and surfaced",
+        "Test that permissions are shown before the user approves any mutation",
+        "Test that installation scope (repo list) is accurate and up-to-date"
+      ],
+      "ui_disclosure_required": "Cockpit must have a dedicated 'GitHub App Permissions' page accessible from settings and from every mutation approval dialog. It must show: (a) installation scope (repo list), (b) permission matrix (resource × access level), (c) human-readable descriptions of what each permission allows, (d) when permissions were granted/last changed, (e) a 'Minimum required' column showing what the current workflow needs vs. what is granted.",
+      "priority": "P0"
+    },
+    {
+      "requirement_id": "audit-trail-for-every-github-api-call",
+      "requirement": "Audit trail for every GitHub API call",
+      "current_status": "partial",
+      "gap_description": "The telemetry system emits events for key GitHub API interactions (pr_created, issue_fetched, code_scanning_alert_fetched, etc.) but does not provide a comprehensive, queryable audit trail of every GitHub API call. Gaps: (1) not every API call is logged — read-only calls like fetching file contents for context assembly may not be logged, (2) there is no structured audit log format (endpoint, method, request_payload_sha256, response_status, latency, token_scope_used), (3) there is no audit log query interface in the cockpit, (4) the audit log is not tamper-evident (no hash chain or append-only guarantee), and (5) there is no audit log retention policy or export capability.",
+      "artifact_evidence_required": [
+        "Structured audit log in append-only format (JSONL) with hash chain",
+        "Audit log entry schema: endpoint, method, request_sha256, response_status, latency_ms, token_scope, workflow_id, session_id",
+        "Audit log retention policy (minimum 90 days, configurable)",
+        "Audit log export capability (CSV/JSONL download from cockpit)"
+      ],
+      "tests_required": [
+        "Test that every GitHub API call produces an audit log entry",
+        "Test that audit log entries are append-only (cannot be modified or deleted)",
+        "Test that audit log hash chain is validatable",
+        "Test that read-only calls are logged (not just mutations)",
+        "Test that audit log can be exported and queried",
+        "Test that rate-limited or failed API calls are logged with error details"
+      ],
+      "ui_disclosure_required": "Cockpit must have an 'Audit Log' page showing: (a) chronological list of all GitHub API calls, (b) filterable by workflow, endpoint, status, time range, (c) each entry shows endpoint, method, status, latency, token scope, (d) mutation calls are highlighted, (e) export button (CSV/JSONL). The audit log must show a 'Verified' badge if the hash chain is intact.",
+      "priority": "P1"
+    },
+    {
+      "requirement_id": "trust-spine-before-surface-expansion",
+      "requirement": "Trust Spine Must Precede GitHub Surface Expansion",
+      "current_status": "gap",
+      "gap_description": "The original audit correctly identifies 16 trust requirements but does not enforce a sequencing rule: no broad GitHub surface expansion before permission probe, rate-limit budget, webhook verification/idempotency, dedup, and content-light leak scanning exist. UX dashboards must not present data as authoritative unless freshness and permission scope are known. Mutation workflows must not proceed if branch protection/ruleset state cannot be evaluated.",
+      "artifact_evidence_required": [
+        ".build/rig-relay/evidence/permission_probe_results.json (must exist and pass validation before any new capability family ingestion)",
+        ".build/rig-relay/evidence/rate_limit_budget_events.jsonl (must have at least one successful budget enforcement before multi-surface ingestion)",
+        ".build/rig-relay/evidence/webhook_idempotency_keys.jsonl (must prove HMAC verification and duplicate suppression before webhook-based ingestion)",
+        ".build/rig-relay/evidence/content_light_leak_scan_results.jsonl (must prove no secrets, logs, diffs, or private content leaks before any UI projection of GitHub data)"
+      ],
+      "tests_required": [
+        "test_broad_surface_blocked_without_trust_spine (sabotage: attempt to enable all 30 capabilities before trust spine; all should be blocked or degraded)",
+        "test_dashboard_refuses_authoritative_without_freshness_signal",
+        "test_mutation_blocked_when_branch_protection_unknown",
+        "test_mutation_blocked_when_ruleset_unknown",
+        "test_secret_scanning_blocked_before_redaction_proof",
+        "test_actions_logs_blocked_before_leak_scan_proof"
+      ],
+      "ui_disclosure_required": "Every cockpit surface that shows GitHub data must display its trust_spine dependency status, data freshness indicator, and permission state. Surfaces that are blocked or degraded must show why ('permission probe stale', 'rate-limit budget not established', 'content-light scan not yet proven') and not present data as authoritative.",
+      "priority": "P0"
+    }
+  ],
+  "content_light": {
+    "description": "Human-readable summary of the trust and governance audit for cockpit projection.",
+    "total_requirements": 16,
+    "status_summary": {
+      "addressed_by_design": 4,
+      "partial": 8,
+      "gap": 4,
+      "not_addressed": 0
+    },
+    "p0_items": [
+      "no-surprise-remote-mutation",
+      "no-pr-pollution",
+      "no-unreviewed-generated-comments",
+      "no-private-repo-content-leakage-into-telemetry",
+      "dry-run-rehearsal-before-remote-mutation",
+      "explicit-human-review-boundary",
+      "github-app-permission-transparency"
+    ],
+    "highest_risk_gaps": [
+      "github-app-permission-transparency (gap) — users cannot see what permissions the agent has; this undermines all other trust requirements because informed consent is impossible",
+      "no-unreviewed-generated-comments (gap) — the comment gating workflow is not implemented; an agent with comment-posting capability could post arbitrary comments",
+      "no-marketing-text-in-prs-comments (gap) — content policy enforcement exists only in design, not in code",
+      "dry-run-rehearsal-before-remote-mutation (partial) — the cornerstone of the trust model is only partially implemented for one workflow",
+      "explicit-human-review-boundary (partial) — approval enforcement is UI-only, not backend-verified with cryptographic receipts across all workflows"
+    ],
+    "blockers_to_production_use": [
+      "github-app-permission-transparency must be implemented before any user installs the GitHub App",
+      "no-unreviewed-generated-comments must be implemented before any agent is given comment-posting capability",
+      "no-marketing-text-in-prs-comments must have at least a regex-based content policy scanner",
+      "explicit-human-review-boundary must have backend enforcement with HMAC-SHA256 approval receipts",
+      "no-private-repo-content-leakage-into-telemetry must have automated telemetry redaction verification"
+    ],
+    "overall_assessment": "The architecture is sound — blocked-by-default mutations with explicit human approval gates, SHA256-based content hashing, and dry-run-first execution are correct trust foundations. However, implementation is incomplete. Of 16 trust requirements, only 4 are fully addressed by design with working code; 8 have partial implementation (design present, code incomplete); and 4 are gaps (design acknowledged but no implementation). The most critical gaps are in permission transparency (users cannot see what the agent can do), content policy enforcement (no automated checks), and backend approval enforcement (approval gates live in the UI, not in the API enforcement layer). These must be resolved before the GitHub integration is safe for production use."
+  },
+  "revision": 2
+}

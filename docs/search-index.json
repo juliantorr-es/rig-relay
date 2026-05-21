@@ -1320,6 +1320,18 @@
     "path": "pages/governance-gate-decision-spine-v1-implementation-plan.html"
   },
   {
+    "document_id": "high-performance-substrate-doctrine",
+    "title": "High-Performance Substrate Doctrine",
+    "summary": "Rig Relay's high-performance database-adjacent substrate stack: what is promoted, what is parked, what is rejected, and the source-of-truth hierarchy that governs all substrate decisions.",
+    "tags": [
+      "substrate",
+      "performance",
+      "architecture",
+      "doctrine"
+    ],
+    "path": "pages/high-performance-substrate-doctrine.html"
+  },
+  {
     "document_id": "identity-provider-policy",
     "title": "Identity Provider Policy",
     "summary": "**Draft.** Identity provider scaffold for Rig Relay alpha testing.",

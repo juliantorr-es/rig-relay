@@ -1,0 +1,1037 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-storage-architecture-v1",
+  "title": "GitHub Integration Storage Architecture v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "data_flow_stages": [
+    {
+      "stage": 1,
+      "name": "GitHub API/Webhook → Provider Packet",
+      "description": "GitHub API/webhook → HMAC-SHA256 signature verification and permission gate → rate-limit budget check → idempotency/dedup ledger check → content-light normalization and redaction → schema validation → JSON/JSONL artifact → Postgres operational projection → DuckDB analytical projection (disposable, where useful) → cockpit/static docs/API projection",
+      "owner_module": "rig_relay/integrations/github_provider/_operating_picture.py",
+      "artifact_path": ".rig/relay/github/packets/{installation_id}/{event_type}_{x_github_delivery}.json",
+      "schema": "rig.relay.github.provider_packet.v1",
+      "idempotency_key": "X-GitHub-Delivery GUID || sha256(installation_id + resource_uri + etag)",
+      "hash_provenance_fields": ["packet_sha256", "api_call_receipt_sha256", "webhook_signature_sha256"],
+      "redaction_rule": "Strip Authorization headers, X-Hub-Signature-256, and any token-bearing fields before storage. Redact PII (email, full_name, ip_address) from raw payload if present. Retain pseudonymized actor_id.",
+      "retention_rule": "Raw packets retained 30 days. After 30 days, keep only the hash_provenance_fields and drop the raw JSON payload.",
+      "replay_rule": "Replay detection: check idempotency_key existence in github_provider_packet before processing. If duplicate, log to duplicate_packet_quarantine and skip. Time-window: reject packets older than 7 days (stale).",
+      "failure_quarantine_behavior": "Failed packets (schema validation error, parse error) move to .rig/relay/github/quarantine/packets/{installation_id}/{timestamp}_{reason}.json. Emit rig.relay.github.packet.quarantined event. Retry 3x with exponential backoff before permanent quarantine."
+    },
+    {
+      "stage": 2,
+      "name": "Provider Packet → Schema Validation",
+      "owner_module": "rig_relay/integrations/github_provider/_capabilities.py",
+      "artifact_path": ".rig/relay/github/validated/{installation_id}/{resource_type}_{sha256}.json",
+      "schema": "rig.relay.github.validated_packet.v1",
+      "idempotency_key": "sha256(packet_sha256 + schema_version + migration_version)",
+      "hash_provenance_fields": ["validated_packet_sha256", "schema_version_used", "migration_applied"],
+      "redaction_rule": "Fields that failed validation and were coerced/defaulted are marked with a validation_override flag. Original raw field values are not retained in the validated artifact.",
+      "retention_rule": "Validated packets retained 90 days. Schema validation errors retained permanently for schema evolution analysis.",
+      "replay_rule": "Schema version drift: if the validated packet was produced with an older schema version, re-validate with the current schema before processing downstream. Emit rig.relay.github.schema.revalidated event.",
+      "failure_quarantine_behavior": "Schema validation failures move to .rig/relay/github/quarantine/validation/{resource_type}/{timestamp}_{reason}.json. Include the original packet_sha256 reference but not the raw content. Surfaces in cockpit as a Schema Validation widget with failure counts per resource_type."
+    },
+    {
+      "stage": 3,
+      "name": "Schema Validation → Content-Light Normalization",
+      "owner_module": "rig_relay/integrations/github_provider/_operating_picture.py",
+      "artifact_path": ".rig/relay/github/normalized/{installation_id}/{resource_type}_{date}.jsonl",
+      "schema": "rig.relay.github.content_light_normalized.v1",
+      "idempotency_key": "sha256(resource_type + resource_id + normalized_at_timestamp)",
+      "hash_provenance_fields": ["normalized_sha256", "source_packet_sha256", "normalizer_version", "redaction_applied"],
+      "redaction_rule": "Content-light normalization drops all raw markdown/text bodies from issues, PR descriptions, comments, code snippets, and diff hunks. Retain only: titles, labels, state, timestamps, actor_ids, and structured metadata. For code scanning alerts, retain rule_id, severity, path, line_number, but drop surrounding source code. For secret scanning, retain secret_type, path, but drop the secret value. Content-light principle: enough metadata to answer analytical questions, zero raw source code.",
+      "retention_rule": "Normalized JSONL retained indefinitely (content-light by construction). Full-content artifacts retained only in raw packets (30-day TTL).",
+      "replay_rule": "If normalization logic changes (normalizer_version increment), re-normalize from validated packets. Emit rig.relay.github.normalization.reapplied event.",
+      "failure_quarantine_behavior": "Normalization failures (unexpected resource shape, missing required fields) move to .rig/relay/github/quarantine/normalization/{resource_type}/{timestamp}_{reason}.json. Block downstream processing until the normalizer is updated to handle the new resource shape."
+    },
+    {
+      "stage": 4,
+      "name": "Content-Light Normalization → JSON/JSONL Artifact",
+      "owner_module": "rig_relay/integrations/github_provider/_operating_picture.py",
+      "artifact_path": ".rig/reports/github/{resource_type}_{date}.jsonl",
+      "schema": "rig.relay.github.report_artifact.v1",
+      "idempotency_key": "report_sha256 || sha256(normalized_sha256 + artifact_type + batch_window)",
+      "hash_provenance_fields": ["report_sha256", "event_sha256", "normalized_source_sha256", "batch_window_start", "batch_window_end"],
+      "redaction_rule": "Already content-light from stage 3. Additional redaction: drop actor_id if telemetry mode is disabled, replace with anonymous placeholder. Strip all internal file paths (keep repo-relative paths only).",
+      "retention_rule": "Report artifacts retained indefinitely. These are the canonical append-only record. GC of old artifacts is prohibited per governance doctrine.",
+      "replay_rule": "Report artifacts are append-only. Replay means re-processing from normalized source. Duplicate detection via report_sha256. If a report_sha256 already exists, skip and log a duplicate_event.",
+      "failure_quarantine_behavior": "Report artifact write failures (disk full, permission denied) retry 3x with 60s backoff, then emit rig.relay.report.write_failed and block the batch. No partial batches — atomic per batch_window."
+    },
+    {
+      "stage": 5,
+      "name": "JSON/JSONL Artifact → Postgres Operational Projection",
+      "owner_module": "rig_relay/integrations/github_provider/_operating_picture.py",
+      "artifact_path": "Postgres tables (github_*) in the operational database",
+      "schema": "Postgres DDL as defined in table catalog below",
+      "idempotency_key": "ON CONFLICT (installation_id, org_slug, repo_name, resource_id, snapshot_at) DO UPDATE for mutable resources; ON CONFLICT DO NOTHING for immutable resources",
+      "hash_provenance_fields": ["packet_sha256", "report_sha256", "projected_at", "projector_version"],
+      "redaction_rule": "Postgres stores typed columns (structured data) + a single JSONB envelope column for non-typed fields. Envelope must not contain: raw source code, secret values, PII (email, ip_address), or internal file paths. Envelope is content-light by construction.",
+      "retention_rule": "Per-table retention policies defined in table catalog. Default: snapshots retained 90 days, current-state retained indefinitely, rate-limit data retained 30 days.",
+      "replay_rule": "Postgres projection is replayable from JSONL artifacts. A replay CLI replays a date range of JSONL into Postgres. Uses the idempotency keys to avoid duplicates. Designed for disaster recovery and schema migration re-projection.",
+      "failure_quarantine_behavior": "Postgres write failures (constraint violation, type mismatch) roll back the batch transaction. Quarantine the offending JSONL line range to .rig/relay/github/quarantine/postgres/{table_name}_{timestamp}.json. Emit rig.relay.github.postgres.projection_failed event. The batch window is reduced on retry (binary search to find the bad row)."
+    },
+    {
+      "stage": 6,
+      "name": "Postgres → DuckDB Analytical Projection",
+      "owner_module": "rig_relay/events/duckdb_projection.py",
+      "artifact_path": ".rig/relay/analytics/github/projections/{projection_name}_{date}.parquet",
+      "schema": "DuckDB views and materialized tables derived from Postgres queries",
+      "idempotency_key": "sha256(projection_name + postgres_wal_lsn_range + generated_at)",
+      "hash_provenance_fields": ["projection_sha256", "source_postgres_wal_lsn_start", "source_postgres_wal_lsn_end", "projection_query_sha256"],
+      "redaction_rule": "DuckDB projections are analytical aggregates (counts, sums, averages, time series). No row-level data unless required for a specific analytical question. No JSONB envelope data (only typed columns). Aggregations with count < 5 (deanonymization risk) are suppressed to zero.",
+      "retention_rule": "DuckDB projections retained 180 days. Parquet files are partitioned by date. Monthly rollups retained 2 years.",
+      "replay_rule": "DuckDB projections are fully replayable from Postgres. The projection_query_sha256 ensures deterministic replays. Schema changes to projections increment the projection_name version.",
+      "failure_quarantine_behavior": "DuckDB projection failures (OOM, query timeout, type mismatch) retry with a smaller batch window. If consistent failure, emit rig.relay.github.duckdb.projection_failed and skip the batch. Failed batch ranges are logged for manual replay."
+    },
+    {
+      "stage": 7,
+      "name": "DuckDB → Cockpit/Static Docs/API",
+      "owner_module": "rig_relay/desktop/projection.py",
+      "artifact_path": "WebSocket projection stream, static HTML pages under docs/pages/github/, REST API endpoints",
+      "schema": "rig.relay.desktop.projection.v1 (WebSocket messages), rig.relay.docs.page.v1 (static pages), rig.relay.api.github.v1 (REST)",
+      "idempotency_key": "WebSocket: message_id (UUIDv7). Static docs: page_sha256. API: ETag based on resource_sha256.",
+      "hash_provenance_fields": ["projection_sha256", "page_sha256", "api_response_sha256"],
+      "redaction_rule": "Cockpit renders only aggregated views. Static docs are content-light (no raw code, no PII). API responses are scoped to the requesting user's RBAC role. Telemetry-disabled mode further suppresses actor_ids and repo_names in API responses.",
+      "retention_rule": "WebSocket projections are ephemeral (no server-side retention). Static docs are regenerated on each build. API responses are ephemeral. The DuckDB source of truth retains the 180-day policy.",
+      "replay_rule": "Cockpit re-subscribes via WebSocket and gets the current projection state. Static docs are fully rebuilt from DuckDB on each render. API responses are computed live from Postgres/DuckDB.",
+      "failure_quarantine_behavior": "Cockpit projection failures (WebSocket disconnect) reconnect with exponential backoff. Static doc render failures block the docs build and emit a rig.relay.docs.render_failed event. API failures return 503 with a Retry-After header."
+    },
+    {
+      "stage_id": "stage_invalid_webhook_quarantine",
+      "name": "Invalid Webhook Quarantine",
+      "description": "Webhook payloads that fail HMAC-SHA256 verification or schema validation are written to a quarantine directory with delivery ID, rejection reason, and timestamp. Quarantined payloads are never processed or projected. Operators can inspect quarantine for debugging."
+    },
+    {
+      "stage_id": "stage_rate_limited_deferred_queue",
+      "name": "Rate-Limited Deferred Queue",
+      "description": "API requests that exceed the rate-limit budget are deferred with a retry-after timestamp. Security/audit/permission paths get priority over non-critical enrichment. Deferred events are not silently dropped."
+    },
+    {
+      "stage_id": "stage_content_light_scan",
+      "name": "Content-Light Scan Gate",
+      "description": "All GitHub-derived data passes through content-light scanning before artifact creation. Scan checks for: secret fragments (ghp_, gho_, etc.), raw Actions log bodies, raw diffs, private repo content. Scanned data is classified as public-safe, private-local, sensitive-metadata, secret-bearing (rejected), or forbidden-raw (rejected). Scan results are recorded with SHA256 hashes."
+    },
+    {
+      "stage_id": "stage_postgres_invalidation",
+      "name": "Postgres Projection Invalidation",
+      "description": "When source JSONL artifacts are updated, corresponding Postgres materialized views are invalidated. Invalidation events are recorded in an invalidation ledger. Cockpit projections show staleness warnings until views are refreshed."
+    }
+  ],
+  "postgres_tables": [
+    {
+      "table_name": "github_installation",
+      "canonical_artifact_relationship": ".rig/reports/github/installation_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7 generated at installation time" },
+        { "name": "installation_id", "type": "BIGINT", "description": "GitHub App installation ID from GitHub API" },
+        { "name": "account_type", "type": "TEXT", "description": "User or Organization" },
+        { "name": "account_login", "type": "TEXT", "description": "GitHub login of the account that installed the app" },
+        { "name": "org_slug", "type": "TEXT", "description": "Normalized org slug (lowercase, kebab-case)" },
+        { "name": "repository_selection", "type": "TEXT", "description": "all or selected" },
+        { "name": "installed_at", "type": "TIMESTAMPTZ", "description": "When the installation was created on GitHub" },
+        { "name": "suspended_at", "type": "TIMESTAMPTZ", "description": "When the installation was suspended, NULL if active" },
+        { "name": "app_slug", "type": "TEXT", "description": "GitHub App slug identifier" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "permissions", "description": "Ongoing permission set from GET /app/installations/{id}" },
+        { "field": "events", "description": "Subscribed webhook events list" },
+        { "field": "raw_installation_json", "description": "Original GitHub API response for audit completeness" },
+        { "field": "app_metadata", "description": "GitHub App name, description, URL, client_id (non-secret)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_installation_installation_id", "columns": ["installation_id"], "type": "UNIQUE" },
+        { "name": "idx_github_installation_org_slug", "columns": ["org_slug"], "type": "BTREE" },
+        { "name": "idx_github_installation_suspended_at", "columns": ["suspended_at"], "type": "BTREE", "where": "suspended_at IS NOT NULL" },
+        { "name": "idx_github_installation_account_login", "columns": ["account_login"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain indefinitely. Soft-delete via suspended_at. Hard-delete only on explicit uninstall with 30-day grace period.",
+      "tenant_repo_org_keys": ["org_slug"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Provider Health widget", "Installation Management panel", "Enterprise Admin dashboard"]
+    },
+    {
+      "table_name": "github_repository",
+      "canonical_artifact_relationship": ".rig/reports/github/repository_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "repo_id", "type": "BIGINT", "description": "GitHub repository node_id or database_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Owning organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name (without owner)" },
+        { "name": "full_name", "type": "TEXT", "description": "org_slug/repo_name" },
+        { "name": "is_archived", "type": "BOOLEAN", "description": "Whether the repo is archived" },
+        { "name": "is_fork", "type": "BOOLEAN", "description": "Whether the repo is a fork" },
+        { "name": "is_template", "type": "BOOLEAN", "description": "Whether the repo is a template" },
+        { "name": "default_branch", "type": "TEXT", "description": "Name of the default branch (usually main)" },
+        { "name": "visibility", "type": "TEXT", "description": "public, private, or internal" },
+        { "name": "pushed_at", "type": "TIMESTAMPTZ", "description": "Last push timestamp" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "Repo creation timestamp" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "topics", "description": "Repository topics/tags list" },
+        { "field": "languages", "description": "Language breakdown from GitHub linguist" },
+        { "field": "license_info", "description": "SPDX license identifier and metadata" },
+        { "field": "code_owners_file_sha", "description": "SHA of CODEOWNERS file if present, NULL if absent" }
+      ],
+      "indexes": [
+        { "name": "idx_github_repository_repo_id", "columns": ["repo_id"], "type": "UNIQUE" },
+        { "name": "idx_github_repository_org_slug", "columns": ["org_slug"], "type": "BTREE" },
+        { "name": "idx_github_repository_full_name", "columns": ["full_name"], "type": "BTREE" },
+        { "name": "idx_github_repository_archived_included", "columns": ["org_slug", "is_archived", "is_fork", "pushed_at"], "type": "BTREE" },
+        { "name": "idx_github_repository_visibility", "columns": ["visibility"], "type": "BTREE" }
+      ],
+      "retention_policy": "Current state retained indefinitely. Soft-delete when repo is removed from scope. Snapshot history in github_repository_snapshot.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Repository Coverage widget", "Portfolio View", "Repository Allowlist/Denylist panel"]
+    },
+    {
+      "table_name": "github_repository_snapshot",
+      "canonical_artifact_relationship": ".rig/reports/github/repository_snapshot_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "repo_id", "type": "BIGINT", "description": "FK to github_repository.repo_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Owning organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "snapshot_at", "type": "TIMESTAMPTZ", "description": "When this snapshot was captured" },
+        { "name": "open_issue_count", "type": "INTEGER", "description": "Number of open issues at snapshot time" },
+        { "name": "open_pr_count", "type": "INTEGER", "description": "Number of open pull requests at snapshot time" },
+        { "name": "star_count", "type": "INTEGER", "description": "Stargazer count" },
+        { "name": "fork_count", "type": "INTEGER", "description": "Fork count" },
+        { "name": "watcher_count", "type": "INTEGER", "description": "Watcher count" },
+        { "name": "size_kb", "type": "INTEGER", "description": "Repository size in kilobytes" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "contributor_stats", "description": "Weekly commit count by author for the last 52 weeks" },
+        { "field": "code_frequency", "description": "Weekly additions and deletions" },
+        { "field": "participation", "description": "Weekly commit counts for owner and collaborators" }
+      ],
+      "indexes": [
+        { "name": "idx_github_repo_snapshot_repo_at", "columns": ["repo_id", "snapshot_at"], "type": "BTREE" },
+        { "name": "idx_github_repo_snapshot_org_at", "columns": ["org_slug", "snapshot_at"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 90 days of daily snapshots. Weekly rollup snapshots retained 2 years.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Repository Coverage widget (trend view)", "Portfolio View (historical charts)"]
+    },
+    {
+      "table_name": "github_permission_profile",
+      "canonical_artifact_relationship": ".rig/reports/github/permission_profile_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "profile_tier", "type": "TEXT", "description": "observer, reviewer, or mutator" },
+        { "name": "permission_name", "type": "TEXT", "description": "GitHub permission name (e.g., contents:read)" },
+        { "name": "granted", "type": "BOOLEAN", "description": "Whether this permission is currently granted" },
+        { "name": "feature_dependency", "type": "TEXT", "description": "Which Rig Relay feature requires this permission" },
+        { "name": "updated_at", "type": "TIMESTAMPTZ", "description": "When the permission was last changed" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "missing_permissions", "description": "Permissions required by enabled features but not granted" },
+        { "field": "excess_permissions", "description": "Permissions granted but not required by any enabled feature" },
+        { "field": "upgrade_url", "description": "Deep link to GitHub App permission update page for this org" }
+      ],
+      "indexes": [
+        { "name": "idx_github_permission_install_tier", "columns": ["installation_id", "profile_tier"], "type": "BTREE" },
+        { "name": "idx_github_permission_org", "columns": ["org_slug"], "type": "BTREE" }
+      ],
+      "retention_policy": "Current state retained indefinitely. Historical grants retained 2 years.",
+      "tenant_repo_org_keys": ["org_slug", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Permission Profile Compliance widget", "Admin Approval panel", "Provider Health widget"]
+    },
+    {
+      "table_name": "github_provider_packet",
+      "canonical_artifact_relationship": ".rig/relay/github/packets/{installation_id}/{event_type}_{x_github_delivery}.json",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "x_github_delivery", "type": "UUID", "description": "GitHub delivery GUID from X-GitHub-Delivery header" },
+        { "name": "event_type", "type": "TEXT", "description": "GitHub event type (e.g., issues, pull_request, code_scanning_alert)" },
+        { "name": "resource_type", "type": "TEXT", "description": "Canonical resource type (issue, pr, alert, etc.)" },
+        { "name": "received_at", "type": "TIMESTAMPTZ", "description": "When Rig Relay received the packet" },
+        { "name": "packet_sha256", "type": "TEXT", "description": "SHA256 hash of the raw packet content" },
+        { "name": "processing_status", "type": "TEXT", "description": "received, validated, normalized, projected, quarantined, or dropped" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "raw_payload", "description": "Original GitHub API/webhook payload, redacted per redaction rules" },
+        { "field": "request_headers", "description": "HTTP request headers, redacted (no Authorization, no Signature)" },
+        { "field": "validation_errors", "description": "Array of schema validation errors, if any" },
+        { "field": "processing_chain", "description": "Audit trail of stages this packet passed through with timestamps" }
+      ],
+      "indexes": [
+        { "name": "idx_github_packet_delivery", "columns": ["x_github_delivery"], "type": "UNIQUE" },
+        { "name": "idx_github_packet_install_event", "columns": ["installation_id", "event_type", "received_at"], "type": "BTREE" },
+        { "name": "idx_github_packet_status", "columns": ["processing_status", "received_at"], "type": "BTREE" },
+        { "name": "idx_github_packet_sha256", "columns": ["packet_sha256"], "type": "HASH" }
+      ],
+      "retention_policy": "Raw payload retained 30 days. After 30 days, set raw_payload to NULL. Metadata columns retained 90 days.",
+      "tenant_repo_org_keys": ["installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Packet Processing widget (debug)", "Webhook Reliability widget", "Quarantine panel"]
+    },
+    {
+      "table_name": "github_api_call_receipt",
+      "canonical_artifact_relationship": ".rig/reports/github/api_call_receipt_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "api_endpoint", "type": "TEXT", "description": "Full API endpoint path (e.g., /repos/{owner}/{repo}/issues)" },
+        { "name": "http_method", "type": "TEXT", "description": "GET, POST, PATCH, DELETE" },
+        { "name": "called_at", "type": "TIMESTAMPTZ", "description": "When the API call was made" },
+        { "name": "status_code", "type": "INTEGER", "description": "HTTP response status code" },
+        { "name": "rate_limit_remaining", "type": "INTEGER", "description": "X-RateLimit-Remaining header value" },
+        { "name": "rate_limit_reset", "type": "TIMESTAMPTZ", "description": "When the rate limit resets" },
+        { "name": "cost_center", "type": "TEXT", "description": "Ingestion task category (repo_scanning, audit_log, code_scanning, etc.)" },
+        { "name": "duration_ms", "type": "INTEGER", "description": "API call duration in milliseconds" },
+        { "name": "receipt_sha256", "type": "TEXT", "description": "SHA256 of the receipt for content-addressing" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "response_etag", "description": "ETag header value for conditional requests" },
+        { "field": "pagination_info", "description": "Link header parsing: next/prev/last page URLs" },
+        { "field": "error_body", "description": "Response body on non-2xx, content-light (no stack traces)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_api_receipt_install_time", "columns": ["installation_id", "called_at"], "type": "BTREE" },
+        { "name": "idx_github_api_receipt_endpoint", "columns": ["api_endpoint"], "type": "BTREE" },
+        { "name": "idx_github_api_receipt_cost", "columns": ["cost_center", "called_at"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 90 days. After 90 days, retain only aggregates (hourly rollups per cost_center).",
+      "tenant_repo_org_keys": ["installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Rate Limit Budget widget", "API Call Analytics panel", "Cost Attribution dashboard"]
+    },
+    {
+      "table_name": "github_webhook_event",
+      "canonical_artifact_relationship": ".rig/reports/github/webhook_event_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "x_github_delivery", "type": "UUID", "description": "Unique webhook delivery GUID" },
+        { "name": "x_hub_signature_256", "type": "TEXT", "description": "HMAC-SHA256 signature of the payload (verified, stored for audit)" },
+        { "name": "event_type", "type": "TEXT", "description": "X-GitHub-Event header value" },
+        { "name": "action", "type": "TEXT", "description": "Webhook action sub-type (created, closed, dismissed, etc.)" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug from the webhook payload" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name from the webhook payload" },
+        { "name": "received_at", "type": "TIMESTAMPTZ", "description": "When Rig Relay received the webhook" },
+        { "name": "processed_at", "type": "TIMESTAMPTZ", "description": "When the webhook was fully processed to Postgres" },
+        { "name": "delivery_lag_ms", "type": "INTEGER", "description": "Latency between received_at and processed_at" },
+        { "name": "replayed", "type": "BOOLEAN", "description": "Whether this event was delivered via webhook (false) or replayed from API (true)" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "payload_summary", "description": "Content-light summary: resource type, resource ID, actor, affected fields changed" },
+        { "field": "sender_info", "description": "GitHub user login and node_id of the webhook sender" },
+        { "field": "processing_errors", "description": "Array of errors encountered during processing, if any" }
+      ],
+      "indexes": [
+        { "name": "idx_github_webhook_delivery", "columns": ["x_github_delivery"], "type": "UNIQUE" },
+        { "name": "idx_github_webhook_event_time", "columns": ["event_type", "received_at"], "type": "BTREE" },
+        { "name": "idx_github_webhook_repo_time", "columns": ["org_slug", "repo_name", "received_at"], "type": "BTREE" },
+        { "name": "idx_github_webhook_processed", "columns": ["processed_at"], "type": "BTREE", "where": "processed_at IS NULL" }
+      ],
+      "retention_policy": "Retain 180 days for incident investigation. After 180 days, retain only event counts per event_type per day.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Webhook Reliability widget", "Incident Timeline", "Event Stream panel"]
+    },
+    {
+      "table_name": "github_issue",
+      "canonical_artifact_relationship": ".rig/reports/github/issue_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "issue_id", "type": "BIGINT", "description": "GitHub issue number" },
+        { "name": "issue_node_id", "type": "TEXT", "description": "GitHub GraphQL node ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "title", "type": "TEXT", "description": "Issue title (content-light: titles only, not body)" },
+        { "name": "state", "type": "TEXT", "description": "open or closed" },
+        { "name": "state_reason", "type": "TEXT", "description": "completed, not_planned, or reopened" },
+        { "name": "author_login", "type": "TEXT", "description": "GitHub login of the issue author" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "Issue creation timestamp" },
+        { "name": "closed_at", "type": "TIMESTAMPTZ", "description": "Issue closure timestamp, NULL if open" },
+        { "name": "updated_at", "type": "TIMESTAMPTZ", "description": "Last update timestamp" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "labels", "description": "Array of label names" },
+        { "field": "assignees", "description": "Array of assignee logins" },
+        { "field": "milestone", "description": "Milestone title and due date if set" },
+        { "field": "reactions", "description": "Reaction counts by type" }
+      ],
+      "indexes": [
+        { "name": "idx_github_issue_node_id", "columns": ["issue_node_id"], "type": "UNIQUE" },
+        { "name": "idx_github_issue_repo_state", "columns": ["org_slug", "repo_name", "state", "updated_at"], "type": "BTREE" },
+        { "name": "idx_github_issue_author", "columns": ["author_login"], "type": "BTREE" }
+      ],
+      "retention_policy": "Current open issues retained indefinitely. Closed issues retained 1 year. Body/comment content never stored (content-light).",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Repository Coverage widget", "Incident Timeline", "Mission Topology (linked issues)"]
+    },
+    {
+      "table_name": "github_pull_request",
+      "canonical_artifact_relationship": ".rig/reports/github/pull_request_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "pr_number", "type": "BIGINT", "description": "Pull request number" },
+        { "name": "pr_node_id", "type": "TEXT", "description": "GitHub GraphQL node ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "title", "type": "TEXT", "description": "PR title (content-light: titles only)" },
+        { "name": "state", "type": "TEXT", "description": "open, closed, or merged" },
+        { "name": "is_draft", "type": "BOOLEAN", "description": "Whether the PR is in draft mode" },
+        { "name": "author_login", "type": "TEXT", "description": "GitHub login of the PR author" },
+        { "name": "base_branch", "type": "TEXT", "description": "Target branch name" },
+        { "name": "head_branch", "type": "TEXT", "description": "Source branch name" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "PR creation timestamp" },
+        { "name": "merged_at", "type": "TIMESTAMPTZ", "description": "Merge timestamp, NULL if not merged" },
+        { "name": "additions", "type": "INTEGER", "description": "Lines added" },
+        { "name": "deletions", "type": "INTEGER", "description": "Lines deleted" },
+        { "name": "changed_files", "type": "INTEGER", "description": "Number of files changed" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "labels", "description": "Array of label names" },
+        { "field": "requested_reviewers", "description": "Array of requested reviewer logins" },
+        { "field": "merge_commit_sha", "description": "SHA of the merge commit, NULL if not merged" },
+        { "field": "linked_issues", "description": "Issue numbers linked to this PR" }
+      ],
+      "indexes": [
+        { "name": "idx_github_pr_node_id", "columns": ["pr_node_id"], "type": "UNIQUE" },
+        { "name": "idx_github_pr_repo_state", "columns": ["org_slug", "repo_name", "state", "updated_at"], "type": "BTREE" },
+        { "name": "idx_github_pr_author_time", "columns": ["author_login", "created_at"], "type": "BTREE" },
+        { "name": "idx_github_pr_merged_at", "columns": ["merged_at"], "type": "BTREE", "where": "merged_at IS NOT NULL" }
+      ],
+      "retention_policy": "Current open PRs retained indefinitely. Merged/closed PRs retained 2 years. PR body and diff never stored (content-light).",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Repository Coverage widget", "PR Mutation Readiness panel", "Incident Timeline", "Alert Autopsy (PR correlation)"]
+    },
+    {
+      "table_name": "github_pr_review_thread",
+      "canonical_artifact_relationship": ".rig/reports/github/pr_review_thread_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "pr_number", "type": "BIGINT", "description": "Pull request number" },
+        { "name": "review_id", "type": "BIGINT", "description": "GitHub review ID" },
+        { "name": "reviewer_login", "type": "TEXT", "description": "Reviewer GitHub login" },
+        { "name": "review_state", "type": "TEXT", "description": "APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED" },
+        { "name": "submitted_at", "type": "TIMESTAMPTZ", "description": "When the review was submitted" },
+        { "name": "review_thread_count", "type": "INTEGER", "description": "Number of review threads in this review" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "thread_summaries", "description": "Summary per thread: file path, line range, resolved/unresolved" },
+        { "field": "review_body_summary", "description": "Truncated summary of review comment body, content-light" },
+        { "field": "dismissal_reason", "description": "Reason if the review was dismissed, NULL otherwise" }
+      ],
+      "indexes": [
+        { "name": "idx_github_review_pr", "columns": ["org_slug", "repo_name", "pr_number", "submitted_at"], "type": "BTREE" },
+        { "name": "idx_github_review_state", "columns": ["review_state"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 2 years. Review comments never stored in full (content-light).",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["PR Mutation Readiness panel", "Incident Timeline"]
+    },
+    {
+      "table_name": "github_check_run",
+      "canonical_artifact_relationship": ".rig/reports/github/check_run_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "check_run_id", "type": "BIGINT", "description": "GitHub Check Run ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "pr_number", "type": "BIGINT", "description": "Associated PR number, NULL if not PR-linked" },
+        { "name": "check_name", "type": "TEXT", "description": "Name of the check (e.g., CodeQL, Dependabot)" },
+        { "name": "status", "type": "TEXT", "description": "queued, in_progress, or completed" },
+        { "name": "conclusion", "type": "TEXT", "description": "success, failure, neutral, cancelled, skipped, timed_out, action_required" },
+        { "name": "started_at", "type": "TIMESTAMPTZ", "description": "When the check run started" },
+        { "name": "completed_at", "type": "TIMESTAMPTZ", "description": "When the check run completed, NULL if not completed" },
+        { "name": "duration_seconds", "type": "INTEGER", "description": "Check run duration in seconds" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "annotations_summary", "description": "Count of annotations by level (notice, warning, failure)" },
+        { "field": "output_summary", "description": "Check run output title and truncated summary" },
+        { "field": "external_id", "description": "External identifier for this check run" }
+      ],
+      "indexes": [
+        { "name": "idx_github_check_run_id", "columns": ["check_run_id"], "type": "UNIQUE" },
+        { "name": "idx_github_check_run_repo_pr", "columns": ["org_slug", "repo_name", "pr_number"], "type": "BTREE" },
+        { "name": "idx_github_check_run_conclusion", "columns": ["conclusion"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 180 days. After 180 days, retain only aggregate statistics per check_name per repo.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["PR Mutation Readiness panel", "CI/CD Status widget", "Branch Protection Compliance report"]
+    },
+    {
+      "table_name": "github_workflow_run",
+      "canonical_artifact_relationship": ".rig/reports/github/workflow_run_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "workflow_run_id", "type": "BIGINT", "description": "GitHub Actions workflow run ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "workflow_name", "type": "TEXT", "description": "Name of the workflow (e.g., CI, Deploy)" },
+        { "name": "event", "type": "TEXT", "description": "Trigger event (push, pull_request, schedule, workflow_dispatch)" },
+        { "name": "status", "type": "TEXT", "description": "queued, in_progress, or completed" },
+        { "name": "conclusion", "type": "TEXT", "description": "success, failure, cancelled, skipped" },
+        { "name": "head_branch", "type": "TEXT", "description": "Branch the workflow ran on" },
+        { "name": "run_attempt", "type": "INTEGER", "description": "Attempt number (1 for first run, 2+ for re-runs)" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "When the run was created" },
+        { "name": "updated_at", "type": "TIMESTAMPTZ", "description": "When the run was last updated" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "head_commit", "description": "SHA and message of the head commit (message truncated, content-light)" },
+        { "field": "jobs_summary", "description": "Per-job name, status, conclusion, duration" },
+        { "field": "actor_login", "description": "Login of the user who triggered the workflow" }
+      ],
+      "indexes": [
+        { "name": "idx_github_workflow_run_id", "columns": ["workflow_run_id"], "type": "UNIQUE" },
+        { "name": "idx_github_workflow_repo_time", "columns": ["org_slug", "repo_name", "created_at"], "type": "BTREE" },
+        { "name": "idx_github_workflow_conclusion", "columns": ["conclusion"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 90 days. After 90 days, retain only aggregate statistics (success rate) per workflow_name.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["CI/CD Status widget", "Branch Protection Compliance report", "Incident Timeline"]
+    },
+    {
+      "table_name": "github_code_scanning_alert",
+      "canonical_artifact_relationship": ".rig/reports/github/code_scanning_alert_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "alert_number", "type": "BIGINT", "description": "GitHub code scanning alert number" },
+        { "name": "alert_node_id", "type": "TEXT", "description": "GitHub GraphQL node ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "rule_id", "type": "TEXT", "description": "SARIF rule ID (e.g., js/incomplete-url-substring-sanitization)" },
+        { "name": "rule_severity", "type": "TEXT", "description": "error, warning, or note" },
+        { "name": "rule_security_severity_level", "type": "TEXT", "description": "critical, high, medium, or low" },
+        { "name": "tool_name", "type": "TEXT", "description": "Tool that found the alert (e.g., CodeQL, ESLint)" },
+        { "name": "state", "type": "TEXT", "description": "open, dismissed, or fixed" },
+        { "name": "dismissed_reason", "type": "TEXT", "description": "false positive, wont fix, used in tests, or NULL if not dismissed" },
+        { "name": "file_path", "type": "TEXT", "description": "Repo-relative file path where the alert was found" },
+        { "name": "line_number", "type": "INTEGER", "description": "Line number where the alert was found" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "When the alert was created" },
+        { "name": "fixed_at", "type": "TIMESTAMPTZ", "description": "When the alert was fixed, NULL if not fixed" },
+        { "name": "dismissed_at", "type": "TIMESTAMPTZ", "description": "When the alert was dismissed, NULL if not dismissed" },
+        { "name": "introduced_in_pr", "type": "BIGINT", "description": "PR number that introduced this alert, NULL if unknown" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "sarif_metadata", "description": "SARIF rule metadata: description, help URI, tags, cwe_ids, precision" },
+        { "field": "fix_commit_sha", "description": "SHA of the commit that fixed the alert, NULL if not fixed" },
+        { "field": "introduced_commit_sha", "description": "SHA of the commit that introduced the alert, NULL if unknown" },
+        { "field": "related_locations", "description": "Array of related file:line locations from SARIF" },
+        { "field": "alert_webhook_history", "description": "Timeline of webhook events for this alert (created, fixed, reopened, dismissed)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_csa_node_id", "columns": ["alert_node_id"], "type": "UNIQUE" },
+        { "name": "idx_github_csa_repo_state_severity", "columns": ["org_slug", "repo_name", "state", "rule_security_severity_level"], "type": "BTREE" },
+        { "name": "idx_github_csa_rule_id", "columns": ["rule_id"], "type": "BTREE" },
+        { "name": "idx_github_csa_state_time", "columns": ["state", "created_at"], "type": "BTREE" },
+        { "name": "idx_github_csa_tool", "columns": ["tool_name"], "type": "BTREE" },
+        { "name": "idx_github_csa_file_path", "columns": ["file_path"], "type": "BTREE" }
+      ],
+      "retention_policy": "Open alerts retained indefinitely. Fixed/dismissed alerts retained 2 years. Surrounding source code never stored (content-light).",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Code Scanning Alert Dashboard", "Alert Maturity widget", "Portfolio Risk Heatmap", "Incident Timeline"]
+    },
+    {
+      "table_name": "github_secret_scanning_alert",
+      "canonical_artifact_relationship": ".rig/reports/github/secret_scanning_alert_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "alert_number", "type": "BIGINT", "description": "GitHub secret scanning alert number" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "secret_type", "type": "TEXT", "description": "Type of secret detected (e.g., github_token, aws_access_key_id)" },
+        { "name": "secret_type_display_name", "type": "TEXT", "description": "Human-readable secret type name" },
+        { "name": "state", "type": "TEXT", "description": "open or resolved" },
+        { "name": "resolution", "type": "TEXT", "description": "false_positive, wont_fix, revoked, pattern_edited, pattern_deleted, or NULL" },
+        { "name": "validity", "type": "TEXT", "description": "active, inactive, unknown" },
+        { "name": "file_path", "type": "TEXT", "description": "Repo-relative file path where the secret was found" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "When the alert was created" },
+        { "name": "resolved_at", "type": "TIMESTAMPTZ", "description": "When the alert was resolved, NULL if open" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "provider_metadata", "description": "Secret provider metadata (e.g., AWS account ID if applicable, truncated)" },
+        { "field": "push_protection_bypassed", "description": "Whether push protection was bypassed, and by whom" },
+        { "field": "bypass_reason", "description": "Reason given for bypassing push protection, if applicable" },
+        { "field": "resolution_comment", "description": "Admin comment on resolution, content-light" },
+        { "field": "alert_locations", "description": "Array of locations in the repo where this secret type was found" }
+      ],
+      "indexes": [
+        { "name": "idx_github_ssa_repo_state", "columns": ["org_slug", "repo_name", "state", "created_at"], "type": "BTREE" },
+        { "name": "idx_github_ssa_secret_type", "columns": ["secret_type"], "type": "BTREE" },
+        { "name": "idx_github_ssa_validity", "columns": ["validity"], "type": "BTREE" }
+      ],
+      "retention_policy": "Open alerts retained indefinitely. Resolved alerts retained 2 years. Secret values never stored. File contents never stored.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Secret Scanning Alert Dashboard", "Portfolio Risk Heatmap", "Incident Timeline"]
+    },
+    {
+      "table_name": "github_dependabot_alert",
+      "canonical_artifact_relationship": ".rig/reports/github/dependabot_alert_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "alert_number", "type": "BIGINT", "description": "GitHub Dependabot alert number" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "cve_id", "type": "TEXT", "description": "CVE identifier (e.g., CVE-2024-1234)" },
+        { "name": "ghsa_id", "type": "TEXT", "description": "GitHub Security Advisory ID" },
+        { "name": "package_name", "type": "TEXT", "description": "Affected package name" },
+        { "name": "package_ecosystem", "type": "TEXT", "description": "npm, pip, maven, rubygems, etc." },
+        { "name": "severity", "type": "TEXT", "description": "critical, high, medium, or low" },
+        { "name": "cvss_score", "type": "NUMERIC(3,1)", "description": "CVSS score (0.0-10.0)" },
+        { "name": "state", "type": "TEXT", "description": "open, dismissed, or fixed" },
+        { "name": "dismissed_reason", "type": "TEXT", "description": "fix_started, inaccurate, no_bandwidth, not_used, tolerable_risk, or NULL" },
+        { "name": "manifest_path", "type": "TEXT", "description": "Path to the manifest file (e.g., package.json, requirements.txt)" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "When the alert was created" },
+        { "name": "fixed_at", "type": "TIMESTAMPTZ", "description": "When the alert was fixed, NULL if not fixed" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "affected_versions", "description": "Version range affected by the vulnerability" },
+        { "field": "patched_versions", "description": "Version range that includes the fix" },
+        { "field": "advisory_summary", "description": "Truncated advisory description, content-light" },
+        { "field": "dependabot_update_pr", "description": "PR number if Dependabot opened a fix PR, NULL otherwise" },
+        { "field": "cvss_vector", "description": "CVSS vector string (e.g., AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_da_ghsa", "columns": ["ghsa_id"], "type": "BTREE" },
+        { "name": "idx_github_da_repo_state_severity", "columns": ["org_slug", "repo_name", "state", "severity"], "type": "BTREE" },
+        { "name": "idx_github_da_cve", "columns": ["cve_id"], "type": "BTREE" },
+        { "name": "idx_github_da_ecosystem", "columns": ["package_ecosystem"], "type": "BTREE" },
+        { "name": "idx_github_da_cvss", "columns": ["cvss_score"], "type": "BTREE", "order": "DESC" }
+      ],
+      "retention_policy": "Open alerts retained indefinitely. Dismissed/fixed alerts retained 2 years.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Dependabot Alert Dashboard", "Portfolio Risk Heatmap", "Alert Maturity widget"]
+    },
+    {
+      "table_name": "github_branch_protection_snapshot",
+      "canonical_artifact_relationship": ".rig/reports/github/branch_protection_snapshot_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "branch_name", "type": "TEXT", "description": "Protected branch name (e.g., main, master)" },
+        { "name": "snapshot_at", "type": "TIMESTAMPTZ", "description": "When this snapshot was taken" },
+        { "name": "require_pr_reviews", "type": "BOOLEAN", "description": "Pull request reviews required before merging" },
+        { "name": "required_approving_review_count", "type": "INTEGER", "description": "Number of approving reviews required" },
+        { "name": "require_status_checks", "type": "BOOLEAN", "description": "Status checks must pass before merging" },
+        { "name": "require_conversation_resolution", "type": "BOOLEAN", "description": "All conversations must be resolved before merging" },
+        { "name": "require_signed_commits", "type": "BOOLEAN", "description": "Commits must be signed" },
+        { "name": "enforce_admins", "type": "BOOLEAN", "description": "Include administrators in enforcement" },
+        { "name": "allow_force_pushes", "type": "BOOLEAN", "description": "Force pushes allowed" },
+        { "name": "allow_deletions", "type": "BOOLEAN", "description": "Branch deletions allowed" },
+        { "name": "compliance_score", "type": "INTEGER", "description": "Computed compliance score 0-100" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "required_status_check_contexts", "description": "Array of required status check names" },
+        { "field": "push_restrictions", "description": "Teams/apps allowed to push" },
+        { "field": "bypass_actors", "description": "Users/teams/apps allowed to bypass protection" },
+        { "field": "lock_branch", "description": "Whether the branch is locked (read-only)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_bp_repo_branch_time", "columns": ["org_slug", "repo_name", "branch_name", "snapshot_at"], "type": "BTREE" },
+        { "name": "idx_github_bp_compliance", "columns": ["compliance_score"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 365 days of snapshots. Daily granularity for active repos, weekly for archived.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Branch Protection Compliance widget", "Policy Drift Alert panel", "Portfolio View (compliance aggregate)"]
+    },
+    {
+      "table_name": "github_ruleset_snapshot",
+      "canonical_artifact_relationship": ".rig/reports/github/ruleset_snapshot_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "ruleset_id", "type": "BIGINT", "description": "GitHub ruleset ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name, NULL if org-level ruleset" },
+        { "name": "ruleset_name", "type": "TEXT", "description": "Name of the ruleset" },
+        { "name": "enforcement", "type": "TEXT", "description": "disabled, active, or evaluate" },
+        { "name": "target", "type": "TEXT", "description": "branch or tag" },
+        { "name": "snapshot_at", "type": "TIMESTAMPTZ", "description": "When this snapshot was taken" },
+        { "name": "rules_count", "type": "INTEGER", "description": "Number of rules in the ruleset" },
+        { "name": "bypass_actors_count", "type": "INTEGER", "description": "Number of actors/teams allowed to bypass" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "rules", "description": "Array of rules with type and parameters (e.g., creation, update, deletion, required_linear_history)" },
+        { "field": "conditions", "description": "Include/exclude patterns for ref names" },
+        { "field": "bypass_actors", "description": "Array of bypass actor types and IDs" },
+        { "field": "source_info", "description": "Source type (Organization, Repository) and source ID" }
+      ],
+      "indexes": [
+        { "name": "idx_github_ruleset_id", "columns": ["ruleset_id"], "type": "BTREE" },
+        { "name": "idx_github_ruleset_org_time", "columns": ["org_slug", "snapshot_at"], "type": "BTREE" },
+        { "name": "idx_github_ruleset_enforcement", "columns": ["enforcement"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 365 days of snapshots. Daily for active rulesets, weekly for disabled.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Branch Protection Compliance widget", "Policy Governance panel"]
+    },
+    {
+      "table_name": "github_release",
+      "canonical_artifact_relationship": ".rig/reports/github/release_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "release_id", "type": "BIGINT", "description": "GitHub release ID" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "tag_name", "type": "TEXT", "description": "Git tag name (e.g., v1.2.3)" },
+        { "name": "release_name", "type": "TEXT", "description": "Release name/title" },
+        { "name": "is_prerelease", "type": "BOOLEAN", "description": "Whether this is a pre-release" },
+        { "name": "is_draft", "type": "BOOLEAN", "description": "Whether this is a draft release" },
+        { "name": "author_login", "type": "TEXT", "description": "GitHub login of the release author" },
+        { "name": "published_at", "type": "TIMESTAMPTZ", "description": "When the release was published" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "release_assets", "description": "Array of asset names, sizes, and download counts (no URLs)" },
+        { "field": "commit_sha", "description": "Commit SHA the release is tagged at" }
+      ],
+      "indexes": [
+        { "name": "idx_github_release_id", "columns": ["release_id"], "type": "UNIQUE" },
+        { "name": "idx_github_release_repo_time", "columns": ["org_slug", "repo_name", "published_at"], "type": "BTREE" },
+        { "name": "idx_github_release_tag", "columns": ["tag_name"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain indefinitely. Releases are low-cardinality and important for deployment tracking.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Repository Coverage widget", "Deployment Tracking panel"]
+    },
+    {
+      "table_name": "github_pages_site",
+      "canonical_artifact_relationship": ".rig/reports/github/pages_site_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "pages_enabled", "type": "BOOLEAN", "description": "Whether GitHub Pages is enabled for this repo" },
+        { "name": "pages_branch", "type": "TEXT", "description": "Branch used for Pages deployment" },
+        { "name": "pages_cname", "type": "TEXT", "description": "Custom domain, NULL if not configured" },
+        { "name": "pages_status", "type": "TEXT", "description": "built, building, or errored" },
+        { "name": "https_enforced", "type": "BOOLEAN", "description": "Whether HTTPS is enforced" },
+        { "name": "last_built_at", "type": "TIMESTAMPTZ", "description": "When the site was last built" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "build_errors", "description": "Array of build error messages, if any" }
+      ],
+      "indexes": [
+        { "name": "idx_github_pages_repo", "columns": ["org_slug", "repo_name"], "type": "UNIQUE" },
+        { "name": "idx_github_pages_enabled", "columns": ["pages_enabled"], "type": "BTREE" }
+      ],
+      "retention_policy": "Current state retained indefinitely.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "public",
+      "ui_surfaces_served": ["Repository Coverage widget", "Static Docs panel"]
+    },
+    {
+      "table_name": "github_static_docs_projection",
+      "canonical_artifact_relationship": ".rig/reports/github/static_docs_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "projection_name", "type": "TEXT", "description": "Name of the projection (e.g., operating_picture, alert_summary)" },
+        { "name": "page_path", "type": "TEXT", "description": "Output path relative to docs root" },
+        { "name": "page_sha256", "type": "TEXT", "description": "SHA256 of the rendered HTML page" },
+        { "name": "generated_at", "type": "TIMESTAMPTZ", "description": "When this projection was generated" },
+        { "name": "source_projection_ref", "type": "TEXT", "description": "Reference to the DuckDB/Postgres source projection" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "page_metadata", "description": "Title, description, nav_order, and other frontmatter" },
+        { "field": "data_summary", "description": "Aggregate stats rendered on this page (row counts, time ranges)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_sdp_projection_name", "columns": ["projection_name", "org_slug", "generated_at"], "type": "BTREE" },
+        { "name": "idx_github_sdp_page_sha", "columns": ["page_sha256"], "type": "HASH" }
+      ],
+      "retention_policy": "Retain all versions indefinitely (static docs are content-light). Old versions archived.",
+      "tenant_repo_org_keys": ["org_slug", "installation_id"],
+      "security_class": "public",
+      "ui_surfaces_served": ["Static Docs site (docs/pages/github/)", "Docs Renderer"]
+    },
+    {
+      "table_name": "github_remediation_plan",
+      "canonical_artifact_relationship": ".rig/reports/github/remediation_plan_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "plan_type", "type": "TEXT", "description": "code_scanning_fix, secret_revocation, dependency_upgrade, branch_protection_enable" },
+        { "name": "alert_refs", "type": "TEXT[]", "description": "Array of alert node_ids this plan addresses" },
+        { "name": "status", "type": "TEXT", "description": "draft, approved, in_progress, completed, rejected" },
+        { "name": "estimated_effort_minutes", "type": "INTEGER", "description": "Estimated effort in minutes" },
+        { "name": "created_at", "type": "TIMESTAMPTZ", "description": "When the plan was created" },
+        { "name": "completed_at", "type": "TIMESTAMPTZ", "description": "When the plan was completed, NULL if not completed" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "plan_steps", "description": "Array of remediation steps with descriptions (content-light)" },
+        { "field": "risk_assessment", "description": "Migration risk level, rollback plan summary" },
+        { "field": "approval_chain", "description": "Array of approval events: approver, timestamp, decision" }
+      ],
+      "indexes": [
+        { "name": "idx_github_rp_repo_status", "columns": ["org_slug", "repo_name", "status", "plan_type"], "type": "BTREE" },
+        { "name": "idx_github_rp_alert_refs", "columns": ["alert_refs"], "type": "GIN" }
+      ],
+      "retention_policy": "Retain 2 years. Completed plans retained for audit trail.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Remediation Plan widget", "Alert Maturity widget", "Admin Approval panel"]
+    },
+    {
+      "table_name": "github_remote_mutation_rehearsal",
+      "canonical_artifact_relationship": ".rig/reports/github/remote_mutation_rehearsal_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "pr_number", "type": "BIGINT", "description": "Pull request number, NULL for direct-branch rehearsals" },
+        { "name": "rehearsal_type", "type": "TEXT", "description": "dry_run, sandbox, canary, full_mutation" },
+        { "name": "target_branch", "type": "TEXT", "description": "Branch the mutation targets" },
+        { "name": "mutation_diff_sha256", "type": "TEXT", "description": "SHA256 of the proposed mutation diff" },
+        { "name": "status", "type": "TEXT", "description": "pending, running, passed, failed, rolled_back" },
+        { "name": "checks_passed", "type": "INTEGER", "description": "Number of checks that passed" },
+        { "name": "checks_failed", "type": "INTEGER", "description": "Number of checks that failed" },
+        { "name": "started_at", "type": "TIMESTAMPTZ", "description": "When the rehearsal started" },
+        { "name": "completed_at", "type": "TIMESTAMPTZ", "description": "When the rehearsal completed, NULL if running" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "check_run_details", "description": "Per-check-run status, conclusion, annotations summary" },
+        { "field": "preflight_results", "description": "Pre-flight validation results (rate limit, permission, scope checks)" },
+        { "field": "rollback_plan", "description": "Rollback steps if rehearsal fails" },
+        { "field": "operator_notes", "description": "Operator-provided notes about the rehearsal" }
+      ],
+      "indexes": [
+        { "name": "idx_github_rmr_repo_status", "columns": ["org_slug", "repo_name", "status", "started_at"], "type": "BTREE" },
+        { "name": "idx_github_rmr_mutation_sha", "columns": ["mutation_diff_sha256"], "type": "HASH" }
+      ],
+      "retention_policy": "Retain 90 days. After 90 days, retain only aggregate rehearsal statistics.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["PR Mutation Readiness panel", "Live Mutation Control widget"]
+    },
+    {
+      "table_name": "github_remote_mutation_receipt",
+      "canonical_artifact_relationship": ".rig/reports/github/remote_mutation_receipt_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "mutation_type", "type": "TEXT", "description": "pr_creation, pr_comment, pr_review, commit_push, branch_create" },
+        { "name": "mutation_status", "type": "TEXT", "description": "success, failed, rejected, timeout" },
+        { "name": "mutation_sha256", "type": "TEXT", "description": "SHA256 of the mutation payload" },
+        { "name": "github_response_status", "type": "INTEGER", "description": "HTTP status code from GitHub" },
+        { "name": "executed_at", "type": "TIMESTAMPTZ", "description": "When the mutation was executed" },
+        { "name": "duration_ms", "type": "INTEGER", "description": "Mutation execution duration in milliseconds" },
+        { "name": "attestation_sha256", "type": "TEXT", "description": "HMAC-SHA256 attestation from the governance module" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "mutation_summary", "description": "Content-light summary: what was mutated, how many files, lines changed" },
+        { "field": "error_detail", "description": "Error message on failure, content-light (no stack traces)" },
+        { "field": "governance_gates", "description": "Which governance gates were checked and their outcomes" }
+      ],
+      "indexes": [
+        { "name": "idx_github_rmr_receipt_repo_time", "columns": ["org_slug", "repo_name", "executed_at"], "type": "BTREE" },
+        { "name": "idx_github_rmr_receipt_status", "columns": ["mutation_status"], "type": "BTREE" },
+        { "name": "idx_github_rmr_receipt_attestation", "columns": ["attestation_sha256"], "type": "HASH" }
+      ],
+      "retention_policy": "Retain indefinitely (compliance audit trail). Receipts are content-light and immutable.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Live Mutation Control widget", "Enterprise Audit widget", "Evidence Export panel"]
+    },
+    {
+      "table_name": "github_rate_limit_budget",
+      "canonical_artifact_relationship": ".rig/reports/github/rate_limit_budget_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "snapshot_at", "type": "TIMESTAMPTZ", "description": "When this rate limit snapshot was taken" },
+        { "name": "rate_limit_limit", "type": "INTEGER", "description": "X-RateLimit-Limit value" },
+        { "name": "rate_limit_remaining", "type": "INTEGER", "description": "X-RateLimit-Remaining value" },
+        { "name": "rate_limit_reset", "type": "TIMESTAMPTZ", "description": "When the rate limit resets (UTC)" },
+        { "name": "cost_center", "type": "TEXT", "description": "Ingestion task category" },
+        { "name": "calls_this_window", "type": "INTEGER", "description": "API calls made by this cost_center in the current window" },
+        { "name": "quota_allocated", "type": "INTEGER", "description": "Quota allocated to this cost_center" },
+        { "name": "quota_remaining", "type": "INTEGER", "description": "Remaining quota for this cost_center" },
+        { "name": "budget_exhausted_at", "type": "TIMESTAMPTZ", "description": "When the budget was exhausted, NULL if still available" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "usage_by_endpoint", "description": "Breakdown of calls by API endpoint in this window" },
+        { "field": "throttled_requests", "description": "Count of requests throttled (403/429)" },
+        { "field": "adaptive_sampling_decisions", "description": "Log of adaptive sampling decisions (which repos were dropped)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_rlb_install_time", "columns": ["installation_id", "snapshot_at"], "type": "BTREE" },
+        { "name": "idx_github_rlb_cost_center", "columns": ["cost_center", "snapshot_at"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 30 days at 5-minute granularity. After 30 days, retain hourly rollups for 1 year.",
+      "tenant_repo_org_keys": ["installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Rate Limit Budget widget", "API Cost Attribution dashboard"]
+    },
+    {
+      "table_name": "github_enterprise_audit_event",
+      "canonical_artifact_relationship": ".rig/reports/github/enterprise_audit_event_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "event_type", "type": "TEXT", "description": "Rig Relay event type (admin_approval.granted, branch_protection.drift.detected, permission.profile.changed, etc.)" },
+        { "name": "actor_login", "type": "TEXT", "description": "GitHub login of the actor" },
+        { "name": "corporate_identity", "type": "TEXT", "description": "SAML-mapped corporate identity, NULL if not mapped" },
+        { "name": "action", "type": "TEXT", "description": "Specific action taken" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name, NULL for org-level events" },
+        { "name": "occurred_at", "type": "TIMESTAMPTZ", "description": "When the event occurred" },
+        { "name": "source", "type": "TEXT", "description": "github_api, rig_relay, manual_review, or system" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "event_details", "description": "Structured details specific to the event_type (content-light)" },
+        { "field": "raw_github_audit_event", "description": "Original GitHub audit log event JSON, if sourced from GitHub API" },
+        { "field": "attestation", "description": "HMAC-SHA256 attestation for Rig Relay-generated audit events" },
+        { "field": "correlation_ids", "description": "Array of related event IDs in the timeline" }
+      ],
+      "indexes": [
+        { "name": "idx_github_eae_event_type_time", "columns": ["event_type", "occurred_at"], "type": "BTREE" },
+        { "name": "idx_github_eae_org_time", "columns": ["org_slug", "occurred_at"], "type": "BTREE" },
+        { "name": "idx_github_eae_actor", "columns": ["actor_login"], "type": "BTREE" },
+        { "name": "idx_github_eae_source", "columns": ["source"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 2 years for compliance. After 2 years, archive to cold storage. Indefinite retention for security-critical events (admin_approval, permission_change, mutation_executed).",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Enterprise Audit widget", "Incident Timeline", "Admin Approval panel", "Evidence Export panel"]
+    },
+    {
+      "table_name": "github_mission_candidate",
+      "canonical_artifact_relationship": ".rig/reports/github/mission_candidate_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name" },
+        { "name": "candidate_type", "type": "TEXT", "description": "fix_code_scanning_alert, upgrade_dependency, enable_branch_protection, resolve_secret, patch_vulnerability" },
+        { "name": "priority_score", "type": "NUMERIC(5,2)", "description": "Computed priority score (0.00-100.00)" },
+        { "name": "source_alert_refs", "type": "TEXT[]", "description": "Array of alert node_ids that generated this candidate" },
+        { "name": "estimated_effort_minutes", "type": "INTEGER", "description": "Estimated implementation effort" },
+        { "name": "roi_score", "type": "NUMERIC(3,2)", "description": "Return-on-investment score (risk_reduction / effort)" },
+        { "name": "generated_at", "type": "TIMESTAMPTZ", "description": "When the candidate was generated" },
+        { "name": "dispatched", "type": "BOOLEAN", "description": "Whether this candidate has been dispatched as a mission" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "ranking_factors", "description": "Breakdown of factors contributing to priority_score" },
+        { "field": "suggested_approach", "description": "Suggested remediation approach (content-light)" },
+        { "field": "evidence_references", "description": "References to supporting evidence (alert IDs, CVE IDs, etc.)" }
+      ],
+      "indexes": [
+        { "name": "idx_github_mc_org_score", "columns": ["org_slug", "priority_score"], "type": "BTREE", "order": "DESC" },
+        { "name": "idx_github_mc_type", "columns": ["candidate_type"], "type": "BTREE" },
+        { "name": "idx_github_mc_dispatched", "columns": ["dispatched", "generated_at"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain indefinitely. Dispatched candidates retained for mission audit trail.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Ralph Mission Candidates widget", "Fleet Orchestration dashboard"]
+    },
+    {
+      "table_name": "github_provider_operating_picture",
+      "canonical_artifact_relationship": ".rig/reports/github/provider_operating_picture_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "snapshot_at", "type": "TIMESTAMPTZ", "description": "When this operating picture was computed" },
+        { "name": "total_repos", "type": "INTEGER", "description": "Total repositories in scope" },
+        { "name": "archived_repos", "type": "INTEGER", "description": "Number of archived repositories" },
+        { "name": "fork_repos", "type": "INTEGER", "description": "Number of fork repositories" },
+        { "name": "open_code_scanning_alerts", "type": "INTEGER", "description": "Total open code scanning alerts" },
+        { "name": "critical_high_alerts", "type": "INTEGER", "description": "Open critical + high severity alerts" },
+        { "name": "open_secret_scanning_alerts", "type": "INTEGER", "description": "Total open secret scanning alerts" },
+        { "name": "open_dependabot_alerts", "type": "INTEGER", "description": "Total open Dependabot alerts" },
+        { "name": "repos_with_branch_protection", "type": "INTEGER", "description": "Repos with branch protection on default branch" },
+        { "name": "repos_with_code_owners", "type": "INTEGER", "description": "Repos with CODEOWNERS file" },
+        { "name": "mean_time_to_remediate_hours", "type": "NUMERIC(6,1)", "description": "Mean time to remediate alerts in hours" },
+        { "name": "overall_maturity_score", "type": "INTEGER", "description": "Computed maturity score 0-100" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "alert_trend_direction", "description": "Per-severity trend direction (increasing, stable, decreasing)" },
+        { "field": "repo_maturity_breakdown", "description": "Histogram of maturity scores across repos" },
+        { "field": "top_risk_repos", "description": "Top 10 repos by risk score with contributing factors" },
+        { "field": "team_permission_summary", "description": "Summary of team-to-repo permission coverage" }
+      ],
+      "indexes": [
+        { "name": "idx_github_pop_org_time", "columns": ["org_slug", "snapshot_at"], "type": "BTREE" },
+        { "name": "idx_github_pop_maturity", "columns": ["overall_maturity_score"], "type": "BTREE", "order": "DESC" }
+      ],
+      "retention_policy": "Retain 365 days of daily operating pictures. Weekly rollups retained 2 years.",
+      "tenant_repo_org_keys": ["org_slug", "installation_id"],
+      "security_class": "internal",
+      "ui_surfaces_served": ["Provider Operating Picture widget (compact/standard/expanded)", "Portfolio View", "Cockpit Home dashboard"]
+    },
+    {
+      "table_name": "github_evidence_timeline",
+      "canonical_artifact_relationship": ".rig/reports/github/evidence_timeline_{date}.jsonl",
+      "typed_columns": [
+        { "name": "id", "type": "UUID", "description": "Primary key, UUIDv7" },
+        { "name": "installation_id", "type": "BIGINT", "description": "FK to github_installation.installation_id" },
+        { "name": "org_slug", "type": "TEXT", "description": "Organization slug" },
+        { "name": "repo_name", "type": "TEXT", "description": "Repository name, NULL for org-level events" },
+        { "name": "event_type", "type": "TEXT", "description": "Unified event type across all GitHub tables (webhook, api_call, audit, mutation, alert, etc.)" },
+        { "name": "source_table", "type": "TEXT", "description": "Source Postgres table this event was unioned from" },
+        { "name": "source_row_id", "type": "UUID", "description": "UUID of the source row in the source table" },
+        { "name": "actor_login", "type": "TEXT", "description": "Actor responsible for the event, NULL for system events" },
+        { "name": "occurred_at", "type": "TIMESTAMPTZ", "description": "When the event occurred" },
+        { "name": "incident_id", "type": "UUID", "description": "Incident ID this event is linked to, NULL if not part of an incident" },
+        { "name": "relevance_score", "type": "NUMERIC(3,2)", "description": "Computed relevance score for the current investigation context (0.00-1.00)" }
+      ],
+      "jsonb_envelope_fields": [
+        { "field": "event_summary", "description": "One-line content-light summary of the event" },
+        { "field": "correlated_events", "description": "UUIDs of correlated events within a 5-minute window" },
+        { "field": "investigation_notes", "description": "Operator-provided notes pinned to this event during investigation" }
+      ],
+      "indexes": [
+        { "name": "idx_github_et_org_time", "columns": ["org_slug", "occurred_at"], "type": "BTREE" },
+        { "name": "idx_github_et_event_type", "columns": ["event_type", "occurred_at"], "type": "BTREE" },
+        { "name": "idx_github_et_incident", "columns": ["incident_id", "occurred_at"], "type": "BTREE" },
+        { "name": "idx_github_et_source", "columns": ["source_table", "source_row_id"], "type": "BTREE" }
+      ],
+      "retention_policy": "Retain 2 years for incident investigation. After 2 years, archive to cold storage.",
+      "tenant_repo_org_keys": ["org_slug", "repo_name", "installation_id"],
+      "security_class": "restricted",
+      "ui_surfaces_served": ["Incident Timeline widget", "Investigation Mode (cockpit layout)"]
+    }
+  ],
+  "content_light": {
+    "description": "All table schemas are abstract representations of the PostgreSQL DDL. No live data, no file paths with internal source code, and no secret-bearing columns are included. This document is designed to be content-light and git-diff friendly. JSONB envelope fields are described by their purpose, not by their exact values.",
+    "no_filepaths": true,
+    "no_line_references": true,
+    "no_live_data": true,
+    "no_secret_columns": true
+  },
+  "revision": 2
+}

@@ -1,0 +1,160 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_test_strategy.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Substrate — Test Strategy",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "test_doctrine": {
+    "principle": "Tests target substrate seam boundaries — where data crosses from one stage to the next in the architecture pipeline. Every seam must have a test that would fail if the seam leaks (content-light, format fidelity, schema governance, redaction).",
+    "classification_legend": {
+      "unit": "single function/class in isolation",
+      "contract": "adapter satisfies its Port interface contract",
+      "integration": "crosses component boundaries",
+      "e2e": "full pipeline from artifact to projection",
+      "real-artifact": "uses real JSON/JSONL/CSV fixtures from tests/fixtures/",
+      "adversarial": "intentionally injects malformed/corrupt/forbidden data",
+      "sabotage": "simulates infrastructure failure",
+      "concurrency": "exercises race conditions and deadlocks",
+      "substrate": "verifies specific database-adjacent tool behavior (Parquet, Arrow, COPY, Zstandard)"
+    }
+  },
+  "test_suites": [
+    {
+      "suite_id": "zstandard-expansion-tests",
+      "title": "Zstandard Expansion Roundtrip and Redaction Tests",
+      "phase": "Phase 1",
+      "classification": ["contract", "adversarial", "substrate"],
+      "description": "Verify Zstandard compression/decompression roundtrip preserves content. Verify zstd-compressed bundles fail redaction scan if decompressed content leaks forbidden material. Verify zstd compression ratio meets or exceeds gzip baseline.",
+      "test_files": ["tests/substrate/test_zstandard_bundles.py"],
+      "expected_count": "~8 tests",
+      "test_cases": [
+        "JSONL → zstd compress → zstd decompress → JSONL roundtrip preserves all fields",
+        "zstd compressed bundle passes content-light redaction scan on decompress",
+        "zstd compressed bundle FAILS redaction scan if forbidden content exists in decompressed output",
+        "zstd compression ratio >= gzip for representative session JSONL",
+        "zstd decompression failure returns structured error, not silent corruption",
+        "zstd-empty input produces valid empty archive",
+        "zstd-truncated input detected as corrupt, not silently decompressed"
+      ]
+    },
+    {
+      "suite_id": "pydantic-expansion-tests",
+      "title": "Pydantic Expansion Contract Tests",
+      "phase": "Phase 1-2",
+      "classification": ["contract"],
+      "description": "Verify Pydantic model_validate/model_dump_json replaces stdlib json at module boundaries. Verify type safety and extra='forbid' enforcement.",
+      "test_files": ["tests/substrate/test_pydantic_boundaries.py"],
+      "expected_count": "~10 tests",
+      "test_cases": [
+        "Pydantic model_validate rejects extra fields beyond schema",
+        "Pydantic model_dump_json output is valid canonical JSON",
+        "Pydantic model roundtrip (dump → load → dump) produces identical SHA256",
+        "Pydantic model rejects forbidden content patterns (CHECK constraint equivalent)",
+        "stdlib json.loads bypass produces same result as Pydantic model_validate for known-valid input"
+      ]
+    },
+    {
+      "suite_id": "arrow-prototype-tests",
+      "title": "Arrow In-Memory Interchange Tests",
+      "phase": "Phase 3 (only if Arrow prototype exists)",
+      "classification": ["contract", "substrate"],
+      "description": "Verify Arrow table → dict roundtrip preserves schema-governed fields. Verify Arrow table ↔ Pydantic model roundtrip. Verify Arrow-backed projections contain no raw content.",
+      "test_files": ["tests/substrate/test_arrow_interchange.py"],
+      "pytest_mark": "arrow",
+      "expected_count": "~6 tests",
+      "test_cases": [
+        "JSONL → Arrow → JSONL roundtrip preserves all schema-governed fields",
+        "Arrow table → dict projection payload is bit-identical to dict-only projection payload",
+        "Arrow schema derived from Pydantic model matches expected column types",
+        "Arrow table never contains raw content fields"
+      ]
+    },
+    {
+      "suite_id": "parquet-doctrine-tests",
+      "title": "Parquet Derived Snapshot Doctrine Tests",
+      "phase": "Phase 3-4",
+      "classification": ["contract", "real-artifact", "adversarial", "substrate"],
+      "description": "Verify Parquet snapshots never become canonical event truth. Verify JSONL → Parquet → DuckDB query parity. Verify Parquet read-back yields same content-light results as JSONL read.",
+      "test_files": ["tests/substrate/test_parquet_doctrine.py"],
+      "expected_count": "~6 tests",
+      "test_cases": [
+        "JSONL → Parquet → DuckDB query parity: same counts, same aggregates",
+        "Parquet snapshots classified as derived, not canonical, in artifact_registry",
+        "Parquet read via DuckDB produces same content-light projection as JSONL read",
+        "Parquet snapshot can be fully rebuilt from canonical JSONL (replay test)",
+        "Corrupted Parquet snapshot is detected and triggers rebuild from JSONL"
+      ]
+    },
+    {
+      "suite_id": "postgres-copy-tests",
+      "title": "Postgres COPY Ingestion and Export Tests",
+      "phase": "Phase 3-4",
+      "classification": ["contract", "integration", "adversarial", "substrate"],
+      "description": "Verify COPY FROM with staging table validates constraints. Verify COPY TO produces valid JSONL that matches canonical artifacts. Verify COPY rejects invalid schema rows in staging.",
+      "test_files": ["tests/adapters/test_postgres_copy_pipeline.py"],
+      "pytest_mark": "postgres",
+      "expected_count": "~8 tests",
+      "test_cases": [
+        "COPY FROM to staging table: valid rows promoted, invalid rows rejected with structured error",
+        "COPY FROM rejects rows that fail CHECK constraints (schema_version format, artifact_sha256 format)",
+        "COPY FROM rejects rows with forbidden content keys (token, secret, raw_prompt)",
+        "COPY TO export produces valid JSONL matching canonical artifact row count",
+        "COPY TO → COPY FROM roundtrip preserves all generated column values",
+        "COPY with empty input produces zero rows (no error)",
+        "COPY with truncated JSONL input detects incomplete final row"
+      ]
+    },
+    {
+      "suite_id": "no-raw-content-substrate-tests",
+      "title": "No Raw Content Across Substrate Seams",
+      "phase": "Phase 1-6 (continuous)",
+      "classification": ["adversarial", "sabotage"],
+      "description": "Verify that no substrate tool (Arrow, Parquet, Zstandard, COPY, DuckDB) can be used to bypass content-light enforcement or introduce raw content into any stage of the pipeline.",
+      "test_files": ["tests/substrate/test_content_light_substrate_seams.py"],
+      "expected_count": "~12 tests",
+      "test_cases": [
+        "Arrow table construction rejects forbidden fields",
+        "Parquet generation from raw JSONL rejects forbidden content",
+        "Zstandard decompressed bundle passes content-light scan",
+        "Postgres COPY FROM staging rejects forbidden content keys",
+        "DuckDB query output contains only envelope-level fields (no raw payloads)",
+        "Cockpit projection generated from Arrow/Parquet contains no raw private content",
+        "Static docs projection scan catches absolute paths/tokens/source snippets",
+        "Procurement pack generation uses content-light derived summaries only"
+      ]
+    },
+    {
+      "suite_id": "substrate-perf-regression-tests",
+      "title": "Substrate Performance Regression Tests",
+      "phase": "Phase 1-6 (continuous)",
+      "classification": ["substrate"],
+      "description": "Track performance of key substrate operations against baseline. Alert on regression >20%.",
+      "test_files": ["tests/substrate/test_performance_regression.py"],
+      "expected_count": "~6 tests",
+      "test_cases": [
+        "JSONL ingestion throughput (rows/sec) does not regress >20% from baseline",
+        "DuckDB projection compute time per widget does not regress >20% from baseline",
+        "Static docs render time does not regress >20% from baseline per 100 pages",
+        "Parquet compaction throughput (rows/sec) within 2x of JSONL read time"
+      ]
+    },
+    {
+      "suite_id": "pgvector-safety-tests",
+      "title": "pgvector Sensitive Derived Data Safety Tests",
+      "phase": "Phase 6 (only if pgvector promoted from park)",
+      "classification": ["adversarial", "substrate"],
+      "description": "Verify embeddings never store raw private repo text. Verify embedding records are classified as sensitive derived data. Verify local-only boundary enforcement.",
+      "test_files": ["tests/enterprise/test_pgvector_safety.py"],
+      "pytest_mark": "postgres",
+      "expected_count": "~6 tests",
+      "test_cases": [
+        "Embedding record contains only content_sha256 + vector, never raw text",
+        "Embedding record classified as sensitive derived data in audit trail",
+        "Local-only embeddings cannot be exported to product telemetry",
+        "pgvector unavailable → semantic search returns empty, not error"
+      ]
+    }
+  ],
+  "revision": "1.0.0"
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.enterprise_data_inventory.v1.schema.json",
+  "title": "Enterprise Data Inventory v1",
+  "description": "Complete inventory of all data classes collected, stored, projected, or exported by Rig Relay with sensitivity classifications, four-category telemetry/evidence model, and protection requirements.",
+  "type": "object",
+  "required": ["schema_version", "inventory_id", "title", "generated_at", "data_classes", "content_light"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.enterprise_data_inventory.v1" },
+    "inventory_id": { "type": "string" },
+    "title": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "patched_at": { "type": "string", "format": "date-time" },
+    "patch_description": { "type": "string" },
+    "data_classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["data_class_id", "data_class_name", "sensitivity", "storage_location", "canonical_format", "may_enter_product_telemetry", "may_enter_remote_telemetry_contribution", "may_enter_postgres", "redaction_required", "retention_requirement", "export_requirement", "procurement_disclosure"],
+        "properties": {
+          "data_class_id": { "type": "string" },
+          "data_class_name": { "type": "string" },
+          "description": { "type": "string" },
+          "sensitivity": { "type": "string", "enum": ["secret", "highly_sensitive", "sensitive", "internal", "public"] },
+          "storage_location": { "type": "string" },
+          "canonical_format": { "type": "string" },
+          "content_light_guarantee": { "type": "boolean" },
+          "may_enter_product_telemetry": { "type": "boolean" },
+          "may_enter_remote_telemetry_contribution": { "type": "boolean" },
+          "may_enter_postgres": { "type": "boolean" },
+          "may_enter_static_site": { "type": "boolean" },
+          "may_be_commercialized_as_aggregate_or_derived": { "type": "boolean" },
+          "redaction_required": { "type": "boolean" },
+          "retention_requirement": { "type": "string" },
+          "export_requirement": { "type": "string" },
+          "opt_out_behavior": { "type": "string" },
+          "evidence_continuity_requirement": { "type": "string" },
+          "procurement_disclosure": { "type": "string" },
+          "current_protection": { "type": "string" },
+          "gap": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_data_classes": { "type": "integer" },
+        "secret_data_classes": { "type": "integer" },
+        "highly_sensitive_data_classes": { "type": "integer" },
+        "sensitive_data_classes": { "type": "integer" },
+        "internal_data_classes": { "type": "integer" },
+        "public_data_classes": { "type": "integer" },
+        "data_classes_in_product_telemetry": { "type": "integer" },
+        "data_classes_in_remote_telemetry_contribution": { "type": "integer" },
+        "data_classes_in_local_operational_observability": { "type": "integer" },
+        "data_classes_in_enterprise_audit_evidence": { "type": "integer" },
+        "data_classes_exportable_as_aggregate_or_derived": { "type": "integer" },
+        "data_classes_requiring_redaction": { "type": "integer" },
+        "four_category_model_applied": { "type": "boolean" }
+      }
+    },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

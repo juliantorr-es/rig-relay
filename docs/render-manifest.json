@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-21T04:55:37.482911+00:00",
-  "git_commit": "109d094eaef8",
-  "page_count": 263,
+  "generated_at": "2026-05-21T08:49:24.032787+00:00",
+  "git_commit": "c6144208b502",
+  "page_count": 264,
   "collection_page_count": 35,
   "pages": [
     {
@@ -868,6 +868,11 @@
       "document_id": "governance-gate-decision-spine-v1-implementation-plan",
       "title": "Governance Gate Decision Spine v1 \u2014 Implementation Plan",
       "source_json_path": "json/governance/governance-gate-decision-spine-v1-implementation-plan.v1.json"
+    },
+    {
+      "document_id": "high-performance-substrate-doctrine",
+      "title": "High-Performance Substrate Doctrine",
+      "source_json_path": "json/governance/high_performance_substrate_doctrine_v1.v1.json"
     },
     {
       "document_id": "identity-provider-policy",

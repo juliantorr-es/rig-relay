@@ -20,7 +20,7 @@
 <meta property="og:image:height" content="630">
 
 <meta property="og:site_name" content="Rig Relay">
-<meta property="og:locale" content="en_US">
+<meta property="og:locale" content="en">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Codebase Evidence Graph">
 <meta name="twitter:description" content="Deterministic content-light evidence graph from the Rig Relay repository — 13,964 nodes, 3,019 edges, 9 node types.">
@@ -39,7 +39,7 @@
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header" role="banner">
-  <div class="eyebrow"><a href="./index.html">Rig Relay</a> / Evidence</div>
+  <div class="eyebrow"><a href="./index.html"></a> / Evidence</div>
   <h1>Codebase Evidence Graph</h1>
   
 </header>
@@ -58,16 +58,47 @@
       </ul>
     </nav>
   </aside>
-  <main id="main" tabindex="-1">
+  <div id="main" tabindex="-1">
     
+
+<style>
+.hero-status { padding:clamp(1rem,3vw,2rem); text-align:center; }
+.status-badge { display:inline-block; padding:.25rem .75rem; border-radius:999px; font-size:.875rem; }
+.status-info { background:var(--info-bg,#ebf8ff); color:var(--info-text,#2b6cb0); }
+.summary { max-width:48rem; margin:.75rem auto; font-size:.875rem; color:var(--text-secondary,#4a5568); }
+.metrics { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; justify-content:center; font-size:.875rem; padding:.5rem 0; }
+.metrics span { white-space:nowrap; }
+.table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:1rem 0; }
+.table-wrapper table { width:100%; border-collapse:collapse; font-size:.875rem; }
+.table-wrapper th,.table-wrapper td { text-align:left; padding:.5rem .75rem; border-bottom:1px solid var(--border,#e2e8f0); }
+.table-wrapper th { font-weight:600; }
+@media (max-width:640px) {
+  .table-wrapper table,.table-wrapper thead,.table-wrapper tbody,.table-wrapper th,.table-wrapper td,.table-wrapper tr { display:block; }
+  .table-wrapper thead tr { display:none; }
+  .table-wrapper td { padding:.5rem; border-bottom:1px solid var(--border,#e2e8f0); }
+  .table-wrapper td::before { content:attr(data-label); font-weight:600; display:block; margin-bottom:.25rem; }
+}
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(16rem,100%),1fr)); gap:clamp(.5rem,2vw,1rem); }
+.card { border:1px solid var(--border,#e2e8f0); border-radius:.5rem; padding:1rem; }
+.card h3 { margin:0 0 .5rem; font-size:1rem; }
+.card-body { font-size:.875rem; color:var(--text-secondary,#4a5568); }
+.status-info { border-left:3px solid var(--info,#3182ce); }
+.callout { padding:1rem 1.25rem; border-radius:.5rem; margin:1rem 0; }
+.callout-info { background:var(--info-bg,#ebf8ff); border-left:3px solid var(--info,#3182ce); }
+pre { background:var(--code-bg,#edf2f7); padding:1rem; border-radius:.375rem; overflow-x:auto; font-size:.8125rem; }
+section { padding:clamp(.75rem,2vw,2rem) clamp(.5rem,2vw,1.5rem); max-width:64rem; margin:0 auto; }
+section h2 { margin:0 0 1rem; font-size:clamp(1.125rem,3vw,1.5rem); }
+</style>
+
 <section class="hero-status">
-  <h2>Codebase Evidence Graph</h2>
-  <div class="status-badge status-info">13,964 nodes · 3,019 edges</div>
-  <p class="summary">Deterministic, content-light graph of files, schemas, artifacts, functions, classes, and dependencies — generated from the Rig Relay repository. Powered by the canonical codebase evidence graph substrate.</p>
+  <h2>13,964 nodes &middot; 3,019 edges</h2>
+  <div class="status-badge status-info">13,964 nodes &middot; 3,019 edges</div>
+  <p class="summary">Deterministic content-light evidence graph from the Rig Relay repository — 13,964 nodes, 3,019 edges, 9 node types.</p>
   <div class="metrics">
     <span>9 node types</span><span>2 edge types</span><span>13,964 nodes</span><span>3,019 edges</span>
   </div>
 </section>
+
 
 <section>
   <h2>Node Type Distribution</h2>
@@ -75,19 +106,31 @@
     <table>
       <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
       <tbody>
-        <tr><td>function</td><td>6,462</td></tr>
-        <tr><td>file</td><td>4,336</td></tr>
-        <tr><td>class</td><td>1,639</td></tr>
-        <tr><td>module</td><td>857</td></tr>
-        <tr><td>schema</td><td>389</td></tr>
-        <tr><td>artifact</td><td>202</td></tr>
-        <tr><td>dependency</td><td>69</td></tr>
-        <tr><td>release_phase</td><td>7</td></tr>
-        <tr><td>provider</td><td>3</td></tr>
+        
+        <tr><td data-label="Node Type">function</td><td data-label="Count">6,462</td></tr>
+        
+        <tr><td data-label="Node Type">file</td><td data-label="Count">4,336</td></tr>
+        
+        <tr><td data-label="Node Type">class</td><td data-label="Count">1,639</td></tr>
+        
+        <tr><td data-label="Node Type">module</td><td data-label="Count">857</td></tr>
+        
+        <tr><td data-label="Node Type">schema</td><td data-label="Count">389</td></tr>
+        
+        <tr><td data-label="Node Type">artifact</td><td data-label="Count">202</td></tr>
+        
+        <tr><td data-label="Node Type">dependency</td><td data-label="Count">69</td></tr>
+        
+        <tr><td data-label="Node Type">release_phase</td><td data-label="Count">7</td></tr>
+        
+        <tr><td data-label="Node Type">provider</td><td data-label="Count">3</td></tr>
+        
       </tbody>
     </table>
   </div>
 </section>
+
+
 
 <section>
   <h2>Edge Types</h2>
@@ -95,43 +138,56 @@
     <table>
       <thead><tr><th>Edge Type</th><th>Count</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>depends_on</td><td>2,107</td><td>Python import dependencies between modules</td></tr>
-        <tr><td>validates_artifact</td><td>912</td><td>Schema-to-artifact validation edges</td></tr>
+        
+        <tr><td data-label="Edge Type">depends_on</td><td data-label="Count">2,107</td><td data-label="Description">Python import dependencies between modules</td></tr>
+        
+        <tr><td data-label="Edge Type">validates_artifact</td><td data-label="Count">912</td><td data-label="Description">Schema-to-artifact validation edges</td></tr>
+        
       </tbody>
     </table>
   </div>
 </section>
+
 
 <section class="callout callout-info">
   <h3>Content-Light Guarantee</h3>
   <p>All code content is stored as hashes only. Relative paths only — never absolute home paths. No raw source in canonical JSON. No tokens, secrets, or private files. Generated deterministically from committed artifacts.</p>
 </section>
 
+
 <section>
   <h2>Projection Modes</h2>
   <div class="card-grid">
+    
     <div class="card status-info">
       <h3>public_static</h3>
       <div class="card-body">Content-light, no local paths, no session data. Published to GitHub Pages.</div>
     </div>
+    
     <div class="card status-info">
       <h3>cockpit_local</h3>
       <div class="card-body">Local-safe metadata, branch context. Cockpit dashboard only.</div>
     </div>
+    
     <div class="card status-info">
       <h3>context_digest</h3>
       <div class="card-body">Compact, deterministic context packet for the assembler. Bounded size.</div>
     </div>
+    
     <div class="card status-info">
       <h3>duckdb_read_side</h3>
       <div class="card-body">Queryable analytics. Read-only. Zero new dependencies.</div>
     </div>
+    
     <div class="card status-info">
       <h3>impact_analysis</h3>
       <div class="card-body">Changed-paths-to-adjacent-evidence mapping via git diff.</div>
     </div>
+    
   </div>
 </section>
+
+
 
 <section>
   <h2>Regeneration</h2>
@@ -140,10 +196,11 @@
 uv run python scripts/rig_github_maintenance.py graph</code></pre>
 </section>
 
-  </main>
+
+  </div>
 </div>
 <footer class="site-footer" role="contentinfo">
-  <p>Rig Relay — Governed local agent platform. Generated 2026-05-21T04:55:37.448525+00:00.
+  <p>Governed local agent platform. Generated 2026-05-21T08:49:23.993294+00:00.
   
   <a href="./index.html">Home</a>.</p>
 </footer>

@@ -1,0 +1,62 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "ssh-remote-surface-audit-v1",
+  "title": "SSH / Remote Execution Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "current_state": {
+    "summary": "SSH does not exist in Rig Relay. No remote execution model. No SSH key management. No command allowlisting. No session recording. No remote evidence collection. RuntimeSupervisor is local-only and uses asyncio.create_subprocess_exec with NO shell. There is no remote variant. Subprocess supervision works only for local commands.",
+    "maturity": "missing — zero implementation"
+  },
+  "ssh_doctrine": [
+    "SSH must never become an ungoverned remote shell for agents. No 'open an SSH session and do whatever'.",
+    "SSH commands must be wrapped in receipt-producing, policy-gated invocations — same as local subprocess supervision.",
+    "Remote state must be reflected into canonical evidence artifacts — remote mutations produce the same receipts as local mutations.",
+    "Credentials and keys must never enter telemetry, debug bundles, or evidence artifacts — content-light always.",
+    "Remote mutation must require explicit scope and approval — same approval gates as any governed mutation.",
+    "SSH should support read-only diagnostics before any mutation — run checks, audit state, verify connectivity before allowing writes.",
+    "SSH is a transport, not a trust boundary bypass — all Rig Relay governance gates apply regardless of transport."
+  ],
+  "ssh_use_cases": [
+    {"use_case": "remote_development_box", "description": "Developer connects to remote dev box. Rig Relay on local machine drives agent operations on remote box via SSH-wrapped subprocess supervision. Agent tools (read, write, bash) execute on remote but are governed locally. Evidence artifacts stored locally.", "authority_tier": "remote_mutation (governed)", "recommended": "P3"},
+    {"use_case": "hosted_worker_fleet", "description": "Hosted Rig Relay instance manages a fleet of worker machines via SSH. Workers execute governed subagent tasks. Each worker has its own evidence artifacts reported back to hosted instance. Workers never have direct GitHub access — only through hosted instance governance.", "authority_tier": "hosted_multi_tenant_operation", "recommended": "P4"},
+    {"use_case": "admin_diagnostics", "description": "Operator uses read-only SSH to diagnose remote Rig Relay instances. Run doctor, check health, inspect logs, verify configuration. No mutation allowed.", "authority_tier": "read_only_projection", "recommended": "P2"},
+    {"use_case": "remote_evidence_collection", "description": "Rig Relay collects evidence from remote machines (git status, file hashes, process lists) for incident investigation or audit. Read-only, content-light. Evidence artifacts returned to local instance.", "authority_tier": "remote_read", "recommended": "P2"},
+    {"use_case": "interactive_agent_shell", "description": "Agent opens interactive SSH session to explore remote system. HIGH RISK. Must never be unrestricted. Command allowlist must apply. Session must be recorded. All I/O must produce receipts.", "authority_tier": "remote_mutation", "recommended": "BLOCKED by default; P5 only after all other SSH use cases are hardened"}
+  ],
+  "ssh_security_requirements": [
+    "SSH key management: support ED25519 keys; keys stored in OS keychain (never in config files); key passphrase required; key rotation and revocation supported",
+    "Certificate-based auth: support SSH certificates with short-lived validity (TTL configurable, default 1h); certificate revocation checks",
+    "Bastion/proxy: support SSH bastion/proxy for enterprise network topologies; never bypass enterprise network policy",
+    "Command allowlisting: every SSH invocation must specify allowed commands; no-shell mode (command execution only) by default; shell mode requires explicit admin approval",
+    "Session recording: record all SSH session I/O (stdin/stdout/stderr) as content-light receipts; SHA256 hashes of command output; never store raw output in telemetry",
+    "Remote subprocess supervision: same RuntimeSupervisor semantics as local; timeout, cancellation (SIGTERM → SIGKILL), output limits, content-light hashing",
+    "Network egress policy: remote machines must not have unrestricted network access; egress policy enforced at SSH config level",
+    "No credential leakage: SSH keys, passphrases, certificates must never appear in logs, telemetry, debug bundles, or evidence artifacts",
+    "Remote log redaction: remote machine logs collected via SSH must pass content-light scan before storage; no raw remote file content in evidence"
+  ],
+  "library_recommendation": {
+    "current": "No SSH library dependency. RuntimeSupervisor uses asyncio.create_subprocess_exec for local subprocesses.",
+    "recommended": "asyncssh (async SSH library) for async SSH client operations. Paramiko is synchronous and would require thread pool. System ssh binary can work for initial read-only diagnostics but should not be the primary path — it bypasses Rig Relay's subprocess wrapping.",
+    "testing": "Use temp SSH server (asyncssh can create in-process SSH server for testing) or controlled Docker container fixtures. Never test against production SSH servers."
+  },
+  "ssh_tests_required": [
+    "test_ssh_command_not_allowed_by_allowlist — sabotage: attempt command outside allowlist, verify blocked",
+    "test_ssh_no_shell_access_by_default — sabotage: attempt interactive shell, verify blocked",
+    "test_ssh_key_material_never_in_telemetry_or_debug_bundle — adversarial: SSH key in command output, verify redacted",
+    "test_ssh_remote_subprocess_timeout_enforced — contract: remote command exceeds timeout, verify killed",
+    "test_ssh_remote_subprocess_kill_propagation — contract: cancel remote command, verify process killed",
+    "test_ssh_remote_evidence_collection_content_light — adversarial: remote command returns raw file, verify hashed",
+    "test_ssh_key_rotation_does_not_break_sessions — substrate: rotate key, verify new key works",
+    "test_ssh_certificate_expiry_blocks_connection — sabotage: use expired cert, verify connection refused",
+    "test_ssh_network_failure_produces_receipt — integration: simulate network failure, verify receipt with error",
+    "test_ssh_bastion_connection_required_for_protected_hosts — contract: bypass bastion, verify connection refused"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

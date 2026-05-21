@@ -1,0 +1,92 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "frontend-cockpit-surface-audit-v1",
+  "title": "Frontend / Cockpit Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "cockpit_architecture": {
+    "summary": "Projection-driven architecture. Frontend consumes backend projections via WebSocket (local) or pywebview bridge (HTTPS/WSS). All policy decisions reside in backend. Frontend is a dumb renderer that displays projection fields and sends intent envelopes. State ownership: backend is authoritative; frontend is projection consumer. Intent model: frontend submits structured intent envelopes; backend evaluates via GovernanceEngine and returns results. Widget system: 3 disclosure levels (compact chips, standard cards, expanded full-page). Layout modes: Operator, Review, System, Technical.",
+    "what_cockpit_owns": ["widget rendering", "intent submission UI", "mode switching", "chat message composition", "projection state display", "user preference persistence (layout, theme)"],
+    "what_cockpit_must_never_own": ["policy decisions", "mutation authorization", "evidence generation", "permission evaluation", "rate-limit decisions", "authorization receipt minting", "content-light scanning", "schema validation (of backend artifacts)"],
+    "how_cockpit_talks_to_backend": ["WebSocket (projection stream, intent submission)", "pywebview bridge (HTTPS/WSS for local desktop)", "CockpitAPI class (read-only fallback via JS bridge)"],
+    "how_intents_are_authorized": ["frontend builds intent envelope from user action", "intent envelope sent via WebSocket/bridge to backend", "backend validates intent schema", "backend evaluates via GovernanceEngine.evaluate_action_legality()", "backend returns decision (allowed/blocked/requires_review) to frontend", "frontend renders decision — never interprets or overrides"],
+    "how_widgets_get_evidence_links": ["each widget payload includes source artifact refs (paths + SHA256)", "widgets render evidence links as clickable references to JSONL artifacts", "evidence links are verified by backend projection layer before inclusion in widget payload"]
+  },
+  "required_status_indicators": {
+    "description": "Cockpit must distinguish and display these status indicators. Currently, NONE are implemented in the frontend.",
+    "indicators": [
+      {
+        "indicator_id": "product_telemetry_disabled",
+        "what_it_means": "Product telemetry is opted out. Adaptive recommendations, UX optimization, agent-tool optimization, Ralph refinement, orchestrator behavior, and subagent behavior are degraded. Local operational evidence, receipts, audit logs, and enterprise evidence are unaffected.",
+        "cockpit_display": "Persistent chip/icon in header or status bar; tooltip explains degradation scope"
+      },
+      {
+        "indicator_id": "remote_contribution_disabled",
+        "what_it_means": "Remote telemetry contribution is disabled. Local operational evidence and enterprise audit evidence remain active. Product intelligence and hosted sharing are unavailable.",
+        "cockpit_display": "Separate indicator from product_telemetry_disabled; tooltip clarifies remote vs local distinction"
+      },
+      {
+        "indicator_id": "local_operational_observability_degraded",
+        "what_it_means": "Local operational observability (permission probes, health checks, receipt records) is degraded or unavailable. Governance and evidence continuity may be impacted.",
+        "cockpit_display": "Warning chip; action prompt to investigate or restart"
+      },
+      {
+        "indicator_id": "enterprise_evidence_unavailable",
+        "what_it_means": "Enterprise audit/evidence substrate is unavailable. Required for enterprise compliance. May indicate storage failure or configuration issue.",
+        "cockpit_display": "Critical warning; block mutation operations; surface admin action required"
+      },
+      {
+        "indicator_id": "postgres_unavailable",
+        "what_it_means": "PostgreSQL operational substrate is not reachable. Fallback to local JSONL artifacts only. Cockpit projections may be stale. Enterprise features degraded.",
+        "cockpit_display": "Warning chip; show 'Postgres unavailable — using local evidence only' message"
+      },
+      {
+        "indicator_id": "github_provider_rate_limited",
+        "what_it_means": "GitHub API rate-limit budget is exhausted or near exhaustion. GitHub data freshness is degraded. Security/audit paths prioritized.",
+        "cockpit_display": "Warning chip with remaining budget; defer non-critical GitHub data refresh"
+      },
+      {
+        "indicator_id": "github_permission_probe_stale",
+        "what_it_means": "Last GitHub App permission probe is older than configured TTL. Current permission state may not reflect reality. Mutation operations blocked or require re-probe.",
+        "cockpit_display": "Warning chip; block mutation; show 'Re-probe permissions' action button"
+      },
+      {
+        "indicator_id": "trust_spine_incomplete",
+        "what_it_means": "GitHub Provider Trust Spine v1 prerequisites are not all satisfied. Broad GitHub surface expansion is blocked. Only read-only low-risk surfaces available.",
+        "cockpit_display": "Info chip on affected panels; blocked panels show 'trust spine incomplete' message"
+      },
+      {
+        "indicator_id": "hosted_mode_unavailable",
+        "what_it_means": "Hosted/team deployment mode is not available. Running in local-only mode. Team features disabled.",
+        "cockpit_display": "Info chip in admin/settings panel; show 'local-only mode' badge"
+      }
+    ]
+  },
+  "surface_blocking_rules": {
+    "description": "These surfaces must remain disabled or degraded until their prerequisites are met.",
+    "rules": [
+      {"surface": "Any GitHub data in cockpit", "blocked_until": "GitHub Provider Trust Spine v1 complete (permission probe, rate-limit budget, content-light scan, webhook HMAC verification)"},
+      {"surface": "Secret scanning triage queue", "blocked_until": "content-light leak scanning proven for secret-bearing GitHub data"},
+      {"surface": "Actions failure cockpit", "blocked_until": "content-light leak scanning proven for Actions log bodies"},
+      {"surface": "PR mutation surfaces", "blocked_until": "trust spine + dry-run/rehearsal + approval receipts + branch protection preflight + no-surprise-mutation tests"},
+      {"surface": "Multi-repo portfolio view", "blocked_until": "Postgres operational projection spine exists"},
+      {"surface": "Enterprise admin panel", "blocked_until": "Postgres + tenant isolation + RBAC + audit evidence continuity proven"},
+      {"surface": "PR comment response queue", "blocked_until": "no-unreviewed-generated-comments tests passing + content policy scan for PR comments"}
+    ]
+  },
+  "csp_xss_posture": {
+    "current": "Static docs use CSP header (default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'). Cockpit runs in pywebview with local HTTPS. WSS connection is localhost-only with self-signed cert.",
+    "gaps": "No CSP audit for pywebview-rendered content; pywebview's web engine may have different CSP behavior than browsers; no automated XSS testing for cockpit widgets; no Content-Security-Policy header on WebSocket upgrade path; static docs CSP does not include connect-src restriction for WebSocket"
+  },
+  "projection_freshness": {
+    "current": "Projection is rebuilt on refresh_project intent or periodic interval. Widgets show data as-at projection build time. No per-data-source freshness tracking.",
+    "gaps": "No TTL per data source (GitHub alerts vs. repo metadata vs. permission probe); no stale data indicator in cockpit widgets; no forced refresh on permission probe completion; no freshness degradation warning"
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

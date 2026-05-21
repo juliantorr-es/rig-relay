@@ -1,0 +1,447 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-competitive-map-v1",
+  "title": "GitHub Integration Competitive Map v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "competitors": [
+    {
+      "competitor_id": "github-native-ui",
+      "name": "GitHub Native UI",
+      "what_they_do_well": [
+        "Ubiquitous — every GitHub user knows it, zero adoption friction",
+        "Rich PR review experience with inline comments, suggestions, and multi-line diffs",
+        "Code scanning/Dependabot/secret scanning alerts surfaced directly in Security tab",
+        "Actions tab provides workflow run visualization with log streaming",
+        "Branch protection rules and required status checks are first-class"
+      ],
+      "what_they_do_poorly": [
+        "No cross-repo aggregation — security alerts scattered across individual repos",
+        "Alert triage is purely list-based, no queue/priority/assignment workflow",
+        "No provider-agnostic operating picture — GitHub-only worldview",
+        "Rich text editing in issues/PRs is limited, no structured evidence linking",
+        "No governed agent integration — Copilot chat is disconnected from security posture"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Do not copy GitHub's fragmented multi-tab UX. Rig Relay's differentiator is unified cockpit, not broader API coverage.",
+        "Single-vendor lock-in worldview — GitHub is the center of gravity, not the universe",
+        "List-based alert UI without triage state machine — users drown in unfiltered alerts",
+        "Siloed per-repo security posture — no organizational risk aggregation"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Cross-repo, cross-org security posture aggregation with governed evidence",
+        "Structured receipt-backed findings that survive beyond a single alert lifecycle",
+        "Multi-provider consultation (Council) before acting on security signals",
+        "Gated mutation proposals with adoption-approval workflow — GitHub can't gate itself",
+        "Content-light telemetry that proves what happened without leaking what was there"
+      ],
+      "ux_wedge": "Rig Relay collapses N repo security tabs into a single cockpit with triage queues, risk summaries, and governed action — GitHub UI requires clicking through every repo individually.",
+      "technical_wedge": "Receipt-backed append-only evidence graph (JSONL) vs GitHub's ephemeral alert list. Council adversarial review before mutation vs GitHub's single-model suggestions.",
+      "procurement_wedge": "Rig Relay is local-first, zero-trust on GitHub data — procurement can verify every action with receipts without trusting a SaaS vendor's audit log."
+    },
+    {
+      "competitor_id": "github-cli",
+      "name": "GitHub CLI",
+      "what_they_do_well": [
+        "Scriptable GitHub operations from terminal — gh pr, gh issue, gh release",
+        "Pipeline-friendly — CI/CD integration via gh CLI in Actions workflows",
+        "Extension ecosystem — gh extension install for community tooling",
+        "JSON output mode for programmatic consumption",
+        "Auth management via gh auth login with device flow"
+      ],
+      "what_they_do_poorly": [
+        "No cross-repo aggregation — every operation is single-repo scoped",
+        "No security alert ingestion or triage — gh only surfaces basic issue/PR data",
+        "No governed agent integration — CLI is human-operated, not agent-callable with gating",
+        "No evidence chain — operations produce no receipts, no audit trail beyond GitHub audit log",
+        "Rate-limit awareness is manual — no budget enforcement, no graceful degradation"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Single-repo-scoped CLI model — Rig Relay must aggregate across repos/orgs",
+        "Human-only operation model — Rig Relay agents need governed programmatic access",
+        "No receipt/evidence model — every Rig Relay operation must produce a receipt"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Governed agent-to-GitHub bridge with per-operation permission gating",
+        "Receipt-backed evidence for every GitHub API interaction",
+        "Rate-limit budgeting across orgs with graceful degradation",
+        "Content-light telemetry that proves interaction fidelity without leaking data",
+        "Multi-repo portfolio operations (e.g., audit all repos for branch protection gaps)"
+      ],
+      "ux_wedge": "Rig Relay cockpit shows what the agent can/should do on GitHub with one glance — gh CLI requires knowing every command and flag.",
+      "technical_wedge": "Agent-operation gating with HMAC-signed receipts vs gh CLI's raw API access. Rate-limit budget per-org vs gh CLI's blind rate-limit consumption.",
+      "procurement_wedge": "Every GitHub interaction is receipted and auditable locally — procurement doesn't need to trust GitHub's audit log or the agent's intentions."
+    },
+    {
+      "competitor_id": "github-copilot",
+      "name": "GitHub Copilot (coding agent/workspace direction)",
+      "what_they_do_well": [
+        "In-editor code completion with low latency and high accuracy",
+        "Copilot Chat with workspace context awareness",
+        "Copilot Workspace for multi-file task planning and execution",
+        "Agent mode with terminal access and file I/O",
+        "Deep VS Code/JetBrains integration with inline suggestions"
+      ],
+      "what_they_do_poorly": [
+        "No security alert awareness — Copilot doesn't know about CodeQL/Dependabot findings in the repo",
+        "No governed mutation — Copilot writes files directly, no adoption-approval gates",
+        "No receipt-backed evidence — no way to audit what Copilot did and why",
+        "Single-provider lock-in — only OpenAI models, no Council adversary review",
+        "No cross-repo context — Copilot sees one workspace, not the organizational security posture"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Do not copy Copilot's opaque agent behavior, permission overreach, or lack of auditable agent-action provenance.",
+        "Un-gated mutation — Rig Relay must never write files without governed approval",
+        "Single-provider dependency — Rig Relay's Council requires multi-provider adversarial review",
+        "Security-blind code generation — Rig Relay agents must consume security posture before acting"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Rig Relay is not primarily an in-editor autocomplete replacement. It is a governed GitHub operating and evidence layer that controls agent access, produces auditable receipts, and provides permission transparency.",
+        "Security-aware coding — agent consumes CodeQL/Dependabot/secret scanning alerts before proposing changes",
+        "Governed mutation with adoption-approval gates and SHA-verified receipts",
+        "Multi-provider Council review before mutation — Copilot uses a single model",
+        "Receipt-backed evidence chain for every agent action",
+        "Cross-repo security posture informs agent behavior across the portfolio"
+      ],
+      "ux_wedge": "Rig Relay shows the security posture alongside the code — Copilot shows the code but is blind to the security alerts on the same repo.",
+      "technical_wedge": "Council adversarial review + HMAC-signed adoption receipts vs Copilot's single-model, no-gate code generation. Security-aware context assembly vs workspace-only context.",
+      "procurement_wedge": "Rig Relay proves every code change was reviewed, gated, and receipted — Copilot provides no auditable evidence of what it did or why."
+    },
+    {
+      "competitor_id": "github-advanced-security-codeql",
+      "name": "GitHub Advanced Security / CodeQL",
+      "what_they_do_well": [
+        "Deep semantic analysis via CodeQL queries — finds vulnerabilities that pattern matchers miss",
+        "PR-integrated scanning — alerts surface inline in code review",
+        "Custom query support for organization-specific security policies",
+        "SARIF output for standardized alert interchange",
+        "Default query packs cover OWASP Top 10 and CWE Top 25"
+      ],
+      "what_they_do_poorly": [
+        "No cross-repo aggregation — alerts are per-repo, no organizational risk dashboard",
+        "Alert triage is binary (dismiss/open) — no priority, assignment, or lifecycle state machine",
+        "No governed remediation — alerts sit until a human acts, no agent-assisted fix proposal",
+        "Expensive per-seat licensing for Advanced Security — only available on GitHub Enterprise",
+        "No evidence chain linking alert → investigation → fix → verification"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Per-repo alert siloing — Rig Relay must aggregate across repos/orgs",
+        "Binary alert lifecycle (open/dismissed) — Rig Relay needs triage state machine",
+        "Expensive per-seat licensing model — Rig Relay is local-first, no per-seat fees"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Rig Relay does not replace CodeQL's semantic analysis. It complements, aggregates, and correlates GHAS signals and provides governed remediation and evidence. It should not claim to replace CodeQL unless it implements equivalent static analysis.",
+        "Cross-repo CodeQL alert ingestion with priority-based triage queues",
+        "Agent-assisted fix proposals gated by Council adversarial review",
+        "Receipt-backed evidence chain: alert → investigation → proposal → adoption → verification",
+        "Multi-provider analysis — Council can cross-reference CodeQL findings with other scanners",
+        "Content-light telemetry that proves alert handling fidelity without leaking vulnerable code"
+      ],
+      "ux_wedge": "Rig Relay shows all CodeQL alerts across repos in one triage queue with governed action buttons — GitHub UI shows one repo at a time with no action workflow.",
+      "technical_wedge": "Alert → fix evidence chain with HMAC receipts vs GitHub's binary open/dismiss lifecycle. Council multi-model review of proposed fixes vs single-model suggestions.",
+      "procurement_wedge": "No per-seat licensing for security alert management — Rig Relay is free and local. Procurement gets auditable evidence of every alert handled, not just GitHub's audit log."
+    },
+    {
+      "competitor_id": "dependabot",
+      "name": "Dependabot",
+      "what_they_do_well": [
+        "Automatic dependency update PRs with changelog and compatibility scores",
+        "Vulnerability-triggered alerts with severity ratings and CVE links",
+        "Grouped version updates to reduce PR noise",
+        "Ecosystem coverage: npm, pip, Maven, NuGet, Go modules, cargo, etc.",
+        "Configurable via dependabot.yml with schedule, labels, reviewers"
+      ],
+      "what_they_do_poorly": [
+        "No cross-repo dependency posture — each repo's dependencies are siloed",
+        "Alert fatigue — high volume of low-severity alerts, no intelligent triage",
+        "No governed merge — Dependabot PRs auto-merge or sit, no adoption-approval workflow",
+        "No organizational risk scoring — can't ask 'what's our most vulnerable dependency across all repos?'",
+        "No evidence chain linking vulnerability → risk assessment → fix → verification"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Alert-fatigue model — Rig Relay must prioritize and triage, not just list",
+        "Un-governed auto-merge — Rig Relay must gate dependency updates with adoption approval",
+        "Single-repo silo — Rig Relay must provide cross-repo dependency posture"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Cross-repo dependency vulnerability aggregation with organizational risk scoring",
+        "Governed dependency update proposals with Council adversarial review",
+        "Receipt-backed evidence chain: vulnerability → risk assessment → proposal → adoption → verification",
+        "Multi-scanner cross-referencing — Council can compare Dependabot findings with Snyk/OSV",
+        "Content-light telemetry proving dependency posture assessment without leaking dependency trees"
+      ],
+      "ux_wedge": "Rig Relay shows your most critical dependency across all repos in one cockpit card — Dependabot shows hundreds of alerts scattered across repos.",
+      "technical_wedge": "Cross-repo dependency risk scoring + governed adoption gates vs Dependabot's per-repo alert list. Council multi-scanner correlation vs single-source dependency data.",
+      "procurement_wedge": "Procurement gets a single organizational dependency risk score with auditable evidence — Dependabot provides per-repo vulnerability lists with no organizational view."
+    },
+    {
+      "competitor_id": "sonarqube-sonarcloud",
+      "name": "SonarQube / SonarCloud",
+      "what_they_do_well": [
+        "Comprehensive code quality metrics: bugs, vulnerabilities, code smells, coverage, duplications",
+        "Quality Gate enforcement — builds fail if quality threshold not met",
+        "Multi-language support with deep language-specific analyzers",
+        "Historical trend analysis with project quality evolution",
+        "PR decoration with inline issue annotations"
+      ],
+      "what_they_do_poorly": [
+        "Heavy on-prem installation (SonarQube) or SaaS vendor lock-in (SonarCloud)",
+        "No governed remediation — issues are reported, but no agent-assisted fix workflow",
+        "Quality Gates are binary (pass/fail) — no risk-based graduated enforcement",
+        "No cross-tool correlation — SonarQube doesn't correlate findings with CodeQL, Semgrep, etc.",
+        "Expensive enterprise licensing — additional cost beyond GitHub Advanced Security"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Heavy on-prem/SaaS deployment model — Rig Relay is local-first",
+        "Binary pass/fail quality gates — Rig Relay needs risk-based graduated enforcement",
+        "Closed-source, single-vendor analysis — Rig Relay should aggregate across scanners"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Aggregate SonarQube findings alongside CodeQL/Semgrep/Dependabot in one cockpit",
+        "Agent-assisted fix proposals with Council adversarial review before mutation",
+        "Receipt-backed quality evidence chain: finding → proposal → adoption → re-scan",
+        "Risk-based graduated enforcement (not binary pass/fail) with calibration over time",
+        "Content-light telemetry proving quality posture without leaking source code"
+      ],
+      "ux_wedge": "Rig Relay shows quality posture from all scanners in one cockpit — SonarQube shows its own findings in isolation.",
+      "technical_wedge": "Multi-scanner aggregation with calibrated risk scoring vs SonarQube's single-analyzer model. Governed mutation with adoption gates vs SonarQube's report-only workflow.",
+      "procurement_wedge": "Rig Relay is free and local — SonarQube Enterprise costs per-line/per-seat. Procurement gets multi-scanner evidence in one auditable system."
+    },
+    {
+      "competitor_id": "semgrep",
+      "name": "Semgrep",
+      "what_they_do_well": [
+        "Pattern-based scanning with intuitive rule syntax — easier than CodeQL for custom rules",
+        "Fast scanning — runs in seconds, integrates into pre-commit and CI",
+        "Community rule registry with thousands of pre-built rules",
+        "Supply chain scanning (Semgrep Supply Chain) for dependency vulnerabilities",
+        "Secrets detection (Semgrep Secrets) with validation"
+      ],
+      "what_they_do_poorly": [
+        "Pattern-based analysis is shallower than CodeQL's semantic analysis for complex vulns",
+        "SaaS pricing for Semgrep AppSec Platform — local CLI is free, but management requires SaaS",
+        "No governed remediation — findings are reported, no agent-assisted fix workflow",
+        "No cross-tool correlation — Semgrep doesn't integrate with CodeQL/Dependabot findings",
+        "Alert management is basic — list view with status, no triage state machine"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "SaaS-required management plane — Rig Relay must be fully local-first",
+        "Pattern-only analysis limitation — Rig Relay should aggregate deeper analyzers too",
+        "Basic alert list without triage workflow — Rig Relay needs state-machine triage"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Semgrep findings ingested alongside CodeQL/Dependabot in one governed cockpit",
+        "Agent-assisted fix proposals with Council adversarial review",
+        "Receipt-backed evidence chain linking Semgrep finding → proposal → adoption → verification",
+        "Cross-scanner correlation — Council can verify Semgrep findings against CodeQL dataflow analysis",
+        "Content-light telemetry proving pattern coverage without leaking rule logic"
+      ],
+      "ux_wedge": "Rig Relay shows Semgrep findings next to CodeQL/Dependabot in one triage queue — Semgrep AppSec shows its own findings in isolation.",
+      "technical_wedge": "Multi-scanner evidence aggregation with Council correlation vs Semgrep's single-scanner view. Governed mutation pipeline vs Semgrep's report-only workflow.",
+      "procurement_wedge": "Rig Relay is free and local with no SaaS dependency — Semgrep requires AppSec Platform subscription for team management."
+    },
+    {
+      "competitor_id": "qodana",
+      "name": "Qodana",
+      "what_they_do_well": [
+        "JetBrains IDE inspection parity — same inspections you see in IntelliJ, now in CI",
+        "Language-specific deep inspections for JVM, .NET, PHP, Python, Go, JS/TS",
+        "License compliance checks for dependency licenses",
+        "PR annotation with inline issue markers",
+        "Cloud-based result aggregation across branches"
+      ],
+      "what_they_do_poorly": [
+        "JetBrains ecosystem lock-in — inspections are JetBrains-proprietary, not open standards",
+        "SaaS-only result aggregation — no local-first management plane",
+        "No governed remediation — findings are reported, no agent-assisted fix workflow",
+        "No cross-tool correlation — Qodana doesn't integrate with CodeQL/Semgrep findings",
+        "Limited language coverage outside JVM/IntelliJ-supported languages"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Single-vendor, proprietary inspection lock-in — Rig Relay must aggregate across tools",
+        "SaaS-only management plane — Rig Relay must be local-first",
+        "No governed remediation workflow — findings without action are noise"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Qodana findings ingested alongside other scanners in one governed cockpit",
+        "Agent-assisted fix proposals with Council adversarial review",
+        "Receipt-backed evidence chain linking Qodana finding → proposal → adoption → verification",
+        "Cross-scanner correlation — Council can verify Qodana code smells against Semgrep patterns",
+        "Content-light telemetry proving inspection coverage without leaking source code"
+      ],
+      "ux_wedge": "Rig Relay shows Qodana findings next to CodeQL/Semgrep in one triage queue — Qodana shows its own findings in isolation.",
+      "technical_wedge": "Multi-scanner evidence aggregation with governed mutation vs Qodana's single-scanner report. Local-first architecture vs Qodana's SaaS dependency.",
+      "procurement_wedge": "Rig Relay is free and local — Qodana requires Cloud subscription for team result aggregation. Procurement gets multi-scanner evidence in one system."
+    },
+    {
+      "competitor_id": "sider-sideci",
+      "name": "Sider / SideCI",
+      "what_they_do_well": [
+        "Multi-tool aggregation — runs multiple linters/analyzers in one CI integration",
+        "PR-centric workflow — results surface inline in code review",
+        "Auto-correction suggestions for simple linting issues",
+        "Team-level configuration with shared rule sets",
+        "Historical trend analysis for code quality metrics"
+      ],
+      "what_they_do_poorly": [
+        "Discontinued/limited active development — SideCI shut down, Sider pivoted",
+        "SaaS-only delivery — no local-first operation",
+        "No governed remediation — auto-fix suggestions have no adoption-approval gates",
+        "No security alert correlation — aggregates linters, not CodeQL/Dependabot",
+        "No agent integration — human-only triage, no governed agent assistance"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "SaaS-only delivery with vendor continuity risk — Rig Relay must be local-first and open-source",
+        "Auto-fix without adoption gates — any mutation must pass governed approval",
+        "Linter-only aggregation without security scanner integration"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Multi-tool aggregation with security scanners (CodeQL, Dependabot, Semgrep) plus linters",
+        "Governed mutation pipeline with adoption-approval gates for any proposed fix",
+        "Receipt-backed evidence chain for every tool finding → proposal → adoption",
+        "Council adversarial review before any mutation is applied",
+        "Local-first, open-source architecture with no vendor continuity risk"
+      ],
+      "ux_wedge": "Rig Relay aggregates linters AND security scanners in one governed cockpit — Sider aggregated linters only, and it's dead/in-pivot.",
+      "technical_wedge": "Governed mutation + Council review + receipt-backed evidence vs Sider's report-and-suggest model. Local-first + open-source vs SaaS-only with vendor risk.",
+      "procurement_wedge": "Rig Relay is free, open-source, local-first — no vendor risk. Sider's discontinuation proves the SaaS-tool-aggregator procurement risk."
+    },
+    {
+      "competitor_id": "linear",
+      "name": "Linear (GitHub issue workflows)",
+      "what_they_do_well": [
+        "Blazing-fast issue tracking with keyboard-first UX",
+        "Project/cycle planning with clear roadmap visualization",
+        "GitHub issue sync — Linear ↔ GitHub bidirectional bridge",
+        "Triage state machine with priority, assignee, status, and SLA tracking",
+        "Team velocity and cycle time analytics"
+      ],
+      "what_they_do_poorly": [
+        "No security alert integration — Linear tracks issues, not CodeQL/Dependabot findings",
+        "No governed agent integration — Linear is human-operated, no agent action pipeline",
+        "SaaS-only — no local-first operation, data lives on Linear's servers",
+        "No evidence chain — issues have statuses but no cryptographic receipts",
+        "No code scanning workflow — Linear doesn't understand code, only issues"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "SaaS-only delivery — Rig Relay must be local-first, data on user's machine",
+        "Issue-tracking-only worldview — Rig Relay must bridge issues to code to security posture",
+        "Human-only operation without governed agent integration"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Issue tracking integrated with security posture — issues linked to CodeQL/Dependabot findings",
+        "Governed agent response queue — agents can propose fixes for issues with Council review",
+        "Receipt-backed evidence chain: issue → investigation → proposal → adoption → verification",
+        "Local-first operation with no external SaaS dependency for issue data",
+        "Content-light telemetry proving issue handling fidelity without leaking issue content"
+      ],
+      "ux_wedge": "Rig Relay links issues to security posture and enables governed agent action — Linear is a beautiful issue tracker blind to code and security.",
+      "technical_wedge": "Issue-to-security-posture graph with governed mutation vs Linear's pure issue tracking. Cryptographic receipts vs Linear's status field. Local-first vs SaaS.",
+      "procurement_wedge": "Rig Relay keeps issue data local — no third-party SaaS access to your issue content. Procurement gets auditable evidence of issue resolution."
+    },
+    {
+      "competitor_id": "backstage",
+      "name": "Backstage (software catalog patterns)",
+      "what_they_do_well": [
+        "Unified software catalog — services, APIs, documentation, ownership in one place",
+        "Plugin architecture with extensive ecosystem (TechDocs, Kubernetes, CI/CD plugins)",
+        "Developer portal with self-service scaffolding (Software Templates)",
+        "TechDocs — documentation-as-code with MkDocs rendering",
+        "CNCF graduated project — broad community and enterprise adoption"
+      ],
+      "what_they_do_poorly": [
+        "Heavy operational burden — requires dedicated platform engineering team to run",
+        "No security alert integration — catalog shows services, not their CodeQL/Dependabot posture",
+        "No governed agent integration — Backstage is a portal, not an agent control plane",
+        "Passive catalog — shows what exists, doesn't enable governed action on it",
+        "Plugin quality varies wildly — many plugins are unmaintained or buggy"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Heavy operational burden requiring dedicated platform team — Rig Relay must be self-serve",
+        "Passive catalog without governed action — Rig Relay must enable action, not just display",
+        "Plugin fragmentation — Rig Relay should have a coherent, tested integration surface"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Software catalog with embedded security posture per service — Backstage shows ownership, Rig Relay shows risk",
+        "Governed agent action from catalog — find a service, see its risk, trigger agent investigation",
+        "Receipt-backed evidence for every catalog-linked action",
+        "Local-first, zero-ops — no platform engineering team required to run",
+        "Multi-provider Council review scoped to individual catalog services"
+      ],
+      "ux_wedge": "Rig Relay's catalog shows what you own AND what's at risk with one-click governed action — Backstage shows what you own but not what's at risk.",
+      "technical_wedge": "Security-aware catalog with governed mutation vs Backstage's passive catalog. Local-first zero-ops vs Backstage's platform-team-required deployment.",
+      "procurement_wedge": "Rig Relay requires zero dedicated platform engineering headcount — Backstage typically requires 1-3 FTEs. Rig Relay is free, Backstage has hidden operational cost."
+    },
+    {
+      "competitor_id": "ci-dashboard-tools",
+      "name": "CI Dashboard Tools (generic)",
+      "what_they_do_well": [
+        "Build/test/deploy pipeline visualization across CI providers",
+        "Historical build metrics: pass rate, duration, flakiness",
+        "Alerting on pipeline failures with notification integrations",
+        "Multi-provider aggregation — GitHub Actions, Jenkins, CircleCI, GitLab CI",
+        "Team-level pipeline health dashboards"
+      ],
+      "what_they_do_poorly": [
+        "No security posture integration — CI dashboards show builds, not CodeQL/Dependabot findings",
+        "No governed agent integration — dashboards are view-only, no agent action pipeline",
+        "No evidence chain — build results are ephemeral, no cryptographic receipts",
+        "Passive monitoring — alerts on failure but no governed remediation workflow",
+        "Siloed from code review and issue tracking — build health in one place, code in another"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "View-only passive monitoring — Rig Relay must enable governed action on pipeline signals",
+        "Build-only worldview — Rig Relay must connect builds to security posture to code to issues",
+        "Ephemeral results without evidence chain — Rig Relay needs receipt-backed pipeline evidence"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "CI pipeline health integrated with security posture — failing build + open CodeQL finding in one cockpit card",
+        "Governed agent response to pipeline failures — agent investigates, proposes fix, Council reviews",
+        "Receipt-backed evidence for every pipeline interaction and agent response",
+        "Cross-repo pipeline health aggregation with security risk overlay",
+        "Content-light telemetry proving pipeline health monitoring fidelity"
+      ],
+      "ux_wedge": "Rig Relay connects build failures to security posture and enables governed agent action — CI dashboards show a red square and wait for a human.",
+      "technical_wedge": "Pipeline-to-security-to-code evidence graph with governed mutation vs CI dashboards' view-only build metrics. Cryptographic receipts vs ephemeral build logs.",
+      "procurement_wedge": "Rig Relay consolidates CI monitoring + security posture + governed remediation in one free, local tool — CI dashboards charge per-seat and don't remediate."
+    },
+    {
+      "competitor_id": "release-provenance-tools",
+      "name": "Release/Provenance Tools (generic)",
+      "what_they_do_well": [
+        "SLSA provenance generation for build artifacts",
+        "SBOM generation (SPDX, CycloneDX) for dependency transparency",
+        "Sigstore/cosign integration for artifact signing",
+        "Attestation verification in CI/CD pipelines",
+        "Supply chain integrity: tamper-evident build pipelines"
+      ],
+      "what_they_do_poorly": [
+        "Build-time provenance only — no runtime evidence of what agents/code actually did",
+        "No agent action provenance — SLSA covers builds, not governed agent mutations",
+        "No security posture integration — provenance tools don't know about CodeQL/Dependabot findings",
+        "Heavy integration burden — requires pipeline reconfiguration and signing key management",
+        "No governed adoption workflow — provenance proves what was built, not whether it should be merged"
+      ],
+      "what_rig_relay_should_not_copy": [
+        "Build-time-only provenance — Rig Relay must provide runtime agent-action provenance",
+        "Heavy integration burden — Rig Relay should provide evidence with zero pipeline changes",
+        "Provenance without adoption governance — proving what was built is not enough"
+      ],
+      "what_rig_relay_can_uniquely_do": [
+        "Runtime agent-action provenance — every agent proposal, Council review, and mutation is receipted",
+        "End-to-end evidence chain: security finding → investigation → proposal → review → adoption → verification",
+        "Zero pipeline changes — Rig Relay produces evidence locally, no CI/CD reconfiguration",
+        "Governed adoption with cryptographic receipts — provenance + governance in one system",
+        "Content-light telemetry proving agent-action provenance without leaking code or secrets"
+      ],
+      "ux_wedge": "Rig Relay proves what agents proposed, reviewed, and adopted in one cockpit — provenance tools prove what was built but not who proposed it or why.",
+      "technical_wedge": "Agent-action provenance + Council review receipts vs build-only SLSA provenance. Local-first zero-config vs pipeline-integration-heavy provenance tools.",
+      "procurement_wedge": "Rig Relay provides both provenance AND governance — competitors provide provenance only. Procurement gets auditable evidence of every agent decision, not just build artifacts."
+    }
+  ],
+  "content_light": {
+    "principle": "This competitive map contains only market-position and architectural-comparison information. No proprietary code, secrets, credentials, or internal-only analysis is included. All competitor assessments are based on publicly available documentation, product pages, and generally known market positioning as of May 2026.",
+    "redaction_note": "No redactions applied — all content is publicly derivable competitive analysis."
+  },
+  "revision": 2
+}

@@ -1,0 +1,147 @@
+{
+  "schema_version": "rig.relay.legal_commercial_readiness.v1",
+  "document_id": "enterprise-legal-commercial-readiness-v1",
+  "title": "Enterprise Legal and Commercial Readiness v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "agpl_license_posture": {
+    "current_license": "AGPL-3.0-or-later",
+    "upstream_lineage": "Forked from mistralai/mistral-vibe (Apache-2.0). Codebase substantially diverged.",
+    "attribution_obligations": "UPSTREAM.md and ATTRIBUTION.md document lineage. THIRD_PARTY_NOTICES.md lists upstream components.",
+    "cla_requirement": "CONTRIBUTING.md requires CLA. Maintainer reserves relicense rights.",
+    "enterprise_impact": "AGPL is a hard blocker for many enterprise procurement processes due to copyleft network-use clause. Dual-licensing strategy essential.",
+    "status": "blocker"
+  },
+  "commercial_enterprise_licensing_path": {
+    "status": "not_defined",
+    "required_actions": [
+      "Define commercial license terms (permissive, subscription-based, or OEM)",
+      "Determine pricing model: per-seat, per-tenant, usage-based, or flat enterprise",
+      "Create enterprise subscription agreement",
+      "Address AGPL concerns explicitly in commercial terms",
+      "Provide license compatibility assurance for enterprise dependencies"
+    ],
+    "recommended_artifacts": ["docs/json/legal/commercial_license_terms.v1.json", "docs/json/legal/enterprise_subscription_terms.v1.json"]
+  },
+  "attribution_obligations": {
+    "status": "satisfied",
+    "evidence": ["UPSTREAM.md documents fork from mistralai/mistral-vibe", "ATTRIBUTION.md attributes Apache-2.0 lineage", "THIRD_PARTY_NOTICES.md lists third-party components", "LICENSE is full AGPL-3.0 text"],
+    "gaps": ["No complete third-party dependency license inventory", "No automated license compliance verification"],
+    "recommendation": "Produce full dependency license inventory. Add license compliance check to CI."
+  },
+  "privacy_notice": {
+    "status": "partial",
+    "current": "Privacy notice alpha exists (docs/legal/privacy-notice-alpha.md). Usage data license alpha also exists.",
+    "gaps": [
+      "Alpha notice is not finalized — marked as alpha/disclaimer",
+      "No GDPR-specific privacy notice",
+      "No CCPA-specific privacy notice",
+      "No data retention schedule linked from privacy notice",
+      "No cookie policy (though no cookies are used)"
+    ],
+    "recommendation": "Finalize privacy notice. Add GDPR/CCPA supplements. Link to data inventory. Publish on static site."
+  },
+  "telemetry_notice": {
+    "status": "partial",
+    "current": "Usage data doctrine is comprehensive. Product telemetry is first-party, enabled by default, and opt-out. Remote telemetry contribution is separately gated by consent scopes. Local operational observability is mandatory for governed operation. Enterprise audit/evidence is mandatory in enterprise mode.",
+    "gaps": [
+      "No plain-language telemetry notice for end users that separates product telemetry (default-on, opt-out) from remote telemetry contribution (settings-controlled)",
+      "No disclosure of what specific data is collected in each of the four categories: product telemetry, remote telemetry contribution, local operational observability, and enterprise audit/evidence",
+      "No visual indicator in cockpit when product telemetry is active vs when remote contribution is enabled",
+      "Legal docs must distinguish product telemetry, remote contribution, local operational observability, and enterprise audit/evidence as separate control surfaces"
+    ],
+    "recommendation": "Create plain-language telemetry disclosure. Add telemetry/evidence status indicator to cockpit. Include four-category model in privacy notice. Distinguish product telemetry default-on/opt-out from remote contribution settings in all legal docs."
+  },
+  "dpa_readiness": {
+    "status": "missing",
+    "gaps": [
+      "No Data Processing Agreement template",
+      "No defined roles (controller vs processor) for Rig Relay maintainer",
+      "No subprocessor list",
+      "No data processing location disclosure",
+      "No international data transfer mechanism (SCCs)"
+    ],
+    "recommendation": "Draft DPA template. Define data processing roles. For local-first: user is controller, Rig Relay is not a processor. For hosted: Rig Relay becomes processor. Document clearly."
+  },
+  "terms_of_service": {
+    "status": "missing",
+    "gaps": ["No terms of service", "No usage restrictions", "No liability limitations", "No warranty disclaimer (though AGPL includes implied)"],
+    "recommendation": "Draft terms of service. For open-source: AGPL terms apply. For commercial: separate commercial terms."
+  },
+  "acceptable_use_policy": {
+    "status": "missing",
+    "gaps": ["No policy restricting harmful use", "No prohibition on using tool for attacks, malware, or illegal purposes"],
+    "recommendation": "Draft acceptable use policy. Include in terms of service and repository."
+  },
+  "security_policy": {
+    "status": "satisfied",
+    "evidence": ["SECURITY.md with reporting process", "Supported version line (v0.1.0a1)", "Security policy v0 in docs/json/", "Threat model v0"],
+    "gaps": ["No bug bounty program", "No security audit history", "No CVE assignment process"],
+    "recommendation": "Consider bug bounty program for post-beta. Document security audit plans."
+  },
+  "vulnerability_disclosure_policy": {
+    "status": "partial",
+    "current": "SECURITY.md describes private reporting via GitHub Security Advisories.",
+    "gaps": [
+      "No formal VDP with expected response times",
+      "No public acknowledgement process",
+      "No coordinated disclosure timeline",
+      "No CVE assignment authority"
+    ],
+    "recommendation": "Create formal VDP following ISO 29147 / OpenSSF guidelines. Publish on static site."
+  },
+  "data_processing_roles": {
+    "status": "partial",
+    "analysis": {
+      "local_first_mode": "User is data controller. Rig Relay software runs on user's machine. No data processed by Rig Relay maintainer. Agent-client-protocol defines ACP relay behavior.",
+      "hosted_mode_future": "Rig Relay maintainer becomes data processor. User remains data controller. DPA required.",
+      "llm_providers": "LLM providers (DeepSeek, OpenAI, Anthropic, etc.) are subprocessors when user sends prompts. Rig Relay does not intermediate this relationship.",
+      "github_integration": "GitHub is a separate data controller for repository data. Rig Relay accesses via user-authorized OAuth tokens."
+    },
+    "recommendation": "Document data processing roles clearly. For local-first: no processor relationship with maintainer. For hosted: DPA required. Disclose LLM provider subprocessor relationships."
+  },
+  "open_source_vs_hosted_enterprise_boundary": {
+    "status": "partially_defined",
+    "current_state": "Rig Relay is open-source (AGPL) with local-first architecture. No hosted service exists.",
+    "future_state": "Enterprise hosted service would be separate from open-source project. May require different license, terms, and infrastructure.",
+    "boundary_questions": [
+      "Will open-source and enterprise be the same codebase or a fork?",
+      "Will enterprise features be proprietary or open-core?",
+      "How will contributions be managed across open-source and enterprise?",
+      "Will AGPL apply to enterprise hosted service?"
+    ],
+    "recommendation": "Define open-source vs enterprise boundary clearly. Consider open-core model: core is AGPL, enterprise features are commercial. Document contribution flow for both."
+  },
+  "claims_that_can_be_made_today": [
+    "Rig Relay is a local-first governed coding agent runtime",
+    "Product telemetry is first-party, enabled by default, and opt-out. Remote telemetry contribution is separately settings-controlled and default-off",
+    "No raw code, secrets, or private data in any telemetry or evidence layer (content-light guarantee)",
+    "Aggregated, de-identified, or derived product intelligence may be commercialized. Raw user content, prompts, credentials, secrets, private files, and private repository contents are never sold",
+    "Receipt-backed evidence for all tool execution",
+    "Dirty-file preservation and checkpoint-only commits",
+    "Structured observability with DuckDB analytics",
+    "17-threat security model documented",
+    "Open-source under AGPL-3.0-or-later"
+  ],
+  "claims_that_cannot_be_made_today": [
+    "SOC 2 compliant or certified",
+    "ISO 27001 certified",
+    "GDPR compliant (no DPA, no formal privacy program)",
+    "Enterprise-grade security (no pen test, no third-party assessment)",
+    "Supply-chain secure (no SBOM, no dependency scanning, no artifact signing)",
+    "Multi-tenant (schemas exist, not implemented)",
+    "SSO/SAML/SCIM supported",
+    "Commercially supported with SLA",
+    "HIPAA/FedRAMP ready"
+  ],
+  "summary": {
+    "overall_status": "Legal and commercial foundation is minimal. AGPL license, missing DPA, missing terms of service, and missing commercial licensing path are blockers for enterprise procurement.",
+    "blocker_count": 4,
+    "blockers": [
+      "AGPL-only licensing — need commercial license option",
+      "No DPA or data processing role definition",
+      "No terms of service or acceptable use policy",
+      "No vulnerability disclosure policy (formalized)"
+    ]
+  },
+  "content_light": true
+}

@@ -1,0 +1,220 @@
+{
+  "schema_version": "rig.relay.postgres_migration_roadmap.v1",
+  "audit_id": "postgres-enterprise-substrate-audit-v1",
+  "title": "PostgreSQL Enterprise Substrate — Migration Roadmap",
+  "generated_at": "2026-05-20T18:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "phases": [
+    {
+      "phase": 0,
+      "name": "Audit",
+      "duration": "Current milestone (this audit)",
+      "description": "Comprehensive architecture audit. No code changes. Produce governance JSON artifacts defining the Postgres integration strategy, data model, port contracts, and test doctrine.",
+      "deliverables": [
+        "postgres_enterprise_substrate_audit_v1.v1.json",
+        "postgres_source_of_truth_taxonomy_v1.v1.json",
+        "postgres_feature_exploitation_map_v1.v1.json",
+        "postgres_security_procurement_review_v1.v1.json",
+        "postgres_migration_roadmap_v1.v1.json",
+        "postgres_test_strategy_v1.v1.json"
+      ],
+      "exit_criteria": "All audit deliverables validated as syntactically correct JSON. Existing schema validation script passes (no regressions). Zero code changes.",
+      "rollback": "N/A — no code changes"
+    },
+    {
+      "phase": 1,
+      "name": "Schema Contracts & Migration SQL",
+      "duration": "3-5 days",
+      "description": "Define JSON Schema contracts for Postgres projection manifests. Write initial migration SQL files from the proposed data model. Schema registry populated from docs/schemas/ directory scan. This is a schema-and-contract phase — no runtime Postgres behavior, no psycopg dependency (unless migration validation truly requires live execution against a throwaway instance, and even then only if clearly documented).",
+      "phase_1_boundaries": {
+        "what_phase_1_must_do": [
+          "Produce JSON Schema contracts for Postgres projection manifests (docs/schemas/rig.relay.postgres_*.v1.schema.json)",
+          "Write migration SQL files (rig_relay/enterprise/migrations/V###__*.sql) with up/down semantics",
+          "Define migration manifest format and migration ordering convention",
+          "Define schema registry contract (schema_registry table DDL + discovery script)",
+          "Validate all JSON schemas against Draft-07 meta-schema",
+          "Validate migration SQL is syntactically correct and idempotent",
+          "Produce static validation reports (schema contract completeness, migration ordering validation)"
+        ],
+        "what_phase_1_must_not_do": [
+          "Do not implement runtime Postgres behavior — no Postgres adapters, no connection pools, no query execution",
+          "Do not add psycopg to pyproject.toml unless migration validation truly requires live execution against a throwaway Postgres instance, and only if clearly documented why static validation is insufficient",
+          "Do not implement cockpit integration — no changes to desktop/ or analytics/ modules",
+          "Do not wire Postgres directly into desktop/websocket/analytics modules before ProjectionStorePort and EventIngestPort exist (Phases 2-3)",
+          "Do not add Alembic or SQLAlchemy — raw SQL migrations only, consistent with Rig Relay's raw-SQL transparency principle",
+          "Do not implement ports or adapters — that is Phase 2",
+          "Do not create runtime adapters (postgres_connection.py, postgres_receipt_store.py, etc.) — that is Phase 3"
+        ]
+      },
+      "deliverables": [
+        "docs/schemas/rig.relay.postgres_table_event_log.v1.schema.json",
+        "docs/schemas/rig.relay.postgres_table_receipt_envelope.v1.schema.json",
+        "docs/schemas/rig.relay.postgres_projection_manifest.v1.schema.json",
+        "rig_relay/enterprise/migrations/V001__init_tables.sql",
+        "rig_relay/enterprise/migrations/V002__init_indexes.sql",
+        "rig_relay/enterprise/migrations/V003__init_materialized_views.sql",
+        "rig_relay/enterprise/migrations/V004__init_rls_policies.sql",
+        "rig_relay/enterprise/migrations/V005__init_roles_and_grants.sql",
+        "rig_relay/enterprise/migrations/V006__init_triggers_audit.sql",
+        "rig_relay/enterprise/schema_registry.py — schema discovery and registry population script"
+      ],
+      "exit_criteria": "All JSON schemas validate against Draft-07 meta-schema. Migration SQL files are idempotent (re-runnable). Schema registry correctly discovers all schema files and populates schema_registry table. Migration ordering is linear and enforced. Zero new dependencies added to pyproject.toml.",
+      "rollback": "Each migration has a corresponding V##_down.sql rollback file. Drop tables, drop indexes, drop views, drop roles."
+    },
+    {
+      "phase": 2,
+      "name": "Port Definition & File-Backed Reference Adapters",
+      "duration": "5-7 days",
+      "description": "Define all Port interfaces (Protocol classes). Implement file-backed reference adapters that produce results equivalent to the existing stores. File adapters are the testing baseline for Postgres adapters (Phase 3).",
+      "deliverables": [
+        "rig_relay/core/_ports.py — unified Port definitions (ALL Port protocols)",
+        "rig_relay/adapters/file_artifact_registry.py — ArtifactRegistryPort (file)",
+        "rig_relay/adapters/file_event_ingest.py — EventIngestPort (file)",
+        "rig_relay/adapters/file_receipt_store.py — ReceiptStorePort (file, wraps existing FilesystemReceiptStore)",
+        "rig_relay/adapters/file_coordination_store.py — CoordinationStorePort (file, wraps existing CoordinationStore)",
+        "rig_relay/adapters/file_projection_store.py — ProjectionStorePort (file-backed projection cache)",
+        "rig_relay/adapters/file_telemetry_projection.py — TelemetryProjectionPort (file, wraps existing DuckDB engine)",
+        "rig_relay/adapters/file_migration_runner.py — MigrationRunnerPort (file, no-op)",
+        "rig_relay/adapters/file_export_replay.py — ExportReplayPort (file, no-op)",
+        "tests/adapters/test_file_adapters.py — contract tests for all file adapters"
+      ],
+      "exit_criteria": "All file adapters pass contract tests. Existing functionality preserved — all existing tests pass. No Postgres dependency required for Phase 2. Ports are well-typed and pyright-clean.",
+      "rollback": "Remove rig_relay/adapters/ directory. Existing stores (FilesystemReceiptStore, CoordinationStore, AnalyticsEngine) remain unchanged."
+    },
+    {
+      "phase": 3,
+      "name": "Postgres Adapters",
+      "duration": "7-10 days",
+      "description": "Implement Postgres adapters behind the same Port interfaces. Build migration runner. Create Postgres schema from Phase 1 migration SQL. psycopg 3 is the only new dependency.",
+      "dependencies": ["uv add 'psycopg[binary]>=3.2'"],
+      "deliverables": [
+        "rig_relay/adapters/postgres_connection.py — Postgres connection pool (psycopg AsyncConnectionPool)",
+        "rig_relay/adapters/postgres_artifact_registry.py — PostgresArtifactRegistry",
+        "rig_relay/adapters/postgres_event_ingest.py — PostgresEventIngest",
+        "rig_relay/adapters/postgres_receipt_store.py — PostgresReceiptStore",
+        "rig_relay/adapters/postgres_coordination_store.py — PostgresCoordinationStore",
+        "rig_relay/adapters/postgres_projection_store.py — PostgresProjectionStore",
+        "rig_relay/adapters/postgres_telemetry_projection.py — PostgresTelemetryProjection",
+        "rig_relay/adapters/postgres_migration_runner.py — PostgresMigrationRunner",
+        "rig_relay/adapters/postgres_export_replay.py — PostgresExportReplay",
+        "rig_relay/enterprise/postgres_settings.py — PostgresSettings pydantic model (DSN, pool_size, etc.)",
+        "tests/adapters/test_postgres_adapters.py — integration tests for all Postgres adapters"
+      ],
+      "exit_criteria": "All Postgres adapters pass integration tests against a local Postgres instance. Migration runner successfully creates all tables, indexes, views, roles, and RLS policies. Generated columns correctly extract JSONB paths. Data inserted via adapters is queryable through generated columns.",
+      "rollback": "Remove rig_relay/adapters/postgres_*.py. Remove psycopg dependency (uv remove psycopg). Run V##_down.sql migrations to drop all Postgres objects."
+    },
+    {
+      "phase": 4,
+      "name": "Replay Equivalence & Cross-Adapter Contract Tests",
+      "duration": "5-7 days",
+      "description": "Verify that file-backed adapters and Postgres adapters produce equivalent semantic projections when consuming the same canonical artifact corpus. Real JSON/JSONL/CSV artifact fixtures used.",
+      "deliverables": [
+        "tests/adapters/test_replay_equivalence.py — comprehensive equivalence test suite",
+        "tests/fixtures/replay_corpus/ — curated set of real artifact files (receipts, events, coordination, findings, release gate)",
+        "tests/adapters/test_artifact_quarantine.py — corrupted artifact behavior tests",
+        "tests/adapters/test_postgres_unavailable.py — Postgres unreachable fail-closed tests",
+        "scripts/rig_replay_equivalence_check.py — standalone equivalence verification script"
+      ],
+      "exit_criteria": "Equivalence tests pass for ALL canonical artifact types. If Postgres is unavailable, adapters raise PostgresUnavailableError (not silent fallback). Corrupted artifacts are quarantined (written to quarantine log, not ingested). DuckDB and Postgres projections match for 100% of test fixtures.",
+      "rollback": "No schema changes in this phase. Remove test files if needed."
+    },
+    {
+      "phase": 5,
+      "name": "Cockpit Integration",
+      "duration": "7-10 days",
+      "description": "Desktop cockpit uses ProjectionStorePort for projections. LISTEN/NOTIFY provides real-time projection invalidation. Analytics engine routes queries to Postgres when available, falls back to DuckDB in local mode.",
+      "deliverables": [
+        "rig_relay/analytics/engine.py — postgres_query_path() function alongside existing DuckDB path",
+        "rig_relay/desktop/projection.py — projection assembly from ProjectionStorePort instead of ad-hoc assembly",
+        "rig_relay/desktop/websocket_server.py — LISTEN/NOTIFY-based projection invalidation push",
+        "rig_relay/desktop/analytics_state.py — analytics state management with Postgres materialized view reads",
+        "rig_relay/analytics/views.py — VIEW_FUNCTIONS updated to use materialized view names when Postgres available",
+        "tests/desktop/test_cockpit_postgres_integration.py — integration tests for cockpit with Postgres"
+      ],
+      "exit_criteria": "Cockpit widgets render data from materialized views when Postgres is configured. LISTEN/NOTIFY triggers WebSocket push on artifact change. Projection regressions tested: cockpit projection output identical between file-backed and Postgres-backed modes. Local mode (no Postgres) still works with existing DuckDB path.",
+      "rollback": "Cockpit projection assembly falls back to file-backed projection assembly when Postgres DSN is not configured. No hard dependency on Postgres in cockpit code paths."
+    },
+    {
+      "phase": 6,
+      "name": "Enterprise Mode",
+      "duration": "10-14 days",
+      "description": "Postgres is the operational substrate in enterprise mode. Dual-write ensures canonical artifacts are always exported. Export manager runs periodic artifact dumps. Admin dashboard shows Postgres health, backup status, and tenant isolation.",
+      "deliverables": [
+        "rig_relay/enterprise/enterprise_mode.py — mode detection and adapter wiring",
+        "rig_relay/enterprise/export_manager.py — periodic artifact export with export_manifest recording",
+        "rig_relay/enterprise/tenant_pg_admin.py — tenant provisioning with RLS policy creation",
+        "rig_relay/enterprise/admin_dashboard.py — Postgres health, backup status, tenant overview widgets",
+        "rig_relay/enterprise/backup_runner.py — scheduled pg_dump with encryption",
+        "tests/enterprise/test_enterprise_mode.py — enterprise mode integration tests",
+        "tests/enterprise/test_tenant_isolation_pg.py — RLS tenant isolation tests",
+        "tests/enterprise/test_export_manager.py — export manifest generation and verification tests"
+      ],
+      "exit_criteria": "Enterprise mode toggle (RIG_RELAY_POSTGRES_DSN env var or config) enables all Postgres features. Tenant isolation verified: tenant A cannot read tenant B data. Export manager produces SHA256-verified JSONL exports that match canonical artifacts. Admin dashboard shows Postgres health metrics. Backup/restore tested end-to-end.",
+      "rollback": "Unset RIG_RELAY_POSTGRES_DSN to return to local mode. Unset RIG_RELAY_ENTERPRISE_MODE to return to local-first operation."
+    },
+    {
+      "phase": 7,
+      "name": "Procurement Documentation & Polish",
+      "duration": "5-7 days",
+      "description": "Backup/restore runbooks, admin query cookbook, retention policy validation, incident investigation guides, tenant provisioning guides. Schema validation and static docs site updated.",
+      "deliverables": [
+        "docs/json/governance/postgres_backup_restore_runbook.v1.json",
+        "docs/json/governance/postgres_admin_query_cookbook.v1.json",
+        "docs/json/governance/postgres_incident_investigation_guide.v1.json",
+        "docs/json/governance/postgres_tenant_provisioning_guide.v1.json",
+        "docs/json/governance/postgres_retention_policy_validation.v1.json",
+        "scripts/rig_postgres_health_check.py — comprehensive Postgres health verification script",
+        "scripts/rig_postgres_backup.py — automated backup script with encryption",
+        "scripts/rig_postgres_restore.py — automated restore with equivalence verification"
+      ],
+      "exit_criteria": "All procurement documentation validates against their JSON schemas. Static docs site renders procurement pages. Health check script passes on a clean Postgres instance. Backup/restore roundtrip succeeds with equivalence verification.",
+      "rollback": "N/A — documentation only."
+    }
+  ],
+  "dependency_timeline": {
+    "phase_0": "None — audit only",
+    "phase_1": "No new dependencies — raw SQL migration files only",
+    "phase_2": "No new dependencies — file-backed adapters use existing stdlib + pydantic + pathlib",
+    "phase_3": "uv add 'psycopg[binary]>=3.2' — the sole new dependency for Postgres connectivity",
+    "phase_4": "No new dependencies",
+    "phase_5": "No new dependencies — existing anyio (LISTEN/NOTIFY async integration), existing websockets (WebSocket push)",
+    "phase_6": "No new dependencies — existing cryptography (backup encryption), existing platformdirs (backup path resolution)",
+    "phase_7": "No new dependencies"
+  },
+  "risk_assessment": {
+    "risks": [
+      {
+        "risk": "psycopg 3 compatibility issues on macOS arm64",
+        "likelihood": "low",
+        "impact": "medium",
+        "mitigation": "psycopg[binary] includes pre-built wheels for macOS arm64. Tested in CI on macOS arm64 and x86_64, Linux x86_64. Fallback to psycopg without binary if needed (requires local libpq)."
+      },
+      {
+        "risk": "DuckDB and Postgres produce divergent query results",
+        "likelihood": "medium",
+        "impact": "high",
+        "mitigation": "Phase 4 equivalence tests catch this. Both use SQL — the main divergence risk is NULL handling and floating-point precision. Use explicit CAST and COALESCE in both query paths."
+      },
+      {
+        "risk": "Postgres migration failure leaves database in inconsistent state",
+        "likelihood": "medium",
+        "impact": "high",
+        "mitigation": "Migration runner wraps each migration in a transaction. On failure, transaction rolls back. Migration history table tracks which migrations have been applied. Never run migration without advisory lock."
+      },
+      {
+        "risk": "Generated column evaluation on INSERT slows write throughput",
+        "likelihood": "low",
+        "impact": "low",
+        "mitigation": "Generated columns evaluate on INSERT/UPDATE only. Rig Relay's write throughput is low (events and receipts are relatively infrequent). Benchmark write throughput during Phase 3 integration tests."
+      },
+      {
+        "risk": "LISTEN/NOTIFY fan-out overwhelms WebSocket bridge",
+        "likelihood": "low",
+        "impact": "medium",
+        "mitigation": "NOTIFY channel design: coarse-grained channels ('projection_invalidation') not per-widget. Cockpit backend coalesces invalidations (debounce 500ms) before recomputing projections. Rate-limit NOTIFY sends."
+      }
+    ]
+  },
+  "revision": "1.0.0"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "rig.relay.stale_markdown_needs_review.v1",
+  "document_id": "stale-markdown-needs-review-v1",
+  "title": "Stale Markdown — Needs Review — Rig Relay",
+  "generated_at": "2026-05-21T07:35:00Z",
+  "total_needing_review": 1,
+  "items": [
+    {
+      "markdown_path": "docs/audits/release-candidate-convergence-spine.md",
+      "canonical_replacement_path": "docs/json/audits/release_candidate_convergence_spine.v1.json",
+      "reason_not_deleted": "In migration manifest (status=migrated) with references_updated: false. Migration rules require references to be updated before deletion.",
+      "migration_manifest_entry": {
+        "old_path": "docs/audits/release-candidate-convergence-spine.md",
+        "new_path": "docs/json/audits/release_candidate_convergence_spine.v1.json",
+        "status": "migrated",
+        "references_updated": false,
+        "review_notes": "Markdown preserved. 5-phase roadmap, 14 sections, 14 tables, paste-ready prompts migrated to structured JSON."
+      },
+      "recommended_action": "Update references, then delete. The JSON artifact validates (schema_version=rig.documentation.page.v1, 33KB). No Markdown references to this file found in repo. Safe to delete after manifest references_updated flag is set to true.",
+      "content_light": true
+    }
+  ],
+  "content_light": true
+}

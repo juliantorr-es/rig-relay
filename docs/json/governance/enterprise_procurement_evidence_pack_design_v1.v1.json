@@ -1,0 +1,174 @@
+{
+  "schema_version": "rig.relay.procurement_evidence_pack_design.v1",
+  "document_id": "enterprise-procurement-evidence-pack-design-v1",
+  "title": "Enterprise Procurement Evidence Pack Design v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "purpose": "Design for a self-service evidence pack that Rig Relay can generate automatically to support enterprise procurement, security review, and compliance assessment.",
+  "generation_command": "rig-relay evidence-pack --kind procurement [--output-dir .build/rig-relay/procurement/]",
+  "pack_artifacts": [
+    {
+      "artifact_name": "security_architecture_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_security_architecture.v1.schema.json (to be created)",
+      "description": "Content-light security architecture summary: trust boundaries, assets, threat count, mitigation status, release gate status.",
+      "static_docs_page": "docs/pages/procurement/security-architecture.html",
+      "content_light_constraints": "No raw secrets, tokens, source code, file paths, or attack details."
+    },
+    {
+      "artifact_name": "data_inventory.v1.json",
+      "schema": "docs/schemas/rig.relay.enterprise_data_inventory.v1.schema.json",
+      "description": "Complete data class inventory with sensitivity classifications, storage locations, retention periods, and protection mechanisms.",
+      "static_docs_page": "docs/pages/procurement/data-inventory.html",
+      "content_light_constraints": "Inventory metadata only. No actual data samples."
+    },
+    {
+      "artifact_name": "telemetry_disclosure.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_telemetry_disclosure.v1.schema.json (to be created)",
+      "description": "Four-category telemetry and evidence disclosure: (1) product telemetry — first-party, default-on, opt-out, content-light, degrades adaptive/product-learning behavior when disabled; (2) remote telemetry contribution — settings-controlled, default-off, consent-gated; (3) local operational observability — mandatory for governed operation, not subject to product-telemetry opt-out; (4) enterprise audit/evidence — mandatory in enterprise mode, continues when product telemetry is disabled. Includes degraded-behavior matrix, content-light and forbidden-content guarantees, and aggregate/de-identified/derived commercialization boundary.",
+      "static_docs_page": "docs/pages/procurement/telemetry-disclosure.html",
+      "content_light_constraints": "Event names, counts, metadata only. No raw event payloads."
+    },
+    {
+      "artifact_name": "subprocess_tool_governance.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_tool_governance.v1.schema.json (to be created)",
+      "description": "Tool permission model, bash safety controls, environment scrubbing, binary rejection, rerouting rules, mutation gates.",
+      "static_docs_page": "docs/pages/procurement/tool-governance.html",
+      "content_light_constraints": "Policy descriptions only. No tool call examples with real data."
+    },
+    {
+      "artifact_name": "source_of_truth_replay_model.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_evidence_model.v1.schema.json (to be created)",
+      "description": "JSON/JSONL/CSV source-of-truth model: how evidence is structured, append-only guarantees, Merkle receipts, replay/verification.",
+      "static_docs_page": "docs/pages/procurement/evidence-model.html",
+      "content_light_constraints": "Schema descriptions and replay flow. No raw evidence."
+    },
+    {
+      "artifact_name": "postgres_enterprise_substrate.v1.json",
+      "schema": "docs/schemas/rig.relay.enterprise_postgres_readiness.v1.schema.json (to be created)",
+      "description": "Postgres deployment model, schema ownership, migration strategy, RLS, backup/restore, encryption, admin queries.",
+      "static_docs_page": "docs/pages/procurement/postgres-substrate.html",
+      "content_light_constraints": "Architecture and policy only. No connection strings or credentials."
+    },
+    {
+      "artifact_name": "dependency_sbom_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_sbom_summary.v1.schema.json (to be created)",
+      "description": "Summary SBOM: dependency count, license distribution, known vulnerability count, last scan date, criticality assessment.",
+      "static_docs_page": "docs/pages/procurement/dependency-sbom.html",
+      "content_light_constraints": "Summary statistics. Full SBOM available as SPDX JSON alongside."
+    },
+    {
+      "artifact_name": "vulnerability_management_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_vulnerability_management.v1.schema.json (to be created)",
+      "description": "Vulnerability scanning status, known vulnerabilities, remediation status, patching SLA, disclosure process.",
+      "static_docs_page": "docs/pages/procurement/vulnerability-management.html",
+      "content_light_constraints": "CVE IDs, severity, status. No exploit details."
+    },
+    {
+      "artifact_name": "release_provenance_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_release_provenance.v1.schema.json (to be created)",
+      "description": "SLSA level, build attestation status, artifact signing, checksums, release frequency, supported platforms.",
+      "static_docs_page": "docs/pages/procurement/release-provenance.html",
+      "content_light_constraints": "Provenance metadata only. No build secrets."
+    },
+    {
+      "artifact_name": "test_classification_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_test_summary.v1.schema.json (to be created)",
+      "description": "Test count by classification (unit/contract/integration/e2e/adversarial/etc.), coverage assessment, CI status.",
+      "static_docs_page": "docs/pages/procurement/test-classification.html",
+      "content_light_constraints": "Counts and classifications only. No test source code."
+    },
+    {
+      "artifact_name": "known_limitations.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_known_limitations.v1.schema.json (to be created)",
+      "description": "Honest disclosure of known limitations: alpha status, single-maintainer, prompt injection gaps, no SSO, etc.",
+      "static_docs_page": "docs/pages/procurement/known-limitations.html",
+      "content_light_constraints": "Transparent limitation disclosure."
+    },
+    {
+      "artifact_name": "open_risks.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_open_risks.v1.schema.json (to be created)",
+      "description": "Open risks from threat model, supply-chain audit, and enterprise readiness audit.",
+      "static_docs_page": "docs/pages/procurement/open-risks.html",
+      "content_light_constraints": "Risk descriptions and mitigations. No exploit details."
+    },
+    {
+      "artifact_name": "privacy_redaction_controls.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_privacy_controls.v1.schema.json (to be created)",
+      "description": "Privacy controls: redaction validator, content-light guarantee, consent model, data retention, deletion procedures.",
+      "static_docs_page": "docs/pages/procurement/privacy-controls.html",
+      "content_light_constraints": "Policy and mechanism descriptions only."
+    },
+    {
+      "artifact_name": "admin_deployment_guide.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_admin_guide.v1.schema.json (to be created)",
+      "description": "Admin deployment guide: install channels, configuration, health checks, diagnostics, backup, upgrade procedures.",
+      "static_docs_page": "docs/pages/procurement/admin-guide.html",
+      "content_light_constraints": "Operational guidance only. No secrets or internal infrastructure details."
+    },
+    {
+      "artifact_name": "incident_response_summary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_incident_response.v1.schema.json (to be created)",
+      "description": "Incident classification, response process, communication plan, post-incident review.",
+      "static_docs_page": "docs/pages/procurement/incident-response.html",
+      "content_light_constraints": "Process documentation only."
+    },
+    {
+      "artifact_name": "support_debug_packet_policy.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_support_policy.v1.schema.json (to be created)",
+      "description": "Support model, debug packet creation/quarantine, redaction guarantees, support SLA (if applicable).",
+      "static_docs_page": "docs/pages/procurement/support-policy.html",
+      "content_light_constraints": "Policy only. No example debug data."
+    },
+    {
+      "artifact_name": "telemetry_operational_boundary.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_telemetry_boundary.v1.schema.json (to be created)",
+      "description": "Explicit boundary model: product telemetry (default-on, opt-out, degrades adaptive behavior when disabled), remote telemetry contribution (settings-controlled, default-off), local operational observability (mandatory for governed operation), enterprise audit/evidence (mandatory in enterprise mode). Procurement-facing disclosure of all four categories with control surfaces and continuity guarantees.",
+      "static_docs_page": "docs/pages/procurement/telemetry-boundary.html",
+      "content_light_constraints": "Category definitions, control surfaces, opt-out behavior. No raw telemetry payloads."
+    },
+    {
+      "artifact_name": "degraded_behavior_matrix.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_degraded_behavior_matrix.v1.schema.json (to be created)",
+      "description": "Exhaustive matrix: which behaviors degrade when product telemetry is disabled (adaptive recommendations, UX optimization, agent-tool optimization, Ralph refinement, orchestrator behavior, subagent behavior) and which behaviors must continue (governance, receipts, release gates, mutation receipts, schema validation records, export manifests, enterprise audit events, local operational observability).",
+      "static_docs_page": "docs/pages/procurement/degraded-behavior-matrix.html",
+      "content_light_constraints": "Behavior names and degradation status only. No telemetry payloads."
+    },
+    {
+      "artifact_name": "evidence_continuity_guarantee.v1.json",
+      "schema": "docs/schemas/rig.relay.procurement_evidence_continuity.v1.schema.json (to be created)",
+      "description": "Guarantee that enterprise audit/evidence records (receipts, release gates, mutation receipts, schema validation records, export manifests, audit events) continue functioning when product telemetry is disabled and when remote telemetry contribution is disabled. Enterprise audit/evidence is mandatory substrate, not optional tracking.",
+      "static_docs_page": "docs/pages/procurement/evidence-continuity.html",
+      "content_light_constraints": "Guarantee statements and verification status. No evidence payloads."
+    }
+  ],
+  "procurement_facing_summary": {
+    "format": "Single-page HTML + PDF with executive summary, key metrics, and links to detailed artifacts.",
+    "sections": [
+      "Executive Summary (1 page)",
+      "Security Architecture (2 pages)",
+      "Data Handling and Privacy (2 pages)",
+      "Supply Chain and Dependencies (1 page)",
+      "Operational Readiness (1 page)",
+      "Known Limitations and Open Risks (1 page)",
+      "Roadmap and Timeline (1 page)"
+    ],
+    "total_pages": "~9 pages"
+  },
+  "static_docs_integration": {
+    "pages_directory": "docs/pages/procurement/",
+    "index_page": "docs/pages/procurement/index.html",
+    "navigation": "Added to static site navigation under 'Enterprise' or 'Trust Center'",
+    "render_pipeline": "Integrated into existing static site renderer (scripts/rig_site_render.py)"
+  },
+  "content_light_constraints_global": [
+    "No raw prompts, completions, or model outputs",
+    "No raw source code or file contents",
+    "No secrets, API keys, tokens, or credentials",
+    "No absolute file paths from user machines",
+    "No stdout/stderr tool output bodies",
+    "No raw telemetry event payloads",
+    "No debug data or stack traces",
+    "SHA256 hashes for all content-derived references",
+    "All artifacts schema-validated before inclusion"
+  ],
+  "content_light": true
+}

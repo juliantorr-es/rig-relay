@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>High-Performance Substrate Doctrine — Rig Relay Docs</title>
+<meta name="description" content="Rig Relay&#x27;s high-performance database-adjacent substrate stack: what is promoted, what is parked, what is rejected, and the source-of-truth hierarchy that governs all substrate decisions.">
+<link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/pages/high-performance-substrate-doctrine.html">
+<meta property="og:title" content="High-Performance Substrate Doctrine">
+<meta property="og:description" content="Rig Relay&#x27;s high-performance database-adjacent substrate stack: what is promoted, what is parked, what is rejected, and the source-of-truth hierarchy that governs all substrate decisions.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/pages/high-performance-substrate-doctrine.html">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="High-Performance Substrate Doctrine">
+<meta name="twitter:description" content="Rig Relay&#x27;s high-performance database-adjacent substrate stack: what is promoted, what is parked, what is rejected, and the source-of-truth hierarchy that governs all substrate decisions.">
+
+<meta property="og:locale" content="en">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="robots" content="index,follow">
+<meta name="base-path" content="/rig-relay">
+<meta name="relative-root" content="..">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <nav aria-label="Primary">
+    <a href="../index.html">Rig Relay Documentation</a>
+  </nav>
+  <p class="eyebrow"><a href="../index.html">Rig Relay Documentation</a> / <a href="../collections/governance.html">Governance</a></p>
+  <h1>High-Performance Substrate Doctrine</h1>
+  <p class="doc-summary">Rig Relay&#x27;s high-performance database-adjacent substrate stack: what is promoted, what is parked, what is rejected, and the source-of-truth hierarchy that governs all substrate decisions.</p>
+  <dl class="doc-meta">
+    <dt>Status</dt><dd>active</dd>
+    <dt>Updated</dt><dd>2026-05-20</dd>
+    <dt>Source</dt><dd><code>docs/json/governance/high_performance_substrate_doctrine_v1.v1.json</code></dd>
+  </dl>
+</header>
+<div class="page-controls">
+  <div class="disclosure-controls" role="group" aria-label="Disclosure level"></div>
+  <div class="expand-collapse-controls" role="group" aria-label="Expand/collapse"></div>
+</div>
+<main
+  id="main"
+  class="doc-page"
+  data-render-strategy="linear"
+  data-default-disclosure-level="standard"
+  data-initial-mode="reviewer">
+  <article>
+<h1 id="h1-1" class="disclosure-standard" data-disclosure-level="standard">High-Performance Substrate Doctrine</h1>
+
+<h2 id="h2-2" class="disclosure-standard" data-disclosure-level="standard">Source-of-Truth Hierarchy</h2>
+
+<p id="p-3" class="disclosure-standard" data-disclosure-level="standard">Rig Relay&#x27;s data architecture follows a strict hierarchy. Each layer has a defined role and cannot usurp the authority of the layer above it.</p>
+
+<ul id="list-4" class="disclosure-standard" data-disclosure-level="standard">
+  <li>JSON/JSONL/CSV — canonical evidence and source-of-truth artifacts. Portable, inspectable, diffable, replayable, schema-governed. All other layers are downstream projections.</li>
+  <li>PostgreSQL — enterprise operational substrate. Owns operational queryability, projection invalidation, audit/event correlation, enterprise admin debuggability, and replay/export orchestration. JSONB inside PostgreSQL is schema-governed envelope representation, never an untyped dumping ground.</li>
+  <li>DuckDB — disposable analytical microscope. In-memory, read-side only. Reads JSONL/Parquet files for ad-hoc analytical queries. Never writes back to artifacts. Never a mutation authority.</li>
+  <li>Apache Parquet — derived analytical snapshot format. Generated via DuckDB COPY FORMAT PARQUET from canonical JSONL. Never canonical event truth. Always rebuildable from canonical artifacts.</li>
+  <li>Apache Arrow — transient in-memory columnar interchange format. Prototype behind ProjectionStorePort after PostgreSQL ports exist. Optional [arrow] extra. Never persisted as canonical artifact.</li>
+  <li>Zstandard — compression optimization. Already canonical dependency (zstandard&gt;=0.25.0). Expands to session bundles, archive compaction, and export packages. Compression is storage optimization — never redaction, never privacy, never canonical authority.</li>
+  <li>Pydantic v2 / pydantic-core — typed model boundary. Rust-backed serialization and validation. Should be exploited at every module boundary before considering alternative serialization libraries.</li>
+</ul>
+
+<h2 id="h2-5" class="disclosure-standard" data-disclosure-level="standard">Promoted Tools (Phase 1-3)</h2>
+
+<p id="p-6" class="disclosure-standard" data-disclosure-level="standard">These tools are approved for implementation with zero new dependencies or with planned dependency additions at specific phases:</p>
+
+<ul id="list-7" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Apache Parquet (via DuckDB) — already in use via DuckDB COPY FORMAT PARQUET. Formalize derived snapshot doctrine with contract test. Zero new dependency.</li>
+  <li>psycopg 3 COPY / binary COPY — PostgreSQL bulk ingest/export with staging table + constraint promotion pattern. Dependency: psycopg[binary]&gt;=3.2 at Phase 3 (Postgres Adapters). Never COPY directly to operational tables.</li>
+  <li>Zstandard (expanded usage) — already canonical dependency. Expand to session bundles, archive compaction, export packages. Zero new dependency.</li>
+  <li>Pydantic v2 (exploited harder) — replace stdlib json.loads/dumps at module boundaries with model_validate/model_dump_json. Extra=&#x27;forbid&#x27; for content-light enforcement at type level. Zero new dependency.</li>
+</ul>
+
+<h2 id="h2-8" class="disclosure-standard" data-disclosure-level="standard">Prototype Tool (Phase 3)</h2>
+
+<p id="p-9" class="disclosure-standard" data-disclosure-level="standard">One tool is approved for prototyping behind a feature flag:</p>
+
+<ul id="list-10" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Apache Arrow / PyArrow — in-memory columnar interchange behind ProjectionStorePort. Optional [arrow] extra in pyproject.toml. Dependency: pyarrow&gt;=19.0 at Phase 3 only. Arrow schema derived from Pydantic models. Arrow conversion failure falls back to dict-of-dicts. Never a hard dependency.</li>
+</ul>
+
+<h2 id="h2-11" class="disclosure-standard" data-disclosure-level="standard">Parked Tools (Phases 4-7)</h2>
+
+<p id="p-12" class="disclosure-standard" data-disclosure-level="standard">These tools are parked — no dependency may be added without measured bottleneck evidence and a satisfied gate condition:</p>
+
+<ul id="list-13" class="disclosure-standard" data-disclosure-level="standard">
+  <li>ADBC / Arrow Flight — park. Premature before PostgreSQL ports exist. Audit later if hosted/team mode requires high-throughput Postgres-Arrow transport.</li>
+  <li>Polars — park. DuckDB already provides 95% of Polars&#x27; analytical capability. Evaluate only if Phase 4 equivalence tests reveal DuckDB-insufficient bottlenecks.</li>
+  <li>Ibis — park. Raw SQL with contract tests is clearer and more auditable for 2 backends (DuckDB + PostgreSQL). Ibis adds abstraction overhead at Rig Relay&#x27;s scale.</li>
+  <li>Apache DataFusion — park. DuckDB dominates this need. DataFusion&#x27;s Arrow-native architecture is interesting but adds complexity without measurable advantage.</li>
+  <li>pgvector — park. Phase 6 audit required. Gate: PostgreSQL operational substrate must exist, sensitive-derived-data policy must be defined, embedding model must be selected, local-only boundary must be enforced for private repo content.</li>
+  <li>pg_jsonschema — park. Phase 5 defense-in-depth. Gate: PostgreSQL operational substrate must exist, schema registry must be populated. Application-level jsonschema remains primary validation.</li>
+  <li>pgmq / SKIP LOCKED — park. SKIP LOCKED pattern on coordination_lease table may be useful for lease cleanup. Full pgmq is overkill. Do not turn PostgreSQL into an orchestration tar pit.</li>
+  <li>orjson — park. No measured JSON bottleneck in current workload. Evaluate only if Phase 1 measurement harness proves json.loads/json.dumps is a significant bottleneck. If adopted, must enforce no fast-path bypass of jsonschema/Pydantic validation.</li>
+  <li>SQLGlot — park. Phase 7 linting/validation tool. Useful for detecting DuckDB-specific SQL in portable projections and validating PostgreSQL migration SQL dialect correctness. Do not auto-transpile without equivalence tests.</li>
+</ul>
+
+<h2 id="h2-14" class="disclosure-standard" data-disclosure-level="standard">Rejected Tools</h2>
+
+<ul id="list-15" class="disclosure-standard" data-disclosure-level="standard">
+  <li>msgspec — reject. Pydantic v2 + pydantic-core already provides Rust-backed serialization. msgspec duplicates the model layer without clear benefit.</li>
+  <li>Apache Iceberg / Delta Lake — reject. Wrong scale for local-first architecture. Designed for petabyte-scale data lakes with object storage. Parquet snapshots already sufficient.</li>
+  <li>LanceDB / separate vector stores — reject. Fragments PostgreSQL operational authority with a separate database. pgvector inside PostgreSQL is the preferred architecture if vector search is needed.</li>
+  <li>SQLite — reject. Explicitly forbidden by existing architecture policy. PostgreSQL replaces any need for an embedded database.</li>
+</ul>
+
+<h2 id="h2-16" class="disclosure-standard" data-disclosure-level="standard">Content-Light Enforcement Continuity</h2>
+
+<p id="p-17" class="disclosure-standard" data-disclosure-level="standard">Content-light enforcement must apply at every stage of the substrate pipeline. No tool may introduce raw content into a stage that previously guaranteed content-light. The enforcement chain:</p>
+
+<ol id="list-18" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Application boundary: redaction.py scans all data before artifact write. 50 forbidden field keys. 5 pre-compiled regex patterns.</li>
+  <li>Schema validation: jsonschema validates against docs/schemas/*.schema.json at ingestion boundary.</li>
+  <li>Arrow schema: Arrow table schemas exclude forbidden field names. Arrow is never persisted as canonical artifact.</li>
+  <li>Parquet column validation: Parquet column names validated against forbidden field patterns at generation time.</li>
+  <li>PostgreSQL CHECK constraints + INSERT triggers: defense-in-depth on all JSONB columns. Staging table + constraint promotion for COPY imports.</li>
+  <li>DuckDB views: duckdb queries select from content-light generated columns and materialized views only. Analyst role cannot query raw JSONB payloads.</li>
+  <li>Cockpit/static docs/procurement output scans: all outputs scanned for raw content before display or publish.</li>
+  <li>Zstandard bundles: decompressed data must pass redaction scan before use. Compression is storage optimization, not redaction bypass.</li>
+</ol>
+
+<h2 id="h2-19" class="disclosure-standard" data-disclosure-level="standard">Roadmap Sequencing</h2>
+
+<p id="p-20" class="disclosure-standard" data-disclosure-level="standard">The high-performance substrate roadmap runs in parallel with the PostgreSQL enterprise substrate migration. The ordering is enforced: no optimization before measurement, no new dependency before existing dependencies are exploited, no database-adjacent tool before ports exist.</p>
+
+<ol id="list-21" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Phase 0 (current): Audit. No code changes. No dependencies.</li>
+  <li>Phase 1: Measurement harness. Identify actual bottlenecks in JSONL parsing, DuckDB projections, static docs generation, procurement pack generation. Expand Zstandard and Pydantic — zero new dependencies.</li>
+  <li>Phase 2: Port definition and file-backed reference adapters. Zero new dependencies.</li>
+  <li>Phase 3: PostgreSQL adapters + psycopg COPY + Arrow prototype. Dependencies: psycopg[binary]&gt;=3.2, optionally pyarrow&gt;=19.0 as [arrow] extra.</li>
+  <li>Phase 4: Replay equivalence tests. Zero new dependencies.</li>
+  <li>Phase 5: Cockpit integration. pg_jsonschema parked (PostgreSQL extension, not Python dependency).</li>
+  <li>Phase 6: Enterprise mode + pgvector audit. pgvector Python client only if promoted from park after sensitive-derived-data policy.</li>
+  <li>Phase 7: Procurement documentation + SQLGlot linting. SQLGlot only if promoted from park.</li>
+  <li>Phase 8: Re-evaluate parked candidates (Polars, Ibis, DataFusion, ADBC, Iceberg) based on measured bottlenecks.</li>
+</ol>
+
+<h2 id="h2-22" class="disclosure-standard" data-disclosure-level="standard">Dependency Doctrine</h2>
+
+<p id="p-23" class="disclosure-standard" data-disclosure-level="standard">No new dependency from the high-performance substrate audit is approved for immediate implementation beyond existing canonical dependencies. The following additions are approved only at the specified phases and gates:</p>
+
+<ul id="list-24" class="disclosure-standard" data-disclosure-level="standard">
+  <li>psycopg[binary]&gt;=3.2 — approved only at PostgreSQL Phase 3 when PostgreSQL adapters exist and staging table + constraint promotion doctrine is enforced.</li>
+  <li>pyarrow&gt;=19.0 — optional/prototype-only behind [arrow] extra after ProjectionStorePort exists at Phase 3. Never a hard dependency.</li>
+  <li>orjson, Polars, Ibis, DataFusion, SQLGlot, pgvector, pg_jsonschema — remain parked until the specified gate condition is met and measured bottleneck evidence is provided.</li>
+  <li>msgspec, Iceberg/Delta, LanceDB, SQLite — rejected for current Rig Relay architecture. Re-evaluated only if architecture materially changes.</li>
+</ul>
+
+<h2 id="h2-25" class="disclosure-standard" data-disclosure-level="standard">Required Tests</h2>
+
+<p id="p-26" class="disclosure-standard" data-disclosure-level="standard">The following tests must exist (not necessarily pass) before any substrate tool is approved for production use. Each test is classified by type:</p>
+
+<ul id="list-27" class="disclosure-standard" data-disclosure-level="standard">
+  <li>Parquet-never-canonical contract test (contract, real-artifact, adversarial)</li>
+  <li>Zstandard decompress-then-redact tests (contract, adversarial, substrate)</li>
+  <li>Pydantic extra=&#x27;forbid&#x27; boundary tests (contract)</li>
+  <li>PostgreSQL COPY staging-table validation tests (contract, integration, adversarial, substrate)</li>
+  <li>Arrow/dict projection parity tests — only if Arrow prototype exists (contract, substrate)</li>
+  <li>pgvector sensitive-derived-data safety tests — only if pgvector promoted from park (adversarial, substrate)</li>
+  <li>No raw content across substrate seams (adversarial, sabotage)</li>
+  <li>Performance measurement baselines before any optimization (substrate)</li>
+  <li>Product telemetry disabled does not stop enterprise audit/evidence writes (contract, integration)</li>
+  <li>Content-light materialized views never contain raw content (adversarial)</li>
+  <li>Static docs output scan catches absolute paths/tokens/source snippets (adversarial)</li>
+</ul>
+
+  </article>
+</main>
+<footer>
+  <p>Generated from <code>docs/json/governance/high_performance_substrate_doctrine_v1.v1.json</code></p>
+  <p>Rig Relay — AGPL-3.0-or-later</p>
+</footer>
+</body>
+</html>

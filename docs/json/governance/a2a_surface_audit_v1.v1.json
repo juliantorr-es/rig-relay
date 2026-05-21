@@ -1,0 +1,89 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "a2a-surface-audit-v1",
+  "title": "A2A Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "current_state": {
+    "summary": "A2A schemas exist (agent_card, task_card, delegation_receipt, task_lifecycle_event, promotion_readiness) but the implementation is skeletal. No transport server. No agent discovery mechanism. No capability advertisement. Agent Cards exist in schema but not in code. local_only: true means federation is not built. remote_federation_supported: false. Basic test coverage only (2 test files).",
+    "maturity": "partial — schemas only; no transport; no discovery; no delegation runtime; no federation"
+  },
+  "a2a_doctrine": [
+    "A2A is NOT local tool calling. It is inter-agent delegation across trust boundaries.",
+    "A2A is NOT allowed to bypass Rig Relay's mission governance.",
+    "A2A must be delegation with explicit trust tier, scope, budget, timeout, and evidence receipt.",
+    "Agent Cards must be content-light, signed or hash-pinned, and diffed on change.",
+    "Capability changes must be treated like permission changes — requiring review and producing evidence.",
+    "Delegated work must return structured evidence (receipts, artifacts, hashes), not just prose.",
+    "Remote agents are NOT trusted by default. Every remote agent has a trust tier that gates what it can do.",
+    "A2A delegation must not create side channels that bypass cockpit approval or MCP permission gating."
+  ],
+  "trust_tiers": [
+    {
+      "tier": "trust_tier_0_local_subagent",
+      "name": "Local Subagent (Trusted)",
+      "allowed": "full read access within workspace; tool execution within subagent tool profile; can propose patches (requires approval)",
+      "forbidden": "remote GitHub write; config changes; permission changes; admin operations",
+      "verification": "local process identity; subagent profile hash"
+    },
+    {
+      "tier": "trust_tier_1_local_orchestrator",
+      "name": "Local Orchestrator (Trusted)",
+      "allowed": "delegate tasks to subagents; read coordination state; schedule fleet operations; read mission state",
+      "forbidden": "remote mutation; subagent profile modification; workspace mutation outside mission scope",
+      "verification": "local process identity; orchestrator agent card hash"
+    },
+    {
+      "tier": "trust_tier_2_team_agent",
+      "name": "Team Agent (Verified)",
+      "allowed": "receive delegated read-only tasks; return structured evidence; advertise capabilities via Agent Card",
+      "forbidden": "any mutation; access to other team agents' missions; access to admin surfaces",
+      "verification": "Agent Card hash must match known hash; Agent Card must be signed or pinned; recent capability diff must be reviewed"
+    },
+    {
+      "tier": "trust_tier_3_remote_verified",
+      "name": "Remote Verified Agent (Limited)",
+      "allowed": "receive read-only delegation with explicit scope; return content-light evidence within scope; advertise capabilities (read-only by default)",
+      "forbidden": "any mutation; workspace access; file system access; GitHub access; any operation that could mutate",
+      "verification": "Agent Card must be signed by recognized authority; capability must match advertised scope; delegation must be time-bound and scope-bound"
+    },
+    {
+      "tier": "trust_tier_4_external_unverified",
+      "name": "External Unverified Agent (Untrusted)",
+      "allowed": "receive narrowly-scoped query tasks with no state access; return content-light answers (prose only, no tool execution); no capability advertisement beyond query",
+      "forbidden": "any tool execution; any state access; any mutation; any workspace access; any GitHub access",
+      "verification": "Agent Card is informational only; no trust assumed; all input/output sanitized"
+    }
+  ],
+  "agent_card_security": [
+    "Agent Cards must be content-light: identity hash, capability list (names only, no implementation detail), trust tier, public key (if signed), hash pin, version, timestamp",
+    "Agent Card changes must be treated as security events: diff the card, produce evidence, require human review for capability additions",
+    "Agent Cards must be pinned by hash in delegation records: 'I delegated to agent X whose card hash was Y at time T'",
+    "Stale or expired Agent Cards must be rejected. TTL must be configurable (default: 24h for local, 1h for remote)",
+    "Capability advertisement must be explicit and narrow. No 'do anything' capability. No wildcard capabilities.",
+    "Agent Cards must never contain raw credentials, tokens, or secrets"
+  ],
+  "a2a_interaction_with_ralph_orchestrator": {
+    "ralph_role": "Ralph (observe-only scanner) is not an A2A participant. Ralph produces projection inputs and mission candidates — it does not delegate to agents.",
+    "orchestrator_role": "Orchestrator is the primary A2A delegator. It discovers subagents via A2A, delegates tasks with scope/budget/timeout, monitors progress, and aggregates results.",
+    "subagent_role": "Subagents advertise capabilities via Agent Cards, receive delegated tasks within their trust tier, execute within mission scope, and return structured evidence.",
+    "hosted_team_role": "In hosted/team mode, A2A delegation may span team members' agents. Per-member trust tiers apply. Delegation receipts provide cross-agent evidence."
+  },
+  "a2a_tests_required": [
+    "test_a2a_malicious_agent_card_detection — sabotage: submit Agent Card claiming unauthorized capabilities, verify blocked",
+    "test_a2a_stale_agent_card_rejection — sabotage: use expired Agent Card, verify delegation blocked",
+    "test_a2a_delegated_task_scope_enforcement — sabotage: delegated task attempts operation outside scope, verify blocked",
+    "test_a2a_trust_tier_enforcement — contract: tier 4 agent attempts tier 2 operation, verify blocked",
+    "test_a2a_delegation_timeout_enforcement — contract: delegated task exceeds timeout, verify cancelled",
+    "test_a2a_delegation_budget_exhaustion — substrate: delegated task exhausts budget, verify cancelled with receipt",
+    "test_a2a_capability_change_detection — adversarial: Agent Card changed between delegation and execution, verify detected",
+    "test_a2a_cross_agent_evidence_correlation — integration: correlate receipts from delegator and delegate, verify chain integrity"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

@@ -1180,6 +1180,56 @@
           "document_id": "worktree-manager",
           "path": "docs/json/governance/worktree-manager.v1.json",
           "title_override": "Worktree Manager — Governance & Safety"
+        },
+        {
+          "document_id": "high-performance-substrate-doctrine",
+          "path": "docs/json/governance/high_performance_substrate_doctrine_v1.v1.json",
+          "title_override": "High-Performance Substrate Doctrine"
+        },
+        {
+          "document_id": "high-performance-substrate-audit",
+          "path": "docs/json/governance/high_performance_substrate_audit_v1.v1.json",
+          "title_override": "High-Performance Substrate Audit v1"
+        },
+        {
+          "document_id": "high-performance-substrate-tool-taxonomy",
+          "path": "docs/json/governance/high_performance_substrate_tool_taxonomy_v1.v1.json",
+          "title_override": "High-Performance Substrate — Tool Taxonomy"
+        },
+        {
+          "document_id": "high-performance-substrate-fit-matrix",
+          "path": "docs/json/governance/high_performance_substrate_fit_matrix_v1.v1.json",
+          "title_override": "High-Performance Substrate — Fit Matrix"
+        },
+        {
+          "document_id": "high-performance-substrate-architecture",
+          "path": "docs/json/governance/high_performance_substrate_architecture_v1.v1.json",
+          "title_override": "High-Performance Substrate — Architecture Pipeline"
+        },
+        {
+          "document_id": "high-performance-substrate-dependency-plan",
+          "path": "docs/json/governance/high_performance_substrate_dependency_plan_v1.v1.json",
+          "title_override": "High-Performance Substrate — Dependency Plan"
+        },
+        {
+          "document_id": "high-performance-substrate-roadmap",
+          "path": "docs/json/governance/high_performance_substrate_roadmap_v1.v1.json",
+          "title_override": "High-Performance Substrate — Roadmap"
+        },
+        {
+          "document_id": "high-performance-substrate-test-strategy",
+          "path": "docs/json/governance/high_performance_substrate_test_strategy_v1.v1.json",
+          "title_override": "High-Performance Substrate — Test Strategy"
+        },
+        {
+          "document_id": "high-performance-substrate-security-privacy-review",
+          "path": "docs/json/governance/high_performance_substrate_security_privacy_review_v1.v1.json",
+          "title_override": "High-Performance Substrate — Security & Privacy Review"
+        },
+        {
+          "document_id": "high-performance-substrate-docs-alignment",
+          "path": "docs/json/governance/high_performance_substrate_docs_alignment_v1.v1.json",
+          "title_override": "High-Performance Substrate — Docs Alignment v1"
         }
       ]
     },

@@ -1,0 +1,133 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "taxonomy_id": "surface-authority-taxonomy-v1",
+  "title": "Surface Authority Taxonomy v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "tiers": [
+    {
+      "tier_id": "read_only_projection",
+      "name": "Read-Only Projection",
+      "allowed_operations": ["read local evidence artifacts", "render cockpit widgets", "return MCP resources", "stream WebSocket projections", "generate static docs", "run read-only diagnostic commands"],
+      "forbidden_operations": ["any file mutation", "any network write", "any config change", "any GitHub API write", "any agent tool execution that mutates"],
+      "required_approval_gates": ["none (read-only by definition)"],
+      "required_schemas": ["projection schema", "widget schema", "resource schema"],
+      "required_receipt_evidence": ["projection refresh receipts", "resource access logs"],
+      "required_redaction_scan": ["content-light projection validation", "public/private split for static docs"],
+      "required_audit_logs": ["projection refresh timestamps", "resource access by surface"],
+      "required_tests": ["projection schema validation", "widget rendering with content-light data", "public/private split enforcement", "CSP/XSS hardening"],
+      "failure_behavior": "show stale/blocked state indicator; never fabricate data; surface trust_spine_incomplete or permission_probe_stale"
+    },
+    {
+      "tier_id": "local_intent_submission",
+      "name": "Local Intent Submission",
+      "allowed_operations": ["submit governed intents to backend", "propose patches for review", "request approval for gated actions", "send chat messages to agent loop", "request validation runs"],
+      "forbidden_operations": ["direct mutation without approval receipt", "bypass governance engine evaluation", "execute remote operations locally", "subvert content-light scanning"],
+      "required_approval_gates": ["GovernanceEngine.evaluate_action_legality()", "intent schema validation", "dirty guard check"],
+      "required_schemas": ["intent envelope schema", "approval receipt schema", "patch proposal schema"],
+      "required_receipt_evidence": ["intent submission receipts", "approval/denial receipts", "patch proposal artifacts"],
+      "required_redaction_scan": ["intent payload must not contain raw secrets", "proposed changes hash-checked before storage"],
+      "required_audit_logs": ["intent submission by actor", "approval decisions by evaluator", "approval receipt time/scope binding"],
+      "required_tests": ["intent schema validation", "governance engine gate evaluation", "approval receipt time-bound and scope-bound"],
+      "failure_behavior": "return blocked decision with reason codes; surface 'why blocked' explanation"
+    },
+    {
+      "tier_id": "local_mutation",
+      "name": "Local Mutation",
+      "allowed_operations": ["write files to local workspace (with dirty guard)", "run local subprocesses (with RuntimeSupervisor)", "create git commits/checkpoints (with checkpoint tool)", "modify local config", "start/stop local services"],
+      "forbidden_operations": ["remote GitHub mutation", "remote file system mutation", "network writes without explicit policy", "bypassing dirty guard", "modifying files not in allowlist"],
+      "required_approval_gates": ["dirty guard check", "workspace boundary enforcement", "path reservation check", "capability gate for tool"],
+      "required_schemas": ["checkpoint schema", "runtime execution receipt schema", "local config schema"],
+      "required_receipt_evidence": ["checkpoint receipts", "subprocess execution receipts", "config change receipts"],
+      "required_redaction_scan": ["subprocess output sanitization", "env var stripping before subprocess", "no secrets in checkpoint metadata"],
+      "required_audit_logs": ["checkpoint events", "file mutation events with path hashes", "config change events"],
+      "required_tests": ["dirty guard enforcement", "checkpoint integrity", "subprocess supervisor timeout/kill", "env sanitization"],
+      "failure_behavior": "refuse mutation with structured refusal code; record refusal as evidence"
+    },
+    {
+      "tier_id": "remote_read",
+      "name": "Remote Read",
+      "allowed_operations": ["read GitHub API (rate-limit-budgeted)", "ingest webhook events (HMAC-verified)", "poll external provider APIs", "fetch remote context"],
+      "forbidden_operations": ["remote write operations", "consume webhooks without signature verification", "exceed rate-limit budget", "ingest untrusted payloads without schema validation"],
+      "required_approval_gates": ["GitHub Provider Trust Spine v1 complete", "permission probe current", "rate-limit budget check", "webhook HMAC verification"],
+      "required_schemas": ["provider packet schema", "webhook event schema", "rate-limit budget schema"],
+      "required_receipt_evidence": ["API call receipts", "rate-limit consumption receipts", "webhook delivery receipts"],
+      "required_redaction_scan": ["alert content must not leak secret fragments", "API responses must be content-light before storage", "webhook payloads validated before processing"],
+      "required_audit_logs": ["API call by endpoint/surface/capability", "rate-limit consumption by budget category", "webhook delivery id/event id with signature verification result"],
+      "required_tests": ["HMAC signature verification", "rate-limit budget enforcement", "idempotency ledger", "content-light scan", "permission probe freshness"],
+      "failure_behavior": "defer request if rate-limited; quarantine invalid webhooks; surface permission_probe_stale if probe expired"
+    },
+    {
+      "tier_id": "remote_mutation",
+      "name": "Remote Mutation",
+      "allowed_operations": ["create GitHub PRs (governed)", "push branches (governed)", "create/modify issues (governed)", "update alert states (governed)", "trigger deployments (governed)"],
+      "forbidden_operations": ["remote mutation without signed approval receipt", "bypass branch protection preflight", "bypass ruleset preflight", "push without dry-run/rehearsal", "push without content-light scan of PR body/comments"],
+      "required_approval_gates": ["GitHub Provider Trust Spine v1 complete", "permission probe current with write scope confirmed", "dry-run/rehearsal executed and reviewed", "explicit human approval with signed receipt", "branch protection preflight passed", "ruleset preflight passed", "content policy scan passed", "no-surprise-mutation sabotage tests passing"],
+      "required_schemas": ["remote mutation rehearsal schema", "mutation receipt schema", "rollback receipt schema"],
+      "required_receipt_evidence": ["dry-run/rehearsal receipts", "approval receipts (time-bound, scope-bound)", "mutation execution receipts", "rollback/reconciliation receipts"],
+      "required_redaction_scan": ["PR body must not contain raw prompts/completions", "PR comments must not contain marketing text", "no hidden co-author attribution", "no secret-bearing content in mutation payload"],
+      "required_audit_logs": ["mutation proposal by actor/agent", "approval decision by reviewer", "mutation execution result", "branch protection/ruleset evaluation", "rollback events"],
+      "required_tests": ["no-surprise-mutation sabotage", "branch protection respect", "ruleset respect", "content policy scan", "approval receipt time/scope binding", "rollback receipt validity"],
+      "failure_behavior": "block mutation; return refusal with reason code; record blocked mutation as evidence; surface 'why blocked' in cockpit"
+    },
+    {
+      "tier_id": "admin_configuration",
+      "name": "Admin / Configuration",
+      "allowed_operations": ["manage GitHub App installations", "configure permission profiles", "manage allowlist/denylist", "set telemetry policy", "manage Postgres connection", "configure rate-limit budgets", "manage tenant/org/user identity", "generate procurement evidence packs"],
+      "forbidden_operations": ["modify evidence artifacts", "delete audit logs", "bypass permission boundaries", "modify schema-governed artifacts without diffable evidence"],
+      "required_approval_gates": ["admin role verification", "multi-party approval for org-level changes", "change request schema validation", "dry-run preview of config changes"],
+      "required_schemas": ["admin config change schema", "permission profile schema", "rate-limit budget schema"],
+      "required_receipt_evidence": ["config change receipts with before/after hashes", "admin action audit trail", "permission change evidence"],
+      "required_redaction_scan": ["config changes must not expose secrets in change diff", "admin logs must not contain raw credentials"],
+      "required_audit_logs": ["admin action by actor", "config change with before/after hashes", "permission change events", "policy change events"],
+      "required_tests": ["admin role enforcement", "multi-party approval flow", "config change schema validation", "config rollback receipt"],
+      "failure_behavior": "refuse config change; return explanation; record refusal; require re-submission with corrections"
+    },
+    {
+      "tier_id": "inter_agent_delegation",
+      "name": "Inter-Agent Delegation (A2A)",
+      "allowed_operations": ["advertise agent capabilities (content-light Agent Cards)", "delegate tasks with scope/budget/timeout", "receive delegated task results with evidence", "cancel delegated tasks", "monitor delegated task progress"],
+      "forbidden_operations": ["delegate tasks that bypass Rig Relay mission governance", "accept tasks from unverified remote agents", "delegate mutations without explicit trust tier", "accept Agent Cards that have changed without diff review"],
+      "required_approval_gates": ["trust tier verification for remote agent", "scope boundary enforcement for delegated task", "budget and timeout enforcement", "Agent Card hash verification (signed or hash-pinned)", "capability change detection and review"],
+      "required_schemas": ["Agent Card schema", "task card schema", "delegation receipt schema", "task lifecycle event schema"],
+      "required_receipt_evidence": ["Agent Card attestation receipts", "delegation receipts", "task lifecycle receipts", "delegated task evidence artifacts"],
+      "required_redaction_scan": ["Agent Cards must be content-light", "delegated task input/output must not contain raw prompts/secrets", "cross-agent evidence must preserve content-light guarantees"],
+      "required_audit_logs": ["delegation events by delegating/receiving agent", "Agent Card change events", "trust tier changes", "delegated task outcomes"],
+      "required_tests": ["malicious Agent Card detection", "stale Agent Card detection", "delegated task scope enforcement", "trust tier enforcement", "timeout/cancellation propagation", "cross-agent evidence correlation"],
+      "failure_behavior": "refuse delegation; return structured refusal to delegating agent; record refusal as coordination evidence; surface delegation blocked in cockpit and A2A protocol"
+    },
+    {
+      "tier_id": "hosted_multi_tenant_operation",
+      "name": "Hosted Multi-Tenant Operation",
+      "allowed_operations": ["serve multiple tenants from shared infrastructure", "isolate tenant evidence artifacts", "enforce per-tenant rate-limit budgets", "manage tenant lifecycle", "audit cross-tenant events"],
+      "forbidden_operations": ["leak data across tenant boundaries", "disable enterprise audit evidence for any tenant", "allow one tenant to consume another tenant's rate-limit", "bypass product telemetry opt-out for enterprise evidence"],
+      "required_approval_gates": ["tenant isolation verification", "RBAC role verification for admin operations", "cross-tenant event policy check", "Postgres tenant boundary enforcement"],
+      "required_schemas": ["tenant schema", "tenant topology projection schema", "hosted API request/receipt schema"],
+      "required_receipt_evidence": ["tenant lifecycle receipts", "cross-tenant access receipts", "tenant data export/delete receipts"],
+      "required_redaction_scan": ["tenant identifiers hashed in cross-tenant telemetry", "no tenant A's data in tenant B's projection", "Postgres query isolation at connection/schema level"],
+      "required_audit_logs": ["tenant creation/deletion", "cross-tenant access attempts (allowed and blocked)", "tenant data export/delete", "admin actions per tenant"],
+      "required_tests": ["tenant isolation (data and query level)", "cross-tenant event policy enforcement", "RBAC/admin role enforcement", "product telemetry opt-out per tenant preserves audit", "Postgres unavailable fail-closed", "backup/export/delete per tenant"],
+      "failure_behavior": "fail closed: if tenant isolation cannot be guaranteed, degrade to single-tenant or refuse to start; surface hosted_mode_unavailable in cockpit"
+    },
+    {
+      "tier_id": "public_static_projection",
+      "name": "Public Static Projection",
+      "allowed_operations": ["generate public static docs from content-light artifacts", "serve public pages via GitHub Pages", "include OG/SEO metadata", "link to source artifacts (SHA256-referenced)"],
+      "forbidden_operations": ["expose raw alert data", "expose private repo content", "expose agent prompts/completions", "expose telemetry data", "expose rate-limit budgets", "expose token scopes", "expose secret-bearing or forbidden raw content"],
+      "required_approval_gates": ["public/private split enforcement (automated)", "content-light scan before generation", "schema validation of all source artifacts"],
+      "required_schemas": ["static page schema", "OG metadata schema", "site search index schema"],
+      "required_receipt_evidence": ["page generation receipts with source artifact refs", "public/private split verification receipts", "stale page detection receipts"],
+      "required_redaction_scan": ["pre-deploy content-light scan must block any secret-bearing or forbidden raw content", "public pages must be verified content-light before deployment"],
+      "required_audit_logs": ["page generation events", "deployment events", "public/private split violations (blocked)"],
+      "required_tests": ["public/private split enforcement", "content-light scan before deploy", "OG metadata validation", "stale page detection", "no raw secrets in static output"],
+      "failure_behavior": "block deployment; return scan results with violation details; surface deployment blocked in CI; never deploy pages that fail content-light scan"
+    }
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

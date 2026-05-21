@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.enterprise_control_mapping.v1.schema.json",
+  "title": "Enterprise Control Mapping v1",
+  "description": "Mapping of enterprise controls (NIST SSDF, SOC 2, ISO 27001, SLSA, OpenSSF) against Rig Relay current state.",
+  "type": "object",
+  "required": ["schema_version", "mapping_id", "title", "generated_at", "control_families", "content_light"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.enterprise_control_mapping.v1" },
+    "mapping_id": { "type": "string" },
+    "title": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "control_families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["family_id", "family_name", "controls"],
+        "properties": {
+          "family_id": { "type": "string" },
+          "family_name": { "type": "string" },
+          "reference_standard": { "type": "string" },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["control_id", "requirement_summary", "status", "gap", "risk_level"],
+              "properties": {
+                "control_id": { "type": "string" },
+                "requirement_summary": { "type": "string" },
+                "status": { "type": "string", "enum": ["satisfied", "partial", "missing", "not_applicable", "intentionally_deferred", "unknown"] },
+                "evidence_paths": { "type": "array", "items": { "type": "string" } },
+                "gap": { "type": "string" },
+                "remediation_action": { "type": ["string", "null"] },
+                "validation_method": { "type": ["string", "null"] },
+                "risk_level": { "type": "string", "enum": ["blocker", "high", "medium", "low"] },
+                "artifact_to_produce": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_controls": { "type": "integer" },
+        "satisfied": { "type": "integer" },
+        "partial": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "not_applicable": { "type": "integer" },
+        "intentionally_deferred": { "type": "integer" }
+      }
+    },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

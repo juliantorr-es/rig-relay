@@ -1,0 +1,126 @@
+{
+  "schema_version": "rig.relay.supply_chain_readiness.v1",
+  "document_id": "enterprise-supply-chain-readiness-v1",
+  "title": "Enterprise Supply Chain and Build Readiness v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "dependency_pinning_strategy": {
+    "status": "satisfied",
+    "evidence": ["uv.lock (all Python dependencies pinned)", ".github/workflows/ (all actions pinned by SHA)", "uv sync --locked in CI"],
+    "gaps": ["No NPM lockfile (frontend assets not tracked here)"],
+    "recommendation": "Verify any JS/CSS dependencies are also pinned."
+  },
+  "uv_lockfile_status": {
+    "status": "satisfied",
+    "evidence": ["uv.lock present in repo", "CI uses uv sync --locked", "exclude-newer = 7 days prevents supply-chain attacks via new releases"],
+    "recommendation": "Continue current practice. Periodically audit lockfile for stale/compromised packages."
+  },
+  "license_compatibility": {
+    "status": "partial",
+    "current_license": "AGPL-3.0-or-later",
+    "evidence": ["LICENSE (AGPL-3.0)", "ATTRIBUTION.md", "UPSTREAM.md", "THIRD_PARTY_NOTICES.md"],
+    "gaps": [
+      "No automated license compatibility check of all 50+ direct dependencies",
+      "No transitive dependency license audit",
+      "No license change detection in CI",
+      "AGPL is the most restrictive open-source license. Many enterprises have blanket AGPL prohibitions.",
+      "Upstream mistral-vibe was Apache 2.0 — the transition to AGPL needs clear documentation of what changed and why."
+    ],
+    "recommendation": "Add license scanning to CI (e.g., licensecheck or pip-licenses). Produce full dependency license inventory. Document AGPL choice rationale. Offer commercial license for enterprises with AGPL restrictions."
+  },
+  "agpl_commercial_implications": {
+    "status": "high_risk",
+    "issue": "AGPL-3.0 requires that all users who interact with the software over a network receive access to the complete source code. For a developer tool that may become a hosted service, this creates significant enterprise adoption friction.",
+    "enterprise_concerns": [
+      "Enterprises with no-AGPL policies will automatically reject",
+      "AGPL's network-use clause may apply to hosted deployments",
+      "Contributor License Agreement (CLA) required in CONTRIBUTING.md adds friction for open-source contributors",
+      "Commercial/enterprise licensing path not yet defined"
+    ],
+    "recommendation": "Define dual-licensing strategy (AGPL + commercial). Create commercial license terms. Address AGPL FUD proactively in procurement docs."
+  },
+  "sbom_readiness": {
+    "status": "missing",
+    "gaps": [
+      "No SBOM generation pipeline",
+      "No SPDX or CycloneDX output",
+      "No SBOM attached to releases",
+      "No SBOM validation in CI"
+    ],
+    "recommendation": "Use pip-audit or syft to generate SPDX SBOM from uv.lock. Publish SBOM with each release. Validate SBOM against schema in CI. Add SBOM link to README and security page."
+  },
+  "vulnerability_scanning_readiness": {
+    "status": "partial",
+    "evidence": ["CodeQL scanning (Python + JavaScript) in CI", "Weekly CodeQL schedule"],
+    "gaps": [
+      "No dependency vulnerability scanning (pip-audit, safety, or OSV-Scanner)",
+      "No automated vulnerability alerts",
+      "No CVE database integration",
+      "No Dependabot or Renovate for automated updates"
+    ],
+    "recommendation": "Add pip-audit to CI. Configure Dependabot for Python dependencies. Set up GitHub Security Advisory notifications. Define vulnerability response SLA."
+  },
+  "github_actions_status": {
+    "status": "satisfied",
+    "evidence": ["7 workflow files (ci.yml, release.yml, codeql.yml, codeql-swift-advisory.yml, build-and-upload.yml, pages.yml, issue-labeler.yml)", "All actions pinned by commit SHA", "Schema validation, site renderer, release gate, CodeQL in CI"],
+    "gaps": ["No branch protection enforcement verified", "No required reviewers configured (may exist but not confirmed)", "No Dependabot/Renovate for action updates"],
+    "recommendation": "Verify and document branch protection rules. Add Dependabot for GitHub Actions."
+  },
+  "artifact_signing_and_provenance": {
+    "status": "missing",
+    "gaps": [
+      "No cryptographic signing of release artifacts",
+      "No SLSA provenance generation",
+      "No sigstore/cosign integration",
+      "No checksum publication for releases (manifest exists but not signed)",
+      "PyPI publishing uses trusted publishing (OIDC) — good but not sufficient alone"
+    ],
+    "recommendation": "Implement SLSA L2 provenance using slsa-github-generator. Sign release artifacts with cosign. Publish SHA256 checksums with each release. Verify provenance in CI."
+  },
+  "release_packaging": {
+    "status": "satisfied",
+    "evidence": ["PyInstaller builds for 5 platforms (linux-x86_64, linux-aarch64, darwin-x86_64, darwin-aarch64, windows-x86_64)", "Nix builds", "Smoke tests on all platforms", "Manifest generation for release bundles"],
+    "gaps": ["No macOS code signing (notarization)", "No Windows Authenticode signing", "No Linux package repository (apt, rpm)"],
+    "recommendation": "Add macOS notarization. Add Windows signing. Consider Flatpak/AppImage for Linux distribution."
+  },
+  "update_mechanism": {
+    "status": "partial",
+    "evidence": ["Update policy with state machine", "Update check CLI command", "Notification-first design", "Multiple install channel support"],
+    "gaps": ["No automatic update delivery for binary distributions", "No signature verification of updates", "No update channel separation (stable/beta/nightly)"],
+    "recommendation": "Implement signed update delivery. Add update channels. Verify update signatures before applying."
+  },
+  "reproducibility_evidence": {
+    "status": "partial",
+    "evidence": ["uv.lock provides deterministic dependency resolution", "CI builds are scripted and repeatable"],
+    "gaps": ["No reproducible build verification", "No build environment snapshot", "No comparison of independent builds"],
+    "recommendation": "Work toward reproducible builds. Document build environment. Compare CI builds across runs."
+  },
+  "dependency_review_policy": {
+    "status": "partial",
+    "evidence": ["Dependency policy with 3-bucket model (core runtime, workbench/dev, optional extras)", "Explicit declaration requirement", "Core dependencies justified in dependency policy"],
+    "gaps": ["No automated dependency review in PRs", "No transitive dependency audit schedule", "No policy for adding new core dependencies"],
+    "recommendation": "Add dependency review GitHub Action. Schedule quarterly dependency audits. Document new dependency approval process."
+  },
+  "vendored_and_transitive_risks": {
+    "status": "partial",
+    "findings": [
+      "google-api-python-client brings heavy transitive dependency chain (google-auth, uritemplate, etc.)",
+      "pywebview is platform-specific and brings platform-native dependencies",
+      "tree-sitter-* packages are prebuilt binaries — supply-chain risk for binary artifacts",
+      "mistralai==2.4.4 is pinned to exact version — legacy dependency from upstream fork",
+      "agent-client-protocol==0.9.0 is pinned — alpha protocol dependency"
+    ],
+    "recommendation": "Audit transitive dependency licenses. Verify tree-sitter binary provenance. Plan mistralai deprecation if no longer needed. Document binary dependency policy."
+  },
+  "generated_docs_static_site_risks": {
+    "status": "low_risk",
+    "evidence": ["Static site generated from JSON source via renderer", "HTML escaping on all content", "No analytics or tracking on site"],
+    "gaps": ["No CSP headers", "No XSS scan in CI", "Renderer could be compromised to inject content"],
+    "recommendation": "Add CSP meta tag. Add XSS scan. Pin renderer dependencies. Review rendered output for content injection."
+  },
+  "summary": {
+    "overall_status": "Supply-chain posture is solid for alpha-stage local-first tool but insufficient for enterprise procurement. Critical gaps: no SBOM, no dependency vulnerability scanning, no artifact signing, AGPL-only licensing.",
+    "blocker_count": 4,
+    "blockers": ["SBOM generation", "Dependency vulnerability scanning", "Artifact signing/provenance", "AGPL enterprise licensing path"]
+  },
+  "content_light": true
+}

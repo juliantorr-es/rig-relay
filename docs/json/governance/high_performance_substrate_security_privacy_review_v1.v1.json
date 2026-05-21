@@ -1,0 +1,74 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_security_privacy_review.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Substrate — Security, Privacy & Doctrine Review",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "sections": {
+    "telemetry_redaction_implications": {
+      "current_state": "Content-light enforcement exists at application boundary (rig_relay/evidence/redaction.py) and event fabric boundary (rig_relay/events/store.py REDACT_FIELDS). 50 forbidden field keys. 5 pre-compiled regex patterns.",
+      "substrate_impact": {
+        "zstandard_expansion": "Zstandard compression must not obscure content-light inspection. All decompressed data must pass the same redaction scan as uncompressed data. Compression is storage optimization, not redaction bypass.",
+        "parquet_snapshots": "Parquet files are derived analytical snapshots. Content-light enforcement must apply during Parquet generation — no raw content fields may be projected into Parquet columns. CHECK equivalent: at generation time, verify no column name matches forbidden field patterns.",
+        "arrow_batches": "Arrow tables are in-memory transient. Content-light enforcement applies at table construction time — no forbidden fields in Arrow schema. Arrow is never persisted as a canonical artifact.",
+        "postgres_copy": "COPY FROM must use staging tables with CHECK constraints and INSERT triggers that enforce content-light. Never COPY directly to operational tables. Staging table rows that fail constraints are rejected with structured error — never silently dropped.",
+        "pgvector_embeddings": "Embeddings over private repo content are sensitive derived data. Must be local-only. Must never enter product telemetry. Must be classified as sensitive-derived-data in audit trail. Separate policy artifact required before pgvector implementation.",
+        "pydantic_expansion": "Pydantic model_validate with extra='forbid' provides type-level content-light enforcement. Fields not declared in the Pydantic model are rejected, preventing injection of forbidden fields through unknown keys."
+      }
+    },
+    "postgres_implications": {
+      "compatible_tools": [
+        "psycopg 3 COPY — strengthens Postgres as high-throughput operational substrate",
+        "pgvector — keeps vector search inside Postgres, avoiding database fragmentation",
+        "pg_jsonschema — defense-in-depth JSONB envelope validation at database boundary"
+      ],
+      "incompatible_tools": [
+        "LanceDB — fragments Postgres operational authority with separate vector database",
+        "Iceberg/Delta — replaces Postgres as operational substrate for analytics (wrong scale for local-first)"
+      ],
+      "neutral_tools": [
+        "Arrow/Parquet/Polars/DuckDB — read-side analytical tools that complement Postgres without replacing it",
+        "Ibis/DataFusion — query abstraction layers that can target Postgres as a backend"
+      ]
+    },
+    "duckdb_implications": {
+      "current_role": "Disposable in-memory analytical microscope. Reads JSONL/Parquet files, produces projection data for cockpit widgets.",
+      "substrate_impact": "DuckDB remains the primary analytical substrate for local mode. Postgres materialized views supplement DuckDB for operational dashboards in enterprise mode. Polars/Ibis/DataFusion are parked — DuckDB dominates the analytical need. If parked candidates are promoted, DuckDB must not be displaced — only supplemented."
+    },
+    "json_jsonl_csv_source_of_truth_implications": {
+      "doctrine_reinforcement": "All substrate tools must reinforce, not undermine, the artifact-first doctrine. No tool may produce output that is treated as canonical evidence without a corresponding JSON/JSONL/CSV artifact.",
+      "tool_specific_implications": {
+        "parquet": "Parquet snapshots MUST be classified as 'derived' in artifact_registry. They must be rebuildable from canonical JSONL. Parquet-never-canonical contract test required.",
+        "arrow": "Arrow tables are transient in-memory — never persisted. No Arrow files are canonical artifacts.",
+        "zstandard": "Zstandard-compressed bundles are storage optimization of canonical artifacts — the decompressed artifacts remain canonical. Bundle manifest records the SHA256 of the uncompressed canonical content.",
+        "postgres_copy": "Postgres tables are operational read replicas. COPY export back to JSONL must produce row count + SHA256 matches against canonical artifacts. Export manifest records equivalence."
+      }
+    },
+    "cockpit_static_docs_procurement_implications": {
+      "cockpit": "Postgres materialized views provide fresher widgets with lower latency. Arrow in-memory batches reduce dict-of-dicts overhead in projection payloads (if prototype succeeds). LISTEN/NOTIFY provides real-time projection invalidation (Postgres Phase 5). Cockpit must never display raw content — all widgets query content-light views only.",
+      "static_docs": "Static docs renderer is a batch offline process. No substrate tool materially impacts rendering speed at current scale (~200 pages). At >1000 pages, Arrow batches could accelerate page generation. Parquet snapshots of schema registry could seed search index without re-reading all JSON files.",
+      "procurement": "Zstandard-compressed evidence bundles reduce procurement pack size by 20-40%. Parquet rollups enable efficient historical query for procurement dashboards. psycopg COPY export provides fast procurement-grade evidence dumps. Procurement packs must be content-light by construction — no raw content in any exported artifact."
+    },
+    "dependency_risk_assessment": {
+      "zero_risk": ["Zstandard (expanded) — already canonical", "Parquet (via DuckDB) — already in use", "Pydantic v2 — already canonical"],
+      "low_risk": ["psycopg 3 — well-maintained Postgres driver", "SQLGlot — pure Python, small dependency"],
+      "medium_risk": ["PyArrow — 50MB wheel, well-maintained", "pgvector extension — requires Postgres compile", "pg_jsonschema — niche extension"],
+      "high_risk": ["Polars — adds second analytical engine", "Ibis — growing dependency tree", "DataFusion — young Python bindings"],
+      "very_high_risk": ["ADBC/Flight — gRPC infrastructure", "Iceberg/Delta — JVM dependency"]
+    },
+    "content_light_enforcement_continuity": {
+      "doctrine": "Every substrate tool must maintain or strengthen content-light enforcement. No tool may bypass the redaction boundary. No tool may introduce raw content into a stage that previously guaranteed content-light.",
+      "pipeline_enforcement_points": [
+        "Stage 1 (artifacts): redaction.py before write",
+        "Stage 2 (validation): jsonschema + forbidden field scan",
+        "Stage 3 (Arrow): Arrow schema excludes forbidden field names",
+        "Stage 4 (Parquet): Parquet column names validated against forbidden patterns at generation time",
+        "Stage 5 (Postgres): CHECK constraints + INSERT triggers on all JSONB columns",
+        "Stage 6 (DuckDB): DuckDB queries select from content-light generated columns only",
+        "Stage 7 (cockpit/docs/packs): output scan for raw content before display/publish"
+      ]
+    }
+  },
+  "revision": "1.0.0"
+}

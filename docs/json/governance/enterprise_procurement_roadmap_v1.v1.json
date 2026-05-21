@@ -1,0 +1,345 @@
+{
+  "schema_version": "rig.relay.roadmap.v1",
+  "roadmap_id": "enterprise-procurement-roadmap-v1",
+  "title": "Enterprise Procurement Roadmap v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "overall_status": "Pre-enterprise. 7 P0 blockers must resolve before any credible procurement review.",
+  "phases": {
+    "P0_procurement_blockers": {
+      "description": "Must resolve before Rig Relay can credibly enter any enterprise procurement conversation.",
+      "items": [
+        {
+          "item_id": "P0-01",
+          "title": "Security Architecture Whitepaper",
+          "why_it_matters": "First question any security team asks. Without a security architecture document, procurement stops immediately.",
+          "affected_subsystems": ["docs", "governance"],
+          "expected_artifacts": ["docs/json/security/security_architecture_whitepaper.v1.json"],
+          "validation_strategy": "Peer review by security professional. Map against OWASP ASVS.",
+          "dependency_impact": "None. Documentation-only.",
+          "estimated_blast_radius": "None. Purely additive artifact."
+        },
+        {
+          "item_id": "P0-02",
+          "title": "Supply-Chain Security Pipeline (SBOM + Vulnerability Scanning)",
+          "why_it_matters": "Enterprise procurement requires evidence of dependency management. No SBOM = automatic rejection.",
+          "affected_subsystems": ["CI (.github/workflows/)", "scripts/"],
+          "expected_artifacts": ["SBOM generation script", "SPDX SBOM artifact", "pip-audit integration in CI", "Dependabot configuration"],
+          "validation_strategy": "SBOM validates against SPDX schema. CI passes with vulnerability scan green. Scorecard score improves.",
+          "dependency_impact": "Add pip-audit to dev dependencies. No runtime impact.",
+          "estimated_blast_radius": "CI pipeline only. No code changes required."
+        },
+        {
+          "item_id": "P0-03",
+          "title": "Access Control and RBAC Model",
+          "why_it_matters": "Enterprise requires role-based access. Single-user local-only is insufficient for team deployment.",
+          "affected_subsystems": ["rig_relay/identity/", "rig_relay/governance/", "rig_relay/desktop/"],
+          "expected_artifacts": ["docs/json/security/rbac_model.v1.json", "docs/json/security/access_control_policy.v1.json"],
+          "validation_strategy": "RBAC model reviewed against enterprise requirements. Test plan defined.",
+          "dependency_impact": "Minimal for design phase. Implementation may add auth libraries.",
+          "estimated_blast_radius": "High implementation impact. Touches auth, WebSocket, tool execution boundaries."
+        },
+        {
+          "item_id": "P0-04",
+          "title": "Enterprise Configuration Management",
+          "why_it_matters": "Admins must enforce org-wide policies (provider allowlists, tool restrictions, telemetry settings).",
+          "affected_subsystems": ["rig_relay/core/config/", "rig_relay/governance/"],
+          "expected_artifacts": ["Enterprise config layer implementation", "Config validation command", "docs/json/governance/enterprise_config_policy.v1.json"],
+          "validation_strategy": "Policy enforcement tests. Config validation boundary tests.",
+          "dependency_impact": "Extends existing config system. No new dependencies.",
+          "estimated_blast_radius": "Medium. Extends config model. Backward-compatible with existing config."
+        },
+        {
+          "item_id": "P0-05",
+          "title": "Commercial and Enterprise Licensing Strategy",
+          "why_it_matters": "AGPL-3.0 is a hard blocker for most enterprise procurement. Must define commercial path.",
+          "affected_subsystems": ["governance (docs, legal)", "LICENSE"],
+          "expected_artifacts": ["Commercial license terms", "Enterprise subscription terms", "docs/json/legal/commercial_licensing_strategy.v1.json"],
+          "validation_strategy": "Legal review. Enterprise customer feedback.",
+          "dependency_impact": "None. Legal document changes only.",
+          "estimated_blast_radius": "None for code. Critical for business model."
+        },
+        {
+          "item_id": "P0-06",
+          "title": "Privacy and Data Protection Documentation",
+          "why_it_matters": "GDPR/CCPA compliance questions will arise. Need clear answers about data handling.",
+          "affected_subsystems": ["docs/legal/", "docs/governance/"],
+          "expected_artifacts": ["Privacy notice (non-alpha)", "DPA template", "Data retention schedule", "docs/json/legal/enterprise_privacy_policy.v1.json"],
+          "validation_strategy": "Privacy review. Map against GDPR/CCPA requirements.",
+          "dependency_impact": "None. Documentation only.",
+          "estimated_blast_radius": "None."
+        },
+        {
+          "item_id": "P0-07",
+          "title": "Vulnerability Disclosure Policy and Patching SLA",
+          "why_it_matters": "Enterprise needs clear process for vulnerability reporting, triage, and remediation timelines.",
+          "affected_subsystems": ["SECURITY.md", "docs/governance/"],
+          "expected_artifacts": ["docs/json/security/vulnerability_disclosure_policy.v1.json", "VDP page on static site", "Patching SLA document"],
+          "validation_strategy": "Review against ISO 29147 and OpenSSF VDP guide.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "None."
+        },
+        {
+          "item_id": "P0-08",
+          "title": "Telemetry/Evidence Boundary Documentation and Evidence Continuity Guarantee",
+          "why_it_matters": "Enterprise procurement reviewers must see a clear four-category model: product telemetry (default-on, opt-out), remote telemetry contribution (settings-controlled), local operational observability (mandatory), enterprise audit/evidence (mandatory). Without this boundary, telemetry discussions conflate product improvement data with security evidence, weakening both.",
+          "affected_subsystems": ["docs/governance/", "rig_relay/core/telemetry/", "rig_relay/evidence/"],
+          "expected_artifacts": ["Degraded-behavior matrix", "Evidence continuity guarantee document", "Four-category telemetry/evidence boundary documentation", "Cockpit telemetry/evidence state indicator design"],
+          "validation_strategy": "Procurement reviewer feedback. Automated tests proving product-telemetry-disabled preserves governance/audit/evidence records.",
+          "dependency_impact": "None. Documentation and test additions.",
+          "estimated_blast_radius": "Low. Additive documentation and test changes."
+        }
+      ]
+    },
+    "P1_enterprise_beta_blockers": {
+      "description": "Required before enterprise beta program or paid pilots.",
+      "items": [
+        {
+          "item_id": "P1-01",
+          "title": "PostgreSQL Enterprise Substrate (Phase 1: Schema + Migrations)",
+          "why_it_matters": "DuckDB is analytical substrate only. Need durable operational store for audit, tenants, config.",
+          "affected_subsystems": ["rig_relay/analytics/", "rig_relay/coordination/", "New: rig_relay/postgres/"],
+          "expected_artifacts": ["Postgres schema designs", "Alembic migration framework", "docs/json/governance/enterprise_postgres_readiness_v1.v1.json (already exists)"],
+          "validation_strategy": "Migration tests. Schema validation. Replay equivalence tests.",
+          "dependency_impact": "Add SQLAlchemy + asyncpg or psycopg as core dependencies.",
+          "estimated_blast_radius": "High. New subsystem. Touches analytics, coordination, evidence."
+        },
+        {
+          "item_id": "P1-02",
+          "title": "Audit Trail Tamper-Evidence (Layer 1: Hash Chain)",
+          "why_it_matters": "Enterprise audit requirements demand tamper-evident trails. Design exists, not implemented.",
+          "affected_subsystems": ["rig_relay/evidence/audit_trail.py"],
+          "expected_artifacts": ["Hash chain implementation", "Chain verification tests", "docs/json/evidence/audit_trail_tamper_evidence.v1.json"],
+          "validation_strategy": "Tamper-detection tests: modify/delete/insert events, verify chain breaks.",
+          "dependency_impact": "None. Uses existing SHA256 utilities.",
+          "estimated_blast_radius": "Low. Additive to existing AuditTrailStore."
+        },
+        {
+          "item_id": "P1-03",
+          "title": "Enterprise Evidence Pack Generator",
+          "why_it_matters": "Self-service procurement evidence reduces sales cycle. Auto-generated packs demonstrate transparency.",
+          "affected_subsystems": ["scripts/", "rig_relay/evidence/"],
+          "expected_artifacts": ["Enterprise evidence pack generation script", "Procurement one-pager template", "docs/json/governance/enterprise_procurement_evidence_pack_design_v1.v1.json (already exists)"],
+          "validation_strategy": "Pack generation tests. Content-light verification. Schema validation.",
+          "dependency_impact": "None. Uses existing evidence and export infrastructure.",
+          "estimated_blast_radius": "Low. Script-level addition."
+        },
+        {
+          "item_id": "P1-04",
+          "title": "Hosted Deployment Architecture (Design + Prototype)",
+          "why_it_matters": "Enterprise teams need shared state. Local-only is insufficient for team adoption.",
+          "affected_subsystems": ["rig_relay/coordination/", "rig_relay/desktop/", "New: deployment infrastructure"],
+          "expected_artifacts": ["Hosted architecture design doc", "Shared coordination backend prototype", "docs/json/architecture/hosted_deployment_architecture.v1.json"],
+          "validation_strategy": "Multi-user integration tests. Tenant isolation tests.",
+          "dependency_impact": "Add Postgres, potentially Redis or message queue. Web server hardening.",
+          "estimated_blast_radius": "Very high. Touches every subsystem. New deployment paradigm."
+        },
+        {
+          "item_id": "P1-05",
+          "title": "Incident Response Plan and Security Runbook",
+          "why_it_matters": "Enterprise security reviews require documented incident response capability.",
+          "affected_subsystems": ["docs/governance/", "docs/json/security/"],
+          "expected_artifacts": ["Incident response plan", "Security runbook", "Incident classification taxonomy", "docs/json/security/incident_response_plan.v1.json"],
+          "validation_strategy": "Tabletop exercise. Third-party review.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "None."
+        },
+        {
+          "item_id": "P1-06",
+          "title": "Enterprise Admin CLI and Health Check",
+          "why_it_matters": "Enterprise admins need operational tooling: health checks, diagnostics, config validation, log viewing.",
+          "affected_subsystems": ["rig_relay/cli/", "rig_relay/desktop/"],
+          "expected_artifacts": ["Admin CLI commands", "Health check endpoint", "Admin documentation"],
+          "validation_strategy": "Command smoke tests. Health check endpoint tests.",
+          "dependency_impact": "None beyond existing dependencies.",
+          "estimated_blast_radius": "Medium. Adds CLI commands and server endpoints."
+        },
+        {
+          "item_id": "P1-07",
+          "title": "SLSA Build Provenance (L1-L2)",
+          "why_it_matters": "Enterprise supply-chain security requires build attestations and signed releases.",
+          "affected_subsystems": [".github/workflows/"],
+          "expected_artifacts": ["SLSA provenance generation in CI", "Signed release artifacts", "Checksum publication"],
+          "validation_strategy": "SLSA provenance verification. Signature verification tests.",
+          "dependency_impact": "Add cosign or slsa-github-generator to CI.",
+          "estimated_blast_radius": "CI pipeline only. No code changes."
+        }
+      ]
+    },
+    "P2_hosted_team_blockers": {
+      "description": "Required for hosted/team deployment GA.",
+      "items": [
+        {
+          "item_id": "P2-01",
+          "title": "Multi-Tenant Isolation (Implementation)",
+          "why_it_matters": "Schemas exist. Need actual tenant boundaries in code: data isolation, per-tenant config, tenant-aware coordination.",
+          "affected_subsystems": ["rig_relay/coordination/", "rig_relay/identity/", "rig_relay/desktop/"],
+          "expected_artifacts": ["Tenant isolation enforcement", "Per-tenant event dispatch", "Tenant admin UI"],
+          "validation_strategy": "Cross-tenant data isolation tests. Tenant-scoped permission tests.",
+          "dependency_impact": "High. Requires Postgres with RLS.",
+          "estimated_blast_radius": "Very high. Fundamental architecture change."
+        },
+        {
+          "item_id": "P2-02",
+          "title": "SSO and SCIM Integration",
+          "why_it_matters": "Enterprise identity = SAML/OIDC + automated provisioning. OAuth-only is insufficient.",
+          "affected_subsystems": ["rig_relay/identity/"],
+          "expected_artifacts": ["SAML/OIDC provider integration", "SCIM provisioning API", "docs/json/identity/sso_integration_plan.v1.json"],
+          "validation_strategy": "SSO integration tests. SCIM provisioning tests.",
+          "dependency_impact": "Add SAML library. May add SCIM framework.",
+          "estimated_blast_radius": "High. New identity flows."
+        },
+        {
+          "item_id": "P2-03",
+          "title": "Billing and Subscription Model",
+          "why_it_matters": "Hosted deployment requires monetization. Needs subscription tiers, usage metering, payment integration.",
+          "affected_subsystems": ["New: billing subsystem"],
+          "expected_artifacts": ["Subscription tier definitions", "Usage metering", "Payment integration"],
+          "validation_strategy": "Subscription lifecycle tests. Billing accuracy tests.",
+          "dependency_impact": "Add Stripe or equivalent billing library.",
+          "estimated_blast_radius": "High. New business-critical subsystem."
+        },
+        {
+          "item_id": "P2-04",
+          "title": "Backup, Restore, and Disaster Recovery",
+          "why_it_matters": "Hosted service needs documented DR capability with tested recovery procedures.",
+          "affected_subsystems": ["Postgres deployment", "scripts/"],
+          "expected_artifacts": ["Backup/restore procedures", "DR runbook", "Recovery tests"],
+          "validation_strategy": "Backup integrity tests. Recovery time objective tests.",
+          "dependency_impact": "Postgres backup tooling. Storage for backups.",
+          "estimated_blast_radius": "Operations only. No code changes."
+        }
+      ]
+    },
+    "P3_trust_center_commercial_polish": {
+      "description": "Polish for commercial launch: trust center, security questionnaire responses, documentation completeness.",
+      "items": [
+        {
+          "item_id": "P3-01",
+          "title": "Trust Center and Security Page",
+          "why_it_matters": "Public trust center is table stakes for enterprise SaaS. Must be on static site.",
+          "affected_subsystems": ["docs/", "static site renderer"],
+          "expected_artifacts": ["Trust center static pages", "Security questionnaire pre-fill (CAIQ/SIG)", "Real-time status page"],
+          "validation_strategy": "Content review. Link validation.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "None. Static content."
+        },
+        {
+          "item_id": "P3-02",
+          "title": "Admin Documentation Completeness",
+          "why_it_matters": "Enterprise admins need comprehensive docs: deployment, configuration, operations, troubleshooting.",
+          "affected_subsystems": ["docs/"],
+          "expected_artifacts": ["Admin deployment guide", "Configuration reference", "Operations runbook", "Troubleshooting guide"],
+          "validation_strategy": "Admin documentation review. Completeness scan.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "None."
+        },
+        {
+          "item_id": "P3-03",
+          "title": "Enterprise Terms of Service and DPA",
+          "why_it_matters": "Legal docs required before any paid enterprise deal.",
+          "affected_subsystems": ["docs/legal/"],
+          "expected_artifacts": ["Terms of Service", "Data Processing Agreement", "Acceptable Use Policy", "Service Level Agreement"],
+          "validation_strategy": "Legal review.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "None."
+        },
+        {
+          "item_id": "P3-04",
+          "title": "Penetration Test and Security Assessment",
+          "why_it_matters": "Enterprise procurement often requires third-party security assessment or pen test report.",
+          "affected_subsystems": ["All"],
+          "expected_artifacts": ["Penetration test report", "Remediation evidence"],
+          "validation_strategy": "Independent security assessment.",
+          "dependency_impact": "None (external engagement).",
+          "estimated_blast_radius": "May surface vulnerabilities requiring code changes."
+        },
+        {
+          "item_id": "P3-05",
+          "title": "OpenSSF Scorecard > 7.0",
+          "why_it_matters": "Objective measure of repo hygiene. Procurement teams increasingly check this.",
+          "affected_subsystems": [".github/", "CI"],
+          "expected_artifacts": ["Scorecard badge on README", "Scorecard report in CI"],
+          "validation_strategy": "Scorecard check passes with score >= 7.0.",
+          "dependency_impact": "None.",
+          "estimated_blast_radius": "CI and repo settings only."
+        }
+      ]
+    },
+    "intentionally_deferred": {
+      "description": "Items recognized as important but intentionally deferred past P3.",
+      "items": [
+        {
+          "item_id": "DEFER-01",
+          "title": "SOC 2 Type II Audit",
+          "reason": "Requires 6-12 months of operating history with controls in place. Premature for alpha-stage tool.",
+          "deferred_until": "Post-enterprise-beta, with 6+ months of operational data."
+        },
+        {
+          "item_id": "DEFER-02",
+          "title": "ISO 27001 Certification",
+          "reason": "Requires mature ISMS with audit evidence. Not feasible for pre-revenue project.",
+          "deferred_until": "Post-commercial-launch."
+        },
+        {
+          "item_id": "DEFER-03",
+          "title": "FedRAMP Authorization",
+          "reason": "Requires US government sponsor and extensive control implementation. Years away.",
+          "deferred_until": "If/when US government customers exist and sponsor."
+        },
+        {
+          "item_id": "DEFER-04",
+          "title": "HIPAA Compliance",
+          "reason": "Rig Relay is not a healthcare tool. BAA not needed unless healthcare use case emerges.",
+          "deferred_until": "If healthcare customers request."
+        },
+        {
+          "item_id": "DEFER-05",
+          "title": "Air-Gapped Deployment Certification",
+          "reason": "Local-first architecture supports it but formal certification requires dedicated testing.",
+          "deferred_until": "When enterprise customer requires it."
+        }
+      ]
+    },
+    "out_of_scope_risks": {
+      "description": "Risks outside this roadmap that could block enterprise adoption.",
+      "items": [
+        {
+          "risk_id": "RISK-01",
+          "title": "LLM Provider Dependency Risk",
+          "description": "Enterprise customers may restrict which LLM providers can receive code. Rig Relay currently sends prompts to external APIs. On-premises/local inference support (in development) addresses this partially.",
+          "impact": "Some enterprises will block all external LLM API access. Local inference capability needed.",
+          "mitigation": "Continue local inference subsystem development. Document provider data flow boundaries."
+        },
+        {
+          "risk_id": "RISK-02",
+          "title": "Agent Autonomy Risk",
+          "description": "Enterprise risk teams may reject tools that give LLMs filesystem access, regardless of governance. Tool permission gating may not be sufficient for zero-trust environments.",
+          "impact": "Conservative enterprises may require full human-in-the-loop approval for all mutations.",
+          "mitigation": "Document tool permission model clearly. Offer 'review-only' deployment mode."
+        },
+        {
+          "risk_id": "RISK-03",
+          "title": "Prompt Injection Liability",
+          "description": "No current solution for prompt injection in agentic systems. Enterprise may view this as unacceptable residual risk.",
+          "impact": "Could block procurement entirely if security team flags OWASP LLM Top 10 risks.",
+          "mitigation": "Be transparent about current mitigations and limitations. Invest in prompt injection defenses."
+        },
+        {
+          "risk_id": "RISK-04",
+          "title": "Single-Maintainer Risk",
+          "description": "Enterprise procurement often evaluates bus factor. Single-maintainer projects are higher risk.",
+          "impact": "Some enterprises will not adopt tools maintained by a single person.",
+          "mitigation": "Build contributor community. Document succession/continuity plan."
+        },
+        {
+          "risk_id": "RISK-05",
+          "title": "AGPL License Risk",
+          "description": "AGPL-3.0 is the most restrictive open-source license. Many enterprises have blanket prohibitions.",
+          "impact": "Automatic rejection from enterprises with no-AGPL policies.",
+          "mitigation": "Offer commercial license with permissive terms. Be upfront about AGPL requirements."
+        }
+      ]
+    }
+  },
+  "content_light": true
+}

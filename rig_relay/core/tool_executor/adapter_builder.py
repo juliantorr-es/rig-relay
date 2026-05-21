@@ -8,24 +8,30 @@ from rig_relay.core.tools.base import InvokeContext
 
 if TYPE_CHECKING:
     from rig_relay.core.agent_loop import AgentLoop
+    from rig_relay.core.tool_executor.context import ToolExecutionContext
 
 
 class ToolRuntimeAdapterBuilder:
-    """Builds ToolRuntime with all 12 governance adapters.
+    """Builds ToolRuntime with all governance adapters.
 
-    Accepts a reference to the AgentLoop instance to access dynamic
-    attributes (session_id, current_turn, etc.) — matching the
-    closure pattern in the original _get_tool_runtime().
+    Accepts both an AgentLoop reference (for tool invocation
+    infrastructure: tool_manager, agent_manager, session_logger, etc.)
+    and a ToolExecutionContext (for execution boundary state:
+    session_id, turn_id, trace_runtime, approval ports, etc.).
+
+    The loop reference is the legitimate bridge between ToolRuntime
+    and the agent harness. The context object carries execution-scoped
+    state that crosses the runtime boundary.
     """
 
-    __slots__ = ("_loop", "_build_count")
+    __slots__ = ("_loop", "_ctx", "_build_count")
 
-    def __init__(self, *, loop: AgentLoop) -> None:
+    def __init__(self, *, loop: AgentLoop, ctx: ToolExecutionContext) -> None:
         self._loop: AgentLoop = loop
+        self._ctx = ctx
         self._build_count = 0
 
     def build_tool_runtime(self) -> ToolRuntime:
-        loop = self._loop
         self._build_count += 1
 
         return ToolRuntime(
@@ -40,14 +46,15 @@ class ToolRuntimeAdapterBuilder:
             receipt_capture=self._receipt_capture,
             context_observe=self._context_observe,
             stats_delta=self._stats_delta,
-            subprocess_runner=loop._build_subprocess_runner(),
-            telemetry_client=loop.telemetry_client,
+            subprocess_runner=self._loop._build_subprocess_runner(),
+            telemetry_client=self._loop.telemetry_client,
         )
 
     # ── Invoke tool adapter ─────────────────────────────────
 
     async def _invoke_adapter(self, args_dict: dict) -> AsyncGenerator[Any, None]:
         loop = self._loop
+        ctx = self._ctx
         tool_name = args_dict.pop("_tool_runtime_name", "")
         tool_meta = args_dict.pop("_tool_runtime_meta", {})
         subprocess_runner = tool_meta.get("subprocess_runner")
@@ -55,11 +62,11 @@ class ToolRuntimeAdapterBuilder:
         async for item in tool_instance.invoke(
             ctx=InvokeContext(
                 tool_call_id="",
-                parent_turn_id=loop._current_user_message_id,
+                parent_turn_id=ctx.user_message_id,
                 agent_manager=loop.agent_manager,
                 session_dir=loop.session_logger.session_dir,
                 entrypoint_metadata=loop.entrypoint_metadata,
-                approval_callback=loop.approval_callback,
+                approval_callback=ctx.approval_callback,
                 user_input_callback=loop.user_input_callback,
                 sampling_callback=loop._sampling_handler,
                 plan_file_path=loop._plan_session.plan_file_path,
@@ -163,7 +170,7 @@ class ToolRuntimeAdapterBuilder:
             return True, ""
         except Exception:
             reason = "permission_unavailable"
-            turn_id = getattr(loop, "_current_user_message_id", None)
+            turn_id = getattr(self._ctx, "user_message_id", None)
             from rig_relay.core.logger import logger
 
             logger.warning(
@@ -183,19 +190,20 @@ class ToolRuntimeAdapterBuilder:
         self, tool_name: str, args_dict: dict, call_id: str
     ) -> tuple[bool, str]:
         loop = self._loop
-        if loop.approval_callback is None:
+        ctx = self._ctx
+        if ctx.approval_callback is None:
             return True, ""
         try:
             tool_instance = loop.tool_manager.get(tool_name)
             from rig_relay.core.types import ApprovalResponse
 
-            response, feedback = await loop.approval_callback(
+            response, feedback = await ctx.approval_callback(
                 tool_name, tool_instance.ArgsModel(**args_dict), call_id, []
             )
             return response == ApprovalResponse.YES, feedback or ""
         except Exception:
             reason = "approval_unavailable"
-            turn_id = getattr(loop, "_current_user_message_id", None)
+            turn_id = getattr(ctx, "user_message_id", None)
             from rig_relay.core.logger import logger
 
             logger.warning(
@@ -222,7 +230,7 @@ class ToolRuntimeAdapterBuilder:
             tool_instance = loop.tool_manager.get(tool_name)
         except Exception:
             reason = "patch_gate_unavailable"
-            turn_id = getattr(loop, "_current_user_message_id", None)
+            turn_id = getattr(self._ctx, "user_message_id", None)
             from rig_relay.core.logger import logger
 
             logger.warning(

@@ -1,0 +1,133 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_docs_alignment.v1",
+  "audit_id": "high-performance-substrate-docs-alignment-v1",
+  "title": "High-Performance Substrate Documentation Alignment v1",
+  "generated_at": "2026-05-20T21:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "source_audit_artifacts": [
+    "docs/json/governance/high_performance_substrate_audit_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_tool_taxonomy_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_fit_matrix_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_architecture_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_dependency_plan_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_roadmap_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_test_strategy_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_security_privacy_review_v1.v1.json"
+  ],
+  "docs_inspected": [
+    {"path": "docs/json/site_manifest.v1.json", "role": "static docs navigation index", "needs_update": true, "reason": "8 high-performance substrate audit artifacts and 6 enterprise/governance artifacts not registered"},
+    {"path": "docs/json/audits/deep-research-report1.v1.json", "role": "deep research audit report", "needs_update": true, "reason": "recommends SQLite as optional cache — contradicts SQLite-forbidden policy"},
+    {"path": "docs/json/governance/analytics_data_lake_proposal.v1.json", "role": "analytics data lake design", "needs_update": false, "reason": "correctly describes DuckDB as disposable read-side analytical lens; no contradictions"},
+    {"path": "docs/json/governance/analytics_lake_hardening_lane.v1.json", "role": "analytics hardening roadmap", "needs_update": false, "reason": "references upcoming PostgreSQL integration — accurate for its timeline context"},
+    {"path": "docs/json/governance/enterprise_data_inventory_v1.v1.json", "role": "enterprise data inventory", "needs_update": false, "reason": "data class inventory, not substrate inventory; mentions Postgres/DuckDB as storage destinations correctly"},
+    {"path": "docs/json/governance/enterprise_procurement_evidence_pack_design_v1.v1.json", "role": "procurement evidence pack design", "needs_update": false, "reason": "artifact list and schema references are correct; no substrate contradictions"},
+    {"path": "docs/json/governance/dependency-policy.v1.json", "role": "dependency governance policy", "needs_update": false, "reason": "already registered in site manifest and search index; content is correct"},
+    {"path": "docs/json/governance/event_fabric_duckdb_projection_report_v1.v1.json", "role": "runtime evidence artifact", "needs_update": false, "reason": "generated report — not a policy page; no substrate contradictions"},
+    {"path": "docs/json/governance/usage-data-doctrine.v1.json", "role": "usage data doctrine", "needs_update": false, "reason": "telemetry doctrine is correct and aligned with telemetry/operational boundary from Postgres audit"},
+    {"path": "docs/json/governance/postgres_enterprise_substrate_audit_v1.v1.json", "role": "PostgreSQL enterprise substrate audit", "needs_update": false, "reason": "current-architecture-inventory statement about DuckDB being only database component is accurate for pre-migration state; surrounding context clarifies Postgres is planned"},
+    {"path": "docs/json/governance/high_performance_substrate_audit_v1.v1.json", "role": "high-perf substrate audit", "needs_update": false, "reason": "Zstandard usage statement is accurate — code inspection confirms Zstandard is only imported in rig_relay/core/teleport/teleport.py; 'underutilized' is the correct assessment"},
+    {"path": "docs/json/governance/postgres_security_procurement_review_v1.v1.json", "role": "Postgres security/procurement review", "needs_update": false, "reason": "telemetry/operational state boundary doctrine is correct — already distinguishes product telemetry from operational observability from enterprise audit"},
+    {"path": "docs/json/findings/out-of-scope-findings.jsonl", "role": "out-of-scope findings registry", "needs_update": false, "reason": "finding #17 about analytics projection state conflict is directly relevant to hardening lane but no new substrate-tool findings needed"},
+    {"path": "docs/governance/", "role": "legacy Markdown governance docs", "needs_update": false, "reason": "15 files tracked as 'deleted' in migration manifest; remaining 46 are preserved per migration policy. No substrate contradictions found in agent-loop-boundary.md or mission-context-packets.md (both correctly describe DuckDB as disposable/read-side)"},
+    {"path": "README.md", "role": "project landing page", "needs_update": false, "reason": "correctly describes DuckDB read-side analytics and Event Fabric; no substrate contradictions"},
+    {"path": "docs/json/documentation_migration_manifest.v1.json", "role": "Markdown-to-JSON migration tracker", "needs_update": false, "reason": "19 entries cover all migrated/deleted docs; new high-perf docs are native JSON — no migration entry needed"}
+  ],
+  "stale_statements_found": [
+    {
+      "path": "docs/json/audits/deep-research-report1.v1.json",
+      "location": "section[47].content",
+      "stale_text": "Optionally integrate a small Redis or SQLite as an optional multi-session cache.",
+      "problem": "Recommends SQLite as optional cache. SQLite is explicitly forbidden by Rig Relay architecture policy (see high_performance_substrate_audit_v1.v1.json: 'SQLite remains forbidden', postgres_enterprise_substrate_audit_v1.v1.json: 'SQLite: Forbidden per existing architecture policy').",
+      "correction": "Replace with: 'Optionally integrate a small Redis as an optional multi-session cache. SQLite is not permitted per substrate architecture policy.'",
+      "corrected": true
+    }
+  ],
+  "docs_updates_applied": [
+    {
+      "path": "docs/json/audits/deep-research-report1.v1.json",
+      "change": "Patched SQLite recommendation to note SQLite is forbidden per policy, replaced with Redis-only suggestion",
+      "type": "edit"
+    },
+    {
+      "path": "docs/json/site_manifest.v1.json",
+      "change": "Added 9 high-performance substrate governance documents to Governance collection (order 26)",
+      "type": "edit"
+    },
+    {
+      "path": "docs/json/governance/high_performance_substrate_doctrine_v1.v1.json",
+      "change": "Created new static docs page summarizing substrate doctrine: source-of-truth hierarchy, promoted/prototype/parked/rejected tools, content-light enforcement continuity, roadmap sequencing",
+      "type": "new"
+    }
+  ],
+  "docs_intentionally_untouched": [
+    {
+      "path": "docs/conversations/",
+      "reason": "Conversation summaries are historical records — they reflect what was true at the time. The 'upcoming PostgreSQL integration' reference in the analytics hardening lane summary is accurate for its timestamp. Conversation summaries are not policed for staleness."
+    },
+    {
+      "path": "docs/governance/*.md",
+      "reason": "Per migration policy: old Markdown docs must not be deleted until (1) JSON replacement exists, (2) JSON validates against schema, (3) static renderer renders it, (4) migration manifest maps old_path to new_path, (5) references updated, (6) tests pass, (7) deletion listed in final report. None of these conditions were triggered by this alignment mission. All 46 remaining Markdown files are preserved."
+    },
+    {
+      "path": "docs/json/governance/postgres_enterprise_substrate_audit_v1.v1.json",
+      "reason": "'DuckDB is the only database component' is an accurate statement about the CURRENT state in the current-architecture-inventory section. The audit goes on to propose PostgreSQL migration. Adding a temporal qualifier would be a style edit, not a doctrine correction."
+    },
+    {
+      "path": "docs/json/governance/high_performance_substrate_audit_v1.v1.json and tool_taxonomy",
+      "reason": "'Zstandard only used for teleport diff compression' is accurate — codebase inspection confirms Zstandard is only imported in rig_relay/core/teleport/teleport.py. The 'underutilized' assessment is correct. No patch needed."
+    }
+  ],
+  "doctrine_decisions_propagated": [
+    "Parquet is derived analytical snapshot, never canonical event truth",
+    "PostgreSQL is enterprise operational substrate, JSON/JSONL/CSV are canonical artifacts",
+    "DuckDB is disposable analytical microscope, read-side only",
+    "Zstandard is compression optimization — not redaction, not privacy, not canonical authority", 
+    "Pydantic v2 is typed model boundary — exploit harder before adding serialization deps",
+    "Arrow is transient in-memory prototype behind ProjectionStorePort, optional [arrow] extra",
+    "pgvector requires sensitive-derived-data policy before implementation",
+    "pg_jsonschema is defense-in-depth, not primary validation",
+    "psycopg 3 COPY with staging tables and constraint promotion — never bypass validation",
+    "Polars/Ibis/DataFusion/orjson/SQLGlot parked until measured bottlenecks justify",
+    "msgspec/Iceberg/Delta/LanceDB/SQLite rejected for current architecture",
+    "No new dependency approved for immediate implementation beyond existing canonical deps",
+    "Content-light enforcement must apply at every substrate pipeline stage",
+    "Product telemetry opt-out must not disable audit/evidence/operational substrate"
+  ],
+  "links_nav_additions": {
+    "site_manifest": "Added 9 high-performance substrate governance documents to Governance collection",
+    "search_index": "Static docs render pipeline regenerates search-index.json from site manifest — new pages auto-indexed on next render",
+    "page_added": "docs/json/governance/high_performance_substrate_doctrine_v1.v1.json — single authoritative page summarizing all substrate decisions"
+  },
+  "validation_results": {
+    "json_syntax": "all modified and created files pass json.loads()",
+    "schema_validation": "python scripts/rig_relay_validate_schemas.py — 408 schemas pass, zero regressions",
+    "site_manifest_integrity": "all referenced paths in governance collection exist on disk"
+  },
+  "stale_markdown_candidates": [
+    {
+      "path": "docs/audits/release-candidate-convergence-spine.md",
+      "canonical_replacement": "docs/json/audits/release_candidate_convergence_spine.v1.json",
+      "status": "already_migrated",
+      "reason": "Listed as 'migrated' in documentation_migration_manifest. Markdown preserved pending all 7 migration rules satisfaction."
+    },
+    {
+      "path": "docs/governance/agent-loop-boundary.md",
+      "canonical_replacement": "docs/json/governance/agent_loop_boundary.v1.json",
+      "status": "already_migrated",
+      "reason": "Contains correct DuckDB boundary statement ('DuckDB is the analytical compiler substrate. Runtime must not depend on it.')"
+    },
+    {
+      "path": "docs/governance/mission-context-packets.md",
+      "canonical_replacement": "docs/json/governance/mission-context-packets.v1.json",
+      "status": "already_migrated",
+      "reason": "Contains correct DuckDB statement ('DuckDB is a cache/index only, never the canonical source of truth')"
+    }
+  ],
+  "remaining_seams": [
+    "Static docs render pipeline has NOT been re-run — new pages are in governance JSON but generated HTML under docs/pages/ has not been regenerated. Run scripts/render_static_docs.py to regenerate.",
+    "Search index spans 2024 entries — will auto-include new governance pages on next render.",
+    "Migration manifest tracks 15 deleted .md files — verify those .md files are physically absent from docs/governance/ on next stale Markdown purge mission."
+  ],
+  "revision": "1.0.0"
+}

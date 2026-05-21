@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.analytics_hardening_lane.v1",
+  "title": "Analytics Data Lake Hardening Lane Roadmap Schema",
+  "description": "Schema for the post-PostgreSQL analytics data lake hardening lane roadmap.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "roadmap_id",
+    "title",
+    "generated_at",
+    "status",
+    "postgresql_integration_dependency",
+    "modules",
+    "content_light",
+    "revision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.analytics_hardening_lane.v1"
+    },
+    "roadmap_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "approved", "planned", "in_progress", "completed"]
+    },
+    "postgresql_integration_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed", "completion_date", "description"],
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "completion_date": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "module_id",
+          "title",
+          "description",
+          "objectives",
+          "proposed_changes",
+          "verification_plan"
+        ],
+        "properties": {
+          "module_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "proposed_changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["file", "action", "description"],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": ["MODIFY", "NEW", "DELETE"]
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "verification_plan": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["automated_tests", "manual_verification"],
+            "properties": {
+              "automated_tests": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "manual_verification": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "revision": {
+      "type": "string"
+    }
+  }
+}

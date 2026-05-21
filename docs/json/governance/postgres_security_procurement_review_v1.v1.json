@@ -1,0 +1,209 @@
+{
+  "schema_version": "rig.relay.postgres_security_procurement_review.v1",
+  "audit_id": "postgres-enterprise-substrate-audit-v1",
+  "title": "PostgreSQL Enterprise Substrate — Security, Privacy & Procurement Review",
+  "generated_at": "2026-05-20T18:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "sections": {
+    "telemetry_operational_state_boundary": {
+      "doctrine_id": "telemetry-operational-state-boundary-v1",
+      "principle": "Product telemetry opt-out must degrade adaptive product-learning behaviors, not break governance, auditability, enterprise evidence, projection invalidation, or operational correctness. Four distinct layers must not be conflated.",
+      "layer_1_product_telemetry": {
+        "purpose": "Remote or aggregated product-learning telemetry: UX optimization, agent-tool optimization, Ralph/orchestrator/subagent refinement, adaptive behavior, cross-org product intelligence.",
+        "opt_out_behavior": "Disabling product telemetry removes: remote contribution, cross-user aggregate intelligence, hosted product-learning analytics, adaptive recommendations derived from telemetry, product optimization feedback loops. Adaptive product-learning behaviors visibly degrade.",
+        "opt_out_must_not": "Disable receipt persistence, mutation receipts, release-gate decisions, schema validation records, export manifests, enterprise audit events, content-light incident investigation records, or Postgres operational substrate features.",
+        "cockpit_status": "product_telemetry_disabled"
+      },
+      "layer_2_local_operational_observability": {
+        "purpose": "Local event logs, receipt metadata, trace metadata, projection invalidation, cockpit operational health, local diagnostics, and audit evidence. These are required product state/evidence for governed operation.",
+        "opt_out_behavior": "Local observability is NOT optional tracking — it is required for governed operation. It may only be explicitly disabled via a separate local_diagnostics setting (distinct from product telemetry consent).",
+        "opt_out_must_not": "Be disabled by product-telemetry opt-out. Must not be conflated with product telemetry.",
+        "cockpit_status": "local_observability_degraded (only when local_diagnostics is explicitly disabled)"
+      },
+      "layer_3_enterprise_audit_evidence_substrate": {
+        "purpose": "Postgres-backed audit trails, enterprise_audit_event, mutation_receipt, release_gate_decision, receipt_envelope, export_manifest, schema_registry, and artifact_registry.",
+        "opt_out_behavior": "These must continue to function even when product telemetry is disabled. Enterprise audit/evidence cannot silently stop refreshing because telemetry was disabled. Disabling product telemetry must not weaken auditability, compliance evidence, incident investigation, or governance gates.",
+        "enterprise_mode_requirement": "Enterprise audit/evidence tables remain mandatory in enterprise mode regardless of telemetry consent state.",
+        "cockpit_status": "enterprise_substrate_unavailable (only when Postgres is configured but unreachable)"
+      },
+      "layer_4_local_adaptive_ux": {
+        "purpose": "Adaptive product-learning behaviors: suggested tool sequences, Ralph mission-candidate ranking, orchestrator subagent refinement.",
+        "opt_out_behavior": "When product telemetry is disabled, adaptive behavior can visibly degrade — adaptive recommendations may disappear, ranking quality may decrease.",
+        "cockpit_status": "product_telemetry_disabled (surface as info, not as error)"
+      },
+      "cockpit_three_state_model": {
+        "description": "Cockpit must surface three separately distinguishable states, never conflated into a single 'degraded' label.",
+        "state_1": "product_telemetry_disabled — product-learning features are offline. Governance, audit, receipts, and operational health are unaffected.",
+        "state_2": "local_observability_degraded — local event collection is reduced (only when local_diagnostics is explicitly disabled). Audit/enterprise records may still be intact.",
+        "state_3": "enterprise_substrate_unavailable — Postgres is configured but unreachable. This is fail-closed. Cockpit shows 'Enterprise substrate unavailable'."
+      },
+      "audit_evidence_continuity_guarantee": {
+        "text": "Disabling product telemetry must never disable receipt persistence, mutation receipts, release-gate decisions, schema validation records, export manifests, enterprise audit events, or content-light incident investigation records. Enterprise audit/evidence tables (enterprise_audit_event, mutation_receipt, release_gate_decision, receipt_envelope, export_manifest, schema_registry, artifact_registry) must continue to append and queryable even when product telemetry consent is withdrawn.",
+        "enforcement": "Telemetry consent state (opt-in/opt-out) governs product_telemetry layer only. It has no effect on Postgres INSERT/UPDATE/SELECT paths for audit/evidence tables. Application-level guard: if telemetry consent is false, skip product_telemetry writes but always execute audit/evidence writes.",
+        "test_required": "Disable product telemetry consent. Verify that receipt_envelope INSERT succeeds. Verify that mutation_receipt INSERT succeeds. Verify that release_gate_decision INSERT succeeds. Verify that enterprise_audit_event INSERT succeeds. Verify that export_manifest INSERT succeeds."
+      }
+    },
+    "data_classification_for_postgres": {
+      "what_may_go_into_postgres": [
+        "Receipt envelope metadata (receipt_kind, session_id, actor_kind, subject_kind, decision_kind, created_at, SHA256 hashes)",
+        "Session lifecycle events (event_name, session_id, sequence, created_at, duration_ms)",
+        "Coordination metadata (lease_id, session_id, task_id, status, path_hashes, ttl_seconds, expires_at)",
+        "Schema registry metadata (schema_id, schema_version, schema_path, content_sha256, title, description)",
+        "Validation results (passed, error_count, error_messages — content-light)",
+        "Release gate decisions (gate_name, decision_kind, severity, status, reasons[], evidence refs)",
+        "Findings metadata (finding_id, dedupe_key, kind, severity, status, title, description)",
+        "Provider operating picture metadata (provider, trust_tier, health_status, capability matrix — no tokens)",
+        "Tool invocation metadata (tool_name, status, latency_ms, receipt_sha256 — no args or outputs)",
+        "Telemetry aggregates (counts, rates, percentile latencies — no raw events)",
+        "Audit events (event_kind, actor_id, action, target_id, before/after SHA256, reason)",
+        "Export manifests (table_name, row_count, export_sha256, source_sha256 — no exported data)",
+        "User preferences and consent state (preference keys, boolean flags, consent timestamps — no PII)"
+      ],
+      "what_must_never_go_into_postgres": [
+        "Raw LLM prompts — may contain proprietary code, secrets accidentally pasted, business logic",
+        "Raw LLM completions — may contain generated code, reasoning, potential sensitive content",
+        "Raw file contents — repository source code, configuration files, private data",
+        "Raw stdout/stderr from tool execution — may contain secrets, file paths, proprietary output",
+        "Raw git diffs and patches — may contain proprietary code, file paths, secrets",
+        "API keys and credentials — provider API keys, OAuth tokens, GitHub tokens",
+        "OAuth access tokens — Google Drive, GitHub, any OAuth provider tokens",
+        "Private repository file paths outside the project workspace",
+        "Raw email addresses, domain names, calendar titles, drive filenames from Google Workspace integration",
+        "Search query terms that may contain proprietary keywords or code",
+        "Symbol codec raw bodies — source code snippets from tree-sitter parsing",
+        "Debug packet contents — may contain any of the above",
+        "Mission context packet raw contents — may contain compressed code snippets",
+        "Local inference benchmark prompt/response pairs — may contain evaluation code"
+      ],
+      "enforcement_mechanism": {
+        "layer_1_application": "All Postgres adapters validate payloads against content-light schemas before INSERT. pydantic+jsonschema validation at Postgres boundary.",
+        "layer_2_database": "CHECK constraints on all JSONB columns validate against forbidden key patterns (token, secret, private_key, raw_prompt, raw_completion, file_content, diff, patch). INSERT triggers raise exception on forbidden content.",
+        "layer_3_testing": "Content-light regression tests: insert known forbidden payloads and verify constraint rejection. Every table with JSONB column must have corresponding content-light enforcement tests."
+      }
+    },
+    "content_light_enforcement": {
+      "definition": "Content-light means: no raw file contents, no prompts, no completions, no stdout/stderr, no diffs, no patches, no secrets, no API keys, no private file paths, no PII (email, name, domain), no private repository content.",
+      "allowed_fields_pattern": "event metadata (name, timestamp, sequence, session_id), SHA256 hashes, status enums, counts/aggregates, latency/duration, error kinds (not messages with code), tool names (not args), schema IDs, path hashes (salted SHA256 of paths, not raw paths).",
+      "postgres_enforcement": [
+        "Generated columns extract only allowlisted fields from JSONB payloads",
+        "CHECK constraints validate JSONB key sets against content-light allowlist",
+        "INSERT trigger: enumerate all keys in incoming JSONB payload, reject any key matching forbidden pattern",
+        "Materialized views only aggregate from typed columns, never from raw JSONB payloads",
+        "Role-based access: analyst role cannot query JSONB payload columns — only typed generated columns and materialized views"
+      ]
+    },
+    "retention_policy": {
+      "operational_tables": {
+        "event_log": "30-day online. Monthly partitions exported as gzipped JSONL to cold storage. Cold storage retained 1 year.",
+        "trace_event": "14-day online. Weekly partitions exported.",
+        "coordination_lease": "Released/stale leases archived after 7 days.",
+        "cockpit_projection": "Latest only. Previous projections auto-purged.",
+        "cockpit_ui_state": "Per-session ephemeral. Deleted on session close.",
+        "projection_invalidation": "24-hour retention."
+      },
+      "permanent_tables": {
+        "artifact_registry": "Indefinite retention. Immutable — no deletes.",
+        "artifact_validation": "90-day retention for operational querying. Export to cold storage for compliance.",
+        "receipt_envelope": "90-day retention for operational querying. Indefinite retention in canonical files.",
+        "finding": "Indefinite retention. Resolved findings move to cold storage partition after 90 days.",
+        "release_gate_decision": "Indefinite retention for compliance evidence.",
+        "mutation_receipt": "Indefinite retention for mutation audit trail.",
+        "enterprise_audit_event": "Indefinite retention. Monthly partitions archived.",
+        "schema_registry": "Indefinite retention.",
+        "export_manifest": "Indefinite retention for export audit trail."
+      },
+      "cold_storage": ".build/rig-relay/archive/ — gzipped JSONL exports. Duplicated to ~/.rig/relay/archive/ for user-global. Always restorable from canonical artifacts."
+    },
+    "export_delete_story": {
+      "export": "Every Postgres table has a corresponding export function that produces JSON/JSONL/CSV artifacts matching the canonical artifact format. Export manifests verify SHA256 equivalence between Postgres data and exported artifacts.",
+      "delete": "Individual rows are NEVER deleted from audit trail tables (enterprise_audit_event, mutation_receipt, release_gate_decision). Operational tables (event_log, trace_event) have partition-based retention — old partitions are detached, exported to cold storage, then dropped. No soft-delete patterns — rows are either present or exported-then-purged.",
+      "gdpr_right_to_erasure": "Enterprise audit events link to pseudonymous session IDs, not personally identifiable information. If tenant-level erasure is required, entire tenant partition is exported then dropped. Tenant audit log records the erasure event."
+    },
+    "admin_access_model": {
+      "database_roles": [
+        {
+          "role": "rig_relay_admin",
+          "privileges": "SUPERUSER equivalent: CREATE DATABASE, CREATE ROLE, all DDL operations. Used for migration execution and schema management. Never used by application code.",
+          "access_control": "Password-authenticated via pg_hba.conf. Local Unix socket only."
+        },
+        {
+          "role": "rig_relay_operator",
+          "privileges": "CRUD on all operational tables. Can INSERT/UPDATE/SELECT but cannot DROP, ALTER TABLE, CREATE INDEX, or manage roles. Application service account.",
+          "access_control": "md5/scram-sha-256 authenticated. Used by Rig Relay application."
+        },
+        {
+          "role": "rig_relay_analyst",
+          "privileges": "SELECT only on content-light materialized views. Cannot query base tables or JSONB columns directly. Used by cockpit dashboard queries.",
+          "access_control": "md5/scram-sha-256 authenticated. Used by cockpit analytics backend."
+        },
+        {
+          "role": "rig_relay_auditor",
+          "privileges": "SELECT only on enterprise_audit_event and export_manifest. Cannot see operational data. Used by compliance/audit tooling.",
+          "access_control": "Separate password. Read-only. Access logged as audit events."
+        }
+      ],
+      "local_vs_enterprise": "In local mode, rig_relay_admin is the default role with password 'local_only' (only accepts local Unix socket connections). In enterprise mode, roles are provisioned by the tenant admin with secure passwords managed via the credential store."
+    },
+    "audit_trail_and_incident_investigation": {
+      "audit_event_types": [
+        "admin_action — schema migration, role creation, backup operation",
+        "tenant_provision / tenant_deprovision — tenant lifecycle",
+        "permission_change — RLS policy change, role grant/revoke",
+        "consent_change — telemetry consent opt-in/opt-out",
+        "config_mutation — Postgres configuration changes",
+        "role_assignment — user-to-role mapping changes",
+        "backup_operation — pg_dump execution, WAL archival",
+        "export_operation — export manifest creation, cold storage archival"
+      ],
+      "incident_investigation_path": [
+        "1. Query enterprise_audit_event for time window and affected tenant/actor",
+        "2. Cross-reference event_log for session activity during the incident",
+        "3. Query receipt_envelope for tool invocations during affected sessions",
+        "4. Query coordination_lease for path reservations overlapping affected files",
+        "5. Export affected partition to analysts for offline investigation",
+        "6. Replay canonical artifacts to verify Postgres records match source-of-truth"
+      ]
+    },
+    "backup_restore_story": {
+      "backup": [
+        "Full backup: pg_dump -Fc (custom format) daily. Stored in .build/rig-relay/backups/.",
+        "WAL archiving: pg_receivewal for point-in-time recovery (enterprise mode only).",
+        "Canonical artifacts are the ultimate backup — all Postgres data can be rebuilt from JSON/JSONL/CSV source artifacts via Phase 4 replay process.",
+        "Backup encrypts with age encryption using Rig Relay's attestation key."
+      ],
+      "restore": [
+        "Option 1 (fast): pg_restore from daily backup. Verify SHA256 against canonical artifacts.",
+        "Option 2 (slow but authoritative): Replay canonical artifacts through Postgres adapters to rebuild all operational tables. Run Phase 4 equivalence verification.",
+        "Restore is tested monthly in Phase 7 procurement validation."
+      ]
+    },
+    "local_vs_hosted_enterprise_boundary": {
+      "local_mode": "Postgres runs locally (brew install postgresql@16, or bundled via pyinstaller with embedded postgres). No network exposure. No RLS. No tenant isolation. Single user. Backup via pg_dump to local filesystem.",
+      "enterprise_mode": "Postgres connection string configured via RIG_RELAY_POSTGRES_DSN env var or config TOML. RLS enabled. Tenant isolation active. Connection pooling with pgbouncer recommended. WAL archiving to S3/GCS. Access controlled via pg_hba.conf with scram-sha-256.",
+      "boundary_assertions": [
+        "Local mode never enables RLS or tenant isolation",
+        "Enterprise mode never accepts local-only authentication",
+        "Postgres DSN is never hardcoded in source or committed to repo",
+        "Connection string validation: must not be localhost in enterprise mode (anti-localhost-pivot protection)"
+      ]
+    },
+    "procurement_readiness_implications": {
+      "capability_gain": "Postgres enables SOC 2 Type II audit trails, role-based access for procurement review, automated backup/restore for BCDR compliance, tenant isolation for multi-enterprise deployments.",
+      "remaining_gaps": [
+        "No secrets rotation mechanism for Postgres credentials (deferred to credential store hardening)",
+        "No automated failover for Postgres in enterprise mode (deferred to hosted deployment)",
+        "No encryption-at-rest for Postgres data files (deferred to enterprise deployment with LUKS/KMS)",
+        "No connection pooling for enterprise mode (recommend pgbouncer in deployment docs, not bundled)"
+      ],
+      "compliance_evidence_artifacts": [
+        "audit_trail: enterprise_audit_event table + exported JSONL artifacts",
+        "access_control: pg_authid + pg_roles information_schema views + RLS policy definitions",
+        "backup_restore: export_manifest table + backup script logs",
+        "data_retention: partition management logs + cold storage export manifests",
+        "content_light_guarantee: CHECK constraint definitions + constraint violation logs + redaction test reports"
+      ]
+    }
+  },
+  "revision": "1.0.0"
+}

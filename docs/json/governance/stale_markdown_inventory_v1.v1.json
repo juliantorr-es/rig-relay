@@ -1,0 +1,91 @@
+{
+  "schema_version": "rig.relay.stale_markdown_inventory.v1",
+  "inventory_id": "stale-markdown-inventory-v1",
+  "title": "Stale Markdown Inventory v1 — Rig Relay",
+  "generated_at": "2026-05-21T07:30:00Z",
+  "summary": {
+    "total_inventoried": 114,
+    "canonical_doc": 11,
+    "legal_or_policy_doc": 19,
+    "generated_doc_source": 0,
+    "stale_evidence_candidates": 114,
+    "preserved_per_migration_manifest": 7,
+    "already_deleted_per_migration_manifest": 11,
+    "unknown": 0
+  },
+  "canonical_docs_in_scope": [
+    {"path": "AGENTS.md", "size": 27555, "category": "canonical_doc", "reason": "Agent instructions — never delete"},
+    {"path": "README.md", "size": 10998, "category": "canonical_doc", "reason": "GitHub landing page — never delete"},
+    {"path": "CONTRIBUTING.md", "size": 2441, "category": "canonical_doc", "reason": "Contribution UI — never delete"},
+    {"path": "SECURITY.md", "size": 1581, "category": "canonical_doc", "reason": "Security policy — never delete"},
+    {"path": "CHANGELOG.md", "size": 1419, "category": "canonical_doc", "reason": "Release changelog — never delete"},
+    {"path": "CODE_OF_CONDUCT.md", "size": 626, "category": "canonical_doc", "reason": "Community code of conduct — never delete"},
+    {"path": "CONTRIBUTOR_LICENSE_AGREEMENT.md", "size": 2740, "category": "legal_or_policy_doc", "reason": "Legal — never delete"},
+    {"path": "LICENSE", "size": null, "category": "legal_or_policy_doc", "reason": "License text — never delete"},
+    {"path": "UPSTREAM.md", "size": 1202, "category": "legal_or_policy_doc", "reason": "Upstream attribution — never delete"},
+    {"path": "ATTRIBUTION.md", "size": 1110, "category": "legal_or_policy_doc", "reason": "Attribution — never delete"},
+    {"path": "THIRD_PARTY_NOTICES.md", "size": 842, "category": "legal_or_policy_doc", "reason": "Third-party notices — never delete"}
+  ],
+  "stale_evidence_batches": [
+    {
+      "batch_id": "BATCH-DOCS-AUDITS",
+      "category": "stale_evidence_candidates",
+      "description": "Pre-migration audit artifacts in docs/audits/. 113 Markdown files, all with canonical JSON counterparts at docs/json/audits/. These were produced during audit phases before JSON canonicalization was enforced. The JSON versions are schema-governed, rendered by static site, and supersede the Markdown versions.",
+      "file_count": 113,
+      "confidence": "high",
+      "recommendation": "delete",
+      "exception_count": 1,
+      "exceptions": [
+        "docs/audits/release-candidate-convergence-spine.md — in migration manifest with references_updated: false"
+      ],
+      "sample_entries": [
+        {"markdown": "docs/audits/agent-loop/agent-loop-ownership-audit.md", "canonical": "docs/json/audits/agent-loop/agent-loop-ownership-audit.v1.json", "match_basis": "basename", "confidence": "high"},
+        {"markdown": "docs/audits/ci/ci-gate-architecture.md", "canonical": "docs/json/audits/ci/ci-gate-architecture.v1.json", "match_basis": "basename", "confidence": "high"},
+        {"markdown": "docs/audits/validate-tool/validate-convergence-audit.md", "canonical": "docs/json/audits/validate-tool/validate-convergence-audit.v1.json", "match_basis": "basename", "confidence": "high"},
+        {"markdown": "docs/audits/vscodium-shell-lane/architecture-options.md", "canonical": "docs/json/audits/vscodium-shell-lane/architecture-options.v1.json", "match_basis": "basename", "confidence": "high"},
+        {"markdown": "docs/audits/runtime/state_machine_candidate_audit.md", "canonical": "docs/json/audits/runtime/state_machine_candidate_audit.v1.json", "match_basis": "basename", "confidence": "high"}
+      ],
+      "reference_check": {
+        "tests_reference_fake_paths_only": true,
+        "readme_references": false,
+        "static_site_references": false,
+        "scripts_references": false,
+        "safe_to_delete": true
+      }
+    },
+    {
+      "batch_id": "BATCH-ANALYSIS-RESULTS",
+      "category": "stale_evidence_candidates",
+      "description": "analysis_results.md at repository root. 17KB of unstructured analysis output. No references found anywhere. No canonical JSON counterpart. No migration manifest entry. Appears to be a one-off evidence dump from an audit script.",
+      "file_count": 1,
+      "confidence": "high",
+      "recommendation": "delete",
+      "reference_check": {
+        "tests_reference": false,
+        "readme_references": false,
+        "static_site_references": false,
+        "scripts_references": false,
+        "safe_to_delete": true
+      }
+    }
+  ],
+  "preserved_batches": [
+    {
+      "batch_id": "BATCH-GOVERNANCE-PRESERVED",
+      "category": "legal_or_policy_doc",
+      "description": "Governance policy documents in docs/governance/. 61 Markdown files. 55 have canonical JSON counterparts. 7 are in the migration manifest with status=migrated and review_notes='Markdown preserved'. These serve as human-facing policy documentation and are treated as canonical documentation per AGENTS.md.",
+      "file_count": 61,
+      "recommendation": "keep_all",
+      "rationale": "Governance Markdowns are human-facing policy docs, not stale evidence. Migration manifest explicitly preserves several. AGENTS.md treats these as allowed Markdown for governance documentation.",
+      "manifest_preserved": [
+        "docs/governance/tracing-doctrine.md",
+        "docs/governance/test-suite-doctrine.md",
+        "docs/governance/storage-retention-policy.md",
+        "docs/governance/agent-loop-boundary.md",
+        "docs/governance/tool-runtime-boundary.md",
+        "docs/governance/orchestrator-loop-boundary.md"
+      ]
+    }
+  ],
+  "content_light": true
+}

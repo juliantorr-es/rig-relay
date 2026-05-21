@@ -1,0 +1,486 @@
+{
+  "schema_version": "rig.relay.enterprise_procurement_readiness.v1",
+  "audit_id": "enterprise-procurement-readiness-audit-v1",
+  "title": "Enterprise Procurement Readiness Audit v1",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "branch": "main",
+  "head_commit": "c6144208b502aceea6cef5da69b700bf46e3ddba",
+  "dirty_state_before": "2 files modified (docs/conversations/), 3 untracked",
+  "dirty_state_after": "pending",
+  "dimensions": {
+    "A_procurement_gate_taxonomy": {
+      "description": "Taxonomy of 20 procurement gates Rig Relay must satisfy for enterprise readiness.",
+      "gates": [
+        {
+          "gate_id": "G01",
+          "gate_name": "Security Architecture",
+          "risk_level": "blocker",
+          "current_evidence": "Threat model v0 exists (17 threats, 6 mitigations, 5 release gates). Security policy v0 exists. WebSocket hardening implemented. Environment scrubbing, bash pattern detection, dirty-file preservation in place.",
+          "missing_evidence": "No formal security architecture document. No data flow diagrams. No trust boundary documentation beyond threat model. No penetration test reports. No security review signoff.",
+          "implementation_gaps": "Prompt injection defenses partial. No automated secret scanning on trace writes. CSP headers missing from generated docs. No network egress controls for agents.",
+          "documentation_gaps": "No security whitepaper. No security architecture summary for procurement. No encryption-at-rest documentation.",
+          "test_gaps": "No adversarial prompt injection tests. No fuzzing tests. No penetration test suite.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Produce security architecture summary artifact; add automated secret scanning to trace writes; add CSP headers to static site."
+        },
+        {
+          "gate_id": "G02",
+          "gate_name": "Privacy and Data Handling",
+          "risk_level": "blocker",
+          "current_evidence": "Usage data doctrine comprehensive (3-tier retention, content-light guarantees, redaction before export). Privacy notice alpha exists. Telemetry contribution policy established. Frontend rendering safety doctrine.",
+          "missing_evidence": "No formal Data Protection Impact Assessment (DPIA). No data retention schedule by data class. No data deletion verification procedure. No privacy-by-design documentation.",
+          "implementation_gaps": "Content-light guarantees verified via redaction validator but scope limited to export paths. No automated continuous privacy scanning.",
+          "documentation_gaps": "No privacy whitepaper for procurement. No GDPR/CCPA readiness statement.",
+          "test_gaps": "No automated privacy boundary tests across all emission surfaces.",
+          "recommended_owner": "evidence",
+          "recommended_next_slice": "Produce data inventory artifact with retention schedule; add privacy boundary CI tests."
+        },
+        {
+          "gate_id": "G03",
+          "gate_name": "Telemetry Disclosure and Opt-Out Behavior",
+          "risk_level": "high",
+          "current_evidence": "Product telemetry is first-party, enabled by default, and opt-out. Remote telemetry contribution is separately gated by consent scopes. Telemetry budget enforced. Content-light guarantee on all emission paths. Local operational observability and enterprise audit/evidence are separate from product telemetry and remain mandatory for governed operation.",
+          "missing_evidence": "No plain-language telemetry disclosure for enterprise procurement. No cockpit telemetry state indicator. No explicit degraded-behavior matrix distinguishing product-telemetry degradation from governance/audit/evidence continuity. No procurement-facing disclosure that product telemetry, remote contribution, local operational observability, and enterprise audit/evidence are distinct policy surfaces.",
+          "implementation_gaps": "Product-telemetry-disabled degradation described in doctrine but exact degraded behaviors (adaptive recommendations, UX optimization, agent-tool optimization, Ralph refinement, orchestrator/subagent behavior) not exhaustively enumerated. Evidence continuity guarantee not independently verifiable — product telemetry opt-out must not disable governance, receipts, release gates, audit trails, local operational observability, or enterprise evidence records.",
+          "documentation_gaps": "No plain-language telemetry disclosure doc for enterprise procurement. No degraded-behavior matrix. No evidence continuity guarantee document.",
+          "test_gaps": "No automated tests verifying product-telemetry-disabled mode degrades adaptive/product-learning behavior but preserves governance, receipts, release-gate records, mutation receipts, schema validation records, export manifests, and enterprise audit events.",
+          "recommended_owner": "core/telemetry",
+          "recommended_next_slice": "Produce telemetry disclosure document separating product telemetry (default-on, opt-out), remote telemetry contribution (settings-controlled), local operational observability (mandatory), and enterprise audit/evidence (mandatory). Produce degraded-behavior matrix. Produce evidence continuity guarantee. Add cockpit telemetry/evidence state indicators. Add automated tests proving product-telemetry-disabled does not disable governance/audit/evidence records."
+        },
+        {
+          "gate_id": "G04",
+          "gate_name": "Access Control and Identity",
+          "risk_level": "blocker",
+          "current_evidence": "Identity package with GitHub and Google OAuth providers. Token store, consent store. WebSocket auth token required. Step-up authorization for high-authority actions. Local-only default.",
+          "missing_evidence": "No RBAC model. No SCIM provisioning plan. No SSO/SAML support. No multi-user access control (single-local-user only). No audit log of authentication events.",
+          "implementation_gaps": "Single-user local model only. No separation of operator vs administrator roles. No tenant/org boundaries implemented in code (schemas exist).",
+          "documentation_gaps": "No access control policy document. No identity federation roadmap.",
+          "test_gaps": "No RBAC enforcement tests. No multi-tenant isolation tests.",
+          "recommended_owner": "identity",
+          "recommended_next_slice": "Design and document RBAC model; implement audit logging of auth events; plan SSO/SCIM roadmap."
+        },
+        {
+          "gate_id": "G05",
+          "gate_name": "Audit Logging",
+          "risk_level": "high",
+          "current_evidence": "Observability event stream (JSONL). Receipt store with Merkle links. Tamper-evidence design exists (3-layer: hash chain, checkpoints, external anchoring) but not implemented. Audit trail store exists.",
+          "missing_evidence": "No immutable audit log. Tamper-evidence not implemented. No audit log export for SIEM integration. No audit retention policy beyond storage retention policy.",
+          "implementation_gaps": "AuditTrailStore exists but tamper-evidence layers not implemented. No audit event schema for admin/security events. No audit log query interface.",
+          "documentation_gaps": "No audit logging policy document. No audit event catalog.",
+          "test_gaps": "No tamper-evidence verification tests. No audit log integrity tests.",
+          "recommended_owner": "evidence",
+          "recommended_next_slice": "Implement event hash chain (Layer 1 of tamper-evidence design); produce audit event catalog."
+        },
+        {
+          "gate_id": "G06",
+          "gate_name": "Data Retention, Deletion, and Export",
+          "risk_level": "high",
+          "current_evidence": "Storage retention policy defines three tiers (hot/warm/cold). Budget schema with days/mb caps. GC scripts with dry-run defaults. Protected classes defined. Usage data doctrine defines export rules.",
+          "missing_evidence": "No verified data deletion procedure. No data export format documentation. No right-to-deletion workflow (GDPR Article 17). No retention schedule by data class.",
+          "implementation_gaps": "GC scripts exist but full deletion verification not automated. Export is manual script-based. No self-service data export for users.",
+          "documentation_gaps": "No data retention schedule document. No data export guide for enterprise admins.",
+          "test_gaps": "No deletion verification tests. No export format validation tests.",
+          "recommended_owner": "evidence",
+          "recommended_next_slice": "Produce data retention schedule; implement deletion verification; document export procedures."
+        },
+        {
+          "gate_id": "G07",
+          "gate_name": "Deployment and Admin Operations",
+          "risk_level": "high",
+          "current_evidence": "Multiple install channels documented (uv tool, pipx, pip, homebrew, npm, source, Nix). Update policy with state machine. Release packaging for macOS/Windows/Linux via PyInstaller. CI/CD in GitHub Actions.",
+          "missing_evidence": "No admin deployment guide. No system requirements document. No operational runbook. No health check/monitoring endpoints. No configuration management documentation for enterprise deployment.",
+          "implementation_gaps": "No health check API. No admin CLI for operations. No configuration validation command. No backup/restore procedures.",
+          "documentation_gaps": "No admin operations guide. No deployment architecture document. No scaling guidance.",
+          "test_gaps": "No deployment smoke tests beyond binary smoke tests. No config validation tests.",
+          "recommended_owner": "cli",
+          "recommended_next_slice": "Produce admin deployment guide; add health check endpoint; create config validation command."
+        },
+        {
+          "gate_id": "G08",
+          "gate_name": "Supply-Chain Security",
+          "risk_level": "blocker",
+          "current_evidence": "uv lock file pins all dependencies. CI uses pinned action SHAs. Dependency policy defines 3-bucket model. No automatic dependency updates.",
+          "missing_evidence": "No SBOM generation. No dependency vulnerability scanning (pip-audit/safety). No provenance attestations for builds. No SLSA compliance. No dependency review in CI. No signed commits requirement.",
+          "implementation_gaps": "No SBOM pipeline. No vulnerability scanning in CI. Build artifacts not signed. No SLSA provenance generation.",
+          "documentation_gaps": "No SBOM policy. No vulnerability disclosure policy. No supply-chain security document.",
+          "test_gaps": "No SBOM validation tests. No dependency license compatibility tests.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Add pip-audit to CI; generate SBOM (SPDX/CycloneDX); implement build provenance attestation."
+        },
+        {
+          "gate_id": "G09",
+          "gate_name": "Vulnerability Management",
+          "risk_level": "high",
+          "current_evidence": "CodeQL scanning in CI (Python + JavaScript). SECURITY.md with reporting process. GitHub Security Advisories enabled.",
+          "missing_evidence": "No vulnerability disclosure policy (VDP). No CVE assignment process. No patching SLA. No vulnerability scanning on dependencies. No security bulletin process.",
+          "implementation_gaps": "CodeQL runs but dependency scanning missing. No automated vulnerability alerting.",
+          "documentation_gaps": "No vulnerability management policy. No security advisory template.",
+          "test_gaps": "No regression tests for known vulnerabilities.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Draft vulnerability disclosure policy; add dependency vulnerability scanning; define patching SLA."
+        },
+        {
+          "gate_id": "G10",
+          "gate_name": "Dependency and License Governance",
+          "risk_level": "high",
+          "current_evidence": "AGPL-3.0-or-later license. UPSTREAM.md documents fork lineage. ATTRIBUTION.md exists. THIRD_PARTY_NOTICES.md exists. Dependency policy with 3-bucket model.",
+          "missing_evidence": "No automated license compatibility check. No full dependency license inventory. No license change detection. No policy for copyleft vs permissive dependencies.",
+          "implementation_gaps": "No license scanning in CI. No SBOM with license metadata.",
+          "documentation_gaps": "No license compatibility matrix. No third-party dependency inventory with license details.",
+          "test_gaps": "No license compatibility tests.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Add license scanning to CI; produce third-party license inventory; document license compatibility policy."
+        },
+        {
+          "gate_id": "G11",
+          "gate_name": "Build and Release Provenance",
+          "risk_level": "medium",
+          "current_evidence": "PyInstaller builds for 5 platforms. Manifest generation in CI. GitHub Actions as canonical release mint. Nix builds.",
+          "missing_evidence": "No SLSA provenance. No build attestation signing. No reproducible build verification. No checksum publication for releases. No SBOM attached to releases.",
+          "implementation_gaps": "Build artifacts produced but not attested. Release manifest exists but not cryptographically signed.",
+          "documentation_gaps": "No build provenance documentation for procurement.",
+          "test_gaps": "No reproducible build tests. No provenance verification tests.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Generate SLSA provenance; sign release artifacts; publish checksums with releases."
+        },
+        {
+          "gate_id": "G12",
+          "gate_name": "Incident Response",
+          "risk_level": "high",
+          "current_evidence": "Security reporting via GitHub Advisories. SECURITY.md documents supported version line.",
+          "missing_evidence": "No incident response plan. No incident classification taxonomy. No communication plan. No post-incident review process. No security contact list.",
+          "implementation_gaps": "No automated incident detection. No alerting pipeline.",
+          "documentation_gaps": "No incident response plan document. No runbook. No escalation procedures.",
+          "test_gaps": "No incident response tabletop exercise results.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Draft incident response plan; define incident classification; establish security contact process."
+        },
+        {
+          "gate_id": "G13",
+          "gate_name": "Supportability and Observability",
+          "risk_level": "medium",
+          "current_evidence": "Structured logging with configurable levels. Observability event stream. DuckDB read-side analytics. Debug bundle scripts (chatgpt_dev, telemetry). Dataset inspector marimo notebook.",
+          "missing_evidence": "No support model definition. No SLA commitment. No support ticket workflow. No health dashboard. No Prometheus metrics endpoint.",
+          "implementation_gaps": "Rich observability for development but no production-grade monitoring. No alerting. No structured support diagnostics.",
+          "documentation_gaps": "No support policy. No troubleshooting guide for enterprise admins. No known-issues register.",
+          "test_gaps": "No support diagnostic validation tests.",
+          "recommended_owner": "core",
+          "recommended_next_slice": "Define support model; add health check endpoint; create troubleshooting guide."
+        },
+        {
+          "gate_id": "G14",
+          "gate_name": "Enterprise Configuration Management",
+          "risk_level": "blocker",
+          "current_evidence": "Layered config system (project .rig/relay/config.toml, user ~/.rig/relay/config.toml). Environment variable overrides. Config patch primitives. Telemetry budget and storage budget schemas.",
+          "missing_evidence": "No enterprise deployment config (org-wide policy, provider allowlists, tool restrictions). No configuration validation command. No configuration drift detection.",
+          "implementation_gaps": "Config is per-user/per-project only. No org-level or fleet-level config. No config signing or integrity verification.",
+          "documentation_gaps": "No enterprise configuration reference. No policy-as-code documentation.",
+          "test_gaps": "No config validation boundary tests. No config integrity tests.",
+          "recommended_owner": "core/config",
+          "recommended_next_slice": "Design enterprise config layer (org policies, provider allowlists); add config validation command."
+        },
+        {
+          "gate_id": "G15",
+          "gate_name": "Documentation Completeness",
+          "risk_level": "high",
+          "current_evidence": "404 JSON Schemas. 461 JSON artifacts. 63 governance Markdown docs. Generated static site with 264 pages. README with protocol surface matrix, agent profiles, safety story.",
+          "missing_evidence": "No admin guide. No security whitepaper. No procurement one-pager. No architecture decision record index. No API reference for SDK (SDK is v0 stub). No changelog for releases.",
+          "implementation_gaps": "Documentation extensive but developer/internal-facing. No procurement-facing docs. CHANGELOG.md exists but sparse.",
+          "documentation_gaps": "No enterprise admin documentation section. No procurement packet.",
+          "test_gaps": "No documentation link validation tests. No documentation completeness scan.",
+          "recommended_owner": "docs",
+          "recommended_next_slice": "Create admin documentation section; produce security whitepaper; produce procurement one-pager."
+        },
+        {
+          "gate_id": "G16",
+          "gate_name": "Legal and Commercial Readiness",
+          "risk_level": "blocker",
+          "current_evidence": "AGPL-3.0-or-later license. CONTRIBUTING.md with CLA requirement. Upstream attribution via UPSTREAM.md and ATTRIBUTION.md. Privacy notice alpha. Usage data license alpha. CODE_OF_CONDUCT.md.",
+          "missing_evidence": "No commercial/enterprise license option. No terms of service. No acceptable use policy. No DPA. No service level agreement. No trademark policy. No export control classification.",
+          "implementation_gaps": "AGPL-only licensing may block enterprise adoption (copyleft concerns). No dual-licensing path.",
+          "documentation_gaps": "No procurement legal FAQ. No subscription/commercial terms. No data processing agreement template.",
+          "test_gaps": "No license compliance verification in CI beyond declared license.",
+          "recommended_owner": "governance",
+          "recommended_next_slice": "Define commercial licensing strategy; draft terms of service and DPA; address AGPL enterprise concerns."
+        },
+        {
+          "gate_id": "G17",
+          "gate_name": "Hosted and Team Deployment Readiness",
+          "risk_level": "blocker",
+          "current_evidence": "Multitenant isolation schemas exist (enterprise.tenant_topology, enterprise.tenant_registry). Fleet coordination plane documented. Council (multi-provider review).",
+          "missing_evidence": "No hosted deployment infrastructure. No team management UI. No shared state backend. No multi-user auth. No tenant provisioning workflow. No billing/subscription model.",
+          "implementation_gaps": "Entirely local-first with no hosted path. Coordination is file-backed under .build/. No network-capable coordination backend.",
+          "documentation_gaps": "No hosted deployment architecture. No team admin guide. No multi-tenant operations guide.",
+          "test_gaps": "No multi-tenant integration tests. No hosted deployment smoke tests.",
+          "recommended_owner": "coordination",
+          "recommended_next_slice": "Design hosted deployment architecture; implement shared coordination backend; plan team management."
+        },
+        {
+          "gate_id": "G18",
+          "gate_name": "Local-Only Deployment Readiness",
+          "risk_level": "medium",
+          "current_evidence": "Local-first architecture demonstrated. Loopback-only WebSocket. Content-light projections. No external dependencies for core functionality. Offline mode implicit.",
+          "missing_evidence": "No explicit offline/air-gapped mode documentation. No local-only procurement statement. No verification that all features work without internet.",
+          "implementation_gaps": "Provider onboarding requires network. Google Drive upload requires network. Package updates require network. No explicit air-gapped bootstrap path.",
+          "documentation_gaps": "No air-gapped deployment guide. No offline feature matrix.",
+          "test_gaps": "No air-gapped mode tests.",
+          "recommended_owner": "core",
+          "recommended_next_slice": "Document air-gapped deployment; enumerate features requiring network; add offline test coverage."
+        },
+        {
+          "gate_id": "G19",
+          "gate_name": "Customer Evidence Pack Generation",
+          "risk_level": "medium",
+          "current_evidence": "Dataset report script exists. Dataset export script exists. Review packet protocol. Semantic change snippet export. Telemetry bundle creation.",
+          "missing_evidence": "No unified evidence pack generator. No procurement-facing pack. No automated security questionnaire pre-fill.",
+          "implementation_gaps": "Evidence exists but dispersed across scripts. No single command to generate procurement pack.",
+          "documentation_gaps": "No evidence pack documentation.",
+          "test_gaps": "No evidence pack generation tests.",
+          "recommended_owner": "evidence",
+          "recommended_next_slice": "Design and implement unified evidence pack generator command."
+        },
+        {
+          "gate_id": "G20",
+          "gate_name": "PostgreSQL Enterprise Substrate",
+          "risk_level": "high",
+          "current_evidence": "DuckDB as analytical substrate. Postgres feature exploitation map exists (governance artifact). Analytics lake hardening lane planned. Enterprise schemas for tenants, attestation, secrets exist.",
+          "missing_evidence": "No Postgres schema design. No migration framework. No connection management. No backup/restore procedure. No encryption-at-rest guidance.",
+          "implementation_gaps": "No Postgres integration code. Entirely DuckDB-based analytics. No ORM or query builder for Postgres.",
+          "documentation_gaps": "No Postgres deployment guide. No schema documentation. No admin query cookbook.",
+          "test_gaps": "No Postgres integration tests. No migration tests.",
+          "recommended_owner": "analytics",
+          "recommended_next_slice": "Design Postgres schema; implement migration framework; create connection management; document deployment."
+        }
+      ]
+    },
+    "B_control_mapping": {
+      "description": "Control mapping covered in separate artifact: enterprise_control_mapping_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_control_mapping_v1.v1.json"
+    },
+    "C_data_inventory_privacy": {
+      "description": "Data inventory covered in separate artifact: enterprise_data_inventory_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_data_inventory_v1.v1.json"
+    },
+    "D_postgres_readiness": {
+      "description": "Postgres readiness covered in separate artifact: enterprise_postgres_readiness_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_postgres_readiness_v1.v1.json"
+    },
+    "E_supply_chain_build": {
+      "description": "Supply chain and build readiness covered in separate artifact: enterprise_supply_chain_readiness_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_supply_chain_readiness_v1.v1.json"
+    },
+    "F_security_architecture": {
+      "description": "Security architecture gap map covered in separate artifact: enterprise_security_architecture_gap_map_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_security_architecture_gap_map_v1.v1.json"
+    },
+    "G_admin_enterprise_ux": {
+      "description": "Admin and enterprise UX gap analysis.",
+      "gaps": [
+        {
+          "area": "Admin documentation",
+          "status": "missing",
+          "gap": "No admin deployment guide, no operations runbook, no configuration reference for enterprise admins.",
+          "action": "Create admin documentation section in docs site; produce deployment guide for each platform."
+        },
+        {
+          "area": "Deployment modes",
+          "status": "partial",
+          "gap": "Multiple install channels documented but no production deployment guidance. No container-based deployment option.",
+          "action": "Add Docker/container deployment guide; document production vs development modes."
+        },
+        {
+          "area": "Configuration reference",
+          "status": "partial",
+          "gap": "Config system well-architected but no comprehensive reference doc for all config keys.",
+          "action": "Generate config reference from VibeConfig model; add to static docs."
+        },
+        {
+          "area": "Policy reference",
+          "status": "partial",
+          "gap": "Governance policies extensive but internal-facing. No policy summary for enterprise security reviewers.",
+          "action": "Create enterprise policy summary page; map policies to compliance frameworks."
+        },
+        {
+          "area": "Telemetry controls",
+          "status": "partial",
+          "gap": "Product telemetry is first-party and opt-out. Remote telemetry contribution is separately consent-gated. But the cockpit does not visibly distinguish product-telemetry state, remote-contribution state, local-observability state, and enterprise-evidence state. No degraded-behavior matrix is visible to the user."
+        },
+        {
+          "area": "Data inventory",
+          "status": "missing",
+          "gap": "No comprehensive data inventory visible to enterprise reviewers.",
+          "action": "Produce enterprise data inventory artifact (this audit creates it)."
+        },
+        {
+          "area": "Audit log viewer/exporter",
+          "status": "missing",
+          "gap": "No admin UI or CLI for viewing/exporting audit logs.",
+          "action": "Add audit log query/exporter to admin CLI."
+        },
+        {
+          "area": "Evidence bundle generator",
+          "status": "partial",
+          "gap": "Multiple evidence scripts exist but no unified procurement pack generator.",
+          "action": "Create unified evidence pack command."
+        },
+        {
+          "area": "Tenant/org/user model",
+          "status": "missing",
+          "gap": "Schemas exist but no implementation. Single-user only.",
+          "action": "Design and implement tenant/org/user model."
+        },
+        {
+          "area": "Provider permissions matrix",
+          "status": "partial",
+          "gap": "Provider registry exists but no enterprise-facing permissions/scope matrix.",
+          "action": "Document provider permission requirements and data-sharing boundaries."
+        },
+        {
+          "area": "GitHub App permission matrix",
+          "status": "partial",
+          "gap": "GitHub App permission posture documented in JSON but no procurement-facing summary.",
+          "action": "Create procurement-facing GitHub App permission summary."
+        },
+        {
+          "area": "Offline mode",
+          "status": "partial",
+          "gap": "Implicitly supported but not documented or tested.",
+          "action": "Document and test air-gapped/offline operation."
+        },
+        {
+          "area": "Proxy/cert configuration",
+          "status": "missing",
+          "gap": "No enterprise proxy or custom CA certificate support documented.",
+          "action": "Add proxy/cert configuration support and documentation."
+        },
+        {
+          "area": "Diagnostics collection",
+          "status": "partial",
+          "gap": "Debug bundle scripts exist but no enterprise diagnostics collection workflow.",
+          "action": "Create enterprise diagnostics collection command with redaction guarantees."
+        },
+        {
+          "area": "Support packet/redaction model",
+          "status": "partial",
+          "gap": "Content-light guarantees exist but no support packet workflow for enterprise.",
+          "action": "Create support packet generation with mandatory redaction."
+        },
+        {
+          "area": "Onboarding checklist",
+          "status": "missing",
+          "gap": "No enterprise onboarding checklist or admin quick-start guide.",
+          "action": "Create enterprise admin onboarding checklist."
+        },
+        {
+          "area": "Security questionnaire answers",
+          "status": "missing",
+          "gap": "No pre-filled security questionnaire for common procurement forms (CAIQ, SIG, VSAQ).",
+          "action": "Create security questionnaire response artifact."
+        },
+        {
+          "area": "Procurement one-pager",
+          "status": "missing",
+          "gap": "No concise procurement-facing summary.",
+          "action": "Create procurement one-pager artifact."
+        },
+        {
+          "area": "Trust center content plan",
+          "status": "missing",
+          "gap": "No trust center or public security page.",
+          "action": "Create trust-center content plan and initial static pages."
+        }
+      ]
+    },
+    "H_legal_commercial": {
+      "description": "Legal and commercial readiness covered in separate artifact: enterprise_legal_commercial_readiness_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_legal_commercial_readiness_v1.v1.json"
+    },
+    "I_evidence_pack_design": {
+      "description": "Evidence pack design covered in separate artifact: enterprise_procurement_evidence_pack_design_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_procurement_evidence_pack_design_v1.v1.json"
+    },
+    "J_test_validation": {
+      "description": "Test and validation readiness covered in separate artifact: enterprise_procurement_test_strategy_v1.v1.json",
+      "reference_artifact": "docs/json/governance/enterprise_procurement_test_strategy_v1.v1.json"
+    },
+    "K_telemetry_operational_evidence_boundary": {
+      "description": "Explicit doctrinal boundary between product telemetry, remote telemetry contribution, local operational observability, and enterprise audit/evidence substrate. This section is normative for all procurement artifacts.",
+      "four_category_model": {
+        "product_telemetry": {
+          "definition": "First-party, enabled by default, opt-out. Used for product improvement, adaptive behavior, UX optimization, agent-tool optimization, Ralph/orchestrator/subagent refinement, derived/aggregate intelligence, benchmarks, and reports.",
+          "default_state": "enabled",
+          "opt_out_behavior": "Opt-out visibly degrades adaptive/product-learning behavior: adaptive recommendations, UX optimization feedback, agent-tool optimization, Ralph refinement, orchestrator behavior, and subagent behavior. Must not disable governance, auditability, receipt persistence, release-gate evidence, mutation receipts, schema validation records, export manifests, enterprise audit logs, local operational observability, or incident investigation records.",
+          "commercialization_boundary": "Aggregated, de-identified, or derived product intelligence may be commercialized. Raw user content, prompts, credentials, secrets, private files, and private repository contents must never be commercialized.",
+          "content_light_guarantee": true,
+          "forbidden_content": ["raw prompts", "raw completions", "raw file contents", "credentials", "secrets", "private file paths", "private repository contents"]
+        },
+        "remote_telemetry_contribution": {
+          "definition": "Any upload or remote sharing of telemetry outside the local machine. A policy layer above the evidence substrate, not the substrate itself.",
+          "default_state": "disabled",
+          "control_surface": "Explicitly disclosed and controlled by settings/policy. Enterprise policy may disable it. Content-light, de-identified/aggregated where applicable.",
+          "opt_out_behavior": "Disabling remote contribution does not disable local governance, audit, receipts, release gates, or enterprise evidence. Only blocks remote upload of product-telemetry or contribution bundles.",
+          "commercialization_boundary": "Remote contribution bundles must never contain raw user content. Contribution consent scopes define what may be shared."
+        },
+        "local_operational_observability": {
+          "definition": "Local content-light events, receipts, traces, release-gate records, schema validation records, projection invalidation, local diagnostics, and cockpit operational health. Required for governed operation and user trust.",
+          "default_state": "enabled (mandatory for governed mode)",
+          "opt_out_behavior": "Not subject to product-telemetry opt-out. May degrade in depth only if a separate local diagnostics setting is disabled. Must remain inspectable, content-light, schema-governed, and auditable.",
+          "evidence_continuity": "Must continue functioning when product telemetry is disabled. Must not silently stop refreshing because remote telemetry contribution is disabled."
+        },
+        "enterprise_audit_evidence_substrate": {
+          "definition": "Enterprise audit events, mutation receipts, release-gate decisions, receipt envelopes, export manifests, schema registry, artifact registry, provider permission evidence, and procurement evidence packs.",
+          "default_state": "enabled (mandatory in enterprise mode)",
+          "opt_out_behavior": "Must continue functioning when product telemetry is disabled. Must not be gated on telemetry consent or remote contribution settings. Must support incident investigation, compliance review, export/replay, and governance gates.",
+          "evidence_continuity": "Mandatory. Must never silently stop refreshing because telemetry is disabled. Product telemetry opt-out must not disable Postgres audit/evidence continuity in enterprise mode."
+        }
+      },
+      "procurement_disclosure_requirements": {
+        "must_disclose_separately": [
+          "Product telemetry: default-on, opt-out, what degrades when disabled",
+          "Remote telemetry contribution: settings-controlled, default-off",
+          "Local operational observability: mandatory for governed operation",
+          "Enterprise audit/evidence: mandatory in enterprise mode"
+        ],
+        "must_not_imply": [
+          "That product-telemetry opt-out disables governance or audit",
+          "That all telemetry is opt-in",
+          "That remote contribution consent gates local evidence records",
+          "That enterprise audit trails are optional tracking"
+        ]
+      }
+    }
+  },
+  "summary": {
+    "total_gates": 20,
+    "blocker_count": 7,
+    "high_count": 9,
+    "medium_count": 4,
+    "low_count": 0,
+    "blocker_gates": [
+      "G01: Security Architecture",
+      "G04: Access Control and Identity",
+      "G08: Supply-Chain Security",
+      "G14: Enterprise Configuration Management",
+      "G16: Legal and Commercial Readiness",
+      "G17: Hosted and Team Deployment Readiness",
+      "G08: Supply-Chain Security (duplicate ref)"
+    ],
+    "overall_verdict": "Not enterprise procurement ready. 7 blocker gates must be resolved before any credible enterprise procurement review. An additional 9 high-risk gates represent significant gaps. Rig Relay is architecturally sound for local-first usage but lacks the organizational, legal, and operational infrastructure required for enterprise procurement."
+  },
+  "artifacts_produced": [
+    "docs/json/governance/enterprise_procurement_readiness_audit_v1.v1.json",
+    "docs/json/governance/enterprise_control_mapping_v1.v1.json",
+    "docs/json/governance/enterprise_data_inventory_v1.v1.json",
+    "docs/json/governance/enterprise_security_architecture_gap_map_v1.v1.json",
+    "docs/json/governance/enterprise_postgres_readiness_v1.v1.json",
+    "docs/json/governance/enterprise_supply_chain_readiness_v1.v1.json",
+    "docs/json/governance/enterprise_legal_commercial_readiness_v1.v1.json",
+    "docs/json/governance/enterprise_procurement_evidence_pack_design_v1.v1.json",
+    "docs/json/governance/enterprise_procurement_roadmap_v1.v1.json",
+    "docs/json/governance/enterprise_procurement_test_strategy_v1.v1.json",
+    "docs/schemas/rig.relay.enterprise_procurement_readiness.v1.schema.json",
+    "docs/schemas/rig.relay.enterprise_control_mapping.v1.schema.json",
+    "docs/schemas/rig.relay.enterprise_data_inventory.v1.schema.json"
+  ],
+  "content_light": true
+}

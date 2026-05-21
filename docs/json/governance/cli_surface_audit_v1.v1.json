@@ -1,0 +1,110 @@
+{
+  "schema_version": "rig.relay.surface_authority_taxonomy.v1",
+  "audit_id": "cli-surface-audit-v1",
+  "title": "CLI Surface Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "cli_state_analysis": {
+    "summary": "Rig Relay has two CLIs: a compact argparse-based entrypoint (rig_relay/cli/) with ~5 subcommands, and 121 standalone scripts (scripts/rig_*.py) with no unified taxonomy, no consistent schema, no consistent dry-run default, and no consistent auth model. The scripts bypass intent gating that the cockpit enforces. Scripts can execute mutations without governance engine evaluation and without approval receipts.",
+    "two_cli_problem": "The entrypoint CLI (rig-relay) dispatches to desktop cockpit by default. Scripts are a separate universe of 121 ad-hoc commands. There is no unified command taxonomy, no shared argument parsing, no shared schema validation, and no shared governance integration between the two.",
+    "critical_gaps": [
+      "121 scripts with no unified taxonomy",
+      "No consistent dry-run default for mutation scripts",
+      "Scripts can mutate without cockpit-level governance",
+      "No consistent JSON/JSONL output mode across scripts",
+      "No consistent exit code doctrine",
+      "No consistent auth model",
+      "Most scripts produce ad-hoc JSON artifacts with no schema validation",
+      "No unified checkpoint/commit behavior",
+      "Scripts bypass the intent gating that frontend enforces"
+    ]
+  },
+  "cli_command_taxonomy_proposal": {
+    "families": [
+      {
+        "family_id": "cli-surface",
+        "family_name": "Surface / Launch",
+        "commands": ["start", "stop", "status", "doctor"],
+        "authority_tier": "local_mutation (start/stop), read_only_projection (status/doctor)",
+        "default_mode": "dry-run for mutations; read-only for diagnostics",
+        "output_artifact": ".build/rig-relay/evidence/cli/doctor_report.json, status.json",
+        "schema": "rig.relay.cli.doctor.v1, rig.relay.cli.status.v1",
+        "required_tests": ["test_cli_entrypoint_smoke.py", "test_doctor_json_output.py", "test_status_json_output.py"],
+        "ci_suitable": true
+      },
+      {
+        "family_id": "cli-evidence",
+        "family_name": "Evidence / Export",
+        "commands": ["export-evidence", "create-telemetry-bundle", "contribute-telemetry-bundle", "create-review-packet", "create-sprint-cockpit", "export-coordination-datasets", "export-semantic-snippets", "dataset-export", "dataset-report"],
+        "authority_tier": "support_debug_export",
+        "default_mode": "dry-run (--dry-run flag); explicit --execute required for remote contribution",
+        "output_artifact": ".build/rig-relay/evidence/*.jsonl, *.json, *.csv",
+        "schema": "rig.relay.evidence.bundle.v1, rig.relay.review_packet.v1",
+        "required_tests": ["test_telemetry_bundle_content_light.py", "test_review_packet_schema.py", "test_export_dry_run.py"],
+        "ci_suitable": true
+      },
+      {
+        "family_id": "cli-admin",
+        "family_name": "Admin / Configuration",
+        "commands": ["configure-postgres", "configure-rate-limit", "configure-telemetry-policy", "configure-github-app", "configure-tenant", "migrate-postgres", "validate-schemas", "validate-ide-manifest", "validate-telemetry-bundle"],
+        "authority_tier": "admin_configuration",
+        "default_mode": "dry-run preview of config change; --execute required",
+        "output_artifact": ".build/rig-relay/evidence/admin/config_change_receipt.json",
+        "schema": "rig.relay.admin.config_change.v1",
+        "required_tests": ["test_admin_config_change_schema.py", "test_admin_dry_run_preview.py", "test_admin_execute_with_receipt.py"],
+        "ci_suitable": true
+      },
+      {
+        "family_id": "cli-github-trust-spine",
+        "family_name": "GitHub Provider Trust Spine",
+        "commands": ["github-probe-permissions", "github-budget-rate-limit", "github-verify-webhook-signature", "github-check-idempotency", "github-scan-content-light", "github-preflight-mutation"],
+        "authority_tier": "remote_read (probe/budget/verify/check/scan), remote_mutation (preflight)",
+        "default_mode": "read-only by default; preflight is dry-run; no remote mutation without --execute + approval receipt",
+        "output_artifact": ".build/rig-relay/evidence/github/trust_spine/*.json",
+        "schema": "rig.relay.github.trust_spine.v1",
+        "required_tests": ["test_permission_probe_cli.py", "test_rate_limit_budget_cli.py", "test_webhook_hmac_cli.py", "test_content_light_scan_cli.py"],
+        "ci_suitable": true
+      },
+      {
+        "family_id": "cli-github-security",
+        "family_name": "GitHub Security Pipeline",
+        "commands": ["github-security-intake", "github-security-work-items", "github-security-queue", "github-security-remediation", "github-code-scanning-diff", "github-code-scanning-pr-plan", "github-code-scanning-mutation-readiness"],
+        "authority_tier": "remote_read (intake/work-items/queue/diff), local_intent_submission (remediation/plan), remote_mutation (readiness — gated)",
+        "default_mode": "dry-run by default for all mutation paths",
+        "output_artifact": ".build/rig-relay/evidence/github/security/*.json",
+        "schema": "per-command GitHub provider schema",
+        "required_tests": ["test_github_security_cli_dry_run.py", "test_github_security_cli_mutation_gated.py"],
+        "ci_suitable": "read-only commands yes; mutation commands no"
+      },
+      {
+        "family_id": "cli-health",
+        "family_name": "Health / Diagnostics",
+        "commands": ["storage-audit", "sessions-audit", "test-quality-audit", "dependency-audit", "release-coherence-audit", "trace-visibility-audit", "marker-audit", "release-gate-validate", "rc-golden-path-check", "rc-installability-check"],
+        "authority_tier": "read_only_projection",
+        "default_mode": "read-only",
+        "output_artifact": ".build/rig-relay/evidence/audit/*.json",
+        "schema": "per-audit schema",
+        "required_tests": ["test_audit_output_schema.py"],
+        "ci_suitable": true
+      }
+    ]
+  },
+  "cli_design_principles": [
+    "Every mutating command must default to dry-run or require explicit --execute flag with approval receipt",
+    "Every command that produces structured output must produce schema-validated JSON/JSONL",
+    "Every command must have stable exit codes (0=success, 1=error, 2=blocked, 3=needs_approval, 4=rate_limited, 5=permission_denied)",
+    "No command must bypass the governance engine for operations that would require governance in cockpit",
+    "Every command should work in CI (non-interactive, deterministic, JSON output)",
+    "Scripts should be migrated into the unified CLI taxonomy over time",
+    "No Markdown-as-evidence from CLI commands; structured JSON/JSONL/CSV only",
+    "Content-light by default: no raw tokens, secrets, or file contents in CLI output",
+    "CLI commands must produce receipts for every operation"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

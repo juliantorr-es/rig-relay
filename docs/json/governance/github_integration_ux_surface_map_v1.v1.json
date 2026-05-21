@@ -1,0 +1,868 @@
+{
+  "schema_version": "rig.relay.github_integration_industry_leader_audit.v1",
+  "map_id": "github-integration-ux-surface-map-v1",
+  "title": "GitHub Integration UX Surface Map v1",
+  "generated_at": "2026-05-20T00:00:00Z",
+  "status": "draft",
+  "surfaces": [
+    {
+      "surface_id": "github-operating-picture-dashboard",
+      "title": "GitHub Operating Picture Dashboard",
+      "user_story": "As an operator, I want a single-pane overview of all connected GitHub repos so I can understand repository health, activity, and agent work at a glance.",
+      "cockpit_location": "Operator mode, primary widget grid position 1-1 (top-left)",
+      "static_docs_projection": "docs/json/github/operating_picture_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider._operating_picture.build_operating_picture_projection()",
+      "postgres_tables_needed": ["github_repos", "github_operating_picture_snapshots"],
+      "postgres_materialized_views_needed": ["mv_github_operating_picture_current"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/operating_picture_projection.v1.json",
+        ".build/rig-relay/github/operating_picture_snapshots.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.repo_metadata.read",
+        "rig.relay.github.branches.read",
+        "rig.relay.github.pull_requests.read",
+        "rig.relay.desktop.widget.github_operating_picture.render"
+      ],
+      "permission_boundary": "metadata:read, contents:read, pull_requests:read",
+      "failure_empty_state": "No repositories connected. Show GitHub App installation wizard with 'Connect a Repository' CTA. If token expired, show 'Re-authenticate GitHub App' prompt with last-known-good timestamp.",
+      "trust_spine_dependency": "requires_trust_spine_v1_for_live_data",
+      "data_freshness_indicator": "last_github_api_poll_timestamp",
+      "permission_state_indicator": "permission_probe_result_for_surface",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/github_operating_picture.json",
+      "blocked_state_copy": "Live GitHub data unavailable. Trust spine prerequisites (permission probe, rate-limit budget, content-light scan) must complete before this surface shows live data.",
+      "safe_empty_state": "No GitHub data received. Ensure GitHub App is installed and trust spine prerequisites are complete.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with captured operating picture fixture; contract tests against GitHub sandbox org.",
+      "priority": "P0"
+    },
+    {
+      "surface_id": "repository-health-cockpit",
+      "title": "Repository Health Cockpit",
+      "user_story": "As a maintainer, I want to see repository health signals (archived/disabled, branch protection gaps, stale PRs, vulnerability counts) so I can prioritize maintenance work.",
+      "cockpit_location": "Operator mode, widget grid position 1-2 (top-center)",
+      "static_docs_projection": "docs/json/github/repo_health_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider._operating_picture.build_repo_health_projection()",
+      "postgres_tables_needed": ["github_repos", "github_branches", "github_branch_protection", "github_alerts_aggregated"],
+      "postgres_materialized_views_needed": ["mv_github_repo_health_score"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/repo_health_projection.v1.json",
+        ".build/rig-relay/github/repo_health_history.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.repo_metadata.read",
+        "rig.relay.github.branches.read",
+        "rig.relay.github.branch_protection.read",
+        "rig.relay.desktop.widget.repo_health_cockpit.render"
+      ],
+      "permission_boundary": "metadata:read, administration:read, security_events:read",
+      "failure_empty_state": "Repository metadata not yet fetched. Show 'Refresh Repository Health' button. If no branch protection data, show 'Enable branch protection to see health score' educational state.",
+      "trust_spine_dependency": "requires_trust_spine_v1_for_live_data",
+      "data_freshness_indicator": "last_github_api_poll_timestamp",
+      "permission_state_indicator": "permission_probe_result_for_surface",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/github_operating_picture.json",
+      "blocked_state_copy": "Live GitHub data unavailable. Trust spine prerequisites (permission probe, rate-limit budget, content-light scan) must complete before this surface shows live data.",
+      "safe_empty_state": "No GitHub data received. Ensure GitHub App is installed and trust spine prerequisites are complete.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with repo health fixture matrix (healthy, degraded, critical, unknown); contract tests.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "pr-intelligence-panel",
+      "title": "PR Intelligence Panel",
+      "user_story": "As a reviewer, I want to see all open PRs with mergeability status, CI rollup, review state, and code scanning findings so I can triage and review effectively.",
+      "cockpit_location": "Review mode, widget grid position 2-1 (center-left)",
+      "static_docs_projection": "docs/json/github/pr_intelligence_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider._operating_picture.build_pr_intelligence_projection()",
+      "postgres_tables_needed": ["github_pull_requests", "github_check_runs", "github_pr_reviews"],
+      "postgres_materialized_views_needed": ["mv_github_pr_rollup", "mv_github_pr_mergeability"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/pr_intelligence_projection.v1.json",
+        ".build/rig-relay/github/pr_activity_log.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.pull_requests.read",
+        "rig.relay.github.checks.read",
+        "rig.relay.github.code_scanning.alerts.read",
+        "rig.relay.desktop.widget.pr_intelligence_panel.render"
+      ],
+      "permission_boundary": "pull_requests:read, checks:read, security_events:read",
+      "failure_empty_state": "No open pull requests. Show 'Open your first PR' CTA with branch comparison picker. If PRs exist but CI status unavailable, show 'Configure CI to see status checks' prompt.",
+      "trust_spine_dependency": "requires_trust_spine_v1_and_mutation_sabotage_tests",
+      "data_freshness_indicator": "last_pr_poll_timestamp",
+      "permission_state_indicator": "pull_requests_read_permission_status",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_review_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/pr_review_packets.jsonl",
+      "blocked_state_copy": "PR mutation surfaces are blocked. Trust spine, dry-run/rehearsal, approval receipts, branch protection preflight, and no-surprise mutation tests must all be proven before PR write operations are enabled.",
+      "safe_empty_state": "No open pull requests detected.",
+      "content_light_risk": "high",
+      "test_strategy": "Snapshot tests with PR fixture set (draft, ready, mergeable, conflicted, CI-passing, CI-failing); contract tests.",
+      "priority": "P0"
+    },
+    {
+      "surface_id": "issue-to-mission-converter",
+      "title": "Issue-to-Mission Converter",
+      "user_story": "As an operator, I want to turn a labeled GitHub issue into a Rig Relay mission so an agent can autonomously work on it in an isolated worktree.",
+      "cockpit_location": "Operator mode, widget grid position 2-2 (center)",
+      "static_docs_projection": null,
+      "backend_projection_needed": "rig_relay.integrations.github_provider._features.issue_to_mission_converter() (to be created)",
+      "postgres_tables_needed": ["github_issues", "github_issue_labels", "github_issue_missions", "rig_missions"],
+      "postgres_materialized_views_needed": ["mv_github_mission_candidates"],
+      "json_jsonl_csv_artifacts_needed": [
+        ".build/rig-relay/github/issue_mission_map.jsonl",
+        ".build/rig-relay/coordination/mission_from_issue.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.issues.read",
+        "rig.relay.github.labels.read",
+        "rig.relay.coordination.mission_created_from_issue",
+        "rig.relay.desktop.widget.issue_mission_converter.render"
+      ],
+      "permission_boundary": "issues:read; mutation requires ralph worktree lane with HMAC attestation",
+      "failure_empty_state": "No issues found or GitHub issues permission not granted. Show 'Enable Issues permission for your GitHub App' prompt. If issues exist but none are labeled, show 'Label issues to make them convertible to missions' with label taxonomy.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Integration tests with synthetic issue fixture; snapshot tests for converter UI states.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "code-scanning-triage-queue",
+      "title": "Code Scanning Triage Queue",
+      "user_story": "As a security reviewer, I want to triage code scanning alerts by severity, tool, and rule so I can review findings and approve or reject agent-proposed fixes.",
+      "cockpit_location": "Review mode, widget grid position 1-1 (top-left)",
+      "static_docs_projection": "docs/json/github/code_scanning_triage_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider._code_scanning_source_context.build_code_scanning_projection()",
+      "postgres_tables_needed": ["github_code_scanning_alerts", "github_code_scanning_instances", "github_code_scanning_fix_proposals"],
+      "postgres_materialized_views_needed": ["mv_github_code_scanning_severity_matrix", "mv_github_code_scanning_fix_pipeline"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/code_scanning_triage_projection.v1.json",
+        ".build/rig-relay/github/code_scanning_triage_decisions.jsonl",
+        ".build/rig-relay/github/fix_proposal_attestation.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.code_scanning.alerts.read",
+        "rig.relay.github.code_scanning.fix_proposed",
+        "rig.relay.github.code_scanning.fix_approved",
+        "rig.relay.github.code_scanning.fix_rejected",
+        "rig.relay.desktop.widget.code_scanning_triage.render"
+      ],
+      "permission_boundary": "security_events:read; mutation requires pull_requests:write with HMAC-SHA256 attestation",
+      "failure_empty_state": "No code scanning alerts found. Show 'Enable CodeQL or third-party code scanning to populate this queue' educational state. If alerts exist but user lacks security_events:read, show permission grant instructions.",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Snapshot tests for triage queue states (open, dismissed, fixed, false-positive); contract tests with alert fixture; mutation rehearsal in sandbox repo.",
+      "priority": "P0"
+    },
+    {
+      "surface_id": "secret-scanning-triage-queue",
+      "title": "Secret Scanning Triage Queue",
+      "user_story": "As a security reviewer, I want to triage secret scanning alerts without ever seeing secret values so I can verify and resolve leaked credentials safely.",
+      "cockpit_location": "Review mode, widget grid position 1-2 (top-center)",
+      "static_docs_projection": "docs/json/github/secret_scanning_triage_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.secret_scanning_triage.build_secret_scanning_projection() (to be created)",
+      "postgres_tables_needed": ["github_secret_scanning_alerts", "github_secret_scanning_locations"],
+      "postgres_materialized_views_needed": ["mv_github_secret_scanning_by_type"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/secret_scanning_triage_projection.v1.json",
+        ".build/rig-relay/github/secret_scanning_resolutions.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.secret_scanning.alerts.read",
+        "rig.relay.desktop.widget.secret_scanning_triage.render"
+      ],
+      "permission_boundary": "security_events:read; NEVER expose secret fragments in UI or telemetry",
+      "failure_empty_state": "No secret scanning alerts. Show 'Enable secret scanning for this repository' in settings. If alerts exist but are all resolved, show 'All secrets resolved — great job!' celebratory state.",
+      "trust_spine_dependency": "blocked_until_leak_scanning_proven",
+      "data_freshness_indicator": "last_alert_poll_timestamp",
+      "permission_state_indicator": "security_events_read_permission_status",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_alert_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/security_alerts.jsonl",
+      "blocked_state_copy": "This surface is blocked until content-light leak scanning is proven for all secret-bearing and log-bearing GitHub data. Raw secret fragments and Actions log bodies must never reach cockpit projections.",
+      "safe_empty_state": "Security alert ingestion not yet active. Complete trust spine prerequisites before enabling this surface.",
+      "content_light_risk": "critical",
+      "test_strategy": "Snapshot tests with sanitized fixture (no real secrets); content-light guard verification tests.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "dependabot-update-triage-queue",
+      "title": "Dependabot/Update Triage Queue",
+      "user_story": "As a maintainer, I want to triage Dependabot alerts and update PRs by ecosystem and severity so I can keep dependencies current without drowning in noise.",
+      "cockpit_location": "Review mode, widget grid position 1-3 (top-right)",
+      "static_docs_projection": "docs/json/github/dependabot_triage_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.dependabot_triage.build_dependabot_projection() (to be created)",
+      "postgres_tables_needed": ["github_dependabot_alerts", "github_dependabot_updates"],
+      "postgres_materialized_views_needed": ["mv_github_dependabot_severity_by_ecosystem"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/dependabot_triage_projection.v1.json",
+        ".build/rig-relay/github/dependabot_decisions.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.dependabot.alerts.read",
+        "rig.relay.desktop.widget.dependabot_triage.render"
+      ],
+      "permission_boundary": "security_events:read; pull_requests:read for update PR review",
+      "failure_empty_state": "No Dependabot alerts — dependencies are up to date. Show 'Enable Dependabot on this repo' if Dependabot is not configured. Show ecosystem breakdown if Dependabot is active but no open alerts.",
+      "trust_spine_dependency": "requires_trust_spine_v1_for_live_data",
+      "data_freshness_indicator": "last_github_api_poll_timestamp",
+      "permission_state_indicator": "permission_probe_result_for_surface",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/github_operating_picture.json",
+      "blocked_state_copy": "Live GitHub data unavailable. Trust spine prerequisites (permission probe, rate-limit budget, content-light scan) must complete before this surface shows live data.",
+      "safe_empty_state": "No GitHub data received. Ensure GitHub App is installed and trust spine prerequisites are complete.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with multi-ecosystem fixture; contract tests.",
+      "priority": "P2"
+    },
+    {
+      "surface_id": "actions-failure-cockpit",
+      "title": "Actions Failure Cockpit",
+      "user_story": "As a developer, I want to see failing GitHub Actions runs with root-cause analysis and log excerpts so I can debug CI failures without leaving Rig Relay.",
+      "cockpit_location": "System mode, widget grid position 2-1 (center-left)",
+      "static_docs_projection": "docs/json/github/actions_failure_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.actions_failure_cockpit.build_actions_failure_projection() (to be created)",
+      "postgres_tables_needed": ["github_workflows", "github_workflow_runs", "github_workflow_jobs", "github_workflow_logs"],
+      "postgres_materialized_views_needed": ["mv_github_actions_failure_heatmap", "mv_github_actions_flaky_detection"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/actions_failure_projection.v1.json",
+        ".build/rig-relay/github/ci_failure_log.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.actions.workflows.read",
+        "rig.relay.github.actions.runs.read",
+        "rig.relay.github.actions.jobs.read",
+        "rig.relay.github.actions.logs.read",
+        "rig.relay.desktop.widget.actions_failure_cockpit.render"
+      ],
+      "permission_boundary": "actions:read; log content must pass sanitize_env_for_subprocess before display",
+      "failure_empty_state": "No GitHub Actions workflows configured. Show 'Set up CI with GitHub Actions' educational prompt with workflow template picker. If workflows exist but all runs pass, show green 'All CI passing' state with run history chart.",
+      "trust_spine_dependency": "blocked_until_leak_scanning_proven",
+      "data_freshness_indicator": "last_alert_poll_timestamp",
+      "permission_state_indicator": "security_events_read_permission_status",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_alert_prioritization",
+      "evidence_source_link": ".build/rig-relay/evidence/security_alerts.jsonl",
+      "blocked_state_copy": "This surface is blocked until content-light leak scanning is proven for all secret-bearing and log-bearing GitHub data. Raw secret fragments and Actions log bodies must never reach cockpit projections.",
+      "safe_empty_state": "Security alert ingestion not yet active. Complete trust spine prerequisites before enabling this surface.",
+      "content_light_risk": "critical",
+      "test_strategy": "Snapshot tests with failure scenario matrix (build-fail, test-fail, lint-fail, timeout, cancelled); contract tests with sanitized log fixtures.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "branch-ruleset-protection-readability-panel",
+      "title": "Branch/Ruleset/Protection Readability Panel",
+      "user_story": "As an admin, I want to see branch protection rules, repository rulesets, and enforcement status across branches so I can audit and harden my repository configuration.",
+      "cockpit_location": "System mode, widget grid position 3-1 (bottom-left)",
+      "static_docs_projection": "docs/json/github/branch_protection_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.branch_protection_audit.build_branch_protection_projection() (to be created)",
+      "postgres_tables_needed": ["github_branch_protection", "github_repository_rulesets", "github_ruleset_enforcement"],
+      "postgres_materialized_views_needed": ["mv_github_protection_gap_analysis"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/branch_protection_projection.v1.json",
+        ".build/rig-relay/github/protection_audit.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.branch_protection.read",
+        "rig.relay.github.rulesets.read",
+        "rig.relay.desktop.widget.branch_ruleset_panel.render"
+      ],
+      "permission_boundary": "administration:read only; no mutation",
+      "failure_empty_state": "No branch protection rules configured. Show 'You have no branch protection — configure rules to protect your default branch' with template suggestions. If rules exist but user lacks admin:read, show permission instructions.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with protection config matrix (no-protection, basic, strict, ruleset-only, mixed); contract tests.",
+      "priority": "P2"
+    },
+    {
+      "surface_id": "release-readiness-panel",
+      "title": "Release Readiness Panel",
+      "user_story": "As a release manager, I want to see deployment history, release tags, package versions, and environment health so I can assess release readiness and ship confidently.",
+      "cockpit_location": "System mode, widget grid position 2-2 (center)",
+      "static_docs_projection": "docs/json/github/release_readiness_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.release_readiness.build_release_readiness_projection() (to be created)",
+      "postgres_tables_needed": ["github_releases", "github_deployments", "github_environments", "github_packages"],
+      "postgres_materialized_views_needed": ["mv_github_deployment_timeline", "mv_github_release_inventory"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/release_readiness_projection.v1.json",
+        ".build/rig-relay/github/release_history.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.releases.read",
+        "rig.relay.github.environments.read",
+        "rig.relay.github.packages.read",
+        "rig.relay.desktop.widget.release_readiness_panel.render"
+      ],
+      "permission_boundary": "contents:read, deployments:read, packages:read",
+      "failure_empty_state": "No releases found. Show 'Tag your first release' with instructions. If environments exist but no deployments, show 'Deploy to production to see deployment history'.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with release/deployment fixture matrix; contract tests.",
+      "priority": "P2"
+    },
+    {
+      "surface_id": "security-posture-panel",
+      "title": "Security Posture Panel",
+      "user_story": "As a security lead, I want a unified view of all security signals (code scanning, secret scanning, Dependabot, advisories) with remediation pipeline tracking so I can assess our security posture in one place.",
+      "cockpit_location": "Review mode, widget grid position 3-1 (bottom-left), full-page expanded view",
+      "static_docs_projection": "docs/json/github/security_posture_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.security_posture.build_security_posture_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_code_scanning_alerts", "github_secret_scanning_alerts",
+        "github_dependabot_alerts", "github_security_advisories",
+        "github_vulnerability_correlations"
+      ],
+      "postgres_materialized_views_needed": [
+        "mv_github_security_posture_summary",
+        "mv_github_vulnerability_remediation_pipeline",
+        "mv_github_security_trend_weekly"
+      ],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/security_posture_projection.v1.json",
+        ".build/rig-relay/github/security_posture_snapshots.jsonl",
+        ".build/rig-relay/github/vulnerability_remediation_ledger.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.code_scanning.alerts.read",
+        "rig.relay.github.secret_scanning.alerts.read",
+        "rig.relay.github.dependabot.alerts.read",
+        "rig.relay.github.security_advisories.read",
+        "rig.relay.github.vulnerability_alerts.aggregated",
+        "rig.relay.desktop.widget.security_posture_panel.render"
+      ],
+      "permission_boundary": "security_events:read; aggregate-only, no content leakage",
+      "failure_empty_state": "No security scanning enabled. Show 'Enable CodeQL, Secret Scanning, and Dependabot to populate security posture' with step-by-step setup guide. If data exists but is stale (>7 days), show 'Refresh Security Posture' button with last-refresh timestamp.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Integration tests with synthesized multi-scanner fixture; snapshot tests for posture states (clean, degraded, critical, unknown).",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "provider-permission-matrix-viewer",
+      "title": "Provider Permission Matrix Viewer",
+      "user_story": "As an admin, I want to cross-reference GitHub App permissions with Rig Relay tool permissions so I can understand what agents can safely do on GitHub.",
+      "cockpit_location": "System mode, widget grid position 4-1 (bottom-row, left)",
+      "static_docs_projection": "docs/json/github/permission_matrix_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.permission_matrix.build_permission_matrix_projection() (to be created)",
+      "postgres_tables_needed": ["github_app_permissions", "rig_tool_permissions", "permission_mappings"],
+      "postgres_materialized_views_needed": ["mv_github_rig_permission_matrix"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/permission_matrix_projection.v1.json",
+        ".build/rig-relay/github/permission_audit.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.installations.read",
+        "rig.relay.github.teams.read",
+        "rig.relay.governance.tool_permission.read",
+        "rig.relay.desktop.widget.permission_matrix.render"
+      ],
+      "permission_boundary": "metadata:read, members:read; read-only mapping",
+      "failure_empty_state": "No GitHub App installed. Show 'Install Rig Relay GitHub App' setup flow. If app installed but permission mapping incomplete, show 'Configure permission mapping in rig_relay/integrations/github_provider/_capabilities.py'.",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Snapshot tests with permission mapping matrix fixture; contract tests for permission derivation logic.",
+      "priority": "P2"
+    },
+    {
+      "surface_id": "github-app-install-health-panel",
+      "title": "GitHub App Install Health Panel",
+      "user_story": "As an admin, I want to see GitHub App installation status, accessible repositories, token health, and permission scope so I can monitor and maintain the GitHub integration.",
+      "cockpit_location": "System mode, widget grid position 1-1 (top-left)",
+      "static_docs_projection": "docs/json/github/install_health_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider._github_app_token_manager.build_install_health_projection()",
+      "postgres_tables_needed": ["github_app_installations", "github_app_tokens"],
+      "postgres_materialized_views_needed": ["mv_github_install_health"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/install_health_projection.v1.json",
+        ".build/rig-relay/github/token_health_log.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.installations.read",
+        "rig.relay.desktop.widget.install_health_panel.render"
+      ],
+      "permission_boundary": "N/A — app-level endpoint; token health never exposes token values",
+      "failure_empty_state": "No GitHub App installed. Show 'Install Rig Relay GitHub App' guided setup. If installation suspended, show 'Re-enable GitHub App installation' with instructions. If token expired, show 'Token expired — re-authenticate' with auto-refresh attempt.",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Contract tests with installation fixture; token refresh lifecycle tests.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "multi-repo-org-portfolio-view",
+      "title": "Multi-Repo/Org Portfolio View",
+      "user_story": "As an org admin, I want to see all repositories across my organization with aggregated health, security, and activity signals so I can manage the portfolio at scale.",
+      "cockpit_location": "Technical mode, widget grid position 1-1 (top-left), full-page table view",
+      "static_docs_projection": "docs/json/github/portfolio_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.portfolio.build_portfolio_projection() (to be created)",
+      "postgres_tables_needed": ["github_repos", "github_orgs", "github_org_members", "github_repo_health_aggregated"],
+      "postgres_materialized_views_needed": ["mv_github_org_portfolio", "mv_github_cross_repo_security"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/portfolio_projection.v1.json",
+        ".build/rig-relay/github/portfolio_snapshots.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.repo_metadata.read",
+        "rig.relay.github.installations.read",
+        "rig.relay.desktop.widget.portfolio_view.render"
+      ],
+      "permission_boundary": "metadata:read across all org repos; may require org-level GitHub App installation",
+      "failure_empty_state": "No organization connected or no repos. Show 'Connect an organization' flow. If org connected but zero repos, show 'Create a repository in your org' link. If repos exist but metadata fetch failed, show per-repo error states.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests with multi-repo portfolio fixture; integration tests with fan-out projection.",
+      "priority": "P2"
+    },
+    {
+      "surface_id": "startup-simple-mode",
+      "title": "Startup/Simple Mode",
+      "user_story": "As a solo developer, I want a minimal, guided setup that connects one repo and shows the top 3 things I need (open PRs, CI status, code scanning) without overwhelming me.",
+      "cockpit_location": "Operator mode, single-column layout, progressive disclosure from chips to cards",
+      "static_docs_projection": null,
+      "backend_projection_needed": "rig_relay.integrations.github_provider.simple_mode.build_simple_projection() (to be created)",
+      "postgres_tables_needed": ["github_repos", "github_pull_requests", "github_code_scanning_alerts"],
+      "postgres_materialized_views_needed": [],
+      "json_jsonl_csv_artifacts_needed": [
+        ".build/rig-relay/github/simple_mode_state.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.repo_metadata.read",
+        "rig.relay.github.pull_requests.read",
+        "rig.relay.desktop.layout.startup_simple_mode.activated"
+      ],
+      "permission_boundary": "metadata:read, pull_requests:read — minimal scope",
+      "failure_empty_state": "Welcome screen with provider onboarding wizard. 'Connect your first GitHub repo to get started.' If repo connected but data empty, show 'Your repo looks fresh — open a PR to see activity here.'",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "User flow tests for onboarding wizard; snapshot tests for simple mode card states.",
+      "priority": "P0"
+    },
+    {
+      "surface_id": "enterprise-admin-mode",
+      "title": "Enterprise/Admin Mode",
+      "user_story": "As an enterprise admin, I want full observability across orgs including audit logs, Copilot usage, team permissions, and ruleset enforcement so I can govern GitHub at scale.",
+      "cockpit_location": "Technical mode, multi-column dashboard with drill-down tables",
+      "static_docs_projection": "docs/json/github/enterprise_admin_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.enterprise_admin.build_enterprise_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_orgs", "github_org_members", "github_org_audit_logs", "github_org_rulesets",
+        "github_copilot_usage", "github_teams", "github_team_permissions"
+      ],
+      "postgres_materialized_views_needed": [
+        "mv_github_enterprise_audit_timeline",
+        "mv_github_copilot_adoption",
+        "mv_github_org_permission_map"
+      ],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/enterprise_admin_projection.v1.json",
+        ".build/rig-relay/github/audit_log_export.csv",
+        ".build/rig-relay/github/copilot_usage_snapshots.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.audit_logs.read",
+        "rig.relay.github.copilot.read",
+        "rig.relay.github.teams.read",
+        "rig.relay.desktop.layout.enterprise_admin_mode.activated"
+      ],
+      "permission_boundary": "organization_administration:read; enterprise features require GitHub Enterprise plan",
+      "failure_empty_state": "No enterprise features detected. Show 'Enterprise features require a GitHub Enterprise plan' with feature checklist. If enterprise features available but no data, show per-capability empty states with setup instructions.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Integration tests with enterprise fixture (requires GitHub Enterprise sandbox); snapshot tests.",
+      "priority": "P3"
+    },
+    {
+      "surface_id": "solo-maintainer-mode",
+      "title": "Solo Maintainer Mode",
+      "user_story": "As a solo maintainer of multiple repos, I want to see across all my repos what needs attention (stale PRs, open issues, security alerts, failing CI) so I can triage efficiently.",
+      "cockpit_location": "Operator mode, compact chip grid, expand-single-to-card interaction",
+      "static_docs_projection": "docs/json/github/solo_maintainer_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.solo_maintainer.build_solo_maintainer_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_repos", "github_pull_requests", "github_issues",
+        "github_code_scanning_alerts", "github_workflow_runs"
+      ],
+      "postgres_materialized_views_needed": ["mv_github_solo_maintainer_inbox"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/solo_maintainer_projection.v1.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.repo_metadata.read",
+        "rig.relay.github.pull_requests.read",
+        "rig.relay.github.issues.read",
+        "rig.relay.desktop.layout.solo_maintainer_mode.activated"
+      ],
+      "permission_boundary": "metadata:read, pull_requests:read, issues:read, security_events:read across all user repos",
+      "failure_empty_state": "No repos found under your account. Show 'Create or fork your first repository' link. If repos exist but all clear, show 'All clear — nothing needs your attention right now' with last-check timestamp.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests for inbox states (attention-needed, all-clear, partial-error); contract tests.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "static-site-projection-view",
+      "title": "Static Site Projection View",
+      "user_story": "As a maintainer, I want to see my GitHub Pages build status, custom domain health, and a live preview of my static site so I can verify documentation deployments.",
+      "cockpit_location": "System mode, widget grid position 4-2 (bottom-row, center)",
+      "static_docs_projection": "docs/json/github/pages_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.pages_view.build_pages_projection() (to be created)",
+      "postgres_tables_needed": ["github_pages_sites", "github_pages_builds"],
+      "postgres_materialized_views_needed": ["mv_github_pages_status"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/pages_projection.v1.json",
+        ".build/rig-relay/github/pages_build_log.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.pages.read",
+        "rig.relay.desktop.widget.static_site_projection.render"
+      ],
+      "permission_boundary": "pages:read",
+      "failure_empty_state": "GitHub Pages not configured. Show 'Enable GitHub Pages for this repository' with branch selection. If Pages enabled but no successful build, show 'Waiting for first Pages build — check your source branch.'",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests for Pages states (not-configured, building, deployed, errored, custom-domain); contract tests.",
+      "priority": "P3"
+    },
+    {
+      "surface_id": "what-changed-since-last-run",
+      "title": "\"What Changed Since Last Run?\" View",
+      "user_story": "As an operator, I want to see a chronological diff of all GitHub activity (commits, PRs, issues, releases, CI runs) since my last Rig Relay session so I can catch up quickly.",
+      "cockpit_location": "Operator mode, widget grid position 3-1 (bottom-left), timeline layout",
+      "static_docs_projection": "docs/json/github/change_timeline_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.change_timeline.build_change_timeline_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_commits", "github_pull_requests", "github_issues",
+        "github_releases", "github_workflow_runs", "github_change_cursor"
+      ],
+      "postgres_materialized_views_needed": ["mv_github_change_timeline"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/change_timeline_projection.v1.json",
+        ".build/rig-relay/github/change_cursor.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.commits.read",
+        "rig.relay.github.pull_requests.read",
+        "rig.relay.github.issues.read",
+        "rig.relay.github.releases.read",
+        "rig.relay.session.lifecycle.started",
+        "rig.relay.desktop.widget.change_timeline.render"
+      ],
+      "permission_boundary": "contents:read, pull_requests:read, issues:read",
+      "failure_empty_state": "No changes since last session. Show 'Nothing new — your last session was <timestamp>. Run \"/github refresh\" to force a full scan.' If first session, show 'Welcome! This is your first session — no baseline to compare against.'",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Integration test with session boundary cursor management; snapshot tests for timeline states.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "why-is-this-blocked-governance-explainer",
+      "title": "\"Why Is This Blocked?\" Governance Explainer",
+      "user_story": "As an operator, I want to understand why an agent action was blocked (permission denied, attestation failed, CODECOWNERS unresolved, rate limit, branch protection) with a clear explanation and remediation path.",
+      "cockpit_location": "Operator mode, inline notification bar above chat input, expandable to card",
+      "static_docs_projection": null,
+      "backend_projection_needed": "rig_relay.integrations.github_provider.governance_explainer.build_block_reason_projection() (to be created)",
+      "postgres_tables_needed": ["github_block_events", "rig_governance_decisions"],
+      "postgres_materialized_views_needed": ["mv_github_block_reasons_recent"],
+      "json_jsonl_csv_artifacts_needed": [
+        ".build/rig-relay/github/block_reasons.jsonl",
+        ".build/rig-relay/governance/decision_ledger.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.governance.block_decision",
+        "rig.relay.governance.attestation_failure",
+        "rig.relay.github.permission_denied",
+        "rig.relay.desktop.widget.governance_explainer.render"
+      ],
+      "permission_boundary": "N/A — reads governance ledger and block events, not GitHub directly",
+      "failure_empty_state": "No blocked actions. Show 'No actions blocked in this session — agents are working within their permission boundaries.' If blocked actions exist, show per-block explanation cards with remediation steps.",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Snapshot tests for block reason types (permission, attestation, rate-limit, codeowners, protection); governance decision ledger replay tests.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "what-can-rig-safely-do-capability-surface",
+      "title": "\"What Can Rig Safely Do?\" Capability Surface",
+      "user_story": "As an operator, I want to see the full matrix of what Rig Relay can read vs. mutate on GitHub, colored by permission and attestation status, so I can understand the agent's safe operating envelope.",
+      "cockpit_location": "System mode, widget grid position 3-2 (bottom-center), expandable matrix table",
+      "static_docs_projection": "docs/json/github/capability_surface_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.capability_surface.build_capability_surface_projection() (to be created)",
+      "postgres_tables_needed": ["github_app_permissions", "rig_tool_permissions", "rig_live_mutation_gates"],
+      "postgres_materialized_views_needed": ["mv_github_rig_capability_surface"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/capability_surface_projection.v1.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.installations.read",
+        "rig.relay.governance.tool_permission.read",
+        "rig.relay.desktop.widget.capability_surface.render"
+      ],
+      "permission_boundary": "Reads local permission config and GitHub App permission manifest — no GitHub API call needed",
+      "failure_empty_state": "No GitHub App connected. Show 'Install Rig Relay GitHub App to see what Rig can do.' If app connected, show capability matrix with green/yellow/red cells based on read/mutation/blocked status.",
+      "trust_spine_dependency": "requires_trust_spine_v1",
+      "data_freshness_indicator": "last_permission_probe_timestamp",
+      "permission_state_indicator": "granted_vs_missing_permissions",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_adaptive_optimization",
+      "evidence_source_link": ".build/rig-relay/evidence/permission_probe_results.json",
+      "blocked_state_copy": "Provider trust spine has not completed. Permission probe, rate-limit budget, and content-light scan must be established before this surface can display live data.",
+      "safe_empty_state": "No GitHub App installation detected. Complete GitHub App onboarding to enable permission transparency.",
+      "content_light_risk": "low",
+      "test_strategy": "Snapshot tests for capability matrix states; contract tests for permission derivation from app manifest and local config.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "what-needs-human-review-queue",
+      "title": "\"What Needs Human Review?\" Queue",
+      "user_story": "As a reviewer, I want a unified inbox of everything requiring my attention (PR reviews, proposed fixes, blocked merges, attestation approvals, flagged code) sorted by urgency.",
+      "cockpit_location": "Review mode, widget grid position 1-1 (top-left), pinned and always-visible",
+      "static_docs_projection": "docs/json/github/human_review_queue_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.human_review_queue.build_human_review_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_pull_requests", "github_pr_reviews", "github_code_scanning_fix_proposals",
+        "rig_attestation_requests", "github_merge_blocks"
+      ],
+      "postgres_materialized_views_needed": ["mv_github_human_review_inbox"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/human_review_queue_projection.v1.json",
+        ".build/rig-relay/github/review_decisions.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.pull_requests.review_requested",
+        "rig.relay.github.code_scanning.fix_proposed",
+        "rig.relay.governance.attestation_requested",
+        "rig.relay.desktop.widget.human_review_queue.render"
+      ],
+      "permission_boundary": "pull_requests:read, security_events:read",
+      "failure_empty_state": "Nothing requires your review right now. Show 'Inbox zero — great job!' with last-review timestamp. Optionally show 'Recently completed reviews' summary for context.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests for inbox states (empty, PR-pending, fix-proposed, attestation-requested, mixed); multi-source aggregation tests.",
+      "priority": "P0"
+    },
+    {
+      "surface_id": "what-did-agents-do-evidence-timeline",
+      "title": "\"What Did Agents Do?\" Evidence Timeline",
+      "user_story": "As an operator, I want a chronological timeline of all agent actions on GitHub (commits, PRs, comments, fix proposals, check runs) with receipt-backed evidence so I can audit agent activity.",
+      "cockpit_location": "Operator mode, widget grid position 3-2 (bottom-center), scrollable timeline",
+      "static_docs_projection": "docs/json/github/agent_evidence_timeline_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.agent_evidence_timeline.build_evidence_timeline_projection() (to be created)",
+      "postgres_tables_needed": [
+        "github_agent_actions", "rig_evidence_receipts",
+        "github_commits_by_agent", "github_pr_comments_by_agent"
+      ],
+      "postgres_materialized_views_needed": ["mv_github_agent_evidence_timeline"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/agent_evidence_timeline_projection.v1.json",
+        ".rig/reports/reports.jsonl",
+        ".build/rig-relay/evidence/agent_action_ledger.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.coordination.mission_dispatched",
+        "rig.relay.github.code_scanning.fix_proposed",
+        "rig.relay.github.code_scanning.fix_applied",
+        "rig.relay.evidence.receipt_created",
+        "rig.relay.desktop.widget.evidence_timeline.render"
+      ],
+      "permission_boundary": "Reads local evidence store and GitHub action log — no additional GitHub permissions needed beyond what was used during actions",
+      "failure_empty_state": "No agent actions recorded yet. Show 'Agents haven't taken any GitHub actions in this session' with a link to dispatch a mission. If historical data exists, show timeline with session boundary markers.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Integration tests with synthesized agent action stream; receipt chain verification tests; snapshot tests for timeline rendering.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "what-did-github-reject-diagnostics",
+      "title": "\"What Did GitHub Reject?\" Diagnostics",
+      "user_story": "As a developer, I want to see what GitHub rejected (rate-limited API calls, permission-denied requests, failed attestations, merge conflicts) so I can diagnose and fix integration issues.",
+      "cockpit_location": "System mode, widget grid position 4-3 (bottom-right), error log view",
+      "static_docs_projection": "docs/json/github/rejection_diagnostics_projection.v1.json",
+      "backend_projection_needed": "rig_relay.integrations.github_provider.rejection_diagnostics.build_rejection_projection() (to be created)",
+      "postgres_tables_needed": ["github_api_errors", "github_rate_limit_events", "github_permission_denials"],
+      "postgres_materialized_views_needed": ["mv_github_rejection_summary", "mv_github_rate_limit_budget"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/github/rejection_diagnostics_projection.v1.json",
+        ".build/rig-relay/github/api_error_log.jsonl",
+        ".build/rig-relay/github/rate_limit_budget.json"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.github.api.error",
+        "rig.relay.github.api.rate_limited",
+        "rig.relay.github.api.permission_denied",
+        "rig.relay.desktop.widget.rejection_diagnostics.render"
+      ],
+      "permission_boundary": "Reads local error telemetry — no additional GitHub permissions needed",
+      "failure_empty_state": "No GitHub API rejections in this session. Show 'All GitHub API calls succeeded' with rate-limit budget gauge. If rejections exist, show categorized error cards with retry-after and remediation guidance.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Integration tests with simulated API errors; rate-limit boundary tests; snapshot tests for error categories.",
+      "priority": "P1"
+    },
+    {
+      "surface_id": "provider-health-panel",
+      "title": "Provider Health Panel",
+      "user_story": "As an operator, I want to see the health and status of my configured providers (LLM backends, GitHub, Google Workspace) with latency, rate limits, and error rates so I can monitor the full provider fleet.",
+      "cockpit_location": "System mode, widget grid position 1-2 (top-center), existing widget to enhance",
+      "static_docs_projection": "docs/json/providers/provider_health_projection.v1.json",
+      "backend_projection_needed": "rig_relay.providers.provider_health.build_provider_health_projection()",
+      "postgres_tables_needed": [
+        "provider_health_snapshots", "provider_rate_limits",
+        "github_rate_limit_events", "llm_backend_metrics"
+      ],
+      "postgres_materialized_views_needed": ["mv_provider_health_current", "mv_github_rate_limit_trend"],
+      "json_jsonl_csv_artifacts_needed": [
+        "docs/json/providers/provider_health_projection.v1.json",
+        ".build/rig-relay/providers/health_history.jsonl"
+      ],
+      "telemetry_needed_to_improve_ux": [
+        "rig.relay.providers.health_check",
+        "rig.relay.github.api.rate_limited",
+        "rig.relay.providers.llm.latency",
+        "rig.relay.desktop.widget.provider_health_panel.render"
+      ],
+      "permission_boundary": "Reads local provider metrics and GitHub rate-limit headers — no additional permissions",
+      "failure_empty_state": "No providers configured. Show 'Add a provider in Settings' with provider setup wizard link. If providers configured but no data, show 'Waiting for first health check...' with force-refresh button.",
+      "trust_spine_dependency": "deferred_until_postgres_projection_spine",
+      "data_freshness_indicator": "last_postgres_refresh_timestamp",
+      "permission_state_indicator": "permission_probe_staleness_warning",
+      "telemetry_state_indicator": "product_telemetry_disabled_degrades_portfolio_analytics",
+      "evidence_source_link": ".build/rig-relay/evidence/postgres_github_projections.json",
+      "blocked_state_copy": "This surface requires PostgreSQL operational projection spine. GitHub data is flowing through trust spine but Postgres-backed indexed projections do not yet exist.",
+      "safe_empty_state": "PostgreSQL operational projection not yet available. GitHub data is preserved in JSONL source-of-truth artifacts pending Postgres adapter implementation.",
+      "content_light_risk": "medium",
+      "test_strategy": "Snapshot tests for provider health states (healthy, degraded, down, unknown); contract tests for rate-limit header parsing.",
+      "priority": "P0"
+    }
+  ],
+  "summary": {
+    "total_surfaces": 25,
+    "by_priority": {
+      "P0": ["github-operating-picture-dashboard", "pr-intelligence-panel", "code-scanning-triage-queue", "startup-simple-mode", "what-needs-human-review-queue", "provider-health-panel"],
+      "P1": ["repository-health-cockpit", "issue-to-mission-converter", "secret-scanning-triage-queue", "actions-failure-cockpit", "security-posture-panel", "github-app-install-health-panel", "solo-maintainer-mode", "what-changed-since-last-run", "why-is-this-blocked-governance-explainer", "what-can-rig-safely-do-capability-surface", "what-did-agents-do-evidence-timeline", "what-did-github-reject-diagnostics"],
+      "P2": ["dependabot-update-triage-queue", "branch-ruleset-protection-readability-panel", "release-readiness-panel", "provider-permission-matrix-viewer", "multi-repo-org-portfolio-view"],
+      "P3": ["enterprise-admin-mode", "static-site-projection-view"]
+    },
+    "by_cockpit_mode": {
+      "Operator": ["github-operating-picture-dashboard", "repository-health-cockpit", "issue-to-mission-converter", "what-changed-since-last-run", "why-is-this-blocked-governance-explainer", "what-did-agents-do-evidence-timeline", "startup-simple-mode", "solo-maintainer-mode"],
+      "Review": ["pr-intelligence-panel", "code-scanning-triage-queue", "secret-scanning-triage-queue", "dependabot-update-triage-queue", "security-posture-panel", "what-needs-human-review-queue"],
+      "System": ["actions-failure-cockpit", "release-readiness-panel", "branch-ruleset-protection-readability-panel", "provider-permission-matrix-viewer", "github-app-install-health-panel", "what-can-rig-safely-do-capability-surface", "what-did-github-reject-diagnostics", "provider-health-panel", "static-site-projection-view"],
+      "Technical": ["multi-repo-org-portfolio-view", "enterprise-admin-mode"]
+    },
+    "fully_implemented_backend": ["code-scanning-triage-queue"],
+    "partially_implemented_backend": ["github-operating-picture-dashboard", "github-app-install-health-panel", "provider-health-panel"],
+    "not_implemented_backend": 22,
+    "governance_notes": [
+      "All mutation-capable surfaces (code-scanning fixes, issue-to-mission, PR merge) require HMAC-SHA256 attestation per Live Mutation Readiness policy",
+      "Surfaces handling credentials (secret scanning triage, GitHub App token health) must never expose token/secret values in UI or telemetry",
+      "Every surface with content_light constraints must pass through sanitize_env_for_subprocess or content-light projection before rendering",
+      "Empty/failure states are designed per surface — never show raw error logs or stack traces to users",
+      "Provider Health Panel is the only surface that already exists; all others are proposed"
+    ]
+  },
+  "content_light": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 2
+}

@@ -1,0 +1,280 @@
+{
+  "schema_version": "rig.relay.postgres_test_strategy.v1",
+  "audit_id": "postgres-enterprise-substrate-audit-v1",
+  "title": "PostgreSQL Enterprise Substrate — Test Strategy",
+  "generated_at": "2026-05-20T18:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "test_doctrine": {
+    "integration_point": "Tests target the Port interface boundary — not Postgres internals. Every Port has a contract test suite that both the file-backed and Postgres adapters must satisfy. This ensures Postgres is never a hard dependency for the test suite to pass.",
+    "test_isolation": "All Postgres integration tests create and destroy their own databases (CREATE DATABASE test_rig_relay_<random>; DROP DATABASE after test). Migration runner creates fresh schema for each test. No shared state between tests.",
+    "skip_markers": "Tests requiring Postgres are marked with @pytest.mark.postgres. These tests are skipped in CI if no Postgres DSN is configured. Local mode tests (file-backed adapters) always run."
+  },
+  "test_suites": [
+    {
+      "suite_id": "contract-jsonb-payloads",
+      "title": "Contract Tests for Schema-Governed JSONB Payloads",
+      "phase": "Phase 2-3",
+      "classification": ["contract", "real-artifact"],
+      "description": "Every table with a JSONB column must have contract tests that validate: (1) valid payloads matching the schema are accepted, (2) payloads missing required fields are rejected, (3) payloads with forbidden keys (token, secret, raw_prompt, etc.) are rejected, (4) generated columns correctly extract values from JSONB payloads.",
+      "test_files": [
+        "tests/adapters/contracts/test_event_log_payload.py",
+        "tests/adapters/contracts/test_receipt_envelope_payload.py",
+        "tests/adapters/contracts/test_finding_payload.py",
+        "tests/adapters/contracts/test_tool_invocation_payload.py",
+        "tests/adapters/contracts/test_enterprise_audit_payload.py"
+      ],
+      "expected_count": "~50 tests across all payload types"
+    },
+    {
+      "suite_id": "replay-equivalence",
+      "title": "Replay Equivalence Tests",
+      "phase": "Phase 4",
+      "classification": ["integration", "real-artifact", "substrate"],
+      "description": "Feed the same canonical artifact corpus (JSONL/JSON/CSV files from tests/fixtures/replay_corpus/) through both the file-backed adapter and the Postgres adapter. Assert that semantic projections (envelope-level metadata, aggregate counts, materialized view results) are bit-identical between the two adapters.",
+      "test_files": [
+        "tests/adapters/test_replay_equivalence_observability.py",
+        "tests/adapters/test_replay_equivalence_receipts.py",
+        "tests/adapters/test_replay_equivalence_coordination.py",
+        "tests/adapters/test_replay_equivalence_findings.py",
+        "tests/adapters/test_replay_equivalence_materialized_views.py",
+        "tests/adapters/test_ddb_vs_pg_projection.py — DuckDB vs Postgres projection comparison"
+      ],
+      "expected_count": "~30 tests"
+    },
+    {
+      "suite_id": "migration-idempotency",
+      "title": "Migration Idempotency Tests",
+      "phase": "Phase 3",
+      "classification": ["contract", "substrate"],
+      "description": "Run each migration twice on a fresh database. Verify second run is a no-op (no errors). Run each migration's down script then up script — verify database returns to identical state.",
+      "test_files": [
+        "tests/adapters/test_migration_idempotency.py",
+        "tests/adapters/test_migration_rollback.py",
+        "tests/adapters/test_migration_ordering.py"
+      ],
+      "expected_count": "~15 tests"
+    },
+    {
+      "suite_id": "corrupted-artifact-quarantine",
+      "title": "Corrupted Artifact Quarantine Tests",
+      "phase": "Phase 4",
+      "classification": ["adversarial", "sabotage"],
+      "description": "Feed intentionally corrupted artifacts (malformed JSON, missing required fields, truncated files, binary data injected) through ingest paths. Verify: (1) corrupted artifacts are detected and quarantined, (2) quarantine log records the corruption type and SHA256 of corrupted file, (3) remaining valid artifacts are still ingested, (4) no crash or data corruption in operational tables.",
+      "test_files": [
+        "tests/adapters/test_artifact_quarantine.py"
+      ],
+      "expected_count": "~10 tests"
+    },
+    {
+      "suite_id": "postgres-unavailable-fail-closed",
+      "title": "Postgres Unavailable Fail-Closed Behavior",
+      "phase": "Phase 4",
+      "classification": ["adversarial", "integration"],
+      "description": "With Postgres configured as the adapter, simulate Postgres unavailability (wrong port, connection refused, authentication failure, timeout). Verify adapters raise PostgresUnavailableError with clear diagnostics. Verify no silent fallback to file-backed adapters. Verify cockpit shows 'Enterprise substrate unavailable' degradation state.",
+      "test_files": [
+        "tests/adapters/test_postgres_unavailable.py"
+      ],
+      "expected_count": "~8 tests"
+    },
+    {
+      "suite_id": "concurrent-lease-acquisition",
+      "title": "Concurrent Lease Acquisition Tests",
+      "phase": "Phase 6",
+      "classification": ["concurrency", "integration", "substrate"],
+      "description": "Run multiple concurrent processes attempting to claim the same task and reserve overlapping paths. Verify: (1) only one process succeeds in claiming a task, (2) overlapping write reservations are rejected, (3) advisory locks prevent race conditions, (4) expired leases are reclaimed after TTL, (5) same-owner renewal is allowed.",
+      "test_files": [
+        "tests/adapters/test_concurrent_lease_acquisition.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~12 tests"
+    },
+    {
+      "suite_id": "listen-notify-projection-invalidation",
+      "title": "LISTEN/NOTIFY Projection Invalidation Tests",
+      "phase": "Phase 5",
+      "classification": ["integration", "substrate"],
+      "description": "Insert events into Postgres that should trigger NOTIFY on projection_invalidation channel. Verify WebSocket backend receives invalidation events and recomputes affected projections. Measure end-to-end latency from INSERT to WebSocket push.",
+      "test_files": [
+        "tests/desktop/test_projection_invalidation_latency.py",
+        "tests/desktop/test_projection_invalidation_reconnect.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~10 tests"
+    },
+    {
+      "suite_id": "rls-tenant-isolation",
+      "title": "RLS Tenant Isolation Tests",
+      "phase": "Phase 6",
+      "classification": ["adversarial", "integration", "substrate"],
+      "description": "Create two tenants (tenant_a, tenant_b). Insert data for both tenants across all operational tables. Connect as tenant_a and attempt to SELECT from tenant_b's data — verify denied. Connect as tenant_a and attempt INSERT with tenant_b's tenant_id — verify denied or silently overridden. Test SET ROLE escalation and RLS bypass attempts.",
+      "test_files": [
+        "tests/adapters/test_rls_tenant_isolation.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~20 tests"
+    },
+    {
+      "suite_id": "generated-column-index-query-plans",
+      "title": "Generated Column / Index Query Plan Tests",
+      "phase": "Phase 3-4",
+      "classification": ["contract", "substrate"],
+      "description": "Run EXPLAIN ANALYZE on representative cockpit dashboard queries. Verify: (1) generated column indexes are used for session_id, event_name, status, severity, created_at queries, (2) GIN indexes are used for JSONB containment queries, (3) materialized views avoid full table scans, (4) partition pruning excludes irrelevant partitions.",
+      "test_files": [
+        "tests/adapters/test_query_plans_explain.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~15 tests"
+    },
+    {
+      "suite_id": "export-back-to-artifact",
+      "title": "Export Back to Artifact Tests",
+      "phase": "Phase 6",
+      "classification": ["integration", "real-artifact", "substrate"],
+      "description": "Export every Postgres table to its canonical artifact format (JSONL/JSON/CSV). Verify: (1) exported file is valid JSON/JSONL/CSV, (2) exported row count matches source query, (3) exported SHA256 matches export_manifest.export_sha256, (4) exported file can be replayed to rebuild Postgres tables (roundtrip).",
+      "test_files": [
+        "tests/adapters/test_export_artifact_roundtrip.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~15 tests"
+    },
+    {
+      "suite_id": "no-raw-content-telemetry-redaction",
+      "title": "No Raw Content Telemetry/Redaction Tests",
+      "phase": "Phase 3-6 (continuous)",
+      "classification": ["adversarial", "sabotage"],
+      "description": "Attempt to insert JSONB payloads containing raw content patterns (token, secret, private_key, raw_prompt, raw_completion, file_content, diff) into every table. Verify CHECK constraint or INSERT trigger rejects the insert. Verify rejection is logged. Verify content-light materialized views never contain raw content.",
+      "test_files": [
+        "tests/adapters/test_content_light_enforcement.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~25 tests"
+    },
+    {
+      "suite_id": "cockpit-projection-overwrite-regression",
+      "title": "Cockpit Projection Overwrite Regression Tests",
+      "phase": "Phase 5",
+      "classification": ["contract", "integration"],
+      "description": "Verify that Postgres-backed cockpit projections produce the same output as file-backed projections. Verify that analytics state is properly isolated from main projection state. Verify projection_invalidation correctly identifies which projections need recomputation.",
+      "test_files": [
+        "tests/desktop/test_projection_overwrite_regression.py"
+      ],
+      "expected_count": "~8 tests"
+    },
+    {
+      "suite_id": "duckdb-vs-postgres-projection-comparison",
+      "title": "DuckDB vs Postgres Projection Comparison Tests",
+      "phase": "Phase 4-5",
+      "classification": ["integration", "substrate"],
+      "description": "Run all cockpit widget queries against both DuckDB (reading JSONL directly) and Postgres (reading operational tables + materialized views). Assert that content-light widget output (counts, rates, latencies, status distributions) is equivalent between the two analytical paths.",
+      "test_files": [
+        "tests/analytics/test_ddb_vs_pg_projection_comparison.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~20 tests"
+    },
+    {
+      "suite_id": "telemetry-operational-boundary",
+      "title": "Telemetry/Operational/Enterprise State Boundary Tests",
+      "phase": "Phase 3-6 (continuous)",
+      "classification": ["contract", "integration", "adversarial", "substrate"],
+      "description": "Verify that product telemetry opt-out does NOT disable audit/evidence/operational substrate features. Verify that cockpit status model exposes three separately distinguishable states (product_telemetry_disabled, local_observability_degraded, enterprise_substrate_unavailable). Verify that Postgres-unavailable is fail-closed and distinct from telemetry-disabled.",
+      "test_files": [
+        "tests/adapters/test_telemetry_operational_boundary.py"
+      ],
+      "pytest_mark": "postgres",
+      "expected_count": "~15 tests",
+      "test_cases": [
+        {
+          "test": "product telemetry disabled does not stop receipt persistence",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Insert a receipt_envelope. Verify receipt_envelope row count increases. Verify enterprise_audit_event row count is unaffected."
+        },
+        {
+          "test": "product telemetry disabled does not stop enterprise_audit_event writes",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Insert an enterprise_audit_event (admin action). Verify the audit event is persisted and queryable."
+        },
+        {
+          "test": "product telemetry disabled does not stop release_gate_decision persistence",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Insert a release_gate_decision. Verify it is persisted."
+        },
+        {
+          "test": "product telemetry disabled does not stop export_manifest generation",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Run an export. Verify export_manifest row is persisted."
+        },
+        {
+          "test": "product telemetry disabled does not stop LISTEN/NOTIFY projection invalidation when enterprise substrate is enabled",
+          "classification": ["integration", "substrate"],
+          "description": "Set telemetry consent to false. With Postgres enabled, insert an event that triggers NOTIFY on projection_invalidation channel. Verify cockpit receives invalidation signal."
+        },
+        {
+          "test": "local observability disabled is a distinct state from product telemetry disabled",
+          "classification": ["contract"],
+          "description": "Disable local_diagnostics (separate setting). Assert that cockpit_status is 'local_observability_degraded', not 'product_telemetry_disabled'. Product telemetry consent is still true."
+        },
+        {
+          "test": "enterprise substrate unavailable fail-closed is distinct from product telemetry disabled",
+          "classification": ["adversarial", "integration"],
+          "description": "Configure Postgres DSN to unreachable host. Assert PostgresUnavailableError is raised. Assert cockpit shows 'enterprise_substrate_unavailable'. Assert product_telemetry_disabled is false. Assert enterprise_substrate_unavailable is not conflated with telemetry-disabled."
+        },
+        {
+          "test": "cockpit status model exposes three states separately",
+          "classification": ["contract", "integration"],
+          "description": "Verify cockpit status model has three separate boolean/status fields: product_telemetry_disabled, local_observability_degraded, enterprise_substrate_unavailable. Verify they are independently settable and not derived from a single 'degradation level' enum."
+        },
+        {
+          "test": "both telemetry disabled and substrate unavailable can coexist",
+          "classification": ["integration", "adversarial"],
+          "description": "Set telemetry consent to false AND Postgres DSN to unreachable host. Assert cockpit shows both product_telemetry_disabled=true AND enterprise_substrate_unavailable=true. Assert failure of one does not mask the other."
+        },
+        {
+          "test": "telemetry opt-in events are not appended when consent is false",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Attempt to append an event with sensitivity_class='telemetry_opt_in'. Verify it is not written to event_log."
+        },
+        {
+          "test": "internal operational events are still appended when telemetry consent is false",
+          "classification": ["contract"],
+          "description": "Set telemetry consent to false. Append an event with sensitivity_class='internal_operational'. Verify it IS written to event_log."
+        }
+      ]
+    }
+  ],
+  "test_fixtures_required": {
+    "replay_corpus": {
+      "path": "tests/fixtures/replay_corpus/",
+      "contents": [
+        "observability.jsonl — 100+ real session events (content-light)",
+        "receipts.jsonl — 50+ real receipt envelopes",
+        "trace_events.jsonl — 200+ real trace events",
+        "events.jsonl — 50+ real coordination events",
+        "out_of_scope_findings.jsonl — 20+ real findings",
+        "reports.jsonl — 30+ real reports",
+        "release_gate_decisions/ — 10+ release gate decision JSON files",
+        "provider_packets/ — 5+ provider operating picture snapshots",
+        "context_artifacts/ — 5+ context assembly manifests",
+        "docker-compose-postgres.yml — ephemeral Postgres for integration tests"
+      ]
+    }
+  },
+  "existing_test_hooks": {
+    "conftest": "tests/conftest.py — autouse fixture for filesystem and home-dir isolation. Extend with postgres fixture that creates/destroys test database.",
+    "pytest_markers": "Add 'postgres' marker: @pytest.mark.postgres. Registered in pyproject.toml [tool.pytest.ini_options].marks. CI skips postgres-marked tests if POSTGRES_DSN env var is not set.",
+    "xdist_compatibility": "Postgres tests must be safe to run in parallel (pytest-xdist -n auto). Each xdist worker gets its own test database (CREATE DATABASE test_rig_relay_<worker_id>_<random>). Advisory locks are worker-scoped — no cross-worker lock contention."
+  },
+  "test_classifications": {
+    "unit": "Tests a single function/class in isolation with mocked dependencies. No filesystem, no Postgres, no network.",
+    "contract": "Tests that an adapter satisfies its Port interface contract. File-backed and Postgres adapters share the same contract test suite.",
+    "integration": "Tests that cross component boundaries (adapter + Postgres, WebSocket + Postgres, projection assembly + Postgres). Requires Postgres or file-backed adapter.",
+    "e2e": "Tests the full stack from artifact source through Postgres ingestion to cockpit projection rendering.",
+    "real-artifact": "Tests that use real JSON/JSONL/CSV artifact fixtures from tests/fixtures/, not generated test data.",
+    "adversarial": "Tests that intentionally inject malformed/corrupt/forbidden data to verify security boundaries hold.",
+    "sabotage": "Tests that simulate infrastructure failure (Postgres unavailable, connection dropped, disk full) to verify degradation behavior.",
+    "concurrency": "Tests that exercise race conditions, deadlocks, and concurrent access patterns.",
+    "substrate": "Tests that verify Postgres-specific features (advisory locks, LISTEN/NOTIFY, RLS, partitioning, materialized views)."
+  },
+  "revision": "1.0.0"
+}

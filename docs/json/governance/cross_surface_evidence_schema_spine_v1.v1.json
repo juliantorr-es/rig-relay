@@ -1,0 +1,188 @@
+{
+  "schema_version": "rig.relay.cross_surface_evidence_spine.v1",
+  "spine_id": "cross-surface-evidence-schema-spine-v1",
+  "title": "Cross-Surface Evidence and Schema Spine v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "revision": 1,
+  "common_envelope_model": {
+    "description": "Universal evidence envelope shared across all protocol surfaces. Every surface-specific event wraps its payload in this envelope. The envelope guarantees traceability, content-light classification, and cross-referencing to source-of-truth artifacts.",
+    "fields": [
+      {
+        "field": "envelope_id",
+        "type": "string (UUIDv7)",
+        "description": "Unique identifier for this evidence envelope. Generated at emission time. Used as the primary key in evidence ledgers and for cross-surface correlation."
+      },
+      {
+        "field": "request_id",
+        "type": "string (UUIDv7)",
+        "description": "Correlation identifier linking the evidence envelope to the originating request (e.g., MCP tool call, ACP message, A2A task dispatch). Enables end-to-end tracing across surfaces."
+      },
+      {
+        "field": "session_id",
+        "type": "string (UUIDv7)",
+        "description": "Agent session identifier. Links the evidence to a specific agent session lifecycle. Null for non-session events (e.g., service account attestations)."
+      },
+      {
+        "field": "mission_id",
+        "type": "string (UUIDv7) | null",
+        "description": "Mission identifier from fleet orchestration. Links the evidence to a specific mission dispatch. Null for non-mission events."
+      },
+      {
+        "field": "actor_id",
+        "type": "string (SHA256)",
+        "description": "SHA256 hash of the actor identity (user, agent, subagent, service account, etc.). Content-light by design — the raw identity is never stored in the envelope."
+      },
+      {
+        "field": "surface",
+        "type": "enum: mcp | acp | a2a | ssh | hosted_api | websocket | cli | cockpit | github_provider | telemetry_export | debug | static_docs",
+        "description": "Protocol surface that produced this evidence. Used for surface-specific filtering, risk correlation, and authority tier resolution."
+      },
+      {
+        "field": "authority_tier",
+        "type": "enum: read_only | analysis | validation | patch_proposal | mutation | attestation | admin",
+        "description": "Authority tier at which this event was emitted. Determines the governance gate that approved (or should have approved) the underlying action."
+      },
+      {
+        "field": "capability_id",
+        "type": "string",
+        "description": "Identifier of the capability exercised (e.g., tool name, widget ID, command name). References the canonical capability manifest."
+      },
+      {
+        "field": "input_hash",
+        "type": "string (SHA256)",
+        "description": "SHA256 hash of the input payload (tool parameters, message content, command arguments). Allows verification without storing raw input."
+      },
+      {
+        "field": "output_hash",
+        "type": "string (SHA256)",
+        "description": "SHA256 hash of the output payload (tool result, message response, command output). Allows verification without storing raw output."
+      },
+      {
+        "field": "payload_schema",
+        "type": "string (schema ID)",
+        "description": "Identifier of the JSON Schema that validates the nested payload. Enables schema-aware processing and cross-surface schema spine validation."
+      },
+      {
+        "field": "approval_receipt_id",
+        "type": "string (UUIDv7) | null",
+        "description": "Identifier of the approval receipt that authorized this action. Null for actions that do not require approval. References the approval receipt ledger."
+      },
+      {
+        "field": "policy_decision_id",
+        "type": "string (UUIDv7) | null",
+        "description": "Identifier of the policy decision that governed this action. Null when no policy decision was consulted. References the policy decision ledger."
+      },
+      {
+        "field": "trace_id",
+        "type": "string (W3C Trace Context trace-id)",
+        "description": "OpenTelemetry-compatible trace identifier for distributed tracing across protocol surfaces. Enables correlation with OTLP-exported spans."
+      },
+      {
+        "field": "artifact_refs",
+        "type": "list of { artifact_id: string (SHA256), artifact_kind: enum, path: string }",
+        "description": "References to artifacts produced or consumed by this event (reports, checkpoints, worktrees, attestations). Content-light — uses SHA256 hashes, not raw paths."
+      },
+      {
+        "field": "content_light_classification",
+        "type": "enum: public_safe | private_local | sensitive_metadata | secret_bearing | forbidden_raw",
+        "description": "Content-light classification of the evidence payload. Determines export eligibility, redaction requirements, and static docs inclusion. public_safe: suitable for public docs. private_local: local-only. sensitive_metadata: contains metadata that could reveal patterns. secret_bearing: contains references to secrets or tokens. forbidden_raw: contains raw content that must never be persisted."
+      },
+      {
+        "field": "redaction_scan_id",
+        "type": "string (UUIDv7) | null",
+        "description": "Identifier of the redaction scan that validated this envelope's content-light compliance. Null if redaction scan has not been performed."
+      },
+      {
+        "field": "source_of_truth_refs",
+        "type": "list of { ref_type: enum (evidence_ledger | finding | policy | attestation), ref_id: string }",
+        "description": "References to canonical source-of-truth artifacts that ground this evidence claim. Enables bidirectional traceability between evidence and governance artifacts."
+      },
+      {
+        "field": "timestamp",
+        "type": "string (ISO 8601 with timezone)",
+        "description": "Wall-clock timestamp of evidence emission. Used for ordering, TTL calculation, and temporal queries."
+      },
+      {
+        "field": "producer",
+        "type": "string",
+        "description": "Identifier of the component that produced this evidence (e.g., 'agent_loop.v2', 'mcp_server.v1', 'github_provider.v1'). Used for versioned producer accountability."
+      },
+      {
+        "field": "sequence",
+        "type": "integer (monotonic counter)",
+        "description": "Monotonic sequence number within the producer's event stream. Enables gap detection and ordering within a single producer."
+      }
+    ]
+  },
+  "proposed_schemas": [
+    {
+      "schema_id": "surface_capability_manifest",
+      "path": "docs/schemas/rig.relay.surface_capability_manifest.v1.schema.json",
+      "description": "Declarative manifest of all capabilities exposed by each protocol surface. Maps capability IDs to surface, authority tier, and required receipts. Single authority for capability discovery across all surfaces."
+    },
+    {
+      "schema_id": "surface_intent_envelope",
+      "path": "docs/schemas/rig.relay.surface_intent_envelope.v1.schema.json",
+      "description": "Envelope for intent-bearing messages across surfaces (MCP tool calls, ACP edit proposals, A2A task dispatches, SSH commands). Wraps the intent payload with actor identity, surface metadata, and correlation identifiers."
+    },
+    {
+      "schema_id": "surface_policy_decision",
+      "path": "docs/schemas/rig.relay.surface_policy_decision.v1.schema.json",
+      "description": "Record of a policy decision made by the governance engine. Captures the decision (allow/deny/defer), consulted rules, evidence considered, and decision rationale. Referenced by evidence envelopes via policy_decision_id."
+    },
+    {
+      "schema_id": "protocol_descriptor_registry",
+      "path": "docs/schemas/rig.relay.protocol_descriptor_registry.v1.schema.json",
+      "description": "Registry of all protocol descriptors (MCP, ACP, A2A, SSH, hosted API, WebSocket, CLI, cockpit). Each descriptor declares the protocol version, transport, authentication requirements, and surface authority tier."
+    },
+    {
+      "schema_id": "mcp_tool_descriptor_attestation",
+      "path": "docs/schemas/rig.relay.mcp_tool_descriptor_attestation.v1.schema.json",
+      "description": "Attestation that a specific MCP tool descriptor has been reviewed and approved for a given authority tier. Links the tool descriptor to the capability manifest and the approval receipt that authorized it."
+    },
+    {
+      "schema_id": "acp_message_envelope",
+      "path": "docs/schemas/rig.relay.acp_message_envelope.v1.schema.json",
+      "description": "ACP-specific message envelope wrapping session messages, edit proposals, and progress events. Extends the common evidence envelope with ACP-specific fields (editor type, session phase, proposal status)."
+    },
+    {
+      "schema_id": "a2a_agent_card_attestation",
+      "path": "docs/schemas/rig.relay.a2a_agent_card_attestation.v1.schema.json",
+      "description": "Attestation that a remote A2A agent's agent card has been validated and its declared capabilities match the mission scope. Signed by the orchestrator after capability verification."
+    },
+    {
+      "schema_id": "ssh_invocation_receipt",
+      "path": "docs/schemas/rig.relay.ssh_invocation_receipt.v1.schema.json",
+      "description": "Receipt for an SSH command invocation that passed through the supervisor's subprocess governance guards. Captures the command hash, host identity, guard results, and output hash."
+    },
+    {
+      "schema_id": "hosted_api_request_receipt",
+      "path": "docs/schemas/rig.relay.hosted_api_request_receipt.v1.schema.json",
+      "description": "Receipt for a hosted API request that was routed through the local event fabric. Guarantees that hosted API actions produce local evidence. Captures tenant ID (hashed), endpoint, and response hash."
+    },
+    {
+      "schema_id": "frontend_widget_projection",
+      "path": "docs/schemas/rig.relay.frontend_widget_projection.v1.schema.json",
+      "description": "Schema for frontend widget projection data streamed over the WebSocket. Defines widget-scoped authorization filters and content-light classification for each widget projection payload."
+    },
+    {
+      "schema_id": "cli_command_receipt",
+      "path": "docs/schemas/rig.relay.cli_command_receipt.v1.schema.json",
+      "description": "Receipt for a CLI command execution. Captures the command, flags, exit code, and policy consultation results. Referenced by ACP and other surfaces when they must consult CLI-level policy."
+    },
+    {
+      "schema_id": "protocol_composition_risk_register",
+      "path": "docs/schemas/rig.relay.protocol_composition_risk_register.v1.schema.json",
+      "description": "Schema for the protocol composition risk register. Defines the structure for cross-surface attack path documentation, mitigation tracking, and blocking status. Each risk entry links to required schema receipts and tests."
+    }
+  ],
+  "content_light": {
+    "sha256": "sha256:placeholder_recalculate_after_final_review",
+    "no_raw_file_contents": true,
+    "no_raw_secrets": true,
+    "no_raw_prompt_data": true,
+    "no_raw_code": true,
+    "no_raw_telemetry_payloads": true
+  }
+}

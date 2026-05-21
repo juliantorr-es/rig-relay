@@ -1,0 +1,226 @@
+{
+  "schema_version": "rig.relay.enterprise_postgres_readiness.v1",
+  "document_id": "enterprise-postgres-readiness-v1",
+  "title": "Enterprise PostgreSQL Readiness Assessment v1 — Rig Relay",
+  "generated_at": "2026-05-21T06:30:00Z",
+  "executive_summary": "Rig Relay currently uses DuckDB as its sole analytical substrate. Postgres is declared canonical for enterprise deployment but not yet integrated. Postgres enterprise substrate supports operational queryability, tenant/admin state, audit/evidence, replay/export, projection invalidation, and incident investigation. Product telemetry disabled must not disable Postgres audit/evidence continuity in enterprise mode. Postgres unavailable in enterprise mode is a separate fail-closed state. This assessment outlines exact requirements, risks, and an implementation roadmap.",
+  "current_state": {
+    "primary_store": "DuckDB (in-memory/transient)",
+    "evidence_layer": "JSON/JSONL/CSV artifacts (file-backed)",
+    "ledgers": "Append-only JSONL (reports, receipts, observability, coordination)",
+    "analytics": "DuckDB read-side projections over JSONL",
+    "postgres_artifacts": "Postgres feature exploitation map exists (governance artifact). Analytics lake hardening lane planned. Enterprise schemas for tenants, attestation, secrets, fleet status, policy evaluation exist."
+  },
+  "postgres_integration_requirements": [
+    {
+      "req_id": "PG-REQ-01",
+      "area": "Schema Ownership and Migrations",
+      "requirement": "Define Postgres schemas for all enterprise data classes (sessions, events, tenants, users, audit trails, config policies, fleet state, receipts). Implement versioned, repeatable migrations.",
+      "current_gap": "No schemas designed. No migration framework selected.",
+      "recommendation": "Use Alembic for migrations. Define schemas in SQLAlchemy Core or asyncpg models. Pin schema version in build metadata.",
+      "risk": "Schema drift between Postgres and DuckDB/JSONL evidence. Must maintain replay equivalence.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-02",
+      "area": "Roles and Grants",
+      "requirement": "Define database roles: app_readwrite, app_readonly, admin, auditor, replication. Grant least-privilege access per role.",
+      "current_gap": "No database role model defined.",
+      "recommendation": "Define roles in migration 001. Map to application RBAC roles. Use row-level security for tenant isolation.",
+      "risk": "Over-privileged application role could compromise audit integrity.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-03",
+      "area": "Row-Level Security",
+      "requirement": "Implement RLS policies for tenant isolation. Each tenant's data must be invisible to other tenants at the database level.",
+      "current_gap": "Schemas exist but no RLS implementation.",
+      "recommendation": "Enable RLS on all tenant-scoped tables. Use SET app.current_tenant_id = '...' at connection start. Create RLS policies that filter by tenant_id.",
+      "risk": "Without RLS, application-level tenant isolation is single point of failure.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-04",
+      "area": "Tenant and Organization Boundaries",
+      "requirement": "Support multiple tenants per deployment. Each tenant may have multiple users. Tenant-scoped configuration, events, sessions, and fleet state.",
+      "current_gap": "Schemas exist (tenant_topology, tenant_registry). No implementation.",
+      "recommendation": "Implement tenant_registry table. Tenant-scoped foreign keys on all data tables. Per-tenant config in JSONB column.",
+      "risk": "Cross-tenant data leakage if implementation is incomplete.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-05",
+      "area": "Backup and Restore",
+      "requirement": "Automated backup with point-in-time recovery. Tested restore procedure with recovery time objective (RTO) and recovery point objective (RPO).",
+      "current_gap": "No backup infrastructure. File-based JSONL/JSON artifacts are backup-able but not PITR-capable.",
+      "recommendation": "Use pg_dump + WAL archiving for PITR. Document RTO/RPO targets. Regular restore testing in CI.",
+      "risk": "Data loss without backup. Compliance failure without documented DR.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-06",
+      "area": "Encryption at Rest",
+      "requirement": "Document encryption-at-rest guidance for enterprise deployments. Postgres supports filesystem-level encryption and pg_tde extension.",
+      "current_gap": "No encryption-at-rest documentation.",
+      "recommendation": "Document TDE options. For hosted: use cloud provider managed encryption (AWS RDS encryption, GCP CMEK). For on-prem: recommend filesystem-level encryption (LUKS) or pg_tde.",
+      "risk": "Unencrypted database is unacceptable for some regulated industries.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-07",
+      "area": "Connection Secrets Handling",
+      "requirement": "Postgres connection strings/passwords must never be in code, config files, telemetry, or logs. Use secrets backend resolution.",
+      "current_gap": "Enterprise secrets config schema exists but not wired to Postgres.",
+      "recommendation": "Use secrets backend (env, file, vault, aws_sm, gcp_sm as defined in enterprise.secrets_config schema). Connection pool configured with secrets-resolved credentials. Connection string redacted in all logs.",
+      "risk": "Hardcoded credentials or leaked connection strings.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-08",
+      "area": "Local vs Hosted Deployment Modes",
+      "requirement": "Support both local Postgres (via Docker or native) and hosted/cloud Postgres (RDS, Cloud SQL, etc.). Graceful fallback to DuckDB for local-only mode.",
+      "current_gap": "No Postgres connection management. No deployment mode switching.",
+      "recommendation": "Postgres connection optional at startup. If unavailable, fall back to DuckDB-only mode with degraded features documented. Connection health check on startup.",
+      "risk": "Failure to connect to Postgres should not prevent local-first usage.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-09",
+      "area": "Export/Replay from JSON/JSONL/CSV Artifacts",
+      "requirement": "Ingest existing JSONL artifacts into Postgres for replay, audit, and migration. Bidirectional: Postgres → JSONL export and JSONL → Postgres import.",
+      "current_gap": "Ingestion scripts exist for DuckDB only.",
+      "recommendation": "Build Postgres ingestion pipeline from existing JSONL ledgers. Ensure deterministic replay: same JSONL → same Postgres rows. Support export from Postgres back to JSONL.",
+      "risk": "Evidence asymmetry between DuckDB and Postgres could cause divergence.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-10",
+      "area": "Disaster Recovery",
+      "requirement": "Documented DR plan with tested failover. For hosted: multi-AZ deployment with automated failover. For on-prem: standby replication.",
+      "current_gap": "No DR planning.",
+      "recommendation": "Defer full DR to P2 but design for it now: WAL archiving, read replicas, connection failover in application.",
+      "risk": "Extended downtime without DR.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-11",
+      "area": "Admin Query Cookbook",
+      "requirement": "Document common admin queries: session counts, event volumes, tenant health, storage usage, active sessions, stale leases, error rates.",
+      "current_gap": "No admin-facing queries.",
+      "recommendation": "Create SQL cookbook with parameterized queries for common admin operations. Expose via admin CLI and static docs.",
+      "risk": "Admin troubleshooting requires raw SQL knowledge.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-12",
+      "area": "Performance Observability",
+      "requirement": "Monitor Postgres performance: connection pool stats, query latency, slow queries, lock contention, storage growth.",
+      "current_gap": "No Postgres monitoring.",
+      "recommendation": "Emit Postgres metrics as telemetry events. Track: active connections, idle connections, query duration p50/p95/p99, slow query log, lock wait time, table bloat, index usage.",
+      "risk": "Unmonitored database degrades without detection.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-13",
+      "area": "LISTEN/NOTIFY and Projection Invalidation",
+      "requirement": "Use Postgres LISTEN/NOTIFY for real-time coordination and projection invalidation. Replace file-polling watchers with event-driven notifications.",
+      "current_gap": "Coordination watcher currently polls filesystem. No real-time notification mechanism.",
+      "recommendation": "Emit NOTIFY on coordination state changes (lease granted/expired, path reserved/released, conflict detected). Cockpit subscribes to Postgres notifications for live projection updates.",
+      "risk": "Polling scales poorly and introduces latency.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-14",
+      "area": "Materialized Views for Admin/Cockpit Dashboards",
+      "requirement": "Create materialized views for common dashboard queries: session summary, event counts, fleet status, tenant health, tool usage stats. Refresh on schedule or via NOTIFY.",
+      "current_gap": "No Postgres views.",
+      "recommendation": "Define materialized views for each cockpit widget. Refresh on data change or schedule. Monitor refresh duration.",
+      "risk": "Slow dashboard queries without pre-aggregation.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-15",
+      "area": "JSONB Indexing Strategy",
+      "requirement": "Index JSONB columns for efficient querying of event payloads, config policies, and artifact metadata. Use GIN indexes for containment queries.",
+      "current_gap": "No indexing strategy defined.",
+      "recommendation": "GIN indexes on event payload JSONB columns. Expression indexes for frequently queried JSON paths. Brin indexes for timestamp-range queries on append-only tables.",
+      "risk": "Full table scans on large event tables degrade performance.",
+      "priority": "P2"
+    },
+    {
+      "req_id": "PG-REQ-16",
+      "area": "Audit Trails for Database Mutations",
+      "requirement": "Track all database mutations: who, what, when, old value, new value. Use trigger-based audit logging or application-level audit hooks.",
+      "current_gap": "No database-level audit trail.",
+      "recommendation": "Use trigger-based audit tables (audit.logged_actions pattern). Record: table_name, operation (INSERT/UPDATE/DELETE), old_row (JSONB), new_row (JSONB), changed_by, changed_at. Separate audit schema with restricted write access.",
+      "risk": "Cannot prove data integrity or investigate data corruption without audit trail.",
+      "priority": "P1"
+    },
+    {
+      "req_id": "PG-REQ-17",
+      "area": "Evidence Continuity Under Telemetry Opt-Out",
+      "requirement": "Postgres audit/evidence records (receipts, release gates, mutation receipts, schema validation records, export manifests, enterprise audit events) must continue to be written when product telemetry is disabled. Postgres evidence substrate is mandatory in enterprise mode and must not be gated on telemetry consent or remote contribution settings.",
+      "current_gap": "No explicit evidence-continuity guarantee implemented. Telemetry opt-out behavior relative to Postgres not defined.",
+      "recommendation": "Decouple Postgres evidence writes from product-telemetry feature flag. Enterprise audit/evidence records are written unconditionally in enterprise mode. Postgres unavailable in enterprise mode triggers a separate fail-closed state, not silent evidence loss.",
+      "risk": "Enterprise audit evidence silently stops if Postgres writes are incorrectly gated on product-telemetry setting.",
+      "priority": "P1"
+    }
+  ],
+  "implementation_roadmap": {
+    "phase_1_foundation": {
+      "timeline": "4-6 weeks",
+      "deliverables": [
+        "Database schema design (all entity types)",
+        "Alembic migration framework",
+        "Connection pool management (asyncpg + SQLAlchemy)",
+        "Secrets backend integration for connection strings",
+        "Local Docker Compose for development Postgres",
+        "Row-level security for tenant isolation",
+        "Database audit trail triggers"
+      ]
+    },
+    "phase_2_ingestion": {
+      "timeline": "2-4 weeks",
+      "deliverables": [
+        "JSONL → Postgres ingestion pipeline",
+        "Postgres → JSONL export for evidence replay",
+        "Replay equivalence tests (DuckDB vs Postgres parity)",
+        "Coordinated ingestion: coordination events → Postgres first, DuckDB for projections"
+      ]
+    },
+    "phase_3_operational": {
+      "timeline": "3-4 weeks",
+      "deliverables": [
+        "Materialized views for cockpit dashboards",
+        "Admin query cookbook",
+        "LISTEN/NOTIFY for projection invalidation",
+        "Performance observability metrics",
+        "Backup/restore documentation and scripts",
+        "Encryption-at-rest guidance"
+      ]
+    }
+  },
+  "risks": [
+    {
+      "risk": "DuckDB/Postgres divergence",
+      "description": "If DuckDB projections and Postgres queries produce different results, evidence integrity is compromised.",
+      "mitigation": "Mandatory replay equivalence tests. Schema consistency checks. CI validates both paths produce identical results."
+    },
+    {
+      "risk": "Performance regression",
+      "description": "Postgres adds network latency and query planning overhead vs in-memory DuckDB.",
+      "mitigation": "Keep DuckDB for hot-path analytical queries. Use Postgres for durability, audit, and shared state. Profile query performance continuously."
+    },
+    {
+      "risk": "Operational complexity",
+      "description": "Adding Postgres to a local-first tool increases deployment complexity significantly.",
+      "mitigation": "Postgres optional. Graceful fallback to DuckDB-only mode. Docker Compose for easy local setup."
+    },
+    {
+      "risk": "Migration failures",
+      "description": "Schema migrations may fail on upgrade, leaving database in inconsistent state.",
+      "mitigation": "Transactional migrations. Pre-migration backup. Migration tests in CI. Rollback procedures documented."
+    }
+  ],
+  "content_light": true
+}

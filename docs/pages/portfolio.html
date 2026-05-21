@@ -20,7 +20,7 @@
 <meta property="og:image:height" content="630">
 
 <meta property="og:site_name" content="Julian Torres">
-<meta property="og:locale" content="en_US">
+<meta property="og:locale" content="en">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Developer Portfolio — Julian Torres">
 <meta name="twitter:description" content="Julian Torres — software developer building governed agent infrastructure. Desktop cockpit, MCP server, ACP agent, receipt-backed evidence.">
@@ -58,69 +58,132 @@
       </ul>
     </nav>
   </aside>
-  <main id="main" tabindex="-1">
+  <div id="main" tabindex="-1">
     
+
+<style>
+.hero-public { text-align:center; padding:clamp(1.5rem,4vw,3rem) clamp(1rem,3vw,2rem); }
+.hero-content .tagline { font-size:clamp(1rem,2.5vw,1.25rem); max-width:42rem; margin:0 auto 1.5rem; color:var(--text-secondary,#4a5568); }
+.hero-actions { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; }
+.action-card { display:block; padding:1rem 1.25rem; border:1px solid var(--border,#e2e8f0); border-radius:.5rem; text-decoration:none; color:inherit; max-width:18rem; text-align:left; }
+.action-card strong { display:block; margin-bottom:.25rem; }
+.action-card span { font-size:.875rem; color:var(--text-secondary,#718096); }
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(18rem,100%),1fr)); gap:clamp(.75rem,2vw,1.5rem); }
+.card { border:1px solid var(--border,#e2e8f0); border-radius:.5rem; padding:1rem; }
+.card h3 { margin:0 0 .5rem; }
+.card-body { font-size:.875rem; color:var(--text-secondary,#4a5568); }
+.status-info { border-left:3px solid var(--info,#3182ce); }
+.table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.table-wrapper table { width:100%; border-collapse:collapse; font-size:.875rem; }
+.table-wrapper th,.table-wrapper td { text-align:left; padding:.5rem .75rem; border-bottom:1px solid var(--border,#e2e8f0); }
+.table-wrapper th { font-weight:600; }
+@media (max-width:640px) {
+  .table-wrapper table,.table-wrapper thead,.table-wrapper tbody,.table-wrapper th,.table-wrapper td,.table-wrapper tr { display:block; }
+  .table-wrapper thead tr { display:none; }
+  .table-wrapper td { padding:.5rem; border-bottom:1px solid var(--border,#e2e8f0); }
+  .table-wrapper td::before { content:attr(data-label); font-weight:600; display:block; margin-bottom:.25rem; }
+}
+.metrics { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; font-size:.875rem; padding:1rem 0; }
+.metrics span { white-space:nowrap; }
+.callout { padding:1rem 1.25rem; border-radius:.5rem; margin:1rem 0; }
+.callout-info { background:var(--info-bg,#ebf8ff); border-left:3px solid var(--info,#3182ce); }
+section { padding:clamp(.75rem,2vw,2rem) clamp(.5rem,2vw,1.5rem); max-width:64rem; margin:0 auto; }
+section h2 { margin:0 0 1rem; font-size:clamp(1.125rem,3vw,1.5rem); }
+</style>
+
+
 <section class="hero-public">
   <div class="hero-content">
-    <h1>Julian Torres</h1>
     <p class="tagline">Building governed agent infrastructure — desktop cockpit, MCP server, ACP agent, receipt-backed evidence.</p>
+    
     <div class="hero-actions">
+      
       <a href="https://github.com/juliantorr-es/rig-relay" class="action-card"><strong>Rig Relay</strong><span>Governed local server with desktop cockpit</span></a>
+      
       <a href="https://github.com/juliantorr-es" class="action-card"><strong>GitHub Profile</strong><span>Projects, contributions, and evidence</span></a>
+      
     </div>
+    
   </div>
 </section>
+
+
 
 <section>
   <h2>Tech Stack</h2>
   <div class="card-grid">
+    
     <div class="card"><h3>Python 3.12+</h3><div class="card-body">Primary language. Strict type checking via pyright.</div></div>
+    
     <div class="card"><h3>GitHub API</h3><div class="card-body">13 API surfaces, 12 endpoints, governed with receipts.</div></div>
+    
     <div class="card"><h3>Desktop Cockpit</h3><div class="card-body">pywebview-based operator console with widget system.</div></div>
+    
     <div class="card"><h3>MCP Server</h3><div class="card-body">16 governed tools across 5 permission tiers.</div></div>
+    
     <div class="card"><h3>ACP Agent</h3><div class="card-body">Editor-integrated agent sessions with progress streaming.</div></div>
+    
     <div class="card"><h3>WebSocket</h3><div class="card-body">Local projection stream for the desktop cockpit.</div></div>
+    
   </div>
 </section>
+
+
 
 <section>
   <h2>Projects</h2>
   <div class="card-grid">
+    
     <div class="card status-info">
       <h3><a href="https://github.com/juliantorr-es/rig-relay">Rig Relay</a></h3>
       <div class="card-body">Governed local server/control-plane with desktop cockpit. Coordinates agent work, produces structured evidence, exposes MCP tools and ACP sessions. AGPL-3.0, alpha v0.1.0a1.</div>
     </div>
+    
     <div class="card status-info">
       <h3>GitHub Integration</h3>
       <div class="card-body">Governed GitHub chief-of-staff — profile maintenance, security remediation, PR management, Pages publishing. 13 API surfaces, all gated with receipts. Live-proven on PR #7.</div>
     </div>
+    
     <div class="card status-info">
       <h3>Cross-Provider Registry</h3>
       <div class="card-body">Operating pictures for GitHub, Google Workspace, and Meta. Schema-governed, content-light, cross-provider readiness matrix.</div>
     </div>
+    
   </div>
 </section>
 
+
+
 <section>
-  <h2>Security & Governance</h2>
+  <h2>Security &amp; Governance</h2>
   <div class="table-wrapper">
     <table>
       <thead><tr><th>Scope</th><th>Default</th></tr></thead>
       <tbody>
-        <tr><td>Live runtime mutation</td><td>Always blocked</td></tr>
-        <tr><td>Merge</td><td>Requires adoption approval</td></tr>
-        <tr><td>Alert dismissal</td><td>Separate gate, evidence required</td></tr>
-        <tr><td>PR merge</td><td>Forbidden by default</td></tr>
-        <tr><td>Remote mutation</td><td>Explicit flags + gates + approval</td></tr>
+        
+        <tr><td data-label="Scope">Live runtime mutation</td><td data-label="Default">Always blocked</td></tr>
+        
+        <tr><td data-label="Scope">Merge</td><td data-label="Default">Requires adoption approval</td></tr>
+        
+        <tr><td data-label="Scope">Alert dismissal</td><td data-label="Default">Separate gate, evidence required</td></tr>
+        
+        <tr><td data-label="Scope">PR merge</td><td data-label="Default">Forbidden by default</td></tr>
+        
+        <tr><td data-label="Scope">Remote mutation</td><td data-label="Default">Explicit flags + gates + approval</td></tr>
+        
       </tbody>
     </table>
   </div>
 </section>
 
+
+
 <section class="callout callout-info">
   <h3>Content-Light Evidence</h3>
   <p>Every claim is backed by evidence from the canonical claims index. No raw code, no secrets, no private data in governance artifacts. All public surfaces are generated from committed JSON/JSONL/CSV artifacts.</p>
 </section>
+
+
 
 <section>
   <h2>Stats</h2>
@@ -129,19 +192,26 @@
   </div>
 </section>
 
+
+
 <section>
   <h2>Links</h2>
   <div class="card-grid">
+    
     <div class="card"><h3><a href="https://github.com/juliantorr-es/rig-relay">Repository</a></h3><div class="card-body">Source code, issues, and documentation.</div></div>
+    
     <div class="card"><h3><a href="https://juliantorr-es.github.io/rig-relay/">Project Site</a></h3><div class="card-body">GitHub Pages documentation site.</div></div>
+    
     <div class="card"><h3><a href="https://github.com/juliantorr-es/rig-relay/wiki">Wiki</a></h3><div class="card-body">Architecture, governance, and integration guides.</div></div>
+    
   </div>
 </section>
 
-  </main>
+
+  </div>
 </div>
 <footer class="site-footer" role="contentinfo">
-  <p>Julian Torres — Governed local agent platform. Generated 2026-05-21T04:55:37.457364+00:00.
+  <p>Julian Torres — Governed local agent platform. Generated 2026-05-21T08:49:24.006541+00:00.
   
   <a href="./index.html">Profile</a>.</p>
 </footer>

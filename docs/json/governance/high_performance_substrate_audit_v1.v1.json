@@ -1,0 +1,128 @@
+{
+  "schema_version": "rig.relay.high_performance_substrate_audit.v1",
+  "audit_id": "high-performance-substrate-audit-v1",
+  "title": "High-Performance Database-Adjacent Substrate Audit v1",
+  "generated_at": "2026-05-20T20:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "principle": "PostgreSQL is the enterprise operational substrate. JSON/JSONL/CSV remain the portable, inspectable, replayable, schema-governed source-of-truth/evidence layer. DuckDB remains a disposable analytical/read-side substrate. SQLite remains forbidden. High-performance adjacent tooling may strengthen ingestion, projection, replay, analytics, cockpit UX, static docs, procurement evidence packs, context retrieval, and enterprise debuggability — but never at the expense of artifact-first doctrine or PostgreSQL operational authority.",
+  "current_substrate_inventory": [
+    {
+      "path": "rig_relay/analytics/engine.py",
+      "current_role": "In-memory DuckDB analytics engine — ingests JSONL files via read_json_auto, executes SQL views for cockpit widgets",
+      "dependency": "duckdb>=1.5.0",
+      "source_of_truth_status": "read-side only — never writes",
+      "performance_constraints": "Full JSONL reparse on every engine init. No incremental refresh. In-memory — data lost on process restart.",
+      "bottleneck_evidence": "read_json_auto reparses every JSONL file on every AnalyticsEngine initialization. No caching. All widget queries execute fresh SQL aggregations — no materialized view equivalent.",
+      "adjacent_tool_potential": "DuckDB already dominates this need well. Parquet snapshots could seed cold-start without full JSONL reparse. Arrow batches could feed cockpit projections without dict-of-dicts overhead."
+    },
+    {
+      "path": "rig_relay/evidence/receipt_store.py",
+      "current_role": "Filesystem-backed canonical receipt envelope store — JSON envelope files + manifest.jsonl index",
+      "dependency": "stdlib json + hashlib + pathlib",
+      "source_of_truth_status": "canonical authority for receipt envelopes",
+      "performance_constraints": "_list_from_manifest() does full manifest.jsonl linear scan, in-memory reversal, then N individual get() calls (file read + JSON parse + Pydantic validate per envelope). _manifest_line_count() reads entire file byte-by-byte.",
+      "bottleneck_evidence": "O(N) manifest scan + N*O(1) file reads per list() call. No caching. Repeated list() calls redo identical work.",
+      "adjacent_tool_potential": "DuckDB-backed manifest index would eliminate linear scan. Postgres receipt_envelope table (post-migration) makes list() a single indexed query."
+    },
+    {
+      "path": "rig_relay/reports/report_store.py",
+      "current_role": "Append-only JSONL report ledger — .rig/reports/reports.jsonl",
+      "dependency": "stdlib json + hashlib",
+      "source_of_truth_status": "canonical authority for reports",
+      "performance_constraints": "find_existing_report() does linear scan of entire JSONL ledger with JSON parse per line. No index by dedupe_key.",
+      "bottleneck_evidence": "O(N) scan per dedupe_key lookup. Append-only write is fine — JSONL append is correct for canonical ledgers.",
+      "adjacent_tool_potential": "Postgres finding table (post-migration) enables O(1) dedupe_key lookup. DuckDB on reports JSONL already provides analytical views."
+    },
+    {
+      "path": "rig_relay/events/store.py",
+      "current_role": "Event fabric JSONL append + read — content-light event stream with redaction enforcement",
+      "dependency": "stdlib json + hashlib",
+      "source_of_truth_status": "canonical event fabric (append-only JSONL)",
+      "performance_constraints": "f.flush() on every append — sync I/O per event. read() returns entire file in memory. _validate_event() recursively walks nested payload checking 50-field blocklist.",
+      "bottleneck_evidence": "Sync flush per event write. Full-file reads. Recursive redaction scan per event (O(keys*depth*50)).",
+      "adjacent_tool_potential": "Batch append with periodic flush would reduce sync I/O. DuckDB projections already exist for event fabric reads (rig_relay/events/duckdb_projection.py). Postgres event_log table (post-migration) eliminates file-based read bottlenecks entirely."
+    },
+    {
+      "path": "rig_relay/coordination/store.py",
+      "current_role": "File-backed coordination store — sessions, tasks, leases, artifacts, conflicts. fcntl digester lock for cross-process safety.",
+      "dependency": "stdlib json + fcntl + threading + hashlib",
+      "source_of_truth_status": "dual authority — events.jsonl is canonical; file state is operational",
+      "performance_constraints": "fcntl.LOCK_EX serializes all coordination event writes. events.jsonl grows unbounded — no compaction. _next_sequence() scans entire events.jsonl to find max sequence.",
+      "bottleneck_evidence": "Single-writer bottleneck under fcntl. Unbounded events.jsonl growth makes sequence derivation O(N) over time.",
+      "adjacent_tool_potential": "Postgres advisory locks (pg_advisory_lock) replace fcntl for cross-process coordination. Postgres coordination_lease table (post-migration) eliminates event.jsonl scan for sequence numbers."
+    },
+    {
+      "path": "rig_relay/desktop/projection.py",
+      "current_role": "Cockpit projection assembly — reads multiple JSON artifacts from .build/rig-relay/, assembles content-light projection dict",
+      "dependency": "stdlib json + jsonschema + hashlib",
+      "source_of_truth_status": "runtime-only computed state — rebuildable from artifacts",
+      "performance_constraints": "Full read of all source artifacts on every projection refresh. No caching. No incremental reload.",
+      "bottleneck_evidence": "I/O-bound on number of source files. _load_json() swallows all exceptions — masks corruption.",
+      "adjacent_tool_potential": "Postgres materialized views (post-migration) replace projection assembly. LISTEN/NOTIFY provides incremental invalidation. Arrow batches could reduce dict-of-dicts overhead in projection payload."
+    },
+    {
+      "path": "rig_relay/evidence/redaction.py",
+      "current_role": "Content-light enforcement — recursive dict walk with regex matching against forbidden field patterns",
+      "dependency": "stdlib json + re + hashlib",
+      "source_of_truth_status": "content-light enforcement boundary — applied before artifact write",
+      "performance_constraints": "5 pre-compiled regex patterns + 50-field frozenset checked recursively against every nested key. O(keys*depth*patterns).",
+      "bottleneck_evidence": "Per-event redaction is the gatekeeper before any artifact write. Should remain vigilant — optimization through caching of known-safe schema fields is acceptable but must not weaken enforcement.",
+      "adjacent_tool_potential": "pg_jsonschema or CHECK constraints (post-migration) provide second-layer enforcement at database boundary. Content-light enforcement must still happen at application layer as primary defense."
+    },
+    {
+      "path": "rig_relay/docs_renderer/ + scripts/render_static_docs.py",
+      "current_role": "Static documentation site renderer — reads docs/json/*.json, renders to HTML/CSS/JS, produces search index",
+      "dependency": "stdlib json + markupsafe + jinja2",
+      "source_of_truth_status": "derived artifact — docs/json/*.json are canonical; rendered HTML is generated",
+      "performance_constraints": "Loads all JSON files into memory simultaneously. I/O-bound on file count. No incremental rendering.",
+      "bottleneck_evidence": "~200 JSON files currently — acceptable. Would be problematic at 10k+ pages.",
+      "adjacent_tool_potential": "Parquet snapshot of schema registry could seed the search index without re-reading all JSON files. Arrow batches could accelerate page rendering."
+    },
+    {
+      "path": "scripts/rig_relay_compact_artifacts.py + scripts/rig_relay_sessions_compact.py",
+      "current_role": "JSONL-to-Parquet compaction via DuckDB read_json_auto + COPY FORMAT PARQUET",
+      "dependency": "duckdb>=1.5.0",
+      "source_of_truth_status": "derived artifact — JSONL files are canonical; Parquet is analytical snapshot",
+      "performance_constraints": "read_json_auto reparses full JSONL files. COPY FORMAT PARQUET is efficient for write. No Parquet read-back in production path — only in rollup queries.",
+      "bottleneck_evidence": "read_json_auto auto-inference is convenient but can misidentify types. Schema declaration would be more deterministic.",
+      "adjacent_tool_potential": "DuckDB already handles JSONL→Parquet well. Explicit schema declaration (vs read_json_auto inference) would improve reliability. PyArrow could provide schema-first Parquet writes."
+    },
+    {
+      "path": "rig_relay/evidence/session_lifecycle.py + _lifecycle_funcs.py",
+      "current_role": "Session lifecycle finalize — compacts JSONL to .jsonl.gz, manages storage budgets, produces lifecycle receipts",
+      "dependency": "stdlib gzip + json + hashlib",
+      "source_of_truth_status": "derived artifact — canonical JSONL files are preserved; gzip is cold storage",
+      "performance_constraints": "gzip compression is moderate speed, moderate ratio. Line-by-line JSONL read + gzip write per session.",
+      "bottleneck_evidence": "gzip is adequate for session-level compaction. zstandard (already a dependency) would provide better compression ratio and speed for archive bundles — but is currently unused for this purpose.",
+      "adjacent_tool_potential": "Zstandard is already a canonical dependency but only used for teleport diff compression. Expanding to session/bundle/archive compression is low-risk and high-reward."
+    },
+    {
+      "path": "rig_relay/providers/local_inference/execution_client.py",
+      "current_role": "Streaming LLM response client — parses SSE data chunks with json.loads per chunk",
+      "dependency": "stdlib json",
+      "source_of_truth_status": "runtime-only — raw responses are never persisted",
+      "performance_constraints": "json.loads(data_str) per SSE chunk — inherent to OpenAI-compatible streaming protocol. 10s-100s of chunks per request. Not a bottleneck.",
+      "bottleneck_evidence": "SSE chunk parsing is frequent but lightweight (<1KB JSON per chunk). No optimization needed.",
+      "adjacent_tool_potential": "orjson could accelerate json.loads for SSE chunks but the benefit is marginal (<5% of total request latency). Not worth the dependency cost."
+    },
+    {
+      "path": "rig_relay/context/assembler.py + compiler.py + renderer.py",
+      "current_role": "Context assembly pipeline — builds symbol indexes, repo maps, active work lane summaries for LLM context",
+      "dependency": "hashlib + tree-sitter + symbol_codec",
+      "source_of_truth_status": "derived runtime artifact — context packets are per-session computed",
+      "performance_constraints": "Symbol extraction via tree-sitter is the bottleneck. Context assembly is CPU-bound, not I/O-bound.",
+      "bottleneck_evidence": "Tree-sitter parsing dominates context assembly latency. No JSONL/Parquet/Arrow benefit — this is a compute problem.",
+      "adjacent_tool_potential": "pgvector could accelerate similar-failure/remediation-plan semantic lookup from content-light report corpus — but this is retrieval, not assembly."
+    }
+  ],
+  "existing_adjacent_dependencies": [
+    {"dependency": "duckdb>=1.5.0", "status": "actively used for JSONL→in-memory analytical views and JSONL→Parquet compaction. Dominates analytical read-side need."},
+    {"dependency": "zstandard>=0.25.0", "status": "canonical dependency but only used for teleport diff compression. Underutilized — should expand to session bundles, archive compaction, and export packages."},
+    {"dependency": "pydantic>=2.12.4", "status": "core model layer. model_dump_json() used for serialization. Type-safe boundary between JSON artifacts and Python objects."},
+    {"dependency": "jsonschema>=4.23.0", "status": "canonical schema validation. Used by static docs renderer and telemetry bundle validator. Should remain the primary boundary validation — database-side validation is defense-in-depth."},
+    {"dependency": "cryptography>=44.0.0", "status": "used for attestation signing, HMAC, and backup encryption. Key management for encrypted Postgres backups."},
+    {"dependency": "jinja2>=3.1.0", "status": "static docs template rendering. No high-performance concern — batch offline renderer."}
+  ],
+  "revision": "1.0.0"
+}
