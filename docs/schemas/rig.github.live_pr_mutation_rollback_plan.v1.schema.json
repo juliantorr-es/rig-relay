@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_pr_mutation_rollback_plan.v1.schema.json",
+  "title": "Live PR Mutation Rollback Plan v1",
+  "description": "Rollback plan for a governed live GitHub PR mutation. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "branch_cleanup",
+    "pr_close",
+    "file_revert",
+    "alert_state_unchanged",
+    "manual_review_required",
+    "required_permissions",
+    "idempotency_key"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.live_pr_mutation_rollback_plan.v1" },
+    "branch_cleanup": { "type": "string" },
+    "pr_close": { "type": "string" },
+    "file_revert": { "type": "string" },
+    "alert_state_unchanged": { "type": "boolean" },
+    "manual_review_required": { "type": "boolean" },
+    "required_permissions": { "type": "array", "items": { "type": "string" } },
+    "idempotency_key": { "type": "string" }
+  },
+  "additionalProperties": true
+}

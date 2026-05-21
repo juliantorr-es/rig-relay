@@ -38,7 +38,7 @@ def _shell_html(
     home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.maintenance_profile_readme_refresh.v1.schema.json",
+  "title": "GitHub Maintenance Profile README Refresh v1",
+  "description": "Result of a GitHub profile README maintenance refresh. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "refreshed",
+    "generated_at",
+    "readme_status",
+    "preview_path",
+    "preview_lines",
+    "included_claims",
+    "remote_mutation"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.maintenance_profile_readme_refresh.v1" },
+    "refreshed": { "type": "boolean" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "readme_status": { "type": "string" },
+    "preview_path": { "type": "string" },
+    "preview_lines": { "type": "integer" },
+    "included_claims": { "type": "integer" },
+    "remote_mutation": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

@@ -100,7 +100,7 @@ def render_document_page(data: dict, site_manifest: dict | None = None) -> str:
     home_href = make_relative_link(f"{sm.base_path}/", "..", sm.base_path)
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -183,7 +183,7 @@ def render_code_schema(
     context_pack = data.get("context_pack", {})
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -360,7 +360,7 @@ def render_threat_model(
 </tr>\n"""
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -746,7 +746,7 @@ def render_integration_audit(
     body = _build_audit_body(data)
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

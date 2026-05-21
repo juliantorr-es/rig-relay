@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.github.code_scanning_pr_mutation_chaos_projection.v1",
   "available": true,
   "scenario_count": 5,
   "pass_count": 15,

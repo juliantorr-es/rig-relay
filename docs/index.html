@@ -3,102 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rig Relay</title>
+<title>Rig Relay — Rig Relay</title>
 <meta name="description" content="AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#1e3a5f">
 <link rel="canonical" href="https://juliantorr-es.github.io/rig-relay/">
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
 <meta property="og:title" content="Rig Relay">
 <meta property="og:description" content="AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://juliantorr-es.github.io/rig-relay/">
-<meta name="twitter:card" content="summary">
+
+<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+<meta property="og:image:alt" content="Rig Relay — Governed Local Agent Platform">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta property="og:site_name" content="Rig Relay">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Rig Relay">
 <meta name="twitter:description" content="AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.">
-<meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
+
 <meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
-<meta name="theme-color" content="#1e3a5f">
-<meta name="base-path" content="/rig-relay">
-<meta name="relative-root" content=".">
+<meta name="twitter:image:alt" content="Rig Relay — Governed Local Agent Platform">
+
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/site.js" defer></script>
+<link rel="stylesheet" href="./assets/site.css">
+<style>@media(prefers-reduced-motion:reduce){*,::after,::before{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}</style>
+<meta name="relative-root" content=".">
+
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Rig Relay","url":"https://juliantorr-es.github.io/rig-relay/","description":"Governed local agent platform — inspectable, auditable, refusal-first."}</script>
+
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="site-header hero">
+<header class="site-header" role="banner">
+  <div class="eyebrow"><a href="./index.html">Rig Relay</a> / Evidence</div>
   <h1>Rig Relay</h1>
-  <p class="tagline">Governed local runtime for agent work.</p>
-  <p class="hero-summary">AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.</p>
-  <p class="hero-partner">Rig Relay is like a controlled workstation for AI agents. Instead of letting agents mutate code invisibly, it gives the work a station, a mirror, a checklist, and receipts.</p>
-  <div class="hero-actions"><a class="action-card" href="#what-works"><strong>See what works today</strong><span>Current capabilities of the governed runtime</span></a>
-<a class="action-card" href="collections/index.html"><strong>View the evidence archive</strong><span>Full documentation archive for architecture, governance, audits, and proofs</span></a>
-<a class="action-card" href="pages/security-policy.html"><strong>Read the security model</strong><span>Security threat model v0 and hardening status</span></a></div>
+  
 </header>
-<main id="main" class="homepage">
-  <div id="site-search"></div>
-  <section id="overview"><h2>What Works Today</h2><ul class="works-list"><li>Local desktop bridge launches and serves the cockpit UI</li>
-<li>Frontend connects via WebSocket and receives live projections</li>
-<li>Static evidence site is live on GitHub Pages</li>
-<li>220+ canonical JSON documentation pages rendered to HTML</li>
-<li>Code schemas define implementation contracts with authority hashes</li>
-<li>Security threat model v0 with 17 threats and 5 release gates</li>
-<li>WebSocket hardened with origin validation, message schema checks, and auth gating</li>
-<li>Deterministic code schema router selects contracts before agents edit code</li></ul></section>
-  <section id="metrics"><h2>Proof Metrics</h2><div class="metrics-grid"><div class="metric-card"><span class="metric-value">220+</span><span class="metric-label">Document Pages</span></div>
-<div class="metric-card"><span class="metric-value">34</span><span class="metric-label">Collections</span></div>
-<div class="metric-card"><span class="metric-value">5 active</span><span class="metric-label">Code Schemas</span></div>
-<div class="metric-card"><span class="metric-value">17 modeled</span><span class="metric-label">Security Threats</span></div>
-<div class="metric-card"><span class="metric-value">5 defined</span><span class="metric-label">Release Gates</span></div>
-<div class="metric-card"><span class="metric-value">22/22</span><span class="metric-label">Demo Doctor</span></div></div></section>
-  <section><h2>Features</h2><div class="features-grid"><div class="feature-card"><h3>Governed Execution</h3><p>Agent tools are permission-gated. Destructive operations require approval. Stale batch reuse is prevented.</p></div>
-<div class="feature-card"><h3>Correlated Tracing</h3><p>Trace events carry correlation IDs and handshake IDs. Content-light doctrine keeps secrets out of traces.</p></div>
-<div class="feature-card"><h3>Evidence Receipts</h3><p>Every agent action produces verifiable receipts. Reports are append-only JSONL. Ralph scans for regressions.</p></div>
-<div class="feature-card"><h3>Code Schemas</h3><p>Implementation contracts encoded as JSON. Authority hashes prevent tampering. Context assembler routes tasks to schemas.</p></div>
-<div class="feature-card"><h3>Static Evidence Site</h3><p>All documentation is canonical JSON rendered to static HTML. No backend, no database, no tracking.</p></div>
-<div class="feature-card"><h3>Security-Aware Bridge</h3><p>Desktop bridge validates WebSocket origins and messages. Auth-before-subscribe. Invalid message guard closes abusive connections.</p></div></div></section>
-  <section><h2>How It Works</h2><figure id="hero-diagram" class="diagram diagram-flow" role="figure">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 880" width="100%" role="img" aria-label="Desktop Golden Path — Bridge Startup Flow"><title>Desktop Golden Path — Bridge Startup Flow</title><desc>Flow diagram with 8 nodes</desc><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/></marker></defs><rect width="100%" height="100%" fill="#f9fafb" rx="8"/>
-  <g class="diagram-node" data-node-id="frontend-boot"><rect x="200" y="35" width="200" height="50" rx="8" fill="#059669" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="65" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Frontend Boot</text></g>
-  <g class="diagram-node" data-node-id="runtime-config"><rect x="200" y="135" width="200" height="50" rx="8" fill="#059669" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="165" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Runtime Config</text></g>
-  <g class="diagram-node" data-node-id="websocket-connect"><rect x="200" y="235" width="200" height="50" rx="8" fill="#2563eb" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="265" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">WebSocket Connect</text></g>
-  <g class="diagram-node" data-node-id="websocket-auth"><rect x="200" y="335" width="200" height="50" rx="8" fill="#2563eb" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="365" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">WebSocket Auth</text></g>
-  <g class="diagram-node" data-node-id="projection-sent"><rect x="200" y="435" width="200" height="50" rx="8" fill="#2563eb" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="465" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Projection Sent</text></g>
-  <g class="diagram-node" data-node-id="projection-rendered"><rect x="200" y="535" width="200" height="50" rx="8" fill="#2563eb" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="565" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Projection Rendered</text></g>
-  <g class="diagram-node" data-node-id="status-rendered"><rect x="200" y="635" width="200" height="50" rx="8" fill="#059669" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="665" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Status Rendered</text></g>
-  <g class="diagram-node" data-node-id="idle-ready"><rect x="200" y="735" width="200" height="50" rx="8" fill="#6b7280" stroke="#1e3a5f" stroke-width="2"/><text x="300" y="765" text-anchor="middle" fill="white" font-size="14" font-family="system-ui, sans-serif">Idle / Ready</text></g>
-  <line x1="300" y1="85" x2="300" y2="135" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="105" fill="#374151" font-size="11" font-family="system-ui, sans-serif">config injected</text>
-  <line x1="300" y1="185" x2="300" y2="235" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="205" fill="#374151" font-size="11" font-family="system-ui, sans-serif">ws_url resolved</text>
-  <line x1="300" y1="285" x2="300" y2="335" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="305" fill="#374151" font-size="11" font-family="system-ui, sans-serif">auth message</text>
-  <line x1="300" y1="385" x2="300" y2="435" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="405" fill="#374151" font-size="11" font-family="system-ui, sans-serif">auth_ok</text>
-  <line x1="300" y1="485" x2="300" y2="535" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="505" fill="#374151" font-size="11" font-family="system-ui, sans-serif">widgets built</text>
-  <line x1="300" y1="585" x2="300" y2="635" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="605" fill="#374151" font-size="11" font-family="system-ui, sans-serif">connected state</text>
-  <line x1="300" y1="685" x2="300" y2="735" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <text x="320" y="705" fill="#374151" font-size="11" font-family="system-ui, sans-serif">ready</text>
+<div class="main-wrapper">
+  <aside class="sidebar-nav" role="complementary">
+    <h2>Evidence Console</h2>
+    <nav aria-label="Site navigation">
+      <ul class="nav-links">
+        <li>
+          <a class="nav-item-link active" href="./index.html">
+            <strong>Home</strong>
+            <span>Product overview</span>
+          </a>
+        </li>
+        
+        <li>
+          <a class="nav-item-link" href="pages/codebase-evidence-graph.html">
+            <strong>Evidence Graph</strong>
+            <span>Searchable graph of 14,000 nodes</span>
+          </a>
+        </li>
+        
+        <li>
+          <a class="nav-item-link" href="pages/portfolio.html">
+            <strong>Developer Portfolio</strong>
+            <span>Evidence-backed developer portfolio</span>
+          </a>
+        </li>
+        
+      </ul>
+    </nav>
+  </aside>
+  <main id="main" tabindex="-1">
+    
+<section class="public-hero">
+  <h2>Rig Relay</h2>
+  <p class="thesis">A governed local agent platform for making AI-assisted software work inspectable, auditable, and refusal-first.</p>
+  <p class="explanation">AI agents can change code faster than people can inspect what happened. Rig Relay turns agent execution, provider access, protocol calls, compiler candidates, bridge events, runtime observations, CI evidence, and coordination artifacts into schema-governed, trace-correlated, content-light, refusal-first local evidence.</p>
+  <div class="cta-grid">
+    <a class="cta-link cta-primary" href="#evidence">View evidence</a>
+    <a class="cta-link cta-secondary" href="/proof-chain/index.html">Inspect proof chain</a>
+    <a class="cta-link cta-secondary" href="/release-candidate/index.html">Release readiness</a>
+    <a class="cta-link cta-secondary" href="/contracts/index.html">Read contracts</a>
+    <a class="cta-link cta-secondary" href="https://github.com/juliantorr-es/rig-relay">GitHub repository</a>
+  </div>
+</section>
 
-</svg>
-<figcaption>Desktop Golden Path — Bridge Startup Flow</figcaption>
-<details><summary>Description</summary><p>This diagram shows the canonical desktop golden path. The browser loads the frontend, receives runtime configuration from the bridge, opens a WebSocket connection, authenticates with a session token, receives the desktop projection, renders the cockpit widgets, updates the status bar to show the connected state, and enters the idle/ready state awaiting user input.</p></details>
-<p class="diagram-fallback">Rig Relay</p>
-</figure></section>
-  <section id="audience"><h2>Who Are You?</h2><div class="audience-grid"><a class="audience-card" href="#overview"><strong>Non-technical overview</strong><span>Plain-language explanation of what Rig Relay does and why it matters</span></a>
-<a class="audience-card" href="collections/audits.html"><strong>Technical reviewer</strong><span>Architecture, governance, and security audits</span></a>
-<a class="audience-card" href="collections/security.html"><strong>Security reviewer</strong><span>Threat model, security policy, and hardening status</span></a>
-<a class="audience-card" href="pages/rig-integration-contract.html"><strong>Contributor</strong><span>Code schemas, development practices, and contribution guide</span></a></div></section>
-  <section><h2>Featured Docs</h2><ul class="featured-list"><li><a href="pages/codebase-evidence-graph.html">Codebase Evidence Graph</a><span class="search-snippet">Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies</span></li>
-<li><a href="pages/portfolio.html">Developer Portfolio</a><span class="search-snippet">Evidence-backed developer portfolio — tech stack, projects, governance, and public claims</span></li>
-<li><a href="pages/static-site-v1-readiness.html">Static Site v1 Readiness</a><span class="search-snippet">Proof that the documentation site is live, rendered, and validated</span></li>
-<li><a href="pages/rig-relay-threat-model-v0.html">Security Threat Model v0</a><span class="search-snippet">Machine-readable threat model with 17 threats, 14 assets, and 11 trust boundaries</span></li>
-<li><a href="pages/desktop-golden-path-trace.html">Desktop Golden Path</a><span class="search-snippet">Canonical bridge startup and handshake trace for the local golden path</span></li></ul></section>
-  <section><a class="archive-callout" href="collections/index.html">Browse the full evidence archive →</a></section>
-</main>
-<footer>
-  <p><a href="collections/index.html">Evidence Archive</a> &middot; Rig Relay &mdash; AGPL-3.0-or-later</p>
+<h2 class="section-heading">Why It Matters</h2>
+<p>Most AI coding agents operate as black boxes. They mutate code, call external APIs, and produce results with no audit trail. Rig Relay rejects that model. Every tool call is permission-gated, every action produces verifiable receipts, every protocol boundary has a refusal vocabulary, and every release candidate is validated against schema-governed contracts before promotion. The evidence is not marketing — it is inspectable.</p>
+
+<h2 class="section-heading">What Rig Relay Does</h2>
+<div class="feature-grid">
+  <div class="feature-card">
+    <h3>Governed Execution</h3>
+    <p>Agent tools are permission-gated with ToolPermission (ALWAYS/ASK/NEVER). Destructive operations require explicit approval. Stale batch reuse is prevented by lease-gated supervision.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Trace-Correlated Evidence</h3>
+    <p>Every agent action carries trace IDs and correlation IDs across 10 surfaces. Content-light doctrine ensures secrets never leak into traces. Cross-surface events are joinable.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Refusal-First Boundaries</h3>
+    <p>A shared refusal vocabulary with 29 classes spans MCP, ACP, A2A, SDK, and provider surfaces. Capabilities are refused by default and granted explicitly.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Schema-Governed Contracts</h3>
+    <p>0+ JSON schemas govern every artifact type. Implementation contracts are encoded as JSON with authority hashes. The deterministic compiler validates worktrees against contracts.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Protocol Spine</h3>
+    <p>MCP (Model Context Protocol), ACP (Agent Client Protocol), A2A (Agent-to-Agent), and SDK surfaces each have capability manifests, readiness checks, and refusal adapters.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Static Evidence Site</h3>
+    <p>This site is deterministically generated from canonical JSON artifacts. No backend, no database, no tracking. Every page is schema-validated and safety-scanned before publication.</p>
+  </div>
+</div>
+
+<h2 class="section-heading">What Is Proven Now</h2>
+<div class="metrics-row">
+  <div class="metric-box"><span class="metric-value">0</span><span class="metric-label">Schemas Validated</span></div>
+  
+  
+  <div class="metric-box"><span class="metric-value">0</span><span class="metric-label">Evidence Pages</span></div>
+  
+</div>
+
+
+
+
+
+
+<h2 class="section-heading" id="evidence">Evidence You Can Inspect</h2>
+<div class="card-grid">
+  
+</div>
+
+<h2 class="section-heading">For Investors, Hiring Managers &amp; Technical Reviewers</h2>
+<div class="audience-grid">
+  <a class="audience-card" href="/proof-chain/index.html">
+    <strong>Investors</strong>
+    <span>Product wedge, data/evidence moat, governance as competitive advantage, extensibility via MCP/ACP/A2A/SDK/providers.</span>
+  </a>
+  <a class="audience-card" href="/contracts/index.html">
+    <strong>Hiring Managers</strong>
+    <span>This project demonstrates systems thinking, security posture, product judgment, and evidence-driven engineering at scale.</span>
+  </a>
+  <a class="audience-card" href="/hardening/index.html">
+    <strong>Technical Reviewers</strong>
+    <span>Direct paths to schemas, tests, evidence, readiness artifacts, and claim boundaries. Inspect the proof chain.</span>
+  </a>
+  <a class="audience-card" href="/seams/index.html">
+    <strong>Open-Source Users</strong>
+    <span>Run locally, safe by default, refusal-first. Known seams and deferred work are documented openly.</span>
+  </a>
+</div>
+
+<h2 class="section-heading">Frequently Asked Questions</h2>
+<dl class="faq-section">
+  <div class="faq-item">
+    <dt>What is Rig Relay?</dt>
+    <dd>Rig Relay is a governed local agent platform. It provides a controlled runtime for AI coding agents that produces inspectable, auditable evidence of every action taken — tool calls, file mutations, protocol interactions, and model requests.</dd>
+  </div>
+  <div class="faq-item">
+    <dt>Who is it for?</dt>
+    <dd>Engineering teams, security-conscious organizations, and individual developers who want agent-assisted development with governance guardrails, audit trails, and bounded claims rather than opaque execution.</dd>
+  </div>
+  <div class="faq-item">
+    <dt>What makes it different?</dt>
+    <dd>Most coding agents optimize for speed. Rig Relay optimizes for inspectability. Every surface has a refusal vocabulary. Every artifact validates against a schema. Every claim is bounded by evidence. Known seams are documented, not hidden.</dd>
+  </div>
+  <div class="faq-item">
+    <dt>What is proven?</dt>
+    <dd>0+ schemas validated. Cross-surface refusal vocabulary covering 10 protocol surfaces. Deterministic site compilation. Content-light evidence receipts. Release gate validation. See the <a href="/proof-chain/index.html">proof chain</a> for full details.</dd>
+  </div>
+  <div class="faq-item">
+    <dt>What is deferred?</dt>
+    <dd>Production OAuth, full OS sandboxing, resource budget enforcement, and PNG social preview images are documented deferrals. See <a href="/seams/index.html">known seams</a> for the complete list.</dd>
+  </div>
+  <div class="faq-item">
+    <dt>How can I inspect the evidence?</dt>
+    <dd>Every page on this site is generated from canonical JSON artifacts validated against governed schemas. Navigate the evidence console on the left, or start with <a href="/release-candidate/index.html">release readiness</a>.</dd>
+  </div>
+</dl>
+
+<div class="provenance-footer">
+  <p>Generated <code>2026-05-21T04:55:37.461671+00:00</code> · Branch <code></code> · SHA <code></code> · 0 evidence pages · Safety passed</p>
+</div>
+
+  </main>
+</div>
+<footer class="site-footer" role="contentinfo">
+  <p>Rig Relay — Governed local agent platform. Generated 2026-05-21T04:55:37.461671+00:00.
+  
+  <a href="./index.html">Home</a>.</p>
 </footer>
 </body>
 </html>

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.code_scanning_pr_transaction_projection.v1.schema.json",
+  "title": "Code Scanning PR Transaction Projection v1",
+  "description": "Projection summarizing the state of a code scanning PR mutation transaction. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "available",
+    "transaction_status",
+    "recovery_status",
+    "pr_status",
+    "alert_update_status",
+    "rate_limit_status",
+    "next_safe_action",
+    "human_review_required",
+    "raw_payloads_exposed"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.code_scanning_pr_transaction_projection.v1" },
+    "available": { "type": "boolean" },
+    "transaction_status": { "type": "string" },
+    "recovery_status": { "type": "string" },
+    "pr_status": { "type": "string" },
+    "alert_update_status": { "type": "string" },
+    "rate_limit_status": { "type": "string" },
+    "next_safe_action": { "type": "string" },
+    "human_review_required": { "type": "boolean" },
+    "raw_payloads_exposed": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

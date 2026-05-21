@@ -22,7 +22,7 @@ def _build_page(*, sm: SiteMeta, title: str, body_html: str, source_ref: str) ->
     head = make_head_tags(sm, canonical, og, relative_root="..")
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

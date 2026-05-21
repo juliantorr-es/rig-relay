@@ -143,3 +143,129 @@ def test_compiled_site_social_metadata(clean_env, monkeypatch):
         # 9. Favicon link present
         assert 'type="image/svg+xml"' in content
         assert "favicon.svg" in content
+
+
+@pytest.mark.contract
+def test_html_lang_comes_from_site_language():
+    page_model = {
+        "title": "Lang Test",
+        "description": "Testing language attribute.",
+        "route": "/lang-test/index.html",
+        "page_id": "lang-test",
+        "language": "es",
+        "site_name": "Test Site",
+    }
+    html_content = render_page(page_model)
+    assert '<html lang="es">' in html_content
+
+
+@pytest.mark.contract
+def test_html_lang_defaults_to_en():
+    page_model = {
+        "title": "Default Lang Test",
+        "description": "Testing default language.",
+        "route": "/default-lang/index.html",
+        "page_id": "default-lang",
+    }
+    html_content = render_page(page_model)
+    assert '<html lang="en">' in html_content
+
+
+@pytest.mark.contract
+def test_twitter_card_summary_large_image_when_image_exists():
+    page_model = {
+        "title": "Twitter Card Test",
+        "description": "Testing twitter card with image.",
+        "route": "/twitter-card/index.html",
+        "page_id": "twitter-card",
+        "og_image": "/assets/og/test-card.svg",
+    }
+    html_content = render_page(page_model)
+    assert '<meta name="twitter:card" content="summary_large_image">' in html_content
+
+
+@pytest.mark.contract
+def test_twitter_card_summary_when_no_image():
+    page_model = {
+        "title": "Twitter Card No Img",
+        "description": "Testing twitter card without image.",
+        "route": "/twitter-noimg/index.html",
+        "page_id": "twitter-noimg",
+    }
+    html_content = render_page(page_model)
+    assert '<meta name="twitter:card" content="summary">' in html_content
+
+
+@pytest.mark.contract
+def test_og_image_alt_present_when_set():
+    page_model = {
+        "title": "OG Alt Test",
+        "description": "Testing og:image:alt.",
+        "route": "/og-alt/index.html",
+        "page_id": "og-alt",
+        "og_image": "/assets/og/test-card.svg",
+        "og_image_alt": "A test card image",
+    }
+    html_content = render_page(page_model)
+    assert '<meta property="og:image:alt" content="A test card image">' in html_content
+
+
+@pytest.mark.contract
+def test_og_image_width_present_when_set():
+    page_model = {
+        "title": "OG Width Test",
+        "description": "Testing og:image:width.",
+        "route": "/og-width/index.html",
+        "page_id": "og-width",
+        "og_image": "/assets/og/test-card.svg",
+        "og_image_width": "1200",
+    }
+    html_content = render_page(page_model)
+    assert '<meta property="og:image:width" content="1200">' in html_content
+
+
+@pytest.mark.contract
+def test_og_image_height_present_when_set():
+    page_model = {
+        "title": "OG Height Test",
+        "description": "Testing og:image:height.",
+        "route": "/og-height/index.html",
+        "page_id": "og-height",
+        "og_image": "/assets/og/test-card.svg",
+        "og_image_height": "630",
+    }
+    html_content = render_page(page_model)
+    assert '<meta property="og:image:height" content="630">' in html_content
+
+
+@pytest.mark.contract
+def test_twitter_image_alt_present_when_og_image_alt_set():
+    page_model = {
+        "title": "Twitter Alt Test",
+        "description": "Testing twitter:image:alt.",
+        "route": "/twitter-alt/index.html",
+        "page_id": "twitter-alt",
+        "og_image": "/assets/og/test-card.svg",
+        "og_image_alt": "A test card image for Twitter",
+    }
+    html_content = render_page(page_model)
+    assert (
+        '<meta name="twitter:image:alt" content="A test card image for Twitter">'
+        in html_content
+    )
+
+
+@pytest.mark.contract
+def test_og_image_dimensions_not_present_when_not_set():
+    page_model = {
+        "title": "No Dims Test",
+        "description": "Testing missing og image dimensions.",
+        "route": "/no-dims/index.html",
+        "page_id": "no-dims",
+        "og_image": "/assets/og/test-card.svg",
+    }
+    html_content = render_page(page_model)
+    assert 'property="og:image:alt"' not in html_content
+    assert 'property="og:image:width"' not in html_content
+    assert 'property="og:image:height"' not in html_content
+    assert 'name="twitter:image:alt"' not in html_content

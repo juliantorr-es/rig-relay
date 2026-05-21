@@ -104,6 +104,7 @@ ALLOWED_MESSAGE_TYPES = frozenset({
     "cancel_chat_response",
     "subscribe",
     "unsubscribe",
+    "analytics_subscribe",
     "ping",
     "chat_state_updated",  # Push-only type
 })
@@ -147,6 +148,7 @@ _MESSAGE_SCHEMA: dict[str, dict[str, Any]] = {
     "subscribe": {"interval": (int, float)},
     "unsubscribe": {},
     "ping": {},
+    "analytics_subscribe": {"widgets": list},
 }
 
 
@@ -307,6 +309,9 @@ class ProjectionWebSocketServer:
         self._COALESCE_KINDS: frozenset[str] = frozenset({"heartbeat"})
         self._handler_tasks: set[asyncio.Task[Any]] = set()
         self._DRAIN_TIMEOUT = 10.0
+        self._analytics_widgets: list[str] = []
+        self._analytics_refresh_interval: float = 120.0
+        self._analytics_enabled: bool = True
 
     def _emit_probe(self, step_id: str, label: str, details: dict[str, Any]) -> None:
         if self._probe_callback is not None:
@@ -1640,6 +1645,13 @@ class ProjectionWebSocketServer:
                         self._poll_and_push(websocket, interval)
                     )
 
+            case "analytics_subscribe":
+                widgets = message.get("widgets", [])
+                if not isinstance(widgets, list):
+                    widgets = []
+                self._analytics_widgets = widgets
+                await self._push_analytics_projection(websocket)
+
             case "unsubscribe":
                 if subscribe_task is not None:
                     subscribe_task.cancel()
@@ -2034,6 +2046,58 @@ class ProjectionWebSocketServer:
                 "read_only_actions": [],
             }
 
+    async def _push_analytics_projection(self, websocket: Any) -> None:
+        """Build and push analytics projection to client."""
+        loop = asyncio.get_running_loop()
+        try:
+            analytics = await loop.run_in_executor(
+                None, self._build_analytics_projection
+            )
+        except Exception as exc:
+            logger.warning("analytics_projection_failed error=%s", exc)
+            return
+
+        tracker = await self._get_tracker(websocket)
+        if tracker:
+            envelope = self._wrap_envelope(
+                "projection",
+                {
+                    "data": analytics,
+                    "schema_version": "rig.relay.analytics_projection.v1",
+                },
+                tracker,
+                projection_sequence=tracker._projection_seq + 1,
+                trace_id="",
+            )
+            await self._send_with_flow_control(
+                websocket, envelope, tracker, "projection"
+            )
+        else:
+            await _send_json(
+                websocket,
+                {
+                    "type": "analytics_projection",
+                    "data": analytics,
+                    "seq": await self._next_seq(),
+                },
+            )
+
+    def _build_analytics_projection(self) -> dict[str, Any]:
+        try:
+            from rig_relay.desktop.analytics_projection import (
+                build_analytics_projection,
+            )
+
+            return build_analytics_projection(widgets=self._analytics_widgets or None)
+        except Exception as exc:
+            return {
+                "schema_version": "rig.relay.analytics_projection.v1",
+                "generated_at": "",
+                "widgets": [],
+                "engine_available": False,
+                "error": str(exc)[:500],
+            }
+
     async def _poll_and_push(self, websocket: Any, interval: int) -> None:
         """Periodically rebuild projection and push to client.
 
@@ -2046,6 +2110,7 @@ class ProjectionWebSocketServer:
         """
         loop = asyncio.get_running_loop()
         last_digest: str | None = None
+        last_analytics_push: float = 0.0
         try:
             while True:
                 await asyncio.sleep(interval)
@@ -2089,6 +2154,16 @@ class ProjectionWebSocketServer:
                             "seq": await self._next_seq(),
                         },
                     )
+
+                # Analytics projection push
+                if self._analytics_enabled and self._analytics_widgets:
+                    import time as _time
+
+                    now = _time.monotonic()
+                    if now - last_analytics_push >= self._analytics_refresh_interval:
+                        last_analytics_push = now
+                        await self._push_analytics_projection(websocket)
+
         except (asyncio.CancelledError, ConnectionError, BrokenPipeError):
             pass
 

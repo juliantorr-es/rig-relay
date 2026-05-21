@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_mutation_rate_limit_snapshot.v1.schema.json",
+  "title": "Live Mutation Rate Limit Snapshot v1",
+  "description": "Snapshot of GitHub API rate limit state before a governed live mutation. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "rate_limited",
+    "probes"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.live_mutation_rate_limit_snapshot.v1" },
+    "rate_limited": { "type": "boolean" },
+    "probes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["endpoint", "write_endpoint"],
+        "properties": {
+          "endpoint": { "type": "string" },
+          "operation": { "type": "string" },
+          "write_endpoint": { "type": "boolean" },
+          "status_code": { "type": "integer" },
+          "contents_write": { "type": "boolean" },
+          "pull_requests_write": { "type": "boolean" },
+          "security_events_write": { "type": "boolean" },
+          "note": { "type": "string" },
+          "rate_limited": { "type": "boolean" },
+          "remaining": { "type": "integer" },
+          "reset_at": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

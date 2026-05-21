@@ -499,11 +499,14 @@
         "present_count": { "type": "integer", "minimum": 0 },
         "missing_count": { "type": "integer", "minimum": 0 },
         "present_surfaces": { "type": "array", "items": { "type": "string" } },
+        "prototype_surfaces": { "type": "array", "items": { "type": "string" } },
+        "contract_only_surfaces": { "type": "array", "items": { "type": "string" } },
         "missing_surfaces": { "type": "array", "items": { "type": "string" } },
+        "surface_readiness_detail": { "type": "object", "additionalProperties": { "type": "string", "enum": ["production", "prototype", "contract_only"] } },
         "ready_for_audit": { "type": "boolean" },
         "ready_for_preview": { "type": "boolean" }
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "known_signal_summary": {
       "type": "object",

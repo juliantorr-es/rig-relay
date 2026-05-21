@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://json-schema.org/rig.relay.analytics_projection.v1",
+  "title": "Analytics Projection Envelope",
+  "description": "Envelope for computed analytics widget projections from the DuckDB read-side compiler. Content-light: no raw prompts, secrets, or absolute file paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "widgets"],
+  "properties": {
+    "schema_version": { "const": "rig.relay.analytics_projection.v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "widgets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["widget_id", "data"],
+        "properties": {
+          "widget_id": { "type": "string" },
+          "data": { "type": "object" },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  }
+}

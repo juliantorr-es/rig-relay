@@ -20,7 +20,6 @@ from rig_relay.core.hooks.models import HookConfigResult
 from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
 from rig_relay.core.llm.format import FailedToolCall, ResolvedMessage, ResolvedToolCall
 from rig_relay.core.llm.types import BackendLike
-from rig_relay.core.logger import logger
 from rig_relay.core.session.session_migration import migrate_sessions_entrypoint
 from rig_relay.core.system_prompt import get_universal_system_prompt
 from rig_relay.core.telemetry.types import EntrypointMetadata
@@ -74,6 +73,7 @@ if TYPE_CHECKING:
 from rig_relay.core._agent_helpers import requires_init
 from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision
+from rig_relay.core._auto_gc import maybe_auto_gc as _maybe_auto_gc_helper
 from rig_relay.core._context_envelope import ContextEnvelopeMixin
 from rig_relay.core._errors import AgentLoopError, TeleportError
 from rig_relay.core._governance import GovernanceMixin
@@ -755,25 +755,9 @@ class AgentLoop(
     async def _handle_tool_calls(
         self, resolved: ResolvedMessage
     ) -> AsyncGenerator[ToolCallEvent | ToolResultEvent | ToolStreamEvent]:
-        async for event in self._emit_failed_tool_events(resolved.failed_calls):
+        """Execute tool batch — delegates to ToolExecutor.execute_batch."""
+        async for event in self._tool_executor.execute_batch(resolved):
             yield event
-        if not resolved.tool_calls:
-            return
-
-        for tool_call in resolved.tool_calls:
-            yield ToolCallEvent(
-                tool_name=tool_call.tool_name,
-                tool_class=tool_call.tool_class,
-                args=tool_call.validated_args,
-                tool_call_id=tool_call.call_id,
-            )
-
-        async for event in self._run_tools_concurrently(resolved.tool_calls):
-            yield event
-
-        # Passive GC: after tool execution, check storage budget
-        # and prune stale artifacts if over threshold.
-        await self._maybe_auto_gc()
 
     async def _execute_tool_to_queue(
         self,
@@ -791,41 +775,8 @@ class AgentLoop(
             yield event
 
     async def _maybe_auto_gc(self) -> None:
-        if not self.config.enable_local_observability:
-            return
-
-        try:
-            from rig_relay.evidence.storage_lifecycle import compute_storage_summary
-
-            summary = compute_storage_summary(self._workspace_root / ".rig" / "relay")
-            budget_status = summary.get("budget_status", "ok")
-
-            if budget_status not in {"warn", "over_budget", "fleet_blocked"}:
-                return
-
-            try:
-                from rig_relay.evidence.storage_lifecycle import run_artifact_gc
-
-                result = run_artifact_gc(
-                    root=self._workspace_root / ".rig" / "relay",
-                    budget=summary,
-                    confirm=True,
-                )
-                deleted = result.get("summary", {}).get("deleted", 0)
-                freed_mb = result.get("summary", {}).get("freed_mb", 0.0)
-                if deleted > 0:
-                    self.stats.gc_deleted_count = (
-                        getattr(self.stats, "gc_deleted_count", 0) + deleted
-                    )
-                    logger.info(
-                        "Auto-GC: removed %d artifacts (%.1f MB) after tool execution",
-                        deleted,
-                        freed_mb,
-                    )
-            except ImportError:
-                pass
-        except Exception:
-            logger.warning("Auto-GC failed", exc_info=True)
+        """Passive GC: delegates to standalone helper."""
+        await _maybe_auto_gc_helper(self.config, self._workspace_root, self.stats)
 
     async def _should_execute_tool(
         self, tool: BaseTool, args: BaseModel, tool_call_id: str

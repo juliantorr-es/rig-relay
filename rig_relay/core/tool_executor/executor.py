@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rig_relay.core.tool_executor.adapter_builder import ToolRuntimeAdapterBuilder
 from rig_relay.core.tool_executor.concurrency import ToolConcurrencyManager
@@ -286,6 +286,40 @@ class ToolExecutor:
                     yield loop._tool_failure_event(
                         tool_call, error_msg, None, span=span
                     )
+
+    async def execute_batch(self, resolved: Any) -> AsyncGenerator[Any]:
+        """Execute the full tool batch: failed events, tool-call events, concurrent
+        execution, and passive auto-GC.
+
+        Delegates failed-tool-event emission to the AgentLoop's
+        ``_emit_failed_tool_events`` and concurrent execution to
+        ``execute_concurrently``.  After all tools finish, runs passive GC
+        via ``maybe_auto_gc`` if the storage budget is over threshold.
+        """
+        loop = self._loop
+
+        async for event in loop._emit_failed_tool_events(resolved.failed_calls):
+            yield event
+
+        if not resolved.tool_calls:
+            return
+
+        for tc in resolved.tool_calls:
+            from rig_relay.core.types import ToolCallEvent as TCE
+
+            yield TCE(
+                tool_name=tc.tool_name,
+                tool_class=tc.tool_class,
+                args=tc.validated_args,
+                tool_call_id=tc.call_id,
+            )
+
+        async for event in self.execute_concurrently(resolved.tool_calls):
+            yield event
+
+        from rig_relay.core._auto_gc import maybe_auto_gc
+
+        await maybe_auto_gc(loop.config, loop._workspace_root, loop.stats)
 
     async def execute_concurrently(
         self, tool_calls: list[ResolvedToolCall]

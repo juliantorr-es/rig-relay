@@ -475,7 +475,7 @@ function _renderErrorCard(container, widgetId) {
   }
 }
 
-function renderCompactChip(container, label, valueFn) {
+export function renderCompactChip(container, label, valueFn) {
   const v = valueFn();
   // DOM construction — no innerHTML
   while (container.firstChild) container.removeChild(container.firstChild);
@@ -501,7 +501,7 @@ function renderCompactChip(container, label, valueFn) {
   });
 }
 
-function renderStandardCard(container, title, bodyHTML, widgetId, statusCls) {
+export function renderStandardCard(container, title, bodyHTML, widgetId, statusCls) {
   // DOM construction — no innerHTML
   while (container.firstChild) container.removeChild(container.firstChild);
 
@@ -539,7 +539,7 @@ function renderStandardCard(container, title, bodyHTML, widgetId, statusCls) {
   container.appendChild(trigger);
 }
 
-function renderExpandedWidget(container, title, bodyHTML) {
+export function renderExpandedWidget(container, title, bodyHTML) {
   while (container.firstChild) container.removeChild(container.firstChild);
   const header = document.createElement('div');
   header.className = 'widget-header';
@@ -2569,4 +2569,242 @@ registerWidget('carteBlancheDashboard', (container, level) => {
     return;
   }
   renderStandardCard(container, 'GitHub Integration', h, 'carteBlancheDashboard', 'success');
+});
+
+// ── Site Editor widget ──
+registerWidget('siteEditor', (container, level) => {
+  const p = state.projection;
+  if (!p || !p.site_editor || !p.site_editor.available) return;
+  const d = p.site_editor;
+  const fields = d.fields || [];
+  const canSave = d.can_save || false;
+  let draftData = null;
+  let isDirty = false;
+  let isSaving = false;
+
+  const cloneData = () => { const d2 = d.page_data || {}; draftData = JSON.parse(JSON.stringify(d2)); };
+  const markDirty = () => { isDirty = true; };
+  const resetDirty = () => { isDirty = false; };
+
+  if (level === 'compact') {
+    renderCompactChip(container, 'Site Editor', () => ({
+      text: `${fields.length} editable fields · render ${d.last_rendered ? 'ready' : 'pending'}`,
+      cls: canSave ? 'success' : 'dimmed'
+    }));
+    return;
+  }
+
+  if (level === 'expanded') {
+    cloneData();
+
+    let h = '<div style="font-size:0.85em">';
+
+    // Draft safety
+    h += `<div id="siteEditorWarn-unsaved" style="display:none;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:8px;margin-bottom:8px"><strong>Unsaved changes</strong> — save before closing.</div>`;
+
+    // Safety gate
+    if (!canSave) {
+      h += `<div style="background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;padding:8px;margin-bottom:12px"><strong>Editing disabled</strong> — set <code>RIG_RELAY_ALLOW_SITE_EDITS=1</code> to enable saves.</div>`;
+    }
+
+    // Status bar
+    h += `<div style="margin-bottom:12px"><strong>${fields.length} fields</strong> · artifact: <code style="font-size:0.85em">${(d.artifact_path||'').split('/').pop()}</code> · render: ${d.last_rendered ? '✓' : '✗'}</div>`;
+
+    // Render form fields by type
+    for (const f of fields) {
+      const val = draftData[f.field_name];
+      const valStr = Array.isArray(val) ? `[${val.length} items]` : (val || '');
+      const fId = `se-${f.field_name}`;
+
+      h += `<div style="background:var(--bg-alt,#161b22);border:1px solid var(--border,#30363d);border-radius:6px;padding:10px;margin-bottom:8px">`;
+      h += `<label for="${fId}" style="font-weight:600;font-size:0.85em;display:block;margin-bottom:4px">${f.field_label} <span style="color:var(--dim);font-weight:400">${f.field_type}</span></label>`;
+
+      if (f.field_type === 'select') {
+        h += `<select id="${fId}" data-field="${f.field_name}" data-type="select" style="width:100%;padding:6px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85em">`;
+        for (const c of (f.choices || [])) h += `<option value="${c}" ${val === c ? 'selected' : ''}>${c}</option>`;
+        h += `</select>`;
+      } else if (f.field_type === 'textarea') {
+        h += `<textarea id="${fId}" data-field="${f.field_name}" data-type="textarea" style="width:100%;padding:6px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85em;min-height:80px;resize:vertical">${valStr}</textarea>`;
+      } else if (f.field_type === 'card_list' && f.item_fields) {
+        h += `<div id="${fId}" data-field="${f.field_name}" data-type="card_list" style="margin-top:4px">`;
+        const items = Array.isArray(draftData[f.field_name]) ? draftData[f.field_name] : [];
+        h += `<div style="font-size:0.8em;color:var(--dim);margin-bottom:4px">${items.length} items</div>`;
+        for (let i=0;i<items.length;i++) {
+          h += `<div class="se-card-item" data-index="${i}" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px;margin-bottom:4px;display:flex;align-items:center;gap:6px">`;
+          h += `<span style="font-size:0.8em;color:var(--dim);flex-shrink:0">#${i+1}</span>`;
+          for (const ifield of f.item_fields) {
+            const ival = (items[i]||{})[ifield.field_name] || '';
+            h += `<input type="text" data-item-idx="${i}" data-item-field="${ifield.field_name}" style="flex:1;padding:4px;border-radius:3px;border:1px solid var(--border);background:var(--bg-alt);color:var(--text);font-size:0.8em" value="${ival}" placeholder="${ifield.field_label}">`;
+          }
+          h += `<button data-card-action="delete" data-idx="${i}" style="padding:2px 8px;border-radius:3px;border:1px solid #f85149;background:transparent;color:#f85149;cursor:pointer;font-size:0.8em">✕</button>`;
+          h += `</div>`;
+        }
+        if (canSave) h += `<button data-card-action="add" style="padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:var(--bg-alt);color:var(--accent);cursor:pointer;font-size:0.8em;margin-top:4px">+ Add item</button>`;
+        h += `</div>`;
+      } else if (f.field_type === 'tag_list') {
+        const tags = Array.isArray(draftData[f.field_name]) ? draftData[f.field_name] : [];
+        h += `<div id="${fId}" data-field="${f.field_name}" data-type="tag_list" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">`;
+        for (const tag of tags) {
+          h += `<span class="se-tag" style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:0.8em;display:flex;align-items:center;gap:4px">${tag}<button data-tag-action="remove" data-tag-val="${tag}" style="background:none;border:none;color:#f85149;cursor:pointer;font-size:0.9em;padding:0 2px">✕</button></span>`;
+        }
+        if (canSave) h += `<input type="text" id="${fId}-add" data-tag-action="add-input" style="padding:4px 8px;border-radius:12px;border:1px solid var(--border);background:var(--bg-alt);color:var(--text);font-size:0.8em;width:100px" placeholder="Add tag...">`;
+        h += `</div>`;
+      } else {
+        h += `<input type="text" id="${fId}" data-field="${f.field_name}" data-type="text" value="${valStr}" style="width:100%;padding:6px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.85em">`;
+      }
+
+      h += `</div>`;
+    }
+
+    // Save button
+    h += `<div style="margin-top:12px;display:flex;gap:8px;align-items:center">`;
+    h += `<button id="se-save-btn" style="padding:8px 20px;border-radius:6px;border:1px solid ${canSave ? 'var(--accent)' : 'var(--border)'};background:${canSave ? 'var(--accent)' : 'var(--bg-alt)'};color:${canSave ? '#fff' : 'var(--dim)'};cursor:${canSave ? 'pointer' : 'not-allowed'};font-size:0.9em;font-weight:600" ${canSave ? '' : 'disabled'}>${canSave ? 'Save & Re-render' : 'Save disabled'}</button>`;
+    h += `<span id="se-status" style="font-size:0.8em;color:var(--dim)"></span>`;
+    h += `</div>`;
+
+    h += '</div>';
+
+    renderExpandedWidget(container, 'Site Editor', h);
+
+    // Wire input change events
+    setTimeout(() => {
+      const inputs = container.querySelectorAll('[data-field]');
+      inputs.forEach(el => {
+        el.addEventListener('input', () => {
+          const fn = el.dataset.field;
+          const val = el.value;
+          if (draftData) { draftData[fn] = val; markDirty(); }
+        });
+        el.addEventListener('change', () => {
+          const fn = el.dataset.field;
+          const val = el.value;
+          if (draftData) { draftData[fn] = val; markDirty(); }
+        });
+      });
+
+      // Card list actions
+      container.querySelectorAll('[data-card-action]').forEach(el => {
+        el.addEventListener('click', () => {
+          const action = el.dataset.cardAction;
+          const containerEl = el.closest('[data-type="card_list"]');
+          const fn = containerEl ? containerEl.dataset.field : null;
+          if (!fn || !draftData || !Array.isArray(draftData[fn])) return;
+          const items = draftData[fn];
+          if (action === 'add') {
+            const newItem = {};
+            const fld = fields.find(f => f.field_name === fn);
+            if (fld && fld.item_fields) { for (const ifield of fld.item_fields) newItem[ifield.field_name] = ''; }
+            items.push(newItem);
+            markDirty();
+          } else if (action === 'delete') {
+            items.splice(parseInt(el.dataset.idx), 1);
+            markDirty();
+          }
+        });
+      });
+
+      // Card item field changes
+      container.querySelectorAll('[data-item-field]').forEach(el => {
+        el.addEventListener('input', () => {
+          const idx = parseInt(el.dataset.itemIdx);
+          const fn = el.dataset.itemField;
+          const containerEl = el.closest('[data-type="card_list"]');
+          const listFn = containerEl ? containerEl.dataset.field : null;
+          if (listFn && draftData && Array.isArray(draftData[listFn]) && draftData[listFn][idx]) {
+            draftData[listFn][idx][fn] = el.value;
+            markDirty();
+          }
+        });
+      });
+
+      // Tag list add
+      container.querySelectorAll('[data-tag-action="add-input"]').forEach(el => {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const tagVal = el.value.trim();
+            if (!tagVal) return;
+            const containerEl = el.closest('[data-type="tag_list"]');
+            const fn = containerEl ? containerEl.dataset.field : null;
+            if (fn && draftData) {
+              if (!Array.isArray(draftData[fn])) draftData[fn] = [];
+              if (!draftData[fn].includes(tagVal)) { draftData[fn].push(tagVal); markDirty(); }
+              el.value = '';
+            }
+          }
+        });
+      });
+
+      // Tag list remove
+      container.querySelectorAll('[data-tag-action="remove"]').forEach(el => {
+        el.addEventListener('click', () => {
+          const tagVal = el.dataset.tagVal;
+          const containerEl = el.closest('[data-type="tag_list"]');
+          const fn = containerEl ? containerEl.dataset.field : null;
+          if (fn && draftData && Array.isArray(draftData[fn])) {
+            draftData[fn] = draftData[fn].filter(t => t !== tagVal);
+            markDirty();
+          }
+        });
+      });
+
+      // Save button
+      const saveBtn = container.querySelector('#se-save-btn');
+      const statusEl = container.querySelector('#se-status');
+      if (saveBtn && canSave) {
+        saveBtn.addEventListener('click', () => {
+          if (isSaving) return;
+          isSaving = true;
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+          statusEl.textContent = '⏳ Validating and rendering...';
+
+          const pageData = {};
+          for (const f of fields) {
+            if (f.field_type === 'card_list' || f.field_type === 'tag_list') {
+              const el = container.querySelector(`[data-field="${f.field_name}"]`);
+              if (el && draftData) pageData[f.field_name] = draftData[f.field_name];
+            } else {
+              const el = container.querySelector(`#se-${f.field_name}`);
+              if (el) pageData[f.field_name] = el.value;
+            }
+          }
+
+          const intent = {
+            intent_name: 'site_editor_save',
+            intent_id: 'se-' + Date.now(),
+            parameters: {
+              page_data: pageData,
+              artifact_path: d.artifact_path || 'docs/json/site_home.v1.json',
+              schema_path: d.schema_path || 'docs/schemas/rig.documentation.home.v1.schema.json',
+            }
+          };
+
+          if (typeof dispatchIntent === 'function') {
+            dispatchIntent(intent).then(result => {
+              isSaving = false;
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save & Re-render';
+              const ok = result && (result.status === 'completed' || result.status === 'completed_with_errors');
+              statusEl.textContent = ok ? '✓ Saved & rendered' : '✗ ' + ((result||{}).summary || 'Save failed');
+              if (ok) resetDirty();
+            }).catch(err => {
+              isSaving = false;
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save & Re-render';
+              statusEl.textContent = '✗ Intent dispatch failed';
+            });
+          } else {
+            statusEl.textContent = '✗ Intent dispatch unavailable';
+            isSaving = false;
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save & Re-render';
+          }
+        });
+      }
+    }, 100);
+
+    return;
+  }
+
+  renderStandardCard(container, 'Site Editor', `<div style="font-size:0.85em"><strong>${fields.length} editable fields</strong>${d.last_rendered ? ' · render ready' : ''}${!canSave ? '<br><span style="color:var(--warn)">Editing disabled</span>' : ''}<br><span style="font-size:0.8em;color:var(--dim)">Expand to edit form fields</span></div>`, 'siteEditor', canSave ? 'success' : 'dimmed');
 });

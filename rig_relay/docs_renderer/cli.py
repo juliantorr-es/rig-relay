@@ -16,10 +16,13 @@ def _emit_render_trace(event_type: str, *, payload: dict | None = None) -> None:
         pass
 
 
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import subprocess
 from typing import cast
+
+from markupsafe import Markup
 
 from rig_relay.docs_renderer.archive import render_collection_page, render_index
 from rig_relay.docs_renderer.css import CSS
@@ -174,11 +177,7 @@ def _render_new_system_pages(manifest: dict) -> list[dict]:
     Returns list of page dicts for the search index and render manifest.
     """
     try:
-        from rig_relay.site_renderer.loaders import (
-            load_artifacts_for_page,
-            load_input_manifest,
-            load_page_model,
-        )
+        from rig_relay.site_renderer.loaders import load_input_manifest, load_page_model
         from rig_relay.site_renderer.renderer import render_page, write_page
     except ImportError:
         return []
@@ -235,10 +234,81 @@ def _render_jinja2_pages() -> list[dict]:
     # Evidence graph page
     try:
         tpl = env.get_template("codebase_evidence_graph.html.j2")
+        graph_model = {
+            "total_nodes": "13,964",
+            "total_edges": "3,019",
+            "node_types": 9,
+            "edge_types": 2,
+            "node_distribution": [
+                {"type": "function", "count": "6,462"},
+                {"type": "file", "count": "4,336"},
+                {"type": "class", "count": "1,639"},
+                {"type": "module", "count": "857"},
+                {"type": "schema", "count": "389"},
+                {"type": "artifact", "count": "202"},
+                {"type": "dependency", "count": "69"},
+                {"type": "release_phase", "count": "7"},
+                {"type": "provider", "count": "3"},
+            ],
+            "edge_distribution": [
+                {
+                    "type": "depends_on",
+                    "count": "2,107",
+                    "description": "Python import dependencies between modules",
+                },
+                {
+                    "type": "validates_artifact",
+                    "count": "912",
+                    "description": "Schema-to-artifact validation edges",
+                },
+            ],
+            "projection_modes": [
+                {
+                    "name": "public_static",
+                    "description": "Content-light, no local paths, no session data. Published to GitHub Pages.",
+                },
+                {
+                    "name": "cockpit_local",
+                    "description": "Local-safe metadata, branch context. Cockpit dashboard only.",
+                },
+                {
+                    "name": "context_digest",
+                    "description": "Compact, deterministic context packet for the assembler. Bounded size.",
+                },
+                {
+                    "name": "duckdb_read_side",
+                    "description": "Queryable analytics. Read-only. Zero new dependencies.",
+                },
+                {
+                    "name": "impact_analysis",
+                    "description": "Changed-paths-to-adjacent-evidence mapping via git diff.",
+                },
+            ],
+            "regeneration_commands": [
+                "uv run python scripts/rig_codebase_evidence_graph.py --summary",
+                "uv run python scripts/rig_github_maintenance.py graph",
+            ],
+        }
         html = tpl.render({
             "title": "Codebase Evidence Graph",
-            "description": "Searchable graph of 14,000 nodes",
+            "description": "Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies.",
+            "meta_description": "Deterministic content-light evidence graph from the Rig Relay repository — 13,964 nodes, 3,019 edges, 9 node types.",
+            "site_name": "Rig Relay",
+            "canonical_url": "https://juliantorr-es.github.io/rig-relay/pages/codebase-evidence-graph.html",
+            "og_type": "article",
+            "og_image": "/rig-relay/assets/og/rig-relay-card.svg",
+            "og_image_alt": "Rig Relay — Governed Local Agent Platform",
+            "og_image_width": "1200",
+            "og_image_height": "630",
+            "twitter_card": "summary_large_image",
+            "structured_data_json": Markup(
+                '{"@context":"https://schema.org","@type":"WebSite","name":"Rig Relay","url":"https://juliantorr-es.github.io/rig-relay/"}'
+            ),
+            "model": graph_model,
             "sections": [],
+            "relative_root": ".",
+            "page_id": "codebase-evidence-graph",
+            "generated_at": datetime.now(UTC).isoformat(),
         })
         (PAGES_OUT / "codebase-evidence-graph.html").write_text(html, encoding="utf-8")
         new_pages.append({
@@ -253,10 +323,129 @@ def _render_jinja2_pages() -> list[dict]:
     # Developer portfolio page
     try:
         tpl = env.get_template("portfolio.html.j2")
+        portfolio_model = {
+            "hero_name": "Julian Torres",
+            "tagline": "Building governed agent infrastructure — desktop cockpit, MCP server, ACP agent, receipt-backed evidence.",
+            "action_links": [
+                {
+                    "label": "Rig Relay",
+                    "description": "Governed local server with desktop cockpit",
+                    "url": "https://github.com/juliantorr-es/rig-relay",
+                },
+                {
+                    "label": "GitHub Profile",
+                    "description": "Projects, contributions, and evidence",
+                    "url": "https://github.com/juliantorr-es",
+                },
+            ],
+            "tech_stack": [
+                {
+                    "name": "Python 3.12+",
+                    "description": "Primary language. Strict type checking via pyright.",
+                },
+                {
+                    "name": "GitHub API",
+                    "description": "13 API surfaces, 12 endpoints, governed with receipts.",
+                },
+                {
+                    "name": "Desktop Cockpit",
+                    "description": "pywebview-based operator console with widget system.",
+                },
+                {
+                    "name": "MCP Server",
+                    "description": "16 governed tools across 5 permission tiers.",
+                },
+                {
+                    "name": "ACP Agent",
+                    "description": "Editor-integrated agent sessions with progress streaming.",
+                },
+                {
+                    "name": "WebSocket",
+                    "description": "Local projection stream for the desktop cockpit.",
+                },
+            ],
+            "projects": [
+                {
+                    "name": "Rig Relay",
+                    "url": "https://github.com/juliantorr-es/rig-relay",
+                    "description": "Governed local server/control-plane with desktop cockpit. Coordinates agent work, produces structured evidence, exposes MCP tools and ACP sessions. AGPL-3.0, alpha v0.1.0a1.",
+                },
+                {
+                    "name": "GitHub Integration",
+                    "url": "",
+                    "description": "Governed GitHub chief-of-staff — profile maintenance, security remediation, PR management, Pages publishing. 13 API surfaces, all gated with receipts. Live-proven on PR #7.",
+                },
+                {
+                    "name": "Cross-Provider Registry",
+                    "url": "",
+                    "description": "Operating pictures for GitHub, Google Workspace, and Meta. Schema-governed, content-light, cross-provider readiness matrix.",
+                },
+            ],
+            "governance_rows": [
+                {"scope": "Live runtime mutation", "default": "Always blocked"},
+                {"scope": "Merge", "default": "Requires adoption approval"},
+                {
+                    "scope": "Alert dismissal",
+                    "default": "Separate gate, evidence required",
+                },
+                {"scope": "PR merge", "default": "Forbidden by default"},
+                {
+                    "scope": "Remote mutation",
+                    "default": "Explicit flags + gates + approval",
+                },
+            ],
+            "content_light_heading": "Content-Light Evidence",
+            "content_light_body": "Every claim is backed by evidence from the canonical claims index. No raw code, no secrets, no private data in governance artifacts. All public surfaces are generated from committed JSON/JSONL/CSV artifacts.",
+            "stats": [
+                "370+ tests",
+                "13 GitHub surfaces",
+                "3 live-proven write lanes",
+                "9 node types in evidence graph",
+            ],
+            "links": [
+                {
+                    "label": "Repository",
+                    "url": "https://github.com/juliantorr-es/rig-relay",
+                    "description": "Source code, issues, and documentation.",
+                },
+                {
+                    "label": "Project Site",
+                    "url": "https://juliantorr-es.github.io/rig-relay/",
+                    "description": "GitHub Pages documentation site.",
+                },
+                {
+                    "label": "Wiki",
+                    "url": "https://github.com/juliantorr-es/rig-relay/wiki",
+                    "description": "Architecture, governance, and integration guides.",
+                },
+            ],
+        }
         html = tpl.render({
             "title": "Developer Portfolio — Julian Torres",
-            "description": "Evidence-backed developer portfolio",
+            "description": "Evidence-backed developer portfolio with tech stack, projects, governance, and public claims.",
+            "meta_description": "Julian Torres — software developer building governed agent infrastructure. Desktop cockpit, MCP server, ACP agent, receipt-backed evidence.",
+            "site_name": "Julian Torres",
+            "canonical_url": "https://juliantorr-es.github.io/juliantorr-es/pages/portfolio.html",
+            "og_type": "profile",
+            "og_image": "/juliantorr-es/assets/og/portfolio-card.svg",
+            "og_image_alt": "Julian Torres — Developer Portfolio",
+            "og_image_width": "1200",
+            "og_image_height": "630",
+            "twitter_card": "summary_large_image",
+            "structured_data_json": Markup(
+                '{"@context":"https://schema.org","@type":"Person","name":"Julian Torres","url":"https://juliantorr-es.github.io/juliantorr-es/","description":"Software developer building governed agent infrastructure.","knowsAbout":["Python","GitHub API","Governance","Receipt-backend evidence"],"sameAs":["https://github.com/juliantorr-es"]}'
+            ),
+            "header_brand": "Julian Torres",
+            "footer_brand": "Julian Torres",
+            "nav_heading": "Portfolio",
+            "nav_home_label": "Home",
+            "nav_home_desc": "Developer portfolio",
+            "footer_home_label": "Profile",
+            "model": portfolio_model,
             "sections": [],
+            "relative_root": ".",
+            "page_id": "portfolio",
+            "generated_at": datetime.now(UTC).isoformat(),
         })
         (PAGES_OUT / "portfolio.html").write_text(html, encoding="utf-8")
         new_pages.append({
@@ -269,6 +458,117 @@ def _render_jinja2_pages() -> list[dict]:
         pass
 
     return new_pages
+
+
+def _write_sitemap(pages: list[dict], collection_ids: list[str]) -> None:
+    """Generate sitemap.xml for all rendered pages."""
+    base = "https://juliantorr-es.github.io/rig-relay"
+    entries: list[str] = [f"  <url><loc>{base}/</loc><priority>1.0</priority></url>"]
+    for p in pages:
+        did = p.get("document_id", "") or p.get("doc_id", "")
+        if did:
+            entries.append(
+                f"  <url><loc>{base}/pages/{did}.html</loc><priority>0.8</priority></url>"
+            )
+    for cid in sorted(collection_ids):
+        entries.append(
+            f"  <url><loc>{base}/collections/{cid}.html</loc><priority>0.7</priority></url>"
+        )
+    sitemap = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(entries)
+        + "\n</urlset>"
+    )
+    (DOCS_OUT / "sitemap.xml").write_text(sitemap, encoding="utf-8")
+
+
+def _render_homepage_jinja2(output_path: Path) -> None:
+    """Override the old homepage with a Jinja2-backed version using full metadata contract."""
+    try:
+        from jinja2 import Environment, FileSystemLoader
+
+        from rig_relay.docs_renderer.loader import load_json
+    except ImportError:
+        return
+
+    home_data = load_json(DOCS_JSON / "site_home.v1.json") or {}
+    templates_dir = DOCS_OUT.parent / "rig_relay" / "site_renderer" / "templates"
+    if not templates_dir.exists():
+        return
+
+    env = Environment(loader=FileSystemLoader(str(templates_dir)), autoescape=True)
+    try:
+        tpl = env.get_template("index.html.j2")
+    except Exception:
+        return
+
+    # Build page models from site_home data
+    nav_pages = [
+        {
+            "page_id": "codebase-evidence-graph",
+            "title": "Evidence Graph",
+            "route": "pages/codebase-evidence-graph.html",
+            "description": "Searchable graph of 14,000 nodes",
+        },
+        {
+            "page_id": "portfolio",
+            "title": "Developer Portfolio",
+            "route": "pages/portfolio.html",
+            "description": "Evidence-backed developer portfolio",
+        },
+    ]
+
+    html = tpl.render({
+        "title": home_data.get("title", "Rig Relay"),
+        "description": home_data.get("plain_language_summary", ""),
+        "meta_description": home_data.get(
+            "plain_language_summary",
+            "Governed local agent platform — inspectable, auditable, refusal-first.",
+        )[:160],
+        "tagline": home_data.get("tagline", ""),
+        "pages": [],
+        "generated_at": datetime.now(UTC).isoformat(),
+        "relative_root": ".",
+        "nav_pages": nav_pages,
+        "page_id": "",
+        "language": home_data.get("language", "en"),
+        "site_name": "Rig Relay",
+        "og_title": "Rig Relay",
+        "og_description": home_data.get(
+            "plain_language_summary", "Governed local agent platform"
+        )[:200],
+        "og_image": "/rig-relay/assets/og/rig-relay-card.svg",
+        "og_image_alt": "Rig Relay — Governed Local Agent Platform",
+        "og_image_width": "1200",
+        "og_image_height": "630",
+        "og_type": "website",
+        "og_url": "https://juliantorr-es.github.io/rig-relay/",
+        "og_site_name": "Rig Relay",
+        "twitter_card": "summary_large_image",
+        "canonical_url": "https://juliantorr-es.github.io/rig-relay/",
+        "theme_color": "#1e3a5f",
+        "robots": "index,follow",
+        "structured_data_json": Markup(
+            '{"@context":"https://schema.org","@type":"WebSite","name":"Rig Relay","url":"https://juliantorr-es.github.io/rig-relay/","description":"Governed local agent platform — inspectable, auditable, refusal-first."}'
+        ),
+        "header_brand": "Rig Relay",
+        "footer_brand": "Rig Relay",
+        "nav_heading": "Evidence Console",
+        "nav_home_label": "Home",
+        "nav_home_desc": "Product overview",
+        "footer_home_label": "Home",
+        "release_summary": {},
+        "proof_summary": {},
+        "public_claims": [],
+        "rejected_claims": [],
+        "remaining_seams": [],
+        "schema_count": 0,
+        "github_url": "https://github.com/juliantorr-es/rig-relay",
+        "branch": "",
+        "head_sha": "",
+        "safety_passed": True,
+    })
+    output_path.write_text(html, encoding="utf-8")
 
 
 def _render_domain_pages(site_meta: SiteMeta) -> tuple[list[dict], SafetyReport]:
@@ -469,6 +769,9 @@ def main() -> int:
     pages.extend(_new_pages)
 
     (DOCS_OUT / "index.html").write_text(render_homepage(manifest), encoding="utf-8")
+
+    # ── Override with Jinja2-backed homepage for full metadata ──
+    _render_homepage_jinja2(DOCS_OUT / "index.html")
     (ASSETS_OUT / "site.css").write_text(CSS, encoding="utf-8")
 
     src_js = DOCS_OUT / "assets" / "site.js"
@@ -502,6 +805,9 @@ def main() -> int:
         render_manifest(pages, collection_ids, git_sha), encoding="utf-8"
     )
     (NOJEKYLL).write_text("")
+
+    # ── Generate sitemap.xml ──
+    _write_sitemap(pages, collection_ids)
 
     if not is_public_safe(safety_report):
         print(

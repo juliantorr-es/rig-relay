@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.github.maintenance_report.v1",
   "tasks_run": 5,
   "tasks_refreshed": 4
 }

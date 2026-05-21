@@ -126,8 +126,15 @@ function _applyPartialSections(sections) {
     warnings: 'warnings',
     execution_progress: 'executionProgress',
     tool_runtime_summary: 'toolRuntimeSummary',
+    analytics: 'governanceGateHealth',
   };
   var rendered = Object.create(null);
+  // Analytics section touches all 8 analytics widgets
+  var analyticsWidgets = [
+    'governanceGateHealth', 'sessionHealth', 'toolLatency',
+    'releaseBlocker', 'dependencyRisk', 'findingsWidget',
+    'correlationIntegrity', 'localInference',
+  ];
   for (var sectionName in sections) {
     if (sections.hasOwnProperty(sectionName)) {
       var widgetId = sectionToWidget[sectionName];
@@ -142,6 +149,16 @@ function _applyPartialSections(sections) {
         }
         if (container && scrollTop > 0) {
           try { container.scrollTop = scrollTop; } catch (_) {}
+        }
+      }
+      // Analytics section change: re-render all analytics widgets
+      if (sectionName === 'analytics') {
+        for (var ai = 0; ai < analyticsWidgets.length; ai++) {
+          var awId = analyticsWidgets[ai];
+          if (!rendered[awId]) {
+            rendered[awId] = true;
+            renderWidget(awId);
+          }
         }
       }
     }

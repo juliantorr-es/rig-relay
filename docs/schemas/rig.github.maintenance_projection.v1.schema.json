@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.maintenance_projection.v1.schema.json",
+  "title": "GitHub Maintenance Projection v1",
+  "description": "Projection summarizing GitHub maintenance task execution. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "available",
+    "last_run",
+    "tasks_run",
+    "tasks_refreshed",
+    "next_scheduled",
+    "remote_mutation",
+    "raw_payloads_exposed"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.maintenance_projection.v1" },
+    "available": { "type": "boolean" },
+    "last_run": { "type": "string", "format": "date-time" },
+    "tasks_run": { "type": "integer" },
+    "tasks_refreshed": { "type": "integer" },
+    "next_scheduled": { "type": "string" },
+    "remote_mutation": { "type": "boolean" },
+    "raw_payloads_exposed": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

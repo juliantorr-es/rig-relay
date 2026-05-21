@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.maintenance_claims_refresh.v1.schema.json",
+  "title": "GitHub Maintenance Claims Refresh v1",
+  "description": "Result of a GitHub maintenance claims refresh run. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "refreshed",
+    "generated_at",
+    "source",
+    "claims_count",
+    "remote_mutation"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.maintenance_claims_refresh.v1" },
+    "refreshed": { "type": "boolean" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "claims_count": { "type": "integer" },
+    "remote_mutation": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

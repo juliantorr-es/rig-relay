@@ -1,0 +1,232 @@
+/* Rig Relay — Analytics Widgets */
+
+.analytics-unavailable {
+  color: var(--warn);
+  font-style: italic;
+  font-size: var(--font-size-xs);
+}
+
+/* ── Bar chart ── */
+.analytics-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 60px;
+  padding: var(--space-1) 0;
+}
+.analytics-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.analytics-bar {
+  width: 100%;
+  max-width: 32px;
+  border-radius: var(--radius-sm);
+  transition: height var(--transition-fast);
+}
+.analytics-bar-allowed { background: var(--ok); }
+.analytics-bar-blocked { background: var(--warn); }
+.analytics-bar-critical { background: var(--error); }
+.analytics-bar-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Scorecard ── */
+.analytics-scorecard {
+  display: flex;
+  gap: var(--space-3);
+}
+.analytics-score-item {
+  flex: 1;
+  text-align: center;
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.analytics-score-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+.analytics-score-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.analytics-score-item.ok .analytics-score-value { color: var(--ok); }
+.analytics-score-item.warn .analytics-score-value { color: var(--warn); }
+.analytics-score-item.error .analytics-score-value { color: var(--error); }
+
+/* ── Heatmap table ── */
+.analytics-heatmap {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+.analytics-heatmap th,
+.analytics-heatmap td {
+  padding: 3px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.analytics-heatmap th {
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-xs);
+}
+.analytics-heatmap td.mono {
+  font-family: var(--font-mono);
+}
+.analytics-heatmap .bar-bg {
+  display: inline-block;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  width: 60px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.analytics-heatmap .bar-fill {
+  display: block;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.analytics-heatmap .bar-fill.warn { background: var(--warn); }
+
+/* ── Burndown / progress bar ── */
+.analytics-burndown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.analytics-burndown-bar {
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+.analytics-burndown-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--ok);
+  transition: width var(--transition-base);
+}
+.analytics-burndown-fill.warn { background: var(--warn); }
+.analytics-burndown-fill.error { background: var(--error); }
+.analytics-burndown-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* ── Donut chart (SVG) ── */
+.analytics-donut-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.analytics-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analytics-donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+.analytics-donut-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ── Risk list ── */
+.analytics-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analytics-risk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--font-size-xs);
+}
+.analytics-risk-name {
+  font-weight: var(--font-weight-medium);
+}
+.analytics-risk-version {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin: 0 var(--space-2);
+}
+.analytics-risk-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.analytics-risk-tag.high { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
+.analytics-risk-tag.medium { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
+.analytics-risk-tag.low { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+
+/* ── Findings list ── */
+.analytics-findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.analytics-findings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  font-size: var(--font-size-xs);
+}
+.analytics-findings-label { color: var(--text-secondary); }
+.analytics-findings-value { font-weight: var(--font-weight-medium); }
+.analytics-findings-value.critical { color: var(--error); }
+.analytics-findings-value.high { color: var(--error); }
+.analytics-findings-value.medium { color: var(--warn); }
+.analytics-findings-value.low { color: var(--ok); }
+
+/* ── Correlation health chip ── */
+.analytics-correlation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+/* ── Local inference status ── */
+.analytics-inference-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+.analytics-inference-table th,
+.analytics-inference-table td {
+  padding: 3px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.analytics-inference-table th {
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+.analytics-status-running { color: var(--ok); }
+.analytics-status-stopped { color: var(--text-muted); }
+.analytics-status-error { color: var(--error); }

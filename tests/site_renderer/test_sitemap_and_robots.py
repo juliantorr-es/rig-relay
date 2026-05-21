@@ -67,12 +67,12 @@ def test_sitemap_and_robots_generation(clean_env, monkeypatch):
 
     assert len(locs) > 0
     for loc in locs:
-        # loc will look like ./index.html or ./frontend/index.html
-        assert loc.startswith(".")
+        loc_text = loc if isinstance(loc, str) else ""
+        assert loc_text.startswith(".")
         loc_clean = (
-            loc[2:]
-            if loc.startswith("./")
-            else (loc[1:] if loc.startswith(".") else loc)
+            loc_text[2:]
+            if loc_text.startswith("./")
+            else (loc_text[1:] if loc_text.startswith(".") else loc_text)
         )
         html_file = clean_env["output_dir"] / loc_clean
         assert html_file.is_file(), f"Sitemap references non-existent file: {loc}"

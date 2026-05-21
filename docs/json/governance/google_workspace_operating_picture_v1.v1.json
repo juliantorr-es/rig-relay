@@ -1,5 +1,6 @@
 {
   "schema_version": "rig.google_workspace.operating_picture.v1",
+  "implementation_status": "contract_only",
   "generated_at": "2026-05-21T02:44:30.046469+00:00",
   "branch": "main",
   "head": "54aafb1c8cd3af078954837fee6a7b29c2d0890c",

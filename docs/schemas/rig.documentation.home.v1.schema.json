@@ -4,12 +4,16 @@
   "title": "Rig Documentation Home Page",
   "description": "Curated homepage for the Rig Relay documentation site.",
   "type": "object",
-  "required": ["schema_version", "document_id", "title", "sections"],
+  "required": ["schema_version", "document_id", "title"],
   "properties": {
     "schema_version": {"type": "string", "const": "rig.documentation.home.v1"},
     "document_id": {"type": "string"},
     "title": {"type": "string"},
     "tagline": {"type": "string"},
+    "description": {"type": "string"},
+    "canonical_url": {"type": "string"},
+    "robots": {"type": "string", "default": "index,follow"},
+    "language": {"type": "string", "default": "en"},
     "plain_language_summary": {"type": "string"},
     "partner_friendly_explanation": {"type": "string"},
     "primary_actions": {

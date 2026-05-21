@@ -104,6 +104,16 @@ const modeDefaults = {
     telemetryBundle: 'standard',
     updateStatus: 'standard',
   },
+  analytics: {
+    governanceGateHealth: 'standard',
+    sessionHealth: 'standard',
+    toolLatency: 'standard',
+    releaseBlocker: 'standard',
+    dependencyRisk: 'standard',
+    findingsWidget: 'standard',
+    correlationIntegrity: 'compact',
+    localInference: 'standard',
+  },
 };
 
 export function getDisclosure(widgetId) {

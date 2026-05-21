@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.github.security_lifecycle_projection.v1",
   "available": true,
   "phase_status": "release_candidate",
   "queue_summary": {

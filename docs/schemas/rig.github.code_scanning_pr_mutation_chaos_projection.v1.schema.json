@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.code_scanning_pr_mutation_chaos_projection.v1.schema.json",
+  "title": "Code Scanning PR Mutation Chaos Projection v1",
+  "description": "Projection summarizing code scanning PR mutation chaos test results. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "available",
+    "scenario_count",
+    "pass_count",
+    "fail_count",
+    "invariant_count",
+    "corruption_cases",
+    "raw_payloads_exposed"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.code_scanning_pr_mutation_chaos_projection.v1" },
+    "available": { "type": "boolean" },
+    "scenario_count": { "type": "integer" },
+    "pass_count": { "type": "integer" },
+    "fail_count": { "type": "integer" },
+    "invariant_count": { "type": "integer" },
+    "corruption_cases": { "type": "integer" },
+    "raw_payloads_exposed": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

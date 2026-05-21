@@ -59,6 +59,7 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "security_lifecycle_program",
     "live_mutation_readiness",
     "carte_blanche_dashboard",
+    "site_editor",
 })
 
 
@@ -560,6 +561,12 @@ def _build_carte_blanche_dashboard() -> dict[str, Any]:
         "content_light": True,
         "raw_payloads_exposed": False,
     }
+
+
+def _build_site_editor_projection() -> dict[str, Any]:
+    from rig_relay.integrations._site_editor import build_site_editor_projection
+
+    return build_site_editor_projection()
 
 
 def _build_security_lifecycle_program() -> dict[str, Any]:
@@ -1122,50 +1129,7 @@ def build_projection(
     security_lifecycle_program = _build_security_lifecycle_program()
     live_mutation_readiness = _build_live_mutation_readiness()
     carte_blanche_dashboard = _build_carte_blanche_dashboard()
-
-    policy_evaluation: dict[str, Any] | None = None
-    try:
-        ctx = build_policy_context(
-            lifecycle_state=security_lifecycle_program,
-            permission_audit=_load_json(
-                REPO_ROOT
-                / "docs"
-                / "json"
-                / "governance"
-                / "github_live_mutation_phase3_permission_boundary_audit_v1.v1.json"
-            )
-            or {},
-            metrics={
-                "bridge_backend_health": resources.get(
-                    "bridge_backend_health", "unknown"
-                ),
-                "projection_freshness": resources.get(
-                    "projection_freshness", "unknown"
-                ),
-                "reconnect_pressure": resources.get("reconnect_pressure", "none"),
-                "event_queue_pressure": resources.get("event_queue_pressure", "none"),
-                "consumer_error_count": resources.get("consumer_error_count", 0),
-                "wal_uncommitted_count": resources.get("wal_uncommitted_count", 0),
-            },
-            spiderweb_topology=spiderweb_topology,
-        )
-        evaluation = evaluate_all_gates(ctx)
-        engine = PolicyEngine()
-        policy_evaluation = engine.summary(evaluation)
-        policy_evaluation["gates"] = [
-            {
-                "gate_id": r.gate_id,
-                "passed": r.passed,
-                "current_value": r.current_value,
-                "required_value": r.required_value,
-                "evidence": r.evidence,
-                "blocked_reason": r.blocked_reason,
-            }
-            for r in evaluation.gates
-        ]
-        live_mutation_readiness["policy_evaluation"] = policy_evaluation
-    except Exception:
-        pass
+    site_editor = _build_site_editor_projection()
 
     source_status = {
         "current_state": current_state["available"],
@@ -1227,6 +1191,7 @@ def build_projection(
         "security_lifecycle_program": security_lifecycle_program,
         "live_mutation_readiness": live_mutation_readiness,
         "carte_blanche_dashboard": carte_blanche_dashboard,
+        "site_editor": site_editor,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

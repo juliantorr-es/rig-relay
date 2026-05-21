@@ -8,9 +8,18 @@ Target package for migrating:
 
 from __future__ import annotations
 
+from rig_relay.desktop.analytics_projection import (
+    ALL_WIDGET_IDS,
+    build_analytics_projection,
+)
 from rig_relay.desktop.bridge_runtime_state import (
     BridgeRuntimeState,
     BridgeRuntimeStateTracker,
 )
 
-__all__ = ["BridgeRuntimeState", "BridgeRuntimeStateTracker"]
+__all__ = [
+    "ALL_WIDGET_IDS",
+    "BridgeRuntimeState",
+    "BridgeRuntimeStateTracker",
+    "build_analytics_projection",
+]

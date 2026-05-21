@@ -116,7 +116,17 @@ def render_homepage(manifest: dict) -> str:
     desc = _html.escape(data.get("plain_language_summary", ""))
     partner = _html.escape(data.get("partner_friendly_explanation", ""))
     canonical_url = f"{sm.base_url}/" if sm.base_url else ""
-    og_tags = make_og_tags(canonical_url, title, desc, "website")
+    og_tags = make_og_tags(
+        canonical_url,
+        title,
+        desc,
+        "website",
+        og_image=sm.og_image,
+        og_image_alt=sm.og_image_alt,
+        og_image_width=sm.og_image_width,
+        og_image_height=sm.og_image_height,
+        twitter_card=sm.twitter_card,
+    )
     head_tags = make_head_tags(sm, canonical_url, og_tags, relative_root=".")
 
     archive = data.get("archive_link", {})
@@ -134,7 +144,7 @@ def render_homepage(manifest: dict) -> str:
     )
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{sm.site_language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

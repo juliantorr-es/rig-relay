@@ -38,6 +38,8 @@ PROFILE_README_LANE = "ProfileReadmeLane"
 SPIDERWEB_TOPOLOGY = "SpiderwebTopology"
 SECURITY_LIFECYCLE = "SecurityLifecycle"
 
+SITE_EDITOR = "SiteEditor"
+
 # ── All Canonical Widgets ──────────────────────────────────────────────
 
 ALL_WIDGETS = frozenset({
@@ -179,6 +181,7 @@ PROJECTION_FIELD_TO_WIDGET: dict[str, str] = {
     "source_status": LOCAL_AUTHORITY_STATUS,
     "profile_readme_lane": PROFILE_README_LANE,
     "carte_blanche_dashboard": CARTE_BLANCHE_DASHBOARD,
+    "site_editor": SITE_EDITOR,
     "spiderweb_topology": SPIDERWEB_TOPOLOGY,
     "security_lifecycle_program": SECURITY_LIFECYCLE,
 }

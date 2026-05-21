@@ -98,12 +98,18 @@ class Checkpoint(
     def get_status_text(cls) -> str:
         return "Creating checkpoint commit"
 
+    def _get_tc(self, ctx: InvokeContext | None) -> Any | None:
+        if ctx is not None and ctx.tool_runtime is not None:
+            return getattr(ctx.tool_runtime, "telemetry_client", None)
+        return None
+
     async def run(
         self, args: CheckpointArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | CheckpointResult, None]:
         from rig_relay.coordination._models import build_checkpoint_committed_payload
         from rig_relay.core.telemetry.local import log_local_event
 
+        tc = self._get_tc(ctx)
         store = CoordinationStore(self.config.store_root)
         repo_root = Path.cwd().resolve()
         guard = get_guard()
@@ -112,6 +118,15 @@ class Checkpoint(
         porcelain_out = self._git("status", "--porcelain=v1", "-z", cwd=repo_root)
         if isinstance(porcelain_out, CheckpointResult):
             refusal_result = porcelain_out
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="checkpoint",
+                    decision="blocked",
+                    reason="git_status_failed",
+                    tool_name="checkpoint",
+                    severity="warning",
+                    mutation_intent=True,
+                )
             self._emit_checkpoint_refused(args, refusal_result)
             yield refusal_result
             return
@@ -123,6 +138,15 @@ class Checkpoint(
             args, requested, dirty_files, store, guard, repo_root
         )
         if refusal:
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="checkpoint",
+                    decision="blocked",
+                    reason=refusal.refusal_reason or "precondition_failed",
+                    tool_name="checkpoint",
+                    severity="warning",
+                    mutation_intent=True,
+                )
             self._emit_checkpoint_refused(args, refusal)
             yield refusal
             return
@@ -133,6 +157,15 @@ class Checkpoint(
 
         # 4. Stage and commit
         if refusal := self._stage_and_commit(requested, args, repo_root):
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="checkpoint",
+                    decision="blocked",
+                    reason=refusal.refusal_reason or "commit_failed",
+                    tool_name="checkpoint",
+                    severity="warning",
+                    mutation_intent=True,
+                )
             self._emit_checkpoint_refused(args, refusal)
             yield refusal
             return
@@ -158,6 +191,16 @@ class Checkpoint(
             files_committed=sorted(requested),
             artifact_sha256=artifact["artifact_sha256"],
         )
+
+        if tc is not None:
+            tc.emit_governance_gate_decision(
+                gate="checkpoint",
+                decision="allowed",
+                reason="checkpoint_committed",
+                tool_name="checkpoint",
+                severity="info",
+                mutation_intent=True,
+            )
 
         # 7. Emit checkpoint committed event
         payload = build_checkpoint_committed_payload(

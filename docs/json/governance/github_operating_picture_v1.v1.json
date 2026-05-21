@@ -707,6 +707,16 @@
       "issue_templates",
       "badges_or_status_blocks"
     ],
+    "prototype_surfaces": [
+      "github_pages_candidate",
+      "generated_static_docs",
+      "pull_request_template",
+      "dependabot_config",
+      "codeql_config"
+    ],
+    "contract_only_surfaces": [
+      "profile_readme_candidate"
+    ],
     "missing_surfaces": [
       "profile_readme_candidate",
       "github_pages_candidate",
@@ -715,6 +725,24 @@
       "dependabot_config",
       "codeql_config"
     ],
+    "surface_readiness_detail": {
+      "project_readme": "production",
+      "docs_directory": "production",
+      "release_notes_or_changelog": "production",
+      "security_policy": "production",
+      "contributing_guide": "production",
+      "code_of_conduct": "production",
+      "license": "production",
+      "github_workflows": "production",
+      "issue_templates": "production",
+      "badges_or_status_blocks": "production",
+      "profile_readme_candidate": "contract_only",
+      "github_pages_candidate": "prototype",
+      "generated_static_docs": "prototype",
+      "pull_request_template": "prototype",
+      "dependabot_config": "prototype",
+      "codeql_config": "prototype"
+    },
     "ready_for_audit": true,
     "ready_for_preview": false
   },

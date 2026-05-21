@@ -39,6 +39,10 @@
       "type": "boolean",
       "const": true
     },
+    "implementation_status": {
+      "type": "string",
+      "enum": ["contract_only", "prototype", "live"]
+    },
     "remote_mutation": {
       "type": "boolean",
       "const": false

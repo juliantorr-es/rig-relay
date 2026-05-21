@@ -5,47 +5,104 @@
   "description": "Read-side analytics architecture over structured governance, telemetry, release, and testing data. DuckDB read-side only.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "proposal_id", "generated_at"],
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "generated_at",
+    "revision",
+    "frontend_cockpit"
+  ],
   "properties": {
-    "schema_version": { "const": "rig.relay.analytics_data_lake.v1" },
-    "proposal_id": { "type": "string" },
-    "generated_at": { "type": "string", "format": "date-time" },
+    "schema_version": {
+      "const": "rig.relay.analytics_data_lake.v1"
+    },
+    "proposal_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "data_sources": {
       "type": "object",
-      "required": ["telemetry", "governance_release"],
+      "required": [
+        "telemetry",
+        "governance_release"
+      ],
       "properties": {
         "telemetry": {
           "type": "object",
           "properties": {
             "observability_jsonl": {
               "type": "object",
-              "required": ["path_pattern", "row_count_approx", "schema", "duckdb_ready"],
+              "required": [
+                "path_pattern",
+                "row_count_approx",
+                "schema",
+                "duckdb_ready"
+              ],
               "properties": {
-                "path_pattern": { "type": "string" },
-                "row_count_approx": { "type": "integer" },
-                "session_count": { "type": "integer" },
-                "schema": { "type": "string" },
-                "duckdb_ready": { "type": "boolean" }
+                "path_pattern": {
+                  "type": "string"
+                },
+                "row_count_approx": {
+                  "type": "integer"
+                },
+                "session_count": {
+                  "type": "integer"
+                },
+                "schema": {
+                  "type": "string"
+                },
+                "duckdb_ready": {
+                  "type": "boolean"
+                }
               }
             },
             "receipts_jsonl": {
               "type": "object",
-              "required": ["path_pattern", "row_count_approx", "schema", "duckdb_ready"],
+              "required": [
+                "path_pattern",
+                "row_count_approx",
+                "schema",
+                "duckdb_ready"
+              ],
               "properties": {
-                "path_pattern": { "type": "string" },
-                "row_count_approx": { "type": "integer" },
-                "schema": { "type": "string" },
-                "duckdb_ready": { "type": "boolean" }
+                "path_pattern": {
+                  "type": "string"
+                },
+                "row_count_approx": {
+                  "type": "integer"
+                },
+                "schema": {
+                  "type": "string"
+                },
+                "duckdb_ready": {
+                  "type": "boolean"
+                }
               }
             },
             "trace_events_jsonl": {
               "type": "object",
-              "required": ["path_pattern", "row_count_approx", "schema", "duckdb_ready"],
+              "required": [
+                "path_pattern",
+                "row_count_approx",
+                "schema",
+                "duckdb_ready"
+              ],
               "properties": {
-                "path_pattern": { "type": "string" },
-                "row_count_approx": { "type": "integer" },
-                "schema": { "type": "string" },
-                "duckdb_ready": { "type": "boolean" }
+                "path_pattern": {
+                  "type": "string"
+                },
+                "row_count_approx": {
+                  "type": "integer"
+                },
+                "schema": {
+                  "type": "string"
+                },
+                "duckdb_ready": {
+                  "type": "boolean"
+                }
               }
             }
           }
@@ -53,10 +110,18 @@
         "governance_release": {
           "type": "object",
           "properties": {
-            "rc_blockers_jsonl": { "type": "object" },
-            "out_of_scope_findings_jsonl": { "type": "object" },
-            "test_classifications_jsonl": { "type": "object" },
-            "dependency_audit_csv": { "type": "object" }
+            "rc_blockers_jsonl": {
+              "type": "object"
+            },
+            "out_of_scope_findings_jsonl": {
+              "type": "object"
+            },
+            "test_classifications_jsonl": {
+              "type": "object"
+            },
+            "dependency_audit_csv": {
+              "type": "object"
+            }
           }
         }
       }
@@ -64,16 +129,26 @@
     "architecture": {
       "type": "object",
       "properties": {
-        "principle": { "type": "string" },
-        "duckdb_policy": { "type": "string" },
-        "content_light_guarantee": { "type": "string" }
+        "principle": {
+          "type": "string"
+        },
+        "duckdb_policy": {
+          "type": "string"
+        },
+        "content_light_guarantee": {
+          "type": "string"
+        }
       }
     },
     "access_patterns": {
       "type": "object",
       "properties": {
-        "agent_access": { "type": "object" },
-        "analyst_access": { "type": "object" }
+        "agent_access": {
+          "type": "object"
+        },
+        "analyst_access": {
+          "type": "object"
+        }
       }
     },
     "implementation_plan": {
@@ -83,16 +158,39 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["phase", "description", "deliverables"],
+            "required": [
+              "phase",
+              "description",
+              "deliverables"
+            ],
             "properties": {
-              "phase": { "type": "string" },
-              "description": { "type": "string" },
-              "deliverables": { "type": "array", "items": { "type": "string" } },
-              "test_classification": { "type": "string" }
+              "phase": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "deliverables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "test_classification": {
+                "type": "string"
+              }
             }
           }
         }
       }
+    },
+    "revision": {
+      "type": "string",
+      "description": "Revision history string for this proposal."
+    },
+    "frontend_cockpit": {
+      "type": "object",
+      "description": "Frontend cockpit widget design spec."
     }
   }
 }

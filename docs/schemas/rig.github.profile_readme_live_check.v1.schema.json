@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.profile_readme_live_check.v1.schema.json",
+  "title": "GitHub Profile README Live Check v1",
+  "description": "Result of a live check for a GitHub profile README. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "owner",
+    "profile_repo_name",
+    "profile_repo_hash",
+    "profile_repo_exists",
+    "readme_exists",
+    "readme_sha256",
+    "readme_size_bytes",
+    "readme_line_count",
+    "live_network",
+    "dry_run",
+    "status",
+    "issues_found",
+    "evidence_paths"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.profile_readme_live_check.v1" },
+    "owner": { "type": "string" },
+    "profile_repo_name": { "type": "string" },
+    "profile_repo_hash": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "profile_repo_exists": { "type": "string" },
+    "readme_exists": { "type": "string" },
+    "readme_sha256": { "type": ["string", "null"] },
+    "readme_size_bytes": { "type": ["integer", "null"] },
+    "readme_line_count": { "type": ["integer", "null"] },
+    "live_network": { "type": "boolean" },
+    "dry_run": { "type": "boolean" },
+    "status": { "type": "string" },
+    "issues_found": { "type": "array", "items": { "type": "string" } },
+    "evidence_paths": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

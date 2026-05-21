@@ -232,6 +232,7 @@ function _renderPanelColumn() {
                 'spiderwebTopology',
                 'securityLifecycle',
                 'carteBlancheDashboard',
+                'siteEditor',
                 'validationSummary', 'releaseGate', 'storageBudget', 'intentResult',
                'providerHealth', 'council', 'providerDock',
                'workspaceStatus', 'fleetStatus',
@@ -244,6 +245,9 @@ function _renderPanelColumn() {
     technical: ['progressTimeline', 'receiptTimeline', 'projectionSources',
                 'storageDiagnostics', 'telemetryBundle', 'updateStatus',
                 'bridgeProtocol'],
+    analytics: ['governanceGateHealth', 'sessionHealth', 'toolLatency',
+                'releaseBlocker', 'dependencyRisk', 'findingsWidget',
+                'correlationIntegrity', 'localInference'],
   };
 
   const widgets = assignments[mode] || [];

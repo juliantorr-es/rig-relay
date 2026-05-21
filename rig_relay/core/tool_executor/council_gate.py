@@ -150,7 +150,18 @@ class CouncilGate:
                 providers=configured_providers,
                 redaction="standard",
             )
-            return determine_council_recommendation(receipt)
+            recommendation = determine_council_recommendation(receipt)
+            if tc is not None:
+                tc.emit_governance_gate_decision(
+                    gate="council",
+                    decision="allowed" if recommendation == "ALLOW" else "review",
+                    reason=f"council_consultation_complete_{recommendation.lower()}",
+                    tool_name=tool_name,
+                    mutation_intent=True,
+                    severity="info",
+                    turn_id=turn_id or "",
+                )
+            return recommendation
         except Exception as exc:
             from rig_relay.core.logger import logger
 

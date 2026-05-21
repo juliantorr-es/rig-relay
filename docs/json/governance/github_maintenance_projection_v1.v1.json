@@ -1,4 +1,5 @@
 {
+  "schema_version": "rig.github.maintenance_projection.v1",
   "available": true,
   "last_run": "2026-05-21T02:46:07.663523+00:00",
   "tasks_run": 5,

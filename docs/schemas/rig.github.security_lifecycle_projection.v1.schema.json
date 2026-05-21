@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.security_lifecycle_projection.v1.schema.json",
+  "title": "GitHub Security Lifecycle Projection v1",
+  "description": "Projection summarizing the state of the GitHub security lifecycle pipeline. Content-light; never exposes raw tokens, secrets, or vulnerable code.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "available",
+    "phase_status",
+    "queue_summary",
+    "selected_alert_summary",
+    "current_stage",
+    "next_safe_action",
+    "mutation_status",
+    "approval_status",
+    "pr_lifecycle_state",
+    "alert_lifecycle_state",
+    "blocked_reasons",
+    "permission_summary",
+    "evidence_artifacts",
+    "redaction_status",
+    "raw_payloads_exposed"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.github.security_lifecycle_projection.v1" },
+    "available": { "type": "boolean" },
+    "phase_status": { "type": "string" },
+    "queue_summary": {
+      "type": "object",
+      "required": ["total_items", "blocked_items"],
+      "properties": {
+        "total_items": { "type": "integer" },
+        "blocked_items": { "type": "integer" }
+      }
+    },
+    "selected_alert_summary": {
+      "type": "object",
+      "required": ["alert_number", "severity", "surface"],
+      "properties": {
+        "alert_number": { "type": "integer" },
+        "severity": { "type": "string" },
+        "surface": { "type": "string" }
+      }
+    },
+    "current_stage": { "type": "string" },
+    "next_safe_action": { "type": "string" },
+    "mutation_status": { "type": "string" },
+    "approval_status": { "type": "string" },
+    "pr_lifecycle_state": { "type": "string" },
+    "alert_lifecycle_state": { "type": "string" },
+    "blocked_reasons": { "type": "array", "items": { "type": "string" } },
+    "permission_summary": {
+      "type": "object",
+      "required": ["read", "mutation", "mutation_used"],
+      "properties": {
+        "read": { "type": "array", "items": { "type": "string" } },
+        "mutation": { "type": "array", "items": { "type": "string" } },
+        "mutation_used": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence_artifacts": { "type": "integer" },
+    "redaction_status": {
+      "type": "object",
+      "required": ["content_light"],
+      "properties": {
+        "content_light": { "type": "boolean" }
+      }
+    },
+    "raw_payloads_exposed": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

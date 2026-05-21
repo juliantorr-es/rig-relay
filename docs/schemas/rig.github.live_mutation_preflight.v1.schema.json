@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.github.live_mutation_preflight.v1.schema.json",
+  "title": "GitHub Live Mutation Preflight v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "preflight_id",
+    "operation_kind",
+    "content_light",
+    "live_mutation_attempted"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.github.live_mutation_preflight.v1"
+    },
+    "preflight_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "content_light": {
+      "type": "boolean"
+    },
+    "operation_kind": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "live_api_attempted": {
+      "type": "boolean"
+    },
+    "live_mutation_attempted": {
+      "type": "boolean"
+    },
+    "remote_mutation_attempted": {
+      "type": "boolean"
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "gates_passed": {
+      "type": "boolean"
+    },
+    "probes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "permission_summary": {
+      "type": "object"
+    },
+    "rate_limit_summary": {
+      "type": "object"
+    },
+    "artifact_chain_summary": {
+      "type": "object"
+    },
+    "idempotency_summary": {
+      "type": "string"
+    },
+    "blocked_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_safe_action": {
+      "type": "string"
+    },
+    "redaction_summary": {
+      "type": "object"
+    },
+    "recommended_next_slice": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

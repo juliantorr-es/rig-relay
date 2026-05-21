@@ -7,5 +7,6 @@
   "required_permissions": [
     "contents:write"
   ],
-  "idempotency_key": "bcebfb4dc7c49c3062a3f2960f6ef2643c8a68d2d4431a9001a38000623e4152"
+  "idempotency_key": "19d6ac4f1b25f157b92c2d44d89a12e23c1d703089674d7c4535fa374408f502",
+  "schema_version": "rig.github.live_pr_mutation_rollback_plan.v1"
 }

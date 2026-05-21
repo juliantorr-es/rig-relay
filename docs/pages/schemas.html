@@ -16,6 +16,7 @@
 <meta property="og:image" content="/rig-relay/assets/og/rig-relay-card.svg">
 <meta name="twitter:image" content="/rig-relay/assets/og/rig-relay-card.svg">
 <meta name="theme-color" content="#1e3a5f">
+<meta name="robots" content="index,follow">
 <meta name="base-path" content="/rig-relay">
 <meta name="relative-root" content="..">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
@@ -97,7 +98,7 @@
   <td><code>docs/schemas/rig.release_gate.validation_run.v1.schema.json</code></td>
   <td><code>rig.release_gate.validation_run</code></td>
   <td>Validation Run</td>
-</tr></tbody></table></section><section><h3>Rig Relay Core (156)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
+</tr></tbody></table></section><section><h3>Rig Relay Core (157)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
   <td><code>docs/schemas/rig.relay.a2a.agent_card.v1.schema.json</code></td>
   <td><code>rig.relay.a2a.agent_card</code></td>
   <td>Agent Card</td>
@@ -151,6 +152,11 @@
   <td><code>docs/schemas/rig.relay.analytics_data_lake.v1.schema.json</code></td>
   <td><code>rig.relay.analytics_data_lake</code></td>
   <td>Analytics Data Lake</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.relay.analytics_projection.v1.schema.json</code></td>
+  <td><code>rig.relay.analytics_projection</code></td>
+  <td>Analytics Projection</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.relay.artifact.envelope.v1.schema.json</code></td>
@@ -1004,7 +1010,7 @@
   <td><code>docs/schemas/rig.audit.release_candidate_coherence.v1.schema.json</code></td>
   <td><code>rig.audit.release_candidate_coherence</code></td>
   <td>Release Candidate Coherence</td>
-</tr></tbody></table></section><section><h3>Other (195)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
+</tr></tbody></table></section><section><h3>Other (207)</h3><table><thead><tr><th>Schema Path</th><th>Schema ID</th><th>Description</th></tr></thead><tbody><tr>
   <td><code>docs/schemas/rig.architecture.decision_record.v1.schema.json</code></td>
   <td><code>rig.architecture.decision_record</code></td>
   <td>Decision Record</td>
@@ -1335,6 +1341,11 @@
   <td>Code Scanning Pr Creation Plan</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_chaos_projection.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_mutation_chaos_projection</code></td>
+  <td>Code Scanning Pr Mutation Chaos Projection</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_execution.v1.schema.json</code></td>
   <td><code>rig.github.code_scanning_pr_mutation_execution</code></td>
   <td>Code Scanning Pr Mutation Execution</td>
@@ -1348,6 +1359,11 @@
   <td><code>docs/schemas/rig.github.code_scanning_pr_mutation_simulation.v1.schema.json</code></td>
   <td><code>rig.github.code_scanning_pr_mutation_simulation</code></td>
   <td>Code Scanning Pr Mutation Simulation</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.code_scanning_pr_transaction_projection.v1.schema.json</code></td>
+  <td><code>rig.github.code_scanning_pr_transaction_projection</code></td>
+  <td>Code Scanning Pr Transaction Projection</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.github.code_scanning_source_context.v1.schema.json</code></td>
@@ -1375,9 +1391,29 @@
   <td>Live Mutation Operator Evidence Map</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.github.live_mutation_phase3_projection.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_phase3_projection</code></td>
+  <td>Live Mutation Phase3 Projection</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_mutation_preflight.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_preflight</code></td>
+  <td>Live Mutation Preflight</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_mutation_rate_limit_snapshot.v1.schema.json</code></td>
+  <td><code>rig.github.live_mutation_rate_limit_snapshot</code></td>
+  <td>Live Mutation Rate Limit Snapshot</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.github.live_mutation_runbook.v1.schema.json</code></td>
   <td><code>rig.github.live_mutation_runbook</code></td>
   <td>Live Mutation Runbook</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.live_pr_mutation_rollback_plan.v1.schema.json</code></td>
+  <td><code>rig.github.live_pr_mutation_rollback_plan</code></td>
+  <td>Live Pr Mutation Rollback Plan</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.github.live_pr_rehearsal_operator_checklist.v1.schema.json</code></td>
@@ -1385,9 +1421,34 @@
   <td>Live Pr Rehearsal Operator Checklist</td>
 </tr>
 <tr>
+  <td><code>docs/schemas/rig.github.maintenance_claims_refresh.v1.schema.json</code></td>
+  <td><code>rig.github.maintenance_claims_refresh</code></td>
+  <td>Maintenance Claims Refresh</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.maintenance_profile_readme_refresh.v1.schema.json</code></td>
+  <td><code>rig.github.maintenance_profile_readme_refresh</code></td>
+  <td>Maintenance Profile Readme Refresh</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.maintenance_projection.v1.schema.json</code></td>
+  <td><code>rig.github.maintenance_projection</code></td>
+  <td>Maintenance Projection</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.maintenance_report.v1.schema.json</code></td>
+  <td><code>rig.github.maintenance_report</code></td>
+  <td>Maintenance Report</td>
+</tr>
+<tr>
   <td><code>docs/schemas/rig.github.operating_picture.v1.schema.json</code></td>
   <td><code>rig.github.operating_picture</code></td>
   <td>Operating Picture</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.profile_readme_live_check.v1.schema.json</code></td>
+  <td><code>rig.github.profile_readme_live_check</code></td>
+  <td>Profile Readme Live Check</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.github.profile_readme_permission_audit.v1.schema.json</code></td>
@@ -1443,6 +1504,11 @@
   <td><code>docs/schemas/rig.github.security_lifecycle_program_inventory.v1.schema.json</code></td>
   <td><code>rig.github.security_lifecycle_program_inventory</code></td>
   <td>Security Lifecycle Program Inventory</td>
+</tr>
+<tr>
+  <td><code>docs/schemas/rig.github.security_lifecycle_projection.v1.schema.json</code></td>
+  <td><code>rig.github.security_lifecycle_projection</code></td>
+  <td>Security Lifecycle Projection</td>
 </tr>
 <tr>
   <td><code>docs/schemas/rig.github.security_lifecycle_replay.v1.schema.json</code></td>

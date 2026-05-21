@@ -158,6 +158,21 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
             "providers": {"type": "array", "items": {"type": "string"}, "default": []},
         },
     },
+    "site_editor_save": {
+        "description": "Save site editor form data, validate against schema, atomically write JSON, trigger re-render.",
+        "affects_projection": True,
+        "parameters": {
+            "page_data": {"type": "object", "default": {}},
+            "artifact_path": {
+                "type": "string",
+                "default": "docs/json/site_home.v1.json",
+            },
+            "schema_path": {
+                "type": "string",
+                "default": "docs/schemas/rig.documentation.home.v1.schema.json",
+            },
+        },
+    },
     "run_validation_suite": {
         "description": "Run the validation suite: ruff check, format check, pyright, schema validation, storage audit, desktop cockpit dry run.",
         "affects_projection": False,
@@ -1003,11 +1018,10 @@ def _execute_allowed_intent(
         # ── Fleet / Workspace Handlers ──
         "fleet_queue_snapshot": lambda: _execute_fleet_queue_snapshot(intent_id),
         "workspace_init": lambda: _execute_workspace_init(
-            intent_id, workspace_id=str(params.get("workspace_id", ""))
+            intent_id, params.get("workspace_id", "")
         ),
-        # ── Fleet Orchestrator ──
-        "council_consult": _execute_council_consult(intent_id, params),
-        "fleet_orchestrate": lambda: _execute_fleet_orchestrate(intent_id),
+        "council_consult": lambda: _execute_council_consult(intent_id, params),
+        "site_editor_save": lambda: _execute_site_editor_save(intent_id, params),
     }
     handler = handlers.get(intent_name)
     if handler is None:
@@ -3004,3 +3018,102 @@ def _execute_fleet_orchestrate(intent_id: str) -> dict[str, Any]:
             error_code="execution_error",
             summary=f"Fleet orchestration failed: {e}",
         )
+
+
+def _execute_site_editor_save(intent_id: str, params: dict) -> dict[str, Any]:
+    """Execute site editor save: validate, write, re-render. Gated by RIG_RELAY_ALLOW_SITE_EDITS=1."""
+    import os
+    import json as json_mod
+    import subprocess
+    import tempfile
+
+    page_data = params.get("page_data", {})
+    artifact_rel = params.get("artifact_path", "docs/json/site_home.v1.json")
+    schema_rel = params.get(
+        "schema_path", "docs/schemas/rig.documentation.home.v1.schema.json"
+    )
+    artifact_path = REPO_ROOT / artifact_rel
+    schema_path = REPO_ROOT / schema_rel
+
+    # Safety gate
+    if os.environ.get("RIG_RELAY_ALLOW_SITE_EDITS", "0") != "1":
+        return _build_result(
+            intent_name="site_editor_save",
+            intent_id=intent_id,
+            status="refused",
+            error_code="authorization_required",
+            summary="Site editing is disabled. Set RIG_RELAY_ALLOW_SITE_EDITS=1 to enable.",
+        )
+
+    # Validate against schema
+    if schema_path.exists():
+        try:
+            schema = json_mod.loads(schema_path.read_text(encoding="utf-8"))
+            jsonschema.validate(instance=page_data, schema=schema)
+        except jsonschema.ValidationError as e:
+            return _build_result(
+                intent_name="site_editor_save",
+                intent_id=intent_id,
+                status="failed",
+                error_code="schema_validation_failed",
+                summary=f"Page data failed schema validation: {e.message}",
+            )
+
+    # Atomic write via temp file + rename
+    try:
+        fd, tmp_path_str = tempfile.mkstemp(suffix=".json", dir=artifact_path.parent)
+        tmp_path = Path(tmp_path_str)
+        existing = (
+            json_mod.loads(artifact_path.read_text(encoding="utf-8"))
+            if artifact_path.exists()
+            else {}
+        )
+        for k in ("schema_version", "document_id", "provenance"):
+            if k in existing and k not in page_data:
+                page_data[k] = existing[k]
+        tmp_path.write_text(
+            json_mod.dumps(page_data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        tmp_path.rename(artifact_path)
+    except Exception as e:
+        return _build_result(
+            intent_name="site_editor_save",
+            intent_id=intent_id,
+            status="failed",
+            error_code="atomic_write_failed",
+            summary=f"Failed to write page data: {e}",
+        )
+
+    # Trigger render with minimal safe environment
+    safe_env = {"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", "")}
+    try:
+        result = subprocess.run(
+            ["uv", "run", "python", "scripts/render_static_docs.py"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env=safe_env,
+        )
+        render_ok = result.returncode == 0
+        stdout_tail = result.stdout[-500:] if result.stdout else ""
+        stderr_tail = result.stderr[-200:] if result.stderr else ""
+    except Exception as e:
+        return _build_result(
+            intent_name="site_editor_save",
+            intent_id=intent_id,
+            status="completed",
+            summary=f"Saved but render failed: {e}",
+            render_succeeded=False,
+        )
+
+    return _build_result(
+        intent_name="site_editor_save",
+        intent_id=intent_id,
+        status="completed" if render_ok else "completed_with_errors",
+        summary=f"Saved {len(page_data)} fields. Render {'succeeded' if render_ok else 'completed with errors'}.",
+        render_succeeded=render_ok,
+        render_stdout=stdout_tail,
+        render_stderr=stderr_tail,
+    )

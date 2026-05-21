@@ -257,3 +257,31 @@ def normalize_report_record(record: dict[str, Any]) -> dict[str, Any]:
         "evidence_json": json.dumps(evidence, sort_keys=True),
         "affected_paths_json": json.dumps(affected_paths, sort_keys=True),
     }
+
+
+# ── Analytics Data Lake exports ─────────────────────────────────
+# Re-export from engine/views/correlation for public API.
+
+from rig_relay.analytics.engine import (
+    AnalyticsEngine,
+    build_projection,
+    compute_view,
+    correlation_check,
+    ingest_all_sources,
+)
+
+__all__ = [
+    "AnalyticsEngine",
+    "LedgerLoadResult",
+    "build_projection",
+    "build_projection_metadata",
+    "compute_view",
+    "connect_in_memory",
+    "correlation_check",
+    "create_reports_table",
+    "ingest_all_sources",
+    "load_jsonl",
+    "normalize_report_record",
+    "rows_to_dicts",
+    "write_projection",
+]

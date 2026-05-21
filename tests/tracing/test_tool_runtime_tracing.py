@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import AsyncGenerator
+from typing import Any, cast
 
 import pytest
 
@@ -10,7 +11,7 @@ from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import InMemoryTraceStore
 
 
-async def _fake_invoke(args_dict: dict[str, Any]) -> Any:
+async def _fake_invoke(args_dict: dict[str, Any]) -> AsyncGenerator[Any, None]:
     from pydantic import BaseModel
 
     class _FakeResult(BaseModel):
@@ -53,9 +54,9 @@ async def test_completed_execution_emits_trace_span():
     span_end = [e for e in store.events if e["event_kind"] == "span.end"]
     assert len(span_start) >= 1
     assert len(span_end) >= 1
-    assert span_start[0]["name"] == "tool_runtime.execute_one"
-    assert span_start[0]["attributes"]["tool.name"] == "test_tool"
-    assert span_end[0]["status"] == "ok"
+    assert cast(dict, span_start[0])["event_type"] == "tool_runtime.execute_one"
+    assert cast(dict, cast(dict, span_start[0])["payload"])["tool.name"] == "test_tool"
+    assert cast(dict, span_end[0])["status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -83,8 +84,10 @@ async def test_refused_execution_emits_trace_span():
     span_start = [e for e in store.events if e["event_kind"] == "span.start"]
     [e for e in store.events if e["event_kind"] == "span.end"]
     assert len(span_start) >= 1
-    assert span_start[0]["name"] == "tool_runtime.execute_one"
-    assert span_start[0]["attributes"]["tool.name"] == "refused_tool"
+    assert cast(dict, span_start[0])["event_type"] == "tool_runtime.execute_one"
+    assert (
+        cast(dict, cast(dict, span_start[0])["payload"])["tool.name"] == "refused_tool"
+    )
 
 
 @pytest.mark.asyncio
@@ -125,9 +128,11 @@ async def test_cached_result_emits_hit_event():
     )
     assert result.status == ToolRuntimeStatus.CACHED
 
-    cache_events = [e for e in store.events if e["name"] == "tool_runtime.cache_check"]
+    cache_events = [
+        e for e in store.events if e["event_type"] == "tool_runtime.cache_check"
+    ]
     assert len(cache_events) >= 1
-    assert cache_events[0]["attributes"]["cache.hit"] is True
+    assert cast(dict, cast(dict, cache_events[0])["payload"])["cache.hit"] is True
 
 
 @pytest.mark.asyncio
@@ -151,7 +156,7 @@ async def test_tool_args_are_not_in_trace():
         )
     )
     for event in store.events:
-        attrs = event.get("attributes", {})
+        attrs = cast(dict, cast(dict, event).get("payload", {}))
         for key in attrs:
             val = str(attrs[key])
             assert "sk-secret" not in val

@@ -1,7 +1,7 @@
 {
   "schema_version": "rig.github.live_mutation_preflight.v1",
-  "preflight_id": "bbd7259879416dfb18379dbe1e5812014ca470cacc36123b1e4f8e9b318c8db8",
-  "generated_at": "2026-05-20T21:02:41.398045+00:00",
+  "preflight_id": "384205fda9bd62a600ff988721bc759a020d7a42aedcaa5766d3031580e7e699",
+  "generated_at": "2026-05-21T04:22:09.383409+00:00",
   "content_light": true,
   "operation_kind": "live_mutation_preflight",
   "status": "ready_for_live_mutation_review",
