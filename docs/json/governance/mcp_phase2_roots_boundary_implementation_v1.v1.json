@@ -1,0 +1,78 @@
+{
+  "schema_version": "rig.relay.mcp_phase2_roots_boundary_implementation.v1",
+  "document_id": "mcp-phase2-roots-boundary-implementation-v1",
+  "title": "MCP Phase 2 Roots Workspace Boundary Enforcement v1 — Rig Relay",
+  "generated_at": "2026-05-21T09:15:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_phase1_artifact": "docs/json/governance/mcp_phase1_descriptor_integrity_implementation_v1.v1.json",
+  "files_changed": [
+    "rig_relay/protocols/mcp/server.py (added workspace_root init param, _resolve_workspace_path, _assert_within_root; replaced all Path.cwd() usages with self._workspace_root in 5 filesystem-facing tools)",
+    "rig_relay/protocols/mcp/models.py (added RefusalCode.ROOT_SCOPE_VIOLATION)",
+    "tests/protocols/mcp/test_mcp_roots_boundary_v1.py (new — 17 tests)"
+  ],
+  "workspace_root_model": {
+    "init_param": "workspace_root: Path | None = None",
+    "default": "Path.cwd().resolve()",
+    "storage": "self._workspace_root: Path (resolved, absolute)",
+    "immutable_after_init": true
+  },
+  "path_helpers": {
+    "_resolve_workspace_path": {
+      "accepts": "user-supplied relative path string",
+      "rejects": "path traversal (../), unresolved paths, paths outside root",
+      "returns": "tuple[Path | None, dict | None] — (resolved_path, None) on success, (None, refusal_envelope) on violation",
+      "normalize": "Path.resolve() expands symlinks and normalizes",
+      "boundary_check": "Path.relative_to(self._workspace_root)"
+    },
+    "_assert_within_root": {
+      "accepts": "already-resolved Path",
+      "returns": "None if safe, refusal envelope if outside root"
+    }
+  },
+  "tools_covered": [
+    {"tool": "rig.list_worktrees", "filesystem_op": "WorktreeManager(workspace_root)", "boundary": "_assert_within_root before construction"},
+    {"tool": "rig.run_readonly_doctor", "filesystem_op": "git rev-parse --git-dir", "boundary": "_assert_within_root before subprocess"},
+    {"tool": "rig.summarize_dirty_state", "filesystem_op": "git status --porcelain", "boundary": "_assert_within_root before subprocess"},
+    {"tool": "rig.check_merge_friendly", "filesystem_op": "git status --porcelain", "boundary": "_assert_within_root before subprocess"},
+    {"tool": "rig.audit_dirty_state", "filesystem_op": "delegates to _summarize_dirty_state", "boundary": "covered via delegation"}
+  ],
+  "refusal_codes_added": ["root_scope_violation"],
+  "structured_refusal_behavior": {
+    "path_traversal": "Refused with root_scope_violation. No raw path leakage beyond the user-supplied relative input.",
+    "symlink_escape": "Refused at resolve() time — resolved path fails relative_to check.",
+    "absolute_path_outside": "Refused at resolve() time.",
+    "content_light": "All refusals include content_light: true."
+  },
+  "tests": {
+    "new": 17,
+    "passed": 17,
+    "failed": 0,
+    "phase1_regression_passed": 13,
+    "total_passed": 30,
+    "suites": {
+      "TestWorkspacePathResolution": {"count": 8, "classification": "contract, adversarial"},
+      "TestFilesystemToolsUseBoundary": {"count": 5, "classification": "integration, real-artifact"},
+      "TestSymlinkTraversalRefusal": {"count": 1, "classification": "adversarial, sabotage"},
+      "TestStructuredRefusalEnvelope": {"count": 1, "classification": "contract"},
+      "TestDescriptorIntegrityRegression": {"count": 2, "classification": "contract"}
+    }
+  },
+  "validations": {
+    "pyright": "0 errors, 0 warnings",
+    "schema_validation": "all schemas valid",
+    "phase1_regression": "13/13 passed"
+  },
+  "remaining_mcp_phase_seams": {
+    "phase_3_content_light": "No output content-light scanning. File path hashes are used in dirty_state outputs but raw paths may still appear.",
+    "phase_4_evidence_envelopes": "No common envelope wrapping. Responses lack session_id, request_id, surface, trace_id, etc.",
+    "phase_5_auth": "MCPPerUserAuthorization model exists but not enforced. No per-session token required.",
+    "pre_existing_seam": "Sync handler lacks tools/call dispatch."
+  },
+  "dependency_changes": "None",
+  "mcp_security_implications": {
+    "before": "Filesystem-facing MCP tools used Path.cwd() directly with no boundary enforcement. A client providing crafted path arguments could read outside the workspace.",
+    "after": "All 5 filesystem-facing tools check workspace root boundary before any filesystem access. Path traversal, symlink escape, and absolute-path escapes are refused with structured root_scope_violation refusals. Descriptor integrity verification runs before boundary checks."
+  },
+  "content_light": true
+}

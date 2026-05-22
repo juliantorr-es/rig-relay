@@ -1,0 +1,226 @@
+{
+  "schema_version": "rig.relay.mcp_read_only_hardening_test_plan.v1",
+  "test_plan_id": "mcp-read-only-hardening-test-plan-v1",
+  "title": "MCP Read-Only Hardening Test Plan v1 — Rig Relay",
+  "generated_at": "2026-05-21T08:30:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "principle": "Every MCP test must produce a verifiable evidence artifact (structured refusal or receipt). No test should rely on observing raw stdout. Every adversarial test must include a specific bypass attempt and verify the hardened path rejects it.",
+  "test_suites": [
+    {
+      "suite_id": "MCP-TEST-01",
+      "theme": "Descriptor Integrity",
+      "tests": [
+        {
+          "test_name": "test_mcp_descriptor_hash_mismatch_refuses_request",
+          "classification": ["contract", "adversarial"],
+          "description": "Register tool with hash H1. Modify descriptor in-memory (description changed). Call tool. Verify refusal envelope with refusal_code='descriptor_integrity_failure', refusing_hash != registered_hash.",
+          "bypass_attempt": "Modify only description field — should still be detected by provenance hash.",
+          "evidence": "refusal envelope (rig.relay.mcp.refusal.v1)"
+        },
+        {
+          "test_name": "test_mcp_descriptor_rug_pull_detected_between_startup_and_call",
+          "classification": ["adversarial", "sabotage"],
+          "description": "Start server with tool T at tier 0 with readOnlyHint=true. After startup, modify T to tier 4 with readOnlyHint=false. Call T. Verify: (a) hash mismatch detected, (b) classify_tool_descriptor_suspicious flags read_only_claim_for_destructive, (c) refusal envelope returned.",
+          "bypass_attempt": "Change tier from 0 to 4 without updating provenance hash — classic rug pull.",
+          "evidence": "refusal envelope + telemetry event"
+        },
+        {
+          "test_name": "test_mcp_descriptor_tool_poisoning_blocked",
+          "classification": ["adversarial"],
+          "description": "Craft a malicious descriptor with oversized description (10KB) and foreign capability claim (not rig.*). Verify classify_tool_descriptor_suspicious returns categories. Verify tool excluded from tools/list response.",
+          "bypass_attempt": "Oversized description to overwhelm parser + foreign capability to redirect execution.",
+          "evidence": "tools/list response (tool excluded) + telemetry event"
+        },
+        {
+          "test_name": "test_mcp_descriptor_shadowing_blocked",
+          "classification": ["adversarial", "sabotage"],
+          "description": "Craft descriptor with destructiveHint=true AND readOnlyHint=true. Verify classify flags dual_hint_shadowing. Verify tool refused at dispatch.",
+          "bypass_attempt": "Dual-hint shadowing to confuse tier-based authorization.",
+          "evidence": "refusal envelope"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-02",
+      "theme": "Roots Workspace Boundary",
+      "tests": [
+        {
+          "test_name": "test_mcp_roots_boundary_blocks_out_of_workspace_access",
+          "classification": ["contract", "adversarial"],
+          "description": "Set workspace_root=/tmp/rig-test-workspace. Call rig.list_worktrees with path traversing outside workspace (../etc/passwd). Verify refusal envelope with refusal_code='workspace_boundary_violation'.",
+          "bypass_attempt": "Path traversal via ../ to escape workspace root.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_roots_boundary_blocks_symlink_escape",
+          "classification": ["adversarial"],
+          "description": "Create symlink in workspace pointing outside. Call tool accessing symlink. Verify refusal envelope.",
+          "bypass_attempt": "Symlink traversal to bypass workspace root check.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_roots_boundary_allows_workspace_relative_paths",
+          "classification": ["contract"],
+          "description": "Call rig.summarize_dirty_state within workspace boundary. Verify tool executes and returns result (not refused).",
+          "bypass_attempt": "None — positive test.",
+          "evidence": "evidence envelope (success)"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-03",
+      "theme": "Content-Light Scanning",
+      "tests": [
+        {
+          "test_name": "test_mcp_content_light_scan_blocks_secret_in_response",
+          "classification": ["contract", "adversarial"],
+          "description": "Craft a tool that returns response containing 'sk-abc123def456' (OpenAI-style key). Verify content-light scanner detects and refuses with refusal_code='content_light_violation'.",
+          "bypass_attempt": "Embed API key pattern in tool output.",
+          "evidence": "refusal envelope with content_light_classification='secret_bearing'"
+        },
+        {
+          "test_name": "test_mcp_content_light_scan_blocks_absolute_path",
+          "classification": ["contract", "adversarial"],
+          "description": "Craft a tool that returns response containing '/Users/username/project/file.py'. Verify absolute home path detected and refused.",
+          "bypass_attempt": "Embed absolute filesystem path in tool output.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_content_light_scan_allows_public_safe_output",
+          "classification": ["contract"],
+          "description": "Call rig.inspect_schema. Verify response includes content_light_classification='public_safe' and is not refused.",
+          "bypass_attempt": "None — positive test.",
+          "evidence": "evidence envelope with content_light_classification"
+        },
+        {
+          "test_name": "test_mcp_content_light_scan_blocks_raw_file_content",
+          "classification": ["adversarial"],
+          "description": "Craft a tool that returns raw source code as output. Verify content-light scanner classifies as 'forbidden_raw' and refuses.",
+          "bypass_attempt": "Embed raw source code in tool output.",
+          "evidence": "refusal envelope"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-04",
+      "theme": "Evidence Envelope Completeness",
+      "tests": [
+        {
+          "test_name": "test_mcp_tool_response_includes_common_envelope_fields",
+          "classification": ["contract"],
+          "description": "Call any tier 0 tool. Verify response includes envelope with: request_id, session_id, surface='mcp', authority_tier, capability_id, input_hash, output_hash, payload_schema, content_light_classification, trace_id, timestamp, producer. Verify all 15 fields present.",
+          "evidence": "evidence envelope validating against schema"
+        },
+        {
+          "test_name": "test_mcp_read_only_resource_returns_common_envelope",
+          "classification": ["contract"],
+          "description": "Call resources/list then read a resource. Verify resource response wrapped in evidence envelope.",
+          "evidence": "evidence envelope"
+        },
+        {
+          "test_name": "test_mcp_evidence_envelope_schema_valid",
+          "classification": ["contract"],
+          "description": "Validate every generated evidence envelope against rig.relay.mcp.evidence_envelope.v1 schema.",
+          "evidence": "schema validation pass"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-05",
+      "theme": "Mutation Gate Enforcement",
+      "tests": [
+        {
+          "test_name": "test_mcp_mutation_tool_absent_from_read_only_manifest",
+          "classification": ["contract"],
+          "description": "Call tools/list. Verify tier 4-5 tools (rig.request_user_approval, rig.promote_to_preproduction) are NOT present in the returned tool list.",
+          "evidence": "tools/list response with tier count"
+        },
+        {
+          "test_name": "test_mcp_mutation_tool_call_refused_even_with_advisory_string",
+          "classification": ["adversarial", "sabotage"],
+          "description": "Call rig.request_user_approval with authorization_receipt='any-string-should-not-pass'. Verify call_tool() returns refusal even with advisory string present. The advisory gate must become a cryptographic gate.",
+          "bypass_attempt": "Supply arbitrary string as authorization_receipt to bypass mutation gate.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_tier_5_tool_call_refused_permanently",
+          "classification": ["contract", "adversarial"],
+          "description": "Call rig.promote_to_preproduction with any arguments. Verify always returns refusal (forbidden_permanently).",
+          "evidence": "refusal envelope"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-06",
+      "theme": "Auth/Authz (Read-Only Local)",
+      "tests": [
+        {
+          "test_name": "test_mcp_unauthorized_request_refused",
+          "classification": ["contract", "adversarial"],
+          "description": "Call tools/call without session_token in params. Verify refusal envelope with refusal_code='unauthorized'.",
+          "bypass_attempt": "Try to call tool without auth token.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_wrong_session_token_refused",
+          "classification": ["adversarial"],
+          "description": "Call tools/call with session_token that does not match server-generated token. Verify refusal.",
+          "bypass_attempt": "Supply incorrect session token.",
+          "evidence": "refusal envelope"
+        },
+        {
+          "test_name": "test_mcp_insufficient_scopes_refused",
+          "classification": ["contract"],
+          "description": "Attempt to call tier 3 tool with user having only rig:read scope. Verify refusal.",
+          "bypass_attempt": "Call tool requiring elevated scope with insufficient authorization.",
+          "evidence": "refusal envelope"
+        }
+      ]
+    },
+    {
+      "suite_id": "MCP-TEST-07",
+      "theme": "Transport and Protocol Safety",
+      "tests": [
+        {
+          "test_name": "test_mcp_malformed_json_rpc_produces_schema_valid_error",
+          "classification": ["contract", "adversarial"],
+          "description": "Send malformed JSON-RPC (missing jsonrpc version, wrong method, non-dict payload). Verify each produces properly structured error envelope with code and message.",
+          "bypass_attempt": "Send invalid JSON-RPC to test parser robustness.",
+          "evidence": "error envelope"
+        },
+        {
+          "test_name": "test_mcp_request_body_exceeds_budget_refused",
+          "classification": ["contract"],
+          "description": "Send request exceeding request budget. Verify rate-limited error response.",
+          "bypass_attempt": "Send oversized request.",
+          "evidence": "error envelope with budget_exceeded code"
+        },
+        {
+          "test_name": "test_mcp_sync_handler_missing_tools_call_returns_error",
+          "classification": ["contract"],
+          "description": "Call process_jsonrpc_sync with method='tools/call'. Verify returns method-not-found error (code -32601) since sync handler lacks tools/call.",
+          "evidence": "error envelope"
+        }
+      ]
+    }
+  ],
+  "classification_counts": {
+    "contract": 16,
+    "adversarial": 11,
+    "sabotage": 4,
+    "unit": 0,
+    "integration": 0,
+    "real_artifact": 0,
+    "concurrency": 0,
+    "substrate": 0
+  },
+  "test_execution_order": "MCP-TEST-01 (descriptor integrity) must run and pass before any other suite. Without descriptor integrity, all other tests can be bypassed. MCP-TEST-07 (transport safety) can run in parallel with suites 1-6.",
+  "pre_existing_tests": [
+    "tests/protocols/mcp/test_mcp_auth_metadata_v1.py",
+    "tests/protocols/mcp/test_mcp_budgets_v1.py",
+    "tests/protocols/mcp/test_mcp_runtime_refusals_v1.py",
+    "tests/protocols/mcp/test_mcp_security_v1.py"
+  ],
+  "total_proposed_new_tests": 20,
+  "content_light": true
+}

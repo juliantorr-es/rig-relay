@@ -5,7 +5,7 @@
   "generated_at": "2026-05-21T00:00:00Z",
   "status": "draft",
   "content_light": true,
-  "revision": 1,
+  "revision": 2,
   "tests": [
     {
       "test_id": "surf-test-001",
@@ -30,7 +30,7 @@
     {
       "test_id": "surf-test-003",
       "test_name": "XSS injection through projection fields is neutralized",
-      "classifications": ["adversarial", "sabotage"],
+      "classifications": ["adversarial", "sabotage", "real-artifact"],
       "what_it_catches": "Malicious HTML/JS injected into projection data fields renders in cockpit; CSP headers missing or permissive",
       "surface_tested": "Frontend/Cockpit",
       "proposed_file_path": "tests/cockpit/test_xss_csp.py",
@@ -100,7 +100,7 @@
     {
       "test_id": "surf-test-010",
       "test_name": "CLI JSON schema matches documented contract",
-      "classifications": ["contract"],
+      "classifications": ["contract", "real-artifact"],
       "what_it_catches": "CLI output JSON does not validate against its published schema; schema drift undetected",
       "surface_tested": "CLI",
       "proposed_file_path": "tests/cli/test_json_schema_validation.py",
@@ -150,7 +150,7 @@
     {
       "test_id": "surf-test-015",
       "test_name": "MCP tool descriptor integrity enforced against tampered manifests",
-      "classifications": ["adversarial", "sabotage"],
+      "classifications": ["sabotage", "adversarial", "real-artifact"],
       "what_it_catches": "MCP server sends a tampered tool descriptor; descriptor integrity check rejects and logs",
       "surface_tested": "MCP",
       "proposed_file_path": "tests/mcp/test_descriptor_integrity.py",
@@ -180,7 +180,7 @@
     {
       "test_id": "surf-test-018",
       "test_name": "MCP mutation tools are gated behind approval receipt requirement",
-      "classifications": ["adversarial", "contract"],
+      "classifications": ["sabotage", "real-artifact"],
       "what_it_catches": "MCP host invokes a mutation tool without a valid approval receipt; gate blocks execution",
       "surface_tested": "MCP",
       "proposed_file_path": "tests/mcp/test_mutation_gating.py",
@@ -190,7 +190,7 @@
     {
       "test_id": "surf-test-019",
       "test_name": "MCP content-light output enforces no secret leakage in tool responses",
-      "classifications": ["adversarial", "integration"],
+      "classifications": ["adversarial", "real-artifact"],
       "what_it_catches": "MCP tool response inadvertently includes raw file contents with secrets; content-light scanner catches and redacts",
       "surface_tested": "MCP",
       "proposed_file_path": "tests/mcp/test_content_light_output.py",
@@ -210,7 +210,7 @@
     {
       "test_id": "surf-test-021",
       "test_name": "ACP message schema rejection for malformed session requests",
-      "classifications": ["contract", "adversarial"],
+      "classifications": ["contract", "real-artifact"],
       "what_it_catches": "ACP client sends malformed JSON that passes transport parsing but violates message schema; server rejects with structured error",
       "surface_tested": "ACP",
       "proposed_file_path": "tests/acp/test_message_schema.py",
@@ -240,7 +240,7 @@
     {
       "test_id": "surf-test-024",
       "test_name": "ACP receipt persistence survives server restart",
-      "classifications": ["integration", "substrate"],
+      "classifications": ["contract", "real-artifact"],
       "what_it_catches": "ACP-produced receipts are lost on server restart; WAL durability guarantees broken",
       "surface_tested": "ACP",
       "proposed_file_path": "tests/acp/test_receipt_persistence.py",
@@ -250,7 +250,7 @@
     {
       "test_id": "surf-test-025",
       "test_name": "A2A malicious agent card causes safe rejection",
-      "classifications": ["adversarial", "sabotage"],
+      "classifications": ["sabotage", "adversarial", "real-artifact"],
       "what_it_catches": "Attacker publishes an agent card with forged capabilities or spoofed trust tier; A2A client rejects",
       "surface_tested": "A2A",
       "proposed_file_path": "tests/a2a/test_malicious_card.py",
@@ -290,7 +290,7 @@
     {
       "test_id": "surf-test-029",
       "test_name": "MCP to GitHub bypass is blocked by composition guard",
-      "classifications": ["adversarial", "sabotage", "integration"],
+      "classifications": ["sabotage", "integration", "real-artifact"],
       "what_it_catches": "Agent uses MCP tool chain to reach GitHub mutation API without cockpit approval; composition guard detects cross-surface escalation",
       "surface_tested": "Composition",
       "proposed_file_path": "tests/composition/test_mcp_to_github_bypass.py",
@@ -310,7 +310,7 @@
     {
       "test_id": "surf-test-031",
       "test_name": "Hosted team debug endpoint does not leak production secrets",
-      "classifications": ["adversarial", "sabotage"],
+      "classifications": ["adversarial", "sabotage", "real-artifact"],
       "what_it_catches": "Debug endpoint in hosted team mode exposes API keys, env vars, or session tokens; content-light filter catches",
       "surface_tested": "Composition",
       "proposed_file_path": "tests/composition/test_hosted_to_debug_leak.py",
@@ -320,7 +320,7 @@
     {
       "test_id": "surf-test-032",
       "test_name": "Frontend to MCP bypass is blocked by governance spine",
-      "classifications": ["adversarial", "sabotage"],
+      "classifications": ["sabotage", "integration", "real-artifact"],
       "what_it_catches": "Frontend injects a WebSocket message that triggers MCP mutation without approval; governance spine intercepts",
       "surface_tested": "Composition",
       "proposed_file_path": "tests/composition/test_frontend_to_mcp_bypass.py",
@@ -350,7 +350,7 @@
     {
       "test_id": "surf-test-035",
       "test_name": "Static docs site does not leak internal-only content",
-      "classifications": ["adversarial", "integration"],
+      "classifications": ["adversarial", "integration", "real-artifact"],
       "what_it_catches": "Static doc renderer includes internal-only JSON artifacts in public site; public/private split fails",
       "surface_tested": "Composition",
       "proposed_file_path": "tests/composition/test_static_docs_to_public_leak.py",

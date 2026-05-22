@@ -11,12 +11,18 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
 from typing import Literal, get_args
+
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 BumpType = Literal["major", "minor", "micro", "patch"]
 BUMP_TYPES = get_args(BumpType)
@@ -172,17 +178,73 @@ Examples:
     parser.add_argument(
         "bump_type", choices=BUMP_TYPES, help="Type of version bump to perform"
     )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute version bump. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
 
     args = parser.parse_args()
+
+    governed = require_governed_execution_with_evidence(
+        script_name="bump_version",
+        authority_tier="local_mutation",
+        capability_id="version_bump",
+        execute_requested=args.execute,
+    )
+
+    if args.execute and not governed.can_execute:
+        r = emit_structured_result(
+            script_name="bump_version",
+            authority_tier="local_mutation",
+            capability_id="version_bump",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — bump blocked (fail-closed)")
+        sys.exit(1)
 
     try:
         # Get current version
         current_version = get_current_version()
         print(f"Current version: {current_version}")
-
-        # Calculate new version
         new_version = bump_version(current_version, args.bump_type)
         print(f"New version: {new_version}\n")
+
+        if not args.execute:
+            print(
+                f"DRY-RUN: Would bump {current_version} → {new_version} ({args.bump_type}). "
+                f"Pass --execute to proceed."
+            )
+            if args.json:
+                r = emit_structured_result(
+                    script_name="bump_version",
+                    authority_tier="local_mutation",
+                    capability_id="version_bump",
+                    dry_run=True,
+                    execute_requested=False,
+                    decision=governed.decision,
+                    status="dry_run",
+                )
+                print(json.dumps(r, indent=2))
+            sys.exit(0)
 
         # Update pyproject.toml
         update_hard_values_files(

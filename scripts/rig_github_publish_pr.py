@@ -11,6 +11,10 @@ import argparse
 import json
 from pathlib import Path
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.integrations.github_provider._publish_pr import build_github_publish_pr
 from rig_relay.integrations.github_provider._redaction import safe_summary
 
@@ -79,6 +83,31 @@ def main(argv: list[str] | None = None) -> int:
         help="Execute remote PR creation. Requires --dry-run to be unset.",
     )
     args = parser.parse_args(argv)
+
+    if args.execute_remote:
+        governed = require_governed_execution_with_evidence(
+            script_name="rig_github_publish_pr",
+            authority_tier="remote_mutation",
+            capability_id="github_pr_publish",
+            execute_requested=True,
+            allow_mutation=True,
+            allow_network=True,
+        )
+        if governed.decision.decision.value in {"blocked", "requires_review"}:
+            result = emit_structured_result(
+                script_name="rig_github_publish_pr",
+                authority_tier="remote_mutation",
+                capability_id="github_pr_publish",
+                dry_run=False,
+                execute_requested=True,
+                decision=governed.decision,
+                status="blocked_by_governance",
+                can_execute=governed.can_execute,
+                evidence_ref=governed.evidence_ref,
+                evidence_status=governed.evidence_status,
+            )
+            print(json.dumps(result, indent=2))
+            return 1
 
     report = build_github_publish_pr(
         packets_path=args.packets_json,

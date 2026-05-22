@@ -1,0 +1,62 @@
+{
+  "schema_version": "rig.relay.mcp_sync_tools_call_and_unknown_refusal.v1",
+  "document_id": "mcp-sync-tools-call-and-unknown-refusal-v1",
+  "title": "MCP Sync Tools-Call Wiring and Unknown-Tool Refusal Parity v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:20:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_gate_artifact": "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json",
+  "files_changed": [
+    "rig_relay/protocols/mcp/server.py (converted unknown tool handling in both call_tool and call_tool_sync to JSON-RPC error with structured data payload)",
+    "tests/protocols/mcp/test_mcp_scan_receipt_convergence_v1.py (updated unknown tool test assertions)",
+    "tests/protocols/mcp/test_mcp_auth_v1.py (updated unknown tool test assertions)",
+    "tests/protocols/mcp/test_mcp_receipt_envelope_adoption.py (updated unknown tool test assertions)",
+    "docs/json/governance/mcp_sync_tools_call_and_unknown_refusal_v1.v1.json (new)"
+  ],
+  "sync_handler_status": {
+    "prior_state": "process_jsonrpc_sync existed but lacked tools/call. call_tool_sync had full hardening pipeline but not wired.",
+    "current_state": "process_jsonrpc_sync removed by parallel lane. Only serve_stdio + _handle_jsonrpc remain as JSON-RPC entry point. call_tool_sync used directly for tests. No separate sync dispatch entry point.", 
+    "classification": "sync_handler_removed_by_parallel_lane",
+    "call_tool_sync_status": "exists with full hardening pipeline. used directly by all MCP tests. can be wired into any future sync handler."
+  },
+  "unknown_tool_refusal_behavior": {
+    "before": "Returned bare {error: 'Unknown tool: name', code: -32601} — no surface, no refusal_code, no content_light, no request_id, no generated_at.",
+    "after": "Returns JSON-RPC error with structured data payload: {error: {code: -32601, message: '...', data: {surface: 'mcp', refusal_code: 'unknown_tool', tool, capability_id, content_light: true, content_light_classification: 'public_safe', request_id, generated_at}}}.",
+    "json_rpc_compliance": "Preserves error.code = -32601. Adds error.data with structured metadata. Schema-compatible with other MCP refusals.",
+    "receipt_persistence": "Still called via _persist_outcome on every unknown tool outcome."
+  },
+  "tests": {
+    "new": 0,
+    "updated": 3,
+    "passed": 94,
+    "failed": 0,
+    "updated_test_files": [
+      "test_mcp_scan_receipt_convergence_v1.py::test_unknown_tool_returns_structured_refusal_with_code",
+      "test_mcp_auth_v1.py::test_valid_token_does_not_allow_unknown_tool",
+      "test_mcp_receipt_envelope_adoption.py::test_unknown_tool_includes_basic_metadata"
+    ]
+  },
+  "release_gate_result": "PASS — 94/94 tests, all 8 invariants protected",
+  "validations": {
+    "pyright": "0 errors, 0 warnings",
+    "gate_script": "94/94 passed",
+    "schema_validation": "all schemas valid"
+  },
+  "remaining_seams": {
+    "common_envelope": "input_hash, output_hash, payload_schema, artifact_refs, producer, trace_id still missing",
+    "hosted_oauth": "deferred",
+    "mutation_tools": "permanently blocked"
+  },
+  "dependency_changes": "None",
+  "completed_work": [
+    "Unknown-tool response converted to JSON-RPC error with structured data payload in call_tool",
+    "Unknown-tool response converted to JSON-RPC error with structured data payload in call_tool_sync",
+    "3 existing tests updated to match new structured refusal format",
+    "Release gate re-verified: 94/94 PASS"
+  ],
+  "intentionally_deferred": [
+    "process_jsonrpc_sync restoration — removed by parallel lane, not needed for current hardened surface",
+    "Common envelope fields (input_hash, output_hash, etc.) — post-GA polish"
+  ],
+  "content_light": true
+}

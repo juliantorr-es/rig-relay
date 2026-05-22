@@ -108,8 +108,8 @@ class TestSessionLoggerInitialization:
 
 
 class TestSessionLoggerMetadata:
-    @patch("vibe.core.session.session_logger.subprocess.run")
-    @patch("vibe.core.session.session_logger.getpass.getuser")
+    @patch("rig_relay.core.session.session_logger.subprocess.run")
+    @patch("rig_relay.core.session.session_logger.getpass.getuser")
     def test_session_metadata_initialization(
         self, mock_getuser, mock_subprocess, session_config: SessionLoggingConfig
     ) -> None:
@@ -143,8 +143,8 @@ class TestSessionLoggerMetadata:
         assert metadata.title is None
         assert metadata.title_source == "auto"
 
-    @patch("vibe.core.session.session_logger.subprocess.run")
-    @patch("vibe.core.session.session_logger.getpass.getuser")
+    @patch("rig_relay.core.session.session_logger.subprocess.run")
+    @patch("rig_relay.core.session.session_logger.getpass.getuser")
     def test_session_metadata_with_git_errors(
         self, mock_getuser, mock_subprocess, session_config: SessionLoggingConfig
     ) -> None:
@@ -617,7 +617,7 @@ class TestSessionLoggerSaveInteraction:
             ) as persist_metadata_mock,
             patch.object(logger, "cleanup_tmp_files", cleanup_spy),
             patch(
-                "vibe.core.session.session_logger.utc_now",
+                "rig_relay.core.session.session_logger.utc_now",
                 # a bit brittle, but required for the call-count choregraphy...
                 side_effect=[
                     datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
@@ -856,7 +856,7 @@ class TestSessionLoggerCleanupTmpFiles:
         with (
             patch.object(logger, "cleanup_tmp_files", cleanup_spy),
             patch(
-                "vibe.core.session.session_logger.utc_now",
+                "rig_relay.core.session.session_logger.utc_now",
                 side_effect=[
                     datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC),
                     datetime(2026, 1, 1, 10, 0, 1, tzinfo=UTC),

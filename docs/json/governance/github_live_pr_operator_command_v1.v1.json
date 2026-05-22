@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.github.live_pr_operator_command.v1",
-  "generated_at": "2026-05-20T21:06:20.182079+00:00",
+  "generated_at": "2026-05-21T18:50:24.968574+00:00",
   "content_light": true,
   "canonical_script": "scripts/rig_github_execute_live_pr_write.py",
   "dry_summary_command": "uv run python scripts/rig_github_execute_live_pr_write.py --summary",
@@ -33,5 +33,5 @@
   },
   "live_mutation_attempted": false,
   "remote_mutation_attempted": false,
-  "result_status": "ready"
+  "result_status": "blocked"
 }

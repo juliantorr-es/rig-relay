@@ -1,0 +1,72 @@
+{
+  "schema_version": "rig.relay.cli_script_p0_mutation_gate_implementation.v1",
+  "audit_id": "cli-script-p0-mutation-gate-v1",
+  "title": "CLI/Script P0 Mutation Gate Implementation v1",
+  "generated_at": "2026-05-21T04:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "source_inventory": [
+    "docs/json/governance/scripts_cli_authority_taxonomy_inventory_v1.v1.json",
+    "docs/json/governance/scripts_cli_mutation_surface_map_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_offender_inventory_v1.v1.json"
+  ],
+  "scripts_gated": [
+    {"priority": 1, "script": "scripts/rig_enterprise_tenant_admin.py", "changes": "Added --execute flag (default False, dry-run by default), --json flag, governance pre-flight on register/grant/revoke commands via require_governed_execution()", "authority_tier": "admin_configuration", "dry_run_before": false, "dry_run_after": true},
+    {"priority": 2, "script": "scripts/rig_enterprise_fleet_admin.py", "changes": "Added --execute flag (default False), --json flag, governance pre-flight on start/stop/restart via require_governed_execution()", "authority_tier": "admin_configuration", "dry_run_before": false, "dry_run_after": true},
+    {"priority": 3, "script": "scripts/rig_github_execute_live_pr_write.py", "changes": "Added governance pre-flight before live mutation when triple-flag gate passes. Existing --execute-remote-mutation, --i-understand-this-creates-a-real-pr, --allow-live-writes flags preserved.", "authority_tier": "remote_mutation", "dry_run_before": true, "dry_run_after": true},
+    {"priority": 4, "script": "scripts/rig_github_publish_pr.py", "changes": "Added governance pre-flight before --execute-remote mutation. Existing --dry-run (default True) preserved.", "authority_tier": "remote_mutation", "dry_run_before": true, "dry_run_after": true},
+    {"priority": 5, "script": "scripts/rig_github_pr_mutation_chaos_lab.py", "changes": "Added --json flag for structured JSON output. No governance gating needed — inherently no_live_network/no_remote_mutation.", "authority_tier": "read_only_projection", "dry_run_before": true, "dry_run_after": true}
+  ],
+  "helper_module": "rig_relay/cli/governance_guard.py",
+  "helper_functions": [
+    {"function": "require_governed_execution()", "purpose": "Returns GateDecision. If execute_requested=False, returns ALLOWED without evaluation. If execute_requested=True, evaluates via GovernanceEngine.evaluate_action_legality(). Sets surface=cli_script on the decision."},
+    {"function": "emit_structured_result()", "purpose": "Returns content-light structured JSON dict with schema_version, script, surface, authority_tier, capability_id, dry_run, execute_requested, decision_id, decision, status, content_light, generated_at. Optional artifacts and error fields."}
+  ],
+  "cli_flags_changed": {
+    "added": ["--execute (default False, required for mutation)", "--json (structured JSON output)"],
+    "preserved": ["--execute-remote-mutation, --i-understand-this-creates-a-real-pr, --allow-live-writes (live PR write triple gate)", "--dry-run (default True on publish PR)", "--summary, --generated-at-utc (output flags)"]
+  },
+  "governance_decision_path": "GovernanceGuard.require_governed_execution() → GovernanceEngine.evaluate_action_legality() → GateDecision (decision_id, surface, authority_tier, capability_id, content_light)",
+  "evidence_persistence": {
+    "status": "deferred",
+    "current": "GateDecision is returned but not persisted to ReceiptStore. GovernanceRuntime._persist_governance_decision() exists but requires evidence backend wired.",
+    "seam": "CLI governance guard returns structured result as JSON to stdout. Durable evidence persistence is deferred to Governance Decisions as Evidence v1 follow-up."
+  },
+  "tests": {
+    "added": ["tests/cli/test_governance_guard.py"],
+    "test_count": 8,
+    "classifications": ["contract (8 tests)"],
+    "test_cases": [
+      "test_dry_run_returns_allowed_without_governance_evaluation",
+      "test_execute_requested_evaluates_governance",
+      "test_execute_without_allow_mutation_returns_blocked_or_review",
+      "test_emit_structured_result_dry_run",
+      "test_emit_structured_result_blocked",
+      "test_emit_structured_result_includes_decision_id",
+      "test_admin_requires_execute",
+      "test_remote_mutation_requires_network_and_mutation"
+    ]
+  },
+  "script_contract_tests_deferred": [
+    "Subprocess/integration tests that invoke scripts with --execute and verify behavior — deferred to Phase 1 (measurement harness + script hardening follow-up). Too heavyweight for this P0 gate implementation slice.",
+    "Real GitHub boundary integration tests — require live GitHub auth, deferred to GitHub Trust Spine implementation."
+  ],
+  "remaining_top_20_not_yet_gated": [
+    "scripts/rig_relay_sessions_gc.py — destructive delete, needs --execute + governance",
+    "scripts/rig_relay_gc_artifacts.py — destructive delete, needs --execute + governance",
+    "scripts/rig_relay_cleanup_coordination_leases.py — destructive delete, needs --execute + governance",
+    "scripts/rig_relay_sessions_compact.py — file mutation, needs --execute + governance",
+    "scripts/rig_relay_compact_artifacts.py — file mutation, needs --execute + governance",
+    "scripts/bump_version.py — git mutation, needs --dry-run default",
+    "scripts/prepare_release.py — git mutation, needs --execute + governance",
+    "scripts/refactor_large_files.py — local file mutation, needs --dry-run default",
+    "scripts/rig_relay_upload_google_drive.py — remote mutation, already dry-run default, needs governance integration",
+    "scripts/rig_relay_contribute_telemetry_bundle.py — remote mutation, already consent-gated, needs governance receipt",
+    "scripts/rig_github_live_mutation_preflight.py — governance dir writes, needs governance gate",
+    "scripts/rig_relay_spawn_session.py — agent spawn, needs governance pre-flight",
+    "scripts/backfill_doc_disclosure.py — doc mutation, needs --dry-run default",
+    "scripts/bulk_convert_docs.py — doc mutation, needs --dry-run default",
+    "scripts/render_static_docs.py — public projection, needs public/private split check"
+  ],
+  "revision": "1.0.0"
+}

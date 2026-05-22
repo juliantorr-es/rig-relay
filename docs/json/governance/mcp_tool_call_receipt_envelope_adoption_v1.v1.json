@@ -1,0 +1,89 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "implementation_id": "mcp-tool-call-receipt-envelope-adoption-v1",
+  "title": "MCP Tool-Call ReceiptEnvelope Adoption v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_artifacts": [
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+    "docs/json/governance/governance_decisions_as_evidence_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/protocols/mcp/server.py (MODIFIED — _build_refusal enriched with descriptor_id, descriptor_hash, content_light_classification, request_id, generated_at; receipt_store parameter; _persist_outcome(), _build_decision_id() added; call_tool/call_tool_sync wired to persist outcomes; _dispatch_sync restored)",
+    "tests/protocols/mcp/test_mcp_receipt_envelope_adoption.py (CREATED — 15 tests)"
+  ],
+  "mcp_outcomes_covered": [
+    "descriptor drift refusal",
+    "forbidden tool refusal (rig.promote_to_preproduction)",
+    "mutation-tier tool blocked (rig.request_user_approval without receipt)",
+    "unknown tool error",
+    "successful read-only tool call (rig.current_mission)",
+    "git/release-tier tool blocked"
+  ],
+  "receipt_envelope_fields_mapped": {
+    "receipt_kind": "mcp_tool_call",
+    "actor": "mcp_server (RUNTIME, authoritative)",
+    "subject": "tool_name (TOOL_INVOCATION)",
+    "decision.governance_decision_id": "gd-mcp-{sha256[:16]}",
+    "decision.decision": "allowed | blocked",
+    "decision.surface": "mcp",
+    "decision.authority_tier": "tier_{n}",
+    "decision.capability_id": "rig.{tool_name}",
+    "decision.content_light_classification": "public_safe",
+    "mcp_response.request_id": "UUID",
+    "mcp_response.content_light_classification": "public_safe",
+    "mcp_response.descriptor_id": "from registered descriptor",
+    "mcp_response.descriptor_hash": "from registered descriptor",
+    "mcp_response.generated_at": "ISO 8601"
+  },
+  "persistence_path": "Optional receipt_store injected into RigMCPServer constructor. When provided, _persist_outcome() builds a ReceiptEnvelope via build_receipt_envelope() and appends to store. When None, envelope-compatible fields are still included in the MCP response but not persisted.",
+  "tests_run": "15 passed, 0 failed",
+  "test_classifications": "6 contract, 5 real-artifact, 2 adversarial, 2 sabotage, 0 unit, 0 integration, 0 E2E, 0 concurrency, 0 substrate",
+  "pyright_result": "0 errors, 0 warnings, 0 informations",
+  "schema_validation_result": "419/419 schemas pass",
+  "dependency_changes": "None",
+  "telemetry_redaction_implications": "All MCP response envelopes are content-light: no raw prompts, completions, private repo content, secrets, raw diffs, or raw Actions logs. ReceiptEnvelope stores only hashes and identifiers. content_light_classification is public_safe for governance decisions. Secret-bearing and forbidden-raw content are blocked at the content-light scan layer (parallel agent addition).",
+  "mcp_security_implications": "ReceiptEnvelope adoption does not expand MCP authority. Mutation tools remain blocked. Descriptor integrity remains enforced. No auth/authz added. Receipt evidence provides audit trail for every MCP tool call (allowed or refused) without exposing raw content.",
+  "remaining_mcp_phase_2_3_4_5_seams": [
+    "Phase 2: MCP roots workspace boundary enforcement (partial — resolve/resolve_workspace_path exists; needs integration into dispatch)",
+    "Phase 2: MCP per-user authorization enforcement (MCPPerUserAuthorization model exists; no enforcement)",
+    "Phase 3: MCP content-light output scanning (ContentLightClass and _scan_tool_output exist; needs real dispatch integration)",
+    "Phase 4: MCP mutation tools with approval receipts (still blocked per authority spine)",
+    "Phase 5: MCP ecosystem extensions (community marketplace)"
+  ],
+  "remaining_common_envelope_gaps": [
+    "input_hash not yet computed from canonical JSON of MCP request arguments",
+    "output_hash not yet computed from canonical JSON of MCP response (placeholder 0*64)",
+    "payload_schema not yet included in MCP response",
+    "artifact_refs not yet included (no source-of-truth refs for MCP receipts)",
+    "producer field not yet included (server version)",
+    "trace_id not yet propagated (exists in stdio transport, not in all response paths)"
+  ],
+  "next_recommended_mcp_slice": "Phase 2: MCP content-light output scanning integration into _dispatch. Ensure _scan_tool_output() is called for every dispatched tool result. Block secret-bearing and forbidden-raw output before returning to client.",
+  "completed_work": [
+    "Enriched _build_refusal with descriptor_id, descriptor_hash, content_light_classification, request_id, generated_at",
+    "Added receipt_store parameter to RigMCPServer.__init__",
+    "Added _persist_outcome() — builds ReceiptEnvelope and writes to receipt_store",
+    "Added _build_decision_id() — deterministic content-light decision identifier",
+    "Wired all outcome paths in call_tool and call_tool_sync to persist evidence",
+    "Restored _dispatch_sync method (removed by parallel agent)",
+    "Added surface, capability_id, authority_tier, content_light_classification, request_id to all MCP response dicts",
+    "Created 15 tests verifying refusal/receipt field mapping, filesystem persistence, receipt retrieval, content-light guarantees, and mutation blocking",
+    "Pyright 0 errors, 419/419 schemas pass"
+  ],
+  "intentionally_deferred_work": [
+    "MCP roots enforcement (Phase 2)",
+    "MCP per-user auth enforcement (Phase 2)",
+    "MCP content-light output scanning in dispatch (Phase 2)",
+    "MCP mutation enablement (Phase 4 — blocked per authority spine)",
+    "Common envelope full adoption (input_hash/output_hash/payload_schema/artifact_refs/producer/trace_id)",
+    "MCP real-dispatch expansion"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": "rig.relay.mcp_hardened_read_only_surface_release_gate.v1",
+  "gate_id": "mcp-hardened-read-only-surface-release-gate-v1",
+  "title": "MCP Hardened Read-Only Surface Release Gate v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:15:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "verdict": "PASS — MCP read-only surface is hardened and gates are in place.",
+  "phase_artifacts_included": [
+    "docs/json/governance/mcp_phase1_descriptor_integrity_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase2_roots_boundary_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase3_content_light_output_scanning_v1.v1.json",
+    "docs/json/governance/mcp_phase3_4_scan_receipt_convergence_v1.v1.json",
+    "docs/json/governance/mcp_phase5_local_session_auth_v1.v1.json"
+  ],
+  "test_runner_command": "uv run pytest tests/protocols/mcp/test_mcp_auth_v1.py tests/protocols/mcp/test_mcp_scan_receipt_convergence_v1.py tests/protocols/mcp/test_mcp_content_light_v1.py tests/protocols/mcp/test_mcp_roots_boundary_v1.py tests/protocols/mcp/test_mcp_descriptor_integrity_v1.py tests/protocols/mcp/test_mcp_receipt_envelope_adoption.py -q --tb=no --override-ini=addopts= --noconftest",
+  "test_files_included": [
+    "tests/protocols/mcp/test_mcp_descriptor_integrity_v1.py",
+    "tests/protocols/mcp/test_mcp_roots_boundary_v1.py",
+    "tests/protocols/mcp/test_mcp_content_light_v1.py",
+    "tests/protocols/mcp/test_mcp_receipt_envelope_adoption.py",
+    "tests/protocols/mcp/test_mcp_scan_receipt_convergence_v1.py",
+    "tests/protocols/mcp/test_mcp_auth_v1.py"
+  ],
+  "test_result": {
+    "total": 94,
+    "passed": 94,
+    "failed": 0,
+    "pre_existing_conftest_issue": "tests/conftest.py cannot import AgentLoop due to parallel lane's dirty agent_loop.py. --noconftest flag required until that lane converges."
+  },
+  "required_invariants": [
+    "Descriptor integrity: every tool call and tools/list verifies descriptor hash; drift quarantines tool",
+    "Roots boundary: all filesystem-facing tools validate workspace root; path traversal/symlink escape refused",
+    "Content-light scan: every tool output classified; secret-bearing and forbidden-raw outputs refused",
+    "Receipt persistence: every MCP outcome persisted as ReceiptEnvelope when receipt_store provided",
+    "Local session auth: with require_auth=True, missing/invalid token refused before any other check",
+    "Pipeline order: auth → unknown tool → descriptor integrity → forbidden → tier gating → roots → dispatch → scan → receipt → response",
+    "Token safety: raw session token never leaked in any response, log, or error",
+    "Content-light classification: propagated into receipt metadata, not hardcoded to public_safe",
+    "Mutation blocked: mutation and git-release tiers permanently blocked regardless of auth state"
+  ],
+  "mutation_tools_blocked": {
+    "tier_4_mutation": "blocked — cryptographic approval receipt required (not yet implemented)",
+    "tier_5_git_release": "permanently refused",
+    "forbidden_tool": "rig.promote_to_preproduction — permanently refused",
+    "status": "all_mutation_surfaces_blocked"
+  },
+  "hosted_oauth_deferred": {
+    "status": "intentionally_deferred",
+    "reason": "MCPToolAuthMetadata has bearer_supported and oauth_supported flags. No implementation exists. Local stdio session token is sufficient for v1 read-only surface.",
+    "next_when": "When MCP moves to streamable HTTP transport or hosted deployments."
+  },
+  "remaining_common_envelope_gaps": [
+    "input_hash — not computed from request body",
+    "output_hash — not computed from response body",
+    "payload_schema — not referenced",
+    "artifact_refs — not populated",
+    "producer — not included in responses",
+    "trace_id — not propagated from request params (present in stdio transport but not wired into envelope)"
+  ],
+  "sync_handler_status": {
+    "process_jsonrpc_sync": "Handles tools/list, resources/list, prompts/list. Does NOT handle tools/call.",
+    "call_tool_sync": "Exists and has full hardening pipeline (auth → descriptor → tier → dispatch → scan → receipt). Not wired into process_jsonrpc_sync.",
+    "classification": "async_only_for_hardened_mcp_calls",
+    "impact": "Sync clients cannot invoke MCP tools via process_jsonrpc_sync. They must use the async stdio path or call call_tool_sync directly.",
+    "fix": "Wire call_tool_sync into process_jsonrpc_sync tools/call handler. Low blast radius (~5 lines)."
+  },
+  "unknown_tool_behavior_status": {
+    "current": "Returns JSON-RPC error {error, code: -32601} rather than structured refusal with content_light, surface, refusal_code, request_id, generated_at.",
+    "classification": "known_seam",
+    "impact": "Unknown-tool errors are not schema-compatible with other refusal envelopes. Receipt persistence still works (persist_outcome is called).",
+    "fix": "Convert to structured refusal with refusal_code='unknown_tool' while preserving JSON-RPC error code -32601 in the response envelope. Low blast radius."
+  },
+  "next_permitted_mcp_work": [
+    {
+      "rank": 1,
+      "slice": "Wire call_tool_sync into process_jsonrpc_sync tools/call",
+      "rationale": "Trivial fix. Low blast radius. Unblocks sync MCP clients."
+    },
+    {
+      "rank": 2,
+      "slice": "Convert unknown-tool to structured refusal",
+      "rationale": "Final schema parity between all MCP outcome paths."
+    },
+    {
+      "rank": 3,
+      "slice": "Add common envelope fields (input_hash, output_hash, payload_schema, artifact_refs, producer, trace_id)",
+      "rationale": "Schema compliance with cross-surface authority spine."
+    }
+  ],
+  "files_changed": [
+    "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json (new)",
+    "scripts/rig_mcp_hardened_read_only_gate.py (new — lightweight gate runner)"
+  ],
+  "validations": {
+    "mcp_hardened_tests": "94/94 passed",
+    "pyright": "0 errors / 0 warnings on MCP files (pre-existing conftest/agent_loop import issue unrelated)",
+    "schema_validation": "all schemas valid",
+    "json_syntax": "valid"
+  },
+  "content_light": true
+}

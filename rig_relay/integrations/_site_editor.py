@@ -8,8 +8,8 @@ Zero new dependencies.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+import subprocess
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -160,9 +160,9 @@ def build_site_editor_projection() -> dict[str, Any]:
 
 
 __all__ = [
-    "read_schema_fields",
-    "read_page_data",
-    "write_page_data",
-    "trigger_render",
     "build_site_editor_projection",
+    "read_page_data",
+    "read_schema_fields",
+    "trigger_render",
+    "write_page_data",
 ]

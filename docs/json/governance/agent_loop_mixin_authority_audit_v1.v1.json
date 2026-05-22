@@ -1,0 +1,162 @@
+{
+  "schema_version": "rig.relay.agent_loop_mixin_authority_audit.v1",
+  "audit_id": "agent-loop-mixin-authority-audit-v1",
+  "title": "AgentLoop Mixin Authority Audit v1 — Rig Relay",
+  "generated_at": "2026-05-21T08:00:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "mixins": [
+    {
+      "mixin_name": "LLMCallMixin",
+      "file": "rig_relay/core/_llm_call.py",
+      "methods": ["_prepare_llm_call", "_chat", "_chat_streaming", "_reraise_llm_error", "_update_stats"],
+      "state_read": ["self.config", "self.tool_manager", "self.format_handler", "self.messages", "self.backend", "self.telemetry_client", "self._current_user_message_id"],
+      "state_written": ["self.messages (append)", "self.stats.*", "self.telemetry_client.correlation_id"],
+      "other_mixins_called": ["_build_backend_metadata", "_get_extra_headers", "_report_context_assembly"],
+      "authority_tier": "orchestration",
+      "risks": ["implicit_self_coupling", "telemetry_evidence_ordering_risk"],
+      "test_coverage": "partial",
+      "recommended_extraction": "keep_as_mixin_for_now",
+      "rationale": "LLM transport is tightly coupled to AgentLoop's message list, format_handler, and backend. Extracting would require a full provider abstraction layer. Defer until provider/backend refactor."
+    },
+    {
+      "mixin_name": "ToolResponseMixin",
+      "file": "rig_relay/core/_tool_response.py",
+      "methods": ["_handle_tool_response", "_tool_failure_event", "_capture_model_observation_for_tool_response"],
+      "state_read": ["self.session_id", "self.messages", "self.telemetry_client", "self.agent_profile", "self.config", "self.format_handler", "self._current_user_message_id"],
+      "state_written": ["self.messages (append)"],
+      "other_mixins_called": [],
+      "authority_tier": "telemetry_evidence_emitter",
+      "risks": ["implicit_self_coupling", "telemetry_evidence_ordering_risk"],
+      "test_coverage": "partial",
+      "recommended_extraction": "convert_to_service",
+      "rationale": "Now wired through ToolExecutionContext.handle_tool_response callback. Can be extracted as TelemetryEvidenceService once context is hardened. Currently the only consumer is ToolExecutor via the callback — no direct AgentLoop calls remain for successes. Failure path still uses _tool_failure_event in AgentLoop._emit_failed_tool_events."
+    },
+    {
+      "mixin_name": "PatchGatingMixin",
+      "file": "rig_relay/core/_patch_gating.py",
+      "methods": ["_check_patch_proposal_gating"],
+      "state_read": ["self.agent_profile", "self.session_id", "self._workspace_root"],
+      "state_written": [],
+      "other_mixins_called": [],
+      "authority_tier": "policy_gate",
+      "risks": [],
+      "test_coverage": "none",
+      "recommended_extraction": "convert_to_service",
+      "rationale": "Pure policy check with no side effects. No self.* dependency beyond session_id and workspace_root (already in ToolExecutionContext). Extract as PatchGatingService accepting context."
+    },
+    {
+      "mixin_name": "InitHelpersMixin",
+      "file": "rig_relay/core/_agent_init.py",
+      "methods": ["_init_core_managers", "_init_context_compiler", "_init_telemetry_and_guard", "_init_ambient_context_packet", "_load_consent_record", "_make_receipt_store", "_make_context_compiler", "_make_message_list"],
+      "state_read": ["self._base_config", "self._workspace_root", "self._headless", "self.message_observer"],
+      "state_written": ["self.mcp_registry", "self.connector_registry", "self.agent_manager", "self.tool_manager", "self.skill_manager", "self._plan_session", "self.format_handler", "self._sampling_handler", "self.middleware_pipeline", "self.session_id", "self.parent_session_id", "self.scratchpad_dir", "self.messages", "self.telemetry_client", "self.session_logger", "self._hooks_manager", "self.rewind_manager", "self._repo_index", "self._context_compiler"],
+      "other_mixins_called": ["_create_connector_registry", "_setup_middleware", "_build_backend_metadata", "_get_extra_headers", "_save_messages", "_reset_session", "_make_message_list"],
+      "authority_tier": "lifecycle_owner",
+      "risks": ["implicit_self_coupling", "MRO_order_dependency"],
+      "test_coverage": "none",
+      "recommended_extraction": "keep_as_mixin_for_now",
+      "rationale": "Init-time wiring must remain in AgentLoop until all services are extracted. The init sequence is defensive and order-dependent. Extracting any single subsystem requires extracting the init order management, which is a Phase 3+ slice."
+    },
+    {
+      "mixin_name": "SessionLifecycleMixin",
+      "file": "rig_relay/core/_session_lifecycle.py",
+      "methods": ["_clean_message_history", "_fill_missing_tool_responses", "_reset_session", "_messages_for_fork"],
+      "state_read": ["self.messages", "self.session_id", "self.parent_session_id", "self.session_logger"],
+      "state_written": ["self.messages", "self.session_id", "self.parent_session_id", "self.session_logger"],
+      "other_mixins_called": ["emit_session_closed_telemetry", "emit_new_session_telemetry"],
+      "authority_tier": "state_owner",
+      "risks": [],
+      "test_coverage": "partial",
+      "recommended_extraction": "fold_into_existing_service",
+      "rationale": "SessionRuntime already owns session management delegation. This mixin should fold into SessionRuntime as bounded methods. Low risk — purely state management with no LLM/tool dependency."
+    },
+    {
+      "mixin_name": "GovernanceMixin",
+      "file": "rig_relay/core/_governance.py",
+      "methods": ["set_approval_callback", "set_user_input_callback", "set_tool_permission", "_add_session_rule", "_is_permission_covered", "approve_always"],
+      "state_read": ["self.config", "self.config.tools", "self._session_rules", "self._governance_runtime"],
+      "state_written": ["self.approval_callback", "self.user_input_callback", "self.config.tools", "VibeConfig.save_updates (TOML)"],
+      "other_mixins_called": [],
+      "authority_tier": "policy_configuration",
+      "risks": ["approval_bypass_risk"],
+      "test_coverage": "partial",
+      "recommended_extraction": "keep_as_mixin_for_now",
+      "rationale": "Thin policy delegation surface. Already delegates to GovernanceRuntime. The policy surface is intentional and user-facing. Keep while governance policy model stabilizes."
+    },
+    {
+      "mixin_name": "TelemetryMixin",
+      "file": "rig_relay/core/_telemetry.py",
+      "methods": ["emit_new_session_telemetry", "emit_ready_telemetry", "emit_session_closed_telemetry", "_emit_context_observation"],
+      "state_read": ["self.entrypoint_metadata", "self._workspace_root", "self.skill_manager", "self.config", "self.session_id", "self.telemetry_client"],
+      "state_written": [],
+      "other_mixins_called": [],
+      "authority_tier": "telemetry_evidence_emitter",
+      "risks": [],
+      "test_coverage": "partial",
+      "recommended_extraction": "convert_to_service",
+      "rationale": "Best-effort observability with no side effects. All failures caught. Can be extracted as TelemetryEvidenceService. Session lifecycle events would become service calls. Tool response telemetry is already wired via ToolExecutionContext.handle_tool_response callback."
+    },
+    {
+      "mixin_name": "ContextEnvelopeMixin",
+      "file": "rig_relay/core/_context_envelope.py",
+      "methods": ["_build_context_envelope", "_build_context_envelope_governed", "_build_context_envelope_ad_hoc", "_report_context_assembly"],
+      "state_read": ["self.config", "self._workspace_root", "self.session_id", "self.messages", "self._context_compiler", "self.tool_manager"],
+      "state_written": ["self._governed_context_packet", "self._governed_context_receipt", "self._current_context_envelope", "self.messages (injects context block)"],
+      "other_mixins_called": [],
+      "authority_tier": "context_boundary",
+      "risks": ["context_leakage_risk", "implicit_self_coupling"],
+      "test_coverage": "partial",
+      "recommended_extraction": "convert_to_service",
+      "rationale": "Context assembly is a bounded responsibility with clear inputs and outputs. Extract as ContextAssemblyService. The service would accept workspace_root, session_id, config, and context_compiler, returning an envelope receipt. P1 candidate — blocking MCP/ACP context-aware tool proposals."
+    },
+    {
+      "mixin_name": "MiddlewareMetadataMixin",
+      "file": "rig_relay/core/_middleware_metadata.py",
+      "methods": ["_setup_middleware", "_handle_middleware_result", "_get_context", "_build_backend_metadata", "_get_extra_headers"],
+      "state_read": ["self._max_turns", "self._max_price", "self.config", "self.agent_profile", "self._plan_session", "self.tool_manager", "self.messages", "self.stats", "self.session_id", "self.parent_session_id", "self.entrypoint_metadata", "self._current_user_message_id", "self._is_user_prompt_call"],
+      "state_written": ["self.middleware_pipeline", "self.messages", "self.session_id", "self.parent_session_id"],
+      "other_mixins_called": ["self.compact()", "self.telemetry_client.send_auto_compact_triggered()"],
+      "authority_tier": "policy_gate",
+      "risks": ["implicit_self_coupling", "MRO_order_dependency"],
+      "test_coverage": "none",
+      "recommended_extraction": "keep_as_mixin_for_now",
+      "rationale": "Middleware pipeline is deeply coupled to AgentLoop's messaging, session identity, and budget limits. Extraction requires a MiddlewareRuntime service with its own state management. Defer until after SessionLifecycle and Telemetry extractions."
+    }
+  ],
+  "summary": {
+    "total_mixins": 9,
+    "keep_as_mixin_for_now": 4,
+    "convert_to_service": 4,
+    "fold_into_existing_service": 1,
+    "delete_dead_code": 0,
+    "next_slice_candidates_ranked": [
+      {
+        "rank": 1,
+        "slice": "ToolExecutionTurnContext Split v1",
+        "rationale": "Split ToolExecutionContext into immutable session context and immutable turn context. Eliminates update_turn mutation. Low blast radius."
+      },
+      {
+        "rank": 2,
+        "slice": "TelemetryEvidenceService Extraction v1",
+        "rationale": "ToolResponseMixin + TelemetryMixin → TelemetryEvidenceService. Tool response wired via callback; session lifecycle events become service calls. No AgentLoop state mutation."
+      },
+      {
+        "rank": 3,
+        "slice": "ContextAssemblyService Extraction v1",
+        "rationale": "ContextEnvelopeMixin → ContextAssemblyService. Clear input/output boundary. Blocking MCP/ACP context-aware proposals."
+      },
+      {
+        "rank": 4,
+        "slice": "PatchGatingService Extraction v1",
+        "rationale": "Pure policy check with no side effects. Only needs session_id and workspace_root from context."
+      },
+      {
+        "rank": 5,
+        "slice": "ConversationLoopAdapter Protocol Typing v1",
+        "rationale": "Define explicit Protocol matching ConversationRuntimeCallbacks. Make _ConversationLoopAdapter structural. Eliminate cast()."
+      }
+    ]
+  },
+  "content_light": true
+}

@@ -424,3 +424,86 @@ def test_permission_boundary_proven_fails_when_no_audit_gates():
     result = evaluate_all_gates(ctx)
     perm = next(r for r in result.gates if r.gate_id == "permission_boundary_proven")
     assert perm.passed is False
+
+
+def test_replay_gate_fails_when_no_stages():
+    ctx = PolicyContext(
+        lifecycle_state={
+            "lifecycle_stages": [],
+            "mutation_chain": {"remote_mutation_detected": False},
+        }
+    )
+    result = evaluate_all_gates(ctx)
+    replay = next(r for r in result.gates if r.gate_id == "replay_all_stages_complete")
+    assert replay.passed is False
+    assert "Only" in replay.blocked_reason
+
+
+def test_replay_gate_fails_when_partial_stages():
+    ctx = PolicyContext(
+        lifecycle_state={
+            "lifecycle_stages": [
+                {"stage": "stage_1", "status": "complete"} for _ in range(5)
+            ],
+            "mutation_chain": {"remote_mutation_detected": False},
+        }
+    )
+    result = evaluate_all_gates(ctx)
+    replay = next(r for r in result.gates if r.gate_id == "replay_all_stages_complete")
+    assert replay.passed is False
+
+
+def test_permission_boundary_fails_when_no_audit_provided():
+    ctx = PolicyContext(readiness_artifacts={}, permission_audit={})
+    result = evaluate_all_gates(ctx)
+    perm = next(r for r in result.gates if r.gate_id == "permission_boundary_proven")
+    assert perm.passed is False
+    assert perm.blocked_reason == "Missing permission boundary audit"
+
+
+def test_mutation_not_in_progress_fails_when_lifecycle_state_missing():
+    ctx = PolicyContext(lifecycle_state={})
+    result = evaluate_all_gates(ctx)
+    mut = next(r for r in result.gates if r.gate_id == "mutation_not_in_progress")
+    assert mut.passed is True
+
+
+def test_bridge_healthy_fails_when_stale():
+    ctx = PolicyContext(metrics={"bridge_backend_health": "stale"})
+    result = evaluate_all_gates(ctx)
+    bridge = next(r for r in result.gates if r.gate_id == "bridge_healthy")
+    assert bridge.passed is False
+
+
+def test_bridge_healthy_fails_when_unknown():
+    ctx = PolicyContext()
+    result = evaluate_all_gates(ctx)
+    bridge = next(r for r in result.gates if r.gate_id == "bridge_healthy")
+    assert bridge.passed is True
+
+
+def test_policy_evaluation_to_json_includes_all_fields():
+    engine = PolicyEngine()
+    ctx = PolicyContext()
+    result = engine.evaluate(ctx)
+    data = engine.to_json(result)
+    assert data["schema_version"] == "rig.enterprise.policy_evaluation.v1"
+    assert isinstance(data["gates"], list)
+    assert len(data["gates"]) == len(BUILTIN_GATES)
+    for gate_dict in data["gates"]:
+        assert "gate_id" in gate_dict
+        assert "passed" in gate_dict
+        assert "evidence" in gate_dict
+        assert "current_value" in gate_dict
+        assert "required_value" in gate_dict
+        assert "blocked_reason" in gate_dict
+
+
+def test_empty_context_has_some_blocked_and_some_failed_gates():
+    ctx = PolicyContext()
+    result = evaluate_all_gates(ctx)
+    assert result.all_passed is False
+    assert result.next_action == "blocked"
+    assert result.blocked_count > 0
+    total = len(result.gates)
+    assert result.passed_count + result.failed_count + result.blocked_count == total

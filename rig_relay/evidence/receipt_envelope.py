@@ -153,6 +153,7 @@ class ReceiptDecision(BaseModel):
     """The decision or authority classification for the receipt.
 
     Content-light: no policy documents or raw evaluation context.
+    Aligned with cross_surface_authority_spine v1.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -161,6 +162,11 @@ class ReceiptDecision(BaseModel):
     rationale: str | None = None
     gate: str | None = None
     governance_decision_id: str | None = None
+    surface: str | None = None
+    authority_tier: str | None = None
+    capability_id: str | None = None
+    approval_receipt_id: str | None = None
+    content_light_classification: str | None = None
 
 
 class ReceiptEnvelope(BaseModel):
@@ -180,6 +186,7 @@ class ReceiptEnvelope(BaseModel):
     schema_version: str = "rig.relay.receipt_envelope.v1"
     envelope_id: str
     receipt_kind: str
+    request_id: str | None = None
     actor: ReceiptActor
     subject: ReceiptSubject
     input: ReceiptInput | None = None
@@ -290,5 +297,103 @@ __all__ = [
     "ReceiptOutput",
     "ReceiptSubject",
     "ReceiptSubjectKind",
+    "build_governance_decision_envelope",
     "build_receipt_envelope",
 ]
+
+
+def build_governance_decision_envelope(
+    gate_decision: object,
+    *,
+    envelope_id: str | None = None,
+    session_id: str | None = None,
+    actor_id: str = "governance_runtime",
+    created_at: str | None = None,
+) -> ReceiptEnvelope:
+    """Convert a GateDecision into a content-light ReceiptEnvelope.
+
+    This is the canonical bridge between governance decisions and the
+    evidence store. Every GateDecision can be persisted as a replayable,
+    schema-valid evidence artifact through this function.
+
+    The resulting ReceiptEnvelope is content-light: no raw prompts,
+    completions, private repo content, secrets, or credentials.
+
+    Args:
+        gate_decision: A GateDecision object (from rig_relay.governance.decisions).
+        envelope_id: Optional envelope ID. Auto-generated if not provided.
+        session_id: Optional session ID for cross-surface correlation.
+        actor_id: Identifier for the governance actor.
+        created_at: ISO 8601 timestamp. Auto-generated if not provided.
+
+    Returns:
+        A ReceiptEnvelope ready for persistence via ReceiptStore.append().
+    """
+    decision_id = getattr(gate_decision, "decision_id", "")
+    gate = getattr(gate_decision, "gate", "rig_relay.gate.default")
+    decision_value = str(getattr(gate_decision, "decision", "unknown"))
+    surface = getattr(gate_decision, "surface", None)
+    authority_tier = getattr(gate_decision, "authority_tier", None)
+    capability_id = getattr(gate_decision, "capability_id", None)
+
+    reasons = getattr(gate_decision, "reasons", [])
+    reason_codes = [getattr(r, "code", "") for r in reasons if hasattr(r, "code")]
+    rationale = "; ".join(reason_codes) if reason_codes else None
+
+    actor = ReceiptActor(
+        actor_id=actor_id,
+        actor_kind=ReceiptActorKind.RUNTIME,
+        display_name="Governance Runtime",
+        is_human=False,
+        is_authoritative=True,
+    )
+
+    subject = ReceiptSubject(
+        subject_id=decision_id or "unknown_decision",
+        subject_kind=ReceiptSubjectKind.GOVERNANCE_DECISION,
+        workspace_id=getattr(gate_decision, "workspace_id", None),
+        session_id=session_id,
+    )
+
+    receipt_decision = ReceiptDecision(
+        decision=decision_value,
+        rationale=rationale,
+        gate=gate,
+        governance_decision_id=decision_id,
+        surface=surface,
+        authority_tier=authority_tier,
+        capability_id=capability_id,
+        content_light_classification="public_safe",
+    )
+
+    evidence_items: list[ReceiptEvidence] = [
+        ReceiptEvidence(
+            evidence_id=decision_id,
+            evidence_kind=ReceiptEvidenceKind.GOVERNANCE_DECISION,
+            schema_version="rig.relay.governance_decision.v1",
+        )
+    ]
+
+    if gate_decision is not None and hasattr(gate_decision, "model_dump"):
+        try:
+            payload_hash = _compute_payload_sha256(gate_decision)  # type: ignore[arg-type]
+            evidence_items.append(
+                ReceiptEvidence(
+                    evidence_id=f"{decision_id}-payload",
+                    evidence_kind=ReceiptEvidenceKind.GOVERNANCE_DECISION,
+                    evidence_sha256=payload_hash,
+                )
+            )
+        except Exception:
+            pass
+
+    return build_receipt_envelope(
+        envelope_id=envelope_id,
+        receipt_kind="governance_decision",
+        actor=actor,
+        subject=subject,
+        receipt_payload=None,
+        decision=receipt_decision,
+        evidence_override=evidence_items,
+        created_at=created_at,
+    )

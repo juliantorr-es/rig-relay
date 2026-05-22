@@ -1,7 +1,7 @@
 {
   "schema_version": "rig.documentation.site_manifest.v1",
   "site_title": "Rig Relay Documentation",
-  "site_description": "Local governed runtime for agent work — architecture, governance, policies, and proofs.",
+  "site_description": "Local governed runtime for agent work \u2014 architecture, governance, policies, and proofs.",
   "base_url": "https://juliantorr-es.github.io/rig-relay",
   "base_path": "/rig-relay",
   "collections": [
@@ -57,7 +57,7 @@
         {
           "document_id": "deep-research-report1",
           "path": "docs/json/audits/deep-research-report1.v1.json",
-          "title_override": "Agent Harness Determinism: Industry Trends and Rig Relay’s Strategy"
+          "title_override": "Agent Harness Determinism: Industry Trends and Rig Relay\u2019s Strategy"
         },
         {
           "document_id": "deep-research-report2",
@@ -97,7 +97,7 @@
         {
           "document_id": "frontend-security-audit-2026-05-14",
           "path": "docs/json/audits/frontend-security-audit-2026-05-14.v1.json",
-          "title_override": "Frontend Security Audit — Rig Relay Desktop"
+          "title_override": "Frontend Security Audit \u2014 Rig Relay Desktop"
         },
         {
           "document_id": "provider-adapter-contract-design",
@@ -170,7 +170,7 @@
         {
           "document_id": "architecture-guards-proposal",
           "path": "docs/json/audits/agent-loop/architecture-guards-proposal.v1.json",
-          "title_override": "Architecture guard tests — proposed (not implemented)"
+          "title_override": "Architecture guard tests \u2014 proposed (not implemented)"
         },
         {
           "document_id": "conversation-runtime-extraction-plan",
@@ -180,32 +180,32 @@
         {
           "document_id": "conversation-runtime-phase-2a-decision-policy",
           "path": "docs/json/audits/agent-loop/conversation-runtime-phase-2a-decision-policy.v1.json",
-          "title_override": "ConversationRuntime Phase 2A — Decision Policy Inventory"
+          "title_override": "ConversationRuntime Phase 2A \u2014 Decision Policy Inventory"
         },
         {
           "document_id": "conversation-runtime-phase-2b-decision-policy",
           "path": "docs/json/audits/agent-loop/conversation-runtime-phase-2b-decision-policy.v1.json",
-          "title_override": "ConversationRuntime Phase 2B — Hook/Tool/Budget Decision Policy"
+          "title_override": "ConversationRuntime Phase 2B \u2014 Hook/Tool/Budget Decision Policy"
         },
         {
           "document_id": "phase3-readiness-reconciliation",
           "path": "docs/json/audits/agent-loop/phase3-readiness-reconciliation.v1.json",
-          "title_override": "Phase 3 Readiness Reconciliation — Canonical All-Lanes Truth Table"
+          "title_override": "Phase 3 Readiness Reconciliation \u2014 Canonical All-Lanes Truth Table"
         },
         {
           "document_id": "phase4-architecture-map",
           "path": "docs/json/audits/agent-loop/phase4-architecture-map.v1.json",
-          "title_override": "Phase 4 Architecture Map — Orchestrator Shell Hardening and Turn Evidence Envelope v1"
+          "title_override": "Phase 4 Architecture Map \u2014 Orchestrator Shell Hardening and Turn Evidence Envelope v1"
         },
         {
           "document_id": "subagent-runtime-toolruntime-v2",
           "path": "docs/json/audits/agent-loop/subagent-runtime-toolruntime-v2.v1.json",
-          "title_override": "SubagentRuntime Governed Tool Path — Verification"
+          "title_override": "SubagentRuntime Governed Tool Path \u2014 Verification"
         },
         {
           "document_id": "subagent-runtime-v1",
           "path": "docs/json/audits/agent-loop/subagent-runtime-v1.v1.json",
-          "title_override": "SubagentRuntime v1 — Evidence and Tool Execution Mode"
+          "title_override": "SubagentRuntime v1 \u2014 Evidence and Tool Execution Mode"
         }
       ]
     },
@@ -218,7 +218,7 @@
         {
           "document_id": "backend-adapter-overlap-dedup-v1",
           "path": "docs/json/audits/backend/backend-adapter-overlap-dedup-v1.v1.json",
-          "title_override": "Backend Adapter Overlap Dedup v1 — Audit"
+          "title_override": "Backend Adapter Overlap Dedup v1 \u2014 Audit"
         }
       ]
     },
@@ -251,7 +251,7 @@
         {
           "document_id": "ci-validate-alignment",
           "path": "docs/json/audits/ci/ci-validate-alignment.v1.json",
-          "title_override": "CI–Validate Alignment"
+          "title_override": "CI\u2013Validate Alignment"
         }
       ]
     },
@@ -264,7 +264,7 @@
         {
           "document_id": "context-assembler-completion-plan",
           "path": "docs/json/audits/context/context-assembler-completion-plan.v1.json",
-          "title_override": "Context Assembler — Completion Plan"
+          "title_override": "Context Assembler \u2014 Completion Plan"
         },
         {
           "document_id": "context-assembler-final-reconciliation",
@@ -274,7 +274,7 @@
         {
           "document_id": "context-assembler-gap-inventory",
           "path": "docs/json/audits/context/context-assembler-gap-inventory.v1.json",
-          "title_override": "Context Assembler — Gap Inventory"
+          "title_override": "Context Assembler \u2014 Gap Inventory"
         },
         {
           "document_id": "context-assembler-stable-v1",
@@ -297,12 +297,12 @@
         {
           "document_id": "lane-a-compiler-renderer-gaps",
           "path": "docs/json/audits/context/gap-reports/lane-a-compiler-renderer-gaps.v1.json",
-          "title_override": "Lane A — Compiler-Renderer Reconciliation Gaps"
+          "title_override": "Lane A \u2014 Compiler-Renderer Reconciliation Gaps"
         },
         {
           "document_id": "lane-b-planner-gaps",
           "path": "docs/json/audits/context/gap-reports/lane-b-planner-gaps.v1.json",
-          "title_override": "Lane B — Planner Failure Warnings, RepoIndex Reality, Budget Semantics"
+          "title_override": "Lane B \u2014 Planner Failure Warnings, RepoIndex Reality, Budget Semantics"
         }
       ]
     },
@@ -315,12 +315,12 @@
         {
           "document_id": "desktop-golden-path-proof",
           "path": "docs/json/audits/desktop/desktop-golden-path-proof.v1.json",
-          "title_override": "Desktop Golden Path — Audit Proof"
+          "title_override": "Desktop Golden Path \u2014 Audit Proof"
         },
         {
           "document_id": "single-bridge-before-state",
           "path": "docs/json/audits/desktop/single-bridge-before-state.v1.json",
-          "title_override": "Desktop Transport — Before State (Split Pywebview + WebSocket)"
+          "title_override": "Desktop Transport \u2014 Before State (Split Pywebview + WebSocket)"
         }
       ]
     },
@@ -361,12 +361,12 @@
         {
           "document_id": "execution-progress-projection-design",
           "path": "docs/json/audits/rig-runtime-port/execution-progress-projection-design.v1.json",
-          "title_override": "ExecutionProgress Projection Design — Audit Record"
+          "title_override": "ExecutionProgress Projection Design \u2014 Audit Record"
         },
         {
           "document_id": "fleet-coordination-design",
           "path": "docs/json/audits/rig-runtime-port/fleet-coordination-design.v1.json",
-          "title_override": "Fleet Coordination Plane — Design Audit"
+          "title_override": "Fleet Coordination Plane \u2014 Design Audit"
         },
         {
           "document_id": "mission-context-duckdb-design",
@@ -386,7 +386,7 @@
         {
           "document_id": "rig-to-relay-runtime-audit",
           "path": "docs/json/audits/rig-runtime-port/rig-to-relay-runtime-audit.v1.json",
-          "title_override": "Rig Runtime Port Audit — Rig to Rig Relay"
+          "title_override": "Rig Runtime Port Audit \u2014 Rig to Rig Relay"
         },
         {
           "document_id": "runtime-tool-convergence-followup",
@@ -429,12 +429,12 @@
         {
           "document_id": "tool-runtime-evidence-adoption-v1",
           "path": "docs/json/audits/runtime/tool-runtime-evidence-adoption-v1.v1.json",
-          "title_override": "ToolRuntime Direct Path Envelope Population v1 — Audit"
+          "title_override": "ToolRuntime Direct Path Envelope Population v1 \u2014 Audit"
         },
         {
           "document_id": "tracing-v0",
           "path": "docs/json/audits/runtime/tracing-v0.v1.json",
-          "title_override": "Tracing v0 — Audit"
+          "title_override": "Tracing v0 \u2014 Audit"
         }
       ]
     },
@@ -452,7 +452,7 @@
         {
           "document_id": "deleted-module-collection-errors",
           "path": "docs/json/audits/test-suite/deleted_module_collection_errors.v1.json",
-          "title_override": "Deleted Module Collection Errors — Audit"
+          "title_override": "Deleted Module Collection Errors \u2014 Audit"
         },
         {
           "document_id": "duplicate-test-audit",
@@ -462,12 +462,12 @@
         {
           "document_id": "test-dedup-phase1-note",
           "path": "docs/json/audits/test-suite/test_dedup_phase1_note.v1.json",
-          "title_override": "Test Deduplication Phase 1 — Doctrine Note"
+          "title_override": "Test Deduplication Phase 1 \u2014 Doctrine Note"
         },
         {
           "document_id": "test-dedup-phase2-note",
           "path": "docs/json/audits/test-suite/test_dedup_phase2_note.v1.json",
-          "title_override": "Test Deduplication Phase 2 — normalize high-value AST duplicate clusters"
+          "title_override": "Test Deduplication Phase 2 \u2014 normalize high-value AST duplicate clusters"
         },
         {
           "document_id": "test-layout-canonicalization-report",
@@ -477,7 +477,7 @@
         {
           "document_id": "test-purge-acceptance-gate",
           "path": "docs/json/audits/test-suite/test_purge_acceptance_gate.v1.json",
-          "title_override": "Test Purge Pass 1 — Acceptance Gate"
+          "title_override": "Test Purge Pass 1 \u2014 Acceptance Gate"
         },
         {
           "document_id": "test-purge-pass-1-report",
@@ -705,7 +705,7 @@
         {
           "document_id": "protocol-design",
           "path": "docs/json/audits/vscodium-shell-lane/protocol-design.v1.json",
-          "title_override": "Protocol Design: Extension ↔ Rig Daemon"
+          "title_override": "Protocol Design: Extension \u2194 Rig Daemon"
         },
         {
           "document_id": "risk-register",
@@ -728,7 +728,7 @@
         {
           "document_id": "2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary",
           "path": "docs/json/conversations/2026-05-13--rig-relay--phase-1--receipt-gated-protected-intents--summary.v1.json",
-          "title_override": "2026-05-13 — Phase 1: Receipt-Gated Protected Intents"
+          "title_override": "2026-05-13 \u2014 Phase 1: Receipt-Gated Protected Intents"
         },
         {
           "document_id": "2026-05-13--rig-relay--phase-3--desktop-projection-shell-pattern-port",
@@ -738,12 +738,12 @@
         {
           "document_id": "2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary",
           "path": "docs/json/conversations/2026-05-13--rig-relay--phase-3--facade-extraction-tool-hardening-search-replace--summary.v1.json",
-          "title_override": "Rig Relay — Phase 3: Facade Extraction & Tool Hardening (search_replace)"
+          "title_override": "Rig Relay \u2014 Phase 3: Facade Extraction & Tool Hardening (search_replace)"
         },
         {
           "document_id": "2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary",
           "path": "docs/json/conversations/2026-05-13--rig-relay--phase-a-j--orchestration-dataset-control-plane--summary.v1.json",
-          "title_override": "Rig Relay — Complete Conversation Summary"
+          "title_override": "Rig Relay \u2014 Complete Conversation Summary"
         },
         {
           "document_id": "2026-05-13--rig-relay--phase-o-q--commercial-license-observations-demo--summary",
@@ -758,17 +758,17 @@
         {
           "document_id": "2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary",
           "path": "docs/json/conversations/2026-05-14--rig-relay--phase-3-to-5--fleet-coordination-completion--summary.v1.json",
-          "title_override": "Fleet Coordination Completion — Phases 3–5"
+          "title_override": "Fleet Coordination Completion \u2014 Phases 3\u20135"
         },
         {
           "document_id": "2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary",
           "path": "docs/json/conversations/2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.v1.json",
-          "title_override": "Phase 3: RepoContextIndex — DuckDB-backed constrained retrieval"
+          "title_override": "Phase 3: RepoContextIndex \u2014 DuckDB-backed constrained retrieval"
         },
         {
           "document_id": "2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff",
           "path": "docs/json/conversations/2026-05-14--rig-relay--phase-n--drive-dep-isolation-stale-lease-cleanup--handoff.v1.json",
-          "title_override": "Rig Relay — Conversation Summary"
+          "title_override": "Rig Relay \u2014 Conversation Summary"
         },
         {
           "document_id": "conversations-readme",
@@ -791,12 +791,12 @@
         {
           "document_id": "mcp-night-demo",
           "path": "docs/json/demo/mcp-night-demo.v1.json",
-          "title_override": "MCP Night Demo — Fresh-Clone Walkthrough"
+          "title_override": "MCP Night Demo \u2014 Fresh-Clone Walkthrough"
         },
         {
           "document_id": "mcp-night-development-harness-demo",
           "path": "docs/json/demo/mcp-night-development-harness-demo.v1.json",
-          "title_override": "MCP Night — Rig Relay Development Harness Demo"
+          "title_override": "MCP Night \u2014 Rig Relay Development Harness Demo"
         }
       ]
     },
@@ -877,6 +877,11 @@
       "order": 26,
       "documents": [
         {
+          "document_id": "agent-instruction-template",
+          "path": "docs/json/governance/agent-instruction-template.v1.json",
+          "title_override": "Agent Instruction Template (AGENTS.md)"
+        },
+        {
           "document_id": "agent-loop-boundary",
           "path": "docs/json/governance/agent_loop_boundary.v1.json",
           "title_override": "Agent Loop Boundary"
@@ -954,7 +959,7 @@
         {
           "document_id": "execution-progress-projection",
           "path": "docs/json/governance/execution-progress-projection.v1.json",
-          "title_override": "ExecutionProgressProjection — Design"
+          "title_override": "ExecutionProgressProjection \u2014 Design"
         },
         {
           "document_id": "fleet-coordination-plane",
@@ -989,7 +994,7 @@
         {
           "document_id": "mission-router",
           "path": "docs/json/governance/mission-router.v1.json",
-          "title_override": "Rig Mission Router — Phase 0"
+          "title_override": "Rig Mission Router \u2014 Phase 0"
         },
         {
           "document_id": "model-observation-dataset",
@@ -1014,12 +1019,12 @@
         {
           "document_id": "ralph-background-loop",
           "path": "docs/json/governance/ralph-background-loop.v1.json",
-          "title_override": "Ralph — Governed Background Maintenance Loop"
+          "title_override": "Ralph \u2014 Governed Background Maintenance Loop"
         },
         {
           "document_id": "ralph-worktree-lanes",
           "path": "docs/json/governance/ralph-worktree-lanes.v1.json",
-          "title_override": "Ralph Worktree Lanes — Background Isolation Model"
+          "title_override": "Ralph Worktree Lanes \u2014 Background Isolation Model"
         },
         {
           "document_id": "receipt-envelope",
@@ -1079,7 +1084,7 @@
         {
           "document_id": "runtime-tool-invocation-adapter-implementation",
           "path": "docs/json/governance/runtime-tool-invocation-adapter-implementation.v1.json",
-          "title_override": "Runtime Tool Invocation Adapter — Implementation"
+          "title_override": "Runtime Tool Invocation Adapter \u2014 Implementation"
         },
         {
           "document_id": "runtime-tool-invocation-dry-run",
@@ -1179,7 +1184,7 @@
         {
           "document_id": "worktree-manager",
           "path": "docs/json/governance/worktree-manager.v1.json",
-          "title_override": "Worktree Manager — Governance & Safety"
+          "title_override": "Worktree Manager \u2014 Governance & Safety"
         },
         {
           "document_id": "high-performance-substrate-doctrine",
@@ -1194,42 +1199,52 @@
         {
           "document_id": "high-performance-substrate-tool-taxonomy",
           "path": "docs/json/governance/high_performance_substrate_tool_taxonomy_v1.v1.json",
-          "title_override": "High-Performance Substrate — Tool Taxonomy"
+          "title_override": "High-Performance Substrate \u2014 Tool Taxonomy"
         },
         {
           "document_id": "high-performance-substrate-fit-matrix",
           "path": "docs/json/governance/high_performance_substrate_fit_matrix_v1.v1.json",
-          "title_override": "High-Performance Substrate — Fit Matrix"
+          "title_override": "High-Performance Substrate \u2014 Fit Matrix"
         },
         {
           "document_id": "high-performance-substrate-architecture",
           "path": "docs/json/governance/high_performance_substrate_architecture_v1.v1.json",
-          "title_override": "High-Performance Substrate — Architecture Pipeline"
+          "title_override": "High-Performance Substrate \u2014 Architecture Pipeline"
         },
         {
           "document_id": "high-performance-substrate-dependency-plan",
           "path": "docs/json/governance/high_performance_substrate_dependency_plan_v1.v1.json",
-          "title_override": "High-Performance Substrate — Dependency Plan"
+          "title_override": "High-Performance Substrate \u2014 Dependency Plan"
         },
         {
           "document_id": "high-performance-substrate-roadmap",
           "path": "docs/json/governance/high_performance_substrate_roadmap_v1.v1.json",
-          "title_override": "High-Performance Substrate — Roadmap"
+          "title_override": "High-Performance Substrate \u2014 Roadmap"
         },
         {
           "document_id": "high-performance-substrate-test-strategy",
           "path": "docs/json/governance/high_performance_substrate_test_strategy_v1.v1.json",
-          "title_override": "High-Performance Substrate — Test Strategy"
+          "title_override": "High-Performance Substrate \u2014 Test Strategy"
         },
         {
           "document_id": "high-performance-substrate-security-privacy-review",
           "path": "docs/json/governance/high_performance_substrate_security_privacy_review_v1.v1.json",
-          "title_override": "High-Performance Substrate — Security & Privacy Review"
+          "title_override": "High-Performance Substrate \u2014 Security & Privacy Review"
         },
         {
           "document_id": "high-performance-substrate-docs-alignment",
           "path": "docs/json/governance/high_performance_substrate_docs_alignment_v1.v1.json",
-          "title_override": "High-Performance Substrate — Docs Alignment v1"
+          "title_override": "High-Performance Substrate \u2014 Docs Alignment v1"
+        },
+        {
+          "document_id": "cross-surface-authority-spine",
+          "path": "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+          "title_override": "Cross-Surface Authority Spine v1 \u2014 Canonical"
+        },
+        {
+          "document_id": "cross-surface-authority-spine-canonicalization",
+          "path": "docs/json/governance/cross_surface_authority_spine_canonicalization_v1.v1.json",
+          "title_override": "Cross-Surface Authority Spine Canonicalization Report v1"
         }
       ]
     },
@@ -1242,12 +1257,12 @@
         {
           "document_id": "privacy-notice-alpha",
           "path": "docs/json/legal/privacy-notice-alpha.v1.json",
-          "title_override": "Privacy Notice — Alpha"
+          "title_override": "Privacy Notice \u2014 Alpha"
         },
         {
           "document_id": "usage-data-license-alpha",
           "path": "docs/json/legal/usage-data-license-alpha.v1.json",
-          "title_override": "Usage Data Commercial License — Alpha"
+          "title_override": "Usage Data Commercial License \u2014 Alpha"
         }
       ]
     },
@@ -1283,7 +1298,7 @@
         {
           "document_id": "github-pages-artifact-site",
           "path": "docs/json/publishing/github-pages-artifact-site.v1.json",
-          "title_override": "GitHub Pages — Artifact-Rendered Documentation Site"
+          "title_override": "GitHub Pages \u2014 Artifact-Rendered Documentation Site"
         }
       ]
     },
@@ -1337,47 +1352,47 @@
         {
           "document_id": "textual-rig-console-progress-timeline",
           "path": "docs/json/ui/textual-rig-console-progress-timeline.v1.json",
-          "title_override": "ProgressTimelineWidget — Design"
+          "title_override": "ProgressTimelineWidget \u2014 Design"
         },
         {
           "document_id": "textual-rig-console-slice-1",
           "path": "docs/json/ui/textual-rig-console-slice-1.v1.json",
-          "title_override": "Textual Rig Console — Slice 1: Projection-Only SessionPaneWidget"
+          "title_override": "Textual Rig Console \u2014 Slice 1: Projection-Only SessionPaneWidget"
         },
         {
           "document_id": "textual-rig-console-slice-2-evidence-rail",
           "path": "docs/json/ui/textual-rig-console-slice-2-evidence-rail.v1.json",
-          "title_override": "Textual Rig Console — Slice 2: EvidenceRailWidget"
+          "title_override": "Textual Rig Console \u2014 Slice 2: EvidenceRailWidget"
         },
         {
           "document_id": "textual-rig-console-slice-3-dashboard",
           "path": "docs/json/ui/textual-rig-console-slice-3-dashboard.v1.json",
-          "title_override": "Textual Rig Console — Slice 3: DashboardScreen"
+          "title_override": "Textual Rig Console \u2014 Slice 3: DashboardScreen"
         },
         {
           "document_id": "textual-rig-console-slice-4-action-boundary",
           "path": "docs/json/ui/textual-rig-console-slice-4-action-boundary.v1.json",
-          "title_override": "Textual Rig Console — Slice 4: Read-Only Action Surface and Projection Provider Boundary"
+          "title_override": "Textual Rig Console \u2014 Slice 4: Read-Only Action Surface and Projection Provider Boundary"
         },
         {
           "document_id": "textual-rig-console-slice-5-1-worker-refresh",
           "path": "docs/json/ui/textual-rig-console-slice-5-1-worker-refresh.v1.json",
-          "title_override": "Textual Rig Console — Slice 5.1: Worker-Safe Dashboard Refresh"
+          "title_override": "Textual Rig Console \u2014 Slice 5.1: Worker-Safe Dashboard Refresh"
         },
         {
           "document_id": "textual-rig-console-slice-5-runtime-provider",
           "path": "docs/json/ui/textual-rig-console-slice-5-runtime-provider.v1.json",
-          "title_override": "Textual Rig Console — Slice 5: Read-Only Runtime Dashboard Provider"
+          "title_override": "Textual Rig Console \u2014 Slice 5: Read-Only Runtime Dashboard Provider"
         },
         {
           "document_id": "textual-rig-console-slice-6-coordination-session-enrichment",
           "path": "docs/json/ui/textual-rig-console-slice-6-coordination-session-enrichment.v1.json",
-          "title_override": "Textual Rig Console — Slice 6: Coordination/Session Enrichment"
+          "title_override": "Textual Rig Console \u2014 Slice 6: Coordination/Session Enrichment"
         },
         {
           "document_id": "textual-streaming-smoothness",
           "path": "docs/json/ui/textual-streaming-smoothness.v1.json",
-          "title_override": "Textual Streaming Smoothness — Provider Delta Coalescing"
+          "title_override": "Textual Streaming Smoothness \u2014 Provider Delta Coalescing"
         }
       ]
     },

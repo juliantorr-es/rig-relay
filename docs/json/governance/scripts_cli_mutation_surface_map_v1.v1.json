@@ -1,0 +1,58 @@
+{
+  "schema_version": "rig.relay.scripts_cli_mutation_surface_map.v1",
+  "audit_id": "scripts-cli-authority-taxonomy-v1",
+  "title": "Scripts and CLI Mutation Surface Map v1",
+  "generated_at": "2026-05-21T03:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "summary": "Maps every mutation-capable script and CLI entrypoint by authority tier, blast radius, and bypass risk. 28 scripts mutate local files, 6 call remote providers, 3 delete destructively, 3 administer config, 2 mutate git.",
+  "mutation_surfaces": {
+    "remote_provider_mutation": [
+      {"script": "scripts/rig_github_execute_live_pr_write.py", "blast_radius": "provider", "severity": "blocker", "has_dry_run": true, "has_structured_output": true, "has_governance": false, "note": "Triple-flag gate ad-hoc, not cryptographic. Creates real GitHub PRs."},
+      {"script": "scripts/rig_github_publish_pr.py", "blast_radius": "provider", "severity": "blocker", "has_dry_run": false, "has_structured_output": true, "has_governance": false, "note": "Publishes PR to GitHub. No governance gate."},
+      {"script": "scripts/rig_github_live_auth_check.py", "blast_radius": "provider", "severity": "medium", "has_dry_run": true, "has_structured_output": true, "has_governance": false, "note": "Reads GitHub auth tokens. Not mutation but touches credentials."},
+      {"script": "scripts/rig_github_live_read_check.py", "blast_radius": "provider", "severity": "low", "has_dry_run": false, "has_structured_output": true, "has_governance": false, "note": "Read-only GitHub check. Low risk."},
+      {"script": "scripts/rig_relay_upload_google_drive.py", "blast_radius": "provider", "severity": "medium", "has_dry_run": true, "has_structured_output": true, "has_governance": false, "note": "Uploads bundles to Google Drive. Dry-run by default."},
+      {"script": "scripts/rig_relay_contribute_telemetry_bundle.py", "blast_radius": "provider", "severity": "medium", "has_dry_run": true, "has_structured_output": true, "has_governance": false, "note": "Uploads telemetry bundle. Consent-gated."},
+      {"script": "scripts/rig_google_workspace_live_read_check.py", "blast_radius": "provider", "severity": "low", "has_dry_run": false, "has_structured_output": true, "has_governance": false, "note": "Read-only Google Workspace check."},
+      {"script": "scripts/rig_google_workspace_live_auth_check.py", "blast_radius": "provider", "severity": "medium", "has_dry_run": true, "has_structured_output": true, "has_governance": false, "note": "Reads Google Workspace auth tokens."}
+    ],
+    "delete_destructive": [
+      {"script": "scripts/rig_relay_sessions_gc.py", "blast_radius": "workspace", "severity": "high", "has_dry_run": false, "note": "Garbage collects session files. Irreversible without backup."},
+      {"script": "scripts/rig_relay_gc_artifacts.py", "blast_radius": "workspace", "severity": "high", "has_dry_run": true, "note": "Garbage collects .build/ artifacts. Retention policy governed."},
+      {"script": "scripts/rig_relay_cleanup_coordination_leases.py", "blast_radius": "workspace", "severity": "high", "has_dry_run": true, "note": "Releases stale coordination leases. May release active leases."}
+    ],
+    "admin_configuration": [
+      {"script": "scripts/rig_enterprise_tenant_admin.py", "blast_radius": "tenant", "severity": "blocker", "note": "Register/grant/revoke tenants. No governance."},
+      {"script": "scripts/rig_enterprise_fleet_admin.py", "blast_radius": "workspace", "severity": "blocker", "note": "Start/stop/restart fleet instances. No governance."},
+      {"script": "scripts/rig_enterprise_policy_evaluate.py", "blast_radius": "local", "severity": "low", "note": "Policy evaluation. Read-side analysis."}
+    ],
+    "git_mutation": [
+      {"script": "scripts/bump_version.py", "blast_radius": "git", "severity": "medium", "note": "Edits pyproject.toml, optionally commits."},
+      {"script": "scripts/prepare_release.py", "blast_radius": "git", "severity": "medium", "note": "Git remote/tag/branch operations."}
+    ],
+    "local_file_mutation_high_risk": [
+      {"script": "scripts/rig_relay_sessions_compact.py", "blast_radius": "workspace", "severity": "high", "note": "Compacts session JSONL to Parquet — may delete originals after compaction."},
+      {"script": "scripts/rig_relay_compact_artifacts.py", "blast_radius": "workspace", "severity": "high", "note": "Compacts derived JSONL to Parquet."
+      }
+    ],
+    "local_file_mutation_medium_risk": [
+      {"script": "scripts/rig_github_live_mutation_preflight.py", "blast_radius": "workspace", "severity": "medium", "note": "Writes to docs/json/governance/. Downstream gates may trust output."},
+      {"script": "scripts/refactor_large_files.py", "blast_radius": "workspace", "severity": "medium", "note": "AST-based source tree refactoring. Must preserve dirty files."},
+      {"script": "scripts/rig_github_code_scanning_pr_mutation_executor.py", "blast_radius": "provider", "severity": "medium", "note": "PR mutation in dry-run. Governed by execution gate but no cryptographic proof."}
+    ],
+    "local_file_mutation_low_risk": [
+      {"script": "scripts/backfill_doc_disclosure.py", "blast_radius": "local", "severity": "low", "note": "Mutates JSON doc files in docs/json/."},
+      {"script": "scripts/bulk_convert_docs.py", "blast_radius": "local", "severity": "low", "note": "Converts Markdown to JSON docs."},
+      {"script": "scripts/perform_migration.py", "blast_radius": "local", "severity": "low", "note": "Parses Markdown into JSON pages."},
+      {"script": "scripts/migrate_vibe_to_rig.py", "blast_radius": "workspace", "severity": "low", "note": "One-shot namespace migration."},
+      {"script": "scripts/package_release.py", "blast_radius": "local", "severity": "low", "note": "Builds release packages in dist/."},
+      {"script": "scripts/render_static_docs.py", "blast_radius": "public", "severity": "low", "note": "Public static projection — must enforce public/private split."}
+    ],
+    "package_cli_mutation_capable": [
+      {"entrypoint": "rig-relay", "blast_radius": "local", "severity": "low", "note": "Dispatch hub. Routes to cockpit, doctor, status. No direct mutation."},
+      {"entrypoint": "rig_relay/cli/demo_commands.py", "blast_radius": "local", "severity": "low", "note": "Writes demo artifacts. Idempotent. No canonical file mutation."}
+    ]
+  },
+  "revision": "1.0.0"
+}

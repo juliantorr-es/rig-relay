@@ -1,0 +1,195 @@
+{
+  "schema_version": "rig.relay.roadmap_steward_initial_recommendations.v1",
+  "document_id": "roadmap-steward-initial-recommendations-v1",
+  "title": "Roadmap Steward Initial Recommendations v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:30:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "assessment_basis": "Scored against 13-dimension heuristic model (weight total 32.0). Informed by inspection of 14 governance artifacts, 4 roadmap artifacts, 2 release gate artifacts, and current git dirty state.",
+  "current_blocker_status": {
+    "test_collection": "0 errors after v2 stabilization. BUT: finalize_session_storage is a stub (~100 lines missing), PROTECTED_INTENTS reconstructed from HEAD, dead stub files (_error.py, _models.py) exist.",
+    "conftest": "Broken — parallel lane's dirty agent_loop.py prevents conftest import. Requires --noconftest on all gate runs.",
+    "schema_validation": "All schemas valid.",
+    "mcp_gate": "PASS — 94/94.",
+    "cli_governance": "P0 implementation complete, guard integrated. Subprocess hardening partial."
+  },
+  "recommended_slices": [
+    {
+      "rank": 1,
+      "slice_id": "test-stabilization-completion-v3",
+      "title": "Test Infrastructure Stabilization v3 — Implement Stubs and Resolve Conftest",
+      "why_now": "Test collection is at 0 errors BUT uses compatibility stubs. The conftest.py import is broken by a parallel lane. Every gate run requires --noconftest. This is the highest-blocker-reduction slice available.",
+      "scoring": {
+        "blocker_reduction": 5,
+        "security_risk_reduction": 0,
+        "authority_spine_alignment": 0,
+        "evidence_replay_value": 0,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 4,
+        "validation_clarity": 4,
+        "file_ownership_safety": 2,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 4,
+        "product_visibility_value": 0,
+        "enterprise_procurement_value": 0,
+        "user_requested_priority": 0,
+        "composite": 1.97
+      },
+      "affected_files": ["rig_relay/evidence/_lifecycle_funcs.py (expand stub)", "rig_relay/desktop/_intents/ (PROTECTED_INTENTS)", "tests/conftest.py or rig_relay/core/agent_loop.py (resolve import)"],
+      "validation": "uv run pytest --collect-only -q --noconftest → target 0 errors. Then uv run pytest --collect-only -q (without --noconftest) → target 0 errors.",
+      "dependency_impact": "None",
+      "blast_radius": "Low — evidence/desktop/core imports only",
+      "stop_conditions": "Do not delete dead stub files per dirty-file preservation. Do not break existing test collection counts.",
+      "source_artifacts": ["docs/json/governance/test_infrastructure_import_stabilization_v2.v1.json"]
+    },
+    {
+      "rank": 2,
+      "slice_id": "receipt-manifest-duckdb-projection",
+      "title": "Receipt Manifest Enrichment and DuckDB Replay Projection v1",
+      "why_now": "Governance decisions now produce ReceiptEnvelope evidence. Receipt manifest enrichment creates the discoverability foundation for all future governance reporting, audit replay, and procurement evidence packs. This is the highest evidence_replay_value slice available.",
+      "scoring": {
+        "blocker_reduction": 1,
+        "security_risk_reduction": 1,
+        "authority_spine_alignment": 3,
+        "evidence_replay_value": 5,
+        "roadmap_alignment": 2,
+        "implementation_clarity": 3,
+        "validation_clarity": 3,
+        "file_ownership_safety": 4,
+        "laptop_cost_safety": 4,
+        "dependency_safety": 4,
+        "product_visibility_value": 1,
+        "enterprise_procurement_value": 3,
+        "user_requested_priority": 0,
+        "composite": 2.63
+      },
+      "affected_files": ["rig_relay/evidence/receipt_index.py", "rig_relay/evidence/receipt_manifest.py", "rig_relay/analytics/", "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json"],
+      "validation": "uv run pytest tests/evidence/test_receipt_manifest*.py -q --noconftest",
+      "dependency_impact": "None — DuckDB already in dependencies",
+      "blast_radius": "Low — evidence/analytics subsystems",
+      "source_artifacts": ["docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json", "docs/json/governance/governance_evidence_replay_discoverability_audit_v1.v1.json"]
+    },
+    {
+      "rank": 3,
+      "slice_id": "mcp-gate-preservation-only",
+      "title": "MCP Gate Preservation — No Capability Expansion",
+      "why_now": "MCP read-only surface is fully hardened (Phases 1-5 + sync/unknown-tool parity). 94/94 tests pass. The gate must be preserved as-is. No MCP capability expansion. No new MCP tools. No hosted OAuth. No mutation tools.",
+      "scoring": {
+        "blocker_reduction": 2,
+        "security_risk_reduction": 4,
+        "authority_spine_alignment": 4,
+        "evidence_replay_value": 1,
+        "roadmap_alignment": 1,
+        "implementation_clarity": 5,
+        "validation_clarity": 5,
+        "file_ownership_safety": 5,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 5,
+        "product_visibility_value": 1,
+        "enterprise_procurement_value": 2,
+        "user_requested_priority": 0,
+        "composite": 3.00
+      },
+      "affected_files": "None — preservation only",
+      "validation": "uv run python scripts/rig_mcp_hardened_read_only_gate.py --json → must return PASS",
+      "dependency_impact": "None",
+      "blast_radius": "Zero — no changes",
+      "source_artifacts": ["docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json"]
+    },
+    {
+      "rank": 4,
+      "slice_id": "cli-subprocess-hardening-v2",
+      "title": "CLI Subprocess Hardening — Exit Codes, Execution Windows, Safety Classifications",
+      "why_now": "CLI P0 mutation gate is implemented. Subprocess-level hardening (exit code enforcement, execution window validation, safety classification) was partially done and should complete while test infrastructure is stable.",
+      "scoring": {
+        "blocker_reduction": 2,
+        "security_risk_reduction": 3,
+        "authority_spine_alignment": 2,
+        "evidence_replay_value": 1,
+        "roadmap_alignment": 1,
+        "implementation_clarity": 2,
+        "validation_clarity": 3,
+        "file_ownership_safety": 3,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 4,
+        "product_visibility_value": 0,
+        "enterprise_procurement_value": 1,
+        "user_requested_priority": 0,
+        "composite": 2.13
+      },
+      "affected_files": ["rig_relay/core/tool_subprocess.py", "rig_relay/cli/", "tests/cli/"],
+      "validation": "uv run pytest tests/cli/ -q --noconftest",
+      "dependency_impact": "None",
+      "blast_radius": "Medium — CLI code, test fixture files",
+      "source_artifacts": ["docs/json/governance/cli_script_p0_mutation_gate_implementation_v1.v1.json", "docs/json/governance/cli_governance_guard_evidence_integration_v1.v1.json"]
+    },
+    {
+      "rank": 5,
+      "slice_id": "website-front-door-design",
+      "title": "Project Website Front Door Design v1",
+      "why_now": "No artifact exists for the project website/front door. This is a documentation-only slice that produces a structured design spec. No code impact. Improves product_visibility_value.",
+      "scoring": {
+        "blocker_reduction": 0,
+        "security_risk_reduction": 0,
+        "authority_spine_alignment": 1,
+        "evidence_replay_value": 0,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 2,
+        "validation_clarity": 1,
+        "file_ownership_safety": 5,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 5,
+        "product_visibility_value": 5,
+        "enterprise_procurement_value": 2,
+        "user_requested_priority": 0,
+        "composite": 1.66
+      },
+      "affected_files": "docs/json/governance/project_website_front_door_v1.v1.json (new)",
+      "validation": "JSON syntax + schema validation only",
+      "dependency_impact": "None",
+      "blast_radius": "Zero — documentation only",
+      "source_artifacts": ["docs/json/site_manifest.v1.json"]
+    }
+  ],
+  "recommended_park_or_defer": [
+    {
+      "slice": "Postgres Migration Phase 1",
+      "reason": "Unblocks nothing. No governance dependency blocked by Postgres absence. DuckDB is sufficient for read-side analytics. Postgres is correctly deferred until test infrastructure is stable and receipt manifest enrichment is complete."
+    },
+    {
+      "slice": "GitHub Trust Spine",
+      "reason": "Large blast radius (54KB roadmap). Touches GitHub mutation APIs. Requires cryptographic signing infrastructure not yet implemented. Correctly parked."
+    },
+    {
+      "slice": "Enterprise Procurement Docs (P0-01 through P0-07)",
+      "reason": "7 documentation-only items. Zero code impact. Can be parallelized when test infrastructure is stable. Lower priority than operational stability."
+    },
+    {
+      "slice": "MCP Phase 6+ (hosted OAuth, common envelope, streamable HTTP)",
+      "reason": "MCP read-only is fully hardened. Expansion is not urgent. Correctly parked until cryptographic approval receipts exist and hosted deployment path is defined."
+    },
+    {
+      "slice": "High-Performance Substrate",
+      "reason": "Lowest blocker-reduction value. No existing infrastructure depends on it. Correctly deferred."
+    }
+  ],
+  "lane_collision_warnings": [
+    {
+      "collision_type": "conftest_import_broken",
+      "description": "Parallel lane's dirty agent_loop.py contains imports from _error (missing 's', dead stub file). This prevents tests/conftest.py from loading. Every gate run requires --noconftest. This is the single biggest friction point.",
+      "affected_files": ["rig_relay/core/agent_loop.py", "tests/conftest.py"],
+      "recommendation": "Resolve agent_loop.py import errors (file has 4 duplicated import blocks from merge artifact). Does not require full reconciliation — just fix the import path."
+    },
+    {
+      "collision_type": "dead_stub_files",
+      "description": "_error.py and _models.py are dead stub files (6 lines and 8 lines respectively). They contain no class definitions. All real error classes are in _errors.py (with 's'). All real model classes are in _agent_models.py.",
+      "affected_files": ["rig_relay/core/_error.py", "rig_relay/core/_models.py"],
+      "recommendation": "Do not delete per dirty-file preservation. Document as known dead stubs. Update agent_loop.py imports to reference _errors.py and _agent_models.py."
+    }
+  ],
+  "next_action": {
+    "recommended_immediate_slice": "test-stabilization-completion-v3",
+    "bounded_prompt": "Mission: Test infrastructure stabilization v3. Fix conftest.py import (dirty agent_loop.py has 'from _error import' that should be 'from _errors import'). Implement finalize_session_storage stub (~100 lines from HEAD). PROTECTED_INTENTS should be restored from HEAD if missing. Do not delete dead stub files. Validate: uv run pytest --collect-only -q → 0 errors without --noconftest."
+  },
+  "content_light": true
+}

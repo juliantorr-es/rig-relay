@@ -1,0 +1,92 @@
+{
+  "schema_version": "rig.relay.mcp_phase5_local_session_auth.v1",
+  "document_id": "mcp-phase5-local-session-auth-v1",
+  "title": "MCP Phase 5 Local Session Auth and Tier Authorization v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:00:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_phase_artifacts": [
+    "docs/json/governance/mcp_phase1_descriptor_integrity_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase2_roots_boundary_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase3_content_light_output_scanning_v1.v1.json",
+    "docs/json/governance/mcp_phase3_4_scan_receipt_convergence_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/protocols/mcp/server.py (added _session_token, _session_token_fingerprint, _require_auth, _validate_auth; reordered call_tool and call_tool_sync to check auth before tool lookup; wired session_token into _handle_jsonrpc tools/call)",
+    "rig_relay/protocols/mcp/models.py (added 3 refusal codes: AUTH_REQUIRED, INVALID_SESSION_TOKEN, UNAUTHORIZED_TIER)",
+    "tests/protocols/mcp/test_mcp_auth_v1.py (new — 18 tests)"
+  ],
+  "auth_model": {
+    "mode": "local_stdio_only",
+    "token_generation": "secrets.token_hex(32) at server startup",
+    "token_length": "64 hex characters",
+    "fingerprint": "SHA256(token):16 — safe for evidence, unusable for auth",
+    "transport": "JSON-RPC params.session_token — stdio-compatible, no headers needed",
+    "validation": "secrets.compare_digest() — constant-time comparison",
+    "activation": "require_auth=True at server construction. Default False for backward compatibility with existing tests. serve_stdio() and hosted deployments will require True."
+  },
+  "token_handling": {
+    "not_logged": true,
+    "not_in_telemetry": true,
+    "not_in_refusals": true,
+    "fingerprint_safe_for_evidence": true,
+    "refusal_shows_fingerprint": "invalid session_token refusal includes fingerprint (safe, not the token) for debugging",
+    "token_never_in_errors": true
+  },
+  "pipeline_order": {
+    "step_0_5": "Authentication — validate session token, refuse before tool lookup if missing/invalid",
+    "step_1": "Unknown tool — JSON-RPC error if tool not in registry",
+    "step_2": "Descriptor integrity",
+    "step_3": "Authority/tier gating",
+    "step_4": "Forbidden tool refusal",
+    "step_5": "Root/workspace boundary (in tool handlers)",
+    "step_6": "Dispatch",
+    "step_7": "Content-light scan",
+    "step_8": "Receipt persistence",
+    "step_9": "Response assembly"
+  },
+  "tier_authorization": {
+    "read_only_tools": "allowed with valid token (tier 0)",
+    "analysis_tools": "allowed with valid token (tier 1)",
+    "validation_tools": "allowed with valid token (tier 2)",
+    "patch_proposal": "blocked — returns approval_required stub (tier 3)",
+    "mutation": "blocked — requires cryptographic approval receipt (tier 4)",
+    "git_release": "blocked — permanently refused (tier 5)",
+    "forbidden": "rig.promote_to_preproduction — permanently refused"
+  },
+  "refusal_codes_added": ["authentication_required", "invalid_session_token", "unauthorized_tier"],
+  "tests": {
+    "new": 18,
+    "passed": 18,
+    "failed": 0,
+    "regression_passed": 76,
+    "total_passed": 94,
+    "suites": {
+      "TestAuthRequired": {"count": 3, "classification": "contract, adversarial"},
+      "TestTierAuthorization": {"count": 3, "classification": "contract, adversarial"},
+      "TestAuthRefusalDoesNotLeakToken": {"count": 2, "classification": "adversarial, contract"},
+      "TestTokenFingerprintInEvidence": {"count": 2, "classification": "contract"},
+      "TestAuthReceiptPersistence": {"count": 2, "classification": "real-artifact, contract"},
+      "TestAsyncSyncAuthParity": {"count": 2, "classification": "contract"},
+      "TestPhaseRegression": {"count": 4, "classification": "contract"}
+    }
+  },
+  "validations": {
+    "pyright": "0 errors, 0 warnings",
+    "auth_tests": "18/18 passed",
+    "phase_regression": "76/76 passed",
+    "schema_validation": "all schemas valid"
+  },
+  "remaining_seams": {
+    "hosted_oauth": "OAuth/bearer token support deferred. MCPToolAuthMetadata has bearer_supported and oauth_supported flags but no implementation.",
+    "unknown_tool_format": "Still returns JSON-RPC error rather than structured refusal.",
+    "sync_handler": "process_jsonrpc_sync lacks tools/call dispatch.",
+    "common_envelope": "input_hash, output_hash, payload_schema, artifact_refs, producer, trace_id still missing from responses."
+  },
+  "dependency_changes": "None",
+  "mcp_security_implications": {
+    "before": "MCP tools/call was anonymous — any client connected via stdio could invoke any read-only tool without identification. No session token, no auth check.",
+    "after": "With require_auth=True, every tools/call requires a valid session token before any other check. Token validated with constant-time comparison. Refusals do not leak raw tokens. Token fingerprint (not token) appears in evidence. Auth refusals persist via receipt_store. Tier authorization remains enforced (mutation/git-release permanently blocked)."
+  },
+  "content_light": true
+}

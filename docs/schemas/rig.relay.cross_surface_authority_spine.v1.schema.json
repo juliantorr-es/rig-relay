@@ -1,0 +1,183 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.cross_surface_authority_spine.v1.schema.json",
+  "title": "Cross-Surface Authority Spine Schema v1",
+  "description": "Canonical doctrine for the cross-surface authority spine — the single authority for all Rig Relay surfaces, protocols, and governance boundaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "doctrine_id",
+    "title",
+    "generated_at",
+    "effective_at",
+    "status",
+    "supersedes",
+    "source_audit_artifacts",
+    "authority_tiers",
+    "surface_rules",
+    "protocol_rules",
+    "hosted_team_rule",
+    "github_trust_spine_rule",
+    "postgres_source_of_truth_rule",
+    "telemetry_evidence_boundary_rule",
+    "common_envelope_requirement",
+    "forbidden_bypasses",
+    "implementation_sequencing",
+    "do_not_overrun_guards",
+    "required_tests_before_enabling_each_surface",
+    "content_light",
+    "revision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier for this doctrine document."
+    },
+    "doctrine_id": {
+      "type": "string",
+      "description": "Unique identifier for this doctrine document."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title of the doctrine."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this doctrine was generated."
+    },
+    "effective_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this doctrine takes effect."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "canonical", "superseded"],
+      "description": "Doctrine lifecycle status."
+    },
+    "supersedes": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "List of doctrine IDs this document supersedes, or null if none."
+    },
+    "source_audit_artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of source audit artifact paths or identifiers that informed this doctrine."
+    },
+    "authority_tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tier", "label", "description"],
+        "properties": {
+          "tier": { "type": "integer", "minimum": 0 },
+          "label": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "description": "Ordered list of authority tiers (Tier 0 through Tier 8)."
+    },
+    "surface_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frontend_cockpit_rule",
+        "cli_rule",
+        "websocket_rule",
+        "static_docs_rule"
+      ],
+      "properties": {
+        "frontend_cockpit_rule": { "type": "string" },
+        "cli_rule": { "type": "string" },
+        "websocket_rule": { "type": "string" },
+        "static_docs_rule": { "type": "string" }
+      },
+      "description": "Governance rules for each Rig Relay surface."
+    },
+    "protocol_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mcp_rule",
+        "acp_rule",
+        "a2a_rule",
+        "ssh_rule"
+      ],
+      "properties": {
+        "mcp_rule": { "type": "string" },
+        "acp_rule": { "type": "string" },
+        "a2a_rule": { "type": "string" },
+        "ssh_rule": { "type": "string" }
+      },
+      "description": "Governance rules for each protocol surface."
+    },
+    "hosted_team_rule": {
+      "type": "string",
+      "description": "Governance rule for hosted team mode."
+    },
+    "github_trust_spine_rule": {
+      "type": "string",
+      "description": "Governance rule for the GitHub Trust Spine surface."
+    },
+    "postgres_source_of_truth_rule": {
+      "type": "string",
+      "description": "Governance rule for the Postgres source-of-truth surface."
+    },
+    "telemetry_evidence_boundary_rule": {
+      "type": "string",
+      "description": "Boundary rule distinguishing telemetry from evidence."
+    },
+    "common_envelope_requirement": {
+      "type": "string",
+      "description": "Requirement that all surfaces adopt a common envelope model."
+    },
+    "forbidden_bypasses": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of forbidden bypass patterns that must be blocked."
+    },
+    "implementation_sequencing": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Ordered implementation phases (P0 through P5)."
+    },
+    "do_not_overrun_guards": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of guards that must not be overrun during implementation."
+    },
+    "required_tests_before_enabling_each_surface": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } },
+      "description": "Per-surface mapping of required test names before that surface can be enabled."
+    },
+    "content_light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "no_raw_tokens",
+        "no_raw_secrets",
+        "no_source_code",
+        "redaction_note"
+      ],
+      "properties": {
+        "sha256": { "type": "string" },
+        "no_raw_tokens": { "type": "boolean" },
+        "no_raw_secrets": { "type": "boolean" },
+        "no_source_code": { "type": "boolean" },
+        "redaction_note": { "type": "string" }
+      },
+      "description": "Content-light assertion: no raw tokens, secrets, or source code."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing revision number."
+    }
+  }
+}

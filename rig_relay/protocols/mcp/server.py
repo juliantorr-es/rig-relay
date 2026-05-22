@@ -18,25 +18,35 @@ Transport: stdio (local) or Streamable HTTP (remote).
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
+import secrets
 import sys
 import time
 from typing import Any
+import uuid
 
 from rig_relay.coordination.council import RedactionMode
+from rig_relay.evidence.redaction import _FORBIDDEN_FIELD_KEYS, _SECRET_VALUE_PATTERNS
 from rig_relay.protocols._transport_budgets import BudgetTracker
+from rig_relay.protocols.mcp._auth_metadata import build_descriptor_identity
+from rig_relay.protocols.mcp._refusal_adapter import classify_tool_descriptor_suspicious
 from rig_relay.protocols.mcp.models import (
     GATED_TOOLS,
     PROMPTS,
     READ_ONLY_RESOURCES,
     READ_ONLY_TOOLS,
+    ContentLightClass,
+    MCPDescriptorIdentity,
     MCPPrompt,
     MCPResource,
     MCPTool,
     MCPToolTier,
+    RefusalCode,
     ServerCapabilities,
+    compute_descriptor_hash,
 )
 
 
@@ -48,11 +58,24 @@ class RigMCPServer:
     returns approval_required + receipt_id instead of doing the action.
 
     Usage:
-        server = RigMCPServer()
+        server = RigMCPServer(workspace_root=Path("/path/to/project"))
         await server.serve_stdio()
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        workspace_root: Path | None = None,
+        receipt_store: object | None = None,
+        require_auth: bool = False,
+    ) -> None:
+        self._workspace_root = (workspace_root or Path.cwd()).resolve()
+        self._receipt_store = receipt_store
+        self._session_token = secrets.token_hex(32)
+        self._session_token_fingerprint = hashlib.sha256(
+            f"rig.relay.mcp.session:{self._session_token}".encode()
+        ).hexdigest()[:16]
+        self._require_auth = require_auth
         self._initialized = False
         self._budgets = BudgetTracker()
         self._budgets.connection_start = time.monotonic()
@@ -61,6 +84,8 @@ class RigMCPServer:
             resources={"subscribe": False, "listChanged": True},
             prompts={"listChanged": True},
         )
+        self._descriptors: dict[str, MCPDescriptorIdentity] = {}
+        self._register_descriptors()
 
     @property
     def capabilities(self) -> ServerCapabilities:
@@ -78,183 +103,621 @@ class RigMCPServer:
     def list_prompts(self) -> list[MCPPrompt]:
         return PROMPTS
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], *, session_token: str = ""
+    ) -> dict[str, Any]:
+        request_id = str(uuid.uuid4())
+
+        refusal = self._validate_auth(session_token)
+        if refusal is not None:
+            refusal["request_id"] = request_id
+            self._persist_outcome(refusal, request_id, name)
+            return refusal
+
         all_tools = {t.name: t for t in self.list_tools()}
         tool = all_tools.get(name)
         if tool is None:
-            return {"error": f"Unknown tool: {name}", "code": -32601}
+            result = {
+                "error": {
+                    "code": -32601,
+                    "message": f"Unknown tool: {name}",
+                    "data": {
+                        "surface": "mcp",
+                        "refusal_code": RefusalCode.UNKNOWN_TOOL,
+                        "tool": name,
+                        "capability_id": f"rig.{name}",
+                        "content_light": True,
+                        "content_light_classification": "public_safe",
+                        "request_id": request_id,
+                        "generated_at": datetime.now(UTC).isoformat(),
+                    },
+                }
+            }
+            self._persist_outcome(result, request_id, name)
+            return result
 
-        # Tier 4+ tools require authorization receipt
-        if tool.tier and tool.tier.value >= 4:
+        # ── Descriptor integrity ─────────────────────────────
+        ok, refusal_code = self._verify_descriptor_integrity(name, tool)
+        if not ok:
+            result = self._build_refusal(
+                name,
+                refusal_code,
+                "Tool descriptor integrity check failed. "
+                "The tool's declaration may have been modified after server startup.",
+                int(tool.tier) if tool.tier is not None else 0,
+            )
+            self._persist_outcome(result, request_id, name)
+            return result
+
+        # ── Forbidden tool refusal ──────────────────────────
+        if name == "rig.promote_to_preproduction":
+            result = self._build_refusal(
+                name,
+                RefusalCode.FORBIDDEN,
+                "Git/release-tier tool permanently forbidden. "
+                "Enterprise-gated feature requiring multi-person attestation.",
+                int(tool.tier),
+            )
+            self._persist_outcome(result, request_id, name)
+            return result
+
+        if tool.tier is not None and tool.tier.value >= MCPToolTier.MUTATION.value:
             receipt = arguments.get("authorization_receipt")
             if not receipt:
-                return {
-                    "status": "blocked_pending_approval",
+                result = {
+                    "status": "blocked",
                     "tool": name,
-                    "message": "Authorization receipt required for mutation.",
+                    "surface": "mcp",
+                    "capability_id": f"rig.{name}",
+                    "authority_tier": int(tool.tier),
+                    "message": "Mutation-tier tool blocked: signed authorization receipt required. "
+                    "MCP mutation tools are FORBIDDEN until approval receipts are "
+                    "cryptographically enforced server-side per cross_surface_authority_spine v1.",
+                    "refusal_code": "mutation_tier_mcp",
                     "approval_required": True,
+                    "content_light": True,
+                    "content_light_classification": "public_safe",
+                    "request_id": request_id,
                 }
+                self._persist_outcome(result, request_id, name)
+                return result
 
-        return await self._dispatch(tool.name, arguments)
+        if tool.tier is not None and tool.tier.value >= MCPToolTier.GIT_RELEASE.value:
+            result = {
+                "status": "blocked",
+                "tool": name,
+                "surface": "mcp",
+                "capability_id": f"rig.{name}",
+                "authority_tier": int(tool.tier),
+                "message": "Git/release-tier tool blocked: these operations are "
+                "denied by default per cross_surface_authority_spine v1. "
+                "Enterprise-gated feature not yet implemented.",
+                "refusal_code": "git_release_tier_mcp",
+                "content_light": True,
+                "content_light_classification": "public_safe",
+                "request_id": request_id,
+            }
+            self._persist_outcome(result, request_id, name)
+            return result
 
-    async def handle_jsonrpc_request(self, raw_request: str) -> str:
-        if not self._budgets.can_accept_request(len(raw_request.encode("utf-8"))):
-            return json.dumps({
-                "jsonrpc": "2.0",
-                "id": None,
+        dispatch_result = await self._dispatch(tool.name, arguments)
+        classification, refusal = self._scan_tool_output(dispatch_result)
+        if refusal is not None:
+            refusal["request_id"] = request_id
+            self._persist_outcome(refusal, request_id, name)
+            return refusal
+        result = {
+            **dispatch_result,
+            "surface": "mcp",
+            "capability_id": f"rig.{name}",
+            "authority_tier": int(tool.tier) if tool.tier is not None else 0,
+            "content_light_classification": classification,
+            "request_id": request_id,
+        }
+        self._persist_outcome(result, request_id, name)
+        return result
+
+    def call_tool_sync(
+        self, name: str, arguments: dict[str, Any], *, session_token: str = ""
+    ) -> dict[str, Any]:
+        request_id = str(uuid.uuid4())
+
+        refusal = self._validate_auth(session_token)
+        if refusal is not None:
+            refusal["request_id"] = request_id
+            self._persist_outcome(refusal, request_id, name)
+            return refusal
+
+        all_tools = {t.name: t for t in self.list_tools()}
+        tool = all_tools.get(name)
+        if tool is None:
+            result = {
                 "error": {
-                    "code": -32000,
-                    "message": "Rate limited: request budget exceeded",
-                },
-            })
-
-        self._budgets.track_request()
-        try:
-            try:
-                request = json.loads(raw_request)
-            except json.JSONDecodeError:
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {"code": -32700, "message": "Parse error"},
-                })
-
-            if not isinstance(request, dict):
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {"code": -32600, "message": "Invalid Request"},
-                })
-
-            if request.get("jsonrpc") != "2.0":
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid Request: missing or wrong jsonrpc version",
+                    "code": -32601,
+                    "message": f"Unknown tool: {name}",
+                    "data": {
+                        "surface": "mcp",
+                        "refusal_code": RefusalCode.UNKNOWN_TOOL,
+                        "tool": name,
+                        "capability_id": f"rig.{name}",
+                        "content_light": True,
+                        "content_light_classification": "public_safe",
+                        "request_id": request_id,
+                        "generated_at": datetime.now(UTC).isoformat(),
                     },
-                })
+                }
+            }
+            self._persist_outcome(result, request_id, name)
+            return result
 
-            method = request.get("method")
-            req_id = request.get("id")
+        # ── Descriptor integrity ─────────────────────────────
+        ok, refusal_code = self._verify_descriptor_integrity(name, tool)
+        if not ok:
+            result = self._build_refusal(
+                name,
+                refusal_code,
+                "Tool descriptor integrity check failed.",
+                int(tool.tier) if tool.tier is not None else 0,
+            )
+            self._persist_outcome(result, request_id, name)
+            return result
 
-            if method == "tools/call":
-                params = request.get("params", {})
-                tool_name = params.get("name", "")
-                arguments = params.get("arguments", {})
-                result = await self.call_tool(tool_name, arguments)
-                return json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result})
+        if name == "rig.promote_to_preproduction":
+            result = self._build_refusal(
+                name,
+                RefusalCode.FORBIDDEN,
+                "Git/release-tier tool permanently forbidden.",
+                int(tool.tier),
+            )
+            self._persist_outcome(result, request_id, name)
+            return result
 
-            if method == "tools/list":
-                tools = self.list_tools()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"tools": [t.model_dump() for t in tools]},
-                })
+        if tool.tier is not None and tool.tier.value >= MCPToolTier.MUTATION.value:
+            receipt = arguments.get("authorization_receipt")
+            if not receipt:
+                result = {
+                    "status": "blocked",
+                    "tool": name,
+                    "surface": "mcp",
+                    "capability_id": f"rig.{name}",
+                    "authority_tier": int(tool.tier),
+                    "message": "Mutation-tier tool blocked: signed authorization receipt required. "
+                    "MCP mutation tools are FORBIDDEN until approval receipts are "
+                    "cryptographically enforced server-side per cross_surface_authority_spine v1.",
+                    "refusal_code": "mutation_tier_mcp",
+                    "approval_required": True,
+                    "content_light": True,
+                    "content_light_classification": "public_safe",
+                    "request_id": request_id,
+                }
+                self._persist_outcome(result, request_id, name)
+                return result
 
-            if method == "resources/list":
-                resources = self.list_resources()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"resources": [r.model_dump() for r in resources]},
-                })
+        if tool.tier is not None and tool.tier.value >= MCPToolTier.GIT_RELEASE.value:
+            result = {
+                "status": "blocked",
+                "tool": name,
+                "surface": "mcp",
+                "capability_id": f"rig.{name}",
+                "authority_tier": int(tool.tier),
+                "message": "Git/release-tier tool blocked: these operations are "
+                "denied by default per cross_surface_authority_spine v1. "
+                "Enterprise-gated feature not yet implemented.",
+                "refusal_code": "git_release_tier_mcp",
+                "content_light": True,
+                "content_light_classification": "public_safe",
+                "request_id": request_id,
+            }
+            self._persist_outcome(result, request_id, name)
+            return result
 
-            if method == "prompts/list":
-                prompts = self.list_prompts()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"prompts": [p.model_dump() for p in prompts]},
-                })
+        if tool.tier is not None and tool.tier.value < MCPToolTier.MUTATION.value:
+            dispatch_result = self._dispatch_sync(tool.name, arguments)
+            classification, refusal = self._scan_tool_output(dispatch_result)
+            if refusal is not None:
+                refusal["request_id"] = request_id
+                self._persist_outcome(refusal, request_id, name)
+                return refusal
+            result = {
+                **dispatch_result,
+                "surface": "mcp",
+                "capability_id": f"rig.{name}",
+                "authority_tier": int(tool.tier) if tool.tier is not None else 0,
+                "content_light_classification": classification,
+                "request_id": request_id,
+            }
+            self._persist_outcome(result, request_id, name)
+            return result
 
-            return json.dumps({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32601, "message": f"Method not found: {method}"},
-            })
-        finally:
-            self._budgets.release_request()
+        result = {"error": f"Tool not dispatched: {name}", "code": -32601}
+        self._persist_outcome(result, request_id, name)
+        return result
 
-    def process_jsonrpc_sync(self, raw_request: str) -> str:
-        if not self._budgets.can_accept_request(len(raw_request.encode("utf-8"))):
-            return json.dumps({
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {
-                    "code": -32000,
-                    "message": "Rate limited: request budget exceeded",
-                },
-            })
+    # ── Descriptor integrity ──────────────────────────────────────
 
-        self._budgets.track_request()
+    def _register_descriptors(self) -> None:
+        for tool in self.list_tools():
+            identity = build_descriptor_identity(tool)
+            self._descriptors[tool.name] = identity
+
+    def _verify_descriptor_integrity(
+        self, name: str, tool: MCPTool
+    ) -> tuple[bool, str]:
+        registered = self._descriptors.get(name)
+        if registered is None:
+            return False, RefusalCode.UNKNOWN_TOOL
+        current_hash = compute_descriptor_hash(tool)
+        if current_hash != registered.descriptor_hash:
+            self._quarantine_descriptor(
+                name,
+                f"hash mismatch: registered={registered.descriptor_hash[:12]} "
+                f"current={current_hash[:12]}",
+            )
+            return False, RefusalCode.DESCRIPTOR_DRIFT
+        if registered.quarantined:
+            return False, RefusalCode.DESCRIPTOR_DRIFT
+        return True, ""
+
+    def _detect_descriptor_drift_for_listing(
+        self, tool: MCPTool
+    ) -> MCPDescriptorIdentity | None:
+        registered = self._descriptors.get(tool.name)
+        if registered is None:
+            return None
+        current_hash = compute_descriptor_hash(tool)
+        if current_hash != registered.descriptor_hash:
+            self._quarantine_descriptor(
+                tool.name,
+                f"drift detected on tools/list: "
+                f"registered={registered.descriptor_hash[:12]} "
+                f"current={current_hash[:12]}",
+            )
+            return registered
+        suspicious = classify_tool_descriptor_suspicious(tool.model_dump())
+        if suspicious:
+            self._quarantine_descriptor(
+                tool.name,
+                f"suspicious descriptor on tools/list: {', '.join(suspicious)}",
+            )
+            return registered
+        return None
+
+    def _quarantine_descriptor(self, name: str, reason: str) -> None:
+        registered = self._descriptors.get(name)
+        if registered is None:
+            return
+        from datetime import UTC, datetime
+
+        registered.quarantined = True
+        registered.drift_detected_at = datetime.now(UTC).isoformat()
+        registered.drift_reason = reason
+
+    def _build_refusal(
+        self, name: str, refusal_code: str, reason: str, tier: int | None = None
+    ) -> dict[str, Any]:
+        descriptor = self._descriptors.get(name)
+        return {
+            "status": "refused",
+            "surface": "mcp",
+            "tool": name,
+            "capability_id": f"rig.{name}",
+            "authority_tier": tier,
+            "refusal_code": refusal_code,
+            "reason": reason,
+            "content_light": True,
+            "descriptor_id": descriptor.descriptor_id if descriptor else None,
+            "descriptor_hash": descriptor.descriptor_hash if descriptor else None,
+            "content_light_classification": "public_safe",
+            "request_id": str(uuid.uuid4()),
+            "generated_at": datetime.now(UTC).isoformat(),
+        }
+
+    def _build_decision_id(self, seed: str) -> str:
+        return f"gd-mcp-{hashlib.sha256(seed.encode('utf-8')).hexdigest()[:16]}"
+
+    def _persist_outcome(
+        self, outcome: dict[str, Any], request_id: str, tool_name: str
+    ) -> None:
+        if self._receipt_store is None:
+            return
         try:
-            try:
-                request = json.loads(raw_request)
-            except json.JSONDecodeError:
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {"code": -32700, "message": "Parse error"},
-                })
+            from rig_relay.evidence.receipt_envelope import (
+                ReceiptActor,
+                ReceiptActorKind,
+                ReceiptDecision,
+                ReceiptSubject,
+                ReceiptSubjectKind,
+                build_receipt_envelope,
+            )
 
-            if not isinstance(request, dict):
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {"code": -32600, "message": "Invalid Request"},
-                })
+            descriptor = self._descriptors.get(tool_name)
+            tier = outcome.get("authority_tier", 0)
+            refusal_code = outcome.get("refusal_code", "")
+            is_refused = outcome.get("status") in ("refused", "blocked")
 
-            if request.get("jsonrpc") != "2.0":
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": request.get("id"),
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid Request: missing or wrong jsonrpc version",
-                    },
-                })
+            actor = ReceiptActor(
+                actor_id="mcp_server",
+                actor_kind=ReceiptActorKind.RUNTIME,
+                display_name="Rig MCP Server",
+                is_human=False,
+                is_authoritative=True,
+            )
 
-            method = request.get("method")
-            req_id = request.get("id")
+            subject = ReceiptSubject(
+                subject_id=tool_name,
+                subject_kind=ReceiptSubjectKind.TOOL_INVOCATION,
+                session_id=None,
+            )
 
-            if method == "tools/list":
-                tools = self.list_tools()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"tools": [t.model_dump() for t in tools]},
-                })
+            decision_id = self._build_decision_id(
+                f"{request_id}:{tool_name}:{refusal_code}"
+            )
+            receipt_decision = ReceiptDecision(
+                decision="blocked" if is_refused else "allowed",
+                rationale=outcome.get("reason"),
+                gate="mcp_tool_gate",
+                governance_decision_id=decision_id,
+                surface="mcp",
+                authority_tier=f"tier_{tier}" if tier is not None else None,
+                capability_id=f"rig.{tool_name}",
+                content_light_classification=outcome.get(
+                    "content_light_classification", "public_safe"
+                ),
+            )
 
-            if method == "resources/list":
-                resources = self.list_resources()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"resources": [r.model_dump() for r in resources]},
-                })
+            envelope = build_receipt_envelope(
+                receipt_kind="mcp_tool_call",
+                actor=actor,
+                subject=subject,
+                decision=receipt_decision,
+            )
 
-            if method == "prompts/list":
-                prompts = self.list_prompts()
-                return json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"prompts": [p.model_dump() for p in prompts]},
-                })
+            append = getattr(self._receipt_store, "append", None)
+            if append is not None and callable(append):
+                append(envelope)
+        except Exception:
+            pass
 
-            return json.dumps({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32601, "message": f"Method not found: {method}"},
-            })
-        finally:
-            self._budgets.release_request()
+    # ── Workspace root boundary ───────────────────────────────────
 
-    @property
-    def budget_tracker(self) -> BudgetTracker:
-        return self._budgets
+    def _resolve_workspace_path(
+        self, user_path: str
+    ) -> tuple[Path | None, dict | None]:
+        if not user_path:
+            return self._workspace_root, None
+        try:
+            candidate = (self._workspace_root / user_path).resolve()
+        except (OSError, ValueError, RuntimeError):
+            return None, self._build_refusal(
+                user_path or "(empty)",
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Invalid path: cannot resolve.",
+            )
+        try:
+            candidate.relative_to(self._workspace_root)
+        except ValueError:
+            return None, self._build_refusal(
+                user_path,
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Path traversal outside workspace root denied.",
+            )
+        return candidate, None
+
+    def _assert_within_root(self, resolved: Path) -> dict | None:
+        try:
+            resolved.relative_to(self._workspace_root)
+        except ValueError:
+            return self._build_refusal(
+                str(resolved),
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Resolved path outside workspace root.",
+            )
+        return None
+
+    def _filter_drift_for_listing(
+        self, tools: list[MCPTool]
+    ) -> tuple[list[MCPTool], list[str]]:
+        clean = []
+        drifted = []
+        for t in tools:
+            registered = self._descriptors.get(t.name)
+            if registered is None:
+                clean.append(t)
+                continue
+            if registered.quarantined:
+                drifted.append(t.name)
+                continue
+            drift = self._detect_descriptor_drift_for_listing(t)
+            if drift is not None:
+                drifted.append(t.name)
+                continue
+            clean.append(t)
+        return clean, drifted
+
+    # ── Content-light output scanning ─────────────────────────────
+
+    # ── Authentication ─────────────────────────────────────────
+
+    def _validate_auth(self, session_token: str) -> dict | None:
+        if not self._require_auth:
+            return None
+        if not session_token:
+            return self._build_refusal(
+                "tools/call",
+                RefusalCode.AUTH_REQUIRED,
+                "Session token required for MCP tool calls.",
+            )
+        if not secrets.compare_digest(session_token, self._session_token):
+            return self._build_refusal(
+                "tools/call",
+                RefusalCode.INVALID_SESSION_TOKEN,
+                "Invalid session token. Token fingerprint: "
+                + self._session_token_fingerprint,
+            )
+        return None
+
+    def _classify_mcp_output(self, result: dict[str, Any]) -> str:
+        text = json.dumps(result, sort_keys=True, default=str)
+        text_lower = text.lower()
+
+        has_forbidden_key = any(
+            forbidden in result for forbidden in _FORBIDDEN_FIELD_KEYS
+        )
+        if has_forbidden_key:
+            return ContentLightClass.FORBIDDEN_RAW
+
+        has_secret_value = any(
+            pattern.search(text) for pattern in _SECRET_VALUE_PATTERNS
+        )
+        if has_secret_value:
+            return ContentLightClass.SECRET_BEARING
+
+        has_token_like = (
+            "access_token" in text_lower
+            or "refresh_token" in text_lower
+            or "authorization" in text_lower
+            or "bearer" in text_lower
+            or "api_key" in text_lower
+        )
+        if has_token_like:
+            return ContentLightClass.SENSITIVE_METADATA
+
+        has_raw_content_key = any(
+            f in result
+            for f in (
+                "raw_file_contents",
+                "source_code",
+                "diff",
+                "stdout",
+                "stderr",
+                "model_output",
+                "raw_prompt",
+            )
+        )
+        if has_raw_content_key:
+            return ContentLightClass.FORBIDDEN_RAW
+
+        has_cwd_or_path = (
+            "cwd" in result
+            and isinstance(result.get("cwd"), str)
+            and result["cwd"].startswith("/")
+        )
+        if has_cwd_or_path:
+            return ContentLightClass.PRIVATE_LOCAL
+
+        return ContentLightClass.PUBLIC_SAFE
+
+    def _scan_tool_output(self, result: dict[str, Any]) -> tuple[str, dict | None]:
+        classification = self._classify_mcp_output(result)
+
+        match classification:
+            case ContentLightClass.PUBLIC_SAFE:
+                result["content_light_classification"] = classification
+                return classification, None
+            case ContentLightClass.PRIVATE_LOCAL:
+                result["content_light_classification"] = classification
+                return classification, None
+            case ContentLightClass.SENSITIVE_METADATA:
+                return classification, self._build_refusal(
+                    "tool_output",
+                    RefusalCode.SENSITIVE_METADATA_BLOCKED,
+                    "Output classified as sensitive_metadata. "
+                    "Returning metadata-only refusal.",
+                )
+            case ContentLightClass.SECRET_BEARING:
+                return classification, self._build_refusal(
+                    "tool_output",
+                    RefusalCode.SECRET_BEARING_OUTPUT,
+                    "Output contains secret-bearing content. Refused.",
+                )
+            case ContentLightClass.FORBIDDEN_RAW:
+                return classification, self._build_refusal(
+                    "tool_output",
+                    RefusalCode.FORBIDDEN_RAW_OUTPUT,
+                    "Output contains forbidden raw content. Refused.",
+                )
+            case _:
+                return classification, None
+
+    def _dispatch_sync(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        dispatch = {
+            "rig.current_mission": lambda a: {
+                "status": "ok",
+                "mission": None,
+                "message": "No active mission",
+            },
+            "rig.inspect_schema": lambda a: {
+                "status": "ok",
+                "schema": a.get("schema", "mission-envelope"),
+                "version": "v1",
+            },
+            "rig.list_worktrees": lambda a: {
+                "status": "ok",
+                "worktrees": [],
+                "count": 0,
+            },
+            "rig.search_evidence": lambda a: {
+                "status": "ok",
+                "query": a.get("query"),
+                "results": [],
+                "count": 0,
+            },
+            "rig.read_receipt": lambda a: {
+                "status": "ok",
+                "receipt_id": a.get("receipt_id", ""),
+                "found": False,
+            },
+            "rig.summarize_dirty_state": lambda a: {
+                "status": "ok",
+                "dirty_files": 0,
+                "path_hashes": [],
+                "message": "Clean working tree",
+            },
+            "rig.run_readonly_doctor": lambda a: {
+                "status": "ok",
+                "git_repo": True,
+                "cwd": ".",
+            },
+            "rig.build_context_packet": lambda a: {
+                "status": "ok",
+                "mission_id": a.get("mission_id"),
+                "packet_sha256": "0" * 64,
+            },
+            "rig.create_consult_packet": lambda a: {
+                "status": "ok",
+                "question": a.get("question"),
+                "providers": a.get("providers", []),
+            },
+            "rig.compare_provider_opinions": lambda a: {
+                "status": "ok",
+                "consensus": [],
+                "disagreements": [],
+            },
+            "rig.check_merge_friendly": lambda a: {
+                "status": "ok",
+                "merge_friendly": True,
+                "dirty_files": 0,
+                "recommendation": "Safe.",
+            },
+            "rig.audit_dirty_state": lambda a: {
+                "status": "ok",
+                "dirty_files": 0,
+                "recommendation": "Clean tree.",
+            },
+            "rig.propose_patch": lambda a: {
+                "status": "blocked_pending_approval",
+                "approval_required": True,
+            },
+            "rig.run_validator": lambda a: {
+                "status": "blocked_pending_approval",
+                "validator": a.get("validator"),
+                "approval_required": True,
+            },
+        }
+        handler = dispatch.get(name)
+        if handler is None:
+            return {"error": f"Tool not implemented: {name}", "code": -32601}
+        return handler(args)
 
     async def _dispatch(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         dispatch = {
@@ -290,10 +753,13 @@ class RigMCPServer:
         return {"status": "ok", "schema": schema_name, "version": "v1"}
 
     async def _list_worktrees(self, args: dict) -> dict:
+        refusal = self._assert_within_root(self._workspace_root)
+        if refusal is not None:
+            return refusal
         try:
             from rig_relay.coordination.worktree_manager import WorktreeManager
 
-            mgr = WorktreeManager(Path.cwd())
+            mgr = WorktreeManager(self._workspace_root)
             records = mgr.list_worktrees()
             return {
                 "status": "ok",
@@ -367,10 +833,13 @@ class RigMCPServer:
     # ═══ Tier 2 — Validation / bounded execution ════════════════════════
 
     async def _run_readonly_doctor(self, args: dict) -> dict:
+        refusal = self._assert_within_root(self._workspace_root)
+        if refusal is not None:
+            return refusal
         try:
             import subprocess
 
-            cwd = Path.cwd()
+            cwd = self._workspace_root
             is_git = (
                 subprocess.run(
                     ["git", "rev-parse", "--git-dir"],
@@ -385,6 +854,9 @@ class RigMCPServer:
             return {"status": "error", "message": str(e)}
 
     async def _summarize_dirty_state(self, args: dict) -> dict:
+        refusal = self._assert_within_root(self._workspace_root)
+        if refusal is not None:
+            return refusal
         try:
             import subprocess
 
@@ -392,7 +864,7 @@ class RigMCPServer:
                 ["git", "status", "--porcelain"],
                 capture_output=True,
                 text=True,
-                cwd=str(Path.cwd()),
+                cwd=str(self._workspace_root),
             )
             dirty = result.stdout.strip()
             if not dirty:
@@ -430,6 +902,9 @@ class RigMCPServer:
         }
 
     async def _check_merge_friendly(self, args: dict) -> dict:
+        refusal = self._assert_within_root(self._workspace_root)
+        if refusal is not None:
+            return refusal
         try:
             import subprocess
 
@@ -437,7 +912,7 @@ class RigMCPServer:
                 ["git", "status", "--porcelain"],
                 capture_output=True,
                 text=True,
-                cwd=str(Path.cwd()),
+                cwd=str(self._workspace_root),
             )
             dirty = bool(result.stdout.strip())
             return {
@@ -564,20 +1039,30 @@ class RigMCPServer:
                     "content_light": True,
                 }
             case "tools/list":
-                tool_list = [
-                    {
-                        "name": t.name,
-                        "description": t.description,
-                        "input_schema": t.input_schema,
-                        "tier": int(t.tier),
-                    }
-                    for t in self.list_tools()
-                ]
-                return {"tools": tool_list}
+                tools = self.list_tools()
+                clean_tools, drifted = self._filter_drift_for_listing(tools)
+                result = {
+                    "tools": [
+                        {
+                            "name": t.name,
+                            "description": t.description,
+                            "input_schema": t.input_schema,
+                            "tier": int(t.tier),
+                        }
+                        for t in clean_tools
+                    ],
+                    "content_light": True,
+                }
+                if drifted:
+                    result["descriptor_drift_detected"] = drifted
+                return result
             case "tools/call":
                 name = params.get("name", "")
                 arguments = params.get("arguments", {})
-                return await self.call_tool(name, arguments)
+                session_token = params.get("session_token", "")
+                return await self.call_tool(
+                    name, arguments, session_token=session_token
+                )
             case "resources/list":
                 resource_list = [
                     {

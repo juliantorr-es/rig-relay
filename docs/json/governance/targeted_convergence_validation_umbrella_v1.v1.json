@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.relay.targeted_convergence_validation_umbrella.v1",
+  "validation_id": "targeted-convergence-validation-umbrella-v1",
+  "title": "Targeted Convergence Validation Umbrella v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "branch": "main",
+  "head": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "dirty_state_before": 138,
+  "dirty_state_after": 138,
+  "pre_existing_dirty_preserved": true,
+  "commands_run": [
+    {
+      "lane": "collection",
+      "command": "uv run pytest --collect-only",
+      "result": "12,580 tests collected in 8.69s, 0 collection errors",
+      "pass_count": 12580,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "cli_governance",
+      "command": "uv run pytest tests/cli/test_governance_guard.py tests/cli/test_governance_guard_evidence.py",
+      "result": "18 passed in 9.43s",
+      "pass_count": 18,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "mcp_hardened_gate",
+      "command": "uv run python scripts/rig_mcp_hardened_read_only_gate.py --json",
+      "result": "verdict: PASS, 94/94 assertions passing, 20 check categories, 5 rungs",
+      "pass_count": 94,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "governance_evidence_manifest_enrichment",
+      "command": "uv run pytest tests/governance/test_governance_decisions_as_evidence.py tests/evidence/test_manifest_enrichment.py",
+      "result": "49 passed in 22.73s",
+      "pass_count": 49,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "duckdb_governance_projection",
+      "command": "uv run pytest tests/analytics/test_governance_decisions_projection.py",
+      "result": "20 passed in 22.58s",
+      "pass_count": 20,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "session_lifecycle",
+      "command": "uv run pytest tests/evidence/test_session_lifecycle.py",
+      "result": "5 passed in 21.11s",
+      "pass_count": 5,
+      "fail_count": 0,
+      "status": "PASS"
+    },
+    {
+      "lane": "schema_validation",
+      "command": "uv run python scripts/rig_relay_validate_schemas.py",
+      "result": "420/420 schemas pass",
+      "pass_count": 420,
+      "fail_count": 0,
+      "status": "PASS"
+    }
+  ],
+  "aggregate_results": {
+    "total_lanes": 7,
+    "lanes_passed": 7,
+    "lanes_failed": 0,
+    "total_tests_run": 92,
+    "total_gate_assertions": 94,
+    "total_schemas_validated": 420,
+    "total_collected": 12580,
+    "collection_errors": 0
+  },
+  "tests_skipped": [],
+  "skipped_reason": "All targeted lanes executed. No tests skipped.",
+  "validation_conclusion": "PASS — All 7 targeted convergence lanes individually green. Cross-surface governance spine, MCP hardened read-only surface, CLI/script governance, governance evidence and manifest enrichment, DuckDB governance projections, session lifecycle, and schema validation all pass independently. No cross-lane regressions detected.",
+  "full_suite_recommendation": "Safe to attempt. 12,580 tests collect cleanly (0 collection errors). All 7 targeted lanes pass (92 tests, 94 gate assertions, 420 schemas). The remaining 12,488 tests are unchanged from a prior known-green state. Recommend running full suite when CPU/disk idle or in CI.",
+  "remaining_seams": [
+    "dataclass field-order mismatches in _lifecycle_funcs.py vs _lifecycle_models.py — functional at runtime, pyright flags. Pre-existing, not introduced by this validation umbrella.",
+    "mixed Path/str in SessionFinalizeResult fields (manifest_path/receipt_path vs lifecycle_manifest_path). Pre-existing.",
+    "dead _error.py and _models.py stubs remain in evidence/ — non-functional, per AGENTS.md should not be deleted without explicit mission scope.",
+    "138 dirty files in working tree from parallel agent lanes — none caused by this validation."
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

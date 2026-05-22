@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.opencode_roadmap_queue_item.v1.schema.json",
+  "title": "OpenCode Roadmap Queue Item v1",
+  "description": "Schema for a single queue item in .rig/roadmap/queue.jsonl consumed by the OpenCode Idle Lane Steward.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "status",
+    "priority",
+    "prompt_path",
+    "title",
+    "agent"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier for this queue item."
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Unique identifier for this queue item."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "active", "completed", "blocked", "failed"],
+      "description": "Current status of the queue item."
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Priority rank (lower = higher priority)."
+    },
+    "prompt_path": {
+      "type": "string",
+      "description": "Relative path to the prompt file under .rig/roadmap/prompts/."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title for the OpenCode task."
+    },
+    "agent": {
+      "type": "string",
+      "description": "OpenCode agent name to use (e.g. 'general-purpose')."
+    },
+    "allowed_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files this task is allowed to touch."
+    },
+    "forbidden_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files this task must never touch."
+    },
+    "required_gates_before": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Gate artifact paths that must pass before this task can run."
+    },
+    "targeted_tests": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Targeted test paths to run for this task."
+    },
+    "stop_on_dirty_overlap": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, reject the task when dirty state overlaps allowed_files without an active lane claim."
+    },
+    "max_next_tasks": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Maximum number of continuation tasks this item may spawn."
+    },
+    "max_continuations": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3,
+      "description": "Maximum number of times this task may be continued by the steward."
+    },
+    "max_failed_attempts": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 2,
+      "description": "Maximum number of failed attempts before blocking."
+    },
+    "continuation_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of times the steward has launched this task."
+    },
+    "failed_attempts": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of failed attempts for this task."
+    },
+    "completion_criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required_artifacts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Artifact paths that must exist for this task to be considered complete."
+        },
+        "required_tests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test paths that must exist/pass."
+        },
+        "required_report_fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Report fields that must be present in the final report."
+        },
+        "final_report_path": {
+          "type": "string",
+          "description": "Path where the final report must exist."
+        },
+        "schema_validation_required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether schema validation must pass for completion."
+        }
+      }
+    }
+  }
+}

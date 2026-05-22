@@ -1,0 +1,148 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "doctrine_id": "cross-surface-authority-spine-v1",
+  "title": "Cross-Surface Authority Spine v1 \u2014 Canonical",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "effective_at": "2026-05-20T00:00:00-07:00",
+  "status": "canonical",
+  "supersedes": [],
+  "source_audit_artifacts": [
+    "docs/json/governance/frontend_cli_protocol_surface_audit_v1.v1.json",
+    "docs/json/governance/surface_authority_taxonomy_v1.v1.json",
+    "docs/json/governance/frontend_cockpit_surface_audit_v1.v1.json",
+    "docs/json/governance/cli_surface_audit_v1.v1.json",
+    "docs/json/governance/mcp_surface_audit_v1.v1.json",
+    "docs/json/governance/acp_surface_audit_v1.v1.json",
+    "docs/json/governance/a2a_surface_audit_v1.v1.json",
+    "docs/json/governance/ssh_remote_surface_audit_v1.v1.json",
+    "docs/json/governance/hosted_team_surface_audit_v1.v1.json",
+    "docs/json/governance/protocol_composition_risk_register_v1.v1.json",
+    "docs/json/governance/cross_surface_identity_auth_model_v1.v1.json",
+    "docs/json/governance/cross_surface_evidence_schema_spine_v1.v1.json",
+    "docs/json/governance/frontend_cli_protocol_surface_test_strategy_v1.v1.json",
+    "docs/json/governance/frontend_cli_protocol_surface_roadmap_v1.v1.json",
+    "docs/json/governance/github_integration_industry_leader_audit_v1.v1.json",
+    "docs/json/governance/github_integration_trust_governance_map_v1.v1.json"
+  ],
+  "authority_tiers": [
+    "read_only_projection",
+    "local_intent_submission",
+    "local_mutation",
+    "remote_read",
+    "remote_mutation",
+    "admin_configuration",
+    "inter_agent_delegation",
+    "hosted_multi_tenant_operation",
+    "public_static_projection"
+  ],
+  "surface_rules": {
+    "frontend_cockpit_rule": "Cockpit/frontend is a projection and intent surface, not authority. It renders backend-provided projections and submits intent envelopes. It must never evaluate policy, authorize mutations, mint approval receipts, or override governance decisions.",
+    "cli_rule": "CLI and scripts are not exempt from governance. Every mutating command must default to dry-run or require explicit --execute with approval receipt. Exit codes must be stable. No script must directly call GitHub mutation APIs without Trust Spine prerequisites satisfied.",
+    "websocket_rule": "WebSocket server is a projection transport, not an authority surface. Every intent must be independently validated by backend governance. Frontend origin verification required. Rate limiting enforced.",
+    "static_docs_rule": "Static docs are public projection surfaces. Every generated page must pass public/private split enforcement and content-light scan before deployment."
+  },
+  "protocol_rules": {
+    "mcp_rule": "MCP is read-only/evidence-first until descriptor integrity enforcement, roots workspace boundary enforcement, content-light output scanning, and per-user authorization are integrated and tested. MCP mutation tools (tier 4-5) are FORBIDDEN until signed, time-bound, scope-bound approval receipts are cryptographically enforced server-side.",
+    "acp_rule": "ACP must converge with the IDE sidecar and share the same governance spine as cockpit and CLI. ACP edit proposals must produce patch_proposal artifacts in the same format as MCP. ACP terminal commands must use RuntimeSupervisor.",
+    "a2a_rule": "A2A is inter-agent delegation, not local tool calling. Every delegation must have explicit trust tier, scope boundary, budget, timeout, and evidence receipt. Agent Cards must be content-light, signed or hash-pinned, and diffed on change.",
+    "ssh_rule": "SSH is absent and must stay absent until the SSH doctrine is fully implemented. SSH must never become an ungoverned remote shell for agents."
+  },
+  "hosted_team_rule": "Hosted/team mode is hybrid_local_first by default. JSONL remains the portable, inspectable, replayable source-of-truth. Postgres is the operational projection. Dual-write required.",
+  "github_trust_spine_rule": "GitHub provider mutation must go through GitHub Provider Trust Spine v1 prerequisites before any remote write. Adapter must check trust spine state at code level.",
+  "postgres_source_of_truth_rule": "PostgreSQL is the enterprise operational substrate. JSON/JSONL/CSV remain portable source-of-truth/evidence. DuckDB is disposable analytical/read-side. SQLite is forbidden.",
+  "telemetry_evidence_boundary_rule": "Product telemetry: default-on, opt-out. Remote contribution: separately controlled. Local operational observability: mandatory. Enterprise audit/evidence: not disabled by telemetry opt-out. Raw prompts, completions, secrets, credentials, private files, raw diffs, Actions logs, secret fragments never in telemetry, remote contribution, static docs, or procurement packs.",
+  "common_envelope_requirement": "Any surface causing local mutation, remote mutation, inter-agent delegation, admin configuration, hosted multi-tenant operation, or support/debug export must produce: policy decision, approval/evidence receipt where applicable, content-light classification, redaction scan result, and source artifact reference.",
+  "forbidden_bypasses": [
+    "MCP mutation tools bypassing cockpit approval \u2014 BLOCKED",
+    "ACP messages bypassing CLI policy \u2014 BLOCKED",
+    "A2A delegated agent bypassing mission scope \u2014 BLOCKED",
+    "SSH remote command bypassing local supervisor \u2014 BLOCKED",
+    "Hosted API bypassing local evidence artifacts \u2014 BLOCKED",
+    "WebSocket frontend bypassing backend authorization \u2014 PARTIAL",
+    "GitHub provider mutation bypassing Trust Spine \u2014 BLOCKED",
+    "Telemetry export leaking raw content \u2014 PARTIAL",
+    "Debug packet leaking raw context \u2014 GAP",
+    "Static docs exposing private projections \u2014 PARTIAL"
+  ],
+  "implementation_sequencing": [
+    "P0: Cross-Surface Authority Spine v1 canonicalization",
+    "P0: Common envelope and schema spine adoption",
+    "P0: Frontend intent hardening and status indicators",
+    "P0: CLI command taxonomy unification and governance gating",
+    "P0: MCP read-only surface hardening",
+    "P1: Cockpit status indicators implementation",
+    "P1: MCP per-user authorization enforcement",
+    "P1: ACP transport server (behind IDE sidecar convergence)",
+    "P2: A2A Agent Card discovery and attestation",
+    "P2: SSH read-only diagnostics (after supervisor wrapping)",
+    "P2: Static docs public/private split enforcement",
+    "P3: Hosted team mode design with Postgres",
+    "P3: Tenant isolation and RBAC",
+    "P4: MCP mutation tools (only after approval receipts)",
+    "P4: A2A federation with remote agent trust tiers",
+    "P5: Broad cockpit mutation UX",
+    "P5: Ecosystem extensions"
+  ],
+  "do_not_overrun_guards": [
+    "Do not implement SSH before authority spine and RuntimeSupervisor wrapping.",
+    "Do not implement MCP mutation tools before approval receipts and descriptor integrity.",
+    "Do not implement hosted API before tenant/RBAC and Postgres failure semantics.",
+    "Do not implement ACP transport before IDE sidecar convergence plan.",
+    "Do not implement A2A delegation before Agent Card attestation and trust tiers.",
+    "Do not allow CLI/scripts to mutate outside the same governance spine as cockpit.",
+    "Do not expose mutation MCP tools without signed, time-bound, scope-bound approval receipts enforced server-side.",
+    "Do not deploy static docs without public/private split enforcement and content-light scan.",
+    "Do not enable GitHub remote mutation before GitHub Trust Spine v1 prerequisites are satisfied.",
+    "Do not implement hosted mode with agent loop or private repo content on server by default."
+  ],
+  "required_tests_before_enabling_each_surface": {
+    "mcp_mutation_tools": [
+      "test_mcp_mutation_gating",
+      "test_mcp_cannot_self_issue_receipt",
+      "test_mcp_content_light_output",
+      "test_mcp_descriptor_integrity"
+    ],
+    "acp_transport": [
+      "test_acp_message_schema",
+      "test_acp_mission_scope",
+      "test_acp_cannot_bypass_cockpit"
+    ],
+    "a2a_delegation": [
+      "test_a2a_malicious_card",
+      "test_a2a_scope_enforcement",
+      "test_a2a_trust_tier",
+      "test_a2a_timeout_budget"
+    ],
+    "ssh_read_only": [
+      "test_ssh_command_allowlist",
+      "test_ssh_no_shell",
+      "test_ssh_key_never_in_telemetry",
+      "test_ssh_network_failure_receipt"
+    ],
+    "ssh_mutation": [
+      "test_ssh_supervisor_wrapping",
+      "test_ssh_remote_evidence_content_light",
+      "test_ssh_approval_receipt_required"
+    ],
+    "hosted_api": [
+      "test_tenant_isolation",
+      "test_rbac_admin",
+      "test_product_telemetry_opt_out_preserves_evidence",
+      "test_postgres_fail_closed"
+    ],
+    "github_remote_mutation": [
+      "test_trust_spine_state_check",
+      "test_branch_protection_unknown_blocks",
+      "test_ruleset_unknown_blocks",
+      "test_no_surprise_mutation"
+    ]
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true,
+    "redaction_note": "This canonical doctrine contains no raw tokens, secrets, private repository contents, or source code."
+  },
+  "revision": 1
+}

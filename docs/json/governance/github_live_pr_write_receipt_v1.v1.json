@@ -1,10 +1,10 @@
 {
   "schema_version": "rig.github.live_pr_write_receipt.v1",
-  "generated_at": "2026-05-20T21:06:20.182079+00:00",
+  "generated_at": "2026-05-21T18:50:24.968574+00:00",
   "content_light": true,
-  "branch_created": true,
-  "file_written": true,
-  "pr_created": true,
+  "branch_created": false,
+  "file_written": false,
+  "pr_created": false,
   "alert_updated": false,
   "alert_update_deferred": true,
   "pr_merged": false

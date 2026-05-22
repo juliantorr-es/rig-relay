@@ -1,0 +1,80 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "implementation_id": "governance-decisions-as-evidence-v1",
+  "title": "Governance Decisions as Evidence v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_artifacts": [
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+    "docs/json/governance/cross_surface_governance_spine_p0_implementation_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/evidence/receipt_envelope.py (MODIFIED — added build_governance_decision_envelope() function)",
+    "rig_relay/evidence/governance_decision_evidence.py (CREATED — GovernanceDecisionEvidence adapter + should_block_mutation_on_evidence_failure)",
+    "rig_relay/evidence/__init__.py (MODIFIED — exported new evidence types)",
+    "rig_relay/core/governance_runtime.py (MODIFIED — added evidence field and _persist_governance_decision; evidence fail-closed on mutation)",
+    "tests/governance/test_governance_decisions_as_evidence.py (CREATED — 23 tests)",
+    "docs/schemas/rig.relay.governance_decision_evidence.v1.schema.json (CREATED)",
+    "docs/json/governance/governance_decisions_as_evidence_v1.v1.json (CREATED — this report)"
+  ],
+  "decision_evidence_model_fields": [
+    "schema_version: rig.relay.receipt_envelope.v1",
+    "envelope_id: unique ID",
+    "receipt_kind: governance_decision",
+    "actor: (actor_id, actor_kind=RUNTIME, display_name, is_authoritative=True)",
+    "subject: (subject_id=decision_id, subject_kind=GOVERNANCE_DECISION, workspace_id, session_id)",
+    "decision: (decision, rationale, gate, governance_decision_id, surface, authority_tier, capability_id, content_light_classification=public_safe)",
+    "evidence: [governance_decision schema ref, gate_decision payload SHA256]",
+    "created_at: ISO 8601"
+  ],
+  "persistence_path_chosen": "GovernanceDecisionEvidence adapter wrapping ReceiptStore protocol. If FilesystemReceiptStore is wired into GovernanceRuntime via evidence field, every governance decision is persisted as a ReceiptEnvelope to sharded JSON files with manifest.jsonl index. Content-light: no raw prompts, completions, private repo content, secrets, credentials, raw diffs, or raw Actions logs.",
+  "fail_closed_behavior": "GovernanceRuntime.should_execute_tool() now: (1) classifies mutation tools via _is_likely_mutation_tool(), (2) evaluates via GovernanceEngine.evaluate_action_legality(), (3) persists the GateDecision via _persist_governance_decision(), (4) returns SKIP if persistence failed for mutation operations. Read-only tools are unaffected by evidence absence. Blocked/requires_review decisions return False from should_block_mutation_on_evidence_failure.",
+  "tests_run": "46 passed, 0 failed (23 evidence tests + 23 governance spine tests)",
+  "test_classifications": "8 unit, 15 contract, 0 integration, 0 E2E, 3 real-artifact, 0 adversarial, 0 sabotage, 0 concurrency, 3 substrate",
+  "pyright_result": "0 errors, 0 warnings, 0 informations",
+  "schema_validation_result": "419/419 schemas pass (was 418; +1 governance_decision_evidence.v1 schema)",
+  "dependency_changes": "None. All dependencies (pydantic, hashlib stdlib, tempfile stdlib for tests) are existing.",
+  "telemetry_redaction_implications": "All decision evidence is content-light: no raw prompts, completions, private repo content, secrets, credentials, raw diffs, or raw Actions logs. Decision IDs are SHA256-derived. Evidence payload hashes are canonical JSON hashes. Content-light classification is 'public_safe' by default for governance decisions.",
+  "frontend_implications": "Cockpit can now consume governance decision evidence from ReceiptStore for 'why blocked' explainer. Evidence timeline can show decision_id-linked entries. Requires P1 cockpit integration.",
+  "cli_implications": "CLI/scripts not directly affected. CLI governance gating requires P1 CLI taxonomy unification.",
+  "mcp_implications": "MCP tool-call receipts are not yet aligned with common ReceiptEnvelope format. This is the next P1 integration step.",
+  "acp_implications": "ACP not directly affected. ACP governance integration requires P1 IDE sidecar convergence.",
+  "a2a_implications": "A2A delegation receipts can now include governance decision evidence. delegation_allowed_by_governance() currently blocks all delegation per authority spine.",
+  "ssh_implications": "Not affected — SSH absent per authority spine.",
+  "hosted_implications": "Not affected — hosted mode design phase. Evidence persistence via ReceiptStore and JSONL artifacts establishes the dual-write prerequisite.",
+  "github_trust_spine_implications": "Governance decisions for GitHub-related mutations are now persisted as evidence. Trust spine pipeline can consume these receipts for audit trail and governance replay.",
+  "postgres_source_of_truth_implications": "ReceiptStore (JSONL manifest + sharded JSON files) remains the portable source-of-truth. When Postgres adapter is implemented, governance decision evidence can be dual-written to Postgres operational projection.",
+  "completed_work": [
+    "Added build_governance_decision_envelope() to receipt_envelope.py — bridges GateDecision to ReceiptEnvelope",
+    "Created GovernanceDecisionEvidence persistence adapter",
+    "Created should_block_mutation_on_evidence_failure() fail-closed function",
+    "Wired evidence persistence into GovernanceRuntime.should_execute_tool()",
+    "Added evidence field to GovernanceRuntime dataclass",
+    "Added _persist_governance_decision() method to GovernanceRuntime",
+    "GovernanceRuntime blocks mutation when evidence persistence fails",
+    "Created 23 tests verifying decision-to-envelope conversion, filesystem persistence, retrieval, replay, fail-closed behavior, and content-light guarantees",
+    "Created governance_decision_evidence.v1 JSON Schema",
+    "Pyright 0 errors, 419/419 schemas pass"
+  ],
+  "intentionally_deferred_work": [
+    "MCP tool-call receipts not yet aligned with common ReceiptEnvelope format (P1)",
+    "CLI/scripts governance evidence gating (P1)",
+    "ACP governance decision integration (P1)",
+    "Cockpit evidence timeline widget (P1)",
+    "Postgres dual-write for governance decisions (P3)"
+  ],
+  "remaining_seams": [
+    "Governance decisions are persisted per-call but not yet replayed/aggregated for audit — replay pipeline needs ReceiptStore.list_by_session() or similar",
+    "No cross-session governance decision correlation (trace_id not yet propagated across calls)",
+    "Evidence persistence failure on read-only tools doesn't currently degrade cockpit projections — need staleness indicator",
+    "ReceiptEnvelope format not yet adopted by MCP, ACP, or WebSocket surfaces"
+  ],
+  "next_recommended_implementation_slice": "P1: Align MCP tool-call receipts with common ReceiptEnvelope format. Adopt ReceiptEnvelope in MCP server for all tool call responses. Ensure content-light classification and decision_id are present on every MCP receipt.",
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

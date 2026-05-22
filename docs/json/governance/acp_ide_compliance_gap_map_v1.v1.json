@@ -1,0 +1,34 @@
+{
+  "schema_version": "rig.relay.acp_ide_compliance_gap_map.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "ACP / IDE Sidecar Compliance Gap Map v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "acp_status": "partial — real transport exists, governance spine shared, but no evidence envelopes produced. Permission bypass path exists in config.",
+  "ide_sidecar_status": "non_compliant — disconnected governance spine using static manifest lookup. Must share governance spine with ACP and cockpit.",
+  "acp_gaps": [
+    {"gap_id": "ACP-GAP-001", "area": "evidence_envelopes", "current": "ACP produces telemetry (session lifecycle, tool call updates) but does NOT produce structured evidence envelopes. No ArtifactEnvelope creation for ACP-originated operations.", "required": "Emit evidence envelopes for every ACP edit proposal, permission request, and tool invocation. Receipt-backed audit trail mandatory.", "severity": "high", "blocker_for": "audit", "offender_ids": ["OFF-017"]},
+    {"gap_id": "ACP-GAP-002", "area": "permission_bypass", "current": "bypass_tool_permissions on AgentLoop can suppress approval callback. ACP governance gating is conditional on agent profile, not hard enforcement at ACP layer.", "required": "ACP must enforce permissions at ACP layer independently of agent profile. Permission bypass requires explicit admin authorization with audit event.", "severity": "medium", "blocker_for": "governance_integrity", "offender_ids": ["OFF-029"]}
+  ],
+  "acp_compliant_areas": [
+    {"area": "real_transport", "status": "compliant", "detail": "Uses acp.run_agent() with real ACP transport."},
+    {"area": "governance_spine_shared", "status": "compliant", "detail": "Calls get_capability_gate() on init and at session creation. Permission approval callback integrated via build_permission_options()."},
+    {"area": "edit_proposal_gating", "status": "compliant", "detail": "ACPEditProposal flows through governance — never direct write. ACPPermissionRequest returns ACPPermissionResponse with decision."},
+    {"area": "content_light", "status": "compliant", "detail": "touched_path_hashes (not paths), diff_sha256, output_sha256. content_light: true in capability profile."}
+  ],
+  "ide_sidecar_gaps": [
+    {"gap_id": "IDE-GAP-001", "area": "governance_spine", "current": "_check_capability_permission() uses local manifest-derived permission table. Does NOT call get_capability_gate(), does NOT consult policy engine, does NOT check cockpit service state. If manifest says default_policy: allow, capability is granted unconditionally — even if cockpit is locked.", "required": "IDE sidecar must share same governance spine as ACP and cockpit. Permission checks route through capability gate and policy engine.", "severity": "critical", "blocker_for": "ide_bypass", "offender_ids": ["OFF-009"]}
+  ],
+  "ide_sidecar_compliant_areas": [
+    {"area": "capability_manifest", "status": "compliant", "detail": "All capabilities loaded from canonical manifest at etc/rig.ide.capability_manifest.v1.json."},
+    {"area": "sidecar_protocol", "status": "compliant", "detail": "Uses defined IPC contracts. Sidecar and ACP run as independent asyncio tasks."}
+  ],
+  "acp_ide_convergence_required": [
+    "IDE sidecar must share governance spine with ACP — both must route through get_capability_gate()",
+    "Both surfaces must produce evidence envelopes with surface enum (acp and ide_sidecar)",
+    "IDE capability permission checks must consider cockpit service state (locked, setup_required)",
+    "ACP permission bypass must require explicit admin authorization with audit event"
+  ],
+  "revision": "1.0.0"
+}

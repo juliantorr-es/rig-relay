@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from rig_relay.core.agent_loop import ToolDecision, ToolExecutionResponse
+from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
 from rig_relay.core.config import DEFAULT_MISTRAL_API_ENV_KEY
 from rig_relay.core.llm.format import ResolvedToolCall
 from rig_relay.core.telemetry.build_metadata import (

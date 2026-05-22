@@ -4,8 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.integrations.github_provider._live_mutation_preflight import (
     write_live_mutation_preflight,
 )
@@ -54,6 +59,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--summary", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.live_preflight:
+        governed = require_governed_execution_with_evidence(
+            script_name="rig_github_live_mutation_preflight",
+            authority_tier="remote_mutation",
+            capability_id="github_live_preflight",
+            execute_requested=True,
+            allow_mutation=True,
+            allow_network=True,
+        )
+        if not governed.can_execute:
+            print(
+                f"BLOCKED: {governed.decision.decision.value} — live preflight requires governance approval"
+            )
+            return 1
+
     report = write_live_mutation_preflight(
         output_path=args.output_json,
         allow_live=args.live_preflight,

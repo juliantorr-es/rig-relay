@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -12,23 +14,121 @@ if TYPE_CHECKING:
     from rig_relay.core.tools.permissions import ApprovedRule, RequiredPermission
 
 
+def _generate_decision_id(seed: str) -> str:
+    return f"gd-{hashlib.sha256(seed.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _fail_closed_decision(
+    tool_name: str, reason: str, surface: str = "agent_loop"
+) -> ToolDecision:
+    seed = f"{tool_name}:{reason}:{datetime.now(UTC).isoformat()}"
+    return ToolDecision(
+        verdict=ToolExecutionResponse.SKIP,
+        approval_type=ToolPermission.NEVER,
+        feedback=reason,
+        decision_id=_generate_decision_id(seed),
+        surface=surface,
+        authority_tier="local_mutation",
+    )
+
+
+_TOOL_NAME_TO_CAPABILITY: dict[str, str] = {
+    "write_file": "file_write_proposal",
+    "search_replace": "file_write_proposal",
+    "bash": "shell_proposal",
+    "checkpoint": "coordination_write",
+    "create_worktree": "worktree_write",
+    "remove_worktree": "worktree_write",
+}
+
+_MUTATION_TOOL_NAME_PREFIXES: tuple[str, ...] = (
+    "write_file",
+    "search_replace",
+    "bash",
+    "checkpoint",
+    "create_worktree",
+    "remove_worktree",
+    "push",
+    "merge",
+    "delete",
+    "commit",
+)
+
+
+def _is_likely_mutation_tool(tool_name: str) -> bool:
+    return any(tool_name.startswith(p) for p in _MUTATION_TOOL_NAME_PREFIXES)
+
+
 @dataclass(slots=True)
 class GovernanceRuntime:
     dirty_guard: Any = field(default_factory=get_guard)
     approval_callback: Any | None = None
     config: Any | None = None
     session_rules: list = field(default_factory=list)
+    evidence: Any | None = None
 
     def should_execute_tool(
         self, tool_call_id: str, tool_name: str, tool_args: dict, execution_mode: str
     ) -> ToolDecision:
+        seed = f"{tool_call_id}:{tool_name}:{execution_mode}:{datetime.now(UTC).isoformat()}"
+
         if self.config and getattr(self.config, "bypass_tool_permissions", False):
             return ToolDecision(
                 verdict=ToolExecutionResponse.EXECUTE,
                 approval_type=ToolPermission.ALWAYS,
+                decision_id=_generate_decision_id(f"{seed}:bypass"),
+                surface="agent_loop",
+                authority_tier="local_mutation",
             )
+
+        if _is_likely_mutation_tool(tool_name):
+            capability = _TOOL_NAME_TO_CAPABILITY.get(tool_name, "file_write_proposal")
+            governance_result = self.evaluate_mutation_legality(
+                workspace_id=None,
+                intent_id=tool_call_id,
+                intent_kind=tool_name,
+                requested_capabilities=[capability],
+                allow_mutation=False,
+                allow_network=False,
+                dirty_policy_satisfied=True,
+            )
+
+            evidence_persisted = self._persist_governance_decision(governance_result)
+
+            if governance_result.decision in {"blocked", "requires_review"}:
+                blocked_codes = [r.code for r in governance_result.reasons]
+                reason_str = (
+                    "; ".join(blocked_codes)
+                    if blocked_codes
+                    else "mutation_blocked_by_policy"
+                )
+                return ToolDecision(
+                    verdict=ToolExecutionResponse.SKIP,
+                    approval_type=ToolPermission.NEVER,
+                    feedback=f"Governance blocked: {reason_str}",
+                    decision_id=governance_result.decision_id,
+                    surface="agent_loop",
+                    authority_tier="local_mutation",
+                )
+
+            if not evidence_persisted:
+                return ToolDecision(
+                    verdict=ToolExecutionResponse.SKIP,
+                    approval_type=ToolPermission.NEVER,
+                    feedback="Governance evidence persistence failed for mutation operation",
+                    decision_id=governance_result.decision_id,
+                    surface="agent_loop",
+                    authority_tier="local_mutation",
+                )
+
         return ToolDecision(
-            verdict=ToolExecutionResponse.EXECUTE, approval_type=ToolPermission.ALWAYS
+            verdict=ToolExecutionResponse.EXECUTE,
+            approval_type=ToolPermission.ALWAYS,
+            decision_id=_generate_decision_id(f"{seed}:allowed"),
+            surface="agent_loop",
+            authority_tier="read_only_projection"
+            if not _is_likely_mutation_tool(tool_name)
+            else "local_mutation",
         )
 
     async def ask_approval(
@@ -96,6 +196,18 @@ class GovernanceRuntime:
         from rig_relay.governance.governance_engine import GovernanceEngine
 
         return GovernanceEngine.evaluate_action_legality(**kwargs)
+
+    def _persist_governance_decision(self, governance_result: Any) -> bool:
+        if self.evidence is None:
+            return False
+        try:
+            persist = getattr(self.evidence, "persist", None)
+            if persist is None or not callable(persist):
+                return False
+            _ = persist(governance_result)
+            return getattr(self.evidence, "persisted", lambda: False)()
+        except Exception:
+            return False
 
 
 __all__ = ["GovernanceRuntime"]

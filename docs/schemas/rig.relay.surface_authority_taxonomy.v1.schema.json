@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/docs/schemas/rig.relay.surface_authority_taxonomy.v1.schema.json",
+  "title": "Surface Authority Taxonomy",
+  "description": "Schema for surface authority taxonomy artifacts: audits, maps, models, registers, test strategies, roadmaps, and spine definitions.",
+  "type": "object",
+  "required": ["schema_version", "title", "generated_at", "status", "content_light", "revision"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.surface_authority_taxonomy.v1",
+      "description": "Schema version identifier. Always rig.relay.surface_authority_taxonomy.v1 for this schema family."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable title of the artifact."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of artifact generation."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "approved", "deprecated", "superseded"],
+      "description": "Lifecycle status of the artifact."
+    },
+    "content_light": {
+      "type": "boolean",
+      "description": "Whether this artifact is safe for content-light transmission (no secrets, no raw file contents). Must be true for all governance artifacts."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing revision number."
+    },
+    "audit_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for audit artifacts. Required when this document is a surface authority taxonomy audit."
+    },
+    "map_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for surface map artifacts. Required when this document is a surface authority taxonomy map."
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for model artifacts. Required when this document is a surface authority taxonomy model definition."
+    },
+    "register_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for register artifacts. Required when this document is a surface authority taxonomy register."
+    },
+    "strategy_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for test strategy artifacts. Required when this document is a surface test strategy."
+    },
+    "roadmap_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for roadmap artifacts. Required when this document is a surface roadmap."
+    },
+    "spine_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for governance spine definition artifacts. Required when this document is a governance spine definition."
+    },
+    "taxonomy_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for taxonomy definition artifacts. Required when this document is a surface authority taxonomy definition."
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface"
+      }
+    },
+    "authority_tiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/authority_tier"
+      }
+    },
+    "surface_maturities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface_maturity"
+      }
+    },
+    "identities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/identity"
+      }
+    },
+    "tests": {
+      "type": "array"
+    },
+    "items": {
+      "type": "array"
+    },
+    "do_not_overrun_guards": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risks": {
+      "type": "array"
+    }
+  },
+  "definitions": {
+    "surface": {
+      "type": "object",
+      "required": ["surface_id", "name", "authority_tier", "maturity", "identity_model"],
+      "properties": {
+        "surface_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for the surface."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable name of the protocol surface."
+        },
+        "authority_tier": {
+          "$ref": "#/definitions/authority_tier"
+        },
+        "maturity": {
+          "$ref": "#/definitions/surface_maturity"
+        },
+        "identity_model": {
+          "$ref": "#/definitions/identity"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the surface and its role."
+        },
+        "transport": {
+          "type": "string",
+          "description": "Transport mechanism (e.g., WebSocket, HTTP, stdio, SSH)."
+        },
+        "tool_tiers_exposed": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "MCP tool tiers exposed on this surface."
+        },
+        "mutation_allowed": {
+          "type": "boolean",
+          "description": "Whether this surface allows mutation operations."
+        },
+        "content_light_enforced": {
+          "type": "boolean",
+          "description": "Whether content-light scanning is enforced on this surface."
+        },
+        "receipt_backed": {
+          "type": "boolean",
+          "description": "Whether operations on this surface produce receipts."
+        }
+      }
+    },
+    "authority_tier": {
+      "type": "object",
+      "required": ["tier", "label", "description"],
+      "properties": {
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Authority tier number (0-5)."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for this tier."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What operations this tier permits."
+        },
+        "requires_approval": {
+          "type": "boolean",
+          "description": "Whether operations at this tier require human approval."
+        },
+        "requires_receipt": {
+          "type": "boolean",
+          "description": "Whether operations at this tier require a receipt."
+        }
+      }
+    },
+    "surface_maturity": {
+      "type": "object",
+      "required": ["level", "label", "description"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["conceptual", "planned", "stub", "partial", "operational", "proven"],
+          "description": "Maturity level of the surface implementation."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for this maturity level."
+        },
+        "description": {
+          "type": "string",
+          "description": "What this maturity level means."
+        },
+        "tests_exist": {
+          "type": "boolean",
+          "description": "Whether tests exist for this surface at this maturity level."
+        },
+        "tests_passing": {
+          "type": "boolean",
+          "description": "Whether existing tests are passing."
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["model", "description"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["none", "local_user", "oauth_user", "session_token", "api_key", "rbac", "sso"],
+          "description": "Identity model used by this surface."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How identity is established and verified on this surface."
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Authorization scopes available under this identity model."
+        }
+      }
+    }
+  }
+}

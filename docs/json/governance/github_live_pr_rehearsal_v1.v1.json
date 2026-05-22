@@ -20,7 +20,7 @@
     },
     {
       "gate": "preflight_ready",
-      "passed": true,
+      "passed": false,
       "detail": ""
     },
     {
@@ -51,6 +51,7 @@
   ],
   "gates_passed": false,
   "blocked_reasons": [
+    "preflight_ready",
     "execute_flag",
     "operator_acknowledged",
     "allow_live_writes",

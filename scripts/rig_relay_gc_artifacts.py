@@ -19,6 +19,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.evidence.artifact_gc import run_artifact_gc
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -65,6 +69,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Skip budget checks (allow GC even if large).",
     )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute destructive GC operations. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
     return parser.parse_args(argv)
 
 
@@ -85,6 +101,35 @@ def main(argv: list[str] | None = None) -> int:
             budget = None
 
     confirm = not args.dry_run
+    execute = args.execute or confirm
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_gc_artifacts",
+        authority_tier="local_mutation",
+        capability_id="artifact_gc",
+        execute_requested=execute,
+    )
+
+    if execute and not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_gc_artifacts",
+            authority_tier="local_mutation",
+            capability_id="artifact_gc",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — GC blocked (fail-closed)")
+        return 1
+
     manifest = run_artifact_gc(
         root=root,
         budget=budget,

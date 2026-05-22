@@ -1,0 +1,54 @@
+{
+  "schema_version": "rig.relay.product_front_door.v1",
+  "source_id": "product-front-door-v1",
+  "title": "Rig Relay Product Front Door v1",
+  "generated_at": "2026-05-21T12:00:00Z",
+  "site_title": "Rig Relay — Governed Operating Layer for AI-Assisted Development",
+  "site_description": "AI agents can change code faster than people can inspect what happened. Rig Relay makes agent work observable, controlled, and reviewable.",
+  "hero": {
+    "headline": "Govern Your Coding Agents. Keep the Receipts.",
+    "subhead": "An authority spine and evidence substrate that makes every agent decision observable, controlled, and reviewable — local-first, receipt-backed, schema-governed.",
+    "primary_cta": {"text": "Get Started", "url": "https://github.com/juliantorr-es/rig-relay#quick-start"},
+    "secondary_cta": {"text": "Read the Authority Spine", "url": "/cross-surface-authority-spine/index.html"}
+  },
+  "problem": {
+    "headline": "Coding Agents Need Governance",
+    "body": "Modern AI coding agents change code at speeds that outpace human review. Without governance, every agent call is an untraceable mutation. Most AI tools give agents access to your filesystem, your Git history, your package manager, and your development environment — with no audit trail, no permission gates, and no way to replay what happened. Rig Relay gives you the authority spine and evidence substrate to govern agent work with the same discipline you apply to your own code."
+  },
+  "pillars": [
+    {"id": "agent_governance", "title": "Agent Governance", "body": "Every agent action gated. Permission tiers (ALWAYS/ASK/NEVER), council consultation before mutations, patch gating, dirty-file preservation. Not advisory — enforced.", "status": "implemented", "source_ref": "cross_surface_authority_spine_v1.v1.json"},
+    {"id": "authority_spine", "title": "Cross-Surface Authority Spine", "body": "One governance model for every surface. Cockpit, CLI, MCP, ACP, WebSocket — all governed by the same spine. No surface is exempt. Every mutation requires evidence.", "status": "implemented", "source_ref": "cross_surface_authority_spine_v1.v1.json"},
+    {"id": "evidence_receipts", "title": "Receipt-Backed Evidence", "body": "Every tool call, checkpoint, and governance decision produces a schema-governed ReceiptEnvelope. Merkle-linked. Content-light. DuckDB-queryable. JSON/JSONL/CSV source-of-truth.", "status": "implemented", "source_ref": "governance_receipt_manifest_enrichment_v1.v1.json"},
+    {"id": "hardened_mcp", "title": "Hardened MCP Surface", "body": "16 read-only tools, 6 resources, 3 prompts. Descriptor integrity, roots boundary, content-light scanning, receipt persistence, local session auth, tier authorization. 94/94 gate tests pass. No mutation tools exposed.", "status": "implemented", "source_ref": "mcp_hardened_read_only_surface_release_gate_v1.v1.json"},
+    {"id": "cli_mutation_gates", "title": "CLI Mutation Gates", "body": "Scripts are governed too. Every mutating command defaults to dry-run or requires --execute with approval receipt. 59/59 tests pass.", "status": "implemented", "source_ref": "cli_governance_guard_evidence_integration_v1.v1.json"},
+    {"id": "github_operating_picture", "title": "GitHub Operating Picture", "body": "Code scanning alert integration, live PR rehearsal, security lifecycle, permission posture documented. Trust Spine roadmap for cryptographic mutation enforcement.", "status": "partial", "source_ref": "github_integration_industry_leader_audit_v1.v1.json"},
+    {"id": "duckdb_projection", "title": "Query Your Governance Data", "body": "DuckDB read-side analytics over JSONL evidence. Governance decisions projection. Postgres enterprise substrate planned.", "status": "partial", "source_ref": "duckdb_governance_decisions_projection_v1.v1.json"},
+    {"id": "roadmap_steward", "title": "Roadmap Steward", "body": "Read-only coordination agent. Ranks work slices. Detects lane collisions. Produces bounded prompts for worker agents. Never mutates. Never self-approves.", "status": "planned", "source_ref": "roadmap_steward_agent_spec_v1.v1.json"}
+  ],
+  "trust_pipeline": [
+    {"step": "1. Intent", "copy": "Agent proposes action via cockpit, CLI, or MCP. Intent is captured as a structured request.", "status": "implemented"},
+    {"step": "2. Policy", "copy": "GovernanceRuntime evaluates against session rules and authority spine tier.", "status": "implemented"},
+    {"step": "3. Context", "copy": "Context assembly with trust tier labeling. Content SHA256-hashed.", "status": "implemented"},
+    {"step": "4. Tool", "copy": "Execution behind runtime boundary. Environment scrubbing, bash pattern detection.", "status": "implemented"},
+    {"step": "5. Receipt", "copy": "ReceiptEnvelope produced for every tool call and governance decision.", "status": "implemented"},
+    {"step": "6. Validation", "copy": "Targeted release gates verify hardening. MCP: 94/94. CLI: 59/59.", "status": "implemented"},
+    {"step": "7. Projection", "copy": "DuckDB read-side analytics. Postgres enterprise substrate planned.", "status": "partial"},
+    {"step": "8. Evidence", "copy": "JSON/JSONL/CSV source-of-truth. 400+ schemas. Generated docs/pages/.", "status": "implemented"}
+  ],
+  "enterprise_posture": {
+    "headline": "Honest About Maturity",
+    "body": "Rig Relay is in alpha (v0.1.0a1). We document exactly what is ready and what is not. 7 P0 procurement blockers remain. No SOC 2, ISO 27001, or GDPR compliance claims. Enterprise procurement readiness audit available.",
+    "cta_url": "/enterprise-procurement-readiness-audit/index.html"
+  },
+  "evidence_site": {
+    "headline": "Static Evidence Site — This Is the Proof Layer",
+    "body": "Every claim on this page is backed by a generated static page from schema-governed JSON artifacts. No backend. No database. No tracking. Browse the full evidence site to verify every claim yourself.",
+    "cta_url": "/index.html"
+  },
+  "footer": {
+    "license": "AGPL-3.0-or-later",
+    "github": "https://github.com/juliantorr-es/rig-relay",
+    "content_light": true
+  },
+  "content_light": true
+}

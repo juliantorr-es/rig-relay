@@ -1,18 +1,20 @@
 {
   "schema_version": "rig.github.publish_pr.v1",
-  "generated_at": "2026-05-20T08:44:13.523871+00:00",
-  "mode": "dry_run",
+  "generated_at": "2026-05-21T18:50:25.026359+00:00",
+  "mode": "execute_remote",
   "dry_run": true,
-  "execute_remote_flag_passed": false,
+  "execute_remote_flag_passed": true,
   "content_light": true,
   "remote_mutation": false,
   "local_mutation": false,
-  "result_status": "proposal_ready",
-  "refusal_reasons": [],
+  "result_status": "refused",
+  "refusal_reasons": [
+    "execute_remote_requested_in_dry_run: Cannot perform remote mutation when dry_run is True. Pass --execute-remote without --dry-run to proceed."
+  ],
   "source_packets_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_packets_v1.v1.json",
   "source_preview_artifact": "/Users/user/Developer/GitHub/rig-relay/docs/json/governance/github_surface_preview_v1.v1.json",
   "source_packets_hash": "1d911acc2fdf72167c7d2c7fbcf348ecd5d388bfa8dadd9a749d008199bd6c67",
-  "source_preview_hash": "b74c31c095160045771370f114103e984c331e742ede08ae802aa1e60b2a3a69",
+  "source_preview_hash": "35146b03693b43b7cfee780547cdbe7db6782dab75ebad73b98f73512dd489bd",
   "approval_gate_status": "pending_review",
   "permission_audit_refs": [
     "docs/json/governance/github_app_permission_posture_v1.v1.json",
@@ -24,15 +26,15 @@
     "blocked_packets": 0,
     "deferred_packets": 0,
     "packet_type_summary": [
+      "security_posture_packet",
       "contribution_surface_packet",
+      "no_action_packet",
+      "badge_status_packet",
       "claim_cleanup_packet",
       "github_pages_packet",
-      "no_action_packet",
       "release_notes_packet",
-      "badge_status_packet",
-      "profile_readme_packet",
-      "security_posture_packet",
-      "project_readme_packet"
+      "project_readme_packet",
+      "profile_readme_packet"
     ],
     "source_artifact_count": 0,
     "content_light": true

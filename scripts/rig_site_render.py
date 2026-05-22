@@ -176,7 +176,15 @@ def _extract_claim_text(c: Any) -> str:
     if isinstance(c, str):
         return c
     if isinstance(c, dict):
-        for key in ("claim_text", "claim", "boundary", "description", "text", "message", "name"):
+        for key in (
+            "claim_text",
+            "claim",
+            "boundary",
+            "description",
+            "text",
+            "message",
+            "name",
+        ):
             if val := c.get(key):
                 if isinstance(val, str):
                     return val
@@ -210,18 +218,27 @@ def _load_governance_claims(repo_root: Path) -> tuple[list[str], list[str], list
                 data = json.loads(p.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
                     continue
-                
+
                 # Load supported claims
-                for k in ("release_paper_claims_supported", "claims_supported", "supported_claims"):
+                for k in (
+                    "release_paper_claims_supported",
+                    "claims_supported",
+                    "supported_claims",
+                ):
                     if k in data:
                         val = data[k]
                         if isinstance(val, list):
                             supported.extend(val)
                         elif isinstance(val, str):
                             supported.append(val)
-                
+
                 # Load rejected claims
-                for k in ("release_paper_claims_rejected", "claims_rejected", "rejected_claims", "remaining_claim_boundaries"):
+                for k in (
+                    "release_paper_claims_rejected",
+                    "claims_rejected",
+                    "rejected_claims",
+                    "remaining_claim_boundaries",
+                ):
                     if k in data:
                         val = data[k]
                         if isinstance(val, list):
@@ -266,6 +283,37 @@ def _load_governance_claims(repo_root: Path) -> tuple[list[str], list[str], list
             unique_seams.append(text)
 
     return unique_supported, unique_rejected, unique_seams
+
+
+def _load_front_door(repo_root: Path) -> dict[str, Any]:
+    front_door_path = (
+        repo_root / "docs" / "json" / "site" / "product_front_door_v1.v1.json"
+    )
+    if not front_door_path.exists():
+        return {}
+    try:
+        with open(front_door_path) as f:
+            data = json.load(f)
+        hero = data.get("hero", {})
+        enterprise = data.get("enterprise_posture", {})
+        return {
+            "og_title": data.get("site_title", "Rig Relay"),
+            "og_description": data.get("site_description", "")[:200],
+            "og_image": hero.get("og_image", "./assets/og/rig-relay-card.svg"),
+            "theme_color": "#1a1a2e",
+            "public_description": data.get("site_description", ""),
+            "site_description": data.get("site_description", ""),
+            "site_title": data.get("site_title", "Rig Relay"),
+            "hero": hero,
+            "problem": data.get("problem", {}),
+            "pillars": data.get("pillars", []),
+            "trust_pipeline": data.get("trust_pipeline", []),
+            "enterprise_posture": enterprise,
+            "evidence_site": data.get("evidence_site", {}),
+            "footer": data.get("footer", {}),
+        }
+    except (json.JSONDecodeError, KeyError):
+        return {}
 
 
 def main() -> int:
@@ -632,6 +680,7 @@ def main() -> int:
         public_claims, rejected_claims, remaining_seams_list = _load_governance_claims(
             REPO_ROOT
         )
+        front_door = _load_front_door(REPO_ROOT)
         homepage_desc = (
             "Rig Relay is a governed local agent platform that turns agent execution "
             "into schema-governed, trace-correlated, content-light, refusal-first local evidence."
@@ -648,18 +697,21 @@ def main() -> int:
             "remaining_seams": remaining_seams_list,
             "schema_count": schema_count,
             "github_url": GITHUB_URL,
-            "og_title": "Rig Relay",
-            "og_description": homepage_desc[:200],
-            "og_image": "./assets/og/rig-relay-card.png",
+            "og_title": front_door.get("og_title", "Rig Relay"),
+            "og_description": front_door.get("og_description", homepage_desc[:200]),
+            "og_image": front_door.get("og_image", "./assets/og/rig-relay-card.png"),
             "og_type": "website",
             "og_url": "./index.html",
             "twitter_card": "summary",
             "canonical_url": "./index.html",
-            "theme_color": "#1e3a5f",
+            "theme_color": front_door.get("theme_color", "#1e3a5f"),
             "robots": "index,follow",
-            "public_description": homepage_desc,
+            "public_description": front_door.get("public_description", homepage_desc),
+            "front_door": front_door,
             "structured_data_json": _build_structured_data_homepage(
-                schema_count, head_sha, homepage_desc
+                schema_count,
+                head_sha,
+                front_door.get("site_description", homepage_desc),
             ),
         }
 

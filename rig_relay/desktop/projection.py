@@ -27,11 +27,6 @@ import jsonschema
 
 from rig_relay.desktop.execution_progress import execution_progress_from_runtime_events
 from rig_relay.desktop.projection_integrity import build_projection_integrity_assessment
-from rig_relay.enterprise.policy_engine import (
-    PolicyEngine,
-    build_policy_context,
-    evaluate_all_gates,
-)
 from rig_relay.evidence.receipt_index import build_receipt_index
 from rig_relay.evidence.storage_lifecycle import compute_storage_summary
 

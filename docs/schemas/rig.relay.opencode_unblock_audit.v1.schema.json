@@ -1,0 +1,237 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.opencode_unblock_audit.v1.schema.json",
+  "title": "OpenCode Idle Steward Unblock Audit v1",
+  "description": "Schema for the unblock audit artifact produced when the steward finds no safe non-blocked work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "branch",
+    "head",
+    "dirty_state_summary",
+    "queue_path",
+    "lane_ledger_path",
+    "total_queue_items",
+    "runnable_count",
+    "blocked_count",
+    "active_count",
+    "completed_count",
+    "blocker_summary",
+    "per_task_blockers",
+    "recommended_unblock_slices",
+    "safety_stop_reason"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this audit was generated."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at time of audit."
+    },
+    "head": {
+      "type": "string",
+      "description": "Git HEAD commit SHA at time of audit."
+    },
+    "dirty_state_summary": {
+      "type": "object",
+      "properties": {
+        "modified_count": { "type": "integer" },
+        "staged_count": { "type": "integer" },
+        "untracked_count": { "type": "integer" }
+      }
+    },
+    "queue_path": {
+      "type": "string",
+      "description": "Path to the queue file inspected."
+    },
+    "lane_ledger_path": {
+      "type": "string",
+      "description": "Path to the lane ledger file inspected."
+    },
+    "total_queue_items": {
+      "type": "integer",
+      "description": "Total number of queue items found."
+    },
+    "runnable_count": {
+      "type": "integer",
+      "description": "Number of items that would be runnable if not blocked."
+    },
+    "blocked_count": {
+      "type": "integer",
+      "description": "Number of blocked items."
+    },
+    "active_count": {
+      "type": "integer",
+      "description": "Number of active items."
+    },
+    "completed_count": {
+      "type": "integer",
+      "description": "Number of completed items."
+    },
+    "blocker_summary": {
+      "type": "object",
+      "description": "Count of each blocker class across the queue.",
+      "properties": {
+        "missing_prompt": { "type": "integer" },
+        "malformed_queue_item": { "type": "integer" },
+        "dirty_overlap": { "type": "integer" },
+        "lane_ownership_collision": { "type": "integer" },
+        "failed_gate": { "type": "integer" },
+        "missing_final_report": { "type": "integer" },
+        "missing_required_artifact": { "type": "integer" },
+        "schema_validation_failure": { "type": "integer" },
+        "test_collection_failure": { "type": "integer" },
+        "dependency_policy_violation": { "type": "integer" },
+        "forbidden_file_scope": { "type": "integer" },
+        "max_attempts_exceeded": { "type": "integer" },
+        "unclear_completion_state": { "type": "integer" }
+      }
+    },
+    "per_task_blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "status", "blocker_classes"],
+        "properties": {
+          "task_id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string" },
+          "priority": { "type": "integer" },
+          "blocker_classes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "cross_lane_collisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "lane_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "failed_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "gate_name": { "type": "string" },
+          "gate_path": { "type": "string" }
+        }
+      }
+    },
+    "missing_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "artifact_path": { "type": "string" }
+        }
+      }
+    },
+    "missing_reports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string" },
+          "report_path": { "type": "string" }
+        }
+      }
+    },
+    "dependency_policy_findings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_unblock_slices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "recommendation_id",
+          "title",
+          "blocker_classes_addressed",
+          "rationale",
+          "risk_level",
+          "should_auto_queue"
+        ],
+        "properties": {
+          "recommendation_id": { "type": "string" },
+          "title": { "type": "string" },
+          "blocker_classes_addressed": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rationale": { "type": "string" },
+          "allowed_files": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "forbidden_files": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "required_artifacts": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "targeted_tests": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "expected_evidence": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "estimated_lane": { "type": "string" },
+          "should_auto_queue": { "type": "boolean" },
+          "requires_human_review": { "type": "boolean" }
+        }
+      }
+    },
+    "recommended_queue_order": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Recommended task_id ordering for queue resumption."
+    },
+    "architecture_convergence_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "telemetry_redaction_implications": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "safety_stop_reason": {
+      "type": "string",
+      "description": "Why the steward stopped rather than launching work."
+    }
+  }
+}

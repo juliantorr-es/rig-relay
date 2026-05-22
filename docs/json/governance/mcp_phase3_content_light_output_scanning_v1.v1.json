@@ -1,0 +1,61 @@
+{
+  "schema_version": "rig.relay.mcp_phase3_content_light_output_scanning.v1",
+  "document_id": "mcp-phase3-content-light-output-scanning-v1",
+  "title": "MCP Phase 3 Content-Light Output Scanning Implementation v1 — Rig Relay",
+  "generated_at": "2026-05-21T09:30:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_phase_artifacts": [
+    "docs/json/governance/mcp_phase1_descriptor_integrity_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase2_roots_boundary_implementation_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/protocols/mcp/models.py (added ContentLightClass constants, 3 refusal codes)",
+    "rig_relay/protocols/mcp/server.py (imported redaction primitives, added _classify_mcp_output and _scan_tool_output, integrated scan into call_tool and call_tool_sync dispatch paths)",
+    "tests/protocols/mcp/test_mcp_content_light_v1.py (new — 15 tests)"
+  ],
+  "scanner_selected": "rig_relay/evidence/redaction.py — canonical Rig Relay redaction module. Uses _FORBIDDEN_FIELD_KEYS (47 forbidden field names), _SECRET_VALUE_PATTERNS (5 regex patterns for sk-*, bearer, private keys, api keys), _SENSITIVE_NAME_PATTERNS (15 sensitive field name patterns).",
+  "output_classifications": {
+    "public_safe": "No secrets, no forbidden keys, no private paths. Returned normally with content_light_classification tag.",
+    "private_local": "Contains cwd or absolute path metadata. Returned with classification tag; may be refused by future local policy.",
+    "sensitive_metadata": "Contains token-like keywords (access_token, bearer, authorization, api_key) but no actual secrets. Metadata-only refusal.",
+    "secret_bearing": "Matches _SECRET_VALUE_PATTERNS — contains actual secret fragments (sk-*, bearer tokens, private keys). Refused.",
+    "forbidden_raw": "Contains keys from _FORBIDDEN_FIELD_KEYS (raw_file_contents, source_code, diff, api_key, stdout, stderr, etc.) or token-like content. Refused."
+  },
+  "refusal_codes_added": ["secret_bearing_output", "forbidden_raw_output", "sensitive_metadata_blocked"],
+  "scan_integration_points": [
+    "call_tool(): after _dispatch() returns, before result assembly and persist",
+    "call_tool_sync(): after _dispatch_sync() returns, before result assembly and persist",
+    "All tools (async + sync): scan runs after descriptor integrity and root boundary checks, before response serialization"
+  ],
+  "tests": {
+    "new": 15,
+    "passed": 15,
+    "failed": 0,
+    "phase1_2_regression_passed": 30,
+    "total_passed": 45,
+    "suites": {
+      "TestContentLightClassification": {"count": 8, "classification": "contract, adversarial, sabotage"},
+      "TestRefusalDoesNotEchoSecret": {"count": 2, "classification": "contract, adversarial"},
+      "TestDispatchIntegration": {"count": 2, "classification": "contract, integration"},
+      "TestPhase1AndPhase2Regression": {"count": 3, "classification": "contract"}
+    }
+  },
+  "validations": {
+    "pyright": "0 errors, 0 warnings",
+    "schema_validation": "all schemas valid",
+    "phase1_regression": "13/13 passed",
+    "phase2_regression": "17/17 passed"
+  },
+  "remaining_mcp_phase_seams": {
+    "phase_4_evidence_envelopes": "No common ReceiptEnvelope wrapping for MCP outcomes. Responses carry content_light_classification but lack other envelope fields (session_id, trace_id, envelope_id, etc.).",
+    "phase_5_auth": "MCPPerUserAuthorization model exists but not enforced. No per-session token required.",
+    "pre_existing_seam": "Sync handler lacks tools/call dispatch."
+  },
+  "dependency_changes": "None",
+  "mcp_security_implications": {
+    "before": "MCP read-only tools inside workspace root could return arbitrary output including secret-bearing content, API keys, raw file contents, or private paths. Content-light was advertised but never verified.",
+    "after": "Every MCP tool output is classified before serialization. Secret-bearing and forbidden-raw outputs are refused with structured refusal envelopes. Public-safe outputs carry explicit classification. Refusals never echo the detected secret. Scan runs after descriptor integrity and root boundary (defense-in-depth order)."
+  },
+  "content_light": true
+}

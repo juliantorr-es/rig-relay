@@ -107,6 +107,11 @@ class ToolExecutor:
                 execution_mode=exec_mode,
                 bypass_permissions=ctx.bypass_permissions,
             )
+            # NOTE: ToolRuntimeRequest.turn_id carries the user_message_id
+            # (client message identifier) because downstream ToolRuntime and
+            # InvokeContext use it as parent_turn_id for tool invocation
+            # correlation. The context's turn_id field (conversation turn UUID)
+            # is a separate identity used for turn phase tracking.
 
             try:
                 of_interest = ctx.tool_manager.get(tn)
@@ -317,7 +322,8 @@ class ToolExecutor:
 
     async def execute_batch(self, resolved: Any) -> AsyncGenerator[Any]:
         """Execute the full tool batch: failed events, tool-call events,
-        concurrent execution, and passive auto-GC."""
+        concurrent execution, and passive auto-GC.
+        """
         ctx = self._ctx
 
         for failed in resolved.failed_calls:

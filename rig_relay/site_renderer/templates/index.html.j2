@@ -1,5 +1,61 @@
 {% extends "base.html.j2" %}
 {% block content %}
+{% if front_door and front_door.hero %}
+<section class="public-hero product-hero">
+  <h2>{{ front_door.hero.headline }}</h2>
+  <p class="thesis">{{ front_door.hero.subhead }}</p>
+  <div class="cta-grid">
+    {% if front_door.hero.primary_cta %}<a class="cta-link cta-primary" href="{{ front_door.hero.primary_cta.url }}">{{ front_door.hero.primary_cta.text }}</a>{% endif %}
+    {% if front_door.hero.secondary_cta %}<a class="cta-link cta-secondary" href="{{ front_door.hero.secondary_cta.url }}">{{ front_door.hero.secondary_cta.text }}</a>{% endif %}
+    <a class="cta-link cta-secondary" href="#evidence">Browse Evidence</a>
+    {% if github_url %}<a class="cta-link cta-secondary" href="{{ github_url }}">GitHub</a>{% endif %}
+  </div>
+</section>
+
+{% if front_door.problem %}
+<h2 class="section-heading">{{ front_door.problem.headline | default("Coding Agents Need Governance") }}</h2>
+<p>{{ front_door.problem.body }}</p>
+{% endif %}
+
+{% if front_door.pillars %}
+<h2 class="section-heading">Product Pillars</h2>
+<div class="feature-grid">
+  {% for p in front_door.pillars %}
+  <div class="feature-card pillar-{{ p.status }}">
+    <h3>{{ p.title }} <span class="status-chip chip-{{ p.status }}">{{ p.status }}</span></h3>
+    <p>{{ p.body }}</p>
+    {% if p.source_ref %}<div class="card-source">Source: {{ p.source_ref }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if front_door.trust_pipeline %}
+<h2 class="section-heading">Trust Pipeline</h2>
+<div class="pipeline">
+  {% for step in front_door.trust_pipeline %}
+  <div class="pipeline-step pipeline-{{ step.status }}">
+    <span class="pipeline-label">{{ step.step }}</span>
+    <span class="pipeline-copy">{{ step.copy }}</span>
+    <span class="status-chip chip-{{ step.status }}">{{ step.status }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if front_door.enterprise_posture %}
+<h2 class="section-heading">{{ front_door.enterprise_posture.headline | default("Honest About Maturity") }}</h2>
+<p>{{ front_door.enterprise_posture.body }}</p>
+{% if front_door.enterprise_posture.cta_url %}<p><a class="cta-link cta-secondary" href="{{ front_door.enterprise_posture.cta_url }}">Read the Enterprise Procurement Readiness Audit</a></p>{% endif %}
+{% endif %}
+
+{% if front_door.evidence_site %}
+<h2 class="section-heading">{{ front_door.evidence_site.headline | default("Static Evidence Site") }}</h2>
+<p>{{ front_door.evidence_site.body }}</p>
+{% if front_door.evidence_site.cta_url %}<p><a class="cta-link cta-secondary" href="{{ front_door.evidence_site.cta_url }}">Browse Full Evidence Index</a></p>{% endif %}
+{% endif %}
+
+{% else %}
 <section class="public-hero">
   <h2>Rig Relay</h2>
   <p class="thesis">A governed local agent platform for making AI-assisted software work inspectable, auditable, and refusal-first.</p>
@@ -18,31 +74,14 @@
 
 <h2 class="section-heading">What Rig Relay Does</h2>
 <div class="feature-grid">
-  <div class="feature-card">
-    <h3>Governed Execution</h3>
-    <p>Agent tools are permission-gated with ToolPermission (ALWAYS/ASK/NEVER). Destructive operations require explicit approval. Stale batch reuse is prevented by lease-gated supervision.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Trace-Correlated Evidence</h3>
-    <p>Every agent action carries trace IDs and correlation IDs across 10 surfaces. Content-light doctrine ensures secrets never leak into traces. Cross-surface events are joinable.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Refusal-First Boundaries</h3>
-    <p>A shared refusal vocabulary with 29 classes spans MCP, ACP, A2A, SDK, and provider surfaces. Capabilities are refused by default and granted explicitly.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Schema-Governed Contracts</h3>
-    <p>{{ schema_count }}+ JSON schemas govern every artifact type. Implementation contracts are encoded as JSON with authority hashes. The deterministic compiler validates worktrees against contracts.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Protocol Spine</h3>
-    <p>MCP (Model Context Protocol), ACP (Agent Client Protocol), A2A (Agent-to-Agent), and SDK surfaces each have capability manifests, readiness checks, and refusal adapters.</p>
-  </div>
-  <div class="feature-card">
-    <h3>Static Evidence Site</h3>
-    <p>This site is deterministically generated from canonical JSON artifacts. No backend, no database, no tracking. Every page is schema-validated and safety-scanned before publication.</p>
-  </div>
+  <div class="feature-card"><h3>Governed Execution</h3><p>Agent tools are permission-gated with ToolPermission (ALWAYS/ASK/NEVER). Destructive operations require explicit approval. Stale batch reuse is prevented by lease-gated supervision.</p></div>
+  <div class="feature-card"><h3>Trace-Correlated Evidence</h3><p>Every agent action carries trace IDs and correlation IDs across 10 surfaces. Content-light doctrine ensures secrets never leak into traces. Cross-surface events are joinable.</p></div>
+  <div class="feature-card"><h3>Refusal-First Boundaries</h3><p>A shared refusal vocabulary with 29 classes spans MCP, ACP, A2A, SDK, and provider surfaces. Capabilities are refused by default and granted explicitly.</p></div>
+  <div class="feature-card"><h3>Schema-Governed Contracts</h3><p>{{ schema_count }}+ JSON schemas govern every artifact type. Implementation contracts are encoded as JSON with authority hashes. The deterministic compiler validates worktrees against contracts.</p></div>
+  <div class="feature-card"><h3>Protocol Spine</h3><p>MCP (Model Context Protocol), ACP (Agent Client Protocol), A2A (Agent-to-Agent), and SDK surfaces each have capability manifests, readiness checks, and refusal adapters.</p></div>
+  <div class="feature-card"><h3>Static Evidence Site</h3><p>This site is deterministically generated from canonical JSON artifacts. No backend, no database, no tracking. Every page is schema-validated and safety-scanned before publication.</p></div>
 </div>
+{% endif %}
 
 <h2 class="section-heading">What Is Proven Now</h2>
 <div class="metrics-row">
@@ -94,55 +133,10 @@
   {% endfor %}
 </div>
 
-<h2 class="section-heading">For Investors, Hiring Managers &amp; Technical Reviewers</h2>
-<div class="audience-grid">
-  <a class="audience-card" href="/proof-chain/index.html">
-    <strong>Investors</strong>
-    <span>Product wedge, data/evidence moat, governance as competitive advantage, extensibility via MCP/ACP/A2A/SDK/providers.</span>
-  </a>
-  <a class="audience-card" href="/contracts/index.html">
-    <strong>Hiring Managers</strong>
-    <span>This project demonstrates systems thinking, security posture, product judgment, and evidence-driven engineering at scale.</span>
-  </a>
-  <a class="audience-card" href="/hardening/index.html">
-    <strong>Technical Reviewers</strong>
-    <span>Direct paths to schemas, tests, evidence, readiness artifacts, and claim boundaries. Inspect the proof chain.</span>
-  </a>
-  <a class="audience-card" href="/seams/index.html">
-    <strong>Open-Source Users</strong>
-    <span>Run locally, safe by default, refusal-first. Known seams and deferred work are documented openly.</span>
-  </a>
-</div>
-
-<h2 class="section-heading">Frequently Asked Questions</h2>
-<dl class="faq-section">
-  <div class="faq-item">
-    <dt>What is Rig Relay?</dt>
-    <dd>Rig Relay is a governed local agent platform. It provides a controlled runtime for AI coding agents that produces inspectable, auditable evidence of every action taken — tool calls, file mutations, protocol interactions, and model requests.</dd>
-  </div>
-  <div class="faq-item">
-    <dt>Who is it for?</dt>
-    <dd>Engineering teams, security-conscious organizations, and individual developers who want agent-assisted development with governance guardrails, audit trails, and bounded claims rather than opaque execution.</dd>
-  </div>
-  <div class="faq-item">
-    <dt>What makes it different?</dt>
-    <dd>Most coding agents optimize for speed. Rig Relay optimizes for inspectability. Every surface has a refusal vocabulary. Every artifact validates against a schema. Every claim is bounded by evidence. Known seams are documented, not hidden.</dd>
-  </div>
-  <div class="faq-item">
-    <dt>What is proven?</dt>
-    <dd>{{ schema_count }}+ schemas validated. Cross-surface refusal vocabulary covering 10 protocol surfaces. Deterministic site compilation. Content-light evidence receipts. Release gate validation. See the <a href="/proof-chain/index.html">proof chain</a> for full details.</dd>
-  </div>
-  <div class="faq-item">
-    <dt>What is deferred?</dt>
-    <dd>Production OAuth, full OS sandboxing, resource budget enforcement, and PNG social preview images are documented deferrals. See <a href="/seams/index.html">known seams</a> for the complete list.</dd>
-  </div>
-  <div class="faq-item">
-    <dt>How can I inspect the evidence?</dt>
-    <dd>Every page on this site is generated from canonical JSON artifacts validated against governed schemas. Navigate the evidence console on the left, or start with <a href="/release-candidate/index.html">release readiness</a>.</dd>
-  </div>
-</dl>
-
 <div class="provenance-footer">
   <p>Generated <code>{{ generated_at }}</code> · Branch <code>{{ branch }}</code> · SHA <code>{{ head_sha }}</code> · {{ pages | length }} evidence pages · Safety {{ 'passed' if safety_passed else 'hold' }}</p>
+  {% if front_door and front_door.footer %}
+  <p class="footer-meta">{{ front_door.footer.license }} · <a href="{{ front_door.footer.github }}">GitHub</a> · Content-light · No tracking</p>
+  {% endif %}
 </div>
 {% endblock %}

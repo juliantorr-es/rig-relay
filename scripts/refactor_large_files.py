@@ -8,9 +8,16 @@ sub-modules and leaves the original file as a re-export facade.
 from __future__ import annotations
 
 import ast
+import json
 from pathlib import Path
 import re
+import sys
 from typing import Any
+
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -41,12 +48,19 @@ def split_agent_loop() -> None:
     lines = content.splitlines(keepends=True)
 
     for i, node in enumerate(tree.body):
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Assign, ast.Import, ast.ImportFrom)):
+        if isinstance(
+            node,
+            (ast.ClassDef, ast.FunctionDef, ast.Assign, ast.Import, ast.ImportFrom),
+        ):
             start = node.lineno - 1
-            end = node.end_lineno if hasattr(node, 'end_lineno') and node.end_lineno else start
-            name = getattr(node, 'name', '')
+            end = (
+                node.end_lineno
+                if hasattr(node, "end_lineno") and node.end_lineno
+                else start
+            )
+            name = getattr(node, "name", "")
             kind = type(node).__name__
-            text = ''.join(lines[start:end])
+            text = "".join(lines[start:end])
             top_level.append((name or kind, start, end, text))
 
     # Group into categories
@@ -57,9 +71,19 @@ def split_agent_loop() -> None:
     imports: list[str] = []
     other: list[str] = []
 
-    error_names = {"AgentLoopError", "AgentLoopStateError", "AgentLoopLLMResponseError", "TeleportError"}
+    error_names = {
+        "AgentLoopError",
+        "AgentLoopStateError",
+        "AgentLoopLLMResponseError",
+        "TeleportError",
+    }
     model_names = {"ToolExecutionResponse", "ToolDecision"}
-    helper_names = {"_should_raise_rate_limit_error", "_is_context_too_long_error", "_is_non_retryable_error", "requires_init"}
+    helper_names = {
+        "_should_raise_rate_limit_error",
+        "_is_context_too_long_error",
+        "_is_non_retryable_error",
+        "requires_init",
+    }
 
     for name, start, end, text in top_level:
         if isinstance(name, str) and name in error_names:
@@ -76,28 +100,39 @@ def split_agent_loop() -> None:
             other.append(text)
 
     # Check source for imports needed by extracted code
-    import_block = '\n'.join(imp for imp in imports if not imp.startswith('from rig_relay.core.agent_loop'))
+    import_block = "\n".join(
+        imp for imp in imports if not imp.startswith("from rig_relay.core.agent_loop")
+    )
 
     # Write _error.py
-    error_imports = '\n'.join(
-        imp for imp in imports
-        if any(x in imp for x in ('from __future__', 'from enum', 'from typing'))
+    error_imports = "\n".join(
+        imp
+        for imp in imports
+        if any(x in imp for x in ("from __future__", "from enum", "from typing"))
     )
-    _write(src.parent / "_error.py", error_imports + '\n\n\n' + '\n'.join(errors))
+    _write(src.parent / "_error.py", error_imports + "\n\n\n" + "\n".join(errors))
 
     # Write _models.py
-    model_imports = '\n'.join(
-        imp for imp in imports
-        if any(x in imp for x in ('from __future__', 'from enum', 'from pydantic', 'from typing'))
+    model_imports = "\n".join(
+        imp
+        for imp in imports
+        if any(
+            x in imp
+            for x in ("from __future__", "from enum", "from pydantic", "from typing")
+        )
     )
-    _write(src.parent / "_models.py", model_imports + '\n\n\n' + '\n'.join(models))
+    _write(src.parent / "_models.py", model_imports + "\n\n\n" + "\n".join(models))
 
     # Write _helpers.py (standalone functions)
-    helper_imports = '\n'.join(
-        imp for imp in imports
-        if any(x in imp for x in ('from __future__', 'from typing', 'import ', 'from collections'))
+    helper_imports = "\n".join(
+        imp
+        for imp in imports
+        if any(
+            x in imp
+            for x in ("from __future__", "from typing", "import ", "from collections")
+        )
     )
-    _write(src.parent / "_helpers.py", helper_imports + '\n\n\n' + '\n'.join(helpers))
+    _write(src.parent / "_helpers.py", helper_imports + "\n\n\n" + "\n".join(helpers))
 
     # Replace original with re-export facade
     facade = '''"""Agent loop — orchestrates LLM calls, tool execution, and session lifecycle.
@@ -140,37 +175,39 @@ __all__ = [
 
     # Rename original to agent_loop_impl.py and strip extracted code
     # Actually, keep the core class in agent_loop.py and just remove the extracted parts
-    
+
     impl_lines = content.splitlines(keepends=True)
     # Find line ranges to remove
     remove_ranges = []
     for name, start, end, text in top_level:
-        lname = name if isinstance(name, str) else ''
+        lname = name if isinstance(name, str) else ""
         if lname in error_names | model_names | helper_names:
             remove_ranges.append((start, end))
-    
+
     # Remove from bottom to top to preserve line numbers
     remove_ranges.sort(reverse=True)
     for start, end in remove_ranges:
         del impl_lines[start:end]
-    
+
     # Add imports for extracted modules
     new_imports = [
-        'from rig_relay.core._error import AgentLoopError, AgentLoopStateError, AgentLoopLLMResponseError, TeleportError\n',
-        'from rig_relay.core._helpers import _is_context_too_long_error, _is_non_retryable_error, _should_raise_rate_limit_error\n',
-        'from rig_relay.core._models import ToolDecision, ToolExecutionResponse\n',
+        "from rig_relay.core._error import AgentLoopError, AgentLoopStateError, AgentLoopLLMResponseError, TeleportError\n",
+        "from rig_relay.core._helpers import _is_context_too_long_error, _is_non_retryable_error, _should_raise_rate_limit_error\n",
+        "from rig_relay.core._models import ToolDecision, ToolExecutionResponse\n",
     ]
-    
+
     # Insert after last import
     last_import = 0
     for i, line in enumerate(impl_lines):
-        if line.startswith('import ') or line.startswith('from '):
+        if line.startswith("import ") or line.startswith("from "):
             last_import = i
     for ni in reversed(new_imports):
         impl_lines.insert(last_import + 1, ni)
-    
-    _write(src, ''.join(impl_lines))
-    print(f"  Split agent_loop.py: {src.parent / '_error.py'}, {src.parent / '_helpers.py'}, {src.parent / '_models.py'}")
+
+    _write(src, "".join(impl_lines))
+    print(
+        f"  Split agent_loop.py: {src.parent / '_error.py'}, {src.parent / '_helpers.py'}, {src.parent / '_models.py'}"
+    )
 
 
 # ── Phase 2: Extract execution functions from intents.py ───────────────
@@ -195,19 +232,37 @@ def split_intents() -> None:
 
     # Categorize functions
     intent_groups = {
-        "refresh": ["_execute_refresh_projection", "validate_protected_intent_authorization"],
+        "refresh": [
+            "_execute_refresh_projection",
+            "validate_protected_intent_authorization",
+        ],
         "chat": ["_execute_get_chat_state"],
-        "refinement": ["_execute_generate_refinement_report", "_execute_create_refinement_packets"],
+        "refinement": [
+            "_execute_generate_refinement_report",
+            "_execute_create_refinement_packets",
+        ],
         "storage": ["_execute_run_storage_audit"],
-        "bundle": ["_execute_create_chatgpt_dev_bundle_dry_run", "_execute_create_telemetry_bundle_dry_run", "_execute_validate_telemetry_bundle"],
+        "bundle": [
+            "_execute_create_chatgpt_dev_bundle_dry_run",
+            "_execute_create_telemetry_bundle_dry_run",
+            "_execute_validate_telemetry_bundle",
+        ],
         "queue": ["_execute_run_queue_plan_dry_run"],
         "spawn": ["_execute_run_spawn_plan_dry_run"],
         "validation": ["_execute_run_validation_suite"],
-        "fleet": ["_execute_run_fleet_projection_dry_run", "_execute_submit_fleet_job", "_execute_worktree"],
+        "fleet": [
+            "_execute_run_fleet_projection_dry_run",
+            "_execute_submit_fleet_job",
+            "_execute_worktree",
+        ],
         "review": ["_execute_run_review_packet_dry_run"],
         "router": ["_execute_run_mission_router_dry_run"],
         "delegate": ["_execute_run_delegate_fleet_dry_run"],
-        "audit": ["_execute_run_audit_report_dry_run", "_execute_run_session_lifecycle_dry_run", "_execute_run_evidence_integrity_dry_run"],
+        "audit": [
+            "_execute_run_audit_report_dry_run",
+            "_execute_run_session_lifecycle_dry_run",
+            "_execute_run_evidence_integrity_dry_run",
+        ],
     }
 
     # Map function name to group
@@ -219,11 +274,25 @@ def split_intents() -> None:
     # Parse top-level nodes
     top_level = []
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Assign, ast.Import, ast.ImportFrom)):
+        if isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+                ast.ClassDef,
+                ast.Assign,
+                ast.Import,
+                ast.ImportFrom,
+            ),
+        ):
             start = node.lineno - 1
-            end = node.end_lineno if hasattr(node, 'end_lineno') and node.end_lineno else len(lines)
-            text = ''.join(lines[start:end])
-            name = getattr(node, 'name', '')
+            end = (
+                node.end_lineno
+                if hasattr(node, "end_lineno") and node.end_lineno
+                else len(lines)
+            )
+            text = "".join(lines[start:end])
+            name = getattr(node, "name", "")
             top_level.append((name, start, end, text))
 
     # Separate preamble (imports, utility functions, shared classes) from execute functions
@@ -236,7 +305,16 @@ def split_intents() -> None:
             execute_fns.setdefault(group, []).append(text)
         elif any(x in text for x in ("from __future__", "import ", "from ")):
             preamble.append(text)
-        elif name in ("execute_desktop_intent", "_load_schema", "validate_intent_request", "_validate_result", "_build_result", "_handle_phase_1_protected_intent", "_execute_allowed_intent", "_emit_progress"):
+        elif name in (
+            "execute_desktop_intent",
+            "_load_schema",
+            "validate_intent_request",
+            "_validate_result",
+            "_build_result",
+            "_handle_phase_1_protected_intent",
+            "_execute_allowed_intent",
+            "_emit_progress",
+        ):
             leftover.append(text)
         else:
             shared_names.add(name)
@@ -247,20 +325,26 @@ def split_intents() -> None:
         # Collect imports needed by this group
         fn_names = [fn for fn in intent_groups[group]]
         needed_imports = preamble.copy()
-        content = '\n'.join(needed_imports) + '\n\n\n' + '\n'.join(fns)
+        content = "\n".join(needed_imports) + "\n\n\n" + "\n".join(fns)
         _write(intents_dir / f"_{group}.py", content)
 
     # Write shared utility functions
-    shared_content = '\n'.join(preamble) + '\n\n\n'
+    shared_content = "\n".join(preamble) + "\n\n\n"
     for name, start, end, text in top_level:
-        if name in shared_names and name not in execute_names and name not in ('execute_desktop_intent',):
-            shared_content += text + '\n\n'
+        if (
+            name in shared_names
+            and name not in execute_names
+            and name not in ("execute_desktop_intent",)
+        ):
+            shared_content += text + "\n\n"
     _write(intents_dir / "_shared.py", shared_content)
 
     # Replace original intents.py with re-export facade
-    facade_imports = '\n'.join(
+    facade_imports = "\n".join(
         f"from rig_relay.desktop._intents._{group} import ("
-        + '\n    ' + ',\n    '.join(intent_groups[group]) + '\n)'
+        + "\n    "
+        + ",\n    ".join(intent_groups[group])
+        + "\n)"
         for group in execute_fns
     )
 
@@ -291,19 +375,36 @@ def split_session_lifecycle() -> None:
     # Collect top-level nodes
     top_level = []
     for node in tree.body:
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.Assign, ast.Import, ast.ImportFrom)):
+        if isinstance(
+            node,
+            (ast.ClassDef, ast.FunctionDef, ast.Assign, ast.Import, ast.ImportFrom),
+        ):
             start = node.lineno - 1
-            end = node.end_lineno if hasattr(node, 'end_lineno') and node.end_lineno else len(lines)
-            text = ''.join(lines[start:end])
-            name = getattr(node, 'name', '')
+            end = (
+                node.end_lineno
+                if hasattr(node, "end_lineno") and node.end_lineno
+                else len(lines)
+            )
+            text = "".join(lines[start:end])
+            name = getattr(node, "name", "")
             top_level.append((name, start, end, text))
 
     # Identify model classes vs functions
     model_classes = {
-        "SessionStorageCategory", "SessionPruneCandidate", "SessionCompactionCandidate",
-        "SessionStorageSummary", "ClassifiedArtifact", "CompactionResult", "Refusal",
-        "DeletedArtifact", "SessionRetentionPolicy", "SessionLifecycleReceipt",
-        "SessionLifecycleManifestEntry", "SessionLifecycleManifest", "SessionFinalizeResult", "_FinalizeState",
+        "SessionStorageCategory",
+        "SessionPruneCandidate",
+        "SessionCompactionCandidate",
+        "SessionStorageSummary",
+        "ClassifiedArtifact",
+        "CompactionResult",
+        "Refusal",
+        "DeletedArtifact",
+        "SessionRetentionPolicy",
+        "SessionLifecycleReceipt",
+        "SessionLifecycleManifestEntry",
+        "SessionLifecycleManifest",
+        "SessionFinalizeResult",
+        "_FinalizeState",
     }
 
     imports: list[str] = []
@@ -319,12 +420,20 @@ def split_session_lifecycle() -> None:
             functions.append(text)
 
     # Write _models.py
-    model_imports = '\n'.join(imp for imp in imports if not imp.startswith('from rig_relay.evidence.'))
-    _write(src.parent / "_lifecycle_models.py", model_imports + '\n\n\n' + '\n'.join(models))
+    model_imports = "\n".join(
+        imp for imp in imports if not imp.startswith("from rig_relay.evidence.")
+    )
+    _write(
+        src.parent / "_lifecycle_models.py",
+        model_imports + "\n\n\n" + "\n".join(models),
+    )
 
     # Write _functions.py
-    func_imports = '\n'.join(imp for imp in imports)
-    _write(src.parent / "_lifecycle_funcs.py", func_imports + '\n\n\n' + '\n'.join(functions))
+    func_imports = "\n".join(imp for imp in imports)
+    _write(
+        src.parent / "_lifecycle_funcs.py",
+        func_imports + "\n\n\n" + "\n".join(functions),
+    )
 
     # Replace original with facade
     facade = f'''"""Session lifecycle — split into sub-modules for maintainability."""
@@ -379,24 +488,55 @@ __all__ = [
 ]
 '''
     _write(src, facade)
-    print(f"  Split session_lifecycle.py into {src.parent / '_lifecycle_models.py'} + {src.parent / '_lifecycle_funcs.py'}")
+    print(
+        f"  Split session_lifecycle.py into {src.parent / '_lifecycle_models.py'} + {src.parent / '_lifecycle_funcs.py'}"
+    )
 
 
 if __name__ == "__main__":
-    import sys
-    
-    target = sys.argv[1] if len(sys.argv) > 1 else "all"
-    
+    execute = "--execute" in sys.argv
+    dry_run = "--dry-run" in sys.argv or not execute
+
+    if not execute and not dry_run:
+        print("DRY-RUN: Pass --execute to perform refactoring, --dry-run to see plan.")
+        governed = require_governed_execution_with_evidence(
+            script_name="refactor_large_files",
+            authority_tier="local_mutation",
+            capability_id="source_refactor",
+            execute_requested=False,
+        )
+        print("Use --execute to proceed with governance check.")
+        sys.exit(0)
+
+    if execute:
+        governed = require_governed_execution_with_evidence(
+            script_name="refactor_large_files",
+            authority_tier="local_mutation",
+            capability_id="source_refactor",
+            execute_requested=True,
+        )
+        if not governed.can_execute:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — refactor blocked (fail-closed)")
+            sys.exit(1)
+
+    target = (
+        sys.argv[1]
+        if len(sys.argv) > 1 and sys.argv[1] not in {"--execute", "--dry-run"}
+        else "all"
+    )
+
     if target in ("all", "agent_loop"):
         print("Splitting agent_loop.py...")
         split_agent_loop()
-    
+
     if target in ("all", "intents"):
         print("Splitting intents.py...")
         split_intents()
-    
+
     if target in ("all", "session_lifecycle"):
         print("Splitting session_lifecycle.py...")
         split_session_lifecycle()
-    
+
     print("Done.")

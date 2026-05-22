@@ -1,0 +1,29 @@
+{
+  "schema_version": "rig.relay.static_docs_public_private_compliance_audit.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "Static Docs Public/Private Compliance Audit v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "findings": [
+    {"finding_id": "SD-001", "area": "public_private_classification", "severity": "medium", "current": "No public/private classification exists on source governance artifacts. Site manifest has no classification field. Safety scan runs before publish but does not check classification.", "required": "Add public_private_classification field to site manifest document entries. Classify each of 233 documents. Safety scan must reject internal_only documents from publication.", "offender_ids": ["OFF-035"]},
+    {"finding_id": "SD-002", "area": "internal_governance_exposure", "severity": "medium", "current": "Internal governance JSON files (procurement evidence packs, enterprise data inventory, identity auth model) are listed in site manifest with no classification check. If any of these contain internal-only content, they would be published.", "required": "Audit 71 governance documents for internal-only content. Mark as internal_only if they contain procurement-specific, enterprise-specific, or pre-release content. Safety scan already catches tokens/secrets but not procurement-sensitive metadata."},
+    {"finding_id": "SD-003", "area": "search_index_scanning", "severity": "low", "current": "Search index is regenerated from document summaries. If an internal_only document is accidentally indexed, its summary would appear in search-index.json. Safety scan runs on rendered HTML but not on search index content.", "required": "Add classification-aware filtering to search index generation. Exclude internal_only documents from search index."},
+    {"finding_id": "SD-004", "area": "safety_scan", "severity": "compliant", "current": "Safety scan (rig_relay/docs_renderer/safety.py) runs before publish and detects token/secret leaks. 264 pages scanned, zero leaks found.", "required": "None — safety scan is working correctly. Must ensure it also checks for absolute paths and source snippets."},
+    {"finding_id": "SD-005", "area": "site_manifest_disclosure", "severity": "low", "current": "Site manifest has disclosure policy (reviewer, contributor, maintainer) but this controls progressive disclosure in the UI, not publication access control.", "required": "Add publication_classification field distinct from disclosure_policy. Publication classification governs whether a document appears in the public site at all."}
+  ],
+  "current_protections": [
+    "Safety scan (token/secret detection) runs before every publish — catches leaks",
+    "Content-light doctrine enforced across all governance JSON artifacts",
+    "Substrate doctrine page explicitly declares SQLite forbidden, Parquet derived-not-canonical, etc.",
+    "Cross-surface evidence schema spine defines common envelope fields — prevents field leakage"
+  ],
+  "recommended_additions": [
+    "public_private_classification enum on all site manifest documents: public_safe, internal_only, procurement_only, review_draft",
+    "Publication filter in static docs renderer: skip internal_only, procurement_only, and review_draft documents",
+    "Search index filter: exclude internal_only documents from search-index.json",
+    "Classification audit of 71 governance documents — identify any that should be internal_only",
+    "Classification check in safety scan: warn on publication of unclassified documents"
+  ],
+  "revision": "1.0.0"
+}

@@ -1,0 +1,98 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "implementation_id": "governance-receipt-manifest-enrichment-v1",
+  "title": "Governance Receipt Manifest Enrichment v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_artifacts": [
+    "docs/json/governance/governance_evidence_replay_discoverability_audit_v1.v1.json",
+    "docs/json/governance/governance_evidence_replay_gap_map_v1.v1.json",
+    "docs/json/governance/governance_evidence_replay_projection_design_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/evidence/receipt_store.py (REWRITTEN — enriched manifest rows with governance_decision_id, decision_status, surface, authority_tier, capability_id, content_light_classification, schema_version; added find_by_decision_id/surface/capability_id/authority_tier lookup helpers; added iter_manifest_rows(); added diagnose() with 4 diagnostic kinds; added ManifestDiagnostic dataclass)",
+    "rig_relay/evidence/receipt_envelope.py (MODIFIED — added optional request_id field to ReceiptEnvelope)",
+    "rig_relay/evidence/__init__.py (MODIFIED — exported ManifestDiagnostic)",
+    "tests/evidence/test_manifest_enrichment.py (CREATED — 26 tests)"
+  ],
+  "manifest_fields_added": [
+    "governance_decision_id (from ReceiptEnvelope.decision.governance_decision_id)",
+    "decision_status (from ReceiptEnvelope.decision.decision)",
+    "surface (from ReceiptEnvelope.decision.surface)",
+    "authority_tier (from ReceiptEnvelope.decision.authority_tier)",
+    "capability_id (from ReceiptEnvelope.decision.capability_id)",
+    "content_light_classification (from ReceiptEnvelope.decision.content_light_classification)",
+    "schema_version (from ReceiptEnvelope.schema_version)"
+  ],
+  "backward_compatibility_behavior": "New manifest rows include enriched fields after created_at. Old manifest rows (4 columns: envelope_id, receipt_kind, session_id, created_at) remain readable — skipped fields return None in dict.get(). iter_manifest_rows() tolerates rows with or without new fields. find_by_* helpers skip rows where the lookup field is missing. list_by_session works identically with old and new rows.",
+  "lookup_helpers_added": [
+    "find_by_decision_id(decision_id) → list[ReceiptEnvelope] — uses governance_decision_id from manifest",
+    "find_by_surface(surface) → list[ReceiptEnvelope] — uses surface from manifest",
+    "find_by_capability_id(capability_id) → list[ReceiptEnvelope] — uses capability_id from manifest",
+    "find_by_authority_tier(authority_tier) → list[ReceiptEnvelope] — uses authority_tier from manifest",
+    "iter_manifest_rows() → list[dict] — returns all manifest rows as dicts"
+  ],
+  "request_id_decision": "Added request_id as optional field (str | None) to ReceiptEnvelope. Defaults to None for backward compatibility. Populated by callers (MCP server already generates request_id; GovernanceRuntime can pass through). Survives round-trip through ReceiptStore.",
+  "orphan_corruption_detection": {
+    "method": "diagnose() → list[ManifestDiagnostic]",
+    "detected_conditions": [
+      "corrupted_shard — envelope JSON file fails json.loads",
+      "corrupted_manifest_line — manifest line fails json.loads",
+      "missing_shard — manifest references envelope_id not on disk",
+      "orphaned_shard — envelope file on disk with no manifest row"
+    ],
+    "behavior": "Returns structured ManifestDiagnostic records (content-light: kind, envelope_id, manifest_line, reason). Does not raise exceptions. Does not auto-fix. Caller decides whether to quarantine or report."
+  },
+  "tests_run": "26 passed, 0 failed",
+  "test_classifications": {
+    "contract": 19,
+    "real-artifact": 14,
+    "adversarial": 3,
+    "sabotage": 3,
+    "substrate": 3,
+    "unit": 0,
+    "integration": 0,
+    "E2E": 0,
+    "concurrency": 0
+  },
+  "pyright_result": "0 errors, 0 warnings, 0 informations",
+  "schema_validation_result": "419/419 schemas pass",
+  "dependency_changes": "None. hashlib added to receipt_store imports (stdlib).",
+  "telemetry_redaction_implications": "Manifest rows are content-light: only identifiers, hashes, status strings, and classification tags. No raw prompts, completions, private repo content, secrets, credentials, raw diffs, or raw Actions logs. ManifestDiagnostic records are content-light.",
+  "duckdb_postgres_source_of_truth_implications": "Enriched manifest reduces O(N) shard reads for governance decision queries. The 5 new manifest columns map directly to the DuckDB governance_decisions table (P1) and Postgres materialized view (P3). Manifest.jsonl remains the portable, inspectable, replayable source-of-truth.",
+  "remaining_replay_gaps": [
+    "No timestamp range queries (manifest is append-only chronological; DuckDB projection needed for WHERE created_at BETWEEN)",
+    "No count validation between manifest and envelope directory (diagnose() detects but doesn't enforce)",
+    "No Paginated query support for find_by_* helpers (full scan of manifest)",
+    "No evidence_status (persisted/failed) in manifest — ReceiptEnvelope.decision doesn't include evidence_persisted field yet",
+    "No trace_id in ReceiptEnvelope or manifest",
+    "No input_hash/output_hash in ReceiptEnvelope or manifest"
+  ],
+  "next_recommended_implementation_slice": "P1: DuckDB governance_decisions read-side projection. Build a disposable DuckDB table from manifest.jsonl + sharded envelope JSON files. Enable SQL queries, time-range lookups, and paginated results. Validate that projection counts match manifest and envelope file counts.",
+  "completed_work": [
+    "Enriched manifest.jsonl to include governance_decision_id, decision_status, surface, authority_tier, capability_id, content_light_classification, schema_version",
+    "Added iter_manifest_rows() for raw manifest access",
+    "Added find_by_decision_id/surface/capability_id/authority_tier lookup helpers",
+    "Added optional request_id to ReceiptEnvelope with round-trip support",
+    "Added ManifestDiagnostic dataclass and diagnose() method detecting 4 conditions (corrupted shard, corrupted manifest line, missing shard, orphaned shard)",
+    "Backward-compatible: old 4-column manifest rows remain readable; enriched rows add fields after created_at",
+    "Created 26 tests covering manifest enrichment, backward compatibility, lookup helpers, request_id, and corruption/orphan diagnostics",
+    "Pyright 0 errors, 419/419 schemas pass"
+  ],
+  "intentionally_deferred_work": [
+    "DuckDB projection (P1)",
+    "Postgres materialized view (P3)",
+    "evidence_persisted field on ReceiptDecision (P1)",
+    "trace_id, input_hash, output_hash on ReceiptEnvelope (P1)",
+    "Paginated find_by_* helpers (P1)",
+    "Cockpit consumption of manifest data (P1)",
+    "Procurement evidence packs (P2)"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

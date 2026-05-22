@@ -7,6 +7,7 @@ import contextlib
 import io
 import os
 from pathlib import Path
+import re
 from typing import Any, cast
 
 from acp import PROTOCOL_VERSION, Client, RequestError, connect_to_agent
@@ -15,7 +16,11 @@ import pexpect
 import pytest
 
 from tests import TESTS_ROOT
-from tests.e2e.common import ansi_tolerant_pattern
+
+
+def ansi_tolerant_pattern(text: str) -> re.Pattern[str]:
+    ansi = r"(?:\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07|\r|\n)*"
+    return re.compile(ansi.join(re.escape(char) for char in text))
 
 
 class _AcpSmokeClient(Client):

@@ -3,9 +3,9 @@
 Provides append/get/list operations on ReceiptEnvelope objects, stored as
 canonical JSON files in a structured directory hierarchy.
 
-Pattern source: Rig's ReceiptStore protocol and FilesystemReceiptStore
-(receipts.py), but adapted to Rig Relay's Pydantic ReceiptEnvelope and
-content-light conventions.
+Manifest enrichment (v2): manifest.jsonl rows now include governance
+correlation fields for discoverability without reading every shard.
+Backward-compatible: old rows without new fields remain readable.
 """
 
 from __future__ import annotations
@@ -48,6 +48,33 @@ class ReceiptStore(Protocol):
         ...
 
 
+class ManifestDiagnostic:
+    """A diagnostic record for manifest integrity issues.
+
+    Content-light: no raw payloads or file contents.
+    """
+
+    def __init__(
+        self,
+        kind: str,
+        envelope_id: str | None = None,
+        manifest_line: int | None = None,
+        reason: str = "",
+    ) -> None:
+        self.kind = kind
+        self.envelope_id = envelope_id
+        self.manifest_line = manifest_line
+        self.reason = reason
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "kind": self.kind,
+            "envelope_id": self.envelope_id,
+            "manifest_line": self.manifest_line,
+            "reason": self.reason,
+        }
+
+
 class FilesystemReceiptStore:
     """Filesystem-backed receipt store.
 
@@ -57,6 +84,10 @@ class FilesystemReceiptStore:
 
     A manifest at ``root/manifest.jsonl`` maintains an append-only
     ordered index for efficient list/query without directory walks.
+
+    Manifest v2 enrichment (backward-compatible): each row includes
+    governance correlation fields when available.
+    Old rows without new fields are silently tolerated.
     """
 
     def __init__(self, root: Path) -> None:
@@ -68,11 +99,6 @@ class FilesystemReceiptStore:
     # ── Public API ──────────────────────────────────────────────────
 
     def append(self, envelope: ReceiptEnvelope) -> Path:
-        """Persist a receipt envelope and return its file path.
-
-        The envelope is written as canonical JSON to a sharded path.
-        The manifest is appended atomically.
-        """
         path = self._envelope_path(envelope.envelope_id)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -83,13 +109,7 @@ class FilesystemReceiptStore:
         )
 
         manifest_line = json.dumps(
-            {
-                "envelope_id": envelope.envelope_id,
-                "receipt_kind": envelope.receipt_kind,
-                "session_id": envelope.subject.session_id,
-                "created_at": envelope.created_at,
-            },
-            sort_keys=True,
+            self._build_manifest_row(envelope, path), sort_keys=True
         )
         with self._manifest_path.open("a", encoding="utf-8") as f:
             f.write(manifest_line + "\n")
@@ -119,7 +139,150 @@ class FilesystemReceiptStore:
     def count(self) -> int:
         return self._manifest_line_count()
 
+    # ── Lookup helpers ────────────────────────────────────────────
+
+    def find_by_decision_id(self, decision_id: str) -> list[ReceiptEnvelope]:
+        results: list[ReceiptEnvelope] = []
+        for row in self.iter_manifest_rows():
+            gd_id = row.get("governance_decision_id")
+            if gd_id is not None and gd_id == decision_id:
+                env = self.get(str(row["envelope_id"]))
+                if env is not None:
+                    results.append(env)
+        return results
+
+    def find_by_surface(self, surface: str) -> list[ReceiptEnvelope]:
+        results: list[ReceiptEnvelope] = []
+        for row in self.iter_manifest_rows():
+            if row.get("surface") == surface:
+                env = self.get(str(row["envelope_id"]))
+                if env is not None:
+                    results.append(env)
+        return results
+
+    def find_by_capability_id(self, capability_id: str) -> list[ReceiptEnvelope]:
+        results: list[ReceiptEnvelope] = []
+        for row in self.iter_manifest_rows():
+            if row.get("capability_id") == capability_id:
+                env = self.get(str(row["envelope_id"]))
+                if env is not None:
+                    results.append(env)
+        return results
+
+    def find_by_authority_tier(self, authority_tier: str) -> list[ReceiptEnvelope]:
+        results: list[ReceiptEnvelope] = []
+        for row in self.iter_manifest_rows():
+            if row.get("authority_tier") == authority_tier:
+                env = self.get(str(row["envelope_id"]))
+                if env is not None:
+                    results.append(env)
+        return results
+
+    def iter_manifest_rows(self) -> list[dict[str, object]]:
+        rows: list[dict[str, object]] = []
+        if not self._manifest_path.is_file():
+            return rows
+        with self._manifest_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        return rows
+
+    # ── Diagnostics ──────────────────────────────────────────────
+
+    def diagnose(self) -> list[ManifestDiagnostic]:
+        diagnostics: list[ManifestDiagnostic] = []
+
+        envelope_ids_on_disk: set[str] = set()
+        for shard_dir in self._envelopes_dir.iterdir():
+            if not shard_dir.is_dir():
+                continue
+            for envelope_file in shard_dir.iterdir():
+                if envelope_file.suffix == ".json":
+                    eid = envelope_file.stem
+                    envelope_ids_on_disk.add(eid)
+                    try:
+                        json.loads(envelope_file.read_text(encoding="utf-8"))
+                    except json.JSONDecodeError:
+                        diagnostics.append(
+                            ManifestDiagnostic(
+                                kind="corrupted_shard",
+                                envelope_id=eid,
+                                reason="JSON decode failure",
+                            )
+                        )
+
+        manifest_ids: set[str] = set()
+        if self._manifest_path.is_file():
+            with self._manifest_path.open("r", encoding="utf-8") as f:
+                for line_num, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        diagnostics.append(
+                            ManifestDiagnostic(
+                                kind="corrupted_manifest_line",
+                                manifest_line=line_num,
+                                reason="JSON decode failure",
+                            )
+                        )
+                        continue
+                    eid = row.get("envelope_id", "")
+                    if isinstance(eid, str) and eid:
+                        manifest_ids.add(eid)
+                        if eid not in envelope_ids_on_disk:
+                            diagnostics.append(
+                                ManifestDiagnostic(
+                                    kind="missing_shard",
+                                    envelope_id=eid,
+                                    manifest_line=line_num,
+                                    reason="Manifest row references envelope file not on disk",
+                                )
+                            )
+
+        for eid in envelope_ids_on_disk - manifest_ids:
+            diagnostics.append(
+                ManifestDiagnostic(
+                    kind="orphaned_shard",
+                    envelope_id=eid,
+                    reason="Envelope file on disk with no manifest row",
+                )
+            )
+
+        return diagnostics
+
     # ── Internal helpers ────────────────────────────────────────────
+
+    def _build_manifest_row(
+        self, envelope: ReceiptEnvelope, path: Path
+    ) -> dict[str, object]:
+        row: dict[str, object] = {
+            "envelope_id": envelope.envelope_id,
+            "receipt_kind": envelope.receipt_kind,
+            "session_id": envelope.subject.session_id,
+            "created_at": envelope.created_at,
+            "schema_version": envelope.schema_version,
+        }
+
+        if envelope.decision is not None:
+            row["governance_decision_id"] = envelope.decision.governance_decision_id
+            row["decision_status"] = envelope.decision.decision
+            row["surface"] = envelope.decision.surface
+            row["authority_tier"] = envelope.decision.authority_tier
+            row["capability_id"] = envelope.decision.capability_id
+            row["content_light_classification"] = (
+                envelope.decision.content_light_classification
+            )
+
+        return row
 
     def _envelope_path(self, envelope_id: str) -> Path:
         return self._envelopes_dir / envelope_id[:2] / f"{envelope_id}.json"
@@ -153,7 +316,6 @@ class FilesystemReceiptStore:
                     continue
                 entries.append(entry)
 
-        # Newest first (manifest is append-only, so reverse)
         entries.reverse()
         sliced = entries[offset : offset + limit]
 
@@ -165,4 +327,4 @@ class FilesystemReceiptStore:
         return result
 
 
-__all__ = ["FilesystemReceiptStore", "ReceiptStore"]
+__all__ = ["FilesystemReceiptStore", "ManifestDiagnostic", "ReceiptStore"]

@@ -1,0 +1,219 @@
+{
+  "schema_version": "rig.relay.roadmap_steward_rescore_after_stabilization.v1",
+  "document_id": "roadmap-steward-rescore-after-stabilization-v1",
+  "title": "Roadmap Steward Rescore After Latest Stabilization Reports v1 — Rig Relay",
+  "generated_at": "2026-05-21T11:00:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "rescored_from": "docs/json/governance/roadmap_steward_initial_recommendations_v1.v1.json",
+  "scoring_model": "docs/json/governance/roadmap_steward_scoring_model_v1.v1.json (13 dimensions, weight total 32.0)",
+  "source_artifacts_read": [
+    "docs/json/governance/test_infrastructure_import_stabilization_v1.v1.json",
+    "docs/json/governance/test_infrastructure_import_stabilization_v2.v1.json",
+    "docs/json/governance/session_lifecycle_finalization_restoration_v1.v1.json",
+    "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json",
+    "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json",
+    "docs/json/governance/mcp_sync_tools_call_and_unknown_refusal_v1.v1.json",
+    "docs/json/governance/cli_governance_test_stabilization_v1.v1.json",
+    "docs/json/governance/cli_script_remaining_top15_mutation_gate_v1.v1.json"
+  ],
+  "current_state": {
+    "test_collection": "12,560 tests, 0 collection errors — clean",
+    "session_lifecycle": "16/24 tests pass, 8 semantic failures (compaction/prune alignment gap)",
+    "cli_governance": "59/59 pass",
+    "mcp_gate": "94/94 pass",
+    "receipt_manifest": "Enriched with governance fields. 26 tests passing. DuckDB read-side projection not yet implemented.",
+    "conftest": "Still broken — dirty agent_loop.py from parallel lane prevents conftest import. Requires --noconftest on all gate runs.",
+    "schema_validation": "All schemas valid",
+    "product_website": "No artifact exists",
+    "dead_stub_files": "_error.py (6 lines), _models.py (8 lines) — not deleted per dirty-file preservation"
+  },
+  "stale_recommendations_invalidated": [
+    {
+      "initial_rank": 1,
+      "slice_id": "test-stabilization-completion-v3",
+      "original_title": "Test Infrastructure Stabilization v3 — Implement Stubs and Resolve Conftest",
+      "what_changed": "finalize_session_storage stub has been replaced with working implementation (~100 lines recovered from HEAD). PROTECTED_INTENTS reconstructed. Test collection is 0 errors. The 'implement stubs' portion of this slice is complete.",
+      "what_remains": "Conftest import is still broken from dirty agent_loop.py. This is now a narrow single-issue task rather than a stabilization suite."
+    },
+    {
+      "initial_rank": 4,
+      "slice_id": "cli-subprocess-hardening-v2",
+      "original_title": "CLI Subprocess Hardening — Exit Codes, Execution Windows, Safety Classifications",
+      "what_changed": "CLI governance tests are 59/59 clean. Test stabilization is complete. The remaining 'subprocess hardening' work is lower priority now that governance enforcement is proven.",
+      "what_remains": "Subprocess-level hardening (exit codes, execution windows) can proceed at lower urgency."
+    }
+  ],
+  "updated_recommendations": [
+    {
+      "rank": 1,
+      "slice_id": "conftest-import-repair-v1",
+      "title": "Conftest Import Repair — Fix Dirty agent_loop.py",
+      "why_now": "Every gate run requires --noconftest. AgentLoop has 4 duplicated import blocks referencing 'from _error import' instead of 'from _errors import'. This is the single highest-friction point blocking all other validation. Narrow scope: fix 4 import lines in agent_loop.py. Do not refactor the file.",
+      "scoring": {
+        "blocker_reduction": 5,
+        "security_risk_reduction": 0,
+        "authority_spine_alignment": 0,
+        "evidence_replay_value": 0,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 5,
+        "validation_clarity": 5,
+        "file_ownership_safety": 4,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 4,
+        "product_visibility_value": 0,
+        "enterprise_procurement_value": 0,
+        "user_requested_priority": 0,
+        "composite": 2.25
+      },
+      "affected_files": ["rig_relay/core/agent_loop.py (4 import lines only)"],
+      "validation": "uv run pytest --collect-only -q (without --noconftest) → 0 errors",
+      "dependency_impact": "None",
+      "blast_radius": "Low — 4 import line fixes. No behavior change.",
+      "stop_conditions": "Do not refactor agent_loop.py. Do not delete _error.py or _models.py (dirty-file preservation). Fix only the import path."
+    },
+    {
+      "rank": 2,
+      "slice_id": "session-lifecycle-semantic-parity-v1",
+      "title": "Session Lifecycle Semantic Parity v1 — Resolve 8 Remaining Failures",
+      "why_now": "finalize_session_storage is restored and 16/24 tests pass. 8 semantic failures remain (compaction/prune alignment, receipt_path type, scan-file count). This is the largest remaining test gap in the lifecycle system.",
+      "scoring": {
+        "blocker_reduction": 3,
+        "security_risk_reduction": 0,
+        "authority_spine_alignment": 0,
+        "evidence_replay_value": 1,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 3,
+        "validation_clarity": 4,
+        "file_ownership_safety": 3,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 4,
+        "product_visibility_value": 0,
+        "enterprise_procurement_value": 0,
+        "user_requested_priority": 0,
+        "composite": 1.88
+      },
+      "affected_files": ["rig_relay/evidence/_lifecycle_funcs.py", "rig_relay/evidence/_lifecycle_models.py", "tests/evidence/test_session_lifecycle*.py"],
+      "validation": "uv run pytest tests/evidence/test_session_lifecycle*.py -q --noconftest → target 24/24 pass",
+      "dependency_impact": "None",
+      "blast_radius": "Low — evidence/lifecycle subsystem only.",
+      "source_artifacts": ["docs/json/governance/session_lifecycle_finalization_restoration_v1.v1.json"]
+    },
+    {
+      "rank": 3,
+      "slice_id": "receipt-manifest-duckdb-projection-v1",
+      "title": "Governance Decisions DuckDB Read-Side Projection v1",
+      "why_now": "Receipt manifest now enriched with governance_decision_id, decision_status, surface, authority_tier, capability_id, content_light_classification. 26 tests pass. The manifest is the foundation. The read-side projection (DuckDB query over JSONL + Parquet export) is the next step for governance reporting.",
+      "scoring": {
+        "blocker_reduction": 1,
+        "security_risk_reduction": 1,
+        "authority_spine_alignment": 3,
+        "evidence_replay_value": 5,
+        "roadmap_alignment": 2,
+        "implementation_clarity": 3,
+        "validation_clarity": 3,
+        "file_ownership_safety": 4,
+        "laptop_cost_safety": 4,
+        "dependency_safety": 4,
+        "product_visibility_value": 1,
+        "enterprise_procurement_value": 3,
+        "user_requested_priority": 0,
+        "composite": 2.63
+      },
+      "affected_files": ["rig_relay/analytics/duckdb_projection.py", "tests/analytics/"],
+      "validation": "uv run pytest tests/analytics/ -q --noconftest",
+      "dependency_impact": "None — DuckDB already in dependencies",
+      "blast_radius": "Low — analytics subsystem only"
+    },
+    {
+      "rank": 4,
+      "slice_id": "mcp-gate-preservation-only",
+      "title": "MCP Gate Preservation — No Capability Expansion",
+      "why_now": "MCP read-only surface is fully hardened. 94/94 tests pass. MCP sync/unknown-tool parity is complete. The gate must be preserved as-is.",
+      "scoring": {
+        "blocker_reduction": 0,
+        "security_risk_reduction": 4,
+        "authority_spine_alignment": 4,
+        "evidence_replay_value": 0,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 5,
+        "validation_clarity": 5,
+        "file_ownership_safety": 5,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 5,
+        "product_visibility_value": 0,
+        "enterprise_procurement_value": 0,
+        "user_requested_priority": 0,
+        "composite": 2.63
+      },
+      "affected_files": "None — preservation only",
+      "validation": "uv run python scripts/rig_mcp_hardened_read_only_gate.py --json → must return PASS",
+      "dependency_impact": "None",
+      "blast_radius": "Zero"
+    },
+    {
+      "rank": 5,
+      "slice_id": "project-website-front-door-design-v1",
+      "title": "Project Website Product Front Door v1",
+      "why_now": "No artifact exists. Documentation-only. Zero code impact. Improves product visibility. Can be done in parallel with any other lane.",
+      "scoring": {
+        "blocker_reduction": 0,
+        "security_risk_reduction": 0,
+        "authority_spine_alignment": 1,
+        "evidence_replay_value": 0,
+        "roadmap_alignment": 0,
+        "implementation_clarity": 2,
+        "validation_clarity": 1,
+        "file_ownership_safety": 5,
+        "laptop_cost_safety": 5,
+        "dependency_safety": 5,
+        "product_visibility_value": 5,
+        "enterprise_procurement_value": 2,
+        "user_requested_priority": 0,
+        "composite": 1.66
+      },
+      "affected_files": "docs/json/governance/project_website_front_door_v1.v1.json (new)",
+      "validation": "JSON syntax + schema validation only",
+      "dependency_impact": "None",
+      "blast_radius": "Zero — documentation only"
+    }
+  ],
+  "next_top_prompt": {
+    "slice": "conftest-import-repair-v1",
+    "paste_ready": "Mission: Fix AgentLoop imports so conftest loads without --noconftest. In rig_relay/core/agent_loop.py, fix 4 occurrences of 'from _error import AgentLoopError...' to 'from _errors import ...' and 'from _models import ...' to 'from _agent_models import ...'. The _error.py and _models.py files are dead stubs (6-8 lines, no class definitions). Do NOT delete them (dirty-file preservation). Do NOT refactor agent_loop.py beyond import fixes. Validation: uv run pytest --collect-only -q → 0 errors WITHOUT --noconftest.",
+    "stop_conditions": [
+      "Do not refactor agent_loop.py body",
+      "Do not delete dead stub files",
+      "Do not add new imports or dependencies"
+    ]
+  },
+  "active_lane_collision_warnings": [
+    {
+      "collision": "agent_loop.py dirty from parallel lane",
+      "detail": "agent_loop.py has 4 duplicated import blocks from a merge artifact. This is the same file that needs conftest repair. The parallel lane's additions must be preserved.",
+      "risk": "medium — import fix is additive, won't conflict with parallel lane changes"
+    },
+    {
+      "collision": "_error.py and _models.py dead stubs",
+      "detail": "These 6-8 line files have no class definitions. All real code is in _errors.py and _agent_models.py. A future cleanup lane should handle these per migration rules.",
+      "risk": "low — not affecting any active lane"
+    }
+  ],
+  "parked_and_deferred": {
+    "unchanged_from_initial": [
+      "Postgres Migration Phase 1",
+      "GitHub Trust Spine",
+      "Enterprise Procurement Docs (P0-01 through P0-07)",
+      "MCP Phase 6+ (hosted OAuth, common envelope)",
+      "High-Performance Substrate"
+    ],
+    "newly_parked": [
+      {
+        "slice": "CLI Subprocess Hardening v2",
+        "reason": "CLI governance tests are 59/59 clean. Remaining subprocess work is lower priority than lifecycle semantic parity and DuckDB projection."
+      }
+    ]
+  },
+  "next_review_trigger": "After conftest repair completes → rescore with conftest working and full collection without --noconftest.",
+  "content_light": true
+}

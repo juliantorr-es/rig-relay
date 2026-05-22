@@ -1,0 +1,183 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "implementation_id": "cross-surface-governance-spine-p0-implementation-v1",
+  "title": "Cross-Surface Governance Spine P0 Implementation v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_audit_artifacts": [
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_spine_canonicalization_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_compliance_audit_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_offender_inventory_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_worst_offenders_v1.v1.json",
+    "docs/json/governance/cross_surface_compliance_implementation_scope_v1.v1.json",
+    "docs/json/governance/agent_loop_conductor_boundary_followup_v1.v1.json",
+    "docs/json/governance/agent_loop_mixin_authority_audit_v1.v1.json"
+  ],
+  "offenders_addressed": [
+    {
+      "offender_id": "worst-001",
+      "description": "GovernanceRuntime always returns EXECUTE for every permission check — bypasses all governance gates",
+      "status": "fixed",
+      "fix_detail": "GovernanceRuntime.should_execute_tool() now evaluates mutation tools through GovernanceEngine. Mutation-adjacent tool names (write_file, search_replace, bash, checkpoint, etc.) are classified by _is_likely_mutation_tool() and routed to evaluate_mutation_legality(). Read-only tools still EXECUTE with a decision_id. Mutation tools that GovernanceEngine blocks or requires review are SKIPped with feedback."
+    },
+    {
+      "offender_id": "worst-005",
+      "description": "GateDecision lacks decision_id — no stable identifier for governance decisions",
+      "status": "fixed",
+      "fix_detail": "GateDecision now includes decision_id (content-light SHA256-derived identifier starting with 'gd-'), surface, authority_tier, capability_id, request_id, content_light (always true), and generated_at fields."
+    },
+    {
+      "offender_id": "worst-002",
+      "description": "MCP server completely ungoverned — no governance engine evaluation",
+      "status": "fixed",
+      "fix_detail": "MCP server call_tool() and call_tool_sync() now block tier-4+ tools with structured refusal messages referencing cross_surface_authority_spine v1. Tier-5 tools always blocked. Both methods include content_light flag, refusal_code, and approval_required indicator. Uses tool.tier is not None instead of truthy check to handle IntEnum(0) correctly."
+    },
+    {
+      "offender_id": "worst-003",
+      "description": "MCP mutation gate is advisory string check, not enforced block",
+      "status": "fixed",
+      "fix_detail": "MCP mutation gate is now an enforced block (not advisory). The check uses explicit tier comparison, returns 'blocked' status with refusal_code, and includes canonical authority spine reference in the message. The authorization_receipt parameter alone does not bypass the block."
+    },
+    {
+      "offender_id": "worst-004",
+      "description": "MCP has zero authentication",
+      "status": "not_addressed",
+      "fix_detail": "MCP authentication remains a P1 item. Per-user authorization (MCPPerUserAuthorization) model exists but is not enforced. This P0 slice focuses on making the mutation gate real; full MCP auth requires descriptor integrity, roots enforcement, and content-light scanning per the authority spine."
+    },
+    {
+      "offender_id": "worst-006",
+      "description": "A2A operates without governance",
+      "status": "fixed",
+      "fix_detail": "Added delegation_allowed_by_governance() function that blocks all A2A delegation with reference to cross_surface_authority_spine v1. build_delegation_receipt() now calls the governance check and returns refused verdict when blocked."
+    },
+    {
+      "offender_id": "offender-014",
+      "description": "ReceiptEnvelope lacks surface/authority_tier/capability_id fields",
+      "status": "fixed",
+      "fix_detail": "ReceiptDecision now includes surface, authority_tier, capability_id, approval_receipt_id, and content_light_classification fields. All are optional for backward compatibility."
+    },
+    {
+      "offender_id": "offender-018",
+      "description": "ToolDecision lacks decision_id for traceability",
+      "status": "fixed",
+      "fix_detail": "ToolDecision now includes decision_id, surface, and authority_tier fields. Default surface='agent_loop', authority_tier='local_mutation'."
+    }
+  ],
+  "offenders_intentionally_deferred": [
+    {
+      "offender_id": "worst-004",
+      "description": "MCP zero authentication",
+      "reason": "MCP per-user authorization enforcement requires descriptor integrity, roots enforcement, and content-light scanning first per authority spine. P1 item."
+    },
+    {
+      "offender_id": "offender-008",
+      "description": "CLI/scripts bypass governance engine",
+      "reason": "121 scripts need CLI taxonomy unification first. P1 item."
+    },
+    {
+      "offender_id": "offender-010",
+      "description": "Static docs no public/private split enforcement",
+      "reason": "P2 item per authority spine implementation sequence."
+    },
+    {
+      "offender_id": "offender-012",
+      "description": "No common envelope adoption across protocol surfaces",
+      "reason": "P1 item — requires MCP/ACP/A2A/WebSocket surface owners to adopt common envelope."
+    }
+  ],
+  "files_changed": [
+    "rig_relay/governance/decisions.py (MODIFIED — added decision_id, surface, authority_tier, capability_id, request_id, content_light, generated_at to GateDecision)",
+    "rig_relay/core/governance_runtime.py (MODIFIED — replaced always-EXECUTE with governance-evaluated decision logic; added tool-to-capability mapping; added _is_likely_mutation_tool classifier; added _fail_closed_decision helper; added _generate_decision_id)",
+    "rig_relay/core/_agent_models.py (MODIFIED — added decision_id, surface, authority_tier to ToolDecision)",
+    "rig_relay/evidence/receipt_envelope.py (MODIFIED — added surface, authority_tier, capability_id, approval_receipt_id, content_light_classification to ReceiptDecision)",
+    "rig_relay/protocols/mcp/server.py (MODIFIED — hardened mutation gate; added call_tool_sync and _dispatch_sync; fixed IntEnum(0) falsy check with is not None)",
+    "rig_relay/protocols/a2a/_lifecycle.py (MODIFIED — added delegation_allowed_by_governance(); build_delegation_receipt now checks governance before allowing)",
+    "rig_relay/protocols/a2a/__init__.py (MODIFIED — exported delegation_allowed_by_governance)",
+    "tests/governance/test_cross_surface_governance_spine_p0.py (CREATED — 23 tests across 5 test classes)"
+  ],
+  "code_behavior_changed": [
+    "GateDecision now always has a decision_id — previously generated but not a model field",
+    "GovernanceRuntime.should_execute_tool no longer unconditionally returns EXECUTE — evaluates mutation tools through governance",
+    "MCP call_tool/call_tool_sync now blocks tier-4+ (mutation) and tier-5 (git/release) tools with structured refusals",
+    "A2A build_delegation_receipt now blocks all delegation with governance_blocked refusal",
+    "ReceiptDecision now carries surface/authority_tier/capability_id for cross-surface traceability",
+    "ToolDecision now carries decision_id for audit trail linking"
+  ],
+  "tests_added": [
+    "tests/governance/test_cross_surface_governance_spine_p0.py (23 tests)"
+  ],
+  "test_classifications": {
+    "unit": 8,
+    "contract": 10,
+    "integration": 0,
+    "E2E": 0,
+    "real-artifact": 0,
+    "adversarial": 0,
+    "sabotage": 0,
+    "concurrency": 0,
+    "substrate": 0,
+    "note": "Tests are primarily unit and contract. Real-artifact, adversarial, and sabotage tests for governance enforcement will be added in P1 when surfaces integrate with the governance spine."
+  },
+  "validation_results": {
+    "pyright": "0 errors, 0 warnings, 0 informations — all 8 files clean",
+    "pytest": "23 passed, 0 failed — test_cross_surface_governance_spine_p0.py",
+    "schema_validation": "417/417 schemas pass",
+    "ruff": "not run (no Python formatting changes needed)",
+    "full_suite": "not run (only targeted tests)"
+  },
+  "dependency_changes": "None. No new dependencies added. Existing dependencies (pydantic, hashlib stdlib) used.",
+  "telemetry_redaction_implications": "All new fields are content-light: decision_id is SHA256-derived, content_light is always true on GateDecision, ReceiptDecision content_light_classification is optional string metadata. No raw tokens, secrets, or content introduced into telemetry surfaces.",
+  "frontend_implications": "Cockpit can now reference decision_id for 'why blocked' governance explainer. Requires P1 integration.",
+  "cli_implications": "CLI/scripts not directly affected by this P0 slice. GovernanceRuntime integration with CLI requires P1 CLI taxonomy unification.",
+  "mcp_implications": "MCP mutation tools now blocked server-side (not advisory). Tier-0 to Tier-3 read-only/analysis/validation tools remain functional. MCP call_tool_sync added for testing.",
+  "acp_implications": "ACP not directly affected by this P0 slice. ACP integration with governance spine requires P1 IDE sidecar convergence.",
+  "a2a_implications": "All A2A delegation now blocked with governance refusal. delegation_allowed_by_governance() returns False for all callers. This aligns with authority spine directive: A2A must not operate without Agent Card attestation and trust tier enforcement.",
+  "ssh_implications": "SSH not affected — still absent per authority spine. This P0 slice reinforces the block.",
+  "hosted_implications": "Hosted mode not affected — still design phase per authority spine. This P0 slice establishes the governance foundation hosted mode will build on.",
+  "github_trust_spine_implications": "GovernanceRuntime now evaluates mutation tools through GovernanceEngine, which checks mutation capabilities. This is the code-level enforcement the GitHub Trust Spine requires. GitHub mutation adapter must still implement trust-spine-specific checks (permission probe, rate-limit budget, etc.) per trust spine requirements.",
+  "postgres_source_of_truth_implications": "No Postgres changes in this P0 slice. GateDecision and ReceiptDecision models align with the common envelope spine which will inform future Postgres operational projections.",
+  "remaining_p0_blockers": [
+    "worst-004: MCP zero authentication — per-user authorization enforcement (P1)",
+    "offender-008: CLI/scripts bypass governance engine — CLI taxonomy unification needed (P1)",
+    "Common envelope not yet adopted across protocol surfaces (MCP responses don't use ReceiptEnvelope format)",
+    "Governance decision evidence persistence not yet implemented (GateDecision artifacts not written to evidence store)",
+    "GovernanceRuntime decision evaluated per-call but decisions not persisted or replayed"
+  ],
+  "next_recommended_implementation_slice": "P0 continuation: Write governance decisions as evidence artifacts (GateDecision → ReceiptEnvelope → receipt_store). Align MCP tool-call receipts and refusal envelopes with common envelope. Ensure governance decision audit trail is replayable from evidence artifacts.",
+  "completed_work": [
+    "Added decision_id, surface, authority_tier, capability_id, request_id, content_light, generated_at to GateDecision",
+    "Fixed GovernanceRuntime.should_execute_tool() — no longer always returns EXECUTE; evaluates mutation tools through GovernanceEngine",
+    "Added _is_likely_mutation_tool() classifier with 10 mutation tool name prefixes",
+    "Added _TOOL_NAME_TO_CAPABILITY mapping for tool-to-capability routing",
+    "Added _generate_decision_id() content-light SHA256-based ID generator",
+    "Aligned ReceiptDecision with authority spine fields (surface, authority_tier, capability_id, approval_receipt_id, content_light_classification)",
+    "Extended ToolDecision with decision_id, surface, authority_tier",
+    "Hardened MCP mutation gate — tier-4/5 tools blocked with structured refusal referencing authority spine",
+    "Fixed MCP IntEnum(0) falsy check (tool.tier → tool.tier is not None)",
+    "Added MCP call_tool_sync and _dispatch_sync for testing",
+    "Added A2A delegation_allowed_by_governance() guard — all delegation blocked",
+    "Updated A2A build_delegation_receipt() to enforce governance block",
+    "Created 23 tests across 5 test classes verifying all changes",
+    "All 23 tests pass, pyright 0 errors, schema validation 417/417 pass"
+  ],
+  "intentionally_deferred_work": [
+    "MCP per-user authorization enforcement (P1)",
+    "CLI/scripts governance gating (P1)",
+    "Common envelope adoption across surfaces (P1)",
+    "Governance decision evidence persistence (P1)",
+    "ACP transport server and governance integration (P1)",
+    "A2A Agent Card attestation and trust tiers (P2)",
+    "SSH implementation (P2-P3)",
+    "Hosted mode implementation (P3)",
+    "Postgres adapter (P3)",
+    "Broad cockpit status indicators (P1)"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

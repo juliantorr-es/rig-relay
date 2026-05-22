@@ -36,6 +36,27 @@ _TERMINAL_STATUSES: set[A2ATaskStatus] = {
 }
 
 
+def delegation_allowed_by_governance(
+    delegating_agent_id: str, receiving_agent_id: str, task_description: str = ""
+) -> tuple[bool, str]:
+    """Check whether A2A task delegation is allowed by governance.
+
+    Per cross_surface_authority_spine v1, A2A is inter-agent delegation
+    with explicit trust tier requirements. Remote federation is not
+    supported (local_only: true). Delegation is blocked until Agent Card
+    attestation and trust tier enforcement exist.
+
+    Returns (allowed: bool, reason: str).
+    """
+    return (
+        False,
+        "A2A operational task delegation blocked: cross_surface_authority_spine v1 "
+        "requires Agent Card attestation, trust tier enforcement, and governance "
+        "decision spine before delegation is enabled. A2A is currently local-only "
+        "no-op. See docs/json/governance/cross_surface_authority_spine_v1.v1.json.",
+    )
+
+
 def build_agent_card(
     agent_id: str,
     name: str,
@@ -151,6 +172,19 @@ def build_delegation_receipt(
     verdict: Literal["allowed", "refused", "completed"] = "allowed",
     refusal_code: str = "",
 ) -> A2ADelegationReceipt:
+    allowed, reason = delegation_allowed_by_governance(
+        delegating_agent_id, receiving_agent_id, task_id
+    )
+    if not allowed:
+        return A2ADelegationReceipt(
+            receipt_id=f"rcpt_{uuid.uuid4().hex[:16]}",
+            delegating_agent_id=delegating_agent_id,
+            receiving_agent_id=receiving_agent_id,
+            task_id=task_id,
+            trace_id=trace_id,
+            verdict="refused",
+            refusal_code="governance_blocked",
+        )
     return A2ADelegationReceipt(
         receipt_id=f"rcpt_{uuid.uuid4().hex[:16]}",
         delegating_agent_id=delegating_agent_id,

@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/docs/schemas/rig.relay.protocol_composition_risk_register.v1.schema.json",
+  "title": "Protocol Composition Risk Register",
+  "description": "Schema for the protocol composition risk register. Tracks cross-surface escalation risks, missing mitigations, and required tests and schema receipts.",
+  "type": "object",
+  "required": ["schema_version", "register_id", "title", "generated_at", "status", "risks", "content_light", "revision"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.protocol_composition_risk_register.v1",
+      "description": "Schema version identifier."
+    },
+    "register_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this risk register."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable title of the risk register."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of register generation."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "approved", "deprecated", "superseded"],
+      "description": "Lifecycle status of the register."
+    },
+    "content_light": {
+      "type": "boolean",
+      "description": "Whether this artifact is safe for content-light transmission. Must be true for all governance artifacts."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing revision number."
+    },
+    "risks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/risk"
+      },
+      "description": "Array of composition risk entries."
+    }
+  },
+  "definitions": {
+    "risk": {
+      "type": "object",
+      "required": [
+        "risk_id",
+        "name",
+        "attack_path",
+        "current_mitigation",
+        "missing_mitigation",
+        "required_schema_receipt",
+        "required_test",
+        "blocking_status"
+      ],
+      "properties": {
+        "risk_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique identifier for this risk entry (e.g., comp-risk-001)."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short, descriptive name for the risk."
+        },
+        "attack_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Description of the attack path: how an attacker could chain across surfaces to escalate privileges or bypass governance."
+        },
+        "current_mitigation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What mitigation exists today, if any. Use 'None — not implemented' if no mitigation exists."
+        },
+        "missing_mitigation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What mitigation is still needed to close this risk."
+        },
+        "required_schema_receipt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the schema receipt or spec that must exist before this risk can be considered mitigated."
+        },
+        "required_test": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Description of the test that must pass to verify this risk is mitigated."
+        },
+        "blocking_status": {
+          "type": "string",
+          "enum": ["blocking_release", "blocking_mutation", "blocking_hosted", "non_blocking", "future"],
+          "description": "Whether this risk blocks release, mutation surface exposure, hosted mode, or is non-blocking/future."
+        },
+        "surfaces_involved": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Protocol surfaces involved in this composition risk."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2"],
+          "description": "Priority level for addressing this risk."
+        },
+        "related_test_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Test IDs from the surface test strategy that cover this risk."
+        },
+        "related_roadmap_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Roadmap item IDs that address this risk."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional context or notes about this risk."
+        }
+      }
+    }
+  }
+}

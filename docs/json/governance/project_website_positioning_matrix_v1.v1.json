@@ -1,0 +1,77 @@
+{
+  "schema_version": "rig.relay.project_website_positioning_matrix.v1",
+  "matrix_id": "project-website-positioning-matrix-v1",
+  "title": "Project Website Positioning Matrix v1 — Rig Relay",
+  "generated_at": "2026-05-21T11:15:00Z",
+  "description": "Competitive and conceptual positioning map. Not a market analysis — a product clarity exercise to ensure every word on the front door has a known referent.",
+  "positioning_axes": [
+    {
+      "axis": "governance_depth",
+      "description": "How deeply the product governs agent actions. Scale: advisory → soft gate → cryptographic receipt → authority spine.",
+      "rig_relay_position": "authority_spine",
+      "evidence": "Cross-Surface Authority Spine v1 is canonical. GovernanceDecision is typed, not boolean. Every decision produces ReceiptEnvelope evidence."
+    },
+    {
+      "axis": "evidence_rigor",
+      "description": "How durable and replayable the evidence trail is. Scale: chat log → structured log → receipt → schema-governed JSONL → Merkle-linked envelope → DuckDB projection.",
+      "rig_relay_position": "duckdb_projection",
+      "evidence": "Receipt manifest enriched with governance fields. DuckDB governance decisions projection exists. Merkle-linked receipt store. 400+ schemas govern all artifacts."
+    },
+    {
+      "axis": "surface_governance",
+      "description": "Which surfaces have active governance. Scale: one surface → multiple with gaps → every surface gated → cross-surface authority spine.",
+      "rig_relay_position": "cross_surface",
+      "evidence": "Cockpit, CLI, MCP, ACP, WebSocket all governed. Cross-surface authority spine v1 maps all 9 surfaces with explicit rules."
+    },
+    {
+      "axis": "mutation_control",
+      "description": "How mutations are gated. Scale: no gate → advisory → dry-run-default → --execute-with-receipt → cryptographic.",
+      "rig_relay_position": "execute_with_receipt",
+      "evidence": "CLI scripts default to dry-run or require --execute with approval receipt. MCP mutation tier blocked. GitHub Trust Spine planned for cryptographic enforcement."
+    },
+    {
+      "axis": "telemetry_posture",
+      "description": "How telemetry is handled. Scale: opt-out-only → opt-in → content-light → four-category model → degraded-behavior matrix.",
+      "rig_relay_position": "four_category_model",
+      "evidence": "Product telemetry (first-party, opt-out), remote contribution (consent-gated), local operational observability (mandatory), enterprise audit/evidence (mandatory)."
+    },
+    {
+      "axis": "deployment_posture",
+      "description": "How the product is deployed. Scale: cloud-only → hybrid → local-first → local-first + hosted planned.",
+      "rig_relay_position": "local_first_plus_hosted_planned",
+      "evidence": "Local-first architecture. uv pip install or uv tool install. Postgres enterprise substrate planned. Hosted/team deployment planned, not implemented."
+    },
+    {
+      "axis": "protocol_surface_count",
+      "description": "How many protocol surfaces the product exposes. Scale: one → two → multiple → unified spine.",
+      "rig_relay_position": "multiple_unified",
+      "evidence": "MCP (16 tools, 6 resources, 3 prompts), ACP (agent sessions), WebSocket (cockpit), CLI (20+ scripts), GitHub App integration. All governed by single spine."
+    }
+  ],
+  "contrast_statements": [
+    {
+      "contrast_with": "autonomous_ai_coding_agents",
+      "rig_relay_statement": "AI coding agents execute. Rig Relay governs. You need both. Without governance, every agent call is an untraceable mutation. Rig Relay gives you the authority spine."
+    },
+    {
+      "contrast_with": "llm_api_wrappers",
+      "rig_relay_statement": "LLM API wrappers add convenience. Rig Relay adds control. Receipts, approvals, content-light telemetry, cross-surface authority — these are not convenience features."
+    },
+    {
+      "contrast_with": "observability_platforms",
+      "rig_relay_statement": "Observability platforms watch production. Rig Relay governs development. Same rigor, different surface. JSON/JSONL/CSV evidence, DuckDB queries, schema-governed artifacts."
+    },
+    {
+      "contrast_with": "ci_cd_pipelines",
+      "rig_relay_statement": "CI/CD deploys artifacts. Rig Relay produces evidence artifacts. Build integrity meets agent integrity. SBOM and provenance for agent decisions, not just dependencies."
+    }
+  ],
+  "tone_guidelines": [
+    "Serious, not sensational. Rig Relay is a control surface, not a magic box.",
+    "Evidence-backed, not aspirational. Every claim on the front door must have a source artifact link.",
+    "Product-sharp, not academic. The front door sells the product. The generated docs prove it.",
+    "Honest about limitations. If something is planned or deferred, say so. No overclaims.",
+    "Developer-first, not enterprise-obfuscated. Clear language, clear CTAs, clear evidence links."
+  ],
+  "content_light": true
+}

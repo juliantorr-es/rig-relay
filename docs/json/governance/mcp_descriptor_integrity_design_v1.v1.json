@@ -1,0 +1,111 @@
+{
+  "schema_version": "rig.relay.mcp_descriptor_integrity_design.v1",
+  "design_id": "mcp-descriptor-integrity-design-v1",
+  "title": "MCP Descriptor Integrity Design v1 — Rig Relay",
+  "generated_at": "2026-05-21T08:30:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "design_objective": "Every MCP tool descriptor must be cryptographically verified before any handler is invoked. Descriptor changes must be detected, produce evidence, and trigger refusal until re-verified. This prevents tool poisoning, shadowing, and rug-pull attacks at the MCP protocol layer.",
+  "descriptor_fields": {
+    "descriptor_id": {
+      "type": "string",
+      "generation": "SHA256 of descriptor_hash + server_identity + timestamp",
+      "format": "desc-mcp-{sha256_truncated_16}",
+      "example": "desc-mcp-a1b2c3d4e5f6a7b8"
+    },
+    "descriptor_version": {
+      "type": "integer",
+      "generation": "Monotonic counter per tool. Starts at 1. Incremented on every verified descriptor change.",
+      "example": 3
+    },
+    "descriptor_hash": {
+      "type": "string",
+      "algorithm": "SHA256",
+      "canonical_input": "JSON-serialized dict of {name, description, input_schema, server_identity} with sort_keys=True",
+      "format": "64-character lowercase hex",
+      "example": "a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890"
+    },
+    "schema_version": {
+      "type": "string",
+      "value": "rig.relay.mcp.descriptor.v1",
+      "immutable": true
+    },
+    "capability_id": {
+      "type": "string",
+      "format": "rig.{tool_name}",
+      "example": "rig.search_evidence"
+    },
+    "authority_tier": {
+      "type": "integer",
+      "range": "0-5",
+      "mapping": "0=read_only, 1=analysis, 2=validation, 3=patch_proposal, 4=mutation, 5=git_release"
+    },
+    "mutation_class": {
+      "type": "string | null",
+      "values": "read_only | writes_evidence_only | writes_temp_only | unknown | FILE_WRITE | FILE_DELETE | WORKTREE_CHECKPOINT",
+      "null_for": "tier 0-2 tools"
+    },
+    "allowed_roots": {
+      "type": "list[string]",
+      "default": "[\"$WORKSPACE_ROOT\"]",
+      "description": "Paths the tool is authorized to access. $WORKSPACE_ROOT resolves at request time."
+    },
+    "required_policy": {
+      "type": "string",
+      "values": "none | permission_check | approval_required | council_consultation | cryptographic_approval_receipt",
+      "per_tier": {"0": "none", "1": "none", "2": "none", "3": "approval_required", "4": "cryptographic_approval_receipt", "5": "cryptographic_approval_receipt"}
+    },
+    "required_approval_receipt": {
+      "type": "boolean",
+      "per_tier": {"0": false, "1": false, "2": false, "3": true, "4": true, "5": true}
+    },
+    "content_light_classification": {
+      "type": "string",
+      "values": "public_safe | private_local | sensitive_metadata",
+      "note": "No MCP tool should produce secret_bearing or forbidden_raw output. If detected, refusal is mandatory."
+    },
+    "descriptor_attestation": {
+      "type": "object",
+      "fields": {
+        "attestation_id": "SHA256 of descriptor_hash + descriptor_version + attested_at",
+        "attested_by": "mcp_server_identity",
+        "attested_at": "ISO 8601 timestamp",
+        "previous_descriptor_hash": "SHA256 of previous version (null for v1)"
+      }
+    }
+  },
+  "registration_flow": {
+    "step_1": "At RigMCPServer.__init__(), iterate all MCPTool instances from models.py READ_ONLY_TOOLS + GATED_TOOLS.",
+    "step_2": "For each tool, call compute_tool_provenance_hash(tool.model_dump()) to generate descriptor_hash.",
+    "step_3": "Store in self._tool_registry: dict[str, ToolRegistryEntry] where key is descriptor_hash and value includes tool reference, descriptor_version, created_at.",
+    "step_4": "Also store self._tool_index: dict[name, descriptor_hash] for O(1) name→hash lookup.",
+    "step_5": "Run classify_tool_descriptor_suspicious() on every registered descriptor. Flagged descriptors → log warning + emit governance telemetry. Do not exclude from registry (they need to be in the registry to be detected), but mark them as suspicious in the registry entry.",
+    "step_6": "Emit rig.relay.mcp.descriptor.registered telemetry event with descriptor_hash, tool_name, tier, suspicious flag, and registration time."
+  },
+  "dispatch_flow": {
+    "step_1": "call_tool(name, arguments) receives a tool call request.",
+    "step_2": "Look up tool by name in self._tool_index to get registered descriptor_hash.",
+    "step_3": "Re-compute provenance hash of the current in-memory tool descriptor.",
+    "step_4": "Compare re-computed hash with registered hash.",
+    "step_5a_match": "If hashes match → proceed to dispatch (after roots, content-light, auth checks).",
+    "step_5b_mismatch": "If hashes Mismatch → refuse. Return refusal envelope with: refusal_code='descriptor_integrity_failure', refusing_hash=recomputed_hash, registered_hash=registered_hash, descriptor_version=N+1 (incremented). Emit rig.relay.mcp.descriptor.drift telemetry event. Log at WARNING level.",
+    "step_5c_unknown": "If name not in registry → refuse with refusal_code='unknown_tool'."
+  },
+  "rug_pull_detection": {
+    "trigger": "On every tools/list response and on every descriptor integrity check during dispatch.",
+    "checks": [
+      "compare current descriptor_hash with registered hash",
+      "run classify_tool_descriptor_suspicious()",
+      "check if readOnlyHint changed from true to false on a tier 3+ tool",
+      "check if description byte size increased more than 2x between versions",
+      "check if input_schema keys changed (added/removed)"
+    ],
+    "response_on_detection": "Exclude tool from tools/list response. Emit rig.relay.mcp.descriptor.rug_pull telemetry event with: tool_name, previous_hash, current_hash, suspicious_reasons[], detector_version. Log at ERROR level."
+  },
+  "attestation_record": {
+    "format": "rig.relay.mcp.descriptor_attestation.v1",
+    "fields": ["descriptor_id", "descriptor_hash", "descriptor_version", "attested_at", "attested_by", "previous_descriptor_hash"],
+    "storage": "Append to .rig/reports/mcp_descriptor_attestations.jsonl",
+    "verification": "On startup, replay attestation log. Verify hash chain continuity. Gaps → log warning."
+  },
+  "content_light": true
+}

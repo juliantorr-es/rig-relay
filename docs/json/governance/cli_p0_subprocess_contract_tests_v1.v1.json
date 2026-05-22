@@ -1,0 +1,33 @@
+{
+  "schema_version": "rig.relay.cli_p0_subprocess_contract_tests.v1",
+  "audit_id": "cli-p0-subprocess-contract-tests-v1",
+  "title": "CLI P0 Subprocess Contract Tests v1",
+  "generated_at": "2026-05-21T05:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "scripts_tested": [
+    {"script": "scripts/rig_enterprise_tenant_admin.py", "tests": 7, "commands": ["list", "topology", "register (dry-run)", "register (--json)", "register (--execute)", "grant (dry-run)", "revoke (dry-run)"]},
+    {"script": "scripts/rig_enterprise_fleet_admin.py", "tests": 8, "commands": ["--status", "--start-all (dry-run)", "--stop-all (dry-run)", "--restart-degraded (dry-run)", "--start-all --execute", "--stop-all --execute", "--start-all --json", "--start-all --execute --json"]},
+    {"script": "scripts/rig_github_execute_live_pr_write.py", "tests": 4, "commands": ["--summary", "default", "--execute-remote-mutation --summary", "default (no flags)"]},
+    {"script": "scripts/rig_github_publish_pr.py", "tests": 2, "commands": ["--summary", "--execute-remote"]},
+    {"script": "scripts/rig_github_pr_mutation_chaos_lab.py", "tests": 4, "commands": ["--generate-only --summary", "--generate-only --json", "--summary --max-scenarios 5", "--verify-only"]}
+  ],
+  "mutation_isolation": "All tests use REPO_ROOT as working directory. No temp directory cwd changes (script paths are relative). No live GitHub or network calls. Environment variable RIG_LIVE_AUTH_TESTS is stripped. GitHub scripts with --summary produce reports without attempting mutation. Live PR write without triple-flag gate stays safe.",
+  "test_classifications": {
+    "subprocess_dry_run": "integration + contract",
+    "subprocess_blocked_execute": "adversarial + sabotage + contract",
+    "subprocess_json_output": "contract",
+    "subprocess_read_only": "integration + contract"
+  },
+  "tests_count": 25,
+  "tests_added": "tests/cli/test_p0_script_subprocess_contract.py (25 tests)",
+  "remaining_untested_cases": [
+    "Subprocess tests on gated scripts with real ReceiptStore (requires FilesystemReceiptStore path config)",
+    "Subprocess tests with actual mutation result (requires enterprise registry populated)",
+    "Live GitHub PR mutation end-to-end (requires real GitHub auth, deferred to GitHub Trust Spine)",
+    "Publish PR execute-remote with governance pass (requires HTTPS transport to GitHub)",
+    "Tenant admin register/grant/revoke with governance pass (requires populated tenant registry and approval receipt)",
+    "Fleet admin start/stop/restart with governance pass (requires FleetController backends)"
+  ],
+  "revision": "1.0.0"
+}

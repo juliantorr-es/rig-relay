@@ -1,0 +1,82 @@
+{
+  "schema_version": "rig.relay.governance_evidence_replay_discoverability_audit.v1",
+  "design_id": "governance-evidence-replay-projection-design-v1",
+  "title": "Minimum Replay Projection Design v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "design_principles": [
+    "JSON/JSONL remain the portable, inspectable, replayable source-of-truth. ReceiptStore sharded JSON files + manifest.jsonl are the canonical evidence artifacts.",
+    "DuckDB is the disposable analytical/read-side substrate. Use it for ad-hoc queries, cockpit projections, procurement evidence packs, and replay verification.",
+    "PostgreSQL is the future enterprise operational substrate. Postgres tables should mirror DuckDB views; migration from DuckDB→Postgres should be a column-mapped COPY.",
+    "Content-light always: no raw prompts, completions, private repo content, secrets, credentials, raw diffs, or raw Actions logs in any projection.",
+    "Manifest.jsonl enrichment is the P0 unlock: adding 5 fields (governance_decision_id, decision_status, surface, authority_tier, capability_id) to manifest enables most replay queries without reading all envelope files.",
+    "DuckDB projection is the P1 acceleration: once manifest is enriched, a DuckDB governance_decisions table enables SQL queries, dashboards, and export",
+    "Nothing in this design requires Postgres, hosted mode, or non-local dependencies. DuckDB reads files directly from the filesystem.",
+    "The projection is read-only. It never mutates source-of-truth artifacts."
+  ],
+  "queries_answered": [
+    "Why was this operation blocked? — SELECT decision_id, reason_codes, blocked_intents, surface, tool_name FROM governance_decisions WHERE decision = 'blocked' AND governance_decision_id = ?",
+    "Which governance decisions happened in this session? — SELECT * FROM governance_decisions WHERE session_id = ? ORDER BY created_at DESC",
+    "Which CLI/MCP/GitHub operations produced decisions? — SELECT surface, capability_id, COUNT(*) FROM governance_decisions GROUP BY surface, capability_id",
+    "Which decisions failed because evidence could not persist? — SELECT * FROM governance_decisions WHERE evidence_persisted = False",
+    "Which mutation attempts were blocked/reviewed/executed? — SELECT decision, authority_tier, COUNT(*) FROM governance_decisions WHERE authority_tier LIKE '%mutation%' GROUP BY decision, authority_tier",
+    "Which surfaces are generating receipts? — SELECT surface, COUNT(*) FROM governance_decisions GROUP BY surface",
+    "Which receipts are missing common-envelope fields? — SELECT envelope_id, 'missing_request_id' FROM governance_decisions WHERE request_id IS NULL UNION ALL SELECT envelope_id, 'missing_content_light_classification' FROM governance_decisions WHERE content_light_classification IS NULL"
+  ],
+  "manifest_enrichment_spec": {
+    "current_format": {"envelope_id": "str", "receipt_kind": "str", "session_id": "str|null", "created_at": "iso_str"},
+    "p0_additions": [
+      {"field": "governance_decision_id", "type": "str|null", "source": "ReceiptEnvelope.decision.governance_decision_id"},
+      {"field": "decision_status", "type": "str|null", "source": "ReceiptEnvelope.decision.decision"},
+      {"field": "surface", "type": "str|null", "source": "ReceiptEnvelope.decision.surface"},
+      {"field": "authority_tier", "type": "str|null", "source": "ReceiptEnvelope.decision.authority_tier"},
+      {"field": "capability_id", "type": "str|null", "source": "ReceiptEnvelope.decision.capability_id"}
+    ],
+    "p1_additions": [
+      {"field": "request_id", "type": "str|null", "source": "ReceiptEnvelope.decision.request_id (to be added)"},
+      {"field": "evidence_persisted", "type": "bool", "source": "ReceiptEnvelope.decision.evidence_persisted (to be added)"},
+      {"field": "content_light_classification", "type": "str|null", "source": "ReceiptEnvelope.decision.content_light_classification"}
+    ],
+    "backward_compatible": "new fields appended after created_at; existing parsers skip unknown fields; manifest remains JSONL (append-only, line-by-line)"
+  },
+  "duckdb_governance_decisions_table": {
+    "description": "DuckDB read-side table sourced from ReceiptStore manifest.jsonl + sharded JSON envelope files. Rebuilt on demand from source-of-truth artifacts. Disposable: can be dropped and rebuilt at any time from JSONL + JSON.",
+    "columns": [
+      {"name": "envelope_id", "type": "VARCHAR", "source": "manifest.jsonl"},
+      {"name": "receipt_kind", "type": "VARCHAR", "source": "manifest.jsonl"},
+      {"name": "session_id", "type": "VARCHAR", "source": "manifest.jsonl"},
+      {"name": "governance_decision_id", "type": "VARCHAR", "source": "manifest.jsonl (P0 enriched)"},
+      {"name": "decision_status", "type": "VARCHAR", "source": "manifest.jsonl (P0 enriched)"},
+      {"name": "surface", "type": "VARCHAR", "source": "manifest.jsonl (P0 enriched)"},
+      {"name": "authority_tier", "type": "VARCHAR", "source": "manifest.jsonl (P0 enriched)"},
+      {"name": "capability_id", "type": "VARCHAR", "source": "manifest.jsonl (P0 enriched)"},
+      {"name": "request_id", "type": "VARCHAR", "source": "manifest.jsonl (P1 enriched) or envelope JSON"},
+      {"name": "gate", "type": "VARCHAR", "source": "envelope JSON: decision.gate"},
+      {"name": "rationale", "type": "VARCHAR", "source": "envelope JSON: decision.rationale"},
+      {"name": "content_light_classification", "type": "VARCHAR", "source": "envelope JSON: decision.content_light_classification"},
+      {"name": "evidence_persisted", "type": "BOOLEAN", "source": "envelope JSON: derived from presence/absence"},
+      {"name": "created_at", "type": "TIMESTAMP", "source": "manifest.jsonl"},
+      {"name": "envelope_path", "type": "VARCHAR", "source": "FilesystemReceiptStore shard path (computed)"},
+      {"name": "decision_jsonb", "type": "JSON", "source": "envelope JSON: full decision object (content-light)"}
+    ],
+    "indexes": [
+      {"name": "idx_governance_decision_id", "columns": ["governance_decision_id"]},
+      {"name": "idx_session_id", "columns": ["session_id"]},
+      {"name": "idx_surface", "columns": ["surface"]},
+      {"name": "idx_decision_status", "columns": ["decision_status"]},
+      {"name": "idx_created_at", "columns": ["created_at"]}
+    ],
+    "build_query": "SELECT * FROM read_json_auto('manifest.jsonl') LEFT JOIN read_json_auto('envelopes/**/*.json') ON manifest.envelope_id = envelope.envelope_id"
+  },
+  "postgres_future_governance_decisions_view": {
+    "description": "PostgreSQL materialized view for enterprise operational substrate (P3). Mirrors DuckDB table structure with identical column names and types. Populated from ReceiptStore manifest + envelope import. JSONL source-of-truth is authoritative; Postgres view is a projection.",
+    "migration_path": "DuckDB table → PostgreSQL table via COPY (Parquet/CSV intermediary). ReceiptStore manifest.jsonl can be imported as CSV. Envelope JSON files can be parsed via json_each(). Dual-write: ReceiptStore append also writes to Postgres when adapter exists."
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

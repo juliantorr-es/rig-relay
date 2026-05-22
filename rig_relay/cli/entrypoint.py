@@ -39,6 +39,11 @@ def main(argv: Sequence[str] | None = None) -> None:
 
                 doctor_main(args_list[1:])
                 return
+            case "steward":
+                from rig_relay.cli.steward import main as steward_main
+
+                _sys.exit(steward_main(args_list[1:]))
+                return
 
     from rig_relay.cli.desktop_cockpit import main as cockpit_main
 

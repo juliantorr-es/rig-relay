@@ -7,12 +7,19 @@ Tool tiers:
   Tier 3 — Patch proposal (no apply)
   Tier 4 — Mutation (requires approval gate)
   Tier 5 — Git / release / publish (denied by default)
+
+Descriptor integrity: every MCP tool descriptor is treated as a governed
+capability declaration. Provenance hashes are computed at registration and
+verified at dispatch. Drift/rug-pull detection runs on every tools/list.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import IntEnum
+import hashlib
+import json
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -312,6 +319,68 @@ PROMPTS: list[MCPPrompt] = [
     ),
 ]
 
+# ═══ Descriptor identity model ═══════════════════════════════════════
+
+
+class RefusalCode:
+    DESCRIPTOR_DRIFT = "descriptor_integrity_failure"
+    UNKNOWN_TOOL = "unknown_tool"
+    MUTATION_TIER = "mutation_tier_mcp"
+    GIT_RELEASE_TIER = "git_release_tier_mcp"
+    FORBIDDEN = "forbidden_permanently"
+    NOT_DISPATCHABLE = "not_dispatchable"
+    ROOT_SCOPE_VIOLATION = "root_scope_violation"
+    SECRET_BEARING_OUTPUT = "secret_bearing_output"
+    FORBIDDEN_RAW_OUTPUT = "forbidden_raw_output"
+    SENSITIVE_METADATA_BLOCKED = "sensitive_metadata_blocked"
+    AUTH_REQUIRED = "authentication_required"
+    INVALID_SESSION_TOKEN = "invalid_session_token"
+    UNAUTHORIZED_TIER = "unauthorized_tier"
+
+
+class ContentLightClass:
+    PUBLIC_SAFE = "public_safe"
+    PRIVATE_LOCAL = "private_local"
+    SENSITIVE_METADATA = "sensitive_metadata"
+    SECRET_BEARING = "secret_bearing"
+    FORBIDDEN_RAW = "forbidden_raw"
+
+
+def _canonical_sha256(data: dict[str, Any]) -> str:
+    canonical = json.dumps(data, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def compute_descriptor_hash(tool: MCPTool) -> str:
+    return _canonical_sha256({
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": tool.input_schema,
+        "tier": int(tool.tier),
+        "server_identity": "rig.relay.mcp.local",
+    })
+
+
+@dataclass
+class MCPDescriptorIdentity:
+    descriptor_id: str
+    descriptor_version: int
+    descriptor_hash: str
+    schema_version: str
+    tool_name: str
+    capability_id: str
+    authority_tier: int
+    mutation_class: str | None = None
+    read_only_hint: bool = True
+    input_schema_hash: str = ""
+    server_identity: str = "rig.relay.mcp.local"
+    registered_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    content_light: bool = True
+    quarantined: bool = False
+    drift_detected_at: str | None = None
+    drift_reason: str | None = None
+
+
 __all__ = [
     "GATED_TOOLS",
     "PROMPTS",
@@ -322,9 +391,12 @@ __all__ = [
     "TIER_3_TOOLS",
     "TIER_4_TOOLS",
     "TIER_5_TOOLS",
+    "MCPDescriptorIdentity",
     "MCPPrompt",
     "MCPResource",
     "MCPTool",
     "MCPToolTier",
+    "RefusalCode",
     "ServerCapabilities",
+    "compute_descriptor_hash",
 ]

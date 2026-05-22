@@ -1,0 +1,41 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_compliance_audit.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "Cross-Surface Authority Compliance Audit v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "executive_summary": "The codebase has 44 identified offenders against the cross-surface authority spine. Five are blockers (P0), eight are critical, eighteen are high severity. The worst offenders are: GovernanceRuntime permissive stub (every permission check bypassed), MCP server completely disconnected from governance (side-door bypass), MCP mutation gate being an advisory string check, MCP lacking any authentication, and A2A operating without governance. 44% of offenders are fixable with small or tiny scope. The largest refactors are MCP governance integration, GitHub Trust Spine implementation, and A2A governance and attestation.",
+  "key_findings": {
+    "governance_bypass": "GovernanceRuntime.should_execute_tool() always returns EXECUTE regardless of tool permission configuration. Both branches of the conditional are 'return EXECUTE'. This renders the entire approval callback chain inert. AgentLoop wires to GovernanceRuntime but gets no real governance.",
+    "mcp_side_door": "The MCP server (rig_relay/protocols/mcp/server.py) is a completely independent dispatch universe. It never delegates to AgentLoop, GovernanceRuntime, CouncilGate, ToolExecutor, ToolRuntime, TelemetryClient, ReceiptStore, or DirtyGuard. 13 of 17 dispatched tools return hardcoded stub data. Tool descriptor provenance hashes are computed but never verified at dispatch time.",
+    "mcp_auth_absent": "MCPPerUserAuthorization model exists in _auth_metadata.py but is dead code — never instantiated or checked in server.py. Zero per-user authentication. Zero session scoping. Zero scope enforcement. Zero expiry checking.",
+    "receipt_cosplay": "MCP tier-4/5 mutation gate checks for string presence of 'authorization_receipt'. Any string value passes. No HMAC, Ed25519, nonce, expiry, issuer identity, or scope verification. Cryptographic enforcement is entirely absent.",
+    "a2a_ungoverned": "A2A server accepts tasks/send with zero governance checks. Trust tiers defined but not enforced. Cryptographic attestation fields absent from all A2A models. Delegation receipts defined but never produced by server.",
+    "github_bool_approval": "GitHub mutation adapter uses boolean approval_ok parameter. No HMAC verification, no signed approval receipt check, no approval chain validation. Any caller passing approval_ok=True bypasses the gate.",
+    "evidence_gaps": "Three surfaces produce no evidence envelopes: MCP (ad-hoc dicts), ACP (telemetry only), and GovernanceEngine decisions (in-memory ghost state). Intent audit writes to parallel non-canonical JSONL disconnected from ReceiptStore.",
+    "missing_cross_surface_fields": "BridgeMessage, ReceiptEnvelope, MCP models, and GateDecision all lack authority-bearing fields required by the cross-surface evidence schema spine (authority_tier, decision_id, trace_id, session_id, etc.)."
+  },
+  "surface_compliance_summary": {
+    "cockpit_frontend": {"status": "partial", "worst_offenders": ["OFF-015", "OFF-018", "OFF-026", "OFF-032", "OFF-034", "OFF-040"], "blockers": "Intent audit bypasses ReceiptStore. Bridge messages lack authority fields. Intent registries lack evidence metadata. No public/private projection split."},
+    "websocket_bridge": {"status": "partial", "worst_offenders": ["OFF-018", "OFF-040"], "blockers": "BridgeMessage no authority fields. Bridge refusals no governance_decision_id."},
+    "cli_entrypoint": {"status": "partial", "worst_offenders": ["OFF-038", "OFF-039"], "blockers": "No governance pre-flight. No surface registration evidence."},
+    "scripts": {"status": "non_compliant", "worst_offenders": ["OFF-020", "OFF-021", "OFF-033"], "blockers": "Tenant and fleet admin scripts mutate without approval. Preflight writes to governance dir without gate. 121 scripts with no unified taxonomy."},
+    "mcp": {"status": "non_compliant", "worst_offenders": ["OFF-002", "OFF-003", "OFF-004", "OFF-006", "OFF-007", "OFF-008", "OFF-013", "OFF-019", "OFF-027", "OFF-037", "OFF-044"], "blockers": "Must be blocked from mutation-tier operations until governance pipeline is integrated. Read-only tools need content-light scanning, evidence envelopes, and roots enforcement."},
+    "acp": {"status": "partial", "worst_offenders": ["OFF-017", "OFF-029"], "blockers": "No evidence envelopes produced. Permission bypass path exists in config."},
+    "a2a": {"status": "non_compliant", "worst_offenders": ["OFF-005", "OFF-011", "OFF-024", "OFF-031"], "blockers": "Must be blocked from accepting tasks until trust tiers and attestation are enforced."},
+    "ide_sidecar": {"status": "non_compliant", "worst_offenders": ["OFF-009"], "blockers": "Disconnected governance spine. Static manifest lookup independent of cockpit state."},
+    "ssh": {"status": "intentionally_absent", "worst_offenders": [], "blockers": "No SSH code exists. No remote shell execution path. Compliant by absence."},
+    "github_provider": {"status": "partial", "worst_offenders": ["OFF-012", "OFF-025", "OFF-030"], "blockers": "Approval is boolean not verified. No canonical trust spine. Receipt module exists but unwired."},
+    "static_docs": {"status": "partial", "worst_offenders": ["OFF-035"], "blockers": "No public/private classification of source artifacts. Internal governance JSON may be published accidentally."},
+    "telemetry_debug_bundles": {"status": "compliant", "worst_offenders": [], "blockers": "Telemetry bundles are content-light by design. Require consent. Use SHA256 hashing. Debug bundle policy exists."},
+    "hosted_team": {"status": "missing", "worst_offenders": ["OFF-020", "OFF-021"], "blockers": "Tenant/fleet admin scripts exist but lack governance. Hosted mode placeholders not yet operational."}
+  },
+  "scripts_cli_summary": {
+    "total_scripts": 121,
+    "worst_mutation_offenders": ["rig_enterprise_tenant_admin.py (register/grant without approval)", "rig_enterprise_fleet_admin.py (start/stop fleet without approval)"],
+    "properly_gated": ["rig_github_execute_live_pr_write.py (triple-flag gate, structured JSON)", "rig_github_live_auth_check.py (dry-run default, content-light)", "rig_github_security_packet_execution.py (read-only by design, structured JSON)"],
+    "key_gaps": ["No unified command taxonomy", "No consistent dry-run default", "No consistent schema validation boundary", "No consistent auth model across scripts", "Scripts bypass intent gating", "Scripts can mutate without cockpit approval"]
+  },
+  "revision": "1.0.0"
+}

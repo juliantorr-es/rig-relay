@@ -9,16 +9,15 @@ from pathlib import Path
 import threading
 from threading import Thread
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from opentelemetry import trace
 from pydantic import BaseModel
 
 from rig_relay.core.agents.models import AgentProfile, BuiltinAgentName
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.hooks.models import HookConfigResult
 from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
-from rig_relay.core.llm.format import FailedToolCall, ResolvedMessage, ResolvedToolCall
+from rig_relay.core.llm.format import FailedToolCall
 from rig_relay.core.llm.types import BackendLike
 from rig_relay.core.session.session_migration import migrate_sessions_entrypoint
 from rig_relay.core.system_prompt import get_universal_system_prompt
@@ -48,7 +47,6 @@ from rig_relay.core.types import (
     ToolCall,
     ToolCallEvent,
     ToolResultEvent,
-    ToolStreamEvent,
     UserInputCallback,
     UserMessageEvent,
 )
@@ -84,6 +82,7 @@ from rig_relay.core._telemetry import TelemetryMixin
 from rig_relay.core._tool_response import ToolResponseMixin
 from rig_relay.core.conversation_loop_adapter import _ConversationLoopAdapter
 from rig_relay.core.conversation_runtime import ConversationRuntime
+from rig_relay.core.conversation_runtime.models import ConversationRuntimeCallbacks
 from rig_relay.core.conversation_turn import ConversationTurnRuntime, TurnPhase
 from rig_relay.core.governance_runtime import GovernanceRuntime
 from rig_relay.core.runtime_state import AgentRuntimeState
@@ -211,6 +210,7 @@ class AgentLoop(
             result_sink=self._tool_result_sink,
             stats=self.stats,
             handle_tool_response=self._handle_tool_response,
+            telemetry_client=self.telemetry_client,
         )
 
         self._tool_executor: ToolExecutor = ToolExecutor(
@@ -577,7 +577,8 @@ class AgentLoop(
             self._hooks_manager.reset_retry_count()
 
         adapter = self._build_loop_adapter(user_msg)
-        async for event in cr.execute_turn_loop(adapter):  # type: ignore[reportArgumentType]
+        cr_callbacks = cast(ConversationRuntimeCallbacks, adapter)
+        async for event in cr.execute_turn_loop(cr_callbacks):
             yield event
             await self._save_messages()
 

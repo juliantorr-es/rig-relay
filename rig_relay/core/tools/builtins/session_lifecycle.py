@@ -98,7 +98,9 @@ class SessionLifecycleFinalizeConfig(BaseToolConfig):
     pass
 
 
-def _artifact_model(artifact: ClassifiedArtifact) -> SessionFinalizeArtifact:
+def _artifact_model(artifact: ClassifiedArtifact | str) -> SessionFinalizeArtifact:
+    if isinstance(artifact, str):
+        return SessionFinalizeArtifact(path=artifact, size_bytes=0, category="")
     return SessionFinalizeArtifact(
         path=str(artifact.path),
         size_bytes=artifact.size_bytes,
@@ -106,7 +108,19 @@ def _artifact_model(artifact: ClassifiedArtifact) -> SessionFinalizeArtifact:
     )
 
 
-def _compaction_model(result: CompactionResult) -> SessionFinalizeCompactionResult:
+def _compaction_model(
+    result: CompactionResult | str,
+) -> SessionFinalizeCompactionResult:
+    if isinstance(result, str):
+        return SessionFinalizeCompactionResult(
+            source_path=result,
+            output_path=None,
+            size_bytes_before=0,
+            size_bytes_after=0,
+            category="",
+            status="identified",
+            reason="",
+        )
     return SessionFinalizeCompactionResult(
         source_path=str(result.source_path),
         output_path=str(result.output_path) if result.output_path else None,
@@ -118,13 +132,19 @@ def _compaction_model(result: CompactionResult) -> SessionFinalizeCompactionResu
     )
 
 
-def _refusal_model(refusal: Refusal) -> SessionFinalizeRefusal:
+def _refusal_model(refusal: Refusal | str) -> SessionFinalizeRefusal:
+    if isinstance(refusal, str):
+        return SessionFinalizeRefusal(path=refusal, category="", reason="")
     return SessionFinalizeRefusal(
         path=str(refusal.path), category=refusal.category.value, reason=refusal.reason
     )
 
 
-def _deleted_model(deleted: DeletedArtifact) -> SessionFinalizeDeletedArtifact:
+def _deleted_model(deleted: DeletedArtifact | str) -> SessionFinalizeDeletedArtifact:
+    if isinstance(deleted, str):
+        return SessionFinalizeDeletedArtifact(
+            path=deleted, size_bytes=0, category="", reason=""
+        )
     return SessionFinalizeDeletedArtifact(
         path=str(deleted.path),
         size_bytes=deleted.size_bytes,
@@ -236,7 +256,7 @@ class SessionLifecycleFinalize(
             manifest_path=str(result.manifest_path) if result.manifest_path else None,
             receipt_path=str(result.receipt_path) if result.receipt_path else None,
             status=cast(Literal["ok", "partial", "refused", "error"], result.status),
-            warnings=result.warnings,
+            warnings=tuple(result.warnings),
         )
 
 

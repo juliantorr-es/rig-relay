@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 
-import jsonschema
 import pytest
 
 from rig_relay.desktop.intents import _execute_site_editor_save

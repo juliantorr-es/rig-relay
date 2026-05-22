@@ -99,16 +99,6 @@ def evaluate_gate_replay_all_stages_complete(ctx: PolicyContext) -> GateResult:
         if passed
         else f"Only {stage_count}/{_SECURITY_STAGES} stages",
     )
-    return GateResult(
-        gate_id="replay_all_stages_complete",
-        passed=passed,
-        evidence=f"{completed}/{stage_count} stages complete",
-        current_value=f"{stage_count} stages found, {completed} complete",
-        required_value=f"all {_SECURITY_STAGES} stages present",
-        blocked_reason=""
-        if passed
-        else f"Only {stage_count}/{_SECURITY_STAGES} stages",
-    )
 
 
 def evaluate_gate_permission_boundary_proven(ctx: PolicyContext) -> GateResult:

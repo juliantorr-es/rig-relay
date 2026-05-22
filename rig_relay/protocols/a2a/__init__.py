@@ -13,6 +13,7 @@ from rig_relay.protocols.a2a._lifecycle import (
     build_delegation_receipt,
     build_task_card,
     cancel_task,
+    delegation_allowed_by_governance,
     send_local_task_message,
     transition_task,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "build_identity_metadata",
     "build_task_card",
     "cancel_task",
+    "delegation_allowed_by_governance",
     "send_local_task_message",
     "serve_agent_card",
     "serve_agent_card_json",

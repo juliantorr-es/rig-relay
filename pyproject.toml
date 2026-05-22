@@ -169,11 +169,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "PLR"]
 "notebooks/*" = ["ANN", "PLR", "I001", "RUF100"]
-# Textual parent classes don't use ClassVar, so we can't either without breaking pyright
-"vibe/cli/textual_ui/ansi_markdown.py" = ["RUF012"]
-"vibe/core/telemetry/send.py" = ["PLR"]
-"vibe/core/telemetry/duckdb_projection.py" = ["PLR"]
-"vibe/core/context/assembler.py" = ["PLR"]
+
 "rig_relay/runtime/tool_invocation_execution.py" = ["PLR"]
 "rig_relay/runtime/_execution_template.py" = ["PLR"]
 "rig_relay/desktop/websocket_server.py" = ["PLR"]
@@ -283,6 +279,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/ralph/lane_executor.py" = ["PLR0911"]
 "rig_relay/ralph/preproduction.py" = ["PLR0911"]
 "rig_relay/ralph/worktree_manager.py" = ["PLR0911"]
+"scripts/rig_opencode_idle_steward.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

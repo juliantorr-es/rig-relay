@@ -1,0 +1,227 @@
+{
+  "schema_version": "rig.relay.governance_evidence_replay_discoverability_audit.v1",
+  "strategy_id": "governance-evidence-replay-test-strategy-v1",
+  "title": "Governance Evidence Replay Test Strategy v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "draft",
+  "tests": [
+    {
+      "test_id": "rep-test-001",
+      "test_name": "gate_decision_persists_to_real_receipt_store_and_found_by_decision_id",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Decision persisted but unretrievable by decision_id — fake-green evidence",
+      "surface_tested": "GovernanceRuntime + ReceiptStore",
+      "proposed_file_path": "tests/governance/test_governance_evidence_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-002",
+      "test_name": "receipt_envelope_manifest_can_be_scanned_and_read_back",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Manifest corrupted, truncated, or out of sync with envelope files",
+      "surface_tested": "FilesystemReceiptStore",
+      "proposed_file_path": "tests/evidence/test_receipt_store_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-003",
+      "test_name": "cli_decision_evidence_correlated_with_script_surface_capability",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "CLI decisions written to evidence but surface/capability fields missing or wrong",
+      "surface_tested": "cli/governance_guard.py",
+      "proposed_file_path": "tests/cli/test_governance_evidence_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-004",
+      "test_name": "mcp_receipt_metadata_correlated_with_descriptor_id_hash_request_id",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "MCP receipt stored but descriptor_id/hash/request_id correlation broken",
+      "surface_tested": "protocols/mcp/server.py",
+      "proposed_file_path": "tests/protocols/mcp/test_mcp_receipt_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-005",
+      "test_name": "blocked_mutation_decision_replayable_without_runtime_imports",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "ReceiptEnvelope requires runtime object imports to deserialize — evidence not portable",
+      "surface_tested": "ReceiptEnvelope model",
+      "proposed_file_path": "tests/evidence/test_receipt_envelope_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-006",
+      "test_name": "evidence_persistence_failure_discoverable_as_recorded_blocked_state",
+      "classifications": ["adversarial", "contract"],
+      "what_it_catches": "Evidence persistence fails but cockpit/procurement can't discover the failure — silent evidence loss",
+      "surface_tested": "GovernanceDecisionEvidence",
+      "proposed_file_path": "tests/governance/test_governance_evidence_failure_discovery.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-007",
+      "test_name": "corrupted_receipt_shard_quarantined_or_reported_not_silently_ignored",
+      "classifications": ["adversarial", "sabotage", "substrate"],
+      "what_it_catches": "Corrupted shard silently skipped — evidence gap invisible to operators",
+      "surface_tested": "FilesystemReceiptStore",
+      "proposed_file_path": "tests/evidence/test_receipt_store_corruption.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-008",
+      "test_name": "duckdb_projection_matches_json_source_counts",
+      "classifications": ["contract", "real-artifact", "substrate"],
+      "what_it_catches": "DuckDB projection diverges from source-of-truth JSONL — read-side is lying",
+      "surface_tested": "DuckDB projection (future)",
+      "proposed_file_path": "tests/evidence/test_duckdb_governance_projection.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-009",
+      "test_name": "content_light_fields_present_in_every_replayable_artifact",
+      "classifications": ["contract", "adversarial"],
+      "what_it_catches": "Some evidence artifacts lack content_light flags — raw content may leak in replay",
+      "surface_tested": "all evidence artifacts",
+      "proposed_file_path": "tests/evidence/test_replay_content_light_compliance.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-010",
+      "test_name": "forbidden_raw_content_absent_from_replay_projection",
+      "classifications": ["adversarial", "sabotage"],
+      "what_it_catches": "Replay projection leaks raw prompts, file contents, secrets via missing redaction",
+      "surface_tested": "DuckDB/postgres projection",
+      "proposed_file_path": "tests/evidence/test_replay_forbidden_content_scan.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-011",
+      "test_name": "manifest_record_count_matches_envelope_file_count",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Orphaned envelope files or missing manifest entries — manifest not authoritative",
+      "surface_tested": "FilesystemReceiptStore",
+      "proposed_file_path": "tests/evidence/test_receipt_store_integrity.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-012",
+      "test_name": "session_correlation_works_across_multiple_decisions",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Decisions in same session can't be correlated — temporal evidence chain broken",
+      "surface_tested": "GovernanceRuntime + ReceiptStore",
+      "proposed_file_path": "tests/governance/test_governance_evidence_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-013",
+      "test_name": "surface_authority_tier_capability_consistent_across_all_surfaces",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "Different surfaces use different naming for same surface/authority_tier — cross-surface correlation broken",
+      "surface_tested": "all surfaces",
+      "proposed_file_path": "tests/governance/test_cross_surface_consistency.py",
+      "priority": "P1",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-014",
+      "test_name": "receipt_envelope_round_trips_through_model_validate",
+      "classifications": ["contract", "substrate"],
+      "what_it_catches": "ReceiptEnvelope can't be deserialized from its own JSON output — round-trip broken",
+      "surface_tested": "ReceiptEnvelope",
+      "proposed_file_path": "tests/evidence/test_receipt_envelope_replay.py",
+      "priority": "P0",
+      "current_status": "exists_in_test_receipt_envelope_py"
+    },
+    {
+      "test_id": "rep-test-015",
+      "test_name": "manifest_enriched_fields_present_after_p0_enrichment",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Manifest enrichment code runs but fields not actually written",
+      "surface_tested": "FilesystemReceiptStore",
+      "proposed_file_path": "tests/evidence/test_receipt_store_manifest_enrichment.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-016",
+      "test_name": "governance_decision_evidence_adapter_persist_and_retrieve",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "GovernanceDecisionEvidence adapter persists but retrieved envelope is different",
+      "surface_tested": "GovernanceDecisionEvidence",
+      "proposed_file_path": "tests/governance/test_governance_decisions_as_evidence.py",
+      "priority": "P0",
+      "current_status": "exists"
+    },
+    {
+      "test_id": "rep-test-017",
+      "test_name": "mcp_receipt_envelope_retrieved_has_correct_kind_and_decision",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "MCP receipt stored as governance_decision when it should be mcp_tool_call or vice versa",
+      "surface_tested": "RigMCPServer",
+      "proposed_file_path": "tests/protocols/mcp/test_mcp_receipt_envelope_adoption.py",
+      "priority": "P0",
+      "current_status": "exists"
+    },
+    {
+      "test_id": "rep-test-018",
+      "test_name": "receipt_envelope_list_by_session_returns_correct_subset",
+      "classifications": ["contract", "integration"],
+      "what_it_catches": "list_by_session returns wrong or empty results — session filtering broken",
+      "surface_tested": "FilesystemReceiptStore",
+      "proposed_file_path": "tests/evidence/test_receipt_store.py",
+      "priority": "P0",
+      "current_status": "exists_in_test_receipt_store_py"
+    },
+    {
+      "test_id": "rep-test-019",
+      "test_name": "decision_id_stable_across_write_and_read",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "decision_id changes between write and read — evidence link rot",
+      "surface_tested": "GateDecision → ReceiptEnvelope → ReceiptStore",
+      "proposed_file_path": "tests/governance/test_governance_evidence_replay.py",
+      "priority": "P0",
+      "current_status": "not_implemented"
+    },
+    {
+      "test_id": "rep-test-020",
+      "test_name": "procurement_evidence_pack_produces_all_required_fields",
+      "classifications": ["contract", "real-artifact"],
+      "what_it_catches": "Evidence pack generation omits required fields for procurement review",
+      "surface_tested": "evidence export pipeline",
+      "proposed_file_path": "tests/evidence/test_procurement_evidence_pack.py",
+      "priority": "P2",
+      "current_status": "not_implemented"
+    }
+  ],
+  "classification_summary": {
+    "unit": 0,
+    "contract": 20,
+    "integration": 3,
+    "E2E": 0,
+    "real-artifact": 12,
+    "adversarial": 4,
+    "sabotage": 2,
+    "concurrency": 0,
+    "substrate": 3
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

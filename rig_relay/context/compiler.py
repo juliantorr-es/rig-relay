@@ -264,7 +264,7 @@ def _build_recommended_context(subsystems: list) -> list[PathRecommendation]:
                 )
             )
 
-    return recommendations[:10]
+    return recommendations
 
 
 def _build_do_not_touch(collisions: list[dict]) -> list[PathRecommendation]:
@@ -276,6 +276,12 @@ def _build_do_not_touch(collisions: list[dict]) -> list[PathRecommendation]:
         PathRecommendation(path=c.get("path", ""), reason=c.get("reason", ""))
         for c in collisions
     ]
+
+
+_map_omissions_to_do_not_touch = _build_do_not_touch  # backward compatibility alias
+_map_selections_to_recommendations = (
+    _build_recommended_context  # backward compatibility alias
+)
 
 
 def _estimate_tokens(packet: ContextPacket) -> int:

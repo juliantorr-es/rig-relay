@@ -1,0 +1,98 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_implementation_scope.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "Cross-Surface Authority Compliance — Implementation Scope",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "principle": "Build the governance spine first — every protocol surface must route through it. Then harden each surface from highest blast-radius to lowest. No surface expansion until its tier is compliant with the spine.",
+  "phases": [
+    {
+      "phase": "P0",
+      "name": "Governance Spine Hardening (Blockers Before Any Expansion)",
+      "description": "Fix the governance spine so it actually enforces. No surface can be compliant until the core governance pipeline works.",
+      "offender_ids": ["OFF-001", "OFF-010", "OFF-022", "OFF-016", "OFF-023", "OFF-002", "OFF-003", "OFF-004", "OFF-012"],
+      "items": [
+        {"id": "P0.1", "label": "Fix GovernanceRuntime.should_execute_tool", "offender_ids": ["OFF-001", "OFF-010"], "scope": "small", "affected_files": ["rig_relay/core/governance_runtime.py"], "description": "Must check ToolPermission.NEVER (block), ASK (trigger approval callback), ALWAYS (allow). Consult session-specific tool permissions from agent profile config.", "tests": ["test_should_execute_tool_blocks_never", "test_should_execute_tool_asks_for_ask", "test_should_execute_tool_allows_always", "test_should_execute_tool_consults_session_permissions"], "classifications": ["contract"]},
+        {"id": "P0.2", "label": "Add decision_id to GateDecision", "offender_ids": ["OFF-022"], "scope": "tiny", "affected_files": ["rig_relay/governance/decisions.py"], "description": "Add decision_id (UUIDv7) to GateDecision model. Emit with every governance evaluation.", "tests": ["test_gate_decision_has_unique_id"], "classifications": ["contract"]},
+        {"id": "P0.3", "label": "Emit governance decisions as evidence", "offender_ids": ["OFF-016"], "scope": "small", "affected_files": ["rig_relay/governance/governance_engine.py"], "description": "GovernanceEngine.evaluate_action_legality must emit ReceiptEnvelope containing policy decision. Route through ReceiptStore for audit trail.", "tests": ["test_governance_engine_emits_decision_receipt", "test_decision_receipt_in_receipt_store"], "classifications": ["contract", "integration"]},
+        {"id": "P0.4", "label": "Align ReceiptEnvelope with evidence spine", "offender_ids": ["OFF-023", "OFF-036"], "scope": "small", "affected_files": ["rig_relay/evidence/receipt_envelope.py"], "description": "Add authority_tier, trace_id, session_id, receipt_sha256 to ReceiptEnvelope. Replace is_authoritative boolean with authority_tier enum.", "tests": ["test_receipt_envelope_contains_authority_tier", "test_receipt_envelope_has_trace_id", "test_receipt_envelope_roundtrip"], "classifications": ["contract", "integration"]},
+        {"id": "P0.5", "label": "Block MCP mutation tools until governance integration", "offender_ids": ["OFF-002", "OFF-003", "OFF-004"], "scope": "medium", "affected_files": ["rig_relay/protocols/mcp/server.py"], "description": "Hard-block tier-4/5 MCP tools with cryptographic refusal until governance pipeline is integrated. Replace string-presence check with HMAC enforcement. Enforce per-user auth.", "tests": ["test_mcp_tier4_crypto_blocked", "test_mcp_rejects_without_auth"], "classifications": ["contract", "adversarial"]},
+        {"id": "P0.6", "label": "Replace GitHub boolean approval with HMAC verification", "offender_ids": ["OFF-012"], "scope": "medium", "affected_files": ["rig_relay/integrations/github_provider/_live_pr_mutation_adapter.py"], "description": "Replace approval_ok boolean with HMAC-signed approval receipt verification. Check approval chain and scope before allowing live PR mutation.", "tests": ["test_github_rejects_unsigned_approval", "test_github_verifies_hmac_attestation"], "classifications": ["contract", "adversarial"]},
+        {"id": "P0.7", "label": "Wire GitHub receipt module into mutation adapter", "offender_ids": ["OFF-030"], "scope": "small", "affected_files": ["rig_relay/integrations/github_provider/_live_pr_mutation_adapter.py"], "description": "Call build_github_operation_receipt() from mutation adapter. Emit evidence envelope for every GitHub mutation operation.", "tests": ["test_github_mutation_emits_receipt"], "classifications": ["contract"]}
+      ]
+    },
+    {
+      "phase": "P1",
+      "name": "Surface Evidence & Content-Light Hardening",
+      "description": "Ensure every surface produces evidence envelopes and content-light scans. Fix cross-surface field gaps.",
+      "offender_ids": ["OFF-006", "OFF-007", "OFF-008", "OFF-013", "OFF-014", "OFF-015", "OFF-018", "OFF-019", "OFF-026", "OFF-027", "OFF-028", "OFF-032", "OFF-034", "OFF-035", "OFF-037", "OFF-038", "OFF-039", "OFF-040", "OFF-041", "OFF-042", "OFF-043", "OFF-044"],
+      "items": [
+        {"id": "P1.1", "label": "MCP evidence envelopes + content-light", "offender_ids": ["OFF-007", "OFF-008", "OFF-019"], "scope": "medium", "description": "Emit evidence envelopes with all 16 required fields for every MCP tool call. Integrate redaction.py content-light scanning into MCP response path. Add cross-surface fields to MCP models."},
+        {"id": "P1.2", "label": "MCP read-only tool dispatch through governance", "offender_ids": ["OFF-006", "OFF-013"], "scope": "large", "description": "Wire MCP read-only tools through real governance pipeline. Verify descriptor integrity at dispatch. Add tools/call to sync handler."},
+        {"id": "P1.3", "label": "ConversationRuntime surface awareness", "offender_ids": ["OFF-014", "OFF-028", "OFF-041", "OFF-042"], "scope": "medium", "description": "Add surface enum to ConversationRuntime context. Enforce authority tier per-surface. Emit per-tool evidence envelopes. Detect mutation tools in batch."},
+        {"id": "P1.4", "label": "Intent audit → ReceiptStore integration", "offender_ids": ["OFF-015"], "scope": "small", "description": "Route intent audit events through ReceiptStore. Emit ReceiptEnvelope objects with surface=cockpit."},
+        {"id": "P1.5", "label": "BridgeMessage authority fields", "offender_ids": ["OFF-018", "OFF-040"], "scope": "small", "description": "Add authority_tier, policy_decision_id, receipt_sha256 to BridgeMessage. Add governance_decision_id to bridge refusals."},
+        {"id": "P1.6", "label": "Intent registry authority metadata", "offender_ids": ["OFF-026"], "scope": "small", "description": "Add authority_tier, requires_receipt, minimum_receipt_kind to intent registries."},
+        {"id": "P1.7", "label": "Projection authority context + public/private split", "offender_ids": ["OFF-032", "OFF-034"], "scope": "medium", "description": "Add authority tier context to projection. Structural public/private split with public_sections and private_sections."},
+        {"id": "P1.8", "label": "Static docs public/private classification", "offender_ids": ["OFF-035"], "scope": "small", "description": "Add public_private_classification to site manifest documents. Reject internal_only docs from publication. Audit existing 71 governance docs."},
+        {"id": "P1.9", "label": "MCP roots enforcement + sampling policy", "offender_ids": ["OFF-027", "OFF-037"], "scope": "small", "description": "Enforce workspace root boundaries on all MCP tool paths. Gate sampling by explicit policy."},
+        {"id": "P1.10", "label": "CLI governance pre-flight + evidence", "offender_ids": ["OFF-038", "OFF-039", "OFF-043"], "scope": "tiny", "description": "Add governance pre-flight to CLI entrypoint. Emit surface registration evidence. AgentLoop surface registration on init."}
+      ]
+    },
+    {
+      "phase": "P2",
+      "name": "ACP/IDE Convergence",
+      "description": "Harden ACP and IDE sidecar to share the governance spine.",
+      "offender_ids": ["OFF-009", "OFF-017", "OFF-029"],
+      "items": [
+        {"id": "P2.1", "label": "IDE sidecar governance integration", "offender_ids": ["OFF-009"], "scope": "medium", "description": "Route IDE sidecar permission checks through governance engine and capability gate. Remove static manifest-only permission lookup."},
+        {"id": "P2.2", "label": "ACP evidence envelopes", "offender_ids": ["OFF-017"], "scope": "medium", "description": "Emit evidence envelopes for every ACP edit proposal, permission request, and tool invocation."},
+        {"id": "P2.3", "label": "ACP permission bypass hardening", "offender_ids": ["OFF-029"], "scope": "small", "description": "Hard-enforce permissions at ACP layer independent of agent profile. Bypass requires explicit admin authorization with audit event."}
+      ]
+    },
+    {
+      "phase": "P3",
+      "name": "Hosted/Team Mode Readiness",
+      "description": "Enterprise admin tools and fleet orchestration governance.",
+      "offender_ids": ["OFF-020", "OFF-021"],
+      "items": [
+        {"id": "P3.1", "label": "Tenant admin governance", "offender_ids": ["OFF-020"], "scope": "small", "description": "Gate tenant register/grant through governance engine. Dry-run by default. Evidence receipt per admin operation."},
+        {"id": "P3.2", "label": "Fleet admin governance", "offender_ids": ["OFF-021"], "scope": "small", "description": "Gate fleet start/stop/restart through governance engine. Evidence receipt per fleet operation."}
+      ]
+    },
+    {
+      "phase": "P4",
+      "name": "A2A/A2A Mutation Protocol Surfaces",
+      "description": "Harden A2A before it becomes operational.",
+      "offender_ids": ["OFF-005", "OFF-011", "OFF-024", "OFF-031"],
+      "items": [
+        {"id": "P4.1", "label": "A2A governance enforcement", "offender_ids": ["OFF-005"], "scope": "medium", "description": "Gate A2A task submission through governance engine. Validate trust tier before accepting tasks."},
+        {"id": "P4.2", "label": "A2A cryptographic attestation", "offender_ids": ["OFF-011"], "scope": "small", "description": "Add HMAC-signed attestation fields to A2A models. Verify attestation before state transitions."},
+        {"id": "P4.3", "label": "A2A delegation receipt production", "offender_ids": ["OFF-024"], "scope": "small", "description": "Produce delegation receipts for every A2A task submission."},
+        {"id": "P4.4", "label": "A2A trust tier enforcement", "offender_ids": ["OFF-031"], "scope": "small", "description": "Enforce multi-tier trust model. Gate task submission on trust boundary."}
+      ]
+    },
+    {
+      "phase": "P5",
+      "name": "Polish & Procurement Evidence",
+      "description": "GitHub Trust Spine formalization and cross-surface audit completeness.",
+      "offender_ids": ["OFF-025", "OFF-033"],
+      "items": [
+        {"id": "P5.1", "label": "GitHub Trust Spine formalization", "offender_ids": ["OFF-025"], "scope": "large", "description": "Implement canonical GitHub Trust Spine with tiered trust levels, cryptographic attestation chain, and governance spine integration."},
+        {"id": "P5.2", "label": "Gate preflight governance-dir writes", "offender_ids": ["OFF-033"], "scope": "tiny", "description": "Add governance approval for scripts writing to docs/json/governance/."}
+      ]
+    }
+  ],
+  "do_not_overrun_guards": [
+    "Do not implement MCP mutation tools before cryptographic approval receipts exist",
+    "Do not make A2A operational before trust tiers and attestation are enforced",
+    "Do not expose tenant/fleet admin without governance gating",
+    "Do not expand any protocol surface before its P0/P1 blockers are resolved",
+    "Do not add dependencies during compliance hardening (pure architecture fixes only)",
+    "Do not bypass the evidence spine — every fix must emit receipts",
+    "Do not wire MCP directly to AgentLoop without content-light scanning and evidence envelope emission",
+    "Do not remove hard-blocks on MCP tier-4/5 until HMAC enforcement is proven"
+  ],
+  "revision": "1.0.0"
+}

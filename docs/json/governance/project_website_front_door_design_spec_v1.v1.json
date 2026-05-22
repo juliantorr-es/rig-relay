@@ -1,0 +1,170 @@
+{
+  "schema_version": "rig.relay.project_website_front_door_design_spec.v1",
+  "spec_id": "project-website-front-door-design-spec-v1",
+  "title": "Project Website Product Front Door Design Spec v1 — Rig Relay",
+  "generated_at": "2026-05-21T11:15:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "status": "design_spec — do not implement until reviewed. Implementation deferred to website-build slice.",
+  "source_artifacts_inspected": [
+    "docs/json/site_manifest.v1.json",
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+    "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json",
+    "docs/json/governance/enterprise_procurement_readiness_audit_v1.v1.json",
+    "docs/json/governance/governance_decisions_as_evidence_v1.v1.json",
+    "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json",
+    "docs/json/governance/duckdb_governance_decisions_projection_v1.v1.json",
+    "docs/json/governance/cli_governance_guard_evidence_integration_v1.v1.json",
+    "docs/json/governance/roadmap_steward_agent_spec_v1.v1.json",
+    "docs/json/governance/high_performance_substrate_doctrine_v1.v1.json",
+    "docs/json/governance/postgres_enterprise_substrate_audit_v1.v1.json",
+    "docs/json/governance/github_integration_industry_leader_audit_v1.v1.json",
+    "docs/pages/index.html (current generated product surface)"
+  ],
+  "product_positioning": {
+    "one_sentence": "Rig Relay is a governed operating layer for AI-assisted development — an authority spine and evidence substrate that makes coding agents observable, controlled, and reviewable.",
+    "hero_headlines": [
+      "Govern Your Coding Agents. Keep the Receipts.",
+      "The Operating Layer for AI-Assisted Development.",
+      "Make Every Agent Decision Observable, Controlled, and Reviewable."
+    ],
+    "subhead": "Rig Relay gives you a desktop cockpit, hardened MCP tool surface, CLI governance gates, and receipt-backed evidence so your coding agents work for you — not the other way around.",
+    "primary_cta": "Get Started — uv run rig-relay",
+    "secondary_cta": "Read the Authority Spine",
+    "what_rig_relay_is": [
+      "A local-first governed agent runtime with a desktop cockpit",
+      "An authority spine that gates every tool, mutation, and surface",
+      "An evidence substrate that produces receipt-backed, schema-governed JSON/JSONL/CSV artifacts",
+      "A hardened MCP server exposing read-only governance tools to Antigravity, Claude, VS Code, and Zed",
+      "A CLI and script mutation gate that requires explicit --execute with approval receipts",
+      "A DuckDB/Postgres projection layer for governance analytics",
+      "A roadmap steward that ranks work slices and coordinates agent lanes"
+    ],
+    "what_rig_relay_is_not": [
+      "Not an autonomous coding agent — Rig Relay governs agents, it is not an agent itself",
+      "Not an LLM API wrapper — it is an operating layer between agents and tools",
+      "Not a CI/CD pipeline — it produces evidence artifacts, not deployment artifacts",
+      "Not enterprise-ready — 7 P0 procurement blockers remain",
+      "Not SOC 2 or ISO 27001 certified",
+      "Not a hosted SaaS — local-first, with hosted path planned but not implemented"
+    ],
+    "target_audiences": [
+      {
+        "audience": "solo_developers",
+        "value": "Govern your own AI-assisted workflow. Know what your agents did, what they read, what they changed, and why.",
+        "entry_point": "uv run rig-relay → desktop cockpit → start a mission"
+      },
+      {
+        "audience": "small_teams_startups",
+        "value": "Coordinate agent work across worktrees. Collision warnings. Receipt-backed evidence for code review.",
+        "entry_point": "Worktree isolation + coordination store + council consultation"
+      },
+      {
+        "audience": "open_source_maintainers",
+        "value": "Let contributors use AI agents without giving them ungoverned repo access. Every agent action produces a receipt.",
+        "entry_point": "MCP read-only surface + CLI mutation gates + GitHub operating picture"
+      },
+      {
+        "audience": "enterprise_security_reviewers",
+        "value": "Desktop cockpit, governance decisions as evidence, content-light telemetry, MCP hardened surface, procurement readiness audit.",
+        "entry_point": "docs/pages/procurement/index.html (future) + enterprise_procurement_readiness_audit_v1.v1.json"
+      },
+      {
+        "audience": "ai_agent_heavy_engineering_teams",
+        "value": "Coordinate multiple agent lanes across worktrees. Roadmap steward. DuckDB governance projection. Fleet orchestration.",
+        "entry_point": "Roadmap steward spec + fleet orchestration + council multi-provider review"
+      }
+    ]
+  },
+  "information_architecture": {
+    "two_layer_site": {
+      "layer_1_public_product_front_door": "Hero, problem, pillars, trust pipeline, proof sections, roadmap, footer. Designed for first-time visitors, security reviewers, procurement teams, and developer decision-makers.",
+      "layer_2_evidence_docs_system": "Existing generated docs/index.html and docs/pages/. Remains accessible as proof layer. Linked from product front door CTAs. Not hidden or deprioritized.",
+      "bridge": "Every product claim on the front door links to a source artifact in the evidence/docs system. 'Trust but verify' is the site's design principle."
+    }
+  },
+  "homepage_sections": [
+    {
+      "section": "1_hero",
+      "content": "Headline + subhead + primary CTA + secondary CTA + trust pipeline visual teaser",
+      "status": "always visible above fold"
+    },
+    {
+      "section": "2_problem",
+      "content": "AI coding agents change code at speed that outpaces human review. Without governance, every agent call is an untraceable mutation. Rig Relay gives you the authority spine you need to say: 'Here's what the agent did, here's the receipt, here's the governance decision.'",
+      "status": "always visible"
+    },
+    {
+      "section": "3_product_pillars",
+      "content": "8 card grid: Agent Governance, Cross-Surface Authority Spine, Evidence Receipts, Hardened MCP, CLI Mutation Gates, GitHub Operating Picture, DuckDB/Postgres Projection, Roadmap Steward",
+      "status": "always visible"
+    },
+    {
+      "section": "4_trust_pipeline",
+      "content": "Intent → Policy → Context → Tool → Receipt → Validation → Projection → Evidence. Static visual with status chips per step (implemented/partial/planned/deferred).",
+      "status": "always visible"
+    },
+    {
+      "section": "5_mcp_cli_github_proof",
+      "content": "MCP read-only surface: 94/94 gate tests pass. CLI governance: 59/59 tests pass. GitHub operating picture: audit complete, Trust Spine roadmap exists.",
+      "status": "always visible"
+    },
+    {
+      "section": "6_evidence_replay_substrate",
+      "content": "JSON/JSONL/CSV source-of-truth. ReceiptEnvelope evidence. DuckDB read-side analytics. Postgres operational projection (planned). Content-light by design.",
+      "status": "always visible"
+    },
+    {
+      "section": "7_enterprise_posture",
+      "content": "Honest posture: not enterprise-ready. 7 P0 blockers documented. Enterprise procurement readiness audit available. No overclaims.",
+      "status": "always visible, after proof sections"
+    },
+    {
+      "section": "8_static_evidence_site",
+      "content": "Link to generated docs/index.html. This is where every claim is backed. Searchable, schema-governed, 400+ schemas, 260+ pages.",
+      "status": "always visible"
+    },
+    {
+      "section": "9_roadmap",
+      "content": "Top 3 current recommendations from Roadmap Steward. Parked/deferred lanes. Active convergence lanes.",
+      "status": "always visible"
+    },
+    {
+      "section": "10_footer",
+      "content": "GitHub link. AGPL-3.0 license. Security policy. Vulnerability disclosure. Upstream attribution. Content-light guarantee. No tracking.",
+      "status": "always visible"
+    }
+  ],
+  "product_pillar_cards": [
+    {"pillar": "Agent Governance", "headline": "Every agent action gated.", "body": "Agent governance is not advisory — it is enforced. Patch gating, dirty-file preservation, tool permission tiers, council consultation, and approval receipts are system-level controls, not suggestions.", "source_artifact": "cross_surface_authority_spine_v1.v1.json", "status": "implemented"},
+    {"pillar": "Cross-Surface Authority Spine", "headline": "One spine. Every surface.", "body": "Cockpit, CLI, MCP, ACP, WebSocket — one authority model governs all. No surface is exempt. Every mutation requires evidence.", "source_artifact": "cross_surface_authority_spine_v1.v1.json", "status": "implemented"},
+    {"pillar": "Evidence Receipts", "headline": "Every decision recorded.", "body": "ReceiptEnvelope evidence with governance_decision_id, content-light classification, surface, authority tier, and capability ID. Replayable, auditable, schema-governed.", "source_artifact": "governance_receipt_manifest_enrichment_v1.v1.json", "status": "implemented"},
+    {"pillar": "Hardened MCP", "headline": "Read-only MCP is not unfenced read.", "body": "Descriptor integrity, roots boundary, content-light scanning, receipt persistence, local session auth, tier authorization. 94/94 gate tests pass. No mutation tools exposed.", "source_artifact": "mcp_hardened_read_only_surface_release_gate_v1.v1.json", "status": "implemented"},
+    {"pillar": "CLI Mutation Gates", "headline": "Scripts are governed too.", "body": "Every mutating script must default to dry-run or require --execute with approval receipt. CLI governance guard integrated. 59/59 tests pass.", "source_artifact": "cli_governance_guard_evidence_integration_v1.v1.json", "status": "implemented"},
+    {"pillar": "GitHub Operating Picture", "headline": "Code scanning, PR mutation, lifecycle.", "body": "GitHub App permission posture documented. Live PR rehearsal. Code scanning alert integration. Trust Spine roadmap exists for cryptographic mutation enforcement.", "source_artifact": "github_integration_industry_leader_audit_v1.v1.json", "status": "partial"},
+    {"pillar": "DuckDB / Postgres Projection", "headline": "Query your governance data.", "body": "DuckDB read-side analytics over JSONL evidence. Postgres operational projection planned for enterprise mode. High-performance substrate doctrine exists.", "source_artifact": "duckdb_governance_decisions_projection_v1.v1.json", "status": "partial"},
+    {"pillar": "Roadmap Steward", "headline": "Your roadmap has a steward.", "body": "Read-only coordination agent. Ranks slices. Detects collisions. Produces bounded prompts for worker agents. Never mutates. Never self-approves.", "source_artifact": "roadmap_steward_agent_spec_v1.v1.json", "status": "planned"}
+  ],
+  "trust_pipeline_steps": [
+    {"step": "Intent", "copy": "Agent proposes action via cockpit, CLI, or MCP. Intent is captured as a structured request with surface, capability, and authority tier.", "source_artifact": "governance_decisions_as_evidence_v1.v1.json", "status": "implemented"},
+    {"step": "Policy", "copy": "GovernanceRuntime evaluates against session rules, tool permissions, and authority spine tier. Decision is typed, not boolean.", "source_artifact": "cross_surface_authority_spine_v1.v1.json", "status": "implemented"},
+    {"step": "Context", "copy": "Context assembly with trust tier labeling. Content SHA256-hashed. No raw file contents in context envelope.", "source_artifact": "cross_surface_authority_spine_v1.v1.json", "status": "implemented"},
+    {"step": "Tool", "copy": "Tool execution behind runtime boundary. Environment scrubbing, bash pattern detection, binary rejection, symlink protection, patch gating.", "source_artifact": "cross_surface_authority_spine_v1.v1.json", "status": "implemented"},
+    {"step": "Receipt", "copy": "ReceiptEnvelope produced for every tool call and governance decision. Merkle-linked. Content-light. Schema-governed.", "source_artifact": "governance_receipt_manifest_enrichment_v1.v1.json", "status": "implemented"},
+    {"step": "Validation", "copy": "Targeted release gates verify hardening. MCP gate: 94/94. CLI gate: 59/59. Schema validation: all pass.", "source_artifact": "mcp_hardened_read_only_surface_release_gate_v1.v1.json", "status": "implemented"},
+    {"step": "Projection", "copy": "DuckDB read-side analytics project governance decisions. Postgres operational projection planned for enterprise mode.", "source_artifact": "duckdb_governance_decisions_projection_v1.v1.json", "status": "partial"},
+    {"step": "Evidence", "copy": "Receipt manifests, governance decision projections, release gate results. JSON/JSONL/CSV source-of-truth. Generated docs/pages/ with 400+ schemas.", "source_artifact": "governance_receipt_manifest_enrichment_v1.v1.json", "status": "implemented"}
+  ],
+  "visual_direction": {
+    "aesthetic": "Serious control-plane. Graphite/dark neutral base (#1a1a2e, #16213e, #0f3460) with teal/accent highlights (#00b4d8). Evidence rail/cards with subtle borders. Status chips: green (implemented), amber (partial), blue (planned), grey (deferred).",
+    "typography": "System font stack. Mono for code/evidence references. Readable line-height (1.6), comfortable measure (65ch max).",
+    "layout": "Single-column, max-width 900px, centered. Sections separated by thin rule (1px, low-opacity graphite). No sidebars on product pages. Evidence/docs layer keeps its existing layout.",
+    "anti_patterns": "No gradient hero spam. No terminal-emulator cosplay. No particle effects. No generic SaaS template. No stock photography of people typing at laptops."
+  },
+  "implementation_plan": {
+    "later_slice": "Project Website Product Front Door Implementation v1. This slice must: (1) inspect current renderer conventions (scripts/rig_site_render.py, rig_relay/site_renderer/), (2) create docs/json/site_home/product_front_door_v1.json as source, (3) update renderer to generate product front door from this source, (4) render static docs, (5) validate links/search, (6) scan for overclaims, (7) do not modify generated HTML directly.",
+    "preconditions": "Conftest import repair must be complete (so validation commands work without --noconftest). Schema validation must pass.",
+    "stop_conditions": "Do not delete existing docs/pages/ or docs/index.html. Product front door is additive, not replacement. Do not remove the generated evidence/docs layer."
+  },
+  "content_light": true
+}

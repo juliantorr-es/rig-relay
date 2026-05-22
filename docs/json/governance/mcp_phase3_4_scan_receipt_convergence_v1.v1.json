@@ -1,0 +1,80 @@
+{
+  "schema_version": "rig.relay.mcp_phase3_4_scan_receipt_convergence.v1",
+  "document_id": "mcp-phase3-4-scan-receipt-convergence-v1",
+  "title": "MCP Phase 3/4 Convergence — Scan + ReceiptEnvelope Composition v1 — Rig Relay",
+  "generated_at": "2026-05-21T09:45:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_phase_artifacts": [
+    "docs/json/governance/mcp_phase1_descriptor_integrity_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase2_roots_boundary_implementation_v1.v1.json",
+    "docs/json/governance/mcp_phase3_content_light_output_scanning_v1.v1.json"
+  ],
+  "files_changed": [
+    "tests/protocols/mcp/test_mcp_scan_receipt_convergence_v1.py (new — 16 tests)"
+  ],
+  "pipeline_order": {
+    "for_every_mcp_tools_call": [
+      {"step": 1, "gate": "Descriptor Integrity", "behavior": "verify descriptor hash, quarantine on drift, refuse with receipt metadata"},
+      {"step": 2, "gate": "Authority/Tier/Forbidden Check", "behavior": "block mutation tier, refuse git-release tier, refuse forbidden tools, persist outcome"},
+      {"step": 3, "gate": "Root/Workspace Boundary", "behavior": "validate workspace root, refuse path traversal/symlink escape, emit receipt-compatible metadata"},
+      {"step": 4, "gate": "Dispatch (allowed only)", "behavior": "execute tool handler (real or stub), produce dispatch_result"},
+      {"step": 5, "gate": "Content-Light Scan", "behavior": "classify output, refuse secret-bearing/forbidden-raw, attach classification"},
+      {"step": 6, "gate": "ReceiptEnvelope Persistence", "behavior": "build ReceiptEnvelope with correct content_light_classification, persist via receipt_store"},
+      {"step": 7, "gate": "Response Assembly", "behavior": "merge surface/capability/authority fields, set request_id, return to client"}
+    ]
+  },
+  "async_sync_parity": {
+    "call_tool": "Steps 1-7 as above. Uses _dispatch() for async execution.",
+    "call_tool_sync": "Steps 1-7 as above. Uses _dispatch_sync() for sync execution. Same pipeline, same refusal metadata, same persistence path.",
+    "verified": true
+  },
+  "refusal_cases_covered": [
+    {"case": "descriptor drift", "metadata_includes": ["descriptor_id", "descriptor_hash", "request_id", "generated_at", "content_light_classification"]},
+    {"case": "forbidden tool (promote_to_preproduction)", "metadata_includes": ["request_id", "surface", "capability_id", "authority_tier", "content_light_classification", "refusal_code"]},
+    {"case": "mutation tier (no receipt)", "metadata_includes": ["request_id", "surface", "capability_id", "authority_tier", "content_light_classification", "refusal_code"]},
+    {"case": "git-release tier", "metadata_includes": ["request_id", "surface", "capability_id", "authority_tier", "content_light_classification", "refusal_code"]},
+    {"case": "root scope violation", "metadata_includes": ["request_id", "refusal_code", "content_light_classification", "content_light", "generated_at", "descriptor_id"]},
+    {"case": "secret-bearing output", "metadata_includes": ["refusal_code", "content_light", "request_id"]},
+    {"case": "forbidden-raw output", "metadata_includes": ["refusal_code", "content_light", "request_id"]},
+    {"case": "unknown tool", "behavior": "returns JSON-RPC error {error, code: -32601} with persistence. Not a structured refusal."}
+  ],
+  "receipt_metadata_fields": {
+    "content_light_classification": "Read from outcome dict content_light_classification field. Not hardcoded to public_safe.",
+    "request_id": "Generated once at start of call_tool/call_tool_sync. Reused across all gates. Overrides any internal request_id from _build_refusal.",
+    "descriptor_id": "Present in _build_refusal for registered tools. None for root-scope refusals where tool name is a path.",
+    "persist_outcome": "Called on every outcome path (success, refusal, block, error). Silently passes if receipt_store is None."
+  },
+  "tests": {
+    "new": 16,
+    "passed": 16,
+    "failed": 0,
+    "phase1_2_3_receipt_regression_passed": 60,
+    "total_passed": 76,
+    "suites": {
+      "TestFullPipelineOrdering": {"count": 5, "classification": "integration, contract"},
+      "TestContentLightClassificationInReceiptMetadata": {"count": 4, "classification": "contract, adversarial"},
+      "TestReceiptPersistenceForRefusals": {"count": 3, "classification": "real-artifact, contract, adversarial"},
+      "TestPhaseRegression": {"count": 4, "classification": "contract"}
+    }
+  },
+  "remaining_seams": {
+    "phase_5_auth": "MCPPerUserAuthorization model exists but not enforced. No per-session token required for any operation.",
+    "unknown_tool_format": "Unknown tools return {error, code: -32601} (JSON-RPC error) rather than a structured refusal with content_light, surface, etc. This is consistent with JSON-RPC protocol but means unknown-tool errors have a different schema than other refusals.",
+    "pre_existing_seam": "Sync handler process_jsonrpc_sync lacks tools/call dispatch."
+  },
+  "validations": {
+    "pyright": "0 errors, 0 warnings",
+    "tests_convergence": "16/16 passed",
+    "tests_phase1_2_3_receipt_regression": "60/60 passed",
+    "schema_validation": "all schemas valid"
+  },
+  "mcp_security_implications": {
+    "composition_order": "Descriptor integrity → tier gating → root boundary → dispatch → content-light scan → receipt persistence → response. This is defense-in-depth: descriptor trust is established first, authority is checked second, filesystem scope is verified third, only then is tool code invoked. Output is scanned before serialization. Every outcome (including refusals) is persisted as a receipt envelope.",
+    "scan_failure_persistence": "If content-light scan refuses output, the refusal (not the raw output) is returned and persisted. Receipt metadata records the correct classification (secret_bearing or forbidden_raw) without echoing the detected secret.",
+    "persistence_failure_safety": "If receipt_store.append() raises, the exception is caught silently and does not prevent the refusal or result from being returned. No unsafe output is returned on persistence failure."
+  },
+  "dependency_changes": "None",
+  "next_recommended_mcp_slice": "Phase 5: Local Session Auth. Wrap stdio transport with per-session token generated at startup. Instantiate MCPPerUserAuthorization per request. Enforce tier-scoped authorization.",
+  "content_light": true
+}

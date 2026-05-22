@@ -1,0 +1,139 @@
+{
+  "schema_version": "rig.relay.governance_evidence_replay_discoverability_audit.v1",
+  "gap_map_id": "governance-evidence-replay-gap-map-v1",
+  "title": "Governance Evidence Replay Discoverability Gap Map v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "replay_lookup_gaps": [
+    {
+      "lookup": "by_decision_id",
+      "currently_possible": "partial",
+      "current_mechanism": "ReceiptEnvelope.decision.governance_decision_id stores the GateDecision decision_id. Can find by reading all envelope files and checking decision field. No manifest index. No reverse lookup.",
+      "missing_fields": "governance_decision_id in manifest.jsonl; decision_id → envelope_id index",
+      "missing_index_projection": "in-memory dict or DuckDB table indexed on governance_decision_id",
+      "recommended_fix": "add governance_decision_id to manifest.jsonl as column 5; build in-memory dict {governance_decision_id: [envelope_ids]} on startup for < 10k envelopes; DuckDB projection for > 10k",
+      "phase": "P0"
+    },
+    {
+      "lookup": "by_envelope_id",
+      "currently_possible": "yes",
+      "current_mechanism": "FilesystemReceiptStore.get(envelope_id) reads sharded JSON file directly",
+      "missing_fields": "none",
+      "missing_index_projection": "none needed",
+      "recommended_fix": "none — already works",
+      "phase": "complete"
+    },
+    {
+      "lookup": "by_session_id",
+      "currently_possible": "yes",
+      "current_mechanism": "list_by_session(session_id) scans manifest.jsonl line-by-line, filters on session_id, reads matching envelopes",
+      "missing_fields": "none",
+      "missing_index_projection": "manifest scan is O(N); partitioned manifest or DuckDB projection would speed for > 1k sessions",
+      "recommended_fix": "DuckDB session_id index for > 1k sessions; current O(N) is acceptable for local mode",
+      "phase": "complete for current scale; P2 for scale"
+    },
+    {
+      "lookup": "by_request_id",
+      "currently_possible": "no",
+      "current_mechanism": "request_id is generated in MCP server/GovernanceRuntime for each call but is not stored in ReceiptEnvelope or ReceiptDecision. Node preserved in manifest.",
+      "missing_fields": "request_id in ReceiptDecision or ReceiptEnvelope decision; request_id in manifest.jsonl",
+      "missing_index_projection": "request_id → envelope_id index",
+      "recommended_fix": "add request_id to ReceiptDecision model; add to manifest.jsonl; propagate from MCP (already has request_id) and GovernanceRuntime (needs generation)",
+      "phase": "P0"
+    },
+    {
+      "lookup": "by_surface",
+      "currently_possible": "partial",
+      "current_mechanism": "ReceiptEnvelope.decision.surface stores surface identifier. Can find by reading all envelope files. No manifest index.",
+      "missing_fields": "surface in manifest.jsonl",
+      "missing_index_projection": "surface → envelope_id index",
+      "recommended_fix": "add surface to manifest.jsonl; DuckDB projection: SELECT * FROM envelopes WHERE decision_surface = ?",
+      "phase": "P0"
+    },
+    {
+      "lookup": "by_authority_tier",
+      "currently_possible": "partial",
+      "current_mechanism": "ReceiptEnvelope.decision.authority_tier stores tier. Can find by reading all envelope files.",
+      "missing_fields": "authority_tier in manifest.jsonl",
+      "missing_index_projection": "authority_tier → envelope_id index",
+      "recommended_fix": "add authority_tier to manifest.jsonl",
+      "phase": "P1"
+    },
+    {
+      "lookup": "by_capability_id_or_tool_name",
+      "currently_possible": "partial",
+      "current_mechanism": "ReceiptEnvelope.decision.capability_id stores f'rig.{tool_name}'. ReceiptSubject.subject_id stores tool_name for MCP calls. Can find by reading all files.",
+      "missing_fields": "capability_id or tool_name in manifest.jsonl",
+      "missing_index_projection": "capability_id/tool_name → envelope_id index",
+      "recommended_fix": "add capability_id to manifest.jsonl; DuckDB projection for tool-specific queries",
+      "phase": "P1"
+    },
+    {
+      "lookup": "by_timestamp_range",
+      "currently_possible": "partial",
+      "current_mechanism": "manifest.jsonl stores created_at ISO timestamp. Can scan manifest and filter. No range query support.",
+      "missing_fields": "none (created_at already present)",
+      "missing_index_projection": "binary search on manifest not supported (unordered append-only); DuckDB projection enables range queries",
+      "recommended_fix": "DuckDB created_at index for range queries; manifest remains append-only chronological",
+      "phase": "P1"
+    },
+    {
+      "lookup": "by_decision_status",
+      "currently_possible": "partial",
+      "current_mechanism": "ReceiptEnvelope.decision.decision stores allowed/blocked/requires_review/not_applicable. Must read all files.",
+      "missing_fields": "decision_status in manifest.jsonl",
+      "missing_index_projection": "decision status → envelope_id index",
+      "recommended_fix": "add decision_status to manifest.jsonl as column; DuckDB projection",
+      "phase": "P1"
+    },
+    {
+      "lookup": "by_evidence_status",
+      "currently_possible": "no",
+      "current_mechanism": "no evidence_status field exists on ReceiptEnvelope or manifest. GovernanceDecisionEvidence.persisted() is runtime-only.",
+      "missing_fields": "evidence_status (persisted/failed/deferred) in ReceiptEnvelope or ReceiptDecision or manifest; runtime state not persisted",
+      "missing_index_projection": "none",
+      "recommended_fix": "add evidence_persisted boolean to ReceiptDecision; propagate from GovernanceDecisionEvidence; record persistence_failed decisions with evidence_status=failed",
+      "phase": "P0"
+    },
+    {
+      "lookup": "by_artifact_ref_or_source_of_truth_ref",
+      "currently_possible": "no",
+      "current_mechanism": "neither artifact_refs nor source_of_truth_refs exist in ReceiptEnvelope or manifest",
+      "missing_fields": "artifact_refs, source_of_truth_refs in ReceiptEnvelope; manifest cannot index arrays",
+      "missing_index_projection": "DuckDB lateral join on artifact_refs array",
+      "recommended_fix": "add artifact_refs and source_of_truth_refs to ReceiptEnvelope; DuckDB lateral join for querying",
+      "phase": "P2"
+    }
+  ],
+  "common_envelope_gap_update": {
+    "current_state_summary": "ReceiptEnvelope covers: envelope_id, receipt_kind, actor.actor_id, subject.session_id, decision.governance_decision_id, decision.surface, decision.authority_tier, decision.capability_id, created_at. Missing: request_id (P0), mission_id (P2), input_hash (P1), output_hash (P1), payload_schema (P1), approval_receipt_id (on decision but not always set), policy_decision_id (aliased as governance_decision_id), trace_id (P1), artifact_refs (P2), redaction_scan_id (P2), source_of_truth_refs (P2), producer (P1), sequence (P2).",
+    "fields": [
+      {"field": "request_id", "receipt_envelope": "missing", "mcp": "present (in response dict, not in ReceiptEnvelope)", "scripts_cli": "missing", "priority": "P0"},
+      {"field": "session_id", "receipt_envelope": "present (subject.session_id)", "mcp": "missing (in ReceiptEnvelope)", "scripts_cli": "missing", "priority": "P0"},
+      {"field": "mission_id", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P2"},
+      {"field": "actor_id", "receipt_envelope": "present (actor.actor_id)", "mcp": "present (actor=governance_runtime)", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "surface", "receipt_envelope": "present (decision.surface)", "mcp": "present", "scripts_cli": "present (in GovernedExecution)", "priority": "complete"},
+      {"field": "authority_tier", "receipt_envelope": "present (decision.authority_tier)", "mcp": "present", "scripts_cli": "present", "priority": "complete"},
+      {"field": "capability_id", "receipt_envelope": "present (decision.capability_id)", "mcp": "present", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "input_hash", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "output_hash", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "payload_schema", "receipt_envelope": "present (schema_version on envelope)", "mcp": "partial (refusal schema_version)", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "approval_receipt_id", "receipt_envelope": "present (decision.approval_receipt_id, optional)", "mcp": "missing (mutation tools blocked)", "scripts_cli": "missing", "priority": "P2"},
+      {"field": "policy_decision_id", "receipt_envelope": "present (aliased as governance_decision_id)", "mcp": "partial (via ReceiptEnvelope if store available)", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "trace_id", "receipt_envelope": "missing", "mcp": "partial (stdio transport has trace_id; not in ReceiptEnvelope)", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "artifact_refs", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "present (result_path in GovernedExecution)", "priority": "P2"},
+      {"field": "content_light_classification", "receipt_envelope": "present (decision.content_light_classification)", "mcp": "present", "scripts_cli": "missing", "priority": "P1"},
+      {"field": "redaction_scan_id", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P2"},
+      {"field": "source_of_truth_refs", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P2"},
+      {"field": "producer", "receipt_envelope": "missing (actor present but no version/path)", "mcp": "missing", "scripts_cli": "missing", "priority": "P2"},
+      {"field": "sequence", "receipt_envelope": "missing", "mcp": "missing", "scripts_cli": "missing", "priority": "P2"}
+    ]
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

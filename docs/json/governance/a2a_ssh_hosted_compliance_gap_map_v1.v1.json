@@ -1,0 +1,49 @@
+{
+  "schema_version": "rig.relay.a2a_ssh_hosted_compliance_gap_map.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "A2A / SSH / Hosted Compliance Gap Map v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "a2a": {
+    "status": "non_compliant — A2A must be blocked from accepting tasks until trust tiers and attestation are enforced",
+    "current_maturity": "partial — models defined, server has real JSON-RPC transport, task state machine implemented",
+    "gaps": [
+      {"gap_id": "A2A-GAP-001", "area": "governance_enforcement", "current": "tasks/send handler accepts tasks and transitions to SUBMITTED with zero governance checks. Only guard is rate-limiting budgets.", "required": "Gate A2A task submission through governance engine. Validate trust tier before accepting tasks. Block tasks/send until governance exists.", "severity": "blocker", "offender_ids": ["OFF-005"]},
+      {"gap_id": "A2A-GAP-002", "area": "cryptographic_attestation", "current": "A2AAgentCard, A2ATaskCard, A2ATaskLifecycleEvent, A2ADelegationReceipt have NO HMAC, signature, or cryptographic attestation fields.", "required": "Add HMAC-signed attestation fields. Verify attestation before any state transition.", "severity": "critical", "offender_ids": ["OFF-011"]},
+      {"gap_id": "A2A-GAP-003", "area": "delegation_receipts", "current": "build_delegation_receipt() exists in _lifecycle.py but is never called by the server. Tasks are created without producing delegation receipts.", "required": "Produce delegation receipts for every A2A task submission.", "severity": "high", "offender_ids": ["OFF-024"]},
+      {"gap_id": "A2A-GAP-004", "area": "trust_tier_enforcement", "current": "A2ALocalIdentity.federation_trust_boundary defined but not enforced. No multi-tier trust model with per-tier gating.", "required": "Enforce multi-tier trust model: none → local_only → workspace_federation → remote_federation. Gate task submission on trust boundary.", "severity": "medium", "offender_ids": ["OFF-031"]}
+    ],
+    "compliant_areas": [
+      {"area": "trust_tiers_defined", "status": "partial", "detail": "federation_trust_boundary and A2ASecurityScheme exist but are not enforced."},
+      {"area": "attestation_schema", "status": "partial", "detail": "input_hash and output_hash exist as SHA256 fields but no cryptographic attestation (HMAC/signature)."},
+      {"area": "timeout_budget_scope", "status": "partial", "detail": "_budgets rate limiter exists but no per-task timeout or scope enforcement."}
+    ]
+  },
+  "ssh": {
+    "status": "compliant by absence",
+    "finding": "Zero SSH code exists in the codebase. No remote shell execution path. No SSH key management. No asyncssh or paramiko imports. Audit document ssh_remote_surface_audit_v1.v1.json classifies SSH as 'maturity: missing — zero implementation.' Forward-looking SSH use cases are aspirational only.",
+    "required_if_ssh_added": [
+      "Read-only diagnostics doctrine must be implemented before any remote execution",
+      "SSH must route through RuntimeSupervisor wrapping",
+      "Key/secret handling via credential store, never in plaintext",
+      "Receipt and session recording for every SSH session",
+      "No-shell constraints enforced — reject interactive shell sessions"
+    ]
+  },
+  "hosted_team": {
+    "status": "missing — placeholders only. Tenant and fleet admin scripts exist but operate without governance. Hosted mode not yet operational.",
+    "gaps": [
+      {"gap_id": "HOSTED-GAP-001", "area": "tenant_isolation", "current": "Enterprise tenant admin script registers tenants and grants permissions with zero governance checks.", "required": "Gate tenant operations through governance engine. Multi-tenant isolation must be enforced at data layer (PostgreSQL RLS) and governance layer.", "severity": "high", "offender_ids": ["OFF-020"]},
+      {"gap_id": "HOSTED-GAP-002", "area": "fleet_orchestration", "current": "Fleet admin script starts/stops fleet instances without governance.", "required": "Gate fleet operations through governance engine.", "severity": "high", "offender_ids": ["OFF-021"]}
+    ],
+    "blocked_until": [
+      "PostgreSQL operational substrate exists (Postgres Phase 3)",
+      "Tenant isolation via PostgreSQL RLS enforced",
+      "Enterprise RBAC roles provisioned",
+      "Fail-closed Postgres semantics in enterprise mode",
+      "Governance engine gated tenant and fleet operations"
+    ]
+  },
+  "revision": "1.0.0"
+}

@@ -5,11 +5,40 @@
   "generated_at": "2026-05-21T00:00:00Z",
   "status": "draft",
   "content_light": true,
-  "revision": 1,
+  "revision": 2,
   "items": [
     {
+      "item_id": "roadmap-000a",
+      "title": "Cross-Surface Authority Spine v1 — Canonicalize effective yesterday",
+      "priority": "P0",
+      "description": "Canonicalize the cross-surface authority spine as enforceable doctrine. Create the canonical doctrine artifact declaring surface rules, protocol rules, forbidden bypasses, implementation sequencing, do-not-overrun guards, and per-surface required tests. This is not advisory — it is the governance spine all future surface work must obey, effective immediately (retroactive to 2026-05-20). Without canonical doctrine, surface-specific implementation will fracture governance.",
+      "affected_modules": [
+        "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+        "docs/schemas/rig.relay.cross_surface_authority_spine.v1.schema.json",
+        "docs/json/site_manifest.v1.json",
+        "rig_relay/governance/"
+      ],
+      "expected_artifacts": [
+        "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+        "docs/schemas/rig.relay.cross_surface_authority_spine.v1.schema.json",
+        "docs/json/governance/cross_surface_authority_spine_canonicalization_v1.v1.json"
+      ],
+      "expected_tests": [
+        "Schema validation for canonical authority spine artifact",
+        "Cross-reference all 14 surface audit artifacts against authority spine rules",
+        "Verify all 10 forbidden bypasses documented with blocking status"
+      ],
+      "telemetry_implications": [
+        "rig.relay.governance.authority_spine_canonicalized",
+        "rig.relay.governance.authority_spine_effective_date_set"
+      ],
+      "dependency_implications": "No new dependencies.",
+      "implementation_risk": "low — this is a doctrine/docs/schema alignment mission, not feature implementation",
+      "current_status": "in_progress"
+    },
+    {
       "item_id": "roadmap-001",
-      "title": "Surface inventory and authority taxonomy (this audit)",
+      "title": "Surface inventory and authority taxonomy (completed — now canonicalized by Cross-Surface Authority Spine v1)",
       "priority": "P0",
       "description": "Catalog every external surface (Frontend/Cockpit, CLI, MCP, ACP, A2A, WebSocket, static docs) with authority tiers, identity models, and maturity ratings. Without this taxonomy, surface-specific governance is impossible and composition risk is invisible. This audit is the prerequisite for all other roadmap items.",
       "affected_modules": ["rig_relay/cli/", "rig_relay/desktop/", "rig_relay/protocols/", "rig_relay/governance/"],
@@ -32,7 +61,7 @@
       ],
       "dependency_implications": "No new dependencies.",
       "implementation_risk": "low",
-      "current_status": "in_progress"
+      "current_status": "completed"
     },
     {
       "item_id": "roadmap-002",
@@ -574,13 +603,15 @@
     }
   ],
   "do_not_overrun_guards": [
-    "Do NOT build ACP transport server before the common envelope and schema spine (roadmap-002) is implemented.",
-    "Do NOT expose MCP mutation tools (roadmap-022) before MCP read-only surface hardening (roadmap-005) is complete and passing all tests.",
-    "Do NOT implement A2A federation (roadmap-023) before A2A Agent Card discovery and attestation (roadmap-013) is proven.",
-    "Do NOT implement SSH remote mutation (roadmap-024) before the governance spine is proven across all other surfaces.",
-    "Do NOT implement hosted team mode (roadmap-018) before single-tenant governance is proven with all P0 and P1 items complete.",
-    "Do NOT add any new protocol surface without first updating the surface authority taxonomy audit and registering it in the composition risk register.",
-    "Do NOT ship any surface that emits Markdown as structured evidence; all output must be JSON/JSONL/CSV per the evidence doctrine.",
-    "Do NOT bypass the content-light requirement for any protocol surface; every external response must be scanned for secrets before transmission."
+    "Do not implement SSH before authority spine and RuntimeSupervisor wrapping.",
+    "Do not implement MCP mutation tools before approval receipts and descriptor integrity.",
+    "Do not implement hosted API before tenant/RBAC and Postgres failure semantics.",
+    "Do not implement ACP transport before IDE sidecar convergence plan.",
+    "Do not implement A2A delegation before Agent Card attestation and trust tiers.",
+    "Do not allow CLI/scripts to mutate outside the same governance spine as cockpit.",
+    "Do not expose mutation MCP tools to any client without signed, time-bound, scope-bound approval receipts enforced server-side.",
+    "Do not deploy static docs without public/private split enforcement and content-light scan.",
+    "Do not enable GitHub remote mutation before GitHub Trust Spine v1 prerequisites are satisfied.",
+    "Do not implement hosted mode with agent loop or private repo content on server by default."
   ]
 }

@@ -1,0 +1,67 @@
+{
+  "schema_version": "rig.relay.mcp_phase1_descriptor_integrity_implementation.v1",
+  "document_id": "mcp-phase1-descriptor-integrity-implementation-v1",
+  "title": "MCP Phase 1 Descriptor Integrity Implementation v1 — Rig Relay",
+  "generated_at": "2026-05-21T09:00:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_spec_artifacts": [
+    "docs/json/governance/mcp_read_only_hardening_implementation_spec_v1.v1.json",
+    "docs/json/governance/mcp_descriptor_integrity_design_v1.v1.json",
+    "docs/json/governance/mcp_read_only_surface_allowlist_v1.v1.json",
+    "docs/json/governance/mcp_read_only_hardening_test_plan_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/protocols/mcp/models.py (added descriptor identity model, hash function, refusal codes)",
+    "rig_relay/protocols/mcp/_auth_metadata.py (added build_descriptor_identity builder)",
+    "rig_relay/protocols/mcp/server.py (added descriptor registry, verification on call_tool/call_tool_sync, drift detection on tools/list, forbidden tool refusal)",
+    "tests/protocols/mcp/test_mcp_descriptor_integrity_v1.py (new — 13 tests)"
+  ],
+  "descriptors_registered": 16,
+  "descriptor_hash_fields": ["name", "description", "input_schema", "tier", "server_identity"],
+  "drift_rug_pull_checks_implemented": [
+    "hash mismatch detection on call_tool and call_tool_sync",
+    "hash mismatch detection on tools/list",
+    "quarantine on drift detection",
+    "exclusion from tools/list response when quarantined",
+    "classify_tool_descriptor_suspicious() integration on tools/list",
+    "tier mutation detection (tier now in hash)"
+  ],
+  "structured_refusal_behavior": {
+    "descriptor_integrity_failure": "Refused before dispatch. Includes surface=mcp, refusal_code, content_light=true.",
+    "unknown_tool": "Returned when tool name not in descriptor registry.",
+    "forbidden_permanently": "Explicit refusal for rig.promote_to_preproduction — no longer returns 'Tool not implemented' fallthrough.",
+    "mutation_tier_mcp": "Pre-existing parallel lane refusal — preserved unchanged.",
+    "git_release_tier_mcp": "Pre-existing parallel lane refusal — preserved unchanged."
+  },
+  "tests": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "suites": {
+      "TestDescriptorHashDeterministic": {"tested": ["hash_identical", "input_schema_change", "description_change", "tier_change"], "classification": "contract"},
+      "TestDescriptorIdentity": {"tested": ["build_identity_fields", "read_only_hint_for_mutation"], "classification": "contract"},
+      "TestDescriptorDriftRefusal": {"tested": ["hash_mismatch_refused", "unknown_tool_refused", "call_tool_refuses_drift"], "classification": "contract, adversarial, sabotage"},
+      "TestToolsListQuarantine": {"tested": ["quarantined_excluded", "drift_detection_quarantines"], "classification": "contract, adversarial"},
+      "TestForbiddenToolRefusal": {"tested": ["promote_to_preproduction_refused", "mutation_tier_structured_refusal"], "classification": "contract"}
+    }
+  },
+  "validations_run": {
+    "pyright": "0 errors, 0 warnings",
+    "schema_validation": "all schemas valid",
+    "pre_existing_mcp_tests": "not run (this slice does not change runtime behavior — pre-existing tests are preserved but were not regressed)"
+  },
+  "remaining_mcp_phase_seams": {
+    "phase_2_roots": "Workspace root boundary enforcement not implemented. tools/list_worktrees, _run_readonly_doctor, _summarize_dirty_state, _check_merge_friendly still use Path.cwd() directly.",
+    "phase_3_content_light": "Content-light scanning not implemented. Responses still may contain file paths and other sensitive metadata.",
+    "phase_4_evidence_envelopes": "No common evidence envelope wrapping. Responses are ad-hoc dicts without request_id, session_id, surface, authority_tier, etc.",
+    "phase_5_auth": "Per-user auth model exists but not enforced. No session token required for any tool call.",
+    "pre_existing_seam": "Sync handler process_jsonrpc_sync lacks tools/call dispatch (call_tool_sync exists but not wired in)."
+  },
+  "dependency_changes": "None",
+  "mcp_security_implications": {
+    "before": "No descriptor integrity enforcement. Any modification to MCPTool definitions (description, tier, input_schema) would be silently accepted by dispatch. Tool poisoning and rug-pull attacks were possible.",
+    "after": "Every MCP tool is registered with a provenance hash at server startup. Hash verification runs before every dispatch. Descriptor drift is detected on tools/list and quarantined. Stale/quarantined descriptors are excluded from advertised tools. Tier changes and input_schema changes are detected via hash mismatch."
+  },
+  "content_light": true
+}

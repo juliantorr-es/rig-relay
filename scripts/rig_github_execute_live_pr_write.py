@@ -20,6 +20,10 @@ import argparse
 import json
 from pathlib import Path
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.integrations.github_provider._code_scanning_live_pr_rehearsal import (
     build_operator_checklist,
     build_live_pr_rehearsal,
@@ -231,6 +235,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--summary", action="store_true")
     parser.add_argument("--generated-at-utc", type=str, default=None)
     args = parser.parse_args(argv)
+
+    live_requested = all([
+        args.execute_remote_mutation,
+        args.i_understand_this_creates_a_real_pr,
+        args.allow_live_writes,
+    ])
+
+    if live_requested:
+        governed = require_governed_execution_with_evidence(
+            script_name="rig_github_execute_live_pr_write",
+            authority_tier="remote_mutation",
+            capability_id="github_live_pr_write",
+            execute_requested=True,
+            allow_mutation=True,
+            allow_network=True,
+        )
+        if governed.decision.decision.value in {"blocked", "requires_review"}:
+            result = emit_structured_result(
+                script_name="rig_github_execute_live_pr_write",
+                authority_tier="remote_mutation",
+                capability_id="github_live_pr_write",
+                dry_run=False,
+                execute_requested=True,
+                decision=governed.decision,
+                status="blocked_by_governance",
+                can_execute=governed.can_execute,
+                evidence_ref=governed.evidence_ref,
+                evidence_status=governed.evidence_status,
+            )
+            print(json.dumps(result, indent=2))
+            return 1
 
     report = run_live_pr_write(
         execute_remote=args.execute_remote_mutation,

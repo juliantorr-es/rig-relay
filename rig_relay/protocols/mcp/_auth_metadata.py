@@ -1,4 +1,4 @@
-"""MCP auth metadata — tool provenance hashes and per-user authorization."""
+"""MCP auth metadata — tool provenance hashes, descriptor identity, and per-user authorization."""
 
 from __future__ import annotations
 
@@ -8,7 +8,12 @@ import hashlib
 import json
 from typing import Any
 
-from rig_relay.protocols.mcp.models import MCPTool, MCPToolTier
+from rig_relay.protocols.mcp.models import (
+    MCPDescriptorIdentity,
+    MCPTool,
+    MCPToolTier,
+    compute_descriptor_hash,
+)
 
 
 def _sha256(data: str) -> str:
@@ -134,9 +139,39 @@ class MCPPerUserAuthorization:
         }
 
 
+def build_descriptor_identity(tool: MCPTool, version: int = 1) -> MCPDescriptorIdentity:
+    descriptor_hash = compute_descriptor_hash(tool)
+
+    return MCPDescriptorIdentity(
+        descriptor_id=f"desc-mcp-{_sha256(tool.name + descriptor_hash)[:16]}",
+        descriptor_version=version,
+        descriptor_hash=descriptor_hash,
+        schema_version="rig.relay.mcp.descriptor.v1",
+        tool_name=tool.name,
+        capability_id=f"rig.{tool.name}",
+        authority_tier=int(tool.tier),
+        mutation_class=_mutation_class_for_tool(tool),
+        read_only_hint=tool.tier.value < MCPToolTier.PATCH_PROPOSAL.value,
+        input_schema_hash=_sha256(
+            json.dumps(tool.input_schema, sort_keys=True) if tool.input_schema else "{}"
+        ),
+    )
+
+
+def _mutation_class_for_tool(tool: MCPTool) -> str | None:
+    if tool.tier.value >= MCPToolTier.MUTATION.value:
+        return "FILE_WRITE"
+    if tool.tier.value == MCPToolTier.PATCH_PROPOSAL.value:
+        return "FILE_WRITE"
+    if tool.tier.value == MCPToolTier.GIT_RELEASE.value:
+        return "WORKTREE_CHECKPOINT"
+    return "read_only"
+
+
 __all__ = [
     "MCPPerUserAuthorization",
     "MCPToolAuthMetadata",
+    "build_descriptor_identity",
     "build_mcp_auth_metadata",
     "compute_tool_provenance_hash",
 ]

@@ -15,9 +15,12 @@ Provenance (Rig-to-Relay porting doctrine):
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from enum import StrEnum
+import hashlib
+import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GovernanceDecisionKind(StrEnum):
@@ -87,28 +90,54 @@ class AllowedIntent(BaseModel):
     reason: str | None = None
 
 
+def _generate_decision_id(workspace_id: str | None, gate: str, timestamp: str) -> str:
+    seed = json.dumps(
+        {"workspace_id": workspace_id or "", "gate": gate, "timestamp": timestamp},
+        sort_keys=True,
+    )
+    return f"gd-{hashlib.sha256(seed.encode('utf-8')).hexdigest()[:16]}"
+
+
 class GateDecision(BaseModel):
     """The result of evaluating an action against a governance gate.
 
     Fields:
         schema_version: Schema version identifier.
+        decision_id: Content-light deterministic decision identifier.
         workspace_id: Optional workspace context identifier.
         decision: The governance decision outcome.
         gate: Name of the gate that produced this decision.
         reasons: List of reasons contributing to the decision.
         allowed_intents: Intents explicitly allowed by this decision.
         blocked_intents: Intents explicitly blocked by this decision.
+        surface: Optional surface identifier (cockpit, cli, mcp, acp, a2a, ssh, hosted).
+        authority_tier: Optional authority tier (from cross_surface_authority_spine).
+        capability_id: Optional capability identifier.
+        request_id: Optional correlation id for cross-surface tracing.
+        content_light: Always true — this decision contains only hashes and identifiers.
+        generated_at: ISO 8601 timestamp of decision generation.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "rig.relay.governance_decision.v1"
+    decision_id: str = Field(
+        default_factory=lambda: _generate_decision_id(
+            None, "", datetime.now(UTC).isoformat()
+        )
+    )
     workspace_id: str | None = None
     decision: GovernanceDecisionKind
     gate: str
     reasons: list[DecisionReason] = []
     allowed_intents: list[AllowedIntent] = []
     blocked_intents: list[BlockedIntent] = []
+    surface: str | None = None
+    authority_tier: str | None = None
+    capability_id: str | None = None
+    request_id: str | None = None
+    content_light: bool = True
+    generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 __all__ = [

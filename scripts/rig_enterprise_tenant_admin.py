@@ -19,6 +19,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.enterprise.tenancy import Tenant, TenantRegistry, TenantScope
 from rig_relay.enterprise.tenant_permissions import (
     TenantPermission,
@@ -29,6 +33,7 @@ from rig_relay.enterprise.tenant_topology import TenantTopologyProjection
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / ".build" / "rig-relay" / "tenants" / "registry.v1.json"
 CONFIG_DIR = REPO_ROOT / ".build" / "rig-relay" / "tenants"
+RESULT_JSON = REPO_ROOT / ".build" / "rig-relay" / "cli" / "tenant_admin_result.json"
 
 
 def _load_registry() -> TenantRegistry:
@@ -75,7 +80,99 @@ def _save_registry(registry: TenantRegistry) -> None:
     )
 
 
+def _cli_governance_result(
+    args: argparse.Namespace,
+    governed: Any,
+    script_name: str,
+    capability_id: str,
+    authority_tier: str = "admin_configuration",
+    dry_run: bool | None = None,
+) -> dict[str, Any]:
+    d = governed.decision
+    return emit_structured_result(
+        script_name=script_name,
+        authority_tier=authority_tier,
+        capability_id=capability_id,
+        dry_run=dry_run if dry_run is not None else not args.execute,
+        execute_requested=args.execute,
+        decision=d,
+        status=(
+            "blocked_by_governance"
+            if (args.execute and d.decision.value in {"blocked", "requires_review"})
+            else ("dry_run" if not args.execute else "executed")
+        ),
+        can_execute=governed.can_execute if hasattr(governed, "can_execute") else None,
+        evidence_ref=governed.evidence_ref
+        if hasattr(governed, "evidence_ref")
+        else None,
+        evidence_status=governed.evidence_status
+        if hasattr(governed, "evidence_status")
+        else None,
+    )
+
+
+def _print_blocked(args: argparse.Namespace, governed: Any) -> None:
+    if args.json:
+        r = _cli_governance_result(args, governed, "", "")
+        print(json.dumps(r, indent=2))
+    else:
+        d = governed.decision
+        print(f"BLOCKED: {d.decision.value}")
+        for reason in d.reasons:
+            print(f"  {reason.code}: {reason.message}")
+        if (
+            hasattr(governed, "evidence_status")
+            and governed.evidence_status == "persistence_failed"
+        ):
+            print("  EVIDENCE: persistence failed — mutation blocked (fail-closed)")
+
+
+def _print_dry_run(
+    args: argparse.Namespace,
+    governed: Any,
+    script_name: str,
+    capability_id: str,
+    msg: str,
+) -> None:
+    if args.json:
+        r = _cli_governance_result(
+            args, governed, script_name, capability_id, dry_run=True
+        )
+        r["status"] = "dry_run"
+        print(json.dumps(r, indent=2))
+    else:
+        print(f"DRY-RUN: {msg} Pass --execute to proceed.")
+
+
 def cmd_register(args: argparse.Namespace) -> int:
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_enterprise_tenant_admin/register",
+        authority_tier="admin_configuration",
+        capability_id="tenant_register",
+        execute_requested=args.execute,
+    )
+
+    if args.execute and governed.decision.decision.value in {
+        "blocked",
+        "requires_review",
+    }:
+        _print_blocked(args, governed)
+        return 1
+
+    if not args.execute:
+        _print_dry_run(
+            args,
+            governed,
+            "rig_enterprise_tenant_admin/register",
+            "tenant_register",
+            f"Would register tenant '{args.tenant_id}' with scope '{args.scope}'.",
+        )
+        return 0
+
+    if not governed.can_execute:
+        _print_blocked(args, governed)
+        return 1
+
     registry = _load_registry()
     if registry.get(args.tenant_id) is not None:
         print(f"Tenant '{args.tenant_id}' already registered.")
@@ -134,6 +231,34 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_grant(args: argparse.Namespace) -> int:
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_enterprise_tenant_admin/grant",
+        authority_tier="admin_configuration",
+        capability_id="tenant_permission_grant",
+        execute_requested=getattr(args, "execute", False),
+    )
+
+    if getattr(args, "execute", False) and governed.decision.decision.value in {
+        "blocked",
+        "requires_review",
+    }:
+        _print_blocked(args, governed)
+        return 1
+
+    if not getattr(args, "execute", False):
+        _print_dry_run(
+            args,
+            governed,
+            "rig_enterprise_tenant_admin/grant",
+            "tenant_permission_grant",
+            f"Would grant '{args.permission}' to tenant '{args.tenant_id}'.",
+        )
+        return 0
+
+    if not governed.can_execute:
+        _print_blocked(args, governed)
+        return 1
+
     registry = _load_registry()
     evaluator = TenantPermissionEvaluator(registry)
 
@@ -167,6 +292,34 @@ def cmd_grant(args: argparse.Namespace) -> int:
 
 
 def cmd_revoke(args: argparse.Namespace) -> int:
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_enterprise_tenant_admin/revoke",
+        authority_tier="admin_configuration",
+        capability_id="tenant_permission_revoke",
+        execute_requested=getattr(args, "execute", False),
+    )
+
+    if getattr(args, "execute", False) and governed.decision.decision.value in {
+        "blocked",
+        "requires_review",
+    }:
+        _print_blocked(args, governed)
+        return 1
+
+    if not getattr(args, "execute", False):
+        _print_dry_run(
+            args,
+            governed,
+            "rig_enterprise_tenant_admin/revoke",
+            "tenant_permission_revoke",
+            f"Would revoke '{args.permission}' from tenant '{args.tenant_id}'.",
+        )
+        return 0
+
+    if not governed.can_execute:
+        _print_blocked(args, governed)
+        return 1
+
     registry = _load_registry()
     evaluator = TenantPermissionEvaluator(registry)
 
@@ -227,6 +380,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="rig-enterprise-tenant-admin",
         description="Rig Enterprise Tenant Admin: register, list, manage permissions, inspect topology.",
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute mutations (register, grant, revoke). Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
     )
     sub = parser.add_subparsers(dest="command")
 

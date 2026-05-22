@@ -155,7 +155,7 @@ class SessionLifecycleFinalizeTool:
                     size_bytes_before=candidate.size_bytes,
                     category=candidate.category.value,
                     status="candidate",
-                    reason=candidate.reason,
+                    reason=getattr(candidate, "reason", "compaction candidate"),
                 )
             )
 

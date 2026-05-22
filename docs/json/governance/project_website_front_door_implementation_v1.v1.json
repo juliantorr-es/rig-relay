@@ -1,0 +1,61 @@
+{
+  "schema_version": "rig.relay.project_website_front_door_implementation.v1",
+  "document_id": "project-website-front-door-implementation-v1",
+  "title": "Project Website Product Front Door Implementation v1 — Rig Relay",
+  "generated_at": "2026-05-21T12:15:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "source_design_artifacts": [
+    "docs/json/governance/project_website_front_door_design_spec_v1.v1.json",
+    "docs/json/governance/project_website_positioning_matrix_v1.v1.json",
+    "docs/json/governance/project_website_overclaim_guardrails_v1.v1.json",
+    "docs/json/governance/project_website_evidence_link_map_v1.v1.json"
+  ],
+  "homepage_source_path": "docs/json/site/product_front_door_v1.v1.json",
+  "files_changed": [
+    "docs/json/site/product_front_door_v1.v1.json (new — canonical front door source)",
+    "scripts/rig_site_render.py (added _load_front_door function; wired front_door into site_meta dict)",
+    "rig_relay/site_renderer/templates/index.html.j2 (updated template to render product front door sections when front_door is available, with backward-compatible fallback)"
+  ],
+  "generated_output": ".build/rig-relay/site/index.html (33,995 bytes)",
+  "homepage_sections_implemented": [
+    {"section": "Hero", "source": "product_front_door_v1.v1.json.hero", "status": "rendered"},
+    {"section": "Problem", "source": "product_front_door_v1.v1.json.problem", "status": "rendered"},
+    {"section": "Product Pillars (8 cards with status chips)", "source": "product_front_door_v1.v1.json.pillars", "status": "rendered"},
+    {"section": "Trust Pipeline (8 steps with status chips)", "source": "product_front_door_v1.v1.json.trust_pipeline", "status": "rendered"},
+    {"section": "Enterprise Posture", "source": "product_front_door_v1.v1.json.enterprise_posture", "status": "rendered"},
+    {"section": "Static Evidence Site", "source": "product_front_door_v1.v1.json.evidence_site", "status": "rendered"},
+    {"section": "Metrics (schemas, tests, pages, gate verdict)", "source": "site_meta (existing)", "status": "rendered"},
+    {"section": "What We Claim / What We Do Not Claim", "source": "governance artifacts", "status": "rendered"},
+    {"section": "Deferred Seams", "source": "remaining_seams", "status": "rendered"},
+    {"section": "Evidence Index (all pages)", "source": "site_meta.pages", "status": "rendered"}
+  ],
+  "evidence_links_validated": "Partially — link_map URLs correspond to existing evidence pages. Full link verification requires render cycle with all pages available in .build/rig-relay/site/pages/. Current render: 11 pages, all links resolve within the generated site.",
+  "overclaim_scan_result": {
+    "scan_command": "python regex scan of rendered HTML for 13 forbidden claim strings",
+    "result": "False positive — A2A federation appears in the 'What We Do Not Claim' section, which is correct (it is a rejected claim, not a stated claim). No forbidden claims appear in affirmative sections.",
+    "verdict": "PASS"
+  },
+  "visual_direction_implemented": {
+    "hero": "Graphite-dark (#1a1a2e) theme color. Product-focused CTA buttons.",
+    "pillar_cards": "8 cards with status chips (implemented/partial/planned). Source artifacts linked.",
+    "trust_pipeline": "8-step pipeline with status chips. Each step has copy and status indicator."
+  },
+  "backward_compatibility": "If product_front_door_v1.v1.json is not found, the template falls back to the original homepage content. All existing pages and evidence index are preserved.",
+  "validations": {
+    "static_render": "success — 11 pages, 0 failed, 700ms",
+    "json_syntax": "product_front_door_v1.v1.json valid",
+    "schema_validation": "all schemas valid",
+    "overclaim_scan": "PASS — 1 false positive (rejected claim section)",
+    "pyright": "not run on renderer (pre-existing errors unrelated to this change)"
+  },
+  "remaining_websites_seams": [
+    "Pillar card status chips do not have distinct CSS colors — all cards share same background. CSS needs .pillar-implemented, .pillar-partial, .pillar-planned styles.",
+    "Trust pipeline steps render as generic cards without distinct pipeline CSS (step arrows/numbering).",
+    "Product front door not yet copied to docs/index.html (currently in .build/rig-relay/site/).",
+    "SEO/social preview meta tags updated correctly but og:image still points to existing rig-relay-card.svg."
+  ],
+  "dependency_changes": "None",
+  "content_light_implications": "No raw code, secrets, or private paths in rendered homepage. All claims cite source artifacts.",
+  "next_recommended_website_slice": "Add distinct CSS for pillar status chips and trust pipeline visual. Copy rendered index from .build/ to docs/ if deployment pipeline expects docs/index.html."
+}

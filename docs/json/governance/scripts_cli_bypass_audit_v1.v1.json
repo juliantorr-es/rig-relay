@@ -1,0 +1,35 @@
+{
+  "schema_version": "rig.relay.scripts_cli_bypass_audit.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "Scripts / CLI Bypass Audit v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "summary": "121 scripts with no unified taxonomy, no consistent dry-run default, no consistent schema validation boundary, no consistent auth model. Three critical bypass risks found. Only 3 scripts are properly gated (triple-flag confirmation for GitHub PR execution, dry-run default for auth check, read-only by design for security packet execution).",
+  "mutation_capable_scripts": [
+    {"script": "rig_enterprise_tenant_admin.py", "potential_mutations": ["register tenant", "grant permissions", "revoke permissions"], "dry_run_default": false, "structured_json_output": true, "evidence_receipt": false, "approval_check": false, "governance_spine_called": false, "dirty_file_preservation": false, "markdown_evidence_risk": false, "raw_content_leak_risk": false, "severity": "high", "recommendation": "Gate all register/grant/revoke operations through governance engine. Dry-run by default. Require operator approval for non-dry-run."},
+    {"script": "rig_enterprise_fleet_admin.py", "potential_mutations": ["start all fleet", "stop all fleet", "restart degraded fleet"], "dry_run_default": false, "structured_json_output": true, "evidence_receipt": false, "approval_check": false, "governance_spine_called": false, "dirty_file_preservation": false, "markdown_evidence_risk": false, "raw_content_leak_risk": false, "severity": "high", "recommendation": "Gate fleet start/stop/restart through governance engine. Dry-run by default."},
+    {"script": "rig_github_live_mutation_preflight.py", "potential_mutations": ["write to governance directory"], "dry_run_default": false, "structured_json_output": true, "evidence_receipt": false, "approval_check": false, "governance_spine_called": false, "dirty_file_preservation": false, "markdown_evidence_risk": false, "raw_content_leak_risk": false, "severity": "medium", "recommendation": "Gate governance-directory writes through approval."},
+    {"script": "rig_github_execute_live_pr_write.py", "potential_mutations": ["create real GitHub PR"], "dry_run_default": true, "structured_json_output": true, "evidence_receipt": true, "approval_check": true, "governance_spine_called": false, "dirty_file_preservation": false, "markdown_evidence_risk": false, "raw_content_leak_risk": false, "severity": "compliant", "recommendation": "Triple-flag gate properly implemented. Add governance spine call before allowing --execute-remote-mutation."}
+  ],
+  "script_categories": {
+    "read_only": {"estimated_count": 45, "examples": ["rig_github_live_auth_check.py", "rig_github_security_packet_execution.py", "rig_relay_dependency_audit.py"]},
+    "local_mutation": {"estimated_count": 12, "examples": ["rig_relay_sessions_compact.py", "rig_relay_compact_artifacts.py"]},
+    "remote_mutation": {"estimated_count": 6, "examples": ["rig_github_execute_live_pr_write.py"]},
+    "admin_config": {"estimated_count": 10, "examples": ["rig_enterprise_tenant_admin.py", "rig_enterprise_fleet_admin.py"]},
+    "evidence_generation": {"estimated_count": 15, "examples": ["rig_relay_create_telemetry_bundle.py"]},
+    "docs_site_generation": {"estimated_count": 3, "examples": ["render_static_docs.py"]},
+    "provider_github": {"estimated_count": 20, "examples": ["rig_github_*.py"]},
+    "telemetry_export_debug": {"estimated_count": 10, "examples": ["rig_relay_create_telemetry_bundle.py"]}
+  },
+  "key_gaps": [
+    "No unified command taxonomy — scripts use inconsistent flag names, output formats, and auth models",
+    "No consistent dry-run default — mutation scripts should default to dry-run but do not",
+    "No consistent schema validation boundary — some scripts emit structured JSON, others emit ad-hoc output",
+    "No consistent auth model — auth varies per-script (env vars, keychain, GitHub App auth, none)",
+    "Scripts bypass intent gating — the cockpit's intent system has no jurisdiction over scripts",
+    "Scripts can mutate without cockpit approval — no cross-surface approval path for script- initiated mutations",
+    "121 scripts with no discovery taxonomy — hard to audit which scripts exist and what they do"
+  ],
+  "revision": "1.0.0"
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": "rig.relay.scripts_cli_governance_unification_scope.v1",
+  "audit_id": "scripts-cli-authority-taxonomy-v1",
+  "title": "Scripts and CLI Governance Unification Scope v1",
+  "generated_at": "2026-05-21T03:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "principle": "Gate mutations without breaking legitimate read-only, report, docs, and validation workflows. Unify on dry-run-by-default for all mutation scripts. Require structured JSON output for all scripts. Integrate all mutation scripts with governance engine.",
+  "top_20_gating_priorities": [
+    {"priority": 1, "script": "scripts/rig_enterprise_tenant_admin.py", "severity": "blocker", "action": "Gate all register/grant/revoke through governance engine. Require operator approval receipt. Dry-run by default."},
+    {"priority": 2, "script": "scripts/rig_enterprise_fleet_admin.py", "severity": "blocker", "action": "Gate start/stop/restart through governance engine. Require operator approval receipt. Dry-run by default."},
+    {"priority": 3, "script": "scripts/rig_github_execute_live_pr_write.py", "severity": "blocker", "action": "Replace triple-flag ad-hoc gate with HMAC-signed approval receipt verification. Require GitHub Trust Spine pass before any live PR mutation."},
+    {"priority": 4, "script": "scripts/rig_github_publish_pr.py", "severity": "blocker", "action": "Gate PR publish through governance engine. Require approval receipt."},
+    {"priority": 5, "script": "scripts/rig_github_pr_mutation_chaos_lab.py", "severity": "high", "action": "Gate chaos lab mutations through governance. Require trust-spine verification."},
+    {"priority": 6, "script": "scripts/rig_relay_sessions_gc.py", "severity": "high", "action": "Require dry-run default. Show what would be deleted. Require confirmation flag. Produce deletion receipt."},
+    {"priority": 7, "script": "scripts/rig_relay_gc_artifacts.py", "severity": "high", "action": "Require dry-run default. Show retention policy evaluation. Require confirmation flag. Produce deletion receipt."},
+    {"priority": 8, "script": "scripts/rig_relay_cleanup_coordination_leases.py", "severity": "high", "action": "Require dry-run default. Show which leases would be released. Require confirmation. Produce release receipt."},
+    {"priority": 9, "script": "scripts/rig_relay_sessions_compact.py", "severity": "high", "action": "Require explicit --delete-originals flag to delete JSONL after Parquet compaction. Default to keep-original."},
+    {"priority": 10, "script": "scripts/rig_relay_compact_artifacts.py", "severity": "high", "action": "Same as sessions_compact — require explicit delete flag. Default to keep-original."},
+    {"priority": 11, "script": "scripts/bump_version.py", "severity": "medium", "action": "Require dry-run default. Show version change. Require confirmation flag to actually write."},
+    {"priority": 12, "script": "scripts/prepare_release.py", "severity": "medium", "action": "Gate git remote/tag operations. Require dry-run default. Show git operations before execution."},
+    {"priority": 13, "script": "scripts/refactor_large_files.py", "severity": "medium", "action": "Require dry-run default. Show split plan. Check dirty-file preservation. Require confirmation."},
+    {"priority": 14, "script": "scripts/rig_relay_upload_google_drive.py", "severity": "medium", "action": "Already dry-run by default — compliant. Add governance receipt for non-dry-run uploads."},
+    {"priority": 15, "script": "scripts/rig_relay_contribute_telemetry_bundle.py", "severity": "medium", "action": "Already consent-gated — compliant. Add governance receipt for contribution."},
+    {"priority": 16, "script": "scripts/rig_github_live_mutation_preflight.py", "severity": "medium", "action": "Gate governance-dir writes through approval. Require output to .build/ not docs/json/governance/ by default."},
+    {"priority": 17, "script": "scripts/render_static_docs.py", "severity": "low", "action": "Add public/private classification check before output. Reject internal_only docs from publish."},
+    {"priority": 18, "script": "scripts/rig_relay_spawn_session.py", "severity": "low", "action": "Add governance pre-flight. Emit surface registration evidence."},
+    {"priority": 19, "script": "scripts/backfill_doc_disclosure.py", "severity": "low", "action": "Require dry-run default. Show files to be modified. Require confirmation."},
+    {"priority": 20, "script": "scripts/bulk_convert_docs.py", "severity": "low", "action": "Require dry-run default. Show conversion plan. Require confirmation."}
+  ],
+  "quick_wins": [
+    "Add --dry-run flag to all scripts that mutate and don't have it (15 scripts)",
+    "Add --json flag to all scripts that lack structured output (34 scripts)",
+    "Add governance receipt emission to all mutation-capable scripts (28 scripts)",
+    "Add content-light scanning to all script output paths",
+    "Document the CLI command taxonomy in AGENTS.md so agents know which commands exist"
+  ],
+  "blocked_deferred": [
+    {"script": "scripts/migrate_vibe_to_rig.py", "reason": "One-shot migration already completed. Keep as historical artifact."},
+    {"script": "scripts/perform_migration.py", "reason": "Content migration tool. Keep as historical artifact."}
+  ],
+  "required_command_families": [
+    {"family": "validate", "commands": ["rig_relay_validate_schemas", "rig_relay_validate_ide_manifest", "rig_relay_validate_telemetry_bundle", "rig_release_gate_validate", "rig_rc_golden_path_check", "rig_rc_installability_check", "rig_rc_security_repository_hygiene", "rig_relay_doctor"], "authority_tier": "read_only_projection"},
+    {"family": "report", "commands": ["rig_relay_current_state", "rig_relay_sessions_audit", "rig_relay_storage_audit", "rig_relay_dependency_audit", "rig_relay_release_coherence_audit", "rig_relay_release_evidence_gate", "analyze_relay_tool_usage"], "authority_tier": "read_only_projection"},
+    {"family": "docs", "commands": ["render_static_docs", "rig_site_render", "rig_relay_docs_artifacts", "rig_relay_select_code_schemas"], "authority_tier": "public_static_projection"},
+    {"family": "evidence", "commands": ["rig_relay_create_telemetry_bundle", "rig_relay_create_chatgpt_dev_bundle", "rig_relay_create_review_packet", "rig_relay_create_sprint_cockpit", "rig_relay_dataset_export", "rig_ci_evidence"], "authority_tier": "local_mutation"},
+    {"family": "lifecycle", "commands": ["rig_relay_sessions_compact", "rig_relay_sessions_gc", "rig_relay_gc_artifacts", "rig_relay_compact_artifacts", "rig_relay_cleanup_coordination_leases"], "authority_tier": "local_mutation"},
+    {"family": "provider", "commands": ["rig_github_*", "rig_google_workspace_*", "rig_provider_operating_picture_registry"], "authority_tier": "remote_mutation"},
+    {"family": "release", "commands": ["package_release", "prepare_release", "bump_version", "rig_release_candidate_smoke"], "authority_tier": "local_mutation"},
+    {"family": "migration", "commands": ["bulk_convert_docs", "backfill_doc_disclosure", "migrate_vibe_to_rig", "perform_migration"], "authority_tier": "local_mutation"},
+    {"family": "admin", "commands": ["rig_enterprise_*"], "authority_tier": "admin_configuration"}
+  ],
+  "proposed_dry_run_defaults": {
+    "principle": "All mutation-capable scripts must default to dry-run. Mutation occurs only with explicit --execute or --confirm flag.",
+    "flags": ["--execute (execute after plan shown)", "--confirm (confirm dangerous operation)", "--force (skip confirmation, requires admin receipt)"],
+    "required_for": ["all scripts in lifecycle, provider, release, migration, admin families"]
+  },
+  "proposed_structured_output_contract": {
+    "principle": "All scripts must produce structured JSON output on --json flag. Console output is for humans; --json is for pipeline/audit.",
+    "required_fields": ["schema_version", "command", "generated_at", "status (dry_run|executed|failed)", "action_description", "files_affected (hashes only)", "evidence_receipt_id (if mutation)", "error (if failed)"],
+    "required_for": "all 132 scripts"
+  },
+  "tests_required_for_unification": [
+    {"test": "test_all_mutation_scripts_have_dry_run_default", "classification": "contract"},
+    {"test": "test_all_mutation_scripts_emit_structured_json", "classification": "contract"},
+    {"test": "test_admin_scripts_require_approval_receipt", "classification": "contract"},
+    {"test": "test_github_mutation_scripts_require_trust_spine", "classification": "contract"},
+    {"test": "test_delete_scripts_default_to_dry_run", "classification": "contract"},
+    {"test": "test_static_docs_enforce_public_private_split", "classification": "contract"},
+    {"test": "test_all_scripts_classified_in_taxonomy", "classification": "contract"},
+    {"test": "test_no_script_mutates_without_governance_check", "classification": "adversarial"}
+  ],
+  "no_overrun_guards": [
+    "Do not implement governance runtime fixes — this mission is inventory only",
+    "Do not modify scripts during this mission — classification only",
+    "Do not refactor CLI entrypoints — gating comes in a follow-up slice",
+    "Do not delete or rename scripts — taxonomy is additive",
+    "Do not add dependencies — all gating uses existing canonical dependencies",
+    "Do not gate read-only scripts — 93 scripts must continue to work without governance overhead",
+    "Do not break GitHub workflows — CI, release, and pages workflows are out of scope for CLI governance unification"
+  ],
+  "revision": "1.0.0"
+}

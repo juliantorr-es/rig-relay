@@ -1,0 +1,36 @@
+{
+  "schema_version": "rig.relay.cross_surface_common_envelope_gap_map.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "Cross-Surface Common Envelope Gap Map v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "reference": "docs/json/governance/cross_surface_evidence_schema_spine_v1.v1.json — 23 common envelope fields",
+  "surfaces_compared": ["MCP", "ACP", "A2A", "cockpit/WebSocket", "GitHub provider", "scripts/CLI", "AgentLoop", "ReceiptEnvelope"],
+  "field_gap_matrix": {
+    "envelope_id": {"ReceiptEnvelope": "has", "MCP": "missing", "ACP": "missing", "A2A": "has", "cockpit": "missing", "GitHub": "missing", "scripts": "per_script", "AgentLoop": "missing"},
+    "request_id": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "has (task_id)", "cockpit": "missing", "GitHub": "has (attempt_id)", "scripts": "missing", "AgentLoop": "missing"},
+    "session_id": {"ReceiptEnvelope": "partial (on subject)", "MCP": "missing", "ACP": "has", "A2A": "missing", "cockpit": "has", "GitHub": "missing", "scripts": "missing", "AgentLoop": "has"},
+    "mission_id": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "actor_id": {"ReceiptEnvelope": "partial (actor_kind)", "MCP": "missing", "ACP": "missing", "A2A": "partial (agent_card)", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "surface": {"ReceiptEnvelope": "partial (receipt_kind)", "MCP": "missing", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "authority_tier": {"ReceiptEnvelope": "missing", "MCP": "has (tier on MCPTool)", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "capability_id": {"ReceiptEnvelope": "partial (subject_kind)", "MCP": "has (tool name)", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "input_hash": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "has (input_hash)", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "output_hash": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "has (output_hash)", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "payload_schema": {"ReceiptEnvelope": "has (evidence_schema)", "MCP": "partial (input_schema)", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "partial (schema_version)", "scripts": "missing", "AgentLoop": "missing"},
+    "approval_receipt_id": {"ReceiptEnvelope": "missing", "MCP": "advisory only", "ACP": "missing", "A2A": "missing", "cockpit": "has (authorization_receipt)", "GitHub": "advisory only", "scripts": "missing", "AgentLoop": "missing"},
+    "trace_id": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "missing", "cockpit": "has (on refusals)", "GitHub": "missing", "scripts": "missing", "AgentLoop": "has (in telemetry)"},
+    "artifact_refs": {"ReceiptEnvelope": "missing", "MCP": "missing", "ACP": "missing", "A2A": "missing", "cockpit": "missing", "GitHub": "missing", "scripts": "missing", "AgentLoop": "missing"},
+    "content_light_classification": {"ReceiptEnvelope": "missing", "MCP": "partial (claims true)", "ACP": "partial (claims true)", "A2A": "missing", "cockpit": "missing", "GitHub": "has (in report)", "scripts": "per_script", "AgentLoop": "missing"}
+  },
+  "worst_gap_surfaces": ["MCP — 14 of 15 fields missing", "scripts/CLI — 12+ fields missing (per-script, inconsistent)", "cockpit/WebSocket — 11 fields missing from bridge messages"],
+  "best_surfaces": ["A2A — 5 fields present (input_hash, output_hash, task_id, agent_card, receipt_id)", "ReceiptEnvelope — 6 fields present or partial (but missing authority_tier, trace_id, session_id at top level)"],
+  "minimum_fix": {
+    "description": "Add surface, authority_tier, session_id, trace_id, and request_id to ReceiptEnvelope. Wrap all cross-surface events in ReceiptEnvelope or equivalent common envelope before emission. Every tool call, intent, bridge message, ACP exchange, and A2A task must carry at minimum: envelope_id, surface, authority_tier, session_id, request_id, trace_id, content_light_classification.",
+    "affected_models": ["ReceiptEnvelope", "BridgeMessage", "MCPTool response", "ACPEditResult", "A2ATaskCard", "PhaseTraceAttributes", "Intent audit events"],
+    "scope": "medium",
+    "phase": "P0-P1"
+  },
+  "revision": "1.0.0"
+}

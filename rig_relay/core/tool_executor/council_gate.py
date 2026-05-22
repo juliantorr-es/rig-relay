@@ -31,9 +31,6 @@ class CouncilGate:
     def __init__(self, *, ctx: ToolExecutionContext) -> None:
         self._ctx = ctx
 
-    def _get_telemetry_client(self) -> Any | None:
-        return getattr(self._ctx, "telemetry_client", None)
-
     async def consult(
         self,
         tool_name: str,
@@ -43,7 +40,7 @@ class CouncilGate:
         """Return ALLOW, BLOCK, or REVIEW. Never ALLOW on failure."""
         ctx = self._ctx
         turn_id = ctx.user_message_id
-        tc = self._get_telemetry_client()
+        tc = ctx.telemetry_client
 
         if tool_class is None:
             from rig_relay.core.logger import logger

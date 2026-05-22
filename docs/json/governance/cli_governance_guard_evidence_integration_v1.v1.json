@@ -1,0 +1,78 @@
+{
+  "schema_version": "rig.relay.cli_governance_guard_evidence_integration.v1",
+  "audit_id": "cli-governance-guard-evidence-integration-v1",
+  "title": "CLI Governance Guard Evidence Integration v1",
+  "generated_at": "2026-05-21T04:30:00Z",
+  "status": "completed",
+  "content_light": true,
+  "source_artifacts": [
+    "docs/json/governance/cli_script_p0_mutation_gate_implementation_v1.v1.json",
+    "tests/governance/test_governance_decisions_as_evidence.py"
+  ],
+  "helper_changes": {
+    "file": "rig_relay/cli/governance_guard.py",
+    "changes": [
+      "Added GovernedExecution dataclass with decision, can_execute, evidence_status, evidence_ref fields",
+      "Added require_governed_execution_with_evidence() — wraps require_governed_execution() + GovernanceDecisionEvidence persistence",
+      "Updated emit_structured_result() to accept can_execute, evidence_ref, evidence_status optional fields",
+      "Kept require_governed_execution() backward-compatible"
+    ],
+    "evidence_path": "require_governed_execution_with_evidence() → GovernanceDecisionEvidence(store).persist(decision) → build_governance_decision_envelope() → FilesystemReceiptStore.append()"
+  },
+  "scripts_touched": [
+    {"script": "scripts/rig_enterprise_tenant_admin.py", "changes": "Uses require_governed_execution_with_evidence() + GovernedExecution.can_execute/evidence_ref/evidence_status. Added _cli_governance_result(), _print_blocked(), _print_dry_run() helpers."},
+    {"script": "scripts/rig_enterprise_fleet_admin.py", "changes": "Uses require_governed_execution_with_evidence(). Added _handle_governed_mutation(), _emit_executed_result() helpers. Evidence fields in --json output."},
+    {"script": "scripts/rig_github_execute_live_pr_write.py", "changes": "Uses require_governed_execution_with_evidence(). Evidence fields in blocked/error JSON output."},
+    {"script": "scripts/rig_github_publish_pr.py", "changes": "Uses require_governed_execution_with_evidence(). Evidence fields in blocked JSON output."},
+    {"script": "scripts/rig_github_pr_mutation_chaos_lab.py", "changes": "No changes — no governance gating needed (no_live_network by design)."}
+  ],
+  "evidence_persistence_behavior": {
+    "dry_run": "No evidence persistence. evidence_status=not_applicable. can_execute=True.",
+    "execute_read_only": "Governance evaluated but evidence optional. can_execute=True even without persistence.",
+    "execute_mutation_with_store": "Governance evaluated + decision persisted as ReceiptEnvelope. evidence_status=persisted. evidence_ref=envelope_id. can_execute=True.",
+    "execute_mutation_without_store": "Governance evaluated but cannot persist. evidence_status=persistence_failed. can_execute=False (fail-closed for mutation/admin tiers).",
+    "execute_blocked_by_governance": "Decision not persisted because execution is blocked. evidence_status=not_persisted. can_execute=False."
+  },
+  "fail_closed_behavior": {
+    "when": "execute_requested=True AND authority_tier in {local_mutation, remote_mutation, admin_configuration} AND evidence persistence fails (no ReceiptStore or store.append() fails)",
+    "result": "GovernedExecution.can_execute=False. evidence_status='persistence_failed'. Script must NOT execute the mutation.",
+    "rationale": "Mutation-capable operations require durable evidence trace for auditability. If the trace cannot be created, the operation must be blocked (fail-closed)."
+  },
+  "json_fields_added": {
+    "can_execute": "boolean — True if the mutation may proceed",
+    "evidence_ref": "string | null — Receipt envelope_id if persisted",
+    "evidence_status": "string — persisted | not_persisted | persistence_failed | not_applicable"
+  },
+  "tests": {
+    "added": ["tests/cli/test_governance_guard_evidence.py (10 new tests)"],
+    "updated": ["tests/cli/test_governance_guard.py (existing 8 tests — unchanged)"],
+    "test_count": 18,
+    "classifications": {
+      "unit": 0,
+      "contract": 15,
+      "real-artifact": 3,
+      "adversarial": 2,
+      "sabotage": 0,
+      "concurrency": 0,
+      "substrate": 0
+    }
+  },
+  "remaining_scripts_not_yet_gated": [
+    "scripts/rig_relay_sessions_gc.py — destructive delete, needs --execute + governance",
+    "scripts/rig_relay_gc_artifacts.py — destructive delete, needs --execute + governance",
+    "scripts/rig_relay_cleanup_coordination_leases.py — destructive delete",
+    "scripts/rig_relay_sessions_compact.py — file mutation",
+    "scripts/rig_relay_compact_artifacts.py — file mutation",
+    "scripts/bump_version.py — git mutation",
+    "scripts/prepare_release.py — git mutation",
+    "scripts/refactor_large_files.py — local file mutation",
+    "scripts/rig_relay_upload_google_drive.py — remote mutation",
+    "scripts/rig_relay_contribute_telemetry_bundle.py — remote mutation",
+    "scripts/rig_github_live_mutation_preflight.py — governance dir writes",
+    "scripts/rig_relay_spawn_session.py — agent spawn",
+    "scripts/backfill_doc_disclosure.py — doc mutation",
+    "scripts/bulk_convert_docs.py — doc mutation",
+    "scripts/render_static_docs.py — public projection"
+  ],
+  "revision": "1.0.0"
+}

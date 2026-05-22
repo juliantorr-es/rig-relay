@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import re
 import subprocess
 import sys
+
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 
 def run_git_command(
@@ -297,8 +303,69 @@ def main() -> None:
     parser.add_argument(
         "--resume", action="store_true", help="Resume after cherry-picking commits"
     )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute release preparation. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
 
     args = parser.parse_args()
+
+    governed = require_governed_execution_with_evidence(
+        script_name="prepare_release",
+        authority_tier="local_mutation",
+        capability_id="release_prep",
+        execute_requested=args.execute,
+    )
+
+    if args.execute and not governed.can_execute:
+        r = emit_structured_result(
+            script_name="prepare_release",
+            authority_tier="local_mutation",
+            capability_id="release_prep",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print(
+                    "  EVIDENCE: persistence failed — release prep blocked (fail-closed)"
+                )
+        sys.exit(1)
+
+    if not args.execute:
+        print(
+            f"DRY-RUN: Would prepare release for version {args.version}. "
+            f"Pass --execute to proceed."
+        )
+        if args.json:
+            r = emit_structured_result(
+                script_name="prepare_release",
+                authority_tier="local_mutation",
+                capability_id="release_prep",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        sys.exit(0)
+
     current_version = args.version
     squash = args.squash
 

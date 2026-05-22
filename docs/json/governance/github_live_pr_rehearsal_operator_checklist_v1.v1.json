@@ -1,5 +1,4 @@
 {
-  "schema_version": "rig.github.live_pr_rehearsal_operator_checklist.v1",
   "repository": "OWNER/REPO",
   "base_branch": "main",
   "proposed_branch": "rig/security/governed-fix-5",

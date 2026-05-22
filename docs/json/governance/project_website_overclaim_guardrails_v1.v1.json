@@ -1,0 +1,135 @@
+{
+  "schema_version": "rig.relay.project_website_overclaim_guardrails.v1",
+  "guardrails_id": "project-website-overclaim-guardrails-v1",
+  "title": "Project Website Overclaim Guardrails v1 — Rig Relay",
+  "generated_at": "2026-05-21T11:15:00Z",
+  "description": "Explicit allowlist and denylist of claims that may appear on the Rig Relay product front door. Every allowed claim references a canonical source artifact. A website implementation or validation scan must reject any claim not on this list.",
+  "principle": "The product front door must build trust through evidence, not overstatement. If a claim cannot cite a canonical artifact that says it is complete, the claim must not appear. Status chips must accurately reflect documented state.",
+  "allowed_claims": [
+    {
+      "claim": "Cross-surface authority spine governs all protocol surfaces (cockpit, CLI, MCP, ACP, WebSocket)",
+      "source_artifact": "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+      "artifact_status": "canonical",
+      "front_door_phrasing": "One authority spine governs every surface. Cockpit, CLI, MCP, ACP, WebSocket — no surface is exempt."
+    },
+    {
+      "claim": "Governance decisions produce ReceiptEnvelope evidence with governance_decision_id and content-light classification",
+      "source_artifact": "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json",
+      "artifact_status": "completed",
+      "front_door_phrasing": "Every governance decision is recorded as schema-governed evidence with content-light classification."
+    },
+    {
+      "claim": "MCP read-only surface is hardened: descriptor integrity, roots boundary, content-light scanning, receipt-backed, non-anonymous, tier-authorized",
+      "source_artifact": "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json",
+      "artifact_status": "release_gate_PASS",
+      "front_door_phrasing": "Hardened MCP read-only surface. 16 tools, 6 resources, 3 prompts. 94/94 gate tests pass."
+    },
+    {
+      "claim": "MCP mutation tools (tier 4-5) are permanently blocked",
+      "source_artifact": "docs/json/governance/mcp_hardened_read_only_surface_release_gate_v1.v1.json",
+      "artifact_status": "blocked_by_design",
+      "front_door_phrasing": "MCP mutation tools are blocked. No agent can mutate through MCP."
+    },
+    {
+      "claim": "CLI scripts require --execute with approval receipt for mutation operations",
+      "source_artifact": "docs/json/governance/cli_governance_guard_evidence_integration_v1.v1.json",
+      "artifact_status": "implemented",
+      "front_door_phrasing": "CLI mutation gates enforce dry-run default and --execute with approval."
+    },
+    {
+      "claim": "CLI governance tests pass 59/59",
+      "source_artifact": "docs/json/governance/cli_governance_test_stabilization_v1.v1.json",
+      "artifact_status": "completed",
+      "front_door_phrasing": "59/59 CLI governance tests pass."
+    },
+    {
+      "claim": "Content-light telemetry with four-category model: product telemetry, remote contribution, operational observability, enterprise evidence",
+      "source_artifact": "docs/json/governance/enterprise_procurement_readiness_audit_v1.v1.json (dimension K)",
+      "artifact_status": "doctrine_defined",
+      "front_door_phrasing": "Content-light telemetry. Four-category model. No raw code, secrets, or private paths."
+    },
+    {
+      "claim": "Receipt-backed evidence with Merkle-linked receipt store",
+      "source_artifact": "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json",
+      "artifact_status": "implemented",
+      "front_door_phrasing": "Merkle-linked receipt store. Every tool call produces a verifiable receipt."
+    },
+    {
+      "claim": "DuckDB read-side analytics over governance decisions",
+      "source_artifact": "docs/json/governance/duckdb_governance_decisions_projection_v1.v1.json",
+      "artifact_status": "implemented",
+      "front_door_phrasing": "DuckDB read-side analytics. Query your governance data."
+    },
+    {
+      "claim": "400+ JSON schemas govern all evidence artifacts",
+      "source_artifact": "scripts/rig_relay_validate_schemas.py (420 schemas pass)",
+      "artifact_status": "validating",
+      "front_door_phrasing": "400+ schemas govern every artifact. Schema validation in CI."
+    },
+    {
+      "claim": "Local-first architecture with desktop cockpit",
+      "source_artifact": "README.md",
+      "artifact_status": "implemented",
+      "front_door_phrasing": "Local-first. Desktop cockpit. No cloud required."
+    },
+    {
+      "claim": "Dirty-file preservation prevents parallel agent lane conflicts",
+      "source_artifact": "AGENTS.md",
+      "artifact_status": "enforced",
+      "front_door_phrasing": "Dirty-file preservation. Multiple agents can work without overwriting each other."
+    },
+    {
+      "claim": "Open source under AGPL-3.0-or-later",
+      "source_artifact": "LICENSE",
+      "artifact_status": "canonical",
+      "front_door_phrasing": "Open source. AGPL-3.0-or-later."
+    }
+  ],
+  "allowed_claims_with_partial_status": [
+    {
+      "claim": "GitHub operating picture with code scanning integration and live PR rehearsal",
+      "source_artifact": "docs/json/governance/github_integration_industry_leader_audit_v1.v1.json",
+      "artifact_status": "partial",
+      "front_door_phrasing": "GitHub operating picture with code scanning integration. Trust Spine roadmap for cryptographic enforcement.",
+      "must_include_status": "partial"
+    },
+    {
+      "claim": "Postgres enterprise substrate planned for operational projection",
+      "source_artifact": "docs/json/governance/postgres_enterprise_substrate_audit_v1.v1.json",
+      "artifact_status": "planned",
+      "front_door_phrasing": "Postgres enterprise substrate planned. DuckDB available today.",
+      "must_include_status": "planned"
+    },
+    {
+      "claim": "Roadmap Steward agent for lane coordination and slice ranking",
+      "source_artifact": "docs/json/governance/roadmap_steward_agent_spec_v1.v1.json",
+      "artifact_status": "spec_only",
+      "front_door_phrasing": "Roadmap Steward spec exists. Implementation planned.",
+      "must_include_status": "spec_only"
+    }
+  ],
+  "forbidden_claims": [
+    {"claim": "SOC 2 compliant or certified", "reason": "No SOC 2 audit conducted. No operating history."},
+    {"claim": "ISO 27001 certified", "reason": "No certification. ISMS not implemented."},
+    {"claim": "GDPR compliant", "reason": "No DPA. No formal privacy program. Privacy notice is alpha."},
+    {"claim": "HIPAA compliant", "reason": "Not a healthcare tool. No BAA."},
+    {"claim": "FedRAMP authorized", "reason": "No US government sponsor. No authorization."},
+    {"claim": "Enterprise ready", "reason": "7 P0 procurement blockers remain."},
+    {"claim": "Production ready", "reason": "Alpha status. v0.1.0a1."},
+    {"claim": "Hosted SaaS available", "reason": "Local-first only. Hosted path planned, not implemented."},
+    {"claim": "MCP mutation support", "reason": "MCP mutation tiers permanently blocked."},
+    {"claim": "SSH remote agent support", "reason": "SSH must stay absent until SSH doctrine is fully implemented."},
+    {"claim": "A2A agent federation", "reason": "A2A spec exists but not implemented."},
+    {"claim": "SOC 2 Type II audited", "reason": "No audit."},
+    {"claim": "SLSA Level 3 build provenance", "reason": "No SLSA provenance generation. Build attestation not implemented."},
+    {"claim": "Supply-chain secure with SBOM published", "reason": "No SBOM generation pipeline exists."},
+    {"claim": "Signed release artifacts", "reason": "Release artifacts not cryptographically signed."}
+  ],
+  "validation_rules": {
+    "scan_before_publish": "Every generated HTML page must be scanned for forbidden claim strings before deployment.",
+    "claim_citation_required": "Every affirmative claim on the product front door must have a visible or accessible source artifact link.",
+    "status_chip_accuracy": "Status chips must match the artifact's documented status (implemented, partial, planned, deferred, blocked). 'implemented' must not appear where artifact says 'partial' or 'planned'.",
+    "forbidden_string_scan": "A CI check must scan generated static HTML for forbidden claim strings (e.g., 'SOC 2', 'enterprise ready', 'production ready'). Any match must block publish."
+  },
+  "content_light": true
+}

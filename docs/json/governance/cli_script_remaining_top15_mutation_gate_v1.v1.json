@@ -1,0 +1,40 @@
+{
+  "schema_version": "rig.relay.cli_script_remaining_top15_mutation_gate.v1",
+  "audit_id": "cli-script-remaining-top15-mutation-gate-v1",
+  "title": "CLI/Script Remaining Top-15 Mutation Gate v1",
+  "generated_at": "2026-05-21T05:30:00Z",
+  "status": "completed",
+  "content_light": true,
+  "scripts_gated": [
+    {"script": "scripts/rig_relay_sessions_gc.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--json"], "dry_run_before": true, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before destructive deletion loop", "evidence": "evidence_ref/evidence_status in -json output or BLOCKED message"},
+    {"script": "scripts/rig_relay_gc_artifacts.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--json"], "dry_run_before": true, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before run_artifact_gc", "evidence": "evidence_ref/evidence_status in -json output"},
+    {"script": "scripts/rig_relay_sessions_compact.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--json"], "dry_run_before": true, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before compaction", "evidence": "evidence_ref/evidence_status in -json output"},
+    {"script": "scripts/bump_version.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--json"], "dry_run_before": false, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before version bump and file mutation", "evidence": "evidence_ref/evidence_status in -json or DRY-RUN output"},
+    {"script": "scripts/prepare_release.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--json"], "dry_run_before": false, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before git operations", "evidence": "evidence_ref/evidence_status"},
+    {"script": "scripts/refactor_large_files.py", "authority_tier": "local_mutation", "flags_added": ["--execute", "--dry-run"], "dry_run_before": false, "dry_run_after": true, "governance": "require_governed_execution_with_evidence before AST-based splitting", "evidence": "governance check output"},
+    {"script": "scripts/rig_github_live_mutation_preflight.py", "authority_tier": "remote_mutation", "flags_added": [], "dry_run_before": true, "dry_run_after": true, "governance": "require_governed_execution_with_evidence for --live-preflight flag", "evidence": "governance check for live preflight"}
+  ],
+  "already_compliant_no_changes": [
+    "scripts/rig_relay_cleanup_coordination_leases.py — has --authorization-receipt/--dev-bypass via validate_receipt",
+    "scripts/rig_relay_upload_google_drive.py — has --authorization-receipt/--dev-bypass via validate_receipt",
+    "scripts/rig_relay_contribute_telemetry_bundle.py — consent-gated via ConsentStore",
+    "scripts/rig_relay_compact_artifacts.py — non-destructive, writes derived data only",
+    "scripts/rig_relay_spawn_session.py — read-only planner, no spawning"
+  ],
+  "low_risk_no_gate_needed": [
+    "scripts/backfill_doc_disclosure.py — additive-only, idempotent, never overwrites",
+    "scripts/bulk_convert_docs.py — additive-only, skips if JSON exists",
+    "scripts/perform_migration.py — one-shot migration tool",
+    "scripts/migrate_vibe_to_rig.py — one-shot already completed",
+    "scripts/package_release.py — build output in dist/, non-destructive",
+    "scripts/render_static_docs.py — thin shim, non-destructive HTML generation"
+  ],
+  "tests": {
+    "added": "tests/cli/test_remaining_top15_subprocess_contract.py (15 tests)",
+    "test_count": 15,
+    "classifications": {"contract": 15, "integration": 15, "adversarial": 5, "sabotage": 5},
+    "failed_pre_existing": 2,
+    "failed_reason": "ImportError in rig_relay.evidence.session_lifecycle — audit_sessions_storage removed by parallel agent lane (not caused by governance gating)"
+  },
+  "revision": "1.0.0"
+}

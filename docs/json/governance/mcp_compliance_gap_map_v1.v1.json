@@ -1,0 +1,31 @@
+{
+  "schema_version": "rig.relay.mcp_compliance_gap_map.v1",
+  "audit_id": "cross-surface-authority-compliance-audit-v1",
+  "title": "MCP Compliance Gap Map v1",
+  "generated_at": "2026-05-21T01:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "overall_status": "non_compliant — MCP must be blocked from mutation-tier operations until governance pipeline is integrated",
+  "gaps": [
+    {"gap_id": "MCP-GAP-001", "area": "real_dispatch", "current": "13 of 17 tools return hardcoded stub data. No delegation to AgentLoop, ToolExecutor, or CouncilGate.", "required": "All tools must dispatch through the governance pipeline: permission check → council consultation → tool execution → evidence envelope.", "severity": "critical", "blocker_for": "read-only utility", "offender_ids": ["OFF-002", "OFF-006"]},
+    {"gap_id": "MCP-GAP-002", "area": "descriptor_integrity", "current": "compute_tool_provenance_hash() exists in _auth_metadata.py but is never called in server.py. Tool dispatch matches by bare string name.", "required": "Tool descriptor must be hashed at registration time. Provenance hash must be verified BEFORE handler invocation at dispatch time. Mismatch → refusal.", "severity": "critical", "blocker_for": "read-only utility", "offender_ids": ["OFF-006"]},
+    {"gap_id": "MCP-GAP-003", "area": "mutation_gate", "current": "Tier-4/5 gate checks string presence of authorization_receipt. Any string passes. No cryptographic verification.", "required": "Tier-4/5 tools must be hard-blocked with cryptographic refusal until HMAC-signed, time-bound, scope-bound approval receipts are verified server-side.", "severity": "blocker", "blocker_for": "mutation", "offender_ids": ["OFF-003"]},
+    {"gap_id": "MCP-GAP-004", "area": "authentication", "current": "MCPPerUserAuthorization model exists but is never instantiated or checked. No actor_id, no user_id_hash, no session scoping, no scope enforcement, no expiry check.", "required": "Per-user auth with token-gated connection. Per-session authz with scoped tool grants. Expiry-checked. MCP client identity registered and auditable.", "severity": "blocker", "blocker_for": "hosted", "offender_ids": ["OFF-004"]},
+    {"gap_id": "MCP-GAP-005", "area": "content_light", "current": "Server advertises content_light: True but never scans tool responses for sensitive content. No content classification applied.", "required": "Integrate redaction.py content-light scanning into MCP response path. Every tool response must carry content_light_classification.", "severity": "critical", "blocker_for": "hosted", "offender_ids": ["OFF-007"]},
+    {"gap_id": "MCP-GAP-006", "area": "evidence_envelopes", "current": "Tool call results are ad-hoc dicts. No rig.relay.tool.* events emitted. None of 16 common envelope fields appear.", "required": "Emit evidence envelopes with all required fields for every MCP tool call. Include request_id, session_id, actor_id, surface (mcp), authority_tier, capability_id, input_hash, output_hash, payload_schema, etc.", "severity": "critical", "blocker_for": "audit", "offender_ids": ["OFF-008"]},
+    {"gap_id": "MCP-GAP-007", "area": "transport", "current": "Sync JSON-RPC handler missing tools/call. Async handler supports it.", "required": "Add tools/call to sync handler or reject sync transport connections with clear error.", "severity": "high", "blocker_for": "sync_transport", "offender_ids": ["OFF-013"]},
+    {"gap_id": "MCP-GAP-008", "area": "model_fields", "current": "16 cross-surface envelope fields absent from MCPTool, MCPResource, MCPPrompt, ServerCapabilities.", "required": "Add cross-surface authority spine fields to MCP models or wrap tool responses in common evidence envelope.", "severity": "high", "blocker_for": "cross_surface_correlation", "offender_ids": ["OFF-019"]},
+    {"gap_id": "MCP-GAP-009", "area": "roots", "current": "Tools use Path.cwd() directly with no workspace root boundary enforcement. No path traversal protection.", "required": "Enforce workspace root boundaries. Reject path traversal attempts with refusal envelope.", "severity": "high", "blocker_for": "workspace_safety", "offender_ids": ["OFF-027"]},
+    {"gap_id": "MCP-GAP-010", "area": "sampling", "current": "No sampling/createMessage handler. No sampling policy configuration. No capability gate for sampling.", "required": "Sampling must be gated by explicit policy. Sampling requests must produce evidence envelopes. Disable sampling until policy exists.", "severity": "medium", "blocker_for": "sampling", "offender_ids": ["OFF-037"]},
+    {"gap_id": "MCP-GAP-011", "area": "resource_exposure", "current": "MCP resources and prompts exposed without sensitivity classification.", "required": "Classify every MCP resource and prompt by sensitivity. Reject exposure of unclassified resources.", "severity": "low", "blocker_for": "resource_safety", "offender_ids": ["OFF-044"]}
+  ],
+  "mcp_tiers_doctrine": [
+    {"tier": 0, "name": "read_only", "status": "can remain enabled after P1 hardening. Must add: content-light scanning, evidence envelopes, roots enforcement, descriptor verification.", "tools": "rig.get_context, inspection tools"},
+    {"tier": 1, "name": "analysis", "status": "can remain enabled after P1 hardening. Same requirements as tier 0.", "tools": "read_receipt, search_evidence, read_council_findings, current_mission"},
+    {"tier": 2, "name": "validation", "status": "can remain enabled after P1 hardening. Same requirements as tier 0.", "tools": "inspect_schema, run_validator"},
+    {"tier": 3, "name": "patch_proposal", "status": "requires evidence envelopes + governance pipeline integration before enablement. P0 blocker.", "tools": "propose_patch, build_context_packet, create_consult_packet"},
+    {"tier": 4, "name": "mutation", "status": "BLOCKED until cryptographic approval receipt enforcement and governance pipeline integration exist. P0 blocker.", "tools": "request_approval, mutation tools"},
+    {"tier": 5, "name": "git_release", "status": "DENIED by default. Requires attestation-level approval. P4 blocker.", "tools": "No tier-5 tools currently registered"}
+  ],
+  "revision": "1.0.0"
+}

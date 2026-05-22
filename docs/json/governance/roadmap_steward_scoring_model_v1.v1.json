@@ -1,0 +1,155 @@
+{
+  "schema_version": "rig.relay.roadmap_steward_scoring_model.v1",
+  "model_id": "roadmap-steward-scoring-model-v1",
+  "title": "Roadmap Steward Scoring Model v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:30:00Z",
+  "description": "Heuristic scoring rubric for ranking candidate work slices. Each dimension scored 0-5. Weighted average produces composite score. Steward uses composite + collision analysis + operator input to produce ranked recommendations.",
+  "scoring_dimensions": [
+    {
+      "dimension": "blocker_reduction",
+      "weight": 5.0,
+      "description": "Does this slice resolve a known P0 blocker or release gate failure?",
+      "scoring_guide": {
+        "0": "No blocker impact",
+        "1": "Reduces low-risk seam",
+        "2": "Reduces medium-risk gap",
+        "3": "Reduces high-risk gap",
+        "4": "Resolves P1 blocker",
+        "5": "Resolves P0 blocker or release gate FAIL"
+      }
+    },
+    {
+      "dimension": "security_risk_reduction",
+      "weight": 4.0,
+      "description": "Does this slice close a security gap (descriptor integrity, roots, content-light, auth, injection, supply-chain)?",
+      "scoring_guide": {
+        "0": "No security impact",
+        "3": "Closes medium-risk security gap",
+        "5": "Closes critical security gap (mutation gate, injection, credential leak)"
+      }
+    },
+    {
+      "dimension": "authority_spine_alignment",
+      "weight": 4.0,
+      "description": "Does this slice move Rig Relay closer to canonical cross-surface authority spine compliance?",
+      "scoring_guide": {
+        "0": "No authority spine impact",
+        "3": "Aligns one surface with spine",
+        "5": "Aligns multiple surfaces or closes major authority gap"
+      }
+    },
+    {
+      "dimension": "evidence_replay_value",
+      "weight": 3.0,
+      "description": "Does this slice improve governance evidence discoverability, receipt manifest enrichment, or DuckDB replay projection?",
+      "scoring_guide": {
+        "0": "No evidence impact",
+        "2": "Improves receipt metadata",
+        "4": "Enables replay/audit/projection",
+        "5": "Enables cross-surface evidence replay"
+      }
+    },
+    {
+      "dimension": "roadmap_alignment",
+      "weight": 3.0,
+      "description": "Does this slice advance a declared roadmap phase (enterprise procurement, Postgres, GitHub Trust Spine, etc.)?",
+      "scoring_guide": {
+        "0": "Not on any roadmap",
+        "2": "On a roadmap but not prioritized",
+        "4": "On a P1 roadmap phase",
+        "5": "On a P0 roadmap phase"
+      }
+    },
+    {
+      "dimension": "implementation_clarity",
+      "weight": 2.0,
+      "description": "Is the implementation path clear? Are affected files known, tests designed, acceptance criteria defined?",
+      "scoring_guide": {
+        "0": "No implementation spec exists",
+        "2": "Partial spec exists",
+        "4": "Complete spec exists, tests designed",
+        "5": "Spec + tests + validation command all defined"
+      }
+    },
+    {
+      "dimension": "validation_clarity",
+      "weight": 2.0,
+      "description": "Can the slice be validated with targeted tests without running the full suite?",
+      "scoring_guide": {
+        "0": "Requires full suite or manual validation",
+        "2": "Partial test coverage exists",
+        "4": "Targeted test command exists",
+        "5": "Release gate script exists with pass/fail output"
+      }
+    },
+    {
+      "dimension": "file_ownership_safety",
+      "weight": 2.0,
+      "description": "Are the files touched by this slice free from active parallel lane edits?",
+      "scoring_guide": {
+        "0": "Touches files with active parallel lane edits (collision risk)",
+        "2": "Touches files in adjacent subsystems",
+        "4": "Touches files in isolated subsystem",
+        "5": "Documentation only — no code files touched"
+      }
+    },
+    {
+      "dimension": "laptop_cost_safety",
+      "weight": 2.0,
+      "description": "Can this slice be completed on a typical developer laptop without excessive CPU/memory/network cost?",
+      "scoring_guide": {
+        "0": "Requires cloud GPU or large-scale infrastructure",
+        "3": "Runs locally but expensive (full suite, large builds)",
+        "5": "Runs on a laptop, sub-second feedback loop"
+      }
+    },
+    {
+      "dimension": "dependency_safety",
+      "weight": 2.0,
+      "description": "Does this slice add new dependencies, change the dependency graph, or risk supply-chain issues?",
+      "scoring_guide": {
+        "0": "Adds new core dependency",
+        "2": "Adds optional/dev dependency",
+        "4": "No dependency changes",
+        "5": "Removes an unnecessary dependency"
+      }
+    },
+    {
+      "dimension": "product_visibility_value",
+      "weight": 1.0,
+      "description": "Does this slice improve the product's visible surface (cockpit, website, static docs, onboarding)?",
+      "scoring_guide": {
+        "0": "Internal-only change",
+        "2": "Improves documentation or dev UX",
+        "4": "Improves user-facing cockpit or static site",
+        "5": "Improves product front door or onboarding"
+      }
+    },
+    {
+      "dimension": "enterprise_procurement_value",
+      "weight": 1.0,
+      "description": "Does this slice directly address an enterprise procurement blocker or security review requirement?",
+      "scoring_guide": {
+        "0": "No procurement impact",
+        "3": "Partial procurement evidence",
+        "5": "Directly resolves a documented procurement blocker"
+      }
+    },
+    {
+      "dimension": "user_requested_priority",
+      "weight": 1.0,
+      "description": "Has the human operator explicitly requested this slice?",
+      "scoring_guide": {
+        "0": "Not requested",
+        "3": "Mentioned as interest area",
+        "5": "Explicitly requested by operator"
+      }
+    }
+  ],
+  "composite_formula": "sum(score_i * weight_i) / sum(weight_i)",
+  "max_composite_score": 5.0,
+  "min_composite_score": 0.0,
+  "weight_total": 32.0,
+  "ranking_tiebreaker": "blocker_reduction > security_risk_reduction > authority_spine_alignment > implementation_clarity > file_ownership_safety",
+  "content_light": true
+}

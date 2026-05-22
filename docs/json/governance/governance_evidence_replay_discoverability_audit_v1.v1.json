@@ -1,0 +1,174 @@
+{
+  "schema_version": "rig.relay.governance_evidence_replay_discoverability_audit.v1",
+  "audit_id": "governance-evidence-replay-discoverability-audit-v1",
+  "title": "Governance Evidence Replay and Discoverability Audit v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_artifacts_inspected": [
+    "rig_relay/evidence/receipt_store.py",
+    "rig_relay/evidence/receipt_envelope.py",
+    "rig_relay/evidence/receipt_index.py",
+    "rig_relay/evidence/governance_decision_evidence.py",
+    "rig_relay/evidence/audit_trail.py",
+    "rig_relay/governance/decisions.py",
+    "rig_relay/governance/governance_engine.py",
+    "rig_relay/core/governance_runtime.py",
+    "rig_relay/cli/governance_guard.py",
+    "rig_relay/protocols/mcp/server.py",
+    "tests/evidence/test_receipt_envelope.py",
+    "tests/evidence/test_receipt_store.py",
+    "tests/evidence/test_receipt_index.py",
+    "tests/governance/test_governance_decisions_as_evidence.py",
+    "tests/governance/test_cross_surface_governance_spine_p0.py",
+    "tests/cli/test_governance_guard.py",
+    "tests/cli/test_governance_guard_evidence.py",
+    "docs/schemas/rig.relay.governance_decision_evidence.v1.schema.json",
+    "docs/json/governance/governance_decisions_as_evidence_v1.v1.json",
+    "docs/json/governance/cli_governance_guard_evidence_integration_v1.v1.json",
+    "docs/json/governance/mcp_tool_call_receipt_envelope_adoption_v1.v1.json",
+    "docs/json/governance/cross_surface_common_envelope_gap_map_v1.v1.json"
+  ],
+  "evidence_artifact_inventory": [
+    {
+      "artifact_type": "GateDecision",
+      "path": "rig_relay/governance/decisions.py",
+      "schema_version": "rig.relay.governance_decision.v1",
+      "identifier_fields": ["decision_id (gd-{sha256[:16]})"],
+      "correlation_fields": ["workspace_id", "surface", "capability_id", "request_id"],
+      "content_light_fields": ["content_light (always true)", "decision_id (SHA256-derived)"],
+      "redaction_fields": ["no raw content in any field"],
+      "source_of_truth_refs": ["not yet included"],
+      "replay_suitability": "can be reconstructed from ReceiptEnvelope decision payload; no standalone persistence",
+      "current_persistence": "via GovernanceDecisionEvidence adapter wrapping ReceiptStore",
+      "current_tests": "6 tests in test_cross_surface_governance_spine_p0.py; 8 in test_governance_decisions_as_evidence.py"
+    },
+    {
+      "artifact_type": "ReceiptEnvelope",
+      "path": "rig_relay/evidence/receipt_envelope.py",
+      "schema_version": "rig.relay.receipt_envelope.v1",
+      "identifier_fields": ["envelope_id (UUID)"],
+      "correlation_fields": ["subject.session_id", "decision.governance_decision_id", "decision.surface", "decision.authority_tier", "decision.capability_id"],
+      "content_light_fields": ["no raw payloads", "evidence_sha256 only", "content_light_classification on decision"],
+      "redaction_fields": ["no raw content in any field"],
+      "source_of_truth_refs": ["evidence.evidence_id", "evidence.schema_version"],
+      "replay_suitability": "sharded JSON files + manifest.jsonl; each envelope is standalone but manifest only indexes 4 fields",
+      "current_persistence": "FilesystemReceiptStore.append() → sharded JSON + manifest.jsonl",
+      "current_tests": "642 lines in test_receipt_envelope.py; 108 in test_receipt_store.py; 1045 in test_receipt_index.py"
+    },
+    {
+      "artifact_type": "ReceiptDecision",
+      "path": "rig_relay/evidence/receipt_envelope.py",
+      "schema_version": "embedded in ReceiptEnvelope",
+      "identifier_fields": ["governance_decision_id"],
+      "correlation_fields": ["surface", "authority_tier", "capability_id", "gate", "approval_receipt_id"],
+      "content_light_fields": ["content_light_classification"],
+      "redaction_fields": ["no raw policy documents or eval context"],
+      "source_of_truth_refs": ["none directly"],
+      "replay_suitability": "embedded in ReceiptEnvelope; not independently indexable",
+      "current_persistence": "via ReceiptEnvelope only",
+      "current_tests": "2 tests in test_cross_surface_governance_spine_p0.py"
+    },
+    {
+      "artifact_type": "CLI GovernedExecution",
+      "path": "rig_relay/cli/governance_guard.py",
+      "schema_version": "cli_governed_execution (inline struct)",
+      "identifier_fields": ["decision_id"],
+      "correlation_fields": ["command", "surface", "authority_tier"],
+      "content_light_fields": ["content_light (always True)"],
+      "redaction_fields": ["error messages only, no raw output"],
+      "source_of_truth_refs": ["result_path (JSON file)"],
+      "replay_suitability": "structured dataclass printed to stdout as JSON; no ReceiptStore integration by default",
+      "current_persistence": "emit_structured_result() prints JSON to stdout; if receipt_store provided, persists via require_governed_execution_with_evidence()",
+      "current_tests": "8 in test_governance_guard.py; 10 in test_governance_guard_evidence.py"
+    },
+    {
+      "artifact_type": "MCP Tool-Call Outcome",
+      "path": "rig_relay/protocols/mcp/server.py",
+      "schema_version": "inline dict (ReceiptEnvelope pending)",
+      "identifier_fields": ["request_id (UUID)"],
+      "correlation_fields": ["surface", "capability_id", "authority_tier", "descriptor_id", "descriptor_hash"],
+      "content_light_fields": ["content_light (always True)", "content_light_classification"],
+      "redaction_fields": ["secret-bearing output blocked at scan layer"],
+      "source_of_truth_refs": ["not yet included"],
+      "replay_suitability": "response dicts not independently replayable; _persist_outcome() creates ReceiptEnvelope if receipt_store provided",
+      "current_persistence": "via _persist_outcome() → ReceiptEnvelope → ReceiptStore (optional, requires receipt_store)",
+      "current_tests": "15 in test_mcp_receipt_envelope_adoption.py"
+    },
+    {
+      "artifact_type": "A2A Delegation Receipt",
+      "path": "rig_relay/protocols/a2a/_lifecycle.py",
+      "schema_version": "rig.relay.a2a.delegation_receipt.v1",
+      "identifier_fields": ["receipt_id"],
+      "correlation_fields": ["delegating_agent_id", "receiving_agent_id", "task_id", "trace_id"],
+      "content_light_fields": ["content_light (default True on task/agent cards)"],
+      "redaction_fields": ["no raw content in receipt"],
+      "source_of_truth_refs": ["none"],
+      "replay_suitability": "receipts are dataclass objects; no ReceiptStore integration; blocked by governance",
+      "current_persistence": "no persistence; all delegation currently blocked by delegation_allowed_by_governance()",
+      "current_tests": "2 in test_cross_surface_governance_spine_p0.py"
+    },
+    {
+      "artifact_type": "ReceiptIndex",
+      "path": "rig_relay/evidence/receipt_index.py",
+      "schema_version": "tool_receipt_index (internal)",
+      "identifier_fields": ["receipt_index_id"],
+      "correlation_fields": ["session_id", "tool_name", "verdict", "refusal_code"],
+      "content_light_fields": ["hashes only, no raw payloads"],
+      "redaction_fields": ["suspicious content flagged in validate_index_content_light()"],
+      "source_of_truth_refs": ["none"],
+      "replay_suitability": "summary-level index over ReceiptEnvelope data; not a full index",
+      "current_persistence": "build_receipt_index() produces summary; not persisted separately",
+      "current_tests": "1045 lines in test_receipt_index.py"
+    }
+  ],
+  "primary_questions_answered": {
+    "can_locate_by_decision_id": {
+      "verdict": "partial — ReceiptEnvelope stores governance_decision_id in decision field, but manifest.jsonl does not include decision_id. Finding a specific decision requires a linear scan of all sharded JSON files. No index on decision_id.",
+      "can_fix": "add governance_decision_id to manifest.jsonl; add in-memory or file-based index on decision_id → envelope_id mapping"
+    },
+    "can_replay_from_receipt_store": {
+      "verdict": "yes — each ReceiptEnvelope is a standalone sharded JSON file. The envelope can be deserialized without runtime state. Manifest provides ordered list. But replay requires reading each file (one per decision). A DuckDB projection over manifest + envelope files would enable efficient replay.",
+      "can_fix": "DuckDB projection: read manifest.jsonl (4 cols) + recursively read envelope JSON files into governance_decisions table"
+    },
+    "can_correlate_across_dimensions": {
+      "verdict": "partial — decision.governance_decision_id correlates to GateDecision.decision_id. decision.surface, decision.authority_tier, decision.capability_id enable surface-filtered queries. But manifest only indexes session_id (from subject.session_id). No query by surface, authority_tier, capability_id, request_id without scanning all files.",
+      "can_fix": "add surface, authority_tier, capability_id to manifest; add manifest index on governance_decision_id"
+    },
+    "are_sharded_files_sufficient_for_replay": {
+      "verdict": "yes for small-to-medium volumes. FilesystemReceiptStore is append-only, sharded, with manifest.jsonl ordered index. For large volumes (10k+ envelopes), manifest linear scan becomes bottleneck. Corruption risk: individual shard corruption is contained; manifest corruption loses ordering.",
+      "can_fix": "add receipt_count to manifest for cross-validation; add DuckDB projection for efficient queries beyond 1k envelopes"
+    },
+    "minimum_projection_for_cockpit_and_procurement": {
+      "verdict": "defined in companion artifact governance_evidence_replay_projection_design_v1.v1.json. Minimum: DuckDB read-side table governance_decisions with columns from ReceiptEnvelope decision + manifest fields. Enables: 'why blocked?', session history, surface activity, decision timeline.",
+      "can_fix": "P1: DuckDB governance_decisions projection; P3: Postgres governance_decisions materialized view"
+    },
+    "missing_fields_from_evidence_artifacts": {
+      "verdict": "7 gaps identified. 1. ReceiptSubject missing session_id for governance decisions from GovernanceRuntime (agent_loop surface). 2. ReceiptDecision missing request_id for cross-surface correlation. 3. Manifest missing 5 fields (decision_id, surface, authority_tier, capability_id, request_id). 4. ReceiptEnvelope missing trace_id for distributed tracing. 5. No redaction_scan_id on ReceiptEnvelope. 6. No producer field (module/version). 7. No sequence field for hash-chain ordering.",
+      "can_fix": "P0: add decision_id, surface, authority_tier, capability_id to manifest; P1: add request_id, trace_id, producer, redaction_scan_id, sequence to envelope/decision/subject models"
+    },
+    "required_tests_before_replayable": {
+      "verdict": "defined in companion artifact governance_evidence_replay_test_strategy_v1.v1.json. 20 proposed tests covering: decision_id lookup, manifest scan, session correlation, surface filtering, DuckDB projection equivalence, corrupted shard handling, forbidden raw content absence, content-light field completeness.",
+      "can_fix": "P1: implement replay tests; P2: add adversarial/sabotage tests for corrupted manifest and shard tampering"
+    }
+  },
+  "receipt_store_read_side_assessment": {
+    "append_behavior": "append-only; sharded by first 2 hex of envelope_id; each write is atomic (single file write + manifest append)",
+    "manifest_fields": "envelope_id, receipt_kind, session_id, created_at — only 4 fields indexed",
+    "list_read_complexity": "O(N) linear scan of manifest.jsonl; each envelope retrieval is O(1) file read by sharded path",
+    "o_n_risks": "list_by_session scans entire manifest; 10k+ entries means 10k line reads. No pagination index within manifest.",
+    "atomicity": "file write is atomic; manifest append is line-by-line (not atomic with file write). Crash between file write and manifest append loses manifest entry but envelope file exists (orphaned).",
+    "corruption_behavior": "orphaned envelope files (no manifest entry) are invisible to list(); corrupted manifest line is silently skipped; corrupted envelope file returns None from get(). No quarantine directory.",
+    "content_light_behavior": "all stored data is content-light by construction (ReceiptEnvelope validates). Manifest stores only identifiers, no raw content.",
+    "local_mode_suitability": "excellent for local-first evidence. Sharded files are portable, inspectable, copyable. JSONL manifest is human-readable.",
+    "postgres_projection_suitability": "good — manifest.jsonl can be bulk-imported to Postgres. Envelope files can be parsed on-demand or pre-indexed. Dual-write architecture compatible.",
+    "duckdb_parquet_projection_help": "would eliminate O(N) scan bottlenecks. DuckDB can read manifest.jsonl directly and join with parsed envelope JSON files via glob. Parquet would compress and speed queries."
+  },
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true,
+    "redaction_note": "This audit contains no raw tokens, secrets, private repository contents, or source code."
+  },
+  "revision": 1
+}

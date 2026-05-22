@@ -1,11 +1,11 @@
 {
   "schema_version": "rig.github.live_mutation_preflight.v1",
-  "preflight_id": "384205fda9bd62a600ff988721bc759a020d7a42aedcaa5766d3031580e7e699",
-  "generated_at": "2026-05-21T04:22:09.383409+00:00",
+  "preflight_id": "e0f4bbb288e6c09775c5e1d347146e6fc048a998ee2839466839f9fb930cdb31",
+  "generated_at": "2026-05-21T18:50:20.817035+00:00",
   "content_light": true,
   "operation_kind": "live_mutation_preflight",
-  "status": "ready_for_live_mutation_review",
-  "live_api_attempted": true,
+  "status": "blocked_no_live_gate",
+  "live_api_attempted": false,
   "live_mutation_attempted": false,
   "remote_mutation_attempted": false,
   "gates": [
@@ -26,71 +26,25 @@
     },
     {
       "gate": "live_preflight_flag_set",
-      "passed": true,
+      "passed": false,
       "detail": ""
     },
     {
       "gate": "RIG_LIVE_AUTH_TESTS_set",
-      "passed": true,
+      "passed": false,
       "detail": ""
     },
     {
       "gate": "token_provided",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "gate": "permission_contents_write_available",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "gate": "permission_pull_requests_write_available",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "gate": "security_events_write_deferred",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "gate": "rate_limit_ok",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "gate": "branch_not_collision",
-      "passed": true,
+      "passed": false,
       "detail": ""
     }
   ],
-  "gates_passed": true,
-  "probes": [
-    {
-      "endpoint": "GET /repos/OWNER/REPO/git/ref/heads/main",
-      "operation": "read_ref",
-      "status_code": 200,
-      "write_endpoint": false
-    },
-    {
-      "endpoint": "permission_check",
-      "write_endpoint": false,
-      "contents_write": true,
-      "pull_requests_write": true,
-      "security_events_write": false,
-      "note": "permissions_verified_via_boundary"
-    },
-    {
-      "endpoint": "rate_limit_check",
-      "rate_limited": false,
-      "remaining": 4999,
-      "reset_at": "N/A"
-    }
-  ],
+  "gates_passed": false,
+  "probes": [],
   "permission_summary": {
-    "contents_write": true,
-    "pull_requests_write": true,
+    "contents_write": false,
+    "pull_requests_write": false,
     "security_events_write_deferred": true
   },
   "rate_limit_summary": {
@@ -102,12 +56,16 @@
     "replay_present": true
   },
   "idempotency_summary": "preflight_idempotent",
-  "blocked_reasons": [],
-  "next_safe_action": "proceed_to_mutation_review",
+  "blocked_reasons": [
+    "live_preflight_flag_set",
+    "RIG_LIVE_AUTH_TESTS_set",
+    "token_provided"
+  ],
+  "next_safe_action": "review_gate_failures",
   "redaction_summary": {
     "content_light": true,
     "raw_response_bodies": false,
     "raw_tokens": false
   },
-  "recommended_next_slice": "Phase 3 Slice 2 — actual live PR creation (gated)"
+  "recommended_next_slice": "Phase 3 Slice 1 — pass preflight gates first"
 }

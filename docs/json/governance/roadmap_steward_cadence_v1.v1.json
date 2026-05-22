@@ -1,0 +1,111 @@
+{
+  "schema_version": "rig.relay.roadmap_steward_cadence.v1",
+  "cadence_id": "roadmap-steward-cadence-v1",
+  "title": "Roadmap Steward Operational Cadence v1 — Rig Relay",
+  "generated_at": "2026-05-21T10:30:00Z",
+  "description": "Defines the recurring operational rhythm for the Roadmap Steward. All outputs are content-light structured JSON/JONL artifacts. No mutation is performed at any cadence point.",
+  "cadence_points": [
+    {
+      "name": "morning_roadmap_scan",
+      "frequency": "daily, on operator invocation or cron trigger (e.g. 0800 UTC)",
+      "duration_target": "sub-30-second read-only scan",
+      "actions": [
+        "read HEAD commit and branch from git log -1",
+        "read git status --porcelain (path hashes only)",
+        "read all active lane declarations from coordination store",
+        "read latest test collection report (test_infrastructure_import_stabilization_v2.v1.json)",
+        "read all release gate artifacts (mcp_hardened_read_only_surface_release_gate, cli_governance_gate)",
+        "read schema validation results (scripts/rig_relay_validate_schemas.py output)",
+        "read latest receipt manifest counts and content-light classifications",
+        "compare active lane file ownership against dirty state",
+        "detect lane collisions (shared files, shared schemas, incompatible sequencing)",
+        "emit morning briefing: docs/json/governance/roadmap_steward_morning_briefing_v1.v1.json"
+      ],
+      "stop_conditions_checked": [
+        "test_collection_broken",
+        "release_gate_failure",
+        "schema_validation_failure",
+        "overlapping_dirty_state"
+      ]
+    },
+    {
+      "name": "after_final_report_rescore",
+      "frequency": "on detection of new final report artifact in docs/json/governance/",
+      "duration_target": "sub-10-second re-rank",
+      "actions": [
+        "read the new final report artifact",
+        "re-score all candidate slices with updated roadmap state",
+        "re-rank recommendation queue",
+        "emit updated recommendations: roading_steward_initial_recommendations_v1.v1.json",
+        "detect whether the completed slice resolves any blocker"
+      ]
+    },
+    {
+      "name": "evening_briefing",
+      "frequency": "daily, on operator invocation or cron trigger (e.g. 1800 UTC)",
+      "duration_target": "sub-30-second summary",
+      "actions": [
+        "summarize day's outcomes from final reports created since last evening briefing",
+        "count receipts produced (from receipt manifest enrichment data)",
+        "list new risks surfaced in final reports",
+        "list slices completed vs deferred",
+        "emit evening briefing: docs/json/governance/roadmap_steward_evening_briefing_v1.v1.json",
+        "emit next-action queue for next worker session"
+      ],
+      "stop_conditions_checked": [
+        "full_suite_repeated",
+        "mutation_without_evidence"
+      ]
+    },
+    {
+      "name": "idle_session_assignment",
+      "frequency": "on operator request: 'what should I work on next?'",
+      "duration_target": "sub-5-second response",
+      "actions": [
+        "return top-ranked ready-to-grab slice with bounded prompt",
+        "include: exact files, validation command, acceptance criteria, dependency impact, blast radius, stop conditions",
+        "emit assigned prompt: docs/json/governance/roadmap_steward_next_action_queue_v1.v1.json"
+      ]
+    },
+    {
+      "name": "emergency_blocker_escalation",
+      "frequency": "triggered by stop conditions (gate failure, test breakage, schema failure, collision)",
+      "duration_target": "immediate (< 1 second detection)",
+      "actions": [
+        "identify the blocker: gate name, affected files, last good state",
+        "recommend immediate pause on all lanes touching affected files",
+        "emit escalation: docs/json/governance/roadmap_steward_blocker_escalation_v1.v1.json"
+      ]
+    },
+    {
+      "name": "weekly_convergence_review",
+      "frequency": "every 7 days",
+      "duration_target": "sub-60-second review",
+      "actions": [
+        "review all lanes active during the week",
+        "detect lanes that stalled (> 3 days without new final report)",
+        "detect lanes producing excessive receipts without slice completion",
+        "detect lanes touching files outside their declared scope",
+        "recommend park/defer for stalled lanes",
+        "emit weekly review: docs/json/governance/roadmap_steward_weekly_review_v1.v1.json"
+      ],
+      "stop_conditions_checked": [
+        "forbidden_dependency_proposed",
+        "mcp_mutation_proposed",
+        "ssh_hosted_a2a_mutation_before_prereqs"
+      ]
+    }
+  ],
+  "cadence_log": {
+    "path": ".build/rig-relay/steward/cadence.jsonl",
+    "format": "JSONL — append-only",
+    "schema": "rig.relay.roadmap_steward.cadence_event.v1",
+    "content_light": true
+  },
+  "integration_notes": {
+    "pi_harness": "Each cadence point can be triggered by a cron entry or a /slash command. Output artifacts are written to .build/rig-relay/steward/ and optionally pushed to a notification channel (email, Signal, WhatsApp) via a read-only notification adapter.",
+    "local_agent": "Same cadence. Outputs to .build/rig-relay/steward/. No network access needed. Notifications handled by operator's existing tooling.",
+    "prompt_handoff": "When a slice is assigned, the steward produces a bounded prompt artifact that an OpenCode/Codex/Rig worker can consume directly. The prompt includes file paths, validation command, acceptance criteria, and explicit stop conditions."
+  },
+  "content_light": true
+}

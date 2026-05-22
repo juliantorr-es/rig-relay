@@ -1,0 +1,88 @@
+{
+  "schema_version": "rig.relay.scripts_cli_authority_taxonomy_inventory.v1",
+  "audit_id": "scripts-cli-authority-taxonomy-v1",
+  "title": "Scripts and CLI Authority Taxonomy Inventory v1",
+  "generated_at": "2026-05-21T03:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "summary": "Complete inventory of 132 scripts, 7 CLI modules, 4 package entrypoints, and 7 GitHub workflows. Classified by authority tier, mutation capability, dry-run support, structured output, governance integration, and content-light scanning. Found: 93 read-only, 28 local-file-mutating, 6 remote-provider-mutating, 3 delete-destructive, 3 admin-config-mutating, 2 git-mutating. Only 15 scripts have governance imports. Zero CLI entrypoints call capability_gate. Dry-run is inconsistent across mutation scripts.",
+  "inventory": {
+    "package_entrypoints": [
+      {"name": "rig-relay", "module": "rig_relay.cli.entrypoint:main", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "Dispatch hub for all CLI subcommands: start, stop, status, doctor", "governance": "absent", "recommended_default": "allow_read_only"},
+      {"name": "rig-relay-acp", "module": "rig_relay.cli.acp_entrypoint:main", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "ACP server startup — delegates to acp.entrypoint.main", "governance": "absent", "recommended_default": "allow_read_only"},
+      {"name": "rig-relay-cockpit", "module": "rig_relay.cli.desktop_cockpit:main", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "Desktop cockpit — WebSocket server, projection, chat agent", "governance": "absent", "recommended_default": "allow_read_only"},
+      {"name": "rig-relay-ide-sidecar", "module": "rig_relay.cli.ide_sidecar:main", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "IDE sidecar — ACP/IDE capability bridge", "governance": "absent", "recommended_default": "allow_read_only"}
+    ],
+    "cli_modules": [
+      {"file": "rig_relay/cli/entrypoint.py", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "Top-level CLI dispatcher", "governance": "absent"},
+      {"file": "rig_relay/cli/acp_entrypoint.py", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "ACP server entrypoint shim", "governance": "absent"},
+      {"file": "rig_relay/cli/desktop_cockpit.py", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "Desktop cockpit launcher", "governance": "absent"},
+      {"file": "rig_relay/cli/ide_sidecar.py", "authority_tier": "local_intent_submission", "mutation": "none", "operations": "IDE sidecar IPC bridge", "governance": "absent"},
+      {"file": "rig_relay/cli/doctor.py", "authority_tier": "read_only_projection", "mutation": "none", "operations": "Health-check/conformance validation", "governance": "absent"},
+      {"file": "rig_relay/cli/demo_commands.py", "authority_tier": "local_mutation", "mutation": "local_file", "operations": "Seeds synthetic demo artifacts", "governance": "absent"},
+      {"file": "rig_relay/cli/__init__.py", "authority_tier": "read_only_projection", "mutation": "none", "operations": "CLI package init", "governance": "absent"}
+    ],
+    "scripts_summary": {
+      "total": 132,
+      "by_authority_tier": {
+        "read_only_projection": 93,
+        "local_mutation": 28,
+        "remote_mutation": 6,
+        "admin_configuration": 3,
+        "public_static_projection": 4,
+        "delete_destructive": 3,
+        "release_packaging": 4,
+        "unknown": 0
+      },
+      "by_mutation_capability": {"none": 93, "local_file": 28, "remote_provider": 6, "delete_destructive": 3, "admin_config": 3, "git": 2},
+      "by_dry_run": {"yes": 28, "no": 15, "na": 55, "unknown": 34},
+      "by_structured_output": {"yes": 62, "no": 5, "partial": 8, "na": 23, "unknown": 34},
+      "by_governance": {"present": 15, "absent": 117},
+      "by_content_light": {"present": 15, "absent": 117, "not_applicable": 0}
+    },
+    "scripts_requiring_gate": [
+      {"file": "scripts/rig_enterprise_tenant_admin.py", "severity": "blocker", "reason": "Mutates tenant registry without governance. Admin config authority."},
+      {"file": "scripts/rig_enterprise_fleet_admin.py", "severity": "blocker", "reason": "Start/stop fleet instances without governance. Admin config authority."},
+      {"file": "scripts/rig_github_execute_live_pr_write.py", "severity": "blocker", "reason": "Remote mutation (creates real GitHub PR). Triple-flag gate is ad-hoc, not cryptographic."},
+      {"file": "scripts/rig_github_publish_pr.py", "severity": "blocker", "reason": "Publishes PR to GitHub. Remote mutation without governance."},
+      {"file": "scripts/rig_github_pr_mutation_chaos_lab.py", "severity": "high", "reason": "Chaos lab mutations against GitHub PRs. Needs trust-spine gating."},
+      {"file": "scripts/rig_relay_sessions_compact.py", "severity": "high", "reason": "Compacts session JSONL to Parquet/gzip — may delete originals. File mutation + potential delete."},
+      {"file": "scripts/rig_relay_sessions_gc.py", "severity": "high", "reason": "Garbage collects session artifacts — delete destructive."},
+      {"file": "scripts/rig_relay_gc_artifacts.py", "severity": "high", "reason": "Garbage collects build artifacts — delete destructive."},
+      {"file": "scripts/rig_relay_cleanup_coordination_leases.py", "severity": "high", "reason": "Cleans up coordination leases — may release active leases. Admin config."},
+      {"file": "scripts/bump_version.py", "severity": "medium", "reason": "Edits pyproject.toml and optionally commits — git mutation."},
+      {"file": "scripts/prepare_release.py", "severity": "medium", "reason": "Git remote/tag/branch operations — git mutation."},
+      {"file": "scripts/refactor_large_files.py", "severity": "medium", "reason": "AST-based file splitting — local file mutation on source tree."},
+      {"file": "scripts/rig_relay_upload_google_drive.py", "severity": "medium", "reason": "Uploads to Google Drive — remote provider mutation."},
+      {"file": "scripts/rig_relay_contribute_telemetry_bundle.py", "severity": "medium", "reason": "Uploads telemetry bundle — remote provider mutation."},
+      {"file": "scripts/backfill_doc_disclosure.py", "severity": "low", "reason": "Mutates JSON doc files — local file mutation on governance docs."},
+      {"file": "scripts/bulk_convert_docs.py", "severity": "low", "reason": "Converts Markdown to JSON docs — local file mutation."},
+      {"file": "scripts/perform_migration.py", "severity": "low", "reason": "Parses Markdown into JSON pages — local file mutation."},
+      {"file": "scripts/migrate_vibe_to_rig.py", "severity": "low", "reason": "Namespace migration — local file mutation on source tree."},
+      {"file": "scripts/package_release.py", "severity": "low", "reason": "Builds release packages — local file mutation on dist/."},
+      {"file": "scripts/render_static_docs.py", "severity": "low", "reason": "Renders static docs — writes to docs/ directory. Public static projection."}
+    ],
+    "scripts_safe_read_only": [
+      "scripts/rig_relay_validate_schemas.py — schema validation, read-only",
+      "scripts/rig_relay_validate_ide_manifest.py — manifest validation, read-only",
+      "scripts/rig_relay_dependency_audit.py — dependency audit, read-only",
+      "scripts/rig_rc_golden_path_check.py — golden path validation, read-only",
+      "scripts/rig_rc_installability_check.py — installability check, read-only",
+      "scripts/rig_release_gate_validate.py — release gate validation, read-only",
+      "scripts/analyze_relay_tool_usage.py — telemetry analysis, read-only",
+      "scripts/rig_relay_marker_audit.py — test marker audit, read-only",
+      "scripts/rig_relay_test_duplicate_audit.py — test dedup audit, read-only",
+      "scripts/rig_relay_current_state.py — coordination state read, read-only"
+    ],
+    "github_workflows": [
+      {"file": ".github/workflows/ci.yml", "authority_tier": "read_only_projection", "mutation": "none", "operations": "CI test/lint/typecheck pipeline", "governance": "absent"},
+      {"file": ".github/workflows/build-and-upload.yml", "authority_tier": "remote_mutation", "mutation": "remote_provider", "operations": "Build and upload packages/artifacts", "governance": "absent"},
+      {"file": ".github/workflows/release.yml", "authority_tier": "remote_mutation", "mutation": "remote_provider", "operations": "Trigger release workflows", "governance": "absent"},
+      {"file": ".github/workflows/codeql.yml", "authority_tier": "read_only_projection", "mutation": "none", "operations": "CodeQL security analysis", "governance": "absent"},
+      {"file": ".github/workflows/codeql-swift-advisory.yml", "authority_tier": "read_only_projection", "mutation": "none", "operations": "CodeQL Swift advisory scanning", "governance": "absent"},
+      {"file": ".github/workflows/pages.yml", "authority_tier": "public_static_projection", "mutation": "remote_provider", "operations": "Deploy GitHub Pages static site", "governance": "absent"},
+      {"file": ".github/workflows/issue-labeler.yml", "authority_tier": "read_only_projection", "mutation": "none", "operations": "Auto-label GitHub issues", "governance": "absent"}
+    ]
+  },
+  "revision": "1.0.0"
+}

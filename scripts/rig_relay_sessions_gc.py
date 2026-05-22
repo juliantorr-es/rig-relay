@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Rig Relay session storage garbage collection.
 
-Dry-run first, conservative by default.
+Dry-run first, conservative by default. Pass --execute to perform
+actual deletion. Governance gating required for destructive operations.
 """
 
 from __future__ import annotations
@@ -12,6 +13,10 @@ import json
 from pathlib import Path
 import shutil
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.evidence.session_lifecycle import (
     SessionStorageCategory,
     audit_sessions_storage,
@@ -27,10 +32,42 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state-root", type=Path, default=None)
     parser.add_argument("--dry-run", action="store_true", default=True)
     parser.add_argument("--confirm", action="store_true")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute destructive GC operations. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
     parser.add_argument("--archive-dir", type=Path, default=None)
     parser.add_argument("--older-than-days", type=int, default=30)
     parser.add_argument("--max-delete-mb", type=float, default=256.0)
     return parser.parse_args()
+
+
+def _dry_run_output(
+    args: argparse.Namespace, governed: object, candidates: list
+) -> None:
+    print("Dry run only. Pass --execute to archive/delete candidates.")
+    for item in candidates[:20]:
+        print(f"  {item.path} [{item.category.value}] {item.size_bytes} bytes")
+    if args.json:
+        d = governed.decision
+        r = emit_structured_result(
+            script_name="rig_relay_sessions_gc",
+            authority_tier="local_mutation",
+            capability_id="session_gc",
+            dry_run=True,
+            execute_requested=False,
+            decision=d,
+            status="dry_run",
+        )
+        print(json.dumps(r, indent=2))
 
 
 def _receipt_path(root: Path) -> Path:
@@ -55,11 +92,40 @@ def main() -> int:
     )
     print(f"Sessions root: {summary.sessions_root}")
     print(f"Prune candidates: {len(candidates)}")
-    if not args.confirm:
-        print("Dry run only. Pass --confirm to archive/delete candidates.")
-        for item in candidates[:20]:
-            print(f"  {item.path} [{item.category.value}] {item.size_bytes} bytes")
+
+    execute = args.execute or args.confirm
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_sessions_gc",
+        authority_tier="local_mutation",
+        capability_id="session_gc",
+        execute_requested=execute,
+    )
+
+    if not args.confirm and not args.execute:
+        _dry_run_output(args, governed, candidates)
         return 0
+
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_sessions_gc",
+            authority_tier="local_mutation",
+            capability_id="session_gc",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — GC blocked (fail-closed)")
+        return 1
+
     total_delete_mb = 0.0
     deleted: list[str] = []
     archived: list[str] = []

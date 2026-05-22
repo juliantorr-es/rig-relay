@@ -1,0 +1,23 @@
+{
+  "schema_version": "rig.relay.session_lifecycle_tool_adapter_alignment.v1",
+  "audit_id": "session-lifecycle-tool-adapter-alignment-v1",
+  "title": "Session Lifecycle Tool Adapter Alignment v1",
+  "generated_at": "2026-05-21T08:30:00Z",
+  "status": "completed",
+  "content_light": true,
+  "failing_tests_before": "1 out of 1 failing tool-adapter test (test_finalize_tool_returns_structured_result). 2 other tool-adapter tests were already passing.",
+  "failing_tests_after": "0. All 24 session lifecycle tests pass.",
+  "root_cause": [
+    {"issue": "SessionRetentionPolicy missing allow_prune, max_delete_mb, archive_dir fields", "fix": "Added allow_prune (bool), max_delete_mb (float), archive_dir (Path|str|None) to SessionRetentionPolicy"},
+    {"issue": "tool conversion functions (_compaction_model, _artifact_model, _refusal_model, _deleted_model) expect rich model objects but lifecycle layer returns strings", "fix": "Updated all four conversion functions to accept str | RichModel union, producing minimal tool models for string inputs"},
+    {"issue": "warnings type mismatch (list vs tuple)", "fix": "Explicit tuple() cast in tool's _finalize method"}
+  ],
+  "files_changed": [
+    {"file": "rig_relay/evidence/_lifecycle_models.py", "change": "Added allow_prune, max_delete_mb, archive_dir fields to SessionRetentionPolicy"},
+    {"file": "rig_relay/core/tools/builtins/session_lifecycle.py", "change": "Updated _compaction_model, _artifact_model, _refusal_model, _deleted_model to accept str | RichModel. Added tuple() cast for warnings."}
+  ],
+  "test_results": "24 passed, 0 failed. Full session lifecycle suite green.",
+  "collection_result": "12,580 tests collected, 0 errors — clean",
+  "schema_validation": "420/420 pass",
+  "dependency_changes": "Zero"
+}

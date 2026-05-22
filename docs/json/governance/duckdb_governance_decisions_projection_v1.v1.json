@@ -1,0 +1,114 @@
+{
+  "schema_version": "rig.relay.duckdb_governance_decisions_projection.v1",
+  "implementation_id": "duckdb-governance-decisions-projection-v1",
+  "title": "DuckDB Governance Decisions Read-Side Projection v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "status": "complete",
+  "source_artifacts": [
+    "docs/json/governance/governance_evidence_replay_projection_design_v1.v1.json",
+    "docs/json/governance/governance_receipt_manifest_enrichment_v1.v1.json"
+  ],
+  "files_changed": [
+    "rig_relay/analytics/governance_decisions_projection.py (CREATED — build_governance_decisions_projection(), query_governance_decisions(), _row_to_params(), _row_to_query_params(), _build_query_results(), 3 SQL query views)",
+    "tests/analytics/test_governance_decisions_projection.py (CREATED — 20 tests)"
+  ],
+  "projection_source_paths": [
+    "ReceiptStore root / manifest.jsonl",
+    "ReceiptStore root / envelopes / {prefix} / {envelope_id}.json"
+  ],
+  "projection_artifact": "In-memory only (DuckDB convention). Optional JSON projection metadata written to derived_dir / governance_decisions_projection_v1.json.",
+  "table_schema": {
+    "name": "governance_decisions",
+    "columns": [
+      "envelope_id VARCHAR",
+      "receipt_kind VARCHAR",
+      "session_id VARCHAR",
+      "created_at VARCHAR",
+      "governance_decision_id VARCHAR",
+      "decision_status VARCHAR",
+      "surface VARCHAR",
+      "authority_tier VARCHAR",
+      "capability_id VARCHAR",
+      "schema_version VARCHAR",
+      "content_light_classification VARCHAR",
+      "manifest_row_index INTEGER",
+      "source_manifest_sha256 VARCHAR",
+      "projection_built_at VARCHAR",
+      "envelope_path VARCHAR"
+    ],
+    "indexes": [
+      "idx_gd_decision_id ON (governance_decision_id)",
+      "idx_gd_surface ON (surface)",
+      "idx_gd_authority_tier ON (authority_tier)",
+      "idx_gd_created_at ON (created_at)"
+    ]
+  },
+  "queries_supported": [
+    "recent_decisions: ORDER BY created_at DESC LIMIT 10",
+    "surface_status_summary: GROUP BY surface, decision_status",
+    "authority_tier_summary: GROUP BY authority_tier",
+    "query_governance_decisions(): arbitrary read-only SQL with parameterized queries"
+  ],
+  "diagnostics_supported": [
+    "corrupted_manifest_line: JSON decode failure, line number recorded",
+    "missing_shard: manifest references envelope not on disk",
+    "orphaned_shard: envelope file on disk with no manifest row",
+    "missing_manifest: manifest.jsonl does not exist",
+    "duckdb_not_available: DuckDB import failed"
+  ],
+  "tests_run": "20 passed, 0 failed",
+  "test_classifications": {
+    "integration": 12,
+    "real-artifact": 12,
+    "substrate": 12,
+    "contract": 8,
+    "unit": 0,
+    "E2E": 0,
+    "adversarial": 0,
+    "sabotage": 0,
+    "concurrency": 0
+  },
+  "pyright_result": "0 errors, 0 warnings, 0 informations",
+  "schema_validation_result": "420/420 schemas pass",
+  "dependency_changes": "None. DuckDB >=1.5.0 already in pyproject.toml. hashlib, json, pathlib all stdlib.",
+  "source_of_truth_guarantee": "JSON shard files + manifest.jsonl remain canonical source-of-truth. DuckDB projection is derived from these artifacts. Projection can be deleted and rebuilt deterministically (counts match). manifest_sha256 recorded in every row for provenance.",
+  "duckdb_non_authority_guarantee": "Projection declares mutation_authority: false, read_side_only: true, raw_payloads_exposed: false. Never writes to source artifacts. In-memory only — no persistent .duckdb file. Rebuildable by design.",
+  "postgres_implications": "Governance decisions table (14 typed columns + 4 indexes) maps directly to PostgreSQL materialized view (P3). All columns are VARCHAR, matching Postgres TEXT type. Parameterized insert pattern is Postgres-compatible.",
+  "remaining_replay_gaps": [
+    "No timestamp range query via createdAt (VARCHAR not TIMESTAMP) — DuckDB can CAST but indexes less effective",
+    "No cross-surface correlation via request_id (request_id not yet in manifest)",
+    "No evidence_persisted field (not yet on ReceiptDecision)",
+    "No paginated find_by_results in query_governance_decisions (returns all matches)"
+  ],
+  "next_recommended_implementation_slice": "P1: Cockpit governance evidence timeline widget — consume DuckDB projection output to display 'why blocked?', surface activity, and decision timeline.",
+  "completed_work": [
+    "Built governance_decisions DuckDB projection from ReceiptStore manifest + sharded envelopes",
+    "Used parameterized queries (executemany with ? placeholders) for SQL injection safety",
+    "In-memory only per codebase convention (no persistent .duckdb file)",
+    "11-column table + 4 indexes matching projection design spec",
+    "3 pre-built SQL query views (recent_decisions, surface_status_summary, authority_tier_summary)",
+    "content-light by construction (no raw payloads in any projected column)",
+    "Declares mutation_authority: false, read_side_only: true, raw_payloads_exposed: false",
+    "source_manifest_sha256 recorded for every row for source-of-truth provenance",
+    "4 diagnostic conditions recorded (corrupted_manifest_line, missing_shard, orphaned_shard, missing_manifest)",
+    "Graceful degradation: no-source-data, duckdb_not_available, build_failed states",
+    "query_governance_decisions() helper for ad-hoc read-only SQL queries",
+    "Optional derived_dir JSON projection artifact output",
+    "20 tests: 12 integration, 12 real-artifact, 12 substrate, 8 contract",
+    "Pyright: 0 errors. Schema validation: 420/420 pass."
+  ],
+  "intentionally_deferred_work": [
+    "PostgreSQL materialized view (P3)",
+    "Cockpit governance evidence timeline widget (P2)",
+    "Procurement evidence packs (P3)",
+    "Timestamp type conversion (VARCHAR → TIMESTAMP with CAST)",
+    "request_id propagation to ReceiptEnvelope for cross-surface correlation"
+  ],
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

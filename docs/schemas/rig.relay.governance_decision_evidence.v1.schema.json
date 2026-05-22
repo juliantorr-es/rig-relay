@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.governance_decision_evidence.v1.schema.json",
+  "title": "Governance Decision Evidence v1",
+  "description": "Schema for governance decision evidence records persisted as ReceiptEnvelope artifacts. Content-light: no raw prompts, completions, private repo content, secrets, credentials, raw diffs, or raw Actions logs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "envelope_id",
+    "receipt_kind",
+    "actor",
+    "subject",
+    "decision",
+    "evidence",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.receipt_envelope.v1" },
+    "envelope_id": { "type": "string", "description": "Unique envelope identifier." },
+    "receipt_kind": { "type": "string", "description": "Kind of receipt. For governance decisions: 'governance_decision'." },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_id", "actor_kind"],
+      "properties": {
+        "actor_id": { "type": "string" },
+        "actor_kind": { "type": "string", "enum": ["human", "agent", "tool", "runtime", "system"] },
+        "display_name": { "type": ["string", "null"] },
+        "is_human": { "type": "boolean" },
+        "is_authoritative": { "type": "boolean" }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject_id", "subject_kind"],
+      "properties": {
+        "subject_id": { "type": "string" },
+        "subject_kind": { "type": "string", "enum": ["governance_decision", "tool_invocation", "runtime_invocation", "worktree", "projection", "session", "artifact"] },
+        "workspace_id": { "type": ["string", "null"] },
+        "session_id": { "type": ["string", "null"] },
+        "path": { "type": ["string", "null"] }
+      }
+    },
+    "input": { "type": ["object", "null"] },
+    "output": { "type": ["object", "null"] },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision"],
+      "properties": {
+        "decision": { "type": "string", "description": "Governance decision: allowed, blocked, requires_review, not_applicable." },
+        "rationale": { "type": ["string", "null"] },
+        "gate": { "type": ["string", "null"] },
+        "governance_decision_id": { "type": ["string", "null"], "description": "Content-light SHA256-derived decision identifier (gd- prefix)." },
+        "surface": { "type": ["string", "null"], "description": "Surface identifier: cockpit, cli, mcp, acp, a2a, ssh, hosted_api, agent_loop." },
+        "authority_tier": { "type": ["string", "null"], "description": "Authority tier from cross_surface_authority_spine." },
+        "capability_id": { "type": ["string", "null"] },
+        "approval_receipt_id": { "type": ["string", "null"] },
+        "content_light_classification": { "type": ["string", "null"], "description": "Content classification: public_safe, private_local, sensitive_metadata, secret_bearing, forbidden_raw." }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_kind"],
+        "properties": {
+          "evidence_id": { "type": ["string", "null"] },
+          "evidence_kind": { "type": "string", "enum": ["sha256", "schema", "receipt_index", "governance_decision", "runtime_event", "tool_receipt", "projection_integrity"] },
+          "evidence_sha256": { "type": ["string", "null"] },
+          "schema_version": { "type": ["string", "null"] },
+          "uri": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "schema_version": "rig.relay.mcp_read_only_hardening_spec.v1",
+  "spec_id": "mcp-read-only-hardening-implementation-spec-v1",
+  "title": "MCP Read-Only Hardening Implementation Spec v1 — Rig Relay",
+  "generated_at": "2026-05-21T08:30:00Z",
+  "head_commit": "5b3e767f8606fd7b1f02280652798f4c72bd5eae",
+  "branch": "main",
+  "status": "spec_draft — do not implement until reviewed",
+  "references": [
+    "docs/json/governance/mcp_surface_audit_v1.v1.json",
+    "docs/json/governance/mcp_compliance_gap_map_v1.v1.json",
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json",
+    "docs/json/governance/cross_surface_common_envelope_gap_map_v1.v1.json",
+    "docs/json/governance/protocol_composition_risk_register_v1.v1.json"
+  ],
+  "current_state_summary": {
+    "total_tools": 16,
+    "tier_0_read_only": 7,
+    "tier_1_analysis": 3,
+    "tier_2_validation": 3,
+    "tier_3_patch_proposal": 1,
+    "tier_4_mutation": 1,
+    "tier_5_git_release": 1,
+    "resources": 6,
+    "prompts": 3,
+    "real_dispatch": "10 of 16 tools return hardcoded stub data. Only 6 tools have any filesystem operation (_list_worktrees, _run_readonly_doctor, _summarize_dirty_state, _check_merge_friendly, _audit_dirty_state use subprocess; _build_context_packet, _create_consult_packet, _search_evidence, _read_receipt, etc. are stubs).",
+    "descriptor_integrity": "compute_tool_provenance_hash() exists but not called in dispatch path. Tool dispatch matches by bare string name with no hash verification.",
+    "mutation_gate": "Tier 4 check: any non-empty string passes. No cryptographic verification. No time-bound or scope-bound enforcement.",
+    "auth": "MCPPerUserAuthorization model exists but never instantiated. No actor_id, no user_id_hash, no scope enforcement, no expiry check.",
+    "content_light": "Server advertises content_light: True in initialize response. No actual scan performed on any tool output or resource response.",
+    "common_envelope": "14 of 15 cross-surface envelope fields missing from all MCP responses. Only capability_id (tool name) and authority_tier present.",
+    "roots": "Tools use Path.cwd() directly. No workspace root boundary enforcement. No path traversal protection.",
+    "transport": "stdio (working). Streamable HTTP (deferred). Sync handler missing tools/call."
+  },
+  "implementation_phases": [
+    {
+      "phase": "Phase 1 — Descriptor Integrity Enforcement",
+      "priority": "P0",
+      "dependencies": "none",
+      "description": "Make every MCP tool dispatch verify the tool descriptor hash before execution. Without this, all other hardening is moot — a poisoned descriptor bypasses every gate.",
+      "steps": [
+        {
+          "step": "1a",
+          "action": "Add descriptor_hash field to MCPTool model",
+          "detail": "Generate provenance hash at model construction. Store as descriptor_hash: str on MCPTool."
+        },
+        {
+          "step": "1b",
+          "action": "Build tool registry with hash index at server startup",
+          "detail": "Construct dict[descriptor_hash, MCPTool] alongside existing dict[name, MCPTool]. Verify no hash collisions."
+        },
+        {
+          "step": "1c",
+          "action": "Verify descriptor hash BEFORE handler dispatch in call_tool()",
+          "detail": "Before _dispatch(), compute current hash of the resolved tool descriptor. If mismatch with registered hash, refuse with refusal envelope (refusal_code: 'descriptor_integrity_failure')."
+        },
+        {
+          "step": "1d",
+          "action": "Re-run compute_tool_provenance_hash on every tools/list response",
+          "detail": "On tools/list, re-compute provenance hashes for all tools. Any hash mismatch → log warning + exclude tool from response. Track drift count as telemetry event."
+        },
+        {
+          "step": "1e",
+          "action": "Run classify_tool_descriptor_suspicious on every tools/list response",
+          "detail": "For every tool in tools/list, run the suspicious classifier. Flagged tools → log warning + emit governance telemetry event (severity: warning). Do not serve flagged descriptors to clients."
+        }
+      ],
+      "validation": "test_mcp_descriptor_hash_mismatch_refuses_request"
+    },
+    {
+      "phase": "Phase 2 — Roots Workspace Boundary Enforcement",
+      "priority": "P0",
+      "dependencies": "Phase 1",
+      "description": "Enforce workspace root boundaries on all tools that access the filesystem. Reject path traversal with refusal envelope.",
+      "steps": [
+        {
+          "step": "2a",
+          "action": "Accept workspace_root parameter in RigMCPServer constructor",
+          "detail": "Default to Path.cwd().resolve(). Store as self._workspace_root."
+        },
+        {
+          "step": "2b",
+          "action": "Add resolve_safe_path() call before any Path.cwd() usage",
+          "detail": "Wrap all filesystem tool handlers (_list_worktrees, _run_readonly_doctor, _summarize_dirty_state, _check_merge_friendly, _audit_dirty_state) with workspace root validation. Reject any request targeting paths outside workspace_root."
+        },
+        {
+          "step": "2c",
+          "action": "Add allowed_roots validation for resources",
+          "detail": "Validate that resource URIs (rig://*) resolve to safe paths within workspace_root before serving content. Reject with refusal envelope if out-of-bounds."
+        },
+        {
+          "step": "2d",
+          "action": "Emit refusal envelope on boundary violation",
+          "detail": "Schema: rig.relay.mcp.refusal.v1. refusal_code: 'workspace_boundary_violation'."
+        }
+      ],
+      "validation": "test_mcp_roots_boundary_blocks_out_of_workspace_access"
+    },
+    {
+      "phase": "Phase 3 — Content-Light Output Scanning",
+      "priority": "P0",
+      "dependencies": "Phase 1",
+      "description": "Scan every MCP tool output and resource response for sensitive content before returning to client. Apply content classification.",
+      "steps": [
+        {
+          "step": "3a",
+          "action": "Integrate redaction.py content-light scanner into MCP response path",
+          "detail": "After _dispatch() returns a result dict, pass it through content-light scanner. Classify as: public_safe, private_local, sensitive_metadata, secret_bearing, forbidden_raw."
+        },
+        {
+          "step": "3b",
+          "action": "Refuse responses containing secret-bearing or forbidden-raw content",
+          "detail": "If scan detects tokens (sk-*, Bearer *, etc.), absolute home paths, or raw file content, refuse the response with refusal envelope. refusal_code: 'content_light_violation'."
+        },
+        {
+          "step": "3c",
+          "action": "Add content_light_classification to every response",
+          "detail": "Every successful response includes content_light_classification field with one of the 5 values above. List methods (tools/list, resources/list, prompts/list) include top-level content_light: true."
+        },
+        {
+          "step": "3d",
+          "action": "Add SHA256 hashing for any file-content-adjacent data",
+          "detail": "Replace any file content references (e.g. _run_readonly_doctor output, _summarize_dirty_state output) with SHA256 hashes only. No raw file paths beyond workspace-relative."
+        }
+      ],
+      "validation": "test_mcp_content_light_scan_blocks_secret_in_response"
+    },
+    {
+      "phase": "Phase 4 — Evidence Envelope Adoption",
+      "priority": "P0",
+      "dependencies": "Phases 1-3",
+      "description": "Wrap every MCP tool call result in a common evidence envelope with all 15 cross-surface fields. Emit rig.relay.tool.* telemetry events.",
+      "steps": [
+        {
+          "step": "4a",
+          "action": "Define MCP evidence envelope model",
+          "detail": "Add MCPEvidenceEnvelope to models.py with: request_id, session_id, actor_id, surface='mcp', authority_tier, capability_id, input_hash, output_hash, payload_schema, policy_decision_id, approval_receipt_id (if applicable), trace_id, artifact_refs, content_light_classification, redaction_scan_id, source_of_truth_refs, timestamp, producer."
+        },
+        {
+          "step": "4b",
+          "action": "Wrap every call_tool response in evidence envelope",
+          "detail": "Before returning result, build envelope with computed hashes and metadata. Result dict becomes envelope.payload. Envelope is the JSON-RPC result, not the raw tool output."
+        },
+        {
+          "step": "4c",
+          "action": "Emit rig.relay.tool.called telemetry event per invocation",
+          "detail": "On every successful (non-refused) tool call, emit structured telemetry event with all envelope fields. Content-light only — no raw output in telemetry."
+        },
+        {
+          "step": "4d",
+          "action": "Add policy_decision_id generation",
+          "detail": "For tier 0-2 tools: policy_decision_id = hash(descriptor_hash + 'allowed_read_only'). For tier 3: policy_decision_id = hash(descriptor_hash + 'blocked_pending_approval'). Document the decision."
+        }
+      ],
+      "validation": "test_mcp_tool_response_includes_common_envelope_fields"
+    },
+    {
+      "phase": "Phase 5 — Auth/Authz (Read-Only Local)",
+      "priority": "P1",
+      "dependencies": "Phases 1-4",
+      "description": "Implement local-first MCP auth for read-only surface. Stdio-bound trust model with per-session token and scoped authorization.",
+      "steps": [
+        {
+          "step": "5a",
+          "action": "Generate session token at server startup",
+          "detail": "On server.serve_stdio(), generate a local session token (SHA256 of PID + timestamp). Store as self._session_token. Emit token to stdout as first JSON-RPC notification."
+        },
+        {
+          "step": "5b",
+          "action": "Require session_token in every tools/call request params",
+          "detail": "Every tools/call request must include session_token matching the server-generated token. Mismatch → refusal envelope (refusal_code: 'unauthorized')."
+        },
+        {
+          "step": "5c",
+          "action": "Instantiate MCPPerUserAuthorization per request",
+          "detail": "On each tools/call, build MCPPerUserAuthorization with user_id_hash (derived from session_token), scopes_granted (from tier), authorization_status, and expiry."
+        },
+        {
+          "step": "5d",
+          "action": "Enforce tier-specific scope requirements",
+          "detail": "Tier 0: rig:read. Tier 1: rig:read + rig:analyze. Tier 2: rig:read + rig:validate. Tier 3+: blocked (rig:propose, rig:mutate, rig:release not granted). Check scopes_granted against required scopes. Mismatch → refusal."
+        },
+        {
+          "step": "5e",
+          "action": "Add future hosted extension point",
+          "detail": "Document where bearer/OAuth token validation hooks would be inserted. Add MCPToolAuthMetadata.bearer_supported / oauth_supported fields as future flags. Do not implement hosted auth in this phase."
+        }
+      ],
+      "validation": "test_mcp_unauthorized_request_refused test_mcp_insufficient_scopes_refused"
+    }
+  ],
+  "hardening_sequencing": {
+    "can_parallelize": ["Phase 2 (roots) can run alongside Phase 3 (content-light) after Phase 1 completes"],
+    "gating_phases": ["Phase 1 blocks all subsequent phases — no hardening without descriptor integrity", "Phases 2-4 must complete before Phase 5 (auth) can be meaningful"],
+    "estimated_effort": "Phase 1: small. Phase 2: small. Phase 3: medium. Phase 4: medium. Phase 5: small. Total: ~1-2 weeks for full P0 + P1 surface."
+  },
+  "what_must_not_be_done": [
+    "Do not expose tier 4-5 tools in read-only surface — hard-block at call_tool() dispatch",
+    "Do not implement bearer/OAuth auth — local session token only for P0/P1",
+    "Do not surface mutation tools until cryptographic approval receipts exist",
+    "Do not serve raw file content in any MCP response",
+    "Do not allow tools/call without descriptor hash verification",
+    "Do not skip content-light scan on any response path",
+    "Do not implement streamable HTTP until stdio path is fully hardened",
+    "Do not add new MCP tools without adding them to the descriptor integrity registry"
+  ],
+  "content_light": true
+}

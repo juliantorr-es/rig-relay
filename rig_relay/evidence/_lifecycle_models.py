@@ -1,180 +1,180 @@
-"""Session storage lifecycle helpers.
-
-Conservative, content-light session audit / compaction / GC helpers for
-`~/.rig/sessions`.
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import StrEnum, auto
+from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
-from typing import Any
 
 
 class SessionStorageCategory(StrEnum):
-    RECEIPTS = auto()
-    CONSENT = auto()
-    UPLOAD_RECEIPTS = auto()
-    SIGNED_ENVELOPES = auto()
-    PROGRESS_EVENTS = auto()
-    INTENT_EVENTS = auto()
-    VALIDATION_ARTIFACTS = auto()
-    MODEL_OBSERVATIONS = auto()
-    RAW_TRANSCRIPTS = auto()
-    RAW_MODEL_OUTPUTS = auto()
-    STDOUT_STDERR = auto()
-    DEBUG_DUMPS = auto()
-    TEMP_FILES = auto()
-    UNKNOWN = auto()
+    OBSERVABILITY = "observability"
+    INTENT_EVENTS = "intent_events"
+    RECEIPTS = "receipts"
+    CONSENT = "consent"
+    SIGNED_ENVELOPES = "signed_envelopes"
+    UPLOAD_RECEIPTS = "upload_receipts"
+    TRACES = "traces"
+    PROGRESS_EVENTS = "progress_events"
+    VALIDATION_ARTIFACTS = "validation_artifacts"
+    MODEL_OBSERVATIONS = "model_observations"
+    RAW_TRANSCRIPTS = "raw_transcripts"
+    STDOUT_STDERR = "stdout_stderr"
+    DEBUG_DUMPS = "debug_dumps"
+    TEMP_FILES = "temp_files"
+    UNKNOWN = "unknown"
+    OTHER = "other"
 
 
-@dataclass(frozen=True, slots=True)
-class SessionPruneCandidate:
-    path: Path
-    size_bytes: int
-    category: SessionStorageCategory
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
-class SessionCompactionCandidate:
-    path: Path
-    size_bytes: int
-    category: SessionStorageCategory
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
-class SessionStorageSummary:
-    sessions_root: Path
-    total_bytes: int
-    file_count: int
-    category_bytes: dict[SessionStorageCategory, int]
-    largest_files: list[dict[str, Any]]
-    compaction_candidates: list[SessionCompactionCandidate]
-    prune_candidates: list[SessionPruneCandidate]
-
-
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ClassifiedArtifact:
     path: Path
     size_bytes: int
     category: SessionStorageCategory
 
 
-@dataclass(frozen=True, slots=True)
-class CompactionResult:
-    source_path: Path
-    output_path: Path | None
-    size_bytes_before: int
-    size_bytes_after: int
-    category: SessionStorageCategory
-    status: str
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
-class Refusal:
-    path: Path
-    category: SessionStorageCategory
-    reason: str
-
-
-@dataclass(frozen=True, slots=True)
-class DeletedArtifact:
+@dataclass(slots=True)
+class SessionPruneCandidate:
     path: Path
     size_bytes: int
     category: SessionStorageCategory
+    age_days: int = 0
+
+
+@dataclass(slots=True)
+class SessionCompactionCandidate:
+    path: Path
+    size_bytes: int
+    category: SessionStorageCategory
+
+
+@dataclass(slots=True)
+class SessionStorageSummary:
+    sessions_root: Path
+    total_sessions: int
+    total_bytes: int
+    file_count: int
+    category_counts: dict[str, int]
+    top_sessions: list[ClassifiedArtifact]
+    timestamp: str
+    category_bytes: dict[str, int] = field(default_factory=dict)
+    compaction_candidates: list[SessionCompactionCandidate] = field(
+        default_factory=list
+    )
+
+
+@dataclass(slots=True)
+class CompactionResult:
+    candidates: int = 0
+    compacted: int = 0
+    format: str = "parquet"
+
+
+@dataclass(slots=True)
+class DeletedArtifact:
+    path: str
+    size_bytes: int
+
+
+@dataclass(slots=True)
+class Refusal:
+    path: str
     reason: str
 
 
-@dataclass(frozen=True, slots=True)
-class SessionRetentionPolicy:
-    allow_prune: bool = False
-    max_delete_mb: float = 0.0
-    older_than_days: int = 30
-    archive_dir: Path | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class SessionLifecycleReceipt:
-    schema_version: str
+@dataclass(slots=True)
+class SessionFinalizeResult:
     session_id: str
-    reason: str
-    created_at: str
-    scanned_files: int
-    total_bytes_before: int
-    total_bytes_after: int
-    compacted_count: int
-    refused_count: int
-    prune_candidate_count: int
-    deleted_count: int
-    warnings: list[str]
+    receipts_count: int = 0
+    lifecycle_manifest_path: Path | str | None = None
+    scanned_files: int = 0
+    total_bytes_before: int = 0
+    total_bytes_after: int = 0
+    compacted_files: tuple[str, ...] | list[str] = field(default_factory=tuple)
+    protected_files: tuple[str, ...] | list[str] = field(default_factory=tuple)
+    refused_files: tuple[str, ...] | list[str] = field(default_factory=tuple)
+    prune_candidates: tuple[str, ...] | list[str] = field(default_factory=tuple)
+    deleted_files: tuple[str, ...] | list[str] = field(default_factory=tuple)
+    manifest_path: Path | str | None = None
+    receipt_path: Path | str | None = None
+    status: str = "ok"
+    warnings: tuple[str, ...] | list[str] = field(default_factory=tuple)
+
+
+@dataclass(slots=True)
+class SessionLifecycleManifestEntry:
+    session_id: str
+    finalized_at: str
+    receipt_path: str | None = None
+
+
+@dataclass(slots=True)
+class SessionLifecycleManifest:
+    entries: list[SessionLifecycleManifestEntry] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class SessionLifecycleReceipt:
+    session_id: str
+    finalized_at: str
+    category_counts: dict[str, int] = field(default_factory=dict)
+    reason: str = ""
+    scanned_files: int = 0
+    total_bytes_before: int = 0
+    total_bytes_after: int = 0
+    compacted_count: int = 0
+    refused_count: int = 0
+    prune_candidate_count: int = 0
+    deleted_count: int = 0
+    warnings: list[str] = field(default_factory=list)
+    schema_version: str = "rig.relay.session_lifecycle_receipt.v1"
+    created_at: str = ""
     mission_id: str | None = None
-    mission_envelope_sha256: str | None = None
     adr_id: str | None = None
     sprint_id: str | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class SessionLifecycleManifestEntry:
-    relative_path: str
-    category: SessionStorageCategory
-    size_bytes: int
-    status: str
+@dataclass(slots=True, frozen=True)
+class SessionRetentionPolicy:
+    older_than_days: int = 30
+    max_age_days: int = 90
+    max_total_bytes: int = 1_073_741_824
+    max_delete_mb: float = 256.0
+    allow_prune: bool = False
+    archive_dir: Path | str | None = None
+    protected_categories: tuple[str, ...] = (
+        "signed_envelopes",
+        "receipts",
+        "consent",
+        "upload_receipts",
+    )
 
 
-@dataclass(frozen=True, slots=True)
-class SessionLifecycleManifest:
-    schema_version: str
-    session_id: str
-    reason: str
-    created_at: str
-    entries: list[SessionLifecycleManifestEntry]
-    total_bytes_before: int
-    total_bytes_after: int
-    projected_reclaimable_bytes: int
-    warnings: list[str]
-
-
-@dataclass(frozen=True, slots=True)
-class SessionFinalizeResult:
-    session_id: str
-    scanned_files: int
-    total_bytes_before: int
-    total_bytes_after: int
-    compacted_files: tuple[CompactionResult, ...]
-    protected_files: tuple[ClassifiedArtifact, ...]
-    refused_files: tuple[Refusal, ...]
-    prune_candidates: tuple[SessionPruneCandidate, ...]
-    deleted_files: tuple[DeletedArtifact, ...]
-    manifest_path: Path | None
-    receipt_path: Path | None
-    status: str
-    warnings: tuple[str, ...]
-
-
-@dataclass(slots=True)
+@dataclass(slots=False)
 class _FinalizeState:
-    scanned_files: int
-    total_bytes_before: int
-    protected_files: list[ClassifiedArtifact]
-    refused_files: list[Refusal]
-    compacted_files: list[CompactionResult]
-    deleted_files: list[DeletedArtifact]
-    warnings: list[str]
+    session_id: str
+    receipts_count: int = 0
+    manifest_path: str | None = None
+    scanned_files: int = 0
+    total_bytes_before: int = 0
+    protected_files: list[str] = field(default_factory=list)
+    refused_files: list[str] = field(default_factory=list)
+    compacted_files: list[dict] = field(default_factory=list)
+    deleted_files: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
-_CATEGORY_RULES: tuple[tuple[SessionStorageCategory, tuple[str, ...], bool], ...] = (
-    (SessionStorageCategory.UPLOAD_RECEIPTS, ("upload", "receipt"), True),
-    (SessionStorageCategory.RECEIPTS, ("receipt", "receipts"), False),
-    (SessionStorageCategory.CONSENT, ("consent",), False),
-    (SessionStorageCategory.SIGNED_ENVELOPES, ("signed", "envelope"), False),
-    (SessionStorageCategory.PROGRESS_EVENTS, ("progress",), False),
-    (SessionStorageCategory.INTENT_EVENTS, ("intent",), False),
-    (SessionStorageCategory.VALIDATION_ARTIFACTS, ("validation", "refinement"), False),
-    (SessionStorageCategory.MODEL_OBSERVATIONS, ("observation", "model"), False),
-    (SessionStorageCategory.STDOUT_STDERR, ("stdout", "stderr", "shell"), False),
-    (SessionStorageCategory.DEBUG_DUMPS, ("debug", "dump"), False),
-)
+__all__ = [
+    "ClassifiedArtifact",
+    "CompactionResult",
+    "DeletedArtifact",
+    "Refusal",
+    "SessionCompactionCandidate",
+    "SessionFinalizeResult",
+    "SessionLifecycleManifest",
+    "SessionLifecycleManifestEntry",
+    "SessionLifecycleReceipt",
+    "SessionPruneCandidate",
+    "SessionRetentionPolicy",
+    "SessionStorageCategory",
+    "SessionStorageSummary",
+    "_FinalizeState",
+]

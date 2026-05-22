@@ -281,7 +281,7 @@ class TestVertexCredentials:
         creds.token = token
         return creds
 
-    @patch("vibe.core.llm.backend.vertex.google.auth.default")
+    @patch("rig_relay.core.llm.backend.vertex.google.auth.default")
     def test_initializes_credentials_on_first_access(self, mock_default: MagicMock):
         creds = self._make_creds()
         mock_default.return_value = (creds, "project")
@@ -292,7 +292,7 @@ class TestVertexCredentials:
         assert token == "tok"
         mock_default.assert_called_once()
 
-    @patch("vibe.core.llm.backend.vertex.google.auth.default")
+    @patch("rig_relay.core.llm.backend.vertex.google.auth.default")
     def test_caches_credentials_across_calls(self, mock_default: MagicMock):
         creds = self._make_creds()
         mock_default.return_value = (creds, "project")
@@ -304,7 +304,7 @@ class TestVertexCredentials:
 
         mock_default.assert_called_once()
 
-    @patch("vibe.core.llm.backend.vertex.google.auth.default")
+    @patch("rig_relay.core.llm.backend.vertex.google.auth.default")
     def test_refreshes_when_token_invalid(self, mock_default: MagicMock):
         creds = self._make_creds(valid=False)
         mock_default.return_value = (creds, "project")
@@ -314,7 +314,7 @@ class TestVertexCredentials:
 
         creds.refresh.assert_called_once()
 
-    @patch("vibe.core.llm.backend.vertex.google.auth.default")
+    @patch("rig_relay.core.llm.backend.vertex.google.auth.default")
     def test_skips_refresh_when_token_valid(self, mock_default: MagicMock):
         creds = self._make_creds(valid=True)
         mock_default.return_value = (creds, "project")
@@ -324,7 +324,7 @@ class TestVertexCredentials:
 
         creds.refresh.assert_not_called()
 
-    @patch("vibe.core.llm.backend.vertex.google.auth.default")
+    @patch("rig_relay.core.llm.backend.vertex.google.auth.default")
     def test_raises_when_token_is_none(self, mock_default: MagicMock):
         creds = self._make_creds(valid=True, token=None)
         mock_default.return_value = (creds, "project")

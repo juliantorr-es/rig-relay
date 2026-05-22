@@ -1,0 +1,102 @@
+{
+  "schema_version": "rig.relay.cross_surface_authority_spine.v1",
+  "report_id": "cross-surface-authority-spine-canonicalization-v1",
+  "title": "Cross-Surface Authority Spine Canonicalization Report v1",
+  "generated_at": "2026-05-21T00:00:00Z",
+  "effective_at": "2026-05-20T00:00:00-07:00",
+  "status": "complete",
+  "source_artifacts_inspected": [
+    "docs/json/governance/relay-surface-matrix.v1.json",
+    "docs/json/governance/relay-local-remote-boundary.v1.json",
+    "docs/json/governance/vscodium-extension-client.v1.json",
+    "docs/json/governance/debug-bundle-policy.v1.json",
+    "docs/json/governance/telemetry-contribution-policy.v1.json",
+    "docs/json/governance/usage-data-doctrine.v1.json",
+    "docs/json/governance/frontend_cli_protocol_surface_test_strategy_v1.v1.json",
+    "docs/json/governance/frontend_cli_protocol_surface_roadmap_v1.v1.json",
+    "docs/json/protocols/ide-sidecar-ipc.v1.json",
+    "docs/json/protocols/mcp-server-protocol.v1.json",
+    "docs/json/protocols/acp-agent-protocol.v1.json",
+    "docs/json/site_manifest.v1.json",
+    "docs/schemas/rig.relay.telemetry.event.v1.schema.json",
+    "docs/schemas/rig.relay.ide.capability_manifest.v1.schema.json",
+    "docs/schemas/rig.relay.ide.sidecar.message.v1.schema.json",
+    "docs/schemas/rig.relay.ide.capability_receipt.v1.schema.json"
+  ],
+  "docs_inspected": [
+    "docs/json/site_manifest.v1.json",
+    "docs/json/governance/ (71 docs in governance collection)",
+    "docs/json/protocols/ (3 docs in protocols collection)",
+    "docs/json/governance/relay-surface-matrix.v1.json",
+    "docs/json/governance/relay-local-remote-boundary.v1.json",
+    "docs/json/governance/vscodium-extension-client.v1.json",
+    "docs/json/governance/debug-bundle-policy.v1.json",
+    "docs/json/governance/telemetry-contribution-policy.v1.json",
+    "docs/json/governance/usage-data-doctrine.v1.json"
+  ],
+  "files_changed": [
+    "docs/json/governance/cross_surface_authority_spine_v1.v1.json (CREATED — canonical doctrine)",
+    "docs/schemas/rig.relay.cross_surface_authority_spine.v1.schema.json (CREATED — schema)",
+    "docs/json/governance/cross_surface_authority_spine_canonicalization_v1.v1.json (CREATED — this report)",
+    "docs/json/site_manifest.v1.json (MODIFIED — registered canonical doctrine and canonicalization report in governance collection)",
+    "docs/json/governance/frontend_cli_protocol_surface_test_strategy_v1.v1.json (MODIFIED — real-artifact classifications)",
+    "docs/json/governance/frontend_cli_protocol_surface_roadmap_v1.v1.json (MODIFIED — Cross-Surface Authority Spine v1 as first slice)"
+  ],
+  "doctrine_decisions_propagated": [
+    "Created canonical cross_surface_authority_spine_v1.v1.json with enforceable surface, protocol, hosted, GitHub, Postgres, telemetry, and common envelope rules",
+    "9 authority tiers declared as canonical reference",
+    "10 forbidden bypasses documented with blocking status",
+    "Implementation sequencing declared (P0-P5)",
+    "10 do-not-overrun guards declared",
+    "Per-surface required tests before enablement documented",
+    "Registered in site_manifest.v1.json governance collection under document_id cross-surface-authority-spine",
+    "Registered canonicalization report in site_manifest under document_id cross-surface-authority-spine-canonicalization"
+  ],
+  "stale_statements_corrected": [
+    "Patched test strategy to add real-artifact classifications (was 0 real-artifact; now tests for static docs, CLI taxonomy, MCP descriptors, approval receipts, WebSocket envelopes, telemetry export, debug packets, GitHub Trust Spine state, common envelopes are classified as real-artifact where appropriate)",
+    "Patched roadmap to add Cross-Surface Authority Spine v1 as explicit first slice (item_id: roadmap-000a) before surface inventory, with 10 do-not-overrun guards added"
+  ],
+  "docs_intentionally_untouched": [
+    "docs/json/governance/relay-surface-matrix.v1.json — existing surface matrix; not contradicted by authority spine",
+    "docs/json/governance/relay-local-remote-boundary.v1.json — existing local/remote boundary doc; authority spine extends, does not contradict",
+    "docs/json/governance/vscodium-extension-client.v1.json — IDE sidecar policy; authority spine reinforces ACP convergence direction",
+    "docs/json/governance/debug-bundle-policy.v1.json — existing debug bundle policy; authority spine adds content-light scan requirement",
+    "docs/json/governance/telemetry-contribution-policy.v1.json — existing telemetry policy; authority spine adds boundary distinction"
+  ],
+  "why_untouched": "These docs are either aligned with the authority spine or would require a separate dedicated canonicalization mission. The authority spine extends, reinforces, or provides the governance framework for these docs. No contradictions were found that required immediate patching.",
+  "manifest_registrations": {
+    "governance_collection_additions": [
+      { "document_id": "cross-surface-authority-spine", "path": "docs/json/governance/cross_surface_authority_spine_v1.v1.json", "title_override": "Cross-Surface Authority Spine v1 — Canonical" },
+      { "document_id": "cross-surface-authority-spine-canonicalization", "path": "docs/json/governance/cross_surface_authority_spine_canonicalization_v1.v1.json", "title_override": "Cross-Surface Authority Spine Canonicalization Report v1" }
+    ],
+    "protocols_collection_additions": []
+  },
+  "static_pages_rendered": true,
+  "static_pages_result": "Cross-Surface Authority Spine page generated in docs/pages/ via rig_site_render.py. Search index updated.",
+  "validation_results": {
+    "json_syntax": "all new/modified files valid JSON",
+    "schema_validation": "scripts/rig_relay_validate_schemas.py — all schemas pass",
+    "link_path_validation": "all manifest paths resolve to existing files",
+    "static_docs_render": "render completed",
+    "search_index": "search-index.json updated with new page entry"
+  },
+  "remaining_seams": [
+    "Authority spine is canonical but not yet programmatically enforced — backend code must reference this artifact for policy decisions",
+    "Common envelope model is defined but not yet adopted by any protocol surface",
+    "9 cockpit status indicators are specified but not implemented",
+    "CLI/scripts governance gating is specified but 121 scripts still operate outside unified governance",
+    "MCP descriptor integrity is specified but not integrated into request flow",
+    "A2A trust tier enforcement is specified but no implementation exists",
+    "SSH doctrine is specified but no implementation exists",
+    "Hosted mode dual-write is specified but no Postgres adapter exists",
+    "Static docs public/private split is specified but not automated in CI"
+  ],
+  "next_recommended_implementation_slice": "P0: Common envelope and schema spine adoption across all surfaces. Frontend intent hardening and status indicators. CLI command taxonomy unification and governance gating. MCP read-only surface hardening.",
+  "content_light": {
+    "sha256": "placeholder",
+    "no_raw_tokens": true,
+    "no_raw_secrets": true,
+    "no_source_code": true
+  },
+  "revision": 1
+}

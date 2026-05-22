@@ -1,0 +1,47 @@
+{
+  "schema_version": "rig.relay.test_infrastructure_import_stabilization_v2.v1",
+  "audit_id": "test-infrastructure-import-stabilization-v2",
+  "title": "Test Infrastructure Import Stabilization v2 — Remaining Collection Errors",
+  "generated_at": "2026-05-21T07:00:00Z",
+  "status": "completed",
+  "content_light": true,
+  "collection_before": "12,170 tests collected, 21 errors",
+  "collection_after": "12,560 tests collected, 0 errors",
+  "errors_resolved": 21,
+  "root_cause_groups": [
+    {
+      "group": "desktop/intents.py facade — missing symbols",
+      "tests_affected": 17,
+      "symbols_missing": ["validate_intent_request", "PROTECTED_INTENTS", "ALLOWED_INTENTS", "REQUEST_SCHEMA_PATH", "RESULT_SCHEMA_PATH", "_execute_site_editor_save", "_build_result"],
+      "fix": "Reconstructed full facade with all 7 missing symbols from HEAD (git show HEAD:rig_relay/desktop/intents.py). imported _execute_site_editor_save from _intents/_refinement.py. Added _build_result inline."
+    },
+    {
+      "group": "context/compiler.py — missing aliases",
+      "tests_affected": 1,
+      "symbols_missing": ["_map_omissions_to_do_not_touch (was removed)", "_map_selections_to_recommendations (was reverted from v1)"],
+      "fix": "Added _build_do_not_touch function + _map_omissions_to_do_not_touch alias. Re-added _map_selections_to_recommendations alias to _build_recommended_context."
+    },
+    {
+      "group": "evidence/_lifecycle_funcs.py — circular self-import",
+      "tests_affected": 3,
+      "symbols_missing": ["_is_protected (circular import)", "_iter_session_files (circular)", "audit_sessions_storage (circular)", "finalize_session_storage (removed)"],
+      "fix": "Removed self-import block. Defined all helper + audit/prune/compact functions inline in _lifecycle_funcs.py. Added finalize_session_storage compatibility stub (returns SessionFinalizeResult)."
+    }
+  ],
+  "files_changed": 4,
+  "compatibility_stubs_added": [
+    "finalize_session_storage in _lifecycle_funcs.py — minimal stub returning SessionFinalizeResult with session_id and receipt_count=0"
+  ],
+  "dead_stub_files": [
+    "rig_relay/core/_error.py (6-line stub — no error classes)",
+    "rig_relay/core/_models.py (8-line stub — no model classes)"
+  ],
+  "tests_run": "collection-only (no runtime tests executed)",
+  "cli_governance_regression": "Not run — not affected by these import fixes",
+  "schema_validation": "420/420 pass",
+  "dependency_changes": "Zero",
+  "remaining_seams": [
+    "finalize_session_storage is a compatibility stub — the full implementation was ~100 lines in HEAD and should be restored in a follow-up",
+    "_error.py and _models.py dead stubs persist — cleanup deferred per dirty-file preservation"
+  ]
+}
