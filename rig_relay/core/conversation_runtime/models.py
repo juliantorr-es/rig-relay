@@ -12,11 +12,14 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.core.types import BaseEvent
+
+if TYPE_CHECKING:
+    pass
 
 
 class ConversationRuntimeStatus(StrEnum):
@@ -229,7 +232,19 @@ class ConversationRuntimeCallbacks(Protocol):
     # ── Loop control ─────────────────────────────────────────────
 
     def last_message_has_no_tool_calls(self) -> bool:
-        """Check if last message indicates loop should break."""
+        """[Deprecated] Check if last message indicates loop should break.
+
+        Superseded by get_turn_batch_result(). Kept for compatibility
+        during migration. Prefer TurnBatchResult.
+        """
+        ...
+
+    def get_turn_batch_result(self) -> TurnBatchResult:
+        """Return typed pending-tool state after model turn completes.
+
+        Replaces last_message_has_no_tool_calls() with an explicit
+        typed result that ConversationRuntime can use for decision dispatch.
+        """
         ...
 
     # ── Tool execution ─────────────────────────────────────────
@@ -347,3 +362,29 @@ class ConversationLoopDecision(BaseModel):
             reason=reason,
             should_break=True,
         )
+
+
+# ── Turn result models (Phase 0: typed turn-state contract) ─────────
+
+
+class TurnBatchResult(BaseModel):
+    """Result of a tool execution batch within a turn.
+
+    Replaces the implicit adapter query for pending tool state.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    pending_batch: list[object] | None = Field(default=None)
+    """Resolved tool calls waiting to execute. None means no tools pending."""
+
+    failed_calls: list[object] = Field(default_factory=list)
+    """Tool calls that failed resolution."""
+
+    assistant_is_final: bool = False
+    """True when the assistant produced a message with no tool call intent."""
+
+    @property
+    def has_tool_work(self) -> bool:
+        """True when there are pending tool calls to execute."""
+        return self.pending_batch is not None and len(self.pending_batch) > 0

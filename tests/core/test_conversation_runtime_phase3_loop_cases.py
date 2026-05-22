@@ -111,6 +111,13 @@ class _FakeLoopAdapter:
     def last_message_has_no_tool_calls(self) -> bool:
         return not self.has_tool_calls
 
+    def get_turn_batch_result(self):
+        from rig_relay.core.conversation_runtime.models import TurnBatchResult
+
+        if self.has_tool_calls:
+            return TurnBatchResult(pending_batch=[object()], assistant_is_final=False)
+        return TurnBatchResult(pending_batch=None, assistant_is_final=True)
+
     async def execute_tool_batch(self):
         for ev in self.tool_batch_events:
             yield ev

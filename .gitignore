@@ -38,6 +38,8 @@ __pycache__/
 .Python
 build/
 .build/
+*.duckdb
+*.wal
 develop-eggs/
 dist/
 downloads/

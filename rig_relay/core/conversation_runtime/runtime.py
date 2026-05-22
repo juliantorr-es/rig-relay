@@ -1,14 +1,11 @@
-"""ConversationRuntime — phase event recorder, result builder, and trace emitter.
+"""ConversationRuntime — phase event recorder, result builder, trace emitter, and loop owner.
 
-ConversationRuntime observes the turn through _phase() and _finish()
-calls from AgentLoop._conversation_loop. It owns the phase event log
-and builds a JSON-safe result summary.
+ConversationRuntime owns turn sequencing, decision policy, phase tracking,
+and loop continuation decisions. AgentLoop delegates turn execution to it
+via ConversationRuntimeCallbacks.
 
 Phase trace hooks allow consumers (desktop, analytics, observability) to
 observe phase transitions without coupling to AgentLoop internals.
-
-In future slices, ConversationRuntime will own the loop orchestration
-itself. Today it observes while AgentLoop retains loop policy.
 
 Architecture boundary: must NOT import desktop, ralph, scripts,
 duckdb, or analytics.
@@ -36,16 +33,15 @@ from rig_relay.core.types import BaseEvent
 
 
 class ConversationRuntime:
-    """Phase observer, result builder, and trace emitter.
+    """Phase observer, result builder, trace emitter, and loop owner.
 
     Called from AgentLoop._conversation_loop at each phase transition.
-    Owns the phase event log and builds the turn result.
+    Owns the phase event log, builds the turn result, and drives the
+    while-loop continuation decisions.
 
     Accepts optional PhaseTraceHook callbacks for structured trace
     evidence. Callback errors are caught and logged — they never
     propagate to the caller.
-
-    Future: will own the loop itself (see extraction plan).
     """
 
     def __init__(self, *, trace_hook: PhaseTraceHook | None = None) -> None:
@@ -306,7 +302,8 @@ class ConversationRuntime:
                     yield event
 
                 # ── Decision after model turn ───────────────
-                should_break = adapter.last_message_has_no_tool_calls()
+                batch_result = adapter.get_turn_batch_result()
+                should_break = not batch_result.has_tool_work
                 decision = self.decide_after_model_turn(
                     user_cancelled=user_cancelled, assistant_final=should_break
                 )

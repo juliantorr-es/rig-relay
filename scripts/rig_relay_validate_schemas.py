@@ -88,18 +88,14 @@ def validate_schema(path: Path, strict: bool = False) -> tuple[bool, list[str]]:
                 f"{data['$schema']!r} (expected {expected!r})"
             )
 
-    # Optional: self-validate as JSON Schema Draft 7
+    # Optional: validate against JSON Schema Draft 7 metaschema
     if strict:
         try:
             import jsonschema
 
-            # Self-validate the schema
-            validator = jsonschema.Draft7Validator(data)
-            schema_errors = list(validator.iter_errors(data))
-            for se in schema_errors:
-                errors.append(f"{path.name}: Schema self-validation: {se.message}")
+            jsonschema.Draft7Validator.check_schema(data)
         except Exception as e:
-            errors.append(f"{path.name}: Schema validation exception: {e}")
+            errors.append(f"{path.name}: Schema metaschema validation failed: {e}")
 
     return len(errors) == 0, errors
 

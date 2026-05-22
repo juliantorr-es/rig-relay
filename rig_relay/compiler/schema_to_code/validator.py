@@ -82,7 +82,7 @@ def _run_gate_importability(
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(worktree_dir),
         )
         status = GateStatus.PASS if result.returncode == 0 else GateStatus.FAIL
     except Exception:
@@ -108,7 +108,7 @@ def _run_gate_pyright(
             capture_output=True,
             text=True,
             timeout=120,
-            cwd=str(repo_root),
+            cwd=str(candidate_file.parent),
         )
         status = GateStatus.PASS if result.returncode == 0 else GateStatus.FAIL
     except Exception:
@@ -134,14 +134,14 @@ def _run_gate_ruff_lint(
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(candidate_file.parent),
         )
         result = subprocess.run(
             ["uv", "run", "ruff", "check", str(candidate_file)],
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(candidate_file.parent),
         )
         status = GateStatus.PASS if result.returncode == 0 else GateStatus.FAIL
     except Exception:
@@ -167,14 +167,14 @@ def _run_gate_ruff_format(
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(candidate_file.parent),
         )
         result = subprocess.run(
             ["uv", "run", "ruff", "format", "--check", str(candidate_file)],
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(candidate_file.parent),
         )
         status = GateStatus.PASS if result.returncode == 0 else GateStatus.FAIL
     except Exception:
@@ -226,7 +226,7 @@ def _run_gate_roundtrip(
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(worktree_dir),
         )
         if result.returncode != 0:
             matrix.add(
@@ -295,7 +295,7 @@ def _run_gate_adversarial(
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=str(repo_root),
+            cwd=str(worktree_dir),
         )
         if "accepted" in result.stdout and result.returncode == 0:
             status = GateStatus.FAIL

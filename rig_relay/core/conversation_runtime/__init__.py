@@ -19,6 +19,7 @@ from rig_relay.core.conversation_runtime.models import (
     ConversationRuntimeStatus,
     PhaseTraceAttributes,
     PhaseTraceHook,
+    TurnBatchResult,
 )
 from rig_relay.core.conversation_runtime.runtime import ConversationRuntime
 
@@ -33,4 +34,5 @@ __all__ = [
     "ConversationRuntimeStatus",
     "PhaseTraceAttributes",
     "PhaseTraceHook",
+    "TurnBatchResult",
 ]

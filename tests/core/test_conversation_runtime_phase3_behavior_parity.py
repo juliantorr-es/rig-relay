@@ -96,6 +96,13 @@ class FullToolExecutionAdapter:
         # After final answer, last message is assistant → no tool calls
         return self._phase == "done"
 
+    def get_turn_batch_result(self):
+        from rig_relay.core.conversation_runtime.models import TurnBatchResult
+
+        if self._phase == "done":
+            return TurnBatchResult(pending_batch=None, assistant_is_final=True)
+        return TurnBatchResult(pending_batch=[object()], assistant_is_final=False)
+
     async def execute_tool_batch(self):
         if False:
             yield

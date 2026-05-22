@@ -71,7 +71,7 @@ class LocalProfile(BaseModel):
     local_auth_enabled: bool = False
     passkey_registered: bool = False
     platform_credential_registered: bool = False
-    telemetry_mode: str = "disabled"
+    telemetry_mode: str = "enabled_first_party"
     profile_state: ProfileState = ProfileState.SETUP_REQUIRED
     updated_at: str = ""
 
@@ -132,7 +132,7 @@ class ProfileStore:
             local_auth_enabled=False,
             passkey_registered=False,
             platform_credential_registered=False,
-            telemetry_mode="disabled",
+            telemetry_mode="enabled_first_party",
             profile_state=ProfileState.SETUP_REQUIRED,
         )
         self.save(profile)

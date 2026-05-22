@@ -2,10 +2,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import keyword
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
+
+_VALID_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*\Z")
+
+
+def _safe_python_identifier(name: str) -> bool:
+    """Return True if name is a valid, non-keyword Python identifier."""
+    return bool(_VALID_IDENTIFIER_RE.match(name)) and not keyword.iskeyword(name)
+
+
+def _escape_py_str(value: str) -> str:
+    """Escape a value for inclusion in a Python string literal."""
+    return json.dumps(value)
 
 
 @dataclass
@@ -50,6 +64,11 @@ def derive_model_spec_from_schema(schema: dict, schema_path: Path) -> ModelSpec:
     for field_name, prop in props.items():
         if field_name == "schema_version":
             continue
+        if not _safe_python_identifier(field_name):
+            raise ValueError(
+                f"Schema property {field_name!r} is not a valid Python identifier. "
+                f"Only [a-zA-Z_][a-zA-Z0-9_]* non-keyword names are allowed."
+            )
         field_type = _map_type(prop)
         is_required = field_name in required_fields
         fields.append({
@@ -61,7 +80,7 @@ def derive_model_spec_from_schema(schema: dict, schema_path: Path) -> ModelSpec:
     model = {
         "class_name": "GeneratedModel",
         "base": "BaseModel",
-        "schema_version": schema_version,
+        "schema_version": _escape_py_str(schema_version),
         "fields": fields,
     }
 

@@ -1024,3 +1024,128 @@ async def test_parallel_conversation_history_has_all_tool_messages() -> None:
         "call_h3",
     }
     assert agent_loop.stats.tool_calls_succeeded == 4
+
+
+# ── Execution-truth integration tests (Phase 0: typed turn contract) ──
+
+
+@pytest.mark.asyncio
+async def test_assistant_tool_call_produces_typed_batch_result() -> None:
+    """P0: An assistant message with tool calls must produce a pending batch.
+
+    Verifies the fix for the defect where last_message_has_no_tool_calls()
+    checked last.role != Role.tool, which always returned True for
+    assistant messages with tool calls (Role.assistant, not Role.tool).
+    """
+    tool_call = make_todo_tool_call("call_tr1")
+    backend = FakeBackend([
+        [mock_llm_chunk(content="Let me check your todos.", tool_calls=[tool_call])],
+        [mock_llm_chunk(content="Found 0 todos.")],
+    ])
+    agent_loop = make_agent_loop(auto_approve=True, backend=backend)
+
+    events = await act_and_collect_events(agent_loop, "List todos")
+
+    event_types = [type(e) for e in events]
+    assert event_types == [
+        UserMessageEvent,
+        AssistantEvent,
+        ToolCallEvent,
+        ToolResultEvent,
+        AssistantEvent,
+    ]
+    tool_result = events[3]
+    assert isinstance(tool_result, ToolResultEvent)
+    assert not tool_result.skipped
+    assert not tool_result.error
+    assert tool_result.result is not None
+
+
+@pytest.mark.asyncio
+async def test_tool_lifecycle_correct_event_sequence() -> None:
+    """P0: Full tool call lifecycle must produce correct event order.
+
+    Ensures ConversationRuntime correctly dispatches run_tools
+    when get_turn_batch_result().has_tool_work is True, rather
+    than prematurely completing with stop_completed.
+    """
+    tc1 = make_todo_tool_call("call_life1", index=0)
+    tc2 = make_todo_tool_call("call_life2", index=1)
+    backend = FakeBackend([
+        [mock_llm_chunk(content="Checking two things.", tool_calls=[tc1, tc2])],
+        [mock_llm_chunk(content="Both done.")],
+    ])
+    agent_loop = make_agent_loop(auto_approve=True, backend=backend)
+
+    events = await act_and_collect_events(agent_loop, "Check both")
+
+    event_types = [type(e) for e in events]
+    assert event_types[0] is UserMessageEvent
+    assert event_types[1] is AssistantEvent
+    assert event_types[2] is ToolCallEvent
+    assert event_types[3] is ToolCallEvent
+
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_results) == 2
+    assert all(not tr.error for tr in tool_results)
+    assert all(not tr.skipped for tr in tool_results)
+    assert all(tr.result is not None for tr in tool_results)
+
+    assert isinstance(events[-1], AssistantEvent)
+    assert events[-1].content == "Both done."
+
+    tool_msgs = [m for m in agent_loop.messages if m.role == Role.tool]
+    assert {m.tool_call_id for m in tool_msgs} == {"call_life1", "call_life2"}
+    assert agent_loop.stats.tool_calls_succeeded == 2
+
+
+@pytest.mark.asyncio
+async def test_no_tool_call_message_completes_immediately() -> None:
+    """P0: A message with no tool calls should complete without tool execution."""
+    backend = FakeBackend([[mock_llm_chunk(content="Hello! I don't need tools.")]])
+    agent_loop = make_agent_loop(auto_approve=True, backend=backend)
+
+    events = await act_and_collect_events(agent_loop, "Say hello")
+
+    event_types = [type(e) for e in events]
+    assert event_types == [UserMessageEvent, AssistantEvent]
+    tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+    assert len(tool_results) == 0
+
+
+@pytest.mark.asyncio
+async def test_tool_call_cross_turn_continuation() -> None:
+    """P0: Validate turn batch result across two turns.
+
+    First turn: tool call → result. Second turn: no tools → complete.
+    Verifies _pending_tool_resolved is correctly reset between turns.
+    """
+    tool_call_1 = make_todo_tool_call("call_cross1", index=0)
+    tool_call_2 = make_todo_tool_call("call_cross2", index=0)
+    backend = FakeBackend([
+        [mock_llm_chunk(content="First tool call.", tool_calls=[tool_call_1])],
+        [mock_llm_chunk(content="First done.")],
+        [mock_llm_chunk(content="Second tool call.", tool_calls=[tool_call_2])],
+        [mock_llm_chunk(content="Second done.")],
+    ])
+    agent_loop = make_agent_loop(auto_approve=True, backend=backend)
+
+    events1 = await act_and_collect_events(agent_loop, "First request")
+    events2 = await act_and_collect_events(agent_loop, "Second request")
+
+    assert [type(e) for e in events1] == [
+        UserMessageEvent,
+        AssistantEvent,
+        ToolCallEvent,
+        ToolResultEvent,
+        AssistantEvent,
+    ]
+    assert [type(e) for e in events2] == [
+        UserMessageEvent,
+        AssistantEvent,
+        ToolCallEvent,
+        ToolResultEvent,
+        AssistantEvent,
+    ]
+
+    assert agent_loop.stats.tool_calls_succeeded == 2

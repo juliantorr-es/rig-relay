@@ -80,13 +80,16 @@ from rig_relay.core._patch_gating import PatchGatingMixin
 from rig_relay.core._session_lifecycle import SessionLifecycleMixin
 from rig_relay.core._telemetry import TelemetryMixin
 from rig_relay.core._tool_response import ToolResponseMixin
+from rig_relay.core.context_runtime import ContextRuntime
 from rig_relay.core.conversation_loop_adapter import _ConversationLoopAdapter
 from rig_relay.core.conversation_runtime import ConversationRuntime
 from rig_relay.core.conversation_runtime.models import ConversationRuntimeCallbacks
 from rig_relay.core.conversation_turn import ConversationTurnRuntime, TurnPhase
 from rig_relay.core.governance_runtime import GovernanceRuntime
+from rig_relay.core.model_runtime import ModelRuntime
 from rig_relay.core.runtime_state import AgentRuntimeState
 from rig_relay.core.session_runtime import SessionRuntime
+from rig_relay.core.telemetry_runtime import TelemetryRuntime
 from rig_relay.core.tool_executor import (
     CouncilGate,
     ToolConcurrencyManager,
@@ -94,6 +97,7 @@ from rig_relay.core.tool_executor import (
     ToolExecutor,
     ToolRuntimeAdapterBuilder,
 )
+from rig_relay.core.tool_result_runtime import ToolResultRuntime
 from rig_relay.core.tool_runtime import ToolRuntime
 
 _COUNCIL_MUTATION_TOOLS = frozenset({
@@ -147,6 +151,7 @@ class AgentLoop(
         self.message_observer = message_observer
         self._max_turns = max_turns
         self._max_price = max_price
+        self._model_runtime: ModelRuntime | None = None
 
         self._init_core_managers(config, agent_name, is_subagent, defer_heavy_init)
 
@@ -187,6 +192,38 @@ class AgentLoop(
             config, entrypoint_metadata, is_subagent, hook_config_result
         )
 
+        self._model_runtime = ModelRuntime(
+            config=self.config,
+            backend=self.backend,
+            tool_manager=self.tool_manager,
+            format_handler=self.format_handler,
+            messages=self.messages,
+            stats=self.stats,
+            telemetry_client=self.telemetry_client,
+            entrypoint_metadata=self.entrypoint_metadata,
+            session_id=self.session_id,
+            parent_session_id=self.parent_session_id,
+            is_user_prompt_call=self._is_user_prompt_call,
+            current_user_message_id=self._current_user_message_id,
+            middleware_pipeline=self.middleware_pipeline,
+            agent_profile_getter=lambda: self.agent_profile,
+            plan_session=self._plan_session,
+            workspace_root=self._workspace_root,
+            headless=self._headless,
+            report_context_assembly=self._report_context_assembly,
+            compact_fn=self.compact,
+        )
+
+        self._context_runtime = ContextRuntime(
+            config=self.config,
+            workspace_root=self._workspace_root,
+            session_id=self.session_id,
+            messages=self.messages,
+            telemetry_client=self.telemetry_client,
+            context_compiler=self._context_compiler,
+            governed_context_enabled=self.config.governed_context_enabled,
+        )
+
         self._teleport_service: TeleportService | None = None
 
         Thread(
@@ -198,6 +235,8 @@ class AgentLoop(
 
         self._session_runtime = SessionRuntime(agent_loop=self)
         self._trace_runtime = TraceRuntime(session_id=self.session_id)
+        self._tool_result_runtime = ToolResultRuntime(loop=self)
+        self._telemetry_runtime = TelemetryRuntime(loop=self)
 
         self._exec_ctx = ToolExecutionContext(
             session_id=self.session_id,
@@ -209,7 +248,7 @@ class AgentLoop(
             approval_callback=self.approval_callback,
             result_sink=self._tool_result_sink,
             stats=self.stats,
-            handle_tool_response=self._handle_tool_response,
+            handle_tool_response=self._tool_result_runtime.handle_tool_response,
             telemetry_client=self.telemetry_client,
         )
 
@@ -735,6 +774,146 @@ class AgentLoop(
             tool_args=args.model_dump(),
             execution_mode="tool",
         )
+
+    # ── ModelRuntime delegation (Phase 1) ───────────────────────────
+
+    async def _prepare_llm_call(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._model_runtime.prepare_llm_call(*args, **kwargs)  # type: ignore[union-attr]
+
+    async def _chat(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._model_runtime.chat(*args, **kwargs)  # type: ignore[union-attr]
+
+    async def _chat_streaming(
+        self, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        mr = self._model_runtime
+        if mr is None:
+            async for chunk in LLMCallMixin._chat_streaming(self, *args, **kwargs):
+                yield chunk
+            return
+        async for chunk in mr.chat_streaming(*args, **kwargs):
+            yield chunk
+
+    def _update_stats(self, *args: Any, **kwargs: Any) -> None:
+        self._model_runtime._update_stats(*args, **kwargs)  # type: ignore[union-attr]
+
+    def _reraise_llm_error(self, *args: Any, **kwargs: Any) -> None:
+        self._model_runtime._reraise_llm_error(*args, **kwargs)  # type: ignore[union-attr]
+
+    def _build_backend_metadata(self, *args: Any, **kwargs: Any) -> Any:
+        return self._model_runtime.build_backend_metadata(*args, **kwargs)  # type: ignore[union-attr]
+
+    def _get_extra_headers(self, *args: Any, **kwargs: Any) -> Any:
+        return self._model_runtime.get_extra_headers(*args, **kwargs)  # type: ignore[union-attr]
+
+    def _setup_middleware(self) -> None:
+        if self._model_runtime is not None:
+            self._model_runtime.setup_middleware(self._max_turns, self._max_price)
+        else:
+            MiddlewareMetadataMixin._setup_middleware(self)
+
+    async def _handle_middleware_result(self, result: Any) -> AsyncGenerator[Any, None]:
+        async for event in self._model_runtime.handle_middleware_result(result):  # type: ignore[union-attr]
+            yield event
+
+    def _get_context(self) -> Any:
+        return self._model_runtime.get_middleware_context()  # type: ignore[union-attr]
+
+    # ── ContextRuntime delegation (Phase 2) ─────────────────────────
+
+    async def _build_context_envelope(self, user_msg: str) -> None:
+        envelope = await self._context_runtime.build_context(user_msg)
+        self._current_context_envelope = envelope
+
+    # ── SessionRuntime delegation (Phase 3) ─────────────────────────
+
+    def _clean_message_history(self) -> None:
+        self._session_runtime.clean_message_history()
+
+    def _fill_missing_tool_responses(self) -> None:
+        self._session_runtime.fill_missing_tool_responses()
+
+    def _reset_session(self, keep_parent: bool = True) -> None:
+        self._session_runtime.reset_session(keep_parent=keep_parent)
+
+    def _messages_for_fork(self, message_id: str | None) -> list[LLMMessage]:
+        return self._session_runtime.messages_for_fork(message_id)
+
+    # ── ToolResultRuntime delegation (Phase 4) ──────────────────────
+
+    def _handle_tool_response(self, *args: Any, **kwargs: Any) -> None:
+        self._tool_result_runtime.handle_tool_response(*args, **kwargs)
+
+    def _tool_failure_event(self, *args: Any, **kwargs: Any) -> ToolResultEvent:
+        return self._tool_result_runtime.tool_failure_event(*args, **kwargs)
+
+    def _capture_model_observation_for_tool_response(
+        self, *args: Any, **kwargs: Any
+    ) -> None:
+        self._tool_result_runtime.capture_model_observation(*args, **kwargs)
+
+    def _check_patch_proposal_gating(
+        self, tool_call: Any, tool_instance: Any
+    ) -> Any | None:
+        return PatchGatingMixin._check_patch_proposal_gating(
+            self, tool_call, tool_instance
+        )
+
+    def set_approval_callback(self, callback: object) -> None:
+        self.approval_callback = callback
+        if self._governance_runtime is not None:
+            self._governance_runtime.approval_callback = callback
+
+    def set_user_input_callback(self, callback: object) -> None:
+        self.user_input_callback = callback
+
+    def set_tool_permission(
+        self, tool_name: str, permission: Any, save_permanently: bool = False
+    ) -> None:
+        GovernanceMixin.set_tool_permission(
+            self, tool_name, permission, save_permanently
+        )
+
+    def _add_session_rule(self, rule: Any) -> None:
+        if self._governance_runtime is not None:
+            self._governance_runtime.add_session_rule(rule)
+
+    def _is_permission_covered(self, tool_name: str, rp: Any) -> bool:
+        return GovernanceMixin._is_permission_covered(self, tool_name, rp)
+
+    def approve_always(
+        self,
+        tool_name: str,
+        required_permissions: list[Any] | None,
+        save_permanently: bool = False,
+    ) -> None:
+        GovernanceMixin.approve_always(
+            self, tool_name, required_permissions, save_permanently
+        )
+
+    # ── TelemetryRuntime delegation (Phase 6) ───────────────────────
+
+    def emit_new_session_telemetry(self) -> None:
+        self._telemetry_runtime.emit_new_session()
+
+    def emit_ready_telemetry(self, init_duration_ms: int) -> None:
+        self._telemetry_runtime.emit_ready(init_duration_ms)
+
+    def emit_session_closed_telemetry(self) -> None:
+        self._telemetry_runtime.emit_session_closed()
+
+    def _emit_context_observation(
+        self,
+        tool_call: Any,
+        status: str,
+        args_dict: dict[str, Any],
+        blocked_by_policy: bool = False,
+    ) -> None:
+        self._telemetry_runtime.emit_context_observation(
+            tool_call, status, args_dict, blocked_by_policy
+        )
+
+    # ── Governance delegation ────────────────────────────────────────
 
     async def _ask_approval(
         self,

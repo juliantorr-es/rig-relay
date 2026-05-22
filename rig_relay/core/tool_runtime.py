@@ -321,26 +321,7 @@ class ToolRuntime:
                 trace_span, status=end_status, attributes=end_attrs, error=error
             )
 
-        # ── 1. Cache check ──────────────────────────────────────
-        hit, cached = self._cache_check(tn, request.tool_args)
-        if trace_span is not None:
-            trace_span.event("tool_runtime.cache_check", attributes={"cache.hit": hit})
-        if hit and cached is not None:
-            self._stats_delta("tool_calls_succeeded", 1)
-            _finalize_span(
-                status_str="ok", attrs={"tool.status": "cached", "cache.hit": True}
-            )
-            return ToolRuntimeResult.cached_result(
-                tool_name=tn, tool_call_id=cid, provider_tool_response=cached
-            ).model_copy(
-                update={
-                    "source_kind": request.source_kind,
-                    "source_id": request.source_id,
-                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
-                }
-            )
-
-        # ── 1.5. Profile gate check ─────────────────────────────
+        # ── 1. Profile gate check ─────────────────────────────
         is_mutation = request.execution_mode in {
             ToolRuntimeExecutionMode.MUTATION_EXECUTION,
             ToolRuntimeExecutionMode.MUTATION_PROPOSAL,
@@ -685,6 +666,25 @@ class ToolRuntime:
             )
 
         self._stats_delta("tool_calls_agreed", 1)
+
+        # ── 4.5. Cache check (after all governance, before invocation) ──
+        hit, cached = self._cache_check(tn, request.tool_args)
+        if trace_span is not None:
+            trace_span.event("tool_runtime.cache_check", attributes={"cache.hit": hit})
+        if hit and cached is not None:
+            self._stats_delta("tool_calls_succeeded", 1)
+            _finalize_span(
+                status_str="ok", attrs={"tool.status": "cached", "cache.hit": True}
+            )
+            return ToolRuntimeResult.cached_result(
+                tool_name=tn, tool_call_id=cid, provider_tool_response=cached
+            ).model_copy(
+                update={
+                    "source_kind": request.source_kind,
+                    "source_id": request.source_id,
+                    "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                }
+            )
 
         # ── 5. Invoke tool ──────────────────────────────────────
         expanded_args = self._expand_args(request.tool_args)

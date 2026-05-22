@@ -29,6 +29,19 @@ def _make_schema_tolerant(schema: dict | list) -> None:
                 _make_schema_tolerant(item)
 
 
+_STRIP_BEFORE_VALIDATION = {
+    "repository",
+    "_source_path",
+    "_loaded_from",
+    "_manifest_sha256",
+}
+
+
+def _strip_internal_fields(data: dict) -> dict:
+    """Return a shallow copy of data with renderer-internal fields removed."""
+    return {k: v for k, v in data.items() if k not in _STRIP_BEFORE_VALIDATION}
+
+
 def validate_json_schema(
     data: dict, schema_key: str, repo_root: Path
 ) -> tuple[bool, str | None]:
@@ -52,7 +65,6 @@ def validate_json_schema(
             name = parts[-1]
             schema_path = repo_root / "docs" / "schemas" / name
         elif schema_key.endswith(".json"):
-            # Extract filename and search in docs/schemas
             name = Path(schema_key).name
             schema_path = repo_root / "docs" / "schemas" / name
         elif "/" in schema_key:
@@ -75,10 +87,9 @@ def validate_json_schema(
         with open(schema_path, encoding="utf-8") as f:
             schema = json.load(f)
 
-        # Make schema tolerant of additional properties
-        _make_schema_tolerant(schema)
-
-        jsonschema.validate(instance=data, schema=schema)
+        # Strip renderer-internal fields before strict schema validation
+        clean = _strip_internal_fields(data)
+        jsonschema.validate(instance=clean, schema=schema)
         return True, None
     except Exception as e:
         return False, str(e)

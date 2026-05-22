@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from rig_relay.core.conversation_runtime.models import TurnBatchResult
 from rig_relay.core.hooks.models import HookType, HookUserMessage
 from rig_relay.core.types import LLMMessage, Role
 
@@ -59,7 +60,7 @@ class _ConversationLoopAdapter:
             yield event
 
     def is_user_cancellation_event(self, event: Any) -> bool:
-        from rig_relay.core._llm_call import is_user_cancellation_event
+        from rig_relay.core.utils.tags import is_user_cancellation_event
 
         return is_user_cancellation_event(event)
 
@@ -86,8 +87,27 @@ class _ConversationLoopAdapter:
         )
 
     def last_message_has_no_tool_calls(self) -> bool:
-        last = self._loop.messages[-1]
-        return last.role != Role.tool  # type: ignore[name-defined]
+        """Check whether the model turn produced pending tool calls to execute.
+
+        Replaced per-role inference with direct pending-state check because
+        assistant messages with tool calls have Role.assistant, not Role.tool.
+        """
+        resolved = self._loop._pending_tool_resolved
+        if resolved is None:
+            return True
+        return not resolved.tool_calls and not resolved.failed_calls
+
+    def get_turn_batch_result(self) -> TurnBatchResult:
+        resolved = self._loop._pending_tool_resolved
+        if resolved is None:
+            return TurnBatchResult(pending_batch=None, assistant_is_final=True)
+        has_tool_calls = bool(resolved.tool_calls)
+        has_failed = bool(resolved.failed_calls)
+        return TurnBatchResult(
+            pending_batch=list(resolved.tool_calls) if has_tool_calls else None,
+            failed_calls=list(resolved.failed_calls) if has_failed else [],
+            assistant_is_final=not has_tool_calls and not has_failed,
+        )
 
     async def execute_tool_batch(self) -> Any:
         """Execute tool calls stored from stream_llm_turn().

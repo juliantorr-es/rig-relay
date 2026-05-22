@@ -26,7 +26,11 @@ from rig_relay.cli._steward._constants import (
 
 
 def build_command(
-    item: dict[str, Any], project_root: Path, opencode_path: str = "opencode"
+    item: dict[str, Any],
+    project_root: Path,
+    opencode_path: str = "opencode",
+    *,
+    show_reasoning: bool = False,
 ) -> list[str]:
     title = item.get("title", "Idle Steward Task")
     agent = item.get("agent", "build")
@@ -37,7 +41,6 @@ def build_command(
         "--pure",
         "--format",
         "json",
-        "--thinking",
         "--title",
         title,
         "--agent",
@@ -45,6 +48,8 @@ def build_command(
         "--dir",
         str(project_root),
     ]
+    if show_reasoning:
+        cmd.insert(cmd.index("--format") + 2, "--thinking")
     if model:
         cmd.extend(["--model", model])
     return cmd
@@ -312,7 +317,9 @@ def try_launch(
     prompt_text = read_prompt_text(root, prompt_path)
     if prompt_text is None:
         return None
-    argv = build_command(item, root, opencode_path=opencode_path)
+    argv = build_command(
+        item, root, opencode_path=opencode_path, show_reasoning=show_reasoning
+    )
     prompt_hash = sha256(prompt_text)
     argv_sha256 = sha256(json.dumps(argv, sort_keys=True))
     base_meta = {

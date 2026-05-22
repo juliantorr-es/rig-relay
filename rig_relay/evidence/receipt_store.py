@@ -272,6 +272,9 @@ class FilesystemReceiptStore:
             "schema_version": envelope.schema_version,
         }
 
+        if envelope.source_artifact_paths:
+            row["source_artifact_paths"] = envelope.source_artifact_paths
+
         if envelope.decision is not None:
             row["governance_decision_id"] = envelope.decision.governance_decision_id
             row["decision_status"] = envelope.decision.decision

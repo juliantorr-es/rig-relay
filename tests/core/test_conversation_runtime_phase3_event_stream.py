@@ -81,6 +81,11 @@ class EventStreamAdapter:
     def last_message_has_no_tool_calls(self):
         return True
 
+    def get_turn_batch_result(self):
+        from rig_relay.core.conversation_runtime.models import TurnBatchResult
+
+        return TurnBatchResult(pending_batch=None, assistant_is_final=True)
+
     async def execute_tool_batch(self):
         if False:
             yield

@@ -751,6 +751,27 @@ class CoordinationStore:
         released_payload = build_task_released_payload(session_id, task_id)
         self._append_event("coord.task.released", released_payload)
 
+    def record_event(
+        self,
+        *,
+        event_name: str,
+        session_id: str | None = None,
+        task_id: str | None = None,
+        payload: dict[str, Any],
+    ) -> None:
+        """Append an arbitrary coordination event to the ledger.
+
+        For lifecycle transitions not covered by existing canonical methods
+        (task_considered, dispatch_to_worker, repair_proposed, etc.).
+        Uses the same locking and hashing path as all other writes.
+        """
+        self._acquire_digester_lock()
+        try:
+            normalized = {**payload, "session_id": session_id, "task_id": task_id}
+            self._append_event(event_name, normalized)
+        finally:
+            self._release_digester_lock()
+
     def request_handoff(
         self,
         *,

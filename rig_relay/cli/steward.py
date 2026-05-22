@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import subprocess
 from typing import Any
@@ -21,16 +22,24 @@ from rig_relay.cli._steward._capsule import compile_capsule, read_capsule
 from rig_relay.cli._steward._classification import classify_state, select_task
 from rig_relay.cli._steward._constants import (
     _LAUNCHABLE_STATES,
+    _REPAIR_BLOCKER_CLASSES,
     _RUNNABLE_STATUSES,
     BUILD_DIR,
     CAPSULE_PATH,
     STEWARD_STATES,
     append_event,
     now_iso,
+    sha256,
     write_last_run,
 )
+from rig_relay.cli._steward._coordination import (
+    StewardCoordinationBridge,
+    _cycle_id,
+    _worker_id,
+)
 from rig_relay.cli._steward._execution import try_launch
-from rig_relay.cli._steward._queue import read_lanes, read_queue, update_queue_status
+from rig_relay.cli._steward._queue import read_lanes, read_queue
+from rig_relay.cli._steward._repair import try_repair
 from rig_relay.cli._steward._traces import StewardTrace
 
 
@@ -212,8 +221,13 @@ def main(argv: list[str] | None = None) -> int:
     events_path = build_dir / "opencode_idle_steward_events_v1.jsonl"
     capsule_path = root / CAPSULE_PATH
 
+    coord = StewardCoordinationBridge(root)
+    sess_id = _cycle_id()
+
     trace = StewardTrace(task_id="", project_root=str(root))
     trace.start()
+
+    coord.set_trace_id(trace.trace_id)
 
     capsule, compiler_fallback_status = read_capsule(root)
     trace.event(
@@ -230,12 +244,29 @@ def main(argv: list[str] | None = None) -> int:
     head = git_head(root)
     trace.end_span("git_scan")
 
+    _dirty_fs = dirty_files_set(dirty)
+    _dirty_file_hashes = sorted(sha256(f) for f in _dirty_fs)
+    coord.record_git_scan(
+        sess_id,
+        branch,
+        head,
+        dirty.get("modified_count", 0),
+        dirty.get("staged_count", 0),
+        dirty.get("untracked_count", 0),
+        _dirty_file_hashes,
+    )
+
     trace.span("queue_read")
     items = read_queue(root)
     lanes = read_lanes(root)
     trace.end_span("queue_read")
 
+    coord.record_queue_read(sess_id, len(items), len(lanes))
+
+    coord.register_cycle(sess_id, branch, head, lane_id="default")
+
     if not items:
+        coord.record_cycle_finished(sess_id, "no_action", 0)
         write_run_and_event(
             last_run_path,
             events_path,
@@ -256,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     trace.end_span("classification")
 
     if item is None and any(i.get("status") in _RUNNABLE_STATUSES for i in items):
+        coord.record_cycle_finished(sess_id, "audit_unblock_plan", 0)
         audit_path = _write_audit(root, build_dir, items, lanes, dirty, branch, head)
         write_run_and_event(
             last_run_path,
@@ -302,31 +334,116 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     command_meta: dict[str, Any] | None = None
-    if item and not blockers:
+    if item and blockers:
+        _substrate_blockers = [b for b in blockers if b in _REPAIR_BLOCKER_CLASSES]
+        if _substrate_blockers:
+            coord.record_repair_proposed(
+                sess_id, _substrate_blockers[0], "", repairable=True, repair_attempts=0
+            )
+            repair_state = try_repair(
+                root,
+                build_dir,
+                events_path,
+                dry_run,
+                capsule,
+                compiler_fallback_status,
+                opencode_path,
+                no_stream,
+                show_reasoning,
+            )
+            if repair_state != "no_action":
+                coord.record_cycle_finished(sess_id, repair_state, 0)
+                trace.finish(repair_state)
+                return 0
+    elif item and not blockers:
         task_id = item.get("task_id", "")
-        if not dry_run:
-            update_queue_status(root, task_id, "active")
-        trace.span("opencode_execution")
-        command_meta = try_launch(
-            item,
-            state,
-            root,
-            dry_run,
-            no_stream=no_stream,
-            show_reasoning=show_reasoning,
-            opencode_path=opencode_path,
-            events_path=events_path,
+        allowed = item.get("allowed_files", [])
+        worker = _worker_id(task_id)
+
+        coord.record_task_considered(
+            sess_id,
+            task_id,
+            item.get("title", ""),
+            item.get("status", ""),
+            item.get("priority", 0),
+            eligible=True,
+            blocker_classes=None,
         )
-        trace.end_span("opencode_execution")
-        if command_meta is None and state in _LAUNCHABLE_STATES:
-            blockers = ["missing_prompt"]
-            state = "blocked"
-        elif command_meta and not dry_run:
-            exit_code = command_meta.get("exit_code")
-            if exit_code == 0:
-                update_queue_status(root, task_id, "completed")
+
+        if not dry_run:
+            claimed = coord.claim_task(sess_id, task_id, allowed, ttl_seconds=1800)
+            if not claimed:
+                coord.record_blocked(sess_id, task_id, ["lane_ownership_collision"])
+                state = "blocked"
+                blockers = ["lane_ownership_collision"]
             else:
-                update_queue_status(root, task_id, "failed")
+                reserved = coord.reserve_paths(
+                    sess_id, task_id, allowed, ttl_seconds=1800
+                )
+                if not reserved:
+                    coord.record_blocked(sess_id, task_id, ["dirty_overlap"])
+                    state = "blocked"
+                    blockers = ["dirty_overlap"]
+
+        if state not in ("blocked",):
+            cmd_args = [
+                opencode_path,
+                "run",
+                "--pure",
+                "--format",
+                "json",
+                "--title",
+                item.get("title", ""),
+                "--agent",
+                item.get("agent", "build"),
+                "--dir",
+                str(root),
+            ]
+            if show_reasoning:
+                cmd_args.append("--thinking")
+            if item.get("model"):
+                cmd_args.extend(["--model", item["model"]])
+            _cmd_sha256 = sha256(" ".join(cmd_args))
+
+            coord.record_dispatch(
+                sess_id,
+                task_id,
+                worker,
+                _cmd_sha256,
+                dry_run,
+                stream_mode=not no_stream,
+            )
+
+            trace.span("opencode_execution")
+            command_meta = try_launch(
+                item,
+                state,
+                root,
+                dry_run,
+                no_stream=no_stream,
+                show_reasoning=show_reasoning,
+                opencode_path=opencode_path,
+                events_path=events_path,
+            )
+            trace.end_span("opencode_execution")
+            if command_meta is None and state in _LAUNCHABLE_STATES:
+                blockers = ["missing_prompt"]
+                state = "blocked"
+                coord.record_blocked(sess_id, task_id, blockers)
+            elif command_meta and not dry_run:
+                exit_code = command_meta.get("exit_code")
+                if exit_code == 0:
+                    coord.record_completion(sess_id, task_id, worker, 0)
+                else:
+                    coord.record_failure(
+                        sess_id,
+                        task_id,
+                        worker,
+                        exit_code if isinstance(exit_code, int) else -1,
+                    )
+                coord.release_paths(sess_id, task_id, allowed)
+    elif blockers:
+        coord.record_blocked(sess_id, item.get("task_id", "") if item else "", blockers)
 
     trace.span("capsule_assembly")
     capsule_data = compile_capsule(
@@ -342,6 +459,17 @@ def main(argv: list[str] | None = None) -> int:
         compiler_fallback_status,
     )
     write_last_run(capsule_path, capsule_data)
+    _capsule_sha256 = sha256(
+        json.dumps(capsule_data, sort_keys=True, ensure_ascii=False)
+    )
+    coord.publish_artifact_ref(
+        sess_id,
+        item.get("task_id") if item else None,
+        "steward_context_capsule",
+        str(capsule_path),
+        _capsule_sha256,
+        "rig.relay.opencode_steward_context_capsule.v1",
+    )
     trace.end_span("capsule_assembly")
 
     write_run_and_event(
@@ -359,6 +487,7 @@ def main(argv: list[str] | None = None) -> int:
         command_meta=command_meta,
         compiler_fallback_status=compiler_fallback_status,
     )
+    coord.record_cycle_finished(sess_id, state, 0)
     trace.finish(state)
     return 0
 

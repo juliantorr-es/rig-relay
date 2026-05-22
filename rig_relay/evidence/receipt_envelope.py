@@ -193,6 +193,7 @@ class ReceiptEnvelope(BaseModel):
     output: ReceiptOutput | None = None
     decision: ReceiptDecision | None = None
     evidence: list[ReceiptEvidence] = Field(default_factory=list)
+    source_artifact_paths: list[str] | None = None
     created_at: str
 
 
@@ -218,6 +219,7 @@ def build_receipt_envelope(
     receipt_payload: dict[str, Any] | BaseModel | None = None,
     decision: ReceiptDecision | None = None,
     evidence_override: list[ReceiptEvidence] | None = None,
+    source_artifact_paths: list[str] | None = None,
     created_at: str | None = None,
 ) -> ReceiptEnvelope:
     """Build a content-light ReceiptEnvelope from available inputs.
@@ -279,6 +281,7 @@ def build_receipt_envelope(
         output=None,
         decision=decision,
         evidence=evidence,
+        source_artifact_paths=source_artifact_paths,
         created_at=stamp,
     )
 

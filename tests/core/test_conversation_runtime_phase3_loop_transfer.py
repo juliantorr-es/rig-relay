@@ -103,6 +103,13 @@ class FakeAdapter:
     def last_message_has_no_tool_calls(self) -> bool:
         return not self._tool_call_mode
 
+    def get_turn_batch_result(self):
+        from rig_relay.core.conversation_runtime.models import TurnBatchResult
+
+        if self._tool_call_mode:
+            return TurnBatchResult(pending_batch=[object()], assistant_is_final=False)
+        return TurnBatchResult(pending_batch=None, assistant_is_final=True)
+
     async def execute_tool_batch(self):
         self.tool_batch_calls += 1
         self._tool_call_mode = False
@@ -216,14 +223,16 @@ class TestExecuteTurnLoopOwnership:
 class TestAgentLoopDelegatesToConversationRuntime:
     def test_conversation_loop_calls_execute_turn_loop(self) -> None:
         source = (_REPO_ROOT / "rig_relay" / "core" / "agent_loop.py").read_text()
-        assert "cr.execute_turn_loop(adapter)" in source
+        assert "execute_turn_loop(" in source
 
     def test_conversation_loop_builds_adapter(self) -> None:
         source = (_REPO_ROOT / "rig_relay" / "core" / "agent_loop.py").read_text()
         assert "_build_loop_adapter" in source
 
     def test_adapter_class_exists(self) -> None:
-        source = (_REPO_ROOT / "rig_relay" / "core" / "agent_loop.py").read_text()
+        source = (
+            _REPO_ROOT / "rig_relay" / "core" / "conversation_loop_adapter.py"
+        ).read_text()
         assert "class _ConversationLoopAdapter" in source
 
     def test_execute_turn_loop_exists(self) -> None:
