@@ -1,0 +1,265 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.opencode_steward_context_capsule.v1.schema.json",
+  "title": "OpenCode Steward Context Capsule v1",
+  "description": "Content-light, normalized decision-input capsule for the OpenCode Idle Lane Steward. Compiled from roadmap queue, lane ledger, dirty state, and structured evidence artifacts. The steward prefers this capsule for lane-decision inputs when present and valid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "capsule_id",
+    "generated_at",
+    "source_artifact_paths",
+    "source_artifact_hashes",
+    "active_lane_summary",
+    "worker_report_summary",
+    "lease_summary",
+    "dirty_state_summary",
+    "evidence_digest",
+    "gate_status",
+    "completion_criteria_status",
+    "unresolved_seams",
+    "decision_inputs",
+    "recommended_action",
+    "recommendation_rationale_codes",
+    "redaction_status",
+    "compiler_fallback_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.opencode_steward_context_capsule.v1",
+      "description": "Schema version identifier."
+    },
+    "capsule_id": {
+      "type": "string",
+      "description": "Unique identifier for this capsule instance."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this capsule was generated."
+    },
+    "source_artifact_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths of source artifacts that the capsule was compiled from."
+    },
+    "source_artifact_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA-256 hashes of source artifacts at compilation time."
+    },
+    "active_lane_summary": {
+      "type": "object",
+      "description": "Summary of active work lanes from lane ledger.",
+      "required": ["total_active_lanes", "lanes"],
+      "properties": {
+        "total_active_lanes": { "type": "integer" },
+        "lanes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["lane_id", "task_id", "status", "owned_file_count"],
+            "properties": {
+              "lane_id": { "type": "string" },
+              "task_id": { "type": "string" },
+              "status": { "type": "string" },
+              "owned_file_count": { "type": "integer" },
+              "last_heartbeat": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "worker_report_summary": {
+      "type": "object",
+      "description": "Summary of completed worker reports, if any.",
+      "required": ["total_reports", "completed_lane_ids"],
+      "properties": {
+        "total_reports": { "type": "integer" },
+        "completed_lane_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "worker_id": { "type": "string" },
+              "lane_id": { "type": "string" },
+              "exit_code": { "type": "integer" },
+              "duration_ms": { "type": "integer" },
+              "paths_changed_hashes": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "test_pass_count": { "type": "integer" },
+              "test_fail_count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "lease_summary": {
+      "type": "object",
+      "description": "Summary of active path and lane leases.",
+      "required": ["active_lane_leases", "active_path_leases", "collision_count"],
+      "properties": {
+        "active_lane_leases": { "type": "integer" },
+        "active_path_leases": { "type": "integer" },
+        "collision_count": { "type": "integer" }
+      }
+    },
+    "dirty_state_summary": {
+      "type": "object",
+      "description": "Summary of git dirty state.",
+      "required": ["modified_count", "staged_count", "untracked_count"],
+      "properties": {
+        "modified_count": { "type": "integer" },
+        "staged_count": { "type": "integer" },
+        "untracked_count": { "type": "integer" },
+        "dirty_file_hashes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "SHA-256 hashes of dirty file paths (not contents)."
+        }
+      }
+    },
+    "evidence_digest": {
+      "type": "object",
+      "description": "Digest of structured evidence artifacts.",
+      "required": ["total_evidence_artifacts", "relevant_finding_count", "relevant_gate_count"],
+      "properties": {
+        "total_evidence_artifacts": { "type": "integer" },
+        "relevant_finding_count": { "type": "integer" },
+        "relevant_gate_count": { "type": "integer" },
+        "evidence_path_hashes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "gate_status": {
+      "type": "object",
+      "description": "Status of required gates for active and queued tasks.",
+      "required": ["total_gates_checked", "passed_count", "failed_count", "missing_count"],
+      "properties": {
+        "total_gates_checked": { "type": "integer" },
+        "passed_count": { "type": "integer" },
+        "failed_count": { "type": "integer" },
+        "missing_count": { "type": "integer" }
+      }
+    },
+    "completion_criteria_status": {
+      "type": "object",
+      "description": "Completion criteria status for the selected task.",
+      "required": [
+        "required_artifacts_present",
+        "required_tests_present",
+        "final_report_present",
+        "schema_validation_passed",
+        "max_continuations_exceeded",
+        "max_failed_attempts_exceeded"
+      ],
+      "properties": {
+        "required_artifacts_present": { "type": "boolean" },
+        "required_tests_present": { "type": "boolean" },
+        "final_report_present": { "type": "boolean" },
+        "schema_validation_passed": { "type": "boolean" },
+        "max_continuations_exceeded": { "type": "boolean" },
+        "max_failed_attempts_exceeded": { "type": "boolean" }
+      }
+    },
+    "unresolved_seams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seam_id", "description", "severity"],
+        "properties": {
+          "seam_id": { "type": "string" },
+          "description": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "affected_artifact_paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "description": "Unresolved seams detected during capsule compilation."
+    },
+    "decision_inputs": {
+      "type": "object",
+      "description": "Normalized decision inputs for the steward.",
+      "required": [
+        "total_queue_items",
+        "runnable_count",
+        "blocked_count",
+        "active_count",
+        "completed_count",
+        "blocker_summary",
+        "selected_task_id",
+        "selected_task_status",
+        "selected_task_priority"
+      ],
+      "properties": {
+        "total_queue_items": { "type": "integer" },
+        "runnable_count": { "type": "integer" },
+        "blocked_count": { "type": "integer" },
+        "active_count": { "type": "integer" },
+        "completed_count": { "type": "integer" },
+        "blocker_summary": { "type": "object" },
+        "selected_task_id": { "type": "string" },
+        "selected_task_status": { "type": "string" },
+        "selected_task_priority": { "type": "integer" },
+        "selected_task_title": { "type": "string" },
+        "selected_task_agent": { "type": "string" },
+        "selected_task_prompt_sha256": { "type": "string" },
+        "selected_task_allowed_file_hashes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "selected_task_blocker_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "per_task_blockers": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "cross_lane_collisions": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "continue_lane",
+        "finalize_lane",
+        "advance_to_next_lane",
+        "blocked",
+        "audit_unblock_plan",
+        "no_action"
+      ],
+      "description": "Compiler-recommended action. The steward remains the policy and dispatch authority — it may override this recommendation based on its own safety checks."
+    },
+    "recommendation_rationale_codes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Machine-readable rationale codes for the recommended action."
+    },
+    "redaction_status": {
+      "type": "string",
+      "enum": ["content_light", "redacted_partial", "redacted_full"],
+      "description": "Redaction status. Must be 'content_light' for valid capsules — no raw prompt text, no model chain-of-thought, no raw file contents."
+    },
+    "compiler_fallback_status": {
+      "type": "string",
+      "enum": ["present", "missing", "invalid", "stale"],
+      "description": "Whether this capsule was available to the steward, whether the steward fell back to local evidence reads, and why."
+    }
+  }
+}

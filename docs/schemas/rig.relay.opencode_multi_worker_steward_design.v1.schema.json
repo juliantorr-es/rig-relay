@@ -1,0 +1,473 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.opencode_multi_worker_steward_design.v1.schema.json",
+  "title": "OpenCode Multi-Worker Steward Design v1",
+  "description": "Design artifact for the multi-worker serve-mode OpenCode steward. Covers session topology, lease model, artifact pathways, safety stops, and future v2 artifact layout. Does not implement serve mode — v1 implements streaming serverless mode first.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "design_scope",
+    "session_topology",
+    "serve_mode_config",
+    "worker_identity",
+    "lease_model",
+    "artifact_pathways",
+    "heartbeat_model",
+    "idle_plugin_ingestion",
+    "collision_prevention",
+    "test_coordination",
+    "final_report_fan_in",
+    "audit_unblock_handoff",
+    "telemetry_redaction_implications",
+    "safety_stops",
+    "v1_streaming_serverless_rationale",
+    "future_v2_artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.opencode_multi_worker_steward_design.v1",
+      "description": "Schema version identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this design artifact was generated."
+    },
+    "design_scope": {
+      "type": "object",
+      "description": "Scope and boundaries of this design artifact.",
+      "required": ["document_kind", "implements", "defers", "prohibits"],
+      "properties": {
+        "document_kind": {
+          "type": "string",
+          "const": "structured_design_artifact",
+          "description": "This is a design document, not an implementation."
+        },
+        "implements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "What this design covers."
+        },
+        "defers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Implementation deferred to future slices."
+        },
+        "prohibits": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Things explicitly prohibited by this design."
+        }
+      }
+    },
+    "session_topology": {
+      "type": "object",
+      "description": "Topology of the four-session pool.",
+      "required": ["total_sessions", "steward_session", "worker_sessions", "reviewer_session"],
+      "properties": {
+        "total_sessions": {
+          "type": "integer",
+          "const": 4,
+          "description": "Total number of sessions in the pool."
+        },
+        "steward_session": {
+          "type": "object",
+          "required": ["role", "session_id_pattern", "responsibilities"],
+          "properties": {
+            "role": { "type": "string", "const": "steward" },
+            "session_id_pattern": { "type": "string" },
+            "responsibilities": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "worker_sessions": {
+          "type": "object",
+          "required": ["count", "role", "session_id_pattern", "responsibilities"],
+          "properties": {
+            "count": { "type": "integer", "const": 2 },
+            "role": { "type": "string", "const": "worker" },
+            "session_id_pattern": { "type": "string" },
+            "responsibilities": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "reviewer_session": {
+          "type": "object",
+          "required": ["role", "session_id_pattern", "responsibilities"],
+          "properties": {
+            "role": { "type": "string", "const": "reviewer" },
+            "session_id_pattern": { "type": "string" },
+            "responsibilities": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "serve_mode_config": {
+      "type": "object",
+      "description": "Configuration for localhost-only OpenCode serve mode.",
+      "required": [
+        "network_binding",
+        "port_allocation",
+        "auth_policy",
+        "startup_sequence"
+      ],
+      "properties": {
+        "network_binding": {
+          "type": "object",
+          "required": ["mode", "rationale"],
+          "properties": {
+            "mode": { "type": "string", "const": "localhost_only" },
+            "rationale": { "type": "string" }
+          }
+        },
+        "port_allocation": {
+          "type": "object",
+          "required": ["strategy", "port_map"],
+          "properties": {
+            "strategy": { "type": "string" },
+            "port_map": {
+              "type": "object",
+              "additionalProperties": { "type": "integer" }
+            }
+          }
+        },
+        "auth_policy": {
+          "type": "object",
+          "required": ["password_policy", "rationale"],
+          "properties": {
+            "password_policy": { "type": "string" },
+            "rationale": { "type": "string" }
+          }
+        },
+        "startup_sequence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "worker_identity": {
+      "type": "object",
+      "description": "How workers are identified and distinguished.",
+      "required": ["id_scheme", "metadata"],
+      "properties": {
+        "id_scheme": {
+          "type": "object",
+          "required": ["format", "examples"],
+          "properties": {
+            "format": { "type": "string" },
+            "examples": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "required": ["required_fields", "immutable_fields"],
+          "properties": {
+            "required_fields": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "immutable_fields": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "lease_model": {
+      "type": "object",
+      "description": "Lane lease model for work assignment.",
+      "required": ["lease_kinds", "lifecycle", "assignment_policy"],
+      "properties": {
+        "lease_kinds": {
+          "type": "object",
+          "required": ["lane_lease", "path_lease"],
+          "properties": {
+            "lane_lease": { "type": "object" },
+            "path_lease": { "type": "object" }
+          }
+        },
+        "lifecycle": {
+          "type": "object",
+          "required": ["states", "transitions"],
+          "properties": {
+            "states": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "transitions": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "assignment_policy": {
+          "type": "object",
+          "required": ["who_assigns", "who_does_not_assign", "rules"],
+          "properties": {
+            "who_assigns": { "type": "string" },
+            "who_does_not_assign": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "rules": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "artifact_pathways": {
+      "type": "object",
+      "description": "Paths and schemas for all coordination artifacts.",
+      "required": [
+        "sessions_ledger",
+        "leases_ledger",
+        "mission_packets",
+        "worker_reports",
+        "operating_picture"
+      ],
+      "properties": {
+        "sessions_ledger": {
+          "type": "object",
+          "required": ["path", "format", "schema_ref"],
+          "properties": {
+            "path": { "type": "string" },
+            "format": { "type": "string" },
+            "schema_ref": { "type": "string" }
+          }
+        },
+        "leases_ledger": {
+          "type": "object",
+          "required": ["path", "format", "schema_ref"],
+          "properties": {
+            "path": { "type": "string" },
+            "format": { "type": "string" },
+            "schema_ref": { "type": "string" }
+          }
+        },
+        "mission_packets": {
+          "type": "object",
+          "required": ["path", "format", "schema_ref"],
+          "properties": {
+            "path": { "type": "string" },
+            "format": { "type": "string" },
+            "schema_ref": { "type": "string" }
+          }
+        },
+        "worker_reports": {
+          "type": "object",
+          "required": ["path", "format", "schema_ref"],
+          "properties": {
+            "path": { "type": "string" },
+            "format": { "type": "string" },
+            "schema_ref": { "type": "string" }
+          }
+        },
+        "operating_picture": {
+          "type": "object",
+          "required": ["path", "format", "schema_ref"],
+          "properties": {
+            "path": { "type": "string" },
+            "format": { "type": "string" },
+            "schema_ref": { "type": "string" }
+          }
+        }
+      }
+    },
+    "heartbeat_model": {
+      "type": "object",
+      "description": "Heartbeat mechanism for session liveness.",
+      "required": ["frequency", "timeout", "format", "actions_on_timeout"],
+      "properties": {
+        "frequency": { "type": "string" },
+        "timeout": { "type": "string" },
+        "format": { "type": "string" },
+        "actions_on_timeout": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "idle_plugin_ingestion": {
+      "type": "object",
+      "description": "How idle plugin output is ingested without raw chat transcripts.",
+      "required": ["allowed_formats", "prohibited_inputs", "ingestion_pipeline"],
+      "properties": {
+        "allowed_formats": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prohibited_inputs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ingestion_pipeline": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "collision_prevention": {
+      "type": "object",
+      "description": "File ownership collision prevention strategy.",
+      "required": ["ownership_model", "detection", "resolution"],
+      "properties": {
+        "ownership_model": {
+          "type": "object",
+          "required": ["granularity", "lease_type", "conflict_definition"],
+          "properties": {
+            "granularity": { "type": "string" },
+            "lease_type": { "type": "string" },
+            "conflict_definition": { "type": "string" }
+          }
+        },
+        "detection": {
+          "type": "object",
+          "required": ["on_assign", "during_work", "on_report"],
+          "properties": {
+            "on_assign": { "type": "string" },
+            "during_work": { "type": "string" },
+            "on_report": { "type": "string" }
+          }
+        },
+        "resolution": {
+          "type": "object",
+          "required": ["conflict_response", "escalation"],
+          "properties": {
+            "conflict_response": { "type": "string" },
+            "escalation": { "type": "string" }
+          }
+        }
+      }
+    },
+    "test_coordination": {
+      "type": "object",
+      "description": "Targeted-test coordination between workers.",
+      "required": ["test_scope_per_worker", "shared_test_artifacts", "coordination_protocol"],
+      "properties": {
+        "test_scope_per_worker": { "type": "string" },
+        "shared_test_artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "coordination_protocol": { "type": "string" }
+      }
+    },
+    "final_report_fan_in": {
+      "type": "object",
+      "description": "How worker reports fan into a unified final report.",
+      "required": ["collection", "merge_strategy", "output"],
+      "properties": {
+        "collection": { "type": "string" },
+        "merge_strategy": { "type": "string" },
+        "output": {
+          "type": "object",
+          "required": ["format", "path"],
+          "properties": {
+            "format": { "type": "string" },
+            "path": { "type": "string" }
+          }
+        }
+      }
+    },
+    "audit_unblock_handoff": {
+      "type": "object",
+      "description": "Handoff protocol for audit_unblock_plan between steward and reviewer.",
+      "required": ["trigger", "handoff_artifact", "reviewer_action", "feedback_loop"],
+      "properties": {
+        "trigger": { "type": "string" },
+        "handoff_artifact": { "type": "string" },
+        "reviewer_action": { "type": "string" },
+        "feedback_loop": { "type": "string" }
+      }
+    },
+    "telemetry_redaction_implications": {
+      "type": "object",
+      "description": "Telemetry and redaction implications for multi-worker mode.",
+      "required": ["new_event_types", "redaction_rules", "content_light_guarantees"],
+      "properties": {
+        "new_event_types": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "redaction_rules": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "content_light_guarantees": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "safety_stops": {
+      "type": "object",
+      "description": "Safety stops that halt the pool.",
+      "required": ["hard_stops", "soft_stops", "recovery"],
+      "properties": {
+        "hard_stops": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "soft_stops": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recovery": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "v1_streaming_serverless_rationale": {
+      "type": "object",
+      "description": "Why v1 implements streaming serverless mode before multi-worker serve mode.",
+      "required": ["reasons", "preconditions_for_v2"],
+      "properties": {
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preconditions_for_v2": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "future_v2_artifacts": {
+      "type": "object",
+      "description": "Future v2 artifacts to implement when serve mode is activated.",
+      "required": ["artifacts"],
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "format", "purpose", "schema_ref"],
+            "properties": {
+              "path": { "type": "string" },
+              "format": { "type": "string" },
+              "purpose": { "type": "string" },
+              "schema_ref": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

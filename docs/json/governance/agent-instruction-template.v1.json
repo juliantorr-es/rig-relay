@@ -1,0 +1,156 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "agent-instruction-template",
+  "document_type": "governance",
+  "title": "Agent Instruction Template (AGENTS.md)",
+  "summary": "Canonical agent instruction template governing agent behavior, conventions, and tool usage. Referenced by the docs site and steward context assembler as the authoritative instruction source.",
+  "status": "active",
+  "created_at": "2026-05-21",
+  "updated_at": "2026-05-21",
+  "source_commit": "5b3e767f8606",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "agent",
+    "instructions",
+    "governance",
+    "template"
+  ],
+  "audience": [
+    "contributor",
+    "agent",
+    "maintainer"
+  ],
+  "canonical_path": "docs/json/governance/agent-instruction-template.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "heading-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Agent Instruction Template (AGENTS.md)",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "callout-purpose",
+      "type": "callout",
+      "severity": "info",
+      "content": "AGENTS.md is the canonical agent instruction template for Rig Relay. It governs agent behavior, coding conventions, tool usage, git discipline, and documentation policy. It is an allowed Markdown exception under the documentation policy.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "file-reference",
+      "type": "file_reference",
+      "path": "AGENTS.md",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "heading-role",
+      "type": "heading",
+      "level": 2,
+      "content": "Role in Governance Hierarchy",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "para-role-1",
+      "type": "paragraph",
+      "content": "AGENTS.md serves as the foundational instruction set for all agents operating within the Rig Relay codebase. It defines module conventions, Python style, typing rules, async expectations, tool hardening, test discipline, git policy, and documentation governance.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "para-role-2",
+      "type": "paragraph",
+      "content": "The steward context assembler (rig_relay/governance/steward_context_assembler.py) tracks AGENTS.md as a known instruction source file. The context envelope bridge (rig_relay/governance/context_envelope_bridge.py) discovers AGENTS.md as a required instruction file during governed context compilation.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "heading-consumers",
+      "type": "heading",
+      "level": 2,
+      "content": "Consumers",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "list-consumers",
+      "type": "list",
+      "items": [
+        "Docs site: references AGENTS.md via this governance page in the Governance collection",
+        "Steward context assembler: tracks AGENTS.md content hash as an instruction source file",
+        "Context envelope bridge: discovers AGENTS.md as a required instruction file",
+        "Ralph scanner: reads AGENTS.md rules for conventions and compliance checks",
+        "Agent initialization: loads AGENTS.md into agent context at session start"
+      ],
+      "ordered": false,
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "heading-related",
+      "type": "heading",
+      "level": 2,
+      "content": "Related Documents",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "list-related",
+      "type": "list",
+      "items": [
+        "Documentation Policy — defines AGENTS.md as an allowed Markdown exception",
+        "Cross-Session Coordination — AGENTS.md rules for multi-agent coordination",
+        "Agent Loop Boundary — governed by AGENTS.md conventions",
+        "Context Compiler Doctrine — references AGENTS.md as instruction source",
+        "Security Hygiene — AGENTS.md defines tool hardening rules"
+      ],
+      "ordered": false,
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ],
+  "references": [
+    {
+      "document_id": "documentation-policy",
+      "title": "Documentation Policy"
+    },
+    {
+      "document_id": "cross-session-coordination",
+      "title": "Cross-Session Coordination"
+    },
+    {
+      "document_id": "agent-loop-boundary",
+      "title": "Agent Loop Boundary"
+    },
+    {
+      "document_id": "context-compiler",
+      "title": "Context Compiler Doctrine"
+    },
+    {
+      "document_id": "audit-trail-tamper-evidence",
+      "title": "Audit Trail Tamper-Evidence Design"
+    }
+  ]
+}

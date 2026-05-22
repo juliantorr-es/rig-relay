@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.opencode_idle_steward_run.v1.schema.json",
+  "title": "OpenCode Idle Steward Run v1",
+  "description": "Schema for the last-run artifact written by the OpenCode Idle Lane Steward on every invocation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "project_root",
+    "worktree",
+    "steward_state",
+    "dry_run",
+    "branch",
+    "head",
+    "dirty_state_summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this run artifact was generated."
+    },
+    "project_root": {
+      "type": "string",
+      "description": "Project root directory path."
+    },
+    "worktree": {
+      "type": "string",
+      "description": "OpenCode worktree path."
+    },
+    "steward_state": {
+      "type": "string",
+      "enum": [
+        "no_action",
+        "blocked",
+        "continue_lane",
+        "finalize_lane",
+        "advance_to_next_lane",
+        "audit_unblock_plan"
+      ],
+      "description": "Steward state classification for this run."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "Whether this was a dry run (command constructed but not launched)."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at time of steward run."
+    },
+    "head": {
+      "type": "string",
+      "description": "Git HEAD commit SHA at time of steward run."
+    },
+    "dirty_state_summary": {
+      "type": "object",
+      "properties": {
+        "modified_count": { "type": "integer" },
+        "staged_count": { "type": "integer" },
+        "untracked_count": { "type": "integer" },
+        "dirty_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "description": "Summary of git dirty state."
+    },
+    "selected_task": {
+      "type": "object",
+      "properties": {
+        "task_id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "integer" }
+      },
+      "description": "The task selected for action, if any."
+    },
+    "blocker_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Reasons the selected task is blocked, if blocked state."
+    },
+    "command_meta": {
+      "type": "object",
+      "properties": {
+        "prompt_path": { "type": "string" },
+        "prompt_sha256": { "type": "string" },
+        "title": { "type": "string" },
+        "agent": { "type": "string" },
+        "argv": { "type": "array", "items": { "type": "string" } },
+        "argv_sha256": { "type": "string" },
+        "launched": { "type": "boolean" },
+        "dry_run": { "type": "boolean" },
+        "streaming": { "type": "boolean", "description": "Whether streaming execution was used." },
+        "exit_code": { "type": "integer", "description": "Exit code from the OpenCode process. -1 if the binary was not found." },
+        "stderr_sha256": { "type": "string", "description": "SHA-256 of the truncated stderr output." },
+        "stderr_truncated_bytes": { "type": "integer", "description": "Byte length of the stored truncated stderr." },
+        "duration_ms": { "type": "integer", "description": "Wall-clock duration of the OpenCode run in milliseconds." },
+        "stream_error": { "type": "string", "description": "Error message if the streaming subsystem itself failed." }
+      },
+      "description": "Metadata about the constructed OpenCode command, if any."
+    },
+    "completion_check": {
+      "type": "object",
+      "properties": {
+        "required_artifacts_present": { "type": "boolean" },
+        "required_tests_present": { "type": "boolean" },
+        "final_report_present": { "type": "boolean" },
+        "schema_validation_passed": { "type": "boolean" },
+        "max_continuations_exceeded": { "type": "boolean" },
+        "max_failed_attempts_exceeded": { "type": "boolean" }
+      },
+      "description": "Completion criteria check results."
+    },
+    "audit_path": {
+      "type": "string",
+      "description": "Path to unblock audit artifact, if audit_unblock_plan state."
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if the steward encountered a runtime error."
+    },
+    "compiler_fallback_status": {
+      "type": "string",
+      "enum": ["present", "missing", "invalid", "stale"],
+      "description": "Whether the context capsule was available to the steward, whether the steward fell back to raw evidence reads, and why."
+    }
+  }
+}

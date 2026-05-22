@@ -1,0 +1,435 @@
+{
+  "schema_version": "rig.relay.opencode_multi_worker_steward_design.v1",
+  "generated_at": "2026-05-21T22:00:00+00:00",
+  "design_scope": {
+    "document_kind": "structured_design_artifact",
+    "implements": [
+      "session topology for a four-session OpenCode serve-mode pool",
+      "localhost-only network binding with distinct port allocation",
+      "worker identity scheme with immutable metadata",
+      "lane lease model with steward-assigned work only",
+      "artifact pathways for sessions, leases, mission packets, worker reports, and operating picture",
+      "heartbeat mechanism for session liveness detection",
+      "idle plugin ingestion via structured artifacts only (no raw chat transcripts)",
+      "file ownership collision prevention via path-level leases",
+      "targeted-test coordination between workers",
+      "final-report fan-in from workers to steward",
+      "audit_unblock_plan handoff from steward to reviewer session",
+      "telemetry and redaction implications for multi-worker mode",
+      "safety stops that halt the pool on critical conditions",
+      "rationale for v1 implementing streaming serverless mode first"
+    ],
+    "defers": [
+      "actual implementation of serve-mode multi-worker pool",
+      "serve-mode process supervision and restart logic",
+      "lease ledger implementation (.rig/opencode/leases.jsonl)",
+      "session ledger implementation (.rig/opencode/sessions.jsonl)",
+      "mission packet directory implementation (.rig/opencode/mission_packets/)",
+      "worker report directory implementation (.rig/opencode/worker_reports/)",
+      "operating picture derivation (.build/rig-relay/derived/opencode_worker_operating_picture_v1.json)",
+      "fan-in merge logic for final reports",
+      "reviewer session automation"
+    ],
+    "prohibits": [
+      "LAN or WAN exposure of OpenCode serve ports",
+      "OPENCODE_SERVER_PASSWORD usage unless serve mode is actually implemented",
+      "workers self-assigning new work",
+      "plugins feeding raw chat transcripts to the steward",
+      "workers communicating outside structured artifact pathways",
+      "serve-mode implementation in v1"
+    ]
+  },
+  "session_topology": {
+    "total_sessions": 4,
+    "steward_session": {
+      "role": "steward",
+      "session_id_pattern": "rig-steward-<timestamp>",
+      "responsibilities": [
+        "read roadmap queue and classify tasks",
+        "select safe non-blocked tasks for assignment",
+        "assign work to worker sessions via mission packets",
+        "monitor worker heartbeats and detect stalled sessions",
+        "ingest idle plugin output as structured artifacts",
+        "fan-in worker reports into unified final report",
+        "detect and resolve file ownership collisions",
+        "coordinate targeted tests across workers",
+        "produce audit_unblock_plan when no work is runnable",
+        "halt pool on safety stops"
+      ]
+    },
+    "worker_sessions": {
+      "count": 2,
+      "role": "worker",
+      "session_id_pattern": "rig-worker-<N>-<timestamp>",
+      "responsibilities": [
+        "receive mission packets from steward",
+        "execute assigned work via OpenCode agent",
+        "write worker report artifacts on completion",
+        "emit heartbeats at configured interval",
+        "honor file path leases and respect collision boundaries",
+        "report test results via structured artifacts",
+        "never self-assign new work"
+      ]
+    },
+    "reviewer_session": {
+      "role": "reviewer",
+      "session_id_pattern": "rig-reviewer-<timestamp>",
+      "responsibilities": [
+        "receive audit_unblock_plan handoffs from steward",
+        "review blocker classifications and unblock recommendations",
+        "validate schema compliance of worker reports",
+        "serve as spare capacity when a worker session is lost",
+        "provide adversarial review of steward decisions"
+      ]
+    }
+  },
+  "serve_mode_config": {
+    "network_binding": {
+      "mode": "localhost_only",
+      "rationale": "OpenCode serve mode must not be exposed on LAN or WAN. The steward and workers communicate with the serve instances over localhost TCP. This is a hard safety requirement — no remote code execution surface."
+    },
+    "port_allocation": {
+      "strategy": "sequential allocation from a base port range, with collision detection before bind. Each session gets a distinct port. Ports are recorded in the session ledger and released on session teardown.",
+      "port_map": {
+        "base_port": 4096,
+        "steward": 4096,
+        "worker_0": 4097,
+        "worker_1": 4098,
+        "reviewer": 4099
+      }
+    },
+    "auth_policy": {
+      "password_policy": "Use OPENCODE_SERVER_PASSWORD only when serve mode is actually implemented in v2. The v1 streaming serverless mode does not use serve mode at all. Do not set or reference this env var in v1 code.",
+      "rationale": "The password is an implementation detail of serve mode. Prematurely introducing it creates a latent credential that must be scrubbed from env, logs, and telemetry."
+    },
+    "startup_sequence": [
+      "steward scans ports to find available base port",
+      "steward starts its own OpenCode serve instance on allocated port",
+      "steward starts worker-0 serve instance on next port",
+      "steward starts worker-1 serve instance on next port",
+      "steward starts reviewer serve instance on next port",
+      "steward writes session ledger entry for each started session",
+      "steward begins heartbeat monitoring loop",
+      "steward begins scan cycle (roadmap queue → assign → monitor)"
+    ]
+  },
+  "worker_identity": {
+    "id_scheme": {
+      "format": "rig-worker-{index}-{iso_timestamp}",
+      "examples": [
+        "rig-worker-0-2026-05-21T22-00-00Z",
+        "rig-worker-1-2026-05-21T22-00-00Z"
+      ]
+    },
+    "metadata": {
+      "required_fields": [
+        "worker_id",
+        "session_id",
+        "port",
+        "role",
+        "status",
+        "started_at",
+        "last_heartbeat_at"
+      ],
+      "immutable_fields": [
+        "worker_id",
+        "started_at"
+      ]
+    }
+  },
+  "lease_model": {
+    "lease_kinds": {
+      "lane_lease": {
+        "description": "A lane lease assigns a roadmap lane (task) to a specific worker. Only the steward can create lane leases. A lane lease is exclusive — at most one worker holds the lease for a given lane at any time.",
+        "fields": [
+          "lease_id",
+          "lane_id",
+          "worker_id",
+          "assigned_by",
+          "status",
+          "created_at",
+          "expires_at"
+        ]
+      },
+      "path_lease": {
+        "description": "A path lease reserves a file path (or directory) for a specific worker. Created by the steward during lane assignment. Workers must check path leases before writing. Collisions are detected by the steward on scan.",
+        "fields": [
+          "lease_id",
+          "path",
+          "path_sha256",
+          "worker_id",
+          "lane_id",
+          "assigned_by",
+          "status",
+          "created_at"
+        ]
+      }
+    },
+    "lifecycle": {
+      "states": [
+        "pending",
+        "active",
+        "completed",
+        "expired",
+        "revoked",
+        "conflict"
+      ],
+      "transitions": [
+        "pending → active (steward assigns work to worker)",
+        "active → completed (worker finishes lane and writes report)",
+        "active → expired (worker heartbeat timeout)",
+        "active → revoked (steward detects misbehavior or collision)",
+        "active → conflict (steward detects path collision with another worker)"
+      ]
+    },
+    "assignment_policy": {
+      "who_assigns": "Only the steward session assigns work. The steward reads the roadmap queue, classifies tasks, selects safe non-blocked tasks, and creates lane leases and path leases for worker sessions.",
+      "who_does_not_assign": [
+        "workers",
+        "reviewer",
+        "plugins",
+        "external systems"
+      ],
+      "rules": [
+        "A worker may only hold one active lane lease at a time",
+        "A worker may hold multiple path leases (one per file in allowed_files)",
+        "Path leases must not overlap between active workers",
+        "The steward must revoke leases on worker heartbeat timeout",
+        "The reviewer may recommend lease revocation but cannot execute it"
+      ]
+    }
+  },
+  "artifact_pathways": {
+    "sessions_ledger": {
+      "path": ".rig/opencode/sessions.jsonl",
+      "format": "append-only JSONL",
+      "schema_ref": "rig.relay.opencode_session.v1"
+    },
+    "leases_ledger": {
+      "path": ".rig/opencode/leases.jsonl",
+      "format": "append-only JSONL",
+      "schema_ref": "rig.relay.opencode_lease.v1"
+    },
+    "mission_packets": {
+      "path": ".rig/opencode/mission_packets/",
+      "format": "one JSON file per mission, named {worker_id}-{lane_id}.json",
+      "schema_ref": "rig.relay.opencode_mission_packet.v1"
+    },
+    "worker_reports": {
+      "path": ".rig/opencode/worker_reports/",
+      "format": "one JSON file per completed mission, named {worker_id}-{lane_id}-report.json",
+      "schema_ref": "rig.relay.opencode_worker_report.v1"
+    },
+    "operating_picture": {
+      "path": ".build/rig-relay/derived/opencode_worker_operating_picture_v1.json",
+      "format": "single aggregated JSON, regenerated each scan cycle",
+      "schema_ref": "rig.relay.opencode_worker_operating_picture.v1"
+    }
+  },
+  "heartbeat_model": {
+    "frequency": "every 30 seconds",
+    "timeout": "120 seconds (4 missed heartbeats)",
+    "format": "append-only JSONL entry to sessions ledger with event=heartbeat, worker_id, timestamp, status",
+    "actions_on_timeout": [
+      "steward marks worker session as 'lost' in session ledger",
+      "steward revokes all active leases held by the lost worker",
+      "steward reassigns the lost worker's lane to the reviewer session as spare",
+      "steward emits coord.session.lost telemetry event",
+      "if reviewer session is already occupied, steward halts with safety stop 'all_workers_lost'"
+    ]
+  },
+  "idle_plugin_ingestion": {
+    "allowed_formats": [
+      "structured JSON artifacts conforming to known schemas",
+      "rig.report payloads (canonical observation format)",
+      "content-light summaries with path hashes only"
+    ],
+    "prohibited_inputs": [
+      "raw chat transcripts from plugins",
+      "full model chain-of-thought",
+      "unbounded log output",
+      "raw file contents"
+    ],
+    "ingestion_pipeline": [
+      "plugin writes structured observation to .rig/reports/reports.jsonl",
+      "steward reads report projections (not raw reports) on scan cycle",
+      "steward correlates report paths with active lane leases",
+      "steward updates operating picture with plugin-derived insights",
+      "raw plugin output never enters worker mission packets"
+    ]
+  },
+  "collision_prevention": {
+    "ownership_model": {
+      "granularity": "file path level, with directory-level awareness for collections",
+      "lease_type": "path lease per file in allowed_files, plus implicit exclusivity on the lane",
+      "conflict_definition": "Two active path leases conflict if they reference the same path or if one path is a descendant of another leased directory"
+    },
+    "detection": {
+      "on_assign": "steward checks all active path leases before creating new leases for a lane assignment",
+      "during_work": "workers check path leases before every file write; steward re-scans active leases on each scan cycle",
+      "on_report": "steward validates that worker report paths match assigned path leases"
+    },
+    "resolution": {
+      "conflict_response": "Steward revokes the newer lease and halts the affected worker. The lane is reassigned to the reviewer session if available.",
+      "escalation": "If the reviewer session is occupied, steward halts with safety stop 'unresolvable_path_collision' and emits an audit_unblock_plan."
+    }
+  },
+  "test_coordination": {
+    "test_scope_per_worker": "Each worker runs only the targeted_tests specified in its mission packet. The steward ensures no two workers run overlapping test suites on the same files simultaneously.",
+    "shared_test_artifacts": [
+      ".build/rig-relay/derived/worker_{id}_test_results_v1.jsonl",
+      ".build/rig-relay/derived/worker_{id}_test_collection_v1.json"
+    ],
+    "coordination_protocol": "Before assigning a lane with targeted_tests, the steward checks whether any other worker holds a path lease on files that the tests would exercise. If so, the assignment is deferred until the conflicting worker completes or the lease expires."
+  },
+  "final_report_fan_in": {
+    "collection": "Steward reads all worker report artifacts from .rig/opencode/worker_reports/ at the end of each scan cycle.",
+    "merge_strategy": "Steward merges worker reports by lane_id, preserving per-lane content-light summaries, path hashes, and test results. No raw file content or chat transcripts are included.",
+    "output": {
+      "format": "single JSON artifact conforming to rig.relay.opencode_pool_report.v1",
+      "path": ".build/rig-relay/derived/opencode_pool_final_report_v1.json"
+    }
+  },
+  "audit_unblock_handoff": {
+    "trigger": "Steward classifies state as 'audit_unblock_plan' (no safe non-blocked work available).",
+    "handoff_artifact": "Steward writes opencode_idle_steward_unblock_audit_v1.json to the build directory, and emits an unblock_candidate event for each blocked task.",
+    "reviewer_action": "Reviewer reads the audit, validates blocker classifications, reviews recommended unblock slices, and either approves (queues the unblock work) or amends (writes amended recommendations).",
+    "feedback_loop": "If the reviewer amends, the steward reads the amended audit and re-evaluates. If the reviewer approves, the steward queues the unblock slices as new roadmap items and resumes scan cycle."
+  },
+  "telemetry_redaction_implications": {
+    "new_event_types": [
+      "coord.opencode.worker.assigned",
+      "coord.opencode.worker.completed",
+      "coord.opencode.worker.lost",
+      "coord.opencode.lease.created",
+      "coord.opencode.lease.revoked",
+      "coord.opencode.lease.conflict",
+      "coord.opencode.heartbeat.timeout",
+      "coord.opencode.pool.halted",
+      "coord.opencode.report.fan_in",
+      "coord.opencode.audit.handoff"
+    ],
+    "redaction_rules": [
+      "Raw prompt text never stored in mission packets or worker reports",
+      "Raw model chain-of-thought never stored in canonical evidence; always redacted in event records",
+      "Raw file contents never stored in session, lease, or report artifacts",
+      "File paths are stored with SHA-256 hashes as the canonical identifier",
+      "stderr is truncated to 4KB and hashed before storage",
+      "OpenCode serve-mode auth tokens never stored in any artifact",
+      "Worker session passwords generated per-session and never persisted to disk"
+    ],
+    "content_light_guarantees": [
+      "Mission packets contain: lane_id, title, agent, allowed_files (paths + hashes), forbidden_files, targeted_tests, completion_criteria, bounded prompt summary (not raw prompt)",
+      "Worker reports contain: lane_id, worker_id, exit_code, duration_ms, paths_changed (hashes only), test_results (pass/fail counts, no raw output), bounded summary, stderr_sha256",
+      "Session ledger contains: session_id, worker_id, role, port, status, started_at, last_heartbeat_at — no passwords, no tokens, no raw output",
+      "Lease ledger contains: lease_id, path_sha256, worker_id, lane_id, status, timestamps — no raw file contents",
+      "Operating picture contains: worker statuses, active lane counts, blocked lane counts, collision counts, heartbeat health — aggregated, not raw"
+    ]
+  },
+  "safety_stops": {
+    "hard_stops": [
+      "all_workers_lost — all worker sessions have timed out and reviewer is already occupied; pool cannot make progress",
+      "unresolvable_path_collision — two active path leases conflict and neither can be safely revoked",
+      "steward_session_lost — steward heartbeat monitor detects its own session is unhealthy (external watchdog)",
+      "serve_port_conflict — a required port is already in use at startup",
+      "lease_ledger_corruption — lease ledger is unreadable or contains conflicting entries"
+    ],
+    "soft_stops": [
+      "reviewer_occupied — reviewer session is already handling a review and a new unblock_audit is generated",
+      "single_worker_remaining — only one worker is healthy; steward may continue but with reduced parallelism",
+      "high_heartbeat_latency — heartbeats are arriving but with >50% of timeout window consumed"
+    ],
+    "recovery": [
+      "Hard stops require human operator intervention. Pool writes a safety_stop event with reason and context.",
+      "Soft stops are logged and the steward may continue in degraded mode.",
+      "After any stop, the steward writes an audit_unblock_plan capturing the pool state at halt time."
+    ]
+  },
+  "v1_streaming_serverless_rationale": {
+    "reasons": [
+      "Streaming serverless mode (subprocess.Popen) is simpler to implement, test, and verify than a four-session serve-mode pool",
+      "A single-run streaming steward exercises the content-light event model, reasoning redaction, stderr capture, and path hashing — all of which are prerequisites for multi-worker mode",
+      "The serve-mode pool requires session lifecycle management, port allocation, heartbeat monitoring, and lease coordination — each of which is a non-trivial subsystem",
+      "Implementing streaming serverless mode first surfaces integration issues (OpenCode JSON format, event types, error handling) before adding the complexity of multi-worker coordination",
+      "The content-light doctrine and redaction rules must be battle-tested on a single streaming run before scaling to four concurrent sessions",
+      "Dry-run mode remains the default for tests; streaming is a new capability that must not regress the existing classification-only steward"
+    ],
+    "preconditions_for_v2": [
+      "Streaming serverless mode is stable and passing all existing + new tests",
+      "Content-light event record schema is validated and redaction rules are proven",
+      "Path hashing and stderr truncation boundaries are tuned based on real OpenCode runs",
+      "The single-run steward handles all OpenCode event types (step_start, reasoning, text, tool_use, step_finish, error) correctly",
+      "Terminal progress display is usable and --show-reasoning-stream works as designed",
+      "Environment sanitization is verified against the full sensitive env var blocklist"
+    ]
+  },
+  "steward_context_capsule": {
+    "description": "The steward context capsule is the integration seam between worker evidence and steward decision inputs. Workers write structured evidence artifacts; the context compiler/assembler digests them into a content-light operating-picture capsule; the steward consumes the capsule and remains the dispatch authority.",
+    "capsule_artifact": {
+      "path": ".build/rig-relay/derived/opencode_steward_context_capsule_v1.json",
+      "schema_ref": "rig.relay.opencode_steward_context_capsule.v1",
+      "format": "single JSON file, regenerated each scan cycle"
+    },
+    "compilation_rules": [
+      "Workers write structured evidence artifacts to .rig/opencode/worker_reports/",
+      "The context compiler digests worker reports, lease ledger, and dirty state into a unified capsule",
+      "The capsule contains normalized decision inputs: task counts, blocker summaries, completion criteria status, gate status, recommended action",
+      "The capsule is content-light — no raw prompt text, no raw model chain-of-thought, no raw file contents",
+      "File paths are stored as SHA-256 hashes only",
+      "The compiler may recommend continue_lane, finalize_lane, advance_to_next_lane, blocked, or audit_unblock_plan",
+      "The steward consumes the capsule and remains the policy and dispatch authority — it may override compiler recommendations",
+      "If the capsule is missing or invalid, the steward falls back to narrowly required local evidence reads and records the fallback in its run artifact",
+      "The compiler must never directly launch OpenCode — only the steward launches workers",
+      "Plugins must never directly invoke the context compiler with raw chat transcripts"
+    ],
+    "worker_to_capsule_pathway": [
+      "Worker completes mission → writes worker_report to .rig/opencode/worker_reports/{worker_id}-{lane_id}-report.json",
+      "Worker report contains: exit_code, duration_ms, paths_changed (hashes only), test_results (pass/fail counts), bounded summary, stderr_sha256",
+      "Context compiler reads all available worker reports on scan cycle",
+      "Context compiler aggregates worker status into active_lane_summary in the capsule",
+      "Context compiler updates completion_criteria_status from worker reports",
+      "Capsule may drive static docs/UI and cockpit projections in future iterations"
+    ],
+    "evidence_graph_relationships": [
+      "lease_summary → explains why files are reserved and by which worker",
+      "gate_status → explains why a lane is blocked on missing/failed gates",
+      "completion_criteria_status → explains why a lane is complete or incomplete",
+      "unresolved_seams → lists missing artifacts and reports that block progress",
+      "recommended_action + recommendation_rationale_codes → machine-readable decision trail from compiler to steward"
+    ]
+  },
+  "future_v2_artifacts": {
+    "artifacts": [
+      {
+        "path": ".rig/opencode/sessions.jsonl",
+        "format": "append-only JSONL",
+        "purpose": "Session ledger recording every session in the pool: creation, heartbeat, status changes, teardown",
+        "schema_ref": "rig.relay.opencode_session.v1"
+      },
+      {
+        "path": ".rig/opencode/leases.jsonl",
+        "format": "append-only JSONL",
+        "purpose": "Lease ledger recording every lane and path lease: creation, assignment, completion, expiration, revocation",
+        "schema_ref": "rig.relay.opencode_lease.v1"
+      },
+      {
+        "path": ".rig/opencode/mission_packets/",
+        "format": "directory of JSON files",
+        "purpose": "Per-mission packets containing the bounded prompt, allowed files, targeted tests, and completion criteria for each worker assignment",
+        "schema_ref": "rig.relay.opencode_mission_packet.v1"
+      },
+      {
+        "path": ".rig/opencode/worker_reports/",
+        "format": "directory of JSON files",
+        "purpose": "Per-worker per-mission reports containing exit code, duration, paths changed (hashes), test results (counts), and bounded summary",
+        "schema_ref": "rig.relay.opencode_worker_report.v1"
+      },
+      {
+        "path": ".build/rig-relay/derived/opencode_worker_operating_picture_v1.json",
+        "format": "single aggregated JSON",
+        "purpose": "Derived operating picture regenerated each scan cycle: worker statuses, active lane counts, collision counts, heartbeat health, pool state summary",
+        "schema_ref": "rig.relay.opencode_worker_operating_picture.v1"
+      }
+    ]
+  }
+}
