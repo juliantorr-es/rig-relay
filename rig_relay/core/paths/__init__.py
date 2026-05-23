@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from rig_relay.core.paths._confidential_artifacts import (
+    CONFIDENTIAL_ARTIFACT_ROOT,
+    filter_exportable_artifact_paths,
+    is_confidential_artifact_path,
+    refuse_confidential_input,
+    resolve_confidential_artifact_root,
+)
 from rig_relay.core.paths._local_config_walk import (
     WALK_MAX_DEPTH,
     ConfigWalkResult,
@@ -30,6 +37,7 @@ from rig_relay.core.paths.conventions import AGENTS_MD_FILENAME
 __all__ = [
     "AGENTS_MD_FILENAME",
     "CACHE_FILE",
+    "CONFIDENTIAL_ARTIFACT_ROOT",
     "DEFAULT_TOOL_DIR",
     "GLOBAL_ENV_FILE",
     "HISTORY_FILE",
@@ -43,10 +51,14 @@ __all__ = [
     "WALK_MAX_DEPTH",
     "ConfigWalkResult",
     "GlobalPath",
+    "filter_exportable_artifact_paths",
     "get_legacy_history_path",
     "get_legacy_log_path",
     "get_vibe_home_diagnostics",
+    "is_confidential_artifact_path",
     "is_legacy_vibe_home",
+    "refuse_confidential_input",
+    "resolve_confidential_artifact_root",
     "resolve_history_path",
     "resolve_log_path",
     "walk_local_config_dirs",

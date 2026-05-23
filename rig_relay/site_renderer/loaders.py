@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import subprocess
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
 _REQUIRED_PAGE_FIELDS = {"page_id", "title", "route"}
 _REQUIRED_MANIFEST_FIELDS = {"schema_version", "inputs"}
 _SOURCE_TYPES_FOR_NORMALIZER = {"json", "jsonl", "schema"}
@@ -121,15 +123,17 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def load_page_model(path: Path, repo_root: Path | None = None) -> dict | None:
+    if repo_root is None:
+        repo_root = Path(__file__).resolve().parent.parent.parent
+    if is_confidential_artifact_path(path, repo_root):
+        return None
+
     data = load_json(path)
     if not data:
         return None
     for field in _REQUIRED_PAGE_FIELDS:
         if field not in data:
             return None
-
-    if repo_root is None:
-        repo_root = Path(__file__).resolve().parent.parent.parent
 
     schema_key = data.get("$schema") or data.get("schema_version") or "rig.site.page.v1"
     is_valid, err = validate_json_schema(data, schema_key, repo_root)
@@ -164,8 +168,10 @@ def load_artifacts_for_page(  # noqa: PLR0912
         kind = entry.get("renderer_kind", "")
         if not source_path or not kind:
             continue
+        if is_confidential_artifact_path(source_path, root_r):
+            continue
         full = (root_r / source_path).resolve()
-        if not str(full).startswith(str(root_r)):
+        if not full.is_relative_to(root_r):
             continue
         if not full.is_file():
             continue
@@ -210,20 +216,19 @@ def load_artifacts_for_page(  # noqa: PLR0912
 
 
 def load_input_manifest(path: Path, repo_root: Path | None = None) -> dict | None:
+    if repo_root is None:
+        repo_root = Path(__file__).resolve().parent.parent.parent
+    if is_confidential_artifact_path(path, repo_root):
+        return None
+
     data = load_json(path)
     if not data:
         return None
     for field in _REQUIRED_MANIFEST_FIELDS:
         if field not in data and field.replace("schema_version", "$schema") not in data:
             return None
-    # Normalize: ensure we have schema_version
-    if "schema_version" not in data and "$schema" in data:
-        data["schema_version"] = data["$schema"]
     if "inputs" not in data:
         return None
-
-    if repo_root is None:
-        repo_root = Path(__file__).resolve().parent.parent.parent
 
     schema_key = (
         data.get("$schema")
@@ -235,6 +240,24 @@ def load_input_manifest(path: Path, repo_root: Path | None = None) -> dict | Non
         raise SchemaValidationError(
             f"Input manifest {path.name} failed schema validation: {err}"
         )
+
+    if "schema_version" not in data and "$schema" in data:
+        data["schema_version"] = data["$schema"]
+
+    for manifest_key in ("entries", "inputs"):
+        entries = data.get(manifest_key)
+        if not isinstance(entries, list):
+            continue
+        filtered_entries: list[dict] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                filtered_entries.append(entry)
+                continue
+            source_path = entry.get("source_path")
+            if source_path and is_confidential_artifact_path(source_path, repo_root):
+                continue
+            filtered_entries.append(entry)
+        data[manifest_key] = filtered_entries
 
     return data
 
@@ -254,9 +277,11 @@ def get_git_sha() -> str:
 
 def load_artifact(rel_path: str) -> dict | None:
     try:
-        root = Path.cwd()
+        root = Path.cwd().resolve()
         full = (root / rel_path).resolve()
-        if not str(full).startswith(str(root.resolve())):
+        if is_confidential_artifact_path(full, root):
+            return None
+        if not full.is_relative_to(root):
             return None
         if not full.is_file():
             return None

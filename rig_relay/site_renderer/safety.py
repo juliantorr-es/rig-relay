@@ -161,3 +161,13 @@ def is_public_safe(report: SafetyReport) -> bool:
     if not report.passed:
         return False
     return not any(f.severity == "block" for f in report.findings)
+
+
+def sanitize_url(url: str) -> str:
+    if not url:
+        return ""
+    # Strip whitespace and control characters before checking the scheme
+    normalized = re.sub(r"[\x00-\x20\s]+", "", url).lower()
+    if normalized.startswith(("javascript:", "data:", "file:")):
+        return "#refused-unsafe-url"
+    return url
