@@ -16,6 +16,7 @@ from rig_relay.cli._steward._constants import (
     write_last_run,
 )
 from rig_relay.governance.steward_context_assembler import (
+    RawEvidenceBundle,
     RepairResult,
     SubstrateDiagnosis,
     build_repair_mission,
@@ -33,6 +34,7 @@ def try_repair(
     opencode_path: str,
     no_stream: bool,
     show_reasoning: bool,
+    evidence: RawEvidenceBundle,
 ) -> str:
     from rig_relay.cli._steward._classification import classify_substrate_blocker
     from rig_relay.cli._steward._execution import try_launch
@@ -41,7 +43,7 @@ def try_repair(
     if blocker_class is None or blocker_class not in _REPAIR_BLOCKER_CLASSES:
         return "no_action"
 
-    diagnosis = diagnose_substrate(blocker_class, capsule, None, [])  # type: ignore[arg-type]
+    diagnosis = diagnose_substrate(blocker_class, capsule, evidence, [])
     write_diagnosis(build_dir, diagnosis)
 
     if not diagnosis.repairable:

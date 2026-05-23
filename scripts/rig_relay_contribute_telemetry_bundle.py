@@ -61,6 +61,11 @@ import sys
 from typing import Any
 import uuid
 
+from rig_relay.core.paths import refuse_confidential_input
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.evidence.redaction import redact_for_remote
 from rig_relay.evidence.telemetry_bundle import validate_bundle
 from rig_relay.identity.consent_store import ConsentStore
@@ -219,6 +224,47 @@ def contribute_bundle(
         "steps": {},
     }
 
+    allowed, reason = refuse_confidential_input(
+        bundle_path, "telemetry_contribution_bundle", REPO_ROOT
+    )
+    if not allowed:
+        result["status"] = "failed"
+        result["error_code"] = reason
+        result["steps"]["validate_bundle"] = {
+            "status": "refused",
+            "reason": reason,
+        }
+        result["warnings"].append(reason)
+        return result
+
+    if consent_file is not None:
+        allowed, reason = refuse_confidential_input(
+            consent_file, "telemetry_consent_file", REPO_ROOT
+        )
+        if not allowed:
+            result["status"] = "failed"
+            result["error_code"] = reason
+            result["steps"]["check_consent"] = {
+                "status": "refused",
+                "reason": reason,
+            }
+            result["warnings"].append(reason)
+            return result
+
+    if state_root is not None:
+        allowed, reason = refuse_confidential_input(
+            state_root, "telemetry_state_root", REPO_ROOT
+        )
+        if not allowed:
+            result["status"] = "failed"
+            result["error_code"] = reason
+            result["steps"]["check_consent"] = {
+                "status": "refused",
+                "reason": reason,
+            }
+            result["warnings"].append(reason)
+            return result
+
     # Step 1: Validate bundle content-light safety
     bundle_safe, bundle_warnings = _check_bundle_has_no_forbidden_content(bundle_path)
     result["steps"]["validate_bundle"] = {
@@ -288,6 +334,14 @@ def contribute_bundle(
 
     # Step 5: Write contribution receipt
     final_receipt_dir = receipt_dir or DEFAULT_RECEIPT_DIR
+    allowed, reason = refuse_confidential_input(
+        final_receipt_dir, "telemetry_receipt_dir", REPO_ROOT
+    )
+    if not allowed:
+        result["status"] = "failed"
+        result["error_code"] = reason
+        result["warnings"].append(reason)
+        return result
     final_receipt_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = final_receipt_dir / f"contribution_{bundle_path.stem}.json"
 
@@ -419,6 +473,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Confirm and proceed with real upload (requires --no-dry-run).",
     )
     parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute remote mutation (telemetry bundle contribution). Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
+    parser.add_argument(
         "--include-model-observations",
         action="store_true",
         default=False,
@@ -507,11 +573,58 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: Bundle not found: {bundle_path}", file=sys.stderr)
         return 1
 
-    if not args.dry_run and not args.confirm:
+    if not args.dry_run and not args.confirm and not args.execute:
         print(
-            "Error: Real upload requires --confirm. Use --dry-run for safe preview.",
+            "Error: Real upload requires --execute or --confirm. Use --dry-run for safe preview.",
             file=sys.stderr,
         )
+        return 1
+
+    execute = args.execute or args.confirm
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_contribute_telemetry_bundle",
+        authority_tier="remote_mutation",
+        capability_id="telemetry_bundle_contribute",
+        execute_requested=execute,
+        allow_network=True,
+    )
+
+    if not execute:
+        print("DRY-RUN: Use --execute or --confirm for real contribution.")
+        if args.json:
+            r = emit_structured_result(
+                script_name="rig_relay_contribute_telemetry_bundle",
+                authority_tier="remote_mutation",
+                capability_id="telemetry_bundle_contribute",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        return 0
+
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_contribute_telemetry_bundle",
+            authority_tier="remote_mutation",
+            capability_id="telemetry_bundle_contribute",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print(
+                    "  EVIDENCE: persistence failed — contribute blocked (fail-closed)"
+                )
         return 1
 
     # Run contribution flow
@@ -560,6 +673,22 @@ def main(argv: list[str] | None = None) -> int:
         print("\n[Dry-run mode — no network upload performed]")
     elif status == "uploaded":
         print("\nContribution uploaded and receipt written.")
+
+    if args.json:
+        r = emit_structured_result(
+            script_name="rig_relay_contribute_telemetry_bundle",
+            authority_tier="remote_mutation",
+            capability_id="telemetry_bundle_contribute",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status=result["status"],
+            can_execute=True,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+            artifacts={"contribution_id": result.get("contribution_id")},
+        )
+        print(json.dumps(r, indent=2))
 
     return (
         0

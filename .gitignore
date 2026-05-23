@@ -211,6 +211,11 @@ tests/playground/*
 # Node modules (frontend dependencies managed externally)
 node_modules/
 
+# VSCodium extension — build artifacts and vendored dependencies
+extensions/vscodium-rig-relay/node_modules/
+extensions/vscodium-rig-relay/out/
+extensions/vscodium-rig-relay/*.vsix
+
 # VS Code extension packages — release artifacts only
 *.vsix
 
@@ -221,3 +226,20 @@ frontend/desktop/.cache/
 
 # PI Lens cache (generated)
 .pi-lens/
+
+# Generated docs site — rendered by CI (pages.yml) into site/ and deployed to GitHub Pages.
+# docs/pages/, docs/collections/, docs/index.html etc. are render outputs from
+# render_static_docs.py / rig_relay.docs_renderer. They must NOT be committed;
+# GitHub Actions runs the renderer and uploads site/ as a Pages artifact directly.
+docs/pages/
+docs/collections/
+docs/index.html
+docs/search-index.json
+docs/sitemap.xml
+docs/render-manifest.json
+docs/.nojekyll
+
+# Code-review zip archives — generated on demand by scripts/make_review_zip.py
+*.review.zip
+Archive.zip
+Archive 2.zip

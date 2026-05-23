@@ -1156,6 +1156,7 @@ def build_projection(
             )
 
     from rig_relay.core.telemetry.local import is_telemetry_enabled as _tele_enabled
+    from rig_relay.core.telemetry.types import TelemetryMode as _TelemetryMode
 
     _runtime_enabled = _tele_enabled()
 
@@ -1164,9 +1165,9 @@ def build_projection(
         "generated_at": now.isoformat(),
         "app_version": app_version,
         "alpha_label": "a" in app_version or "alpha" in app_version,
-        "telemetry_mode": "enabled_first_party"
+        "telemetry_mode": _TelemetryMode.ENABLED_FIRST_PARTY.value
         if _runtime_enabled
-        else "disabled_by_user",
+        else _TelemetryMode.DISABLED_BY_USER.value,
         "telemetry_degraded": not _runtime_enabled,
         "source_status": source_status,
         "current_state": current_state,

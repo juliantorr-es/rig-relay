@@ -13,6 +13,7 @@ from rig_relay.analytics.governance_decisions_projection import (
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptDecision,
     ReceiptEnvelope,
     ReceiptSubject,
@@ -39,7 +40,7 @@ def _make_envelope(
         actor_kind=ReceiptActorKind.RUNTIME,
         display_name="Test",
         is_human=False,
-        is_authoritative=True,
+        authority_tier=ReceiptActorTier.ADMINISTRATIVE,
     )
     subject = ReceiptSubject(
         subject_id="write_file",

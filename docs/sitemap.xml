@@ -150,6 +150,7 @@
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/validation.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/python.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/out-of-scope-findings.html</loc><priority>0.8</priority></url>
+  <url><loc>https://juliantorr-es.github.io/rig-relay/pages/agent-instruction-template.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/agent-loop-boundary.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/artifact-tracking-policy.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/audit-trail-tamper-evidence.html</loc><priority>0.8</priority></url>
@@ -223,6 +224,7 @@
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/worktree-manager.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/install.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/github-app-integration-audit-v0.html</loc><priority>0.8</priority></url>
+  <url><loc>https://juliantorr-es.github.io/rig-relay/pages/issue-tracker.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/privacy-notice-alpha.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/usage-data-license-alpha.html</loc><priority>0.8</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/pages/rig-otel-local-collector-config-v1.html</loc><priority>0.8</priority></url>
@@ -293,6 +295,7 @@
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/general.html</loc><priority>0.7</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/governance.html</loc><priority>0.7</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/integrations.html</loc><priority>0.7</priority></url>
+  <url><loc>https://juliantorr-es.github.io/rig-relay/collections/issues.html</loc><priority>0.7</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/legal.html</loc><priority>0.7</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/protocols.html</loc><priority>0.7</priority></url>
   <url><loc>https://juliantorr-es.github.io/rig-relay/collections/publishing.html</loc><priority>0.7</priority></url>

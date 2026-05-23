@@ -27,6 +27,10 @@ from pydantic import BaseModel, ConfigDict
 from rig_relay.coordination.execution_lease import ExecutionLease, ExecutionLeaseStatus
 from rig_relay.core.tool_subprocess import ToolSubprocessRequest, ToolSubprocessResult
 from rig_relay.governance.governance_engine import GovernanceEngine
+from rig_relay.runtime.execution_budgets import (
+    BASH_MAX_OUTPUT_BYTES,
+    TOOL_MAX_RUNTIME_SECONDS,
+)
 from rig_relay.runtime.execution_request import ExecutionRequest
 from rig_relay.runtime.stream_types import (
     RuntimeCompletionEvent,
@@ -134,11 +138,15 @@ class SupervisorCommandInvoker:
         max_stderr_bytes: int = 65536,
         heartbeat_interval_ms: int = 1000,
         trace_recorder: Any | None = None,
+        cpu_budget_seconds: float = TOOL_MAX_RUNTIME_SECONDS,
+        io_budget_bytes: int = BASH_MAX_OUTPUT_BYTES,
     ) -> None:
         self._max_stdout_bytes = max_stdout_bytes
         self._max_stderr_bytes = max_stderr_bytes
         self._heartbeat_interval_ms = heartbeat_interval_ms
         self._trace_recorder = trace_recorder
+        self._cpu_budget_seconds = cpu_budget_seconds
+        self._io_budget_bytes = io_budget_bytes
 
     def _start_trace_span(
         self,
@@ -217,12 +225,19 @@ class SupervisorCommandInvoker:
     def _resource_usage(
         event: RuntimeCompletionEvent | RuntimeFailureEvent,
     ) -> RuntimeSupervisorResourceUsage:
+        is_budget_exceeded = (
+            not isinstance(event, RuntimeCompletionEvent)
+            and event.status == RuntimeInvocationStatus.BUDGET_EXCEEDED
+        )
         return RuntimeSupervisorResourceUsage(
             exit_code=getattr(event, "exit_code", None),
             signal=None,
             timed_out=getattr(event, "status", None)
             == RuntimeInvocationStatus.TIMED_OUT,
-            killed=False,
+            killed=is_budget_exceeded,
+            killed_reason=(
+                getattr(event, "error_kind", None) if is_budget_exceeded else None
+            ),
             cancelled=getattr(event, "status", None)
             == RuntimeInvocationStatus.CANCELLED,
             pid=None,
@@ -241,6 +256,8 @@ class SupervisorCommandInvoker:
         match event.status:
             case RuntimeInvocationStatus.TIMED_OUT:
                 return RuntimeSupervisorResultClassification.TIMED_OUT
+            case RuntimeInvocationStatus.BUDGET_EXCEEDED:
+                return RuntimeSupervisorResultClassification.BUDGET_KILLED
             case RuntimeInvocationStatus.CANCELLED:
                 return RuntimeSupervisorResultClassification.CANCELLED
             case RuntimeInvocationStatus.BLOCKED:
@@ -352,6 +369,8 @@ class SupervisorCommandInvoker:
             )
             if envelope_classification == "timed_out":
                 end_status = trace_status.timed_out
+            elif envelope_classification == "budget_killed":
+                end_status = trace_status.error
             elif envelope_classification == "refused":
                 end_status = trace_status.refused
             elif envelope_classification == "cancelled":
@@ -505,6 +524,8 @@ class SupervisorCommandInvoker:
             max_stderr_bytes=stderr_limit_bytes or self._max_stderr_bytes,
             heartbeat_interval_ms=self._heartbeat_interval_ms,
             governance_engine=GovernanceEngine(),
+            cpu_budget_seconds=self._cpu_budget_seconds,
+            io_budget_bytes=self._io_budget_bytes,
         )
 
         recorder, trace_span, trace_status = self._start_trace_span(
@@ -655,6 +676,8 @@ class SupervisorCommandInvoker:
         # RuntimeFailureEvent
         if terminal_event.status == RuntimeInvocationStatus.TIMED_OUT:
             status = "timed_out"
+        elif terminal_event.status == RuntimeInvocationStatus.BUDGET_EXCEEDED:
+            status = "budget_killed"
         elif terminal_event.status == RuntimeInvocationStatus.BLOCKED:
             status = "refused"
         else:
@@ -780,11 +803,15 @@ class RuntimeSupervisorToolSubprocessRunner:
         max_stdout_bytes: int = 65536,
         max_stderr_bytes: int = 65536,
         heartbeat_interval_ms: int = 1000,
+        cpu_budget_seconds: float = TOOL_MAX_RUNTIME_SECONDS,
+        io_budget_bytes: int = BASH_MAX_OUTPUT_BYTES,
     ) -> None:
         self._invoker = SupervisorCommandInvoker(
             max_stdout_bytes=max_stdout_bytes,
             max_stderr_bytes=max_stderr_bytes,
             heartbeat_interval_ms=heartbeat_interval_ms,
+            cpu_budget_seconds=cpu_budget_seconds,
+            io_budget_bytes=io_budget_bytes,
         )
 
     async def run(self, request: ToolSubprocessRequest) -> ToolSubprocessResult:

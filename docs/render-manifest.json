@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-05-21T08:49:24.032787+00:00",
-  "git_commit": "c6144208b502",
-  "page_count": 264,
-  "collection_page_count": 35,
+  "generated_at": "2026-05-22T11:02:01.502135+00:00",
+  "git_commit": "dcc0ea1fc85a",
+  "page_count": 266,
+  "collection_page_count": 36,
   "pages": [
     {
       "document_id": "acp-setup",
@@ -750,6 +750,11 @@
       "source_json_path": "json/findings/out-of-scope-findings.v1.json"
     },
     {
+      "document_id": "agent-instruction-template",
+      "title": "Agent Instruction Template (AGENTS.md)",
+      "source_json_path": "json/governance/agent-instruction-template.v1.json"
+    },
+    {
       "document_id": "agent-loop-boundary",
       "title": "Agent Loop Boundary",
       "source_json_path": "json/governance/agent_loop_boundary.v1.json"
@@ -1115,6 +1120,11 @@
       "source_json_path": "json/integrations/github_app_integration_audit_v0.v1.json"
     },
     {
+      "document_id": "issue-tracker",
+      "title": "Issue Tracker",
+      "source_json_path": "json/issues/issue_tracker.v1.json"
+    },
+    {
       "document_id": "privacy-notice-alpha",
       "title": "Privacy Notice \u2014 Alpha",
       "source_json_path": "json/legal/privacy-notice-alpha.v1.json"
@@ -1360,6 +1370,7 @@
     "ui",
     "code-schemas",
     "security",
-    "integrations"
+    "integrations",
+    "issues"
   ]
 }

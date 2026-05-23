@@ -10,7 +10,7 @@ _COUNCIL_MUTATION_TOOLS = frozenset({
 })
 
 if TYPE_CHECKING:
-    from rig_relay.core.tool_executor.context import ToolExecutionContext
+    from rig_relay.core.tool_executor.context import ToolSessionContext, ToolTurnContext
     from rig_relay.core.tools.base import BaseTool
 
 
@@ -22,24 +22,25 @@ class CouncilGate:
     blocked gates, missing providers, and consultation errors all
     result in REVIEW or BLOCK rather than ALLOW.
 
-    Receives all runtime state via ToolExecutionContext — no
-    reach-through to AgentLoop internals.
+    Receives all runtime state via ToolSessionContext (session-scoped)
+    and ToolTurnContext (per-batch) — no reach-through to AgentLoop internals.
     """
 
     __slots__ = ("_ctx",)
 
-    def __init__(self, *, ctx: ToolExecutionContext) -> None:
-        self._ctx = ctx
+    def __init__(self, *, session_ctx: ToolSessionContext) -> None:
+        self._ctx = session_ctx
 
     async def consult(
         self,
         tool_name: str,
         tool_args: dict[str, Any],
         tool_class: type[BaseTool] | None,
+        turn_ctx: ToolTurnContext,
     ) -> str:
         """Return ALLOW, BLOCK, or REVIEW. Never ALLOW on failure."""
         ctx = self._ctx
-        turn_id = ctx.user_message_id
+        turn_id = turn_ctx.user_message_id
         tc = ctx.telemetry_client
 
         if tool_class is None:

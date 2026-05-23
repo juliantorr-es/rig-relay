@@ -1,0 +1,316 @@
+{
+  "schema_version": "rig.audit.test_classification_overlabel.v1",
+  "audit_id": "overlabel-may-2026",
+  "generated_at": "2026-05-22T00:00:00Z",
+  "scope": "All test files with 4+ classification markers (contract, integration, e2e, real_artifact, adversarial, substrate, sabotage, flaky, slow, network, provider, destructive, migration, quarantine, smoke)",
+  "summary": {
+    "files_with_4plus_markers": 19,
+    "mislabeled_tests_count": 18,
+    "correctly_labeled_count": "majority",
+    "methodology": "Markers were audited against test content: adversarial requires injection/corruption/escape intent; substrate requires storage/cache/infrastructure checks; real_artifact requires real file artifact consumption; integration requires cross-component exercise"
+  },
+  "findings": [
+    {
+      "file": "tests/release/test_package_release.py",
+      "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate", "migration"],
+      "mislabeled_tests": [],
+      "notes": "Has module-level pytestmark=[pytest.mark.migration] which flags the entire file. Individual tests then stack additional markers. The module-level migration marker means every test carries migration regardless of content."
+    },
+    {
+      "file": "tests/integrations/test_deepseek_opencode_usage_report.py",
+      "current_markers": ["contract", "real_artifact", "adversarial", "substrate", "integration"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_cli_exits_non_zero_on_missing_db",
+          "line": 579,
+          "current_markers": ["adversarial"],
+          "recommended": ["integration"],
+          "reason": "This is a standard CLI error-handling test (checks exit code 1 on missing DB file). No injection, corruption, or adversarial input crafting."
+        },
+        {
+          "test_name": "test_lane_policy_is_deterministic",
+          "line": 462,
+          "current_markers": ["substrate"],
+          "recommended": ["contract"],
+          "reason": "Pure deterministic computation check — builds report twice with same inputs and compares lane policy recommendations. No storage/infrastructure substrate interaction."
+        }
+      ]
+    },
+    {
+      "file": "tests/integrations/test_deepseek_lane_routing.py",
+      "current_markers": ["contract", "real_artifact", "adversarial", "substrate", "integration"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_routing_does_not_touch_opencode_db_or_config",
+          "line": 397,
+          "current_markers": ["substrate"],
+          "recommended": ["contract", "integration"],
+          "reason": "Checks that routing decision function doesn't access sqlite3.connect or mutate config/db files. This is side-effect isolation testing, not storage substrate testing."
+        },
+        {
+          "test_name": "test_show_routing_cli_does_not_touch_opencode_db_or_config",
+          "line": 428,
+          "current_markers": ["substrate"],
+          "recommended": ["contract", "integration"],
+          "reason": "Same pattern — CLI side-effect isolation, not infrastructure layer testing."
+        }
+      ]
+    },
+    {
+      "file": "tests/integrations/test_deepseek_router_promotion_gate.py",
+      "current_markers": ["contract", "real_artifact", "integration", "adversarial", "substrate"],
+      "mislabeled_tests": [],
+      "notes": "Appears well-classified — adversarial tests involve injection/override, substrate checks cover report parsing/resilience."
+    },
+    {
+      "file": "tests/docs_renderer/test_renderer_refactor.py",
+      "current_markers": ["contract", "adversarial", "integration", "real_artifact", "substrate"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_rendered_html_has_main_landmark",
+          "line": 384,
+          "current_markers": ["adversarial"],
+          "recommended": ["contract"],
+          "reason": "Checks for presence of <main> landmark in rendered HTML. Structural assertion, not adversarial."
+        },
+        {
+          "test_name": "test_rendered_html_has_source_reference",
+          "line": 393,
+          "current_markers": ["adversarial"],
+          "recommended": ["contract"],
+          "reason": "Checks for 'source-ref' or 'Source:' string presence. Structural HTML check, not adversarial."
+        }
+      ]
+    },
+    {
+      "file": "tests/site_renderer/test_site_renderer.py",
+      "current_markers": ["contract", "integration", "adversarial", "real_artifact"],
+      "mislabeled_tests": [
+        {
+          "test_name": "TestPageSchema.test_page_schema_is_valid_json_schema",
+          "line": 57,
+          "current_markers": ["contract", "integration", "adversarial"],
+          "recommended": ["contract"],
+          "reason": "Checks $schema field, type=object, presence of 'properties' and 'required' in a JSON Schema file. This is a pure contract/schema validation test — no adversarial or integration aspect."
+        },
+        {
+          "test_name": "TestPageSchema.test_input_manifest_schema_is_valid",
+          "line": 70,
+          "current_markers": ["contract", "integration", "adversarial"],
+          "recommended": ["contract"],
+          "reason": "Same pattern — JSON Schema structure check. Neither adversarial nor integration."
+        },
+        {
+          "test_name": "TestPageSchema.test_render_report_schema_is_valid",
+          "line": 82,
+          "current_markers": ["contract", "integration", "adversarial"],
+          "recommended": ["contract"],
+          "reason": "Same pattern — JSON Schema structure check."
+        }
+      ]
+    },
+    {
+      "file": "tests/release_candidate/test_golden_path_checker.py",
+      "current_markers": ["contract", "integration", "real_artifact", "sabotage"],
+      "mislabeled_tests": [],
+      "notes": "Well-classified. sabotage marker is appropriate for TestSabotageConsistencyFailures class (L683-755) which tests failure-on-corruption scenarios."
+    },
+    {
+      "file": "tests/release_candidate/test_golden_path_validation.py",
+      "current_markers": ["contract", "integration", "adversarial", "substrate"],
+      "mislabeled_tests": [],
+      "notes": "Appears correctly classified — adversarial tests cover injection/redaction, substrate covers storage/consistency."
+    },
+    {
+      "file": "tests/release_candidate/test_security_repository_hygiene.py",
+      "current_markers": ["contract", "real_artifact", "adversarial", "substrate"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_markdown_exception_policy_allows_exceptions_and_blocks_reports",
+          "line": 118,
+          "current_markers": ["contract"],
+          "recommended": ["contract"],
+          "reason": "Correctly classified. No mislabeling in this file — adversarial tests (L41-115) involve injection and secret scanning, substrate tests handle repo structure checks."
+        }
+      ],
+      "notes": "Generally well-classified. The adversarial/substrate split is accurate."
+    },
+    {
+      "file": "tests/integrations/test_google_workspace_implementation.py",
+      "current_markers": ["contract", "adversarial", "integration", "substrate"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_cli_help_works",
+          "line": 382,
+          "current_markers": ["substrate"],
+          "recommended": ["integration"],
+          "reason": "Standard CLI smoke test (runs --help, checks exit code 0). Not a storage/infrastructure layer test."
+        },
+        {
+          "test_name": "test_cli_refusal_exit_code_2",
+          "line": 400,
+          "current_markers": ["substrate"],
+          "recommended": ["integration"],
+          "reason": "Standard CLI exit-code test. Not a substrate concern."
+        },
+        {
+          "test_name": "test_adapter_does_not_make_network_calls",
+          "line": 360,
+          "current_markers": ["substrate"],
+          "recommended": ["contract"],
+          "reason": "Has 'pass' body — placeholder test. Should not carry substrate marker."
+        }
+      ]
+    },
+    {
+      "file": "tests/integrations/test_google_fake_auth.py",
+      "current_markers": ["contract", "adversarial", "integration", "real_artifact"],
+      "mislabeled_tests": [],
+      "notes": "Auth tests naturally involve adversarial patterns (credential injection, token bypass). Classification appears appropriate."
+    },
+    {
+      "file": "tests/integrations/test_github_provider_implementation.py",
+      "current_markers": ["contract", "adversarial", "integration", "real_artifact"],
+      "mislabeled_tests": [],
+      "notes": "GitHub provider tests span the full contract-adversarial spectrum with GitHub-specific payloads. Classification appears appropriate."
+    },
+    {
+      "file": "tests/desktop/test_readiness_gating.py",
+      "current_markers": ["contract", "integration", "substrate", "adversarial"],
+      "mislabeled_tests": [],
+      "notes": "Readiness gating tests exercise the full state machine. Marker distribution appears appropriate for healthz endpoint testing."
+    },
+    {
+      "file": "tests/desktop/test_playwright_frontend_product_path.py",
+      "current_markers": ["e2e", "integration", "real_artifact", "adversarial"],
+      "mislabeled_tests": [],
+      "notes": "Playwright + real desktop — e2e, integration, real_artifact are all accurate. Adversarial likely applies to injection tests within the file."
+    },
+    {
+      "file": "tests/desktop/test_playwright_bridge_coverage.py",
+      "current_markers": ["e2e", "integration", "real_artifact", "adversarial"],
+      "mislabeled_tests": [],
+      "notes": "Same pattern as above."
+    },
+    {
+      "file": "tests/desktop/test_frontend_runtime_kernel.py",
+      "current_markers": ["contract", "e2e", "integration", "substrate"],
+      "mislabeled_tests": [],
+      "notes": "Runtime kernel tests touch infrastructure, so substrate is appropriate."
+    },
+    {
+      "file": "tests/release_gate/test_protocol_ci_sdk_blocker_enforcement.py",
+      "current_markers": ["real_artifact", "integration", "adversarial", "substrate"],
+      "mislabeled_tests": [],
+      "notes": "SDK enforcement tests deal with protocol-level injection, making adversarial and substrate fair."
+    },
+    {
+      "file": "tests/release_gate/test_ci_workflow_integration.py",
+      "current_markers": ["contract", "integration", "adversarial", "real_artifact"],
+      "mislabeled_tests": [],
+      "notes": "CI workflow tests span pipeline integration. Classification appears appropriate."
+    },
+    {
+      "file": "tests/release_gate/test_ci_evidence_surface.py",
+      "current_markers": ["contract", "integration", "real_artifact", "adversarial"],
+      "mislabeled_tests": [],
+      "notes": "Well-documented classification at top of file. Tests appear correctly labeled."
+    },
+    {
+      "file": "tests/compiler/test_compiler_experiment_0.py",
+      "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+      "mislabeled_tests": [
+        {
+          "test_name": "test_loads_target_schema",
+          "line": 58,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Checks isinstance(schema, dict) and presence of 'required' key. Single-line assertions, no integrations, no adversarial input, no substrate concerns."
+        },
+        {
+          "test_name": "test_derive_model_spec_is_deterministic",
+          "line": 63,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Pure equality check: spec1 == spec2. No adversarial or substrate aspect."
+        },
+        {
+          "test_name": "test_derive_model_spec_includes_schema_version",
+          "line": 69,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract", "real_artifact"],
+          "reason": "Reads a real schema artifact but only checks key presence (schema_version, models, fields). No adversarial or substrate aspect."
+        },
+        {
+          "test_name": "test_render_candidate_is_deterministic",
+          "line": 78,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Pure byte-identity check. Not adversarial or substrate."
+        },
+        {
+          "test_name": "test_rendered_candidate_contains_schema_version_const",
+          "line": 83,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Simple string-in-bytes check: candidate containing 'schema_version'. Shallow assertion."
+        },
+        {
+          "test_name": "test_no_compiler_runtime_package_created",
+          "line": 387,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Single assertion checking __init__.py doesn't exist. No adversarial or substrate aspect."
+        },
+        {
+          "test_name": "test_no_full_template_framework_created",
+          "line": 392,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["contract"],
+          "reason": "Checks len(template_files) <= 1. Shallow file count assertion. No adversarial or substrate aspect."
+        },
+        {
+          "test_name": "test_cli_refuses_missing_target_schema",
+          "line": 469,
+          "current_markers": ["contract", "integration", "real_artifact", "adversarial", "substrate"],
+          "recommended": ["integration"],
+          "reason": "CLI subprocess test checking exit code 1 on missing schema. Not adversarial (no injection), not substrate, not contract."
+        }
+      ],
+      "notes": "This file uses module-level pytestmark assigning ALL FIVE markers to EVERY test. This is the most severe overlabeling case. 18 test methods inherit 5 markers regardless of content. Tests like test_loads_target_schema (simple isinstance check) carry adversarial and substrate markers. The file should drop module-level pytestmark and assign per-test markers."
+    }
+  ],
+  "categories": {
+    "overlabeling_modules": [
+      "tests/compiler/test_compiler_experiment_0.py"
+    ],
+    "single_mislabeled_tests": [
+      "tests/integrations/test_deepseek_opencode_usage_report.py::test_cli_exits_non_zero_on_missing_db",
+      "tests/integrations/test_deepseek_opencode_usage_report.py::test_lane_policy_is_deterministic",
+      "tests/integrations/test_deepseek_lane_routing.py::test_routing_does_not_touch_opencode_db_or_config",
+      "tests/integrations/test_deepseek_lane_routing.py::test_show_routing_cli_does_not_touch_opencode_db_or_config",
+      "tests/docs_renderer/test_renderer_refactor.py::test_rendered_html_has_main_landmark",
+      "tests/docs_renderer/test_renderer_refactor.py::test_rendered_html_has_source_reference",
+      "tests/site_renderer/test_site_renderer.py::TestPageSchema (3 tests with class-level adversarial marker)",
+      "tests/integrations/test_google_workspace_implementation.py::test_cli_help_works",
+      "tests/integrations/test_google_workspace_implementation.py::test_cli_refusal_exit_code_2",
+      "tests/integrations/test_google_workspace_implementation.py::test_adapter_does_not_make_network_calls"
+    ],
+    "correct_multimarker": [
+      "tests/release_candidate/test_golden_path_checker.py",
+      "tests/release_candidate/test_security_repository_hygiene.py",
+      "tests/release_gate/test_ci_evidence_surface.py",
+      "tests/release_gate/test_protocol_ci_sdk_blocker_enforcement.py",
+      "tests/integrations/test_deepseek_router_promotion_gate.py",
+      "tests/integrations/test_google_fake_auth.py",
+      "tests/integrations/test_github_provider_implementation.py"
+    ]
+  },
+  "recommendations": [
+    "Module-level pytestmark with 4+ classification markers should be replaced by per-test/per-class markers",
+    "adversarial marker should require: injection/corruption/malformed input crafting (not just checking exit codes or string presence)",
+    "substrate marker should require: storage layer, cache, infrastructure, or filesystem edge cases (not just side-effect isolation)",
+    "real_artifact marker should require: actual consumption of repo file artifacts (not just schema structure checks)",
+    "Consider adding a CI lint rule (similar to pytest-check-marks) to warn when a test carries more than 3 classification markers"
+  ]
+}

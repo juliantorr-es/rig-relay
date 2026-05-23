@@ -37,6 +37,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.core.tool_runtime import ToolRuntime
 from rig_relay.runtime.context import RuntimeContextResolution
+from rig_relay.runtime.execution_budgets import (
+    BASH_MAX_OUTPUT_BYTES,
+    TOOL_MAX_RUNTIME_SECONDS,
+)
 from rig_relay.runtime.runtime_audit_event import (
     RuntimeAuditPersistenceStore,
     build_runtime_audit_event,
@@ -164,7 +168,10 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 RuntimeSupervisorToolSubprocessRunner,
             )
 
-            return RuntimeSupervisorToolSubprocessRunner()
+            return RuntimeSupervisorToolSubprocessRunner(
+                cpu_budget_seconds=TOOL_MAX_RUNTIME_SECONDS,
+                io_budget_bytes=BASH_MAX_OUTPUT_BYTES,
+            )
         except Exception:
             return None
 

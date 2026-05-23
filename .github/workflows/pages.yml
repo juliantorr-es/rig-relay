@@ -4,9 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/**'
-      - 'rig_relay/docs_render/**'
-      - 'scripts/rig_relay_docs_artifacts.py'
+      - 'docs/assets/**'
+      - 'docs/schemas/**'
+      - 'docs/json/site/**'
+      - 'rig_relay/site_renderer/**'
+      - 'scripts/rig_site_render.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

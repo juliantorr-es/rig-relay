@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.issue.v1.schema.json",
+  "title": "Rig Relay Issue",
+  "description": "A durable tracked issue record in the repo-local issue ledger. Issues capture review findings, open defects, accepted fixes, and follow-up gaps.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "issue_id",
+    "tracker_id",
+    "area",
+    "title",
+    "summary",
+    "issue_kind",
+    "severity",
+    "priority",
+    "status",
+    "verification_state",
+    "source_kind",
+    "source_label",
+    "evidence",
+    "why_it_matters",
+    "recommended_action",
+    "related_files",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.issue.v1"
+    },
+    "issue_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable issue identifier."
+    },
+    "tracker_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the tracker that owns this issue."
+    },
+    "area": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Subsystem, module, or doc area affected by the issue."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short issue title."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concise statement of the issue and its current state."
+    },
+    "issue_kind": {
+      "type": "string",
+      "enum": [
+        "architecture_debt",
+        "lifecycle_semantics",
+        "safety_guard_gap",
+        "telemetry_schema_gap",
+        "coordination_gap",
+        "documentation_gap",
+        "testing_gap",
+        "provider_boundary_gap",
+        "lint_refactor",
+        "release_blocker"
+      ],
+      "description": "Durable category for the issue."
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "How urgently the issue should be addressed."
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "p0",
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "description": "Tracker priority, where p0 is highest."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "blocked",
+        "resolved",
+        "accepted",
+        "deferred",
+        "wont_fix",
+        "superseded"
+      ],
+      "description": "Lifecycle status for the issue."
+    },
+    "verification_state": {
+      "type": "string",
+      "enum": [
+        "not_verified",
+        "partially_verified",
+        "verified",
+        "needs_repro",
+        "needs_tests"
+      ],
+      "description": "How much of the issue has been directly verified."
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "transcript",
+        "audit",
+        "review",
+        "mission",
+        "report",
+        "other"
+      ],
+      "description": "Origin of the issue record."
+    },
+    "source_label": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable source label."
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concise evidence summary."
+    },
+    "why_it_matters": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why the issue matters if left open."
+    },
+    "recommended_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Recommended next corrective slice."
+    },
+    "related_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Paths that anchor the issue."
+    },
+    "validation_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Commands that validate closure or regression coverage."
+    },
+    "blocked_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Issue IDs that block this issue."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Search tags for the issue."
+    },
+    "owner": {
+      "type": "string",
+      "description": "Optional owner or lane label."
+    },
+    "resolution": {
+      "type": "string",
+      "description": "How the issue was resolved."
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the issue was resolved."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the issue was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the issue was last updated."
+    }
+  },
+  "additionalProperties": false
+}

@@ -13,6 +13,8 @@ from pathlib import Path
 import shutil
 from typing import Any
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
 # ── Budget defaults ─────────────────────────────────────────────────────
 
 DEFAULT_BUDGET: dict[str, Any] = {
@@ -46,6 +48,19 @@ PROTECTED_NAMES = (
     "convergence_report",
     "checkpoint_receipt",
 )
+
+
+def _repo_root(path: Path) -> Path:
+    resolved = path.resolve(strict=False)
+    parts = resolved.parts
+    for idx in range(len(parts) - 1):
+        if parts[idx] == ".build" and parts[idx + 1] == "rig-relay":
+            if idx == 0:
+                return Path(resolved.anchor or ".")
+            return Path(*parts[:idx])
+    if len(resolved.parents) >= 2:
+        return resolved.parents[1]
+    return resolved.parent
 
 RETENTION_RULES: list[tuple[str, str, list[str] | None, str]] = [
     (
@@ -94,12 +109,17 @@ DEFAULT_RETENTION_DAYS: dict[str, int] = {
 
 
 def _size_mb(path: Path) -> float:
+    repo_root = _repo_root(path)
+    if is_confidential_artifact_path(path, repo_root):
+        return 0.0
     if path.is_file():
         return path.stat().st_size / 1_048_576.0
     total = 0
     if path.is_dir():
         for f in path.rglob("*"):
             if f.is_file():
+                if is_confidential_artifact_path(f, repo_root):
+                    continue
                 total += f.stat().st_size
     return total / 1_048_576.0
 
@@ -135,6 +155,7 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
     now = datetime.now(UTC)
     candidates: list[dict[str, Any]] = []
     stale_hours = int(budget.get("stale_leases_hours", 24))
+    repo_root = _repo_root(root)
 
     for subdir, budget_key, allowed_exts, description in RETENTION_RULES:
         target = root / subdir
@@ -148,6 +169,8 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
             hours_cutoff = now - timedelta(hours=stale_hours)
             for f in target.rglob("*"):
                 if not f.is_file():
+                    continue
+                if is_confidential_artifact_path(f, repo_root):
                     continue
                 try:
                     mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
@@ -173,6 +196,8 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
 
         for f in target.rglob("*"):
             if not f.is_file():
+                continue
+            if is_confidential_artifact_path(f, repo_root):
                 continue
             if _is_protected(f):
                 continue
@@ -208,8 +233,11 @@ def _find_gc_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str, An
 
 
 def _remove_empty_dirs(root: Path) -> None:
+    repo_root = _repo_root(root)
     for dirpath in sorted(root.rglob("*"), key=lambda p: len(str(p)), reverse=True):
         if dirpath.is_dir():
+            if is_confidential_artifact_path(dirpath, repo_root):
+                continue
             try:
                 if not any(dirpath.iterdir()):
                     dirpath.rmdir()

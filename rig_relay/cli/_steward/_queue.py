@@ -25,13 +25,21 @@ def read_lanes(root: Path) -> list[dict[str, Any]]:
     return read_jsonl(root / LANES_PATH)
 
 
-def update_queue_status(root: Path, task_id: str, new_status: str) -> bool:
+def update_queue_status(
+    root: Path,
+    task_id: str,
+    new_status: str,
+    *,
+    increment_failed_attempts: bool = False,
+) -> bool:
     queue_path = root / QUEUE_PATH
     items = read_queue(root)
     updated = False
     for item in items:
         if item.get("task_id") == task_id:
             item["status"] = new_status
+            if increment_failed_attempts:
+                item["failed_attempts"] = item.get("failed_attempts", 0) + 1
             updated = True
     if updated:
         write_jsonl(queue_path, items)

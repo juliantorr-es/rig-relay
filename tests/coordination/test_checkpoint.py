@@ -55,7 +55,7 @@ def _touch(repo: Path, *paths: str) -> None:
     guard = get_guard()
     original_cwd = _os.getcwd()
     _os.chdir(repo)
-    guard.capture()
+    
     for p in paths:
         guard.mark_touched(p)
     _os.chdir(original_cwd)
@@ -75,8 +75,15 @@ def _make_tool(store_path: Path):
 
 
 def _make_args(**kwargs):
-    from rig_relay.core.tools.builtins.checkpoint import CheckpointArgs
+    import json
 
+    from rig_relay.core.tools.builtins.checkpoint import CheckpointArgs
+    from rig_relay.governance.auth_receipts import generate_dev_receipt
+
+    if "authorization_receipt" not in kwargs:
+        kwargs["authorization_receipt"] = json.dumps(
+            generate_dev_receipt("checkpoint.commit", ttl_seconds=300)
+        )
     return CheckpointArgs(**kwargs)
 
 
@@ -84,10 +91,13 @@ def test_checkpoint_commits_only_include_paths(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "a.py").write_text("a")
-    (repo / "b.py").write_text("b")
-    # Only stage a.py — b.py is dirty but unstaged, should not be committed
     subprocess.run(["git", "add", "a.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "a"], cwd=repo, check=True, capture_output=True)
+    (repo / "a.py").write_text("a modified")
+    subprocess.run(["git", "add", "a.py"], cwd=repo, check=True, capture_output=True)
+    (repo / "b.py").write_text("b")
     _touch(repo, "a.py")
 
     tool = _make_tool(tmp_path / "coordination")
@@ -131,6 +141,7 @@ def test_checkpoint_refuses_empty_include_paths(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     tool = _make_tool(tmp_path / "coordination")
 
     import os
@@ -163,6 +174,7 @@ def test_checkpoint_refuses_path_outside_repo(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     tool = _make_tool(tmp_path / "coordination")
 
     import os
@@ -195,6 +207,7 @@ def test_checkpoint_refuses_path_reserved_by_another_session(tmp_path: Path) -> 
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "shared.py").write_text("shared")
     subprocess.run(
         ["git", "add", "shared.py"], cwd=repo, check=True, capture_output=True
@@ -250,7 +263,11 @@ def test_checkpoint_commit_message_includes_metadata(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "mod.py").write_text("modified")
+    subprocess.run(["git", "add", "mod.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "mod base"], cwd=repo, check=True, capture_output=True)
+    (repo / "mod.py").write_text("modified again")
     subprocess.run(["git", "add", "mod.py"], cwd=repo, check=True, capture_output=True)
     _touch(repo, "mod.py")
 
@@ -297,10 +314,12 @@ def test_checkpoint_emits_artifact(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "artifact_test.py").write_text("artifact")
-    subprocess.run(
-        ["git", "add", "artifact_test.py"], cwd=repo, check=True, capture_output=True
-    )
+    subprocess.run(["git", "add", "artifact_test.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "artifact base"], cwd=repo, check=True, capture_output=True)
+    (repo / "artifact_test.py").write_text("artifact modified")
+    subprocess.run(["git", "add", "artifact_test.py"], cwd=repo, check=True, capture_output=True)
     _touch(repo, "artifact_test.py")
 
     tool = _make_tool(tmp_path / "coordination")
@@ -335,10 +354,12 @@ def test_checkpoint_does_not_push(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "no_push.py").write_text("no push")
-    subprocess.run(
-        ["git", "add", "no_push.py"], cwd=repo, check=True, capture_output=True
-    )
+    subprocess.run(["git", "add", "no_push.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "no push base"], cwd=repo, check=True, capture_output=True)
+    (repo / "no_push.py").write_text("no push modified")
+    subprocess.run(["git", "add", "no_push.py"], cwd=repo, check=True, capture_output=True)
     _touch(repo, "no_push.py")
 
     tool = _make_tool(tmp_path / "coordination")
@@ -375,6 +396,7 @@ def test_checkpoint_refuses_non_existent_path(tmp_path: Path) -> None:
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     tool = _make_tool(tmp_path / "coordination")
 
     import os
@@ -466,6 +488,7 @@ def test_checkpoint_allows_protected_file_after_safe_patch(tmp_path: Path) -> No
     from tests.mock.utils import collect_result
 
     repo = _init_git_repo(tmp_path)
+    import os; original_cwd = os.getcwd(); os.chdir(repo); get_guard().capture(); os.chdir(original_cwd)
     (repo / "safe.py").write_text("original")
     subprocess.run(["git", "add", "safe.py"], cwd=repo, check=True, capture_output=True)
     subprocess.run(
@@ -480,7 +503,7 @@ def test_checkpoint_allows_protected_file_after_safe_patch(tmp_path: Path) -> No
     original_cwd = os.getcwd()
     os.chdir(repo)
     try:
-        guard.capture()
+        
         guard.mark_touched("safe.py")
     finally:
         os.chdir(original_cwd)

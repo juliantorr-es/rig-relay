@@ -34,6 +34,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from rig_relay.core.logger import logger
+from rig_relay.core.telemetry.types import TelemetryMode
 from rig_relay.identity.state_paths import default_relay_state_root
 
 PROFILE_STATE_ROOT_NAME = "profile"
@@ -71,7 +72,7 @@ class LocalProfile(BaseModel):
     local_auth_enabled: bool = False
     passkey_registered: bool = False
     platform_credential_registered: bool = False
-    telemetry_mode: str = "enabled_first_party"
+    telemetry_mode: str = TelemetryMode.ENABLED_FIRST_PARTY.value
     profile_state: ProfileState = ProfileState.SETUP_REQUIRED
     updated_at: str = ""
 
@@ -132,7 +133,7 @@ class ProfileStore:
             local_auth_enabled=False,
             passkey_registered=False,
             platform_credential_registered=False,
-            telemetry_mode="enabled_first_party",
+            telemetry_mode=TelemetryMode.ENABLED_FIRST_PARTY.value,
             profile_state=ProfileState.SETUP_REQUIRED,
         )
         self.save(profile)
@@ -347,7 +348,7 @@ class CapabilityGate:
                 "profile_state": ProfileState.SETUP_REQUIRED.value,
                 "local_auth_enabled": False,
                 "passkey_registered": False,
-                "telemetry_mode": "disabled",
+                "telemetry_mode": TelemetryMode.DISABLED_BY_USER.value,
             }
 
         profile_state = profile.profile_state

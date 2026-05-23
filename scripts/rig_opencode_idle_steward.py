@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Thin backwards-compatible wrapper — delegates to the canonical CLI module.
 
-Usage (both forms are equivalent):
+Legacy one-shot wrapper used by older scripts and tests.
+Use `rig-relay steward` for the looping dispatcher.
+
+Usage:
   uv run python scripts/rig_opencode_idle_steward.py --project-root . --worktree default --dry-run
-  uv run rig-relay steward --project-root . --dry-run
 """
 
 from __future__ import annotations

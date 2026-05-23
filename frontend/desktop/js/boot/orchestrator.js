@@ -9,7 +9,8 @@ import { createTransportStateAuthority } from '../transportState.js';
 import { ProjectionWebSocketClient, setWsClient, onProjectionReceived } from '../transport.js';
 import { renderStatusFromState, renderStalenessIndicator } from '../status.js';
 import { handleProjection, handleChatState, handleIntentResult,
-         handleProgressEvent, handleProgressEvents } from '../projection.js';
+         handleProgressEvent, handleProgressEvents,
+         handleAnalyticsProjection } from '../projection.js';
 import { wireUI } from '../main.js';
 import { state } from '../state.js';
 import { createRuntime } from '../runtime/kernel.js';
@@ -341,6 +342,9 @@ async function boot() {
             break;
           case 'progress_events':
             handleProgressEvents(msg.events || msg);
+            break;
+          case 'analytics_projection':
+            handleAnalyticsProjection(msg.data || msg);
             break;
         }
       },

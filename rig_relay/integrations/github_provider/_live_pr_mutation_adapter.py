@@ -8,6 +8,7 @@ No alert mutation. All gates must pass. Default: blocked.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,9 @@ from typing import Any
 from rig_relay.core.utils.io import read_safe
 from rig_relay.integrations.github_provider._fake_github_boundary import (
     FakeGitHubBoundary,
+)
+from rig_relay.integrations.github_provider._receipts import (
+    build_github_operation_receipt,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -167,6 +171,81 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
     )
 
 
+def _verify_approval_receipt_hmac(
+    approval_receipt: dict[str, Any], hmac_key: bytes
+) -> tuple[bool, str]:
+    provided_sig = approval_receipt.get("hmac_signature", "")
+    if not provided_sig:
+        return False, "missing_hmac_signature"
+    provided_timestamp = approval_receipt.get("timestamp", "")
+    provided_scope = approval_receipt.get("scope", "")
+    provided_nonce = approval_receipt.get("nonce", "")
+    if not provided_timestamp or not provided_scope:
+        return False, "incomplete_receipt_fields"
+    if "live_pr_mutation" not in provided_scope.split(","):
+        return False, "scope_insufficient:live_pr_mutation_missing"
+    payload = (f"live_pr_mutation:{provided_timestamp}:{provided_nonce}").encode()
+    expected_sig = hmac.HMAC(hmac_key, payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(provided_sig, expected_sig):
+        return False, "hmac_signature_mismatch"
+    ttl = 300
+    try:
+        from datetime import UTC, datetime
+
+        receipt_time = datetime.fromisoformat(provided_timestamp)
+        now = datetime.now(UTC).replace(tzinfo=None)
+        if abs((now - receipt_time).total_seconds()) > ttl:
+            return False, "receipt_expired"
+    except (ValueError, TypeError):
+        return False, "invalid_timestamp"
+    return True, ""
+
+
+def _build_mutation_evidence_receipt(
+    operation_id: str, capability_id: str, verdict: str, trace_id: str
+) -> dict[str, Any]:
+    from rig_relay.integrations.github_provider._models import (
+        GitHubAuthMode,
+        GitHubAuthStatus,
+        GitHubOperationClass,
+        GitHubProviderAuthState,
+        GitHubProviderCapabilityDecision,
+        GitHubProviderOperationRequest,
+        GitHubTokenStorageAuthority,
+        GitHubVerdict,
+    )
+
+    auth_state = GitHubProviderAuthState(
+        auth_mode=GitHubAuthMode.GITHUB_APP_INSTALLATION,
+        auth_status=GitHubAuthStatus.AUTHENTICATED,
+        account_hash="governance_spine_p0",
+        scopes_or_permissions=["contents:write"],
+        token_storage_authority=GitHubTokenStorageAuthority.USER_SUPPLIED_RUNTIME,
+        token_material_present=True,
+    )
+    request = GitHubProviderOperationRequest(
+        operation_id=operation_id,
+        capability_id=capability_id,
+        operation_kind="Live PR Mutation",
+        operation_class=GitHubOperationClass.REMOTE_MUTATION,
+        auth_state=auth_state,
+        repository_hash=_sha256_text("github_mutation_p0"),
+        actor_hash=_sha256_text("governance_spine"),
+    )
+    verdict_enum = (
+        GitHubVerdict.COMPLETED
+        if verdict == "success"
+        else GitHubVerdict.FAILED
+        if verdict == "failed"
+        else GitHubVerdict.REFUSED
+    )
+    decision = GitHubProviderCapabilityDecision(
+        capability_id=capability_id, verdict=verdict_enum
+    )
+    receipt = build_github_operation_receipt(request, decision, trace_id=trace_id)
+    return receipt.to_dict()
+
+
 def _build_rollback(
     branch: str, pr_created: bool, steps_that_require_cleanup: list[str]
 ) -> dict[str, Any]:
@@ -191,7 +270,8 @@ def build_live_pr_mutation_attempt(
     *,
     allow_execute: bool = False,
     activate_live_gate: bool = False,
-    approval_ok: bool = False,
+    approval_receipt: dict[str, Any] | None = None,
+    hmac_key: bytes | None = None,
     fake_boundary: FakeGitHubBoundary | None = None,
     generated_at_utc: str | None = None,
 ) -> dict[str, Any]:
@@ -214,7 +294,18 @@ def build_live_pr_mutation_attempt(
     )
     _gate("execute_flag_set", allow_execute)
     _gate("live_gate_active", activate_live_gate)
-    _gate("approval_ok", approval_ok)
+
+    hmac_approval_verified = False
+    hmac_approval_reason = ""
+    if approval_receipt is not None and hmac_key is not None:
+        hmac_approval_verified, hmac_approval_reason = _verify_approval_receipt_hmac(
+            approval_receipt, hmac_key
+        )
+    _gate(
+        "approval_hmac_verified",
+        hmac_approval_verified,
+        hmac_approval_reason if hmac_approval_reason else "",
+    )
     _gate("boundary_present", fake_boundary is not None)
 
     if fake_boundary:
@@ -287,6 +378,26 @@ def build_live_pr_mutation_attempt(
     rollback = _build_rollback(branch, pr_created_flag, cleanup_steps)
     _write_json(_DEFAULT_ROLLBACK, rollback)
 
+    evidence_receipts: list[dict[str, Any]] = []
+    if gates_passed:
+        attempt_id = _sha256_text(f"attempt:{_now_iso()}")
+        trace_id = _sha256_text(f"trace:{attempt_id}")
+        for step in steps_result:
+            if step.get("remote_mutation_attempted"):
+                verdict = (
+                    "success" if step.get("remote_mutation_succeeded") else "failed"
+                )
+                try:
+                    receipt = _build_mutation_evidence_receipt(
+                        operation_id=f"{attempt_id}:{step['step_id']}",
+                        capability_id=f"rig.github.{step['step_id']}",
+                        verdict=verdict,
+                        trace_id=trace_id,
+                    )
+                    evidence_receipts.append(receipt)
+                except Exception:
+                    pass
+
     report: dict[str, Any] = {
         "schema_version": "rig.github.live_pr_mutation_attempt.v1",
         "attempt_id": _sha256_text(f"attempt:{_now_iso()}"),
@@ -316,6 +427,7 @@ def build_live_pr_mutation_attempt(
             "forbidden_fields_present": False,
             "raw_response_bodies": False,
         },
+        "evidence_receipts": evidence_receipts,
         "recommended_next_slice": "Phase 3 Slice 3 — actual GitHub live network test"
         if remote_mutation_succeeded
         else "Phase 3 Slice 2 — pass all live gates first",
@@ -335,7 +447,8 @@ def write_live_pr_mutation_attempt(
     *,
     allow_execute: bool = False,
     activate_live_gate: bool = False,
-    approval_ok: bool = False,
+    approval_receipt: dict[str, Any] | None = None,
+    hmac_key: bytes | None = None,
     simulate: bool = False,
     generated_at_utc: str | None = None,
 ) -> dict[str, Any]:
@@ -343,7 +456,8 @@ def write_live_pr_mutation_attempt(
     report = build_live_pr_mutation_attempt(
         allow_execute=allow_execute,
         activate_live_gate=activate_live_gate,
-        approval_ok=approval_ok,
+        approval_receipt=approval_receipt,
+        hmac_key=hmac_key,
         fake_boundary=fb,
         generated_at_utc=generated_at_utc,
     )

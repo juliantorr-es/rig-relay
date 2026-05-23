@@ -113,7 +113,9 @@ class TestListRemoteResumeSessions:
         config.api_timeout = 30
         config.vibe_code_workflow_id = "workflow-1"
 
-        with patch("vibe.core.session.resume_sessions.WorkflowsClient") as MockClient:
+        with patch(
+            "rig_relay.core.session.resume_sessions.WorkflowsClient"
+        ) as MockClient:
             mock_client = AsyncMock()
             mock_client.get_workflow_runs.return_value = mock_response
             MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -179,7 +181,9 @@ class TestListRemoteResumeSessions:
         config.api_timeout = 30
         config.vibe_code_workflow_id = "workflow-1"
 
-        with patch("vibe.core.session.resume_sessions.WorkflowsClient") as MockClient:
+        with patch(
+            "rig_relay.core.session.resume_sessions.WorkflowsClient"
+        ) as MockClient:
             mock_client = AsyncMock()
             mock_client.get_workflow_runs.return_value = mock_response
             MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
@@ -228,7 +232,9 @@ class TestListRemoteResumeSessions:
         config.api_timeout = 30
         config.vibe_code_workflow_id = "workflow-1"
 
-        with patch("vibe.core.session.resume_sessions.WorkflowsClient") as MockClient:
+        with patch(
+            "rig_relay.core.session.resume_sessions.WorkflowsClient"
+        ) as MockClient:
             mock_client = AsyncMock()
             mock_client.get_workflow_runs.return_value = mock_response
             MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)

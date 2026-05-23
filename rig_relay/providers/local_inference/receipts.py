@@ -11,6 +11,7 @@ from typing import Any
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptDecision,
     ReceiptSubject,
     ReceiptSubjectKind,
@@ -31,7 +32,7 @@ def build_probe_receipt(
             actor_id="airlock:local_inference",
             actor_kind=ReceiptActorKind.SYSTEM,
             display_name="Local Inference Airlock",
-            is_authoritative=True,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
         ),
         subject=ReceiptSubject(
             subject_id=probe_result.probe_id,
@@ -57,7 +58,7 @@ def build_routing_receipt(
             actor_id="airlock:local_inference",
             actor_kind=ReceiptActorKind.SYSTEM,
             display_name="Local Inference Airlock",
-            is_authoritative=True,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
         ),
         subject=ReceiptSubject(
             subject_id=routing_decision.decision_id,
@@ -85,7 +86,7 @@ def build_config_receipt(
             actor_id="airlock:local_inference",
             actor_kind=ReceiptActorKind.SYSTEM,
             display_name="Local Inference Airlock",
-            is_authoritative=True,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
         ),
         subject=ReceiptSubject(
             subject_id=config_snapshot.get("endpoint_sha256", "config"),

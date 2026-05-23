@@ -14,12 +14,20 @@ Applies default disclosure behavior when missing:
 - large tables: detailed, collapsible
 
 Does NOT overwrite existing disclosure metadata.
+
+Dry-run by default. Pass --execute to perform document mutation.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
+
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 DOCS_JSON = Path(__file__).resolve().parents[1] / "docs" / "json"
 
@@ -66,7 +74,97 @@ def _block_disclosure(block: dict) -> dict:
     return {"level": "standard"}
 
 
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Backfill disclosure metadata into JSON documentation pages."
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute document mutation. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    args = _parse_args()
+
+    governed = require_governed_execution_with_evidence(
+        script_name="backfill_doc_disclosure",
+        authority_tier="local_mutation",
+        capability_id="doc_disclosure_backfill",
+        execute_requested=args.execute,
+    )
+
+    if not args.execute:
+        count = 0
+        for jf in sorted(DOCS_JSON.rglob("*.json")):
+            if jf.name in (
+                "site_manifest.v1.json",
+                "documentation_migration_manifest.v1.json",
+            ):
+                continue
+            try:
+                data = json.loads(jf.read_text())
+            except Exception:
+                continue
+            sv = data.get("schema_version", "")
+            if not sv.startswith("rig.documentation.page.v"):
+                continue
+            changed = False
+            if "disclosure" not in data:
+                changed = True
+            else:
+                for section in data.get("sections", []):
+                    if "disclosure" not in section:
+                        changed = True
+                        break
+            if changed:
+                count += 1
+        print(
+            f"DRY-RUN: Would backfill disclosure for {count} pages. Pass --execute to proceed."
+        )
+        if args.json:
+            r = emit_structured_result(
+                script_name="backfill_doc_disclosure",
+                authority_tier="local_mutation",
+                capability_id="doc_disclosure_backfill",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        return 0
+
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="backfill_doc_disclosure",
+            authority_tier="local_mutation",
+            capability_id="doc_disclosure_backfill",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — backfill blocked (fail-closed)")
+        return 1
+
     count = 0
     for jf in sorted(DOCS_JSON.rglob("*.json")):
         if jf.name in (
@@ -101,6 +199,23 @@ def main() -> int:
             count += 1
 
     print(f"Backfilled disclosure for {count} pages")
+
+    if args.json:
+        r = emit_structured_result(
+            script_name="backfill_doc_disclosure",
+            authority_tier="local_mutation",
+            capability_id="doc_disclosure_backfill",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="executed",
+            can_execute=True,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+            artifacts={"pages_updated": count},
+        )
+        print(json.dumps(r, indent=2))
+
     return 0
 
 

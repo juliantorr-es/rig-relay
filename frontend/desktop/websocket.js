@@ -257,6 +257,10 @@ class ProjectionWebSocketClient {
           this.onMessage(message);
           break;
 
+        case 'analytics_projection':
+          this.onMessage(message);
+          break;
+
         case 'pong':
           // Keepalive acknowledged
           break;

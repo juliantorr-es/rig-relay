@@ -7,6 +7,7 @@ from pathlib import Path
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptEnvelope,
     ReceiptSubject,
     ReceiptSubjectKind,
@@ -24,7 +25,7 @@ def _make_envelope(
             actor_id="agent-1",
             actor_kind=ReceiptActorKind.AGENT,
             display_name="Test Agent",
-            is_authoritative=True,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
         ),
         subject=ReceiptSubject(
             subject_id="sub-1",

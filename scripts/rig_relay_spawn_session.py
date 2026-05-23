@@ -6,16 +6,18 @@ Validates a mission packet against coordination constraints and returns a
 content-light spawn plan. This is the dry-run planner — real subprocess
 spawning is deferred to the executor slice.
 
+Dry-run by default. Pass --execute for real session spawning (future).
+
 Usage:
-    uv run python scripts/rig_relay_spawn_session.py \\
-        --mission-packet .build/rig-relay/missions/my_mission.json \\
-        --dry-run \\
+    uv run python scripts/rig_relay_spawn_session.py \
+        --mission-packet .build/rig-relay/missions/my_mission.json \
+        --dry-run \
         --output .build/rig-relay/spawn/my_plan.json
 
-    uv run python scripts/rig_relay_spawn_session.py \\
-        --mission-packet .build/rig-relay/missions/my_mission.json \\
-        --dry-run \\
-        --coordination-root .build/rig-relay/coordination \\
+    uv run python scripts/rig_relay_spawn_session.py \
+        --mission-packet .build/rig-relay/missions/my_mission.json \
+        --execute \
+        --coordination-root .build/rig-relay/coordination \
         --max-parallel-sessions 4
 
 Content-light: never includes raw file contents, prompts, model outputs,
@@ -30,6 +32,12 @@ import json
 from pathlib import Path
 import sys
 from typing import Any
+
+from rig_relay.core.paths import refuse_confidential_input
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -159,6 +167,11 @@ def validate_mission_packet(
 
 def count_active_children(coordination_root: Path) -> int:
     """Count active child sessions from coordination state."""
+    allowed, _reason = refuse_confidential_input(
+        coordination_root, "spawn_coordination_root", REPO_ROOT
+    )
+    if not allowed:
+        return 0
     if not coordination_root.is_dir():
         return 0
     sessions_dir = coordination_root / "sessions"
@@ -183,6 +196,11 @@ def check_write_overlap(coordination_root: Path, allowed_paths: list[str]) -> li
     against allowed_paths using stable_path_key for cross-process
     deterministic comparison.
     """
+    allowed, _reason = refuse_confidential_input(
+        coordination_root, "spawn_coordination_root", REPO_ROOT
+    )
+    if not allowed:
+        return []
     if not coordination_root.is_dir():
         return []
     leases_dir = coordination_root / "leases" / "paths"
@@ -211,6 +229,11 @@ def check_write_overlap(coordination_root: Path, allowed_paths: list[str]) -> li
 
 def check_coordination_available(coordination_root: Path) -> bool:
     """Check if coordination root has events or sessions."""
+    allowed, _reason = refuse_confidential_input(
+        coordination_root, "spawn_coordination_root", REPO_ROOT
+    )
+    if not allowed:
+        return False
     events_path = coordination_root / "events.jsonl"
     sessions_path = coordination_root / "sessions"
     return events_path.is_file() or sessions_path.is_dir()
@@ -221,6 +244,12 @@ def check_dataset_completeness(derived_dir: Path | None = None) -> list[str]:
     warnings: list[str] = []
     if derived_dir is None:
         derived_dir = REPO_ROOT / ".build" / "rig-relay" / "derived"
+    allowed, reason = refuse_confidential_input(
+        derived_dir, "spawn_derived_dir", REPO_ROOT
+    )
+    if not allowed:
+        warnings.append(reason)
+        return warnings
     if not derived_dir.is_dir():
         warnings.append("Derived datasets not found")
         return warnings
@@ -434,7 +463,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         default=True,
-        help="Required — dry-run validation only (real spawning is future work)",
+        help="Required — dry-run validation only (default).",
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute session spawning. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
     )
     parser.add_argument(
         "--output",
@@ -448,6 +489,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
 
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_spawn_session",
+        authority_tier="local_mutation",
+        capability_id="session_spawn",
+        execute_requested=args.execute,
+    )
+
     # Read mission packet
     if not args.mission_packet.is_file():
         print(
@@ -455,10 +503,38 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    allowed, reason = refuse_confidential_input(
+        args.mission_packet, "spawn_mission_packet", REPO_ROOT
+    )
+    if not allowed:
+        print(f"ERROR: Refusing mission packet: {reason}", file=sys.stderr)
+        return 1
+
     try:
         mission_packet = json.loads(args.mission_packet.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         print(f"ERROR: Invalid mission packet JSON: {exc}", file=sys.stderr)
+        return 1
+
+    if args.execute and not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_spawn_session",
+            authority_tier="local_mutation",
+            capability_id="session_spawn",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — spawn blocked (fail-closed)")
         return 1
 
     # Schema path
@@ -489,6 +565,13 @@ def main(argv: list[str] | None = None) -> int:
             / "spawn_plan.json"
         )
 
+    allowed, reason = refuse_confidential_input(
+        output_path, "spawn_plan_output", REPO_ROOT
+    )
+    if not allowed:
+        print(f"ERROR: Refusing output path: {reason}", file=sys.stderr)
+        return 1
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
         json.dump(plan, f, indent=2, sort_keys=True, ensure_ascii=False)
@@ -505,11 +588,40 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Warnings: {len(plan.get('warnings') or [])}")
     print(f"  Output: {output_path.resolve()}")
 
-    if not args.dry_run:
+    if args.execute:
         print(
-            "NOTE: --dry-run is required. Real subprocess spawning is future work.",
+            "NOTE: Real subprocess spawning is future work. --execute saved plan only.",
             file=sys.stderr,
         )
+        if args.json:
+            r = emit_structured_result(
+                script_name="rig_relay_spawn_session",
+                authority_tier="local_mutation",
+                capability_id="session_spawn",
+                dry_run=False,
+                execute_requested=True,
+                decision=governed.decision,
+                status="executed",
+                can_execute=True,
+                evidence_ref=governed.evidence_ref,
+                evidence_status=governed.evidence_status,
+                artifacts={
+                    "mission_id": plan.get("mission_id"),
+                    "can_spawn": plan["can_spawn"],
+                },
+            )
+            print(json.dumps(r, indent=2))
+    elif args.json:
+        r = emit_structured_result(
+            script_name="rig_relay_spawn_session",
+            authority_tier="local_mutation",
+            capability_id="session_spawn",
+            dry_run=True,
+            execute_requested=False,
+            decision=governed.decision,
+            status="dry_run",
+        )
+        print(json.dumps(r, indent=2))
 
     return 0 if plan["can_spawn"] else 1
 

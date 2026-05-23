@@ -1,0 +1,64 @@
+rig_relay/context_egress/boundary.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/context_egress/boundary.py:3:8: error[F401] [*] `os` imported but unused
+rig_relay/context_egress/compiler.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/context_egress/compiler.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+rig_relay/context_egress/compiler.py:2:8: error[F401] [*] `json` imported but unused
+rig_relay/context_egress/compiler.py:27:5: error[PLR0911] Too many return statements (7 > 6)
+rig_relay/context_egress/compiler.py:27:5: error[PLR0915] Too many statements (57 > 50)
+rig_relay/context_egress/compiler.py:27:5: error[PLR0914] Too many local variables (23/15)
+rig_relay/context_egress/models.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/context_egress/models.py:5:20: error[F401] [*] `typing.Literal` imported but unused
+rig_relay/context_egress/projection.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/context_egress/projection.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+rig_relay/context_egress/projection.py:10:9: error[ANN204] Missing return type annotation for special method `__init__`
+rig_relay/context_egress/projection.py:23:9: error[ANN201] Missing return type annotation for public function `visit_Name`
+rig_relay/context_egress/projection.py:27:9: error[ANN201] Missing return type annotation for public function `visit_FunctionDef`
+rig_relay/context_egress/projection.py:33:9: error[ANN201] Missing return type annotation for public function `visit_AsyncFunctionDef`
+rig_relay/context_egress/projection.py:39:9: error[ANN201] Missing return type annotation for public function `visit_ClassDef`
+rig_relay/context_egress/projection.py:45:9: error[ANN201] Missing return type annotation for public function `visit_arg`
+rig_relay/context_egress/projection.py:49:9: error[ANN201] Missing return type annotation for public function `visit_Attribute`
+rig_relay/context_egress/projection.py:53:9: error[ANN201] Missing return type annotation for public function `visit_Constant`
+rig_relay/context_egress/projection.py:58:9: error[ANN201] Missing return type annotation for public function `visit_JoinedStr`
+rig_relay/context_egress/residual_scanner.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+rig_relay/context_egress/residual_scanner.py:2:5: error[D212] [*] Multi-line docstring summary should start at the first line
+rig_relay/context_egress/residual_scanner.py:9:19: error[B007] Loop control variable `opaque` not used within loop body
+rig_relay/context_egress/residual_scanner.py:11:28: error[PLR2004] Magic value used in comparison, consider replacing `3` with a constant variable
+rig_relay/context_egress/validation.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/context_egress/validation.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+rig_relay/context_egress/validation.py:6:5: error[D212] [*] Multi-line docstring summary should start at the first line
+rig_relay/core/paths/__init__.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+rig_relay/core/paths/__init__.py:37:11: error[RUF022] [*] `__all__` is not sorted
+tests/context_egress/test_artifacts_and_receipts.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_artifacts_and_receipts.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_artifacts_and_receipts.py:1:8: error[F401] [*] `pytest` imported but unused
+tests/context_egress/test_artifacts_and_receipts.py:31:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_artifacts_and_receipts.py:68:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_e2e_no_transmission.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_e2e_no_transmission.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_e2e_no_transmission.py:30:5: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_e2e_no_transmission.py:52:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_efficiency_addendum.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_efficiency_addendum.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_efficiency_addendum.py:2:21: error[F401] [*] `pathlib.Path` imported but unused
+tests/context_egress/test_efficiency_addendum.py:4:8: error[F401] [*] `json` imported but unused
+tests/context_egress/test_efficiency_addendum.py:5:8: error[F401] [*] `hashlib` imported but unused
+tests/context_egress/test_efficiency_addendum.py:13:5: error[F401] [*] `rig_relay.context_egress.models.CacheReadinessStatus` imported but unused
+tests/context_egress/test_efficiency_addendum.py:17:49: error[F401] [*] `rig_relay.context_egress.validation.write_validation_report` imported but unused
+tests/context_egress/test_efficiency_addendum.py:38:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_models_and_provider_policy.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_models_and_provider_policy.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_models_and_provider_policy.py:1:8: error[F401] [*] `pytest` imported but unused
+tests/context_egress/test_models_and_provider_policy.py:5:5: error[F401] [*] `rig_relay.context_egress.models.ContextClassification` imported but unused
+tests/context_egress/test_models_and_provider_policy.py:24:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_models_and_provider_policy.py:35:41: error[UP017] [*] Use `datetime.UTC` alias
+tests/context_egress/test_pre_read_refusal.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_pre_read_refusal.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_pre_read_refusal.py:1:8: error[F401] [*] `pytest` imported but unused
+tests/context_egress/test_projection_and_residual_scanner.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/context_egress/test_projection_and_residual_scanner.py:1:1: error[I002] [*] Missing required import: `from __future__ import annotations`
+tests/context_egress/test_projection_and_residual_scanner.py:1:8: error[F401] [*] `pytest` imported but unused
+tests/scripts/test_confidential_telemetry_boundary.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+tests/scripts/test_confidential_telemetry_boundary.py:3:8: error[F401] [*] `json` imported but unused
+tests/site_renderer/test_confidential_artifact_boundary.py:1:1: error[I001] [*] Import block is un-sorted or un-formatted
+Found 62 errors.
+[*] 48 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

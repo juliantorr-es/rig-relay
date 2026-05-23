@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import json
-import zipfile
 from pathlib import Path
+import zipfile
 
 import pytest
 

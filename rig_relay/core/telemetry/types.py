@@ -1,8 +1,23 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel
+
+
+class TelemetryMode(StrEnum):
+    ENABLED_FIRST_PARTY = "enabled_first_party"
+    FULL = "full"
+    DISABLED_BY_USER = "disabled_by_user"
+
+
+def compute_telemetry_mode(local_enabled: bool, remote_enabled: bool) -> TelemetryMode:
+    if not local_enabled:
+        return TelemetryMode.DISABLED_BY_USER
+    if remote_enabled:
+        return TelemetryMode.FULL
+    return TelemetryMode.ENABLED_FIRST_PARTY
 
 
 class ClientMetadata(BaseModel):

@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.steward_profile.v1.schema.json",
+  "title": "Roadmap Steward Profile Schema v1",
+  "description": "Defines canonical configuration for repository artifact classes, mutation paths, validations, and write dispositions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_identifier",
+    "content_light",
+    "artifact_families"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.steward_profile.v1"
+    },
+    "profile_identifier": {
+      "type": "string"
+    },
+    "content_light": {
+      "type": "boolean"
+    },
+    "artifact_families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "patterns",
+          "class",
+          "mutation_path",
+          "content_light",
+          "validation_command",
+          "related_artifacts",
+          "risk",
+          "protected_write_disposition"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "class": {
+            "type": "string",
+            "enum": [
+              "canonical",
+              "generated",
+              "derived",
+              "schema",
+              "receipt",
+              "projection",
+              "unknown"
+          ]
+          },
+          "governing_schema": {
+            "type": "string"
+          },
+          "mutation_path": {
+            "type": "string"
+          },
+          "content_light": {
+            "type": "boolean"
+          },
+          "validation_command": {
+            "type": "string"
+          },
+          "related_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "risk": {
+            "type": "string"
+          },
+          "protected_write_disposition": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "advise",
+              "require_approval",
+              "deny"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

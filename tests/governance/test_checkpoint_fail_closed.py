@@ -7,7 +7,6 @@ from typing import Any
 import pytest
 
 from rig_relay.coordination.store import CoordinationStore
-from rig_relay.core.config import VibeConfig
 from rig_relay.core.guard import get_guard, reset_guard
 from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.checkpoint import (
@@ -36,7 +35,6 @@ class TestResolveAuthorization:
         result = resolve_authorization(
             action="checkpoint.commit",
             receipt_json=_receipt_json("checkpoint.commit"),
-            checkpoint_dev_bypass_enabled=False,
         )
         assert result.authorized is True
         assert result.receipt is not None
@@ -46,7 +44,6 @@ class TestResolveAuthorization:
         result = resolve_authorization(
             action="checkpoint.commit",
             receipt_json="not valid json",
-            checkpoint_dev_bypass_enabled=False,
         )
         assert result.authorized is False
         assert result.reason == "Invalid receipt JSON"
@@ -56,7 +53,6 @@ class TestResolveAuthorization:
         result = resolve_authorization(
             action="checkpoint.commit",
             receipt_json=json.dumps(receipt),
-            checkpoint_dev_bypass_enabled=False,
         )
         assert result.authorized is False
         assert result.reason is not None and "expired" in result.reason.lower()
@@ -66,55 +62,22 @@ class TestResolveAuthorization:
         result = resolve_authorization(
             action="checkpoint.commit",
             receipt_json=json.dumps(receipt),
-            checkpoint_dev_bypass_enabled=False,
         )
         assert result.authorized is False
         assert result.reason is not None and "Action mismatch" in result.reason
 
-    def test_no_receipt_bypass_disabled_returns_refusal(self) -> None:
+    def test_no_receipt_returns_missing_receipt(self) -> None:
         result = resolve_authorization(
             action="checkpoint.commit",
             receipt_json=None,
-            checkpoint_dev_bypass_enabled=False,
         )
         assert result.authorized is False
-        assert result.reason == "dev_bypass_disabled"
-
-    def test_no_receipt_bypass_enabled_auto_mints_dev_receipt(self) -> None:
-        result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json=None,
-            checkpoint_dev_bypass_enabled=True,
-        )
-        assert result.authorized is True
-        assert result.receipt is not None
-        assert result.receipt["method"] == "none_dev_only"
-        assert result.receipt["action"] == "checkpoint.commit"
+        assert result.reason == "missing_receipt"
 
 
 class TestMintDevReceipt:
-    def test_bypass_enabled_generates_receipt(self) -> None:
-        receipt = mint_dev_receipt(
-            "checkpoint.commit", checkpoint_dev_bypass_enabled=True
-        )
-        assert receipt is not None
-        assert receipt["action"] == "checkpoint.commit"
-        assert receipt["method"] == "none_dev_only"
-
-    def test_bypass_disabled_returns_none(self) -> None:
-        receipt = mint_dev_receipt(
-            "checkpoint.commit", checkpoint_dev_bypass_enabled=False
-        )
-        assert receipt is None
-
-    def test_bypass_disabled_default_returns_none(self) -> None:
-        receipt = mint_dev_receipt("checkpoint.commit")
-        assert receipt is None
-
     def test_mint_dev_receipt_returns_valid_receipt(self) -> None:
-        receipt = mint_dev_receipt(
-            "checkpoint.commit", checkpoint_dev_bypass_enabled=True, ttl_seconds=300
-        )
+        receipt = mint_dev_receipt("checkpoint.commit", ttl_seconds=300)
         assert receipt is not None
         valid, _ = validate_receipt(receipt, "checkpoint.commit")
         assert valid is True
@@ -149,13 +112,7 @@ class TestCheckpointAuthorizationGate:
             session_id=session_id,
         )
 
-    def test_checkpoint_refuses_when_dev_bypass_disabled_and_no_receipt(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            "rig_relay.core.tools.builtins.checkpoint.VibeConfig",
-            lambda: VibeConfig(checkpoint_dev_bypass_enabled=False),
-        )
+    def test_checkpoint_refuses_when_no_receipt(self) -> None:
         guard = get_guard()
         checkpoint = self._make_checkpoint()
         args = self._make_args(authorization_receipt=None)
@@ -172,42 +129,9 @@ class TestCheckpointAuthorizationGate:
         assert result.ok is False
         assert "requires authorization receipt" in result.message
 
-    def test_checkpoint_works_when_bypass_enabled_and_no_receipt(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            "rig_relay.core.tools.builtins.checkpoint.VibeConfig",
-            lambda: VibeConfig(checkpoint_dev_bypass_enabled=True),
-        )
+    def test_checkpoint_valid_receipt_works(self) -> None:
         guard = get_guard()
-        checkpoint = self._make_checkpoint()
-        args = self._make_args(
-            authorization_receipt=None, include_paths=["nonexistent.txt"]
-        )
-
-        result = checkpoint._validate_preconditions(
-            args,
-            set(),
-            {"nonexistent.txt": " M"},
-            CoordinationStore(checkpoint.config.store_root),
-            guard,
-            Path.cwd(),
-        )
-        # Should pass auth gate; may fail later due to path checks
-        # but should NOT be an auth refusal
-        refusal = result.refusal_reason if result else None
-        assert refusal is None or (
-            "dev_bypass_disabled" not in refusal and "missing_receipt" not in refusal
-        )
-
-    def test_checkpoint_valid_receipt_works_regardless_of_bypass(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            "rig_relay.core.tools.builtins.checkpoint.VibeConfig",
-            lambda: VibeConfig(checkpoint_dev_bypass_enabled=False),
-        )
-        guard = get_guard()
+        guard.capture()
         checkpoint = self._make_checkpoint()
         receipt_json = _receipt_json("checkpoint.commit")
         args = self._make_args(authorization_receipt=receipt_json)
@@ -229,10 +153,6 @@ class TestCheckpointAuthorizationGate:
     def test_emits_authorization_refused_event_on_refusal(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            "rig_relay.core.tools.builtins.checkpoint.VibeConfig",
-            lambda: VibeConfig(checkpoint_dev_bypass_enabled=False),
-        )
         events_captured: list[dict[str, Any]] = []
 
         def _capture_event(
@@ -249,9 +169,6 @@ class TestCheckpointAuthorizationGate:
                 "receipt_candidate": receipt_candidate,
             })
 
-        monkeypatch.setattr(
-            "rig_relay.core.telemetry.local.log_local_event", _capture_event
-        )
         monkeypatch.setattr(
             "rig_relay.core.telemetry.local.log_local_event", _capture_event
         )
@@ -281,28 +198,3 @@ class TestCheckpointAuthorizationGate:
         assert event["payload"]["session_id"] == "auth-test-session"
         assert event["payload"]["reason"] == "missing_receipt"
         assert "baseline_id" in event["payload"]
-
-    def test_dev_receipt_not_auto_minted_when_bypass_disabled(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            "rig_relay.core.tools.builtins.checkpoint.VibeConfig",
-            lambda: VibeConfig(checkpoint_dev_bypass_enabled=False),
-        )
-        guard = get_guard()
-        checkpoint = self._make_checkpoint()
-        args = self._make_args(authorization_receipt=None)
-
-        result = checkpoint._validate_preconditions(
-            args,
-            set(),
-            {},
-            CoordinationStore(checkpoint.config.store_root),
-            guard,
-            Path.cwd(),
-        )
-        assert result is not None
-        assert result.ok is False
-        assert result.refusal_reason is not None
-        assert "dev_bypass_disabled" not in result.refusal_reason
-        assert "missing_receipt" in result.refusal_reason

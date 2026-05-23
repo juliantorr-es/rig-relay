@@ -33,7 +33,7 @@
 <style>@media(prefers-reduced-motion:reduce){*,::after,::before{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}</style>
 <meta name="relative-root" content="{{ relative_root }}">
 {% if structured_data_json %}
-<script type="application/ld+json">{{ structured_data_json }}</script>
+<script type="application/ld+json">{{ structured_data_json | tojson }}</script>
 {% endif %}
 </head>
 <body>
@@ -65,9 +65,9 @@
       </ul>
     </nav>
   </aside>
-  <div id="main" tabindex="-1">
+  <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
-  </div>
+  </main>
 </div>
 <footer class="site-footer" role="contentinfo">
   <p>{{ footer_brand | default('') }}{% if footer_brand %} — {% endif %}Governed local agent platform. Generated {{ generated_at }}.

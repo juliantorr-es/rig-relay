@@ -13,7 +13,7 @@ export function updateAnalyticsData(data) {
 }
 
 function analytics() {
-  return _analyticsData || (state.projection && state.projection.analytics) || null;
+  return _analyticsData || state.analytics || null;
 }
 
 // ── SVG Donut Chart Helper ──

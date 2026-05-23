@@ -21,6 +21,9 @@ export const state = {
   // Projection data (last received)
   projection: null,
 
+  // Analytics projection (separate path — no collision with main projection)
+  analytics: null,
+
   // Chat
   chat: {
     messages: [],

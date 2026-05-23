@@ -288,7 +288,7 @@ class TestServeStdio:
             {"name": "rig.request_user_approval", "arguments": {"action": "merge"}},
             1,
         )
-        assert result["status"] == "blocked_pending_approval"
+        assert result["status"] == "blocked"
         assert result["approval_required"] is True
 
     @pytest.mark.asyncio

@@ -12,6 +12,9 @@ Core behavior:
 - Supports cancellation (terminate -> kill)
 - Releases lease on terminal events if lease_store is provided
 - Content-light completion/failure summaries (hashes, byte counts, truncated flags)
+- Uses RuntimeSupervisorStateMachine for explicit lifecycle transitions
+  (IDLE -> SPAWNING -> RUNNING/HEARTBEATING/STALL_DETECTED/RECOVERING ->
+   TERMINATING -> KILLED/COMPLETED/FAILED)
 
 Provenance (Rig-to-Relay porting doctrine):
   Porting status: reimplement (Rig source: rig/domain/runtime_supervisor.py).
@@ -45,6 +48,7 @@ from rig_relay.evidence.audit_trail import (
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptDecision,
     ReceiptEnvelope,
     ReceiptEvidence,
@@ -57,6 +61,10 @@ from rig_relay.evidence.receipt_envelope import (
 )
 from rig_relay.governance.decisions import GovernanceDecisionKind
 from rig_relay.governance.governance_engine import GovernanceEngine
+from rig_relay.runtime.execution_budgets import (
+    BASH_MAX_OUTPUT_BYTES,
+    TOOL_MAX_RUNTIME_SECONDS,
+)
 from rig_relay.runtime.models import (
     RuntimeInvocationStatus,
     RuntimeProviderStatus,
@@ -72,6 +80,11 @@ from rig_relay.runtime.stream_types import (
     RuntimeStreamEventKind,
     RuntimeStreamWarningKind,
     RuntimeWarningEvent,
+)
+from rig_relay.runtime.supervisor_state_machine import (
+    RuntimeSupervisorStateMachine,
+    SupervisorEvent,
+    SupervisorState,
 )
 from rig_relay.tracing.models import TraceStatus
 from rig_relay.tracing.recorder import TraceRecorder
@@ -260,6 +273,8 @@ class RuntimeSupervisor:
         audit_trail_store: AuditTrailStore | None = None,
         audit_actor: ReceiptActor | None = None,
         trace_recorder: TraceRecorder | None = None,
+        cpu_budget_seconds: float = TOOL_MAX_RUNTIME_SECONDS,
+        io_budget_bytes: int = BASH_MAX_OUTPUT_BYTES,
     ) -> None:
         self._lease_store = lease_store
         self._max_stdout_bytes = max_stdout_bytes
@@ -279,6 +294,8 @@ class RuntimeSupervisor:
         self._audit_trail_store = audit_trail_store
         self._audit_actor = audit_actor
         self._trace_recorder = trace_recorder
+        self._cpu_budget_seconds = cpu_budget_seconds
+        self._io_budget_bytes = io_budget_bytes
 
     async def execute(self, lease: ExecutionLease) -> AsyncIterator[RuntimeStreamEvent]:
         """Execute the lease's request under supervision.
@@ -458,6 +475,14 @@ class RuntimeSupervisor:
         # ── Spawn subprocess ────────────────────────────────────────
         start_time = datetime.now(UTC)
 
+        # Initialise the state machine for this execution
+        sm = RuntimeSupervisorStateMachine()
+        sm.transition(SupervisorEvent.SPAWN_STARTED)
+        trace_event(
+            "runtime.subprocess.state_machine.transition",
+            attributes={"from": "idle", "to": "spawning", "event": "spawn_started"},
+        )
+
         proc: asyncio.subprocess.Process | None = None
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -469,7 +494,16 @@ class RuntimeSupervisor:
             )
         except FileNotFoundError:
             elapsed = (datetime.now(UTC) - start_time).total_seconds() * 1000
+            sm.transition(SupervisorEvent.SPAWN_FAILED)
             trace_event("runtime.subprocess.spawn.ok", attributes={"spawned": False})
+            trace_event(
+                "runtime.subprocess.state_machine.transition",
+                attributes={
+                    "from": "spawning",
+                    "to": "failed",
+                    "event": "spawn_failed",
+                },
+            )
             trace_end(
                 status=TraceStatus.error,
                 attributes={"status": "failed", "error_kind": "command_not_found"},
@@ -487,7 +521,16 @@ class RuntimeSupervisor:
             return
         except OSError as e:
             elapsed = (datetime.now(UTC) - start_time).total_seconds() * 1000
+            sm.transition(SupervisorEvent.SPAWN_FAILED)
             trace_event("runtime.subprocess.spawn.ok", attributes={"spawned": False})
+            trace_event(
+                "runtime.subprocess.state_machine.transition",
+                attributes={
+                    "from": "spawning",
+                    "to": "failed",
+                    "event": "spawn_failed",
+                },
+            )
             trace_end(
                 status=TraceStatus.error,
                 attributes={"status": "failed", "error_kind": "spawn_error"},
@@ -505,6 +548,15 @@ class RuntimeSupervisor:
             return
 
         # ── Emit running status ─────────────────────────────────────
+        sm.transition(SupervisorEvent.SPAWN_SUCCEEDED)
+        trace_event(
+            "runtime.subprocess.state_machine.transition",
+            attributes={
+                "from": "spawning",
+                "to": "running",
+                "event": "spawn_succeeded",
+            },
+        )
         trace_event(
             "runtime.subprocess.spawn.ok",
             attributes={"spawned": True, "pid": getattr(proc, "pid", None)},
@@ -569,13 +621,18 @@ class RuntimeSupervisor:
             asyncio.create_task(drain_stderr()),
         ]
 
-        # ── Poll loop: heartbeat + stall detection + wait ───────────
+        # ── Event-driven supervision loop (state machine) ───────────
         timeout_s = request.timeout_ms / 1000.0
+        cpu_budget_s = self._cpu_budget_seconds
+        effective_timeout_s = min(timeout_s, cpu_budget_s)
+        budget_capped = effective_timeout_s < timeout_s
         timed_out = False
         cancelled = False
+        budget_killed = False
+        budget_kill_reason: str | None = None
         exit_code: int | None = None
 
-        deadline_ts = start_time.timestamp() + timeout_s
+        deadline_ts = start_time.timestamp() + effective_timeout_s
         heartbeat_s = (
             self._heartbeat_interval_ms / 1000.0
             if self._heartbeat_interval_ms > 0
@@ -593,41 +650,47 @@ class RuntimeSupervisor:
         _heartbeat_counter: int = 0
 
         try:
-            while True:
+            # ── State-machine-driven event loop ─────────────────────
+            while not sm.is_terminal:
                 now_ts = datetime.now(UTC).timestamp()
                 now_mono = time.monotonic()
-
-                # Check timeout
                 remaining = deadline_ts - now_ts
+
+                # Deadline check
                 if remaining <= 0:
                     timed_out = True
+                    sm.transition(SupervisorEvent.TIMEOUT)
                     trace_event(
                         "runtime.subprocess.timeout",
                         attributes={"timeout_seconds": timeout_s},
                     )
                     break
 
-                # Check if process already exited
+                # Already-exited check
                 if proc.returncode is not None:
                     exit_code = proc.returncode
+                    sm.transition(
+                        SupervisorEvent.PROCESS_EXITED,
+                        attributes={"exit_code": exit_code},
+                    )
                     break
 
-                # Compute wait interval (min of remaining, heartbeat, stall check)
-                check = max(0.01, remaining)
-                if heartbeat_s > 0:
-                    check = min(check, heartbeat_s)
-                if stall_warning_s is not None:
-                    check = min(check, stall_check_s)
+                # Compute wait interval from state machine
+                check = sm.next_wait_seconds(deadline_ts, heartbeat_s, stall_check_s)
 
-                # Wait for process exit (or timeout)
+                # Wait for process exit
                 try:
                     await asyncio.wait_for(proc.wait(), timeout=check)
                     exit_code = proc.returncode
+                    sm.transition(
+                        SupervisorEvent.PROCESS_EXITED,
+                        attributes={"exit_code": exit_code},
+                    )
                     break
                 except TimeoutError:
                     pass
 
-                # ── Emit heartbeat ───────────────────────────────────
+                # Heartbeat emission
                 if heartbeat_s > 0 and (now_mono - last_heartbeat_t) >= heartbeat_s:
                     _heartbeat_counter += 1
                     elapsed_ms = (datetime.now(UTC) - start_time).total_seconds() * 1000
@@ -640,13 +703,22 @@ class RuntimeSupervisor:
                         elapsed_ms=elapsed_ms,
                     )
                     last_heartbeat_t = now_mono
+                    sm.transition(SupervisorEvent.HEARTBEAT_TIMER)
 
-                # ── Stall detection ──────────────────────────────────
+                # Stall detection
                 if stall_warning_s is not None:
                     stall_elapsed = (
                         datetime.now(UTC) - progress.last_output_at
                     ).total_seconds()
+
                     if stall_elapsed >= stall_warning_s:
+                        # Enter STALL_DETECTED from running states
+                        if sm.current_state in {
+                            SupervisorState.RUNNING,
+                            SupervisorState.HEARTBEATING,
+                        }:
+                            sm.transition(SupervisorEvent.STALL_TIMER)
+
                         # Emit warning at most once per stall window
                         if (now_mono - last_stall_warning_t) >= stall_warning_s:
                             yield RuntimeWarningEvent(
@@ -663,7 +735,7 @@ class RuntimeSupervisor:
                             )
                             last_stall_warning_t = now_mono
 
-                        # ── Terminate on hard stall ──────────────────
+                        # HARD_STALL: terminate-on-stall threshold
                         if (
                             self._terminate_on_stall
                             and self._stall_terminate_after_ms is not None
@@ -671,6 +743,7 @@ class RuntimeSupervisor:
                             terminate_s = self._stall_terminate_after_ms / 1000.0
                             if stall_elapsed >= terminate_s:
                                 timed_out = True
+                                sm.transition(SupervisorEvent.HARD_STALL)
                                 trace_event(
                                     "runtime.subprocess.kill",
                                     attributes={"reason": "stall"},
@@ -685,9 +758,45 @@ class RuntimeSupervisor:
                                 except ProcessLookupError:
                                     pass
                                 break
+                    # Output arrived — recovery transitions
+                    elif sm.current_state == SupervisorState.HEARTBEATING:
+                        sm.transition(SupervisorEvent.OUTPUT_CHUNK)
+                    elif sm.current_state == SupervisorState.STALL_DETECTED:
+                        sm.transition(SupervisorEvent.OUTPUT_CHUNK)
+
+                # I/O budget check
+                io_budget = self._io_budget_bytes
+                combined_bytes = stdout_result.total_bytes + stderr_result.total_bytes
+                if combined_bytes > io_budget:
+                    budget_killed = True
+                    budget_kill_reason = (
+                        f"io_budget_exceeded: combined stdout+stderr "
+                        f"({combined_bytes} bytes) exceeded I/O budget "
+                        f"({io_budget} bytes)"
+                    )
+                    sm.transition(SupervisorEvent.BUDGET_EXCEEDED)
+                    trace_event(
+                        "runtime.subprocess.budget_kill",
+                        attributes={
+                            "reason": "io_budget_exceeded",
+                            "combined_bytes": combined_bytes,
+                            "io_budget_bytes": io_budget,
+                        },
+                    )
+                    try:
+                        proc.terminate()
+                        try:
+                            await asyncio.wait_for(proc.wait(), timeout=5.0)
+                        except TimeoutError:
+                            proc.kill()
+                            await proc.wait()
+                    except ProcessLookupError:
+                        pass
+                    break
 
         except asyncio.CancelledError:
             cancelled = True
+            sm.transition(SupervisorEvent.CANCELLED)
             trace_event("runtime.subprocess.kill", attributes={"reason": "cancelled"})
         finally:
             for t in drain_tasks:
@@ -707,14 +816,14 @@ class RuntimeSupervisor:
         _terminal_handled = False
 
         terminal_event: RuntimeCompletionEvent | RuntimeFailureEvent
-        if timed_out:
+        if budget_killed:
             terminal_event = _make_failure(
                 event_base,
                 lease_id,
                 request_id,
-                RuntimeInvocationStatus.TIMED_OUT,
-                "timeout",
-                f"Execution timed out after {timeout_s}s",
+                RuntimeInvocationStatus.BUDGET_EXCEEDED,
+                "budget_killed",
+                budget_kill_reason or "Budget kill",
                 elapsed_ms,
                 exit_code,
                 stdout_result.final_hash,
@@ -724,6 +833,45 @@ class RuntimeSupervisor:
                 stdout_result.truncated,
                 stderr_result.truncated,
             )
+        elif timed_out:
+            if budget_capped:
+                terminal_event = _make_failure(
+                    event_base,
+                    lease_id,
+                    request_id,
+                    RuntimeInvocationStatus.BUDGET_EXCEEDED,
+                    "cpu_budget_exceeded",
+                    (
+                        f"CPU budget exceeded: execution elapsed "
+                        f"past cpu_budget={cpu_budget_s}s "
+                        f"(request timeout was {timeout_s}s)"
+                    ),
+                    elapsed_ms,
+                    exit_code,
+                    stdout_result.final_hash,
+                    stderr_result.final_hash,
+                    stdout_result.total_bytes,
+                    stderr_result.total_bytes,
+                    stdout_result.truncated,
+                    stderr_result.truncated,
+                )
+            else:
+                terminal_event = _make_failure(
+                    event_base,
+                    lease_id,
+                    request_id,
+                    RuntimeInvocationStatus.TIMED_OUT,
+                    "timeout",
+                    f"Execution timed out after {timeout_s}s",
+                    elapsed_ms,
+                    exit_code,
+                    stdout_result.final_hash,
+                    stderr_result.final_hash,
+                    stdout_result.total_bytes,
+                    stderr_result.total_bytes,
+                    stdout_result.truncated,
+                    stderr_result.truncated,
+                )
         elif cancelled:
             terminal_event = _make_failure(
                 event_base,
@@ -803,7 +951,7 @@ class RuntimeSupervisor:
                 "stdout_bytes": stdout_result.total_bytes,
                 "stderr_bytes": stderr_result.total_bytes,
                 "timed_out": timed_out,
-                "killed": False,
+                "killed": budget_killed or (timed_out and budget_capped),
                 "cancelled": cancelled,
             },
         )
@@ -813,7 +961,9 @@ class RuntimeSupervisor:
             and terminal_event.status == RuntimeInvocationStatus.SUCCEEDED
             else TraceStatus.error
         )
-        if timed_out:
+        if budget_killed or (timed_out and budget_capped):
+            end_status = TraceStatus.error
+        elif timed_out:
             end_status = TraceStatus.timed_out
         elif cancelled:
             end_status = TraceStatus.cancelled
@@ -921,7 +1071,7 @@ def _build_terminal_envelope(
         actor_id="runtime",
         actor_kind=ReceiptActorKind.RUNTIME,
         display_name="RuntimeSupervisor",
-        is_authoritative=False,
+        authority_tier=ReceiptActorTier.NONE,
     )
 
     request = lease.request
@@ -964,6 +1114,15 @@ def _build_terminal_envelope(
             schema_version="rig.relay.runtime_stream_event.v1",
         )
     ]
+
+    if terminal_event.status == RuntimeInvocationStatus.BUDGET_EXCEEDED:
+        evidence.append(
+            ReceiptEvidence(
+                evidence_kind=ReceiptEvidenceKind.BUDGET_KILL,
+                evidence_sha256=f"sha256:{event_hash}",
+                schema_version="rig.relay.budget_kill.v1",
+            )
+        )
 
     envelope = build_receipt_envelope(
         receipt_kind="runtime_event",

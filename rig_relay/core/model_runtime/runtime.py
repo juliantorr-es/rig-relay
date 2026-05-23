@@ -13,7 +13,7 @@ Phase 1 extraction target:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 import time
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4 as _uuid4
@@ -90,10 +90,10 @@ class ModelRuntime:
         "_stats",
         "_telemetry_client",
         "_entrypoint_metadata",
-        "_session_id",
-        "_parent_session_id",
-        "_is_user_prompt_call",
-        "_current_user_message_id",
+        "_session_id_getter",
+        "_parent_session_id_getter",
+        "_is_user_prompt_call_getter",
+        "_current_user_message_id_getter",
         "_middleware_pipeline",
         "_plan_session",
         "_agent_profile_getter",
@@ -114,10 +114,10 @@ class ModelRuntime:
         stats: Any,
         telemetry_client: TelemetryClient,
         entrypoint_metadata: EntrypointMetadata | None,
-        session_id: str,
-        parent_session_id: str | None,
-        is_user_prompt_call: bool,
-        current_user_message_id: str | None,
+        session_id_getter: Callable[[], str],
+        parent_session_id_getter: Callable[[], str | None],
+        is_user_prompt_call_getter: Callable[[], bool],
+        current_user_message_id_getter: Callable[[], str | None],
         middleware_pipeline: MiddlewarePipeline,
         agent_profile_getter: Any,
         plan_session: Any,
@@ -134,10 +134,10 @@ class ModelRuntime:
         self._stats = stats
         self._telemetry_client = telemetry_client
         self._entrypoint_metadata = entrypoint_metadata
-        self._session_id = session_id
-        self._parent_session_id = parent_session_id
-        self._is_user_prompt_call = is_user_prompt_call
-        self._current_user_message_id = current_user_message_id
+        self._session_id_getter = session_id_getter
+        self._parent_session_id_getter = parent_session_id_getter
+        self._is_user_prompt_call_getter = is_user_prompt_call_getter
+        self._current_user_message_id_getter = current_user_message_id_getter
         self._middleware_pipeline = middleware_pipeline
         self._agent_profile_getter = agent_profile_getter
         self._plan_session = plan_session
@@ -208,7 +208,7 @@ class ModelRuntime:
                 threshold = result.metadata.get(
                     "threshold", self._config.get_active_model().auto_compact_threshold
                 )
-                old_session_id = self._session_id
+                old_session_id = self._session_id_getter()
                 tool_call_id = str(_uuid4())
 
                 yield CompactStartEvent(
@@ -236,7 +236,7 @@ class ModelRuntime:
                         auto_compact_threshold=threshold,
                         status=compact_status,
                         session_id=old_session_id,
-                        parent_session_id=self._parent_session_id,
+                        parent_session_id=self._parent_session_id_getter(),
                     )
 
                 yield CompactEndEvent(
@@ -245,7 +245,7 @@ class ModelRuntime:
                     new_context_tokens=new_tokens,
                     summary_length=len(summary_str),
                     old_session_id=old_session_id,
-                    new_session_id=self._session_id,
+                    new_session_id=self._session_id_getter(),
                 )
 
             case MiddlewareAction.CONTINUE:
@@ -261,14 +261,18 @@ class ModelRuntime:
     ) -> TelemetryRequestMetadata:
         return build_request_metadata(
             entrypoint_metadata=self._entrypoint_metadata,
-            session_id=self._session_id,
-            parent_session_id=self._parent_session_id,
+            session_id=self._session_id_getter(),
+            parent_session_id=self._parent_session_id_getter(),
             call_type=(
                 call_type
                 if call_type is not None
-                else ("main_call" if self._is_user_prompt_call else "secondary_call")
+                else (
+                    "main_call"
+                    if self._is_user_prompt_call_getter()
+                    else "secondary_call"
+                )
             ),
-            message_id=self._current_user_message_id,
+            message_id=self._current_user_message_id_getter(),
         )
 
     def get_extra_headers(
@@ -279,7 +283,7 @@ class ModelRuntime:
         )
         headers: dict[str, str] = {**provider_obj.extra_headers}
         headers["user-agent"] = get_user_agent(provider_obj.backend)
-        headers["x-affinity"] = self._session_id
+        headers["x-affinity"] = self._session_id_getter()
         return headers
 
     # ── LLM call execution ──────────────────────────────────────

@@ -9,7 +9,7 @@ from pathlib import Path
 import threading
 from threading import Thread
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -76,26 +76,27 @@ from rig_relay.core._errors import AgentLoopError, TeleportError
 from rig_relay.core._governance import GovernanceMixin
 from rig_relay.core._llm_call import LLMCallMixin
 from rig_relay.core._middleware_metadata import MiddlewareMetadataMixin
-from rig_relay.core._patch_gating import PatchGatingMixin
+from rig_relay.core._patch_gating import PatchGatingMixin, PatchGatingService
 from rig_relay.core._session_lifecycle import SessionLifecycleMixin
 from rig_relay.core._telemetry import TelemetryMixin
 from rig_relay.core._tool_response import ToolResponseMixin
 from rig_relay.core.context_runtime import ContextRuntime
 from rig_relay.core.conversation_loop_adapter import _ConversationLoopAdapter
 from rig_relay.core.conversation_runtime import ConversationRuntime
-from rig_relay.core.conversation_runtime.models import ConversationRuntimeCallbacks
 from rig_relay.core.conversation_turn import ConversationTurnRuntime, TurnPhase
 from rig_relay.core.governance_runtime import GovernanceRuntime
 from rig_relay.core.model_runtime import ModelRuntime
 from rig_relay.core.runtime_state import AgentRuntimeState
 from rig_relay.core.session_runtime import SessionRuntime
+from rig_relay.core.telemetry_evidence_service import TelemetryEvidenceService
 from rig_relay.core.telemetry_runtime import TelemetryRuntime
 from rig_relay.core.tool_executor import (
     CouncilGate,
     ToolConcurrencyManager,
-    ToolExecutionContext,
     ToolExecutor,
     ToolRuntimeAdapterBuilder,
+    ToolSessionContext,
+    ToolTurnContext,
 )
 from rig_relay.core.tool_result_runtime import ToolResultRuntime
 from rig_relay.core.tool_runtime import ToolRuntime
@@ -201,10 +202,10 @@ class AgentLoop(
             stats=self.stats,
             telemetry_client=self.telemetry_client,
             entrypoint_metadata=self.entrypoint_metadata,
-            session_id=self.session_id,
-            parent_session_id=self.parent_session_id,
-            is_user_prompt_call=self._is_user_prompt_call,
-            current_user_message_id=self._current_user_message_id,
+            session_id_getter=lambda: self.session_id,
+            parent_session_id_getter=lambda: self.parent_session_id,
+            is_user_prompt_call_getter=lambda: self._is_user_prompt_call,
+            current_user_message_id_getter=lambda: self._current_user_message_id,
             middleware_pipeline=self.middleware_pipeline,
             agent_profile_getter=lambda: self.agent_profile,
             plan_session=self._plan_session,
@@ -222,6 +223,7 @@ class AgentLoop(
             telemetry_client=self.telemetry_client,
             context_compiler=self._context_compiler,
             governed_context_enabled=self.config.governed_context_enabled,
+            tool_manager=self.tool_manager,
         )
 
         self._teleport_service: TeleportService | None = None
@@ -235,10 +237,33 @@ class AgentLoop(
 
         self._session_runtime = SessionRuntime(agent_loop=self)
         self._trace_runtime = TraceRuntime(session_id=self.session_id)
-        self._tool_result_runtime = ToolResultRuntime(loop=self)
-        self._telemetry_runtime = TelemetryRuntime(loop=self)
 
-        self._exec_ctx = ToolExecutionContext(
+        self._telemetry_evidence = TelemetryEvidenceService(
+            telemetry_client=self.telemetry_client,
+            session_id=self.session_id,
+            config=self.config,
+            entrypoint_metadata=self.entrypoint_metadata,
+            workspace_root=self._workspace_root,
+            skill_manager=self.skill_manager,
+            agent_profile_name_getter=lambda: self.agent_profile.name,
+            current_user_message_id_getter=lambda: self._current_user_message_id,
+            active_model_getter=lambda: self.config.active_model,
+        )
+
+        self._tool_result_runtime = ToolResultRuntime(
+            loop=self, evidence=self._telemetry_evidence
+        )
+        self._telemetry_runtime = TelemetryRuntime(
+            loop=self, evidence=self._telemetry_evidence
+        )
+
+        self._patch_gating = PatchGatingService(
+            session_id=self.session_id,
+            workspace_root=self._workspace_root,
+            agent_profile=self.agent_profile,
+        )
+
+        self._session_exec_ctx = ToolSessionContext(
             session_id=self.session_id,
             workspace_root=self._workspace_root,
             config=self.config,
@@ -253,9 +278,11 @@ class AgentLoop(
         )
 
         self._tool_executor: ToolExecutor = ToolExecutor(
-            ctx=self._exec_ctx,
-            adapter_builder=ToolRuntimeAdapterBuilder(loop=self, ctx=self._exec_ctx),
-            council_gate=CouncilGate(ctx=self._exec_ctx),
+            session_ctx=self._session_exec_ctx,
+            adapter_builder=ToolRuntimeAdapterBuilder(
+                loop=self, session_ctx=self._session_exec_ctx
+            ),
+            council_gate=CouncilGate(session_ctx=self._session_exec_ctx),
             concurrency=ToolConcurrencyManager(),
         )
 
@@ -616,8 +643,7 @@ class AgentLoop(
             self._hooks_manager.reset_retry_count()
 
         adapter = self._build_loop_adapter(user_msg)
-        cr_callbacks = cast(ConversationRuntimeCallbacks, adapter)
-        async for event in cr.execute_turn_loop(cr_callbacks):
+        async for event in cr.execute_turn_loop(adapter):
             yield event
             await self._save_messages()
 
@@ -660,14 +686,14 @@ class AgentLoop(
         self._pending_tool_resolved = None
         profile_before = self.agent_profile.name
 
-        self._exec_ctx.update_turn(
+        turn_ctx = ToolTurnContext(
             turn_id=str(getattr(self._current_turn, "turn_id", "")),
             user_message_id=self._current_user_message_id or "",
             bypass_permissions=self.bypass_tool_permissions,
             current_turn=self._current_turn,
         )
 
-        async for event in self._tool_executor.execute_batch(resolved):
+        async for event in self._tool_executor.execute_batch(resolved, turn_ctx):
             yield event
         if (turn := getattr(self, "_current_turn", None)) is not None:
             turn.advance(TurnPhase.TOOL_CALLS_COMPLETED)
@@ -822,8 +848,13 @@ class AgentLoop(
     # ── ContextRuntime delegation (Phase 2) ─────────────────────────
 
     async def _build_context_envelope(self, user_msg: str) -> None:
+        if self._current_context_envelope is not None:
+            return
         envelope = await self._context_runtime.build_context(user_msg)
         self._current_context_envelope = envelope
+
+    async def _report_context_assembly(self, active_model: Any) -> None:
+        await self._context_runtime.report_context_assembly(active_model)
 
     # ── SessionRuntime delegation (Phase 3) ─────────────────────────
 
@@ -855,9 +886,7 @@ class AgentLoop(
     def _check_patch_proposal_gating(
         self, tool_call: Any, tool_instance: Any
     ) -> Any | None:
-        return PatchGatingMixin._check_patch_proposal_gating(
-            self, tool_call, tool_instance
-        )
+        return self._patch_gating.check(tool_call, tool_instance)
 
     def set_approval_callback(self, callback: object) -> None:
         self.approval_callback = callback

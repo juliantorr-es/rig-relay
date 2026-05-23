@@ -18,6 +18,7 @@ from rig_relay.evidence.audit_trail import (
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptEnvelope,
     ReceiptSubject,
     ReceiptSubjectKind,
@@ -52,7 +53,7 @@ def sample_actor() -> ReceiptActor:
         actor_kind=ReceiptActorKind.AGENT,
         display_name="Relay Agent",
         is_human=False,
-        is_authoritative=True,
+        authority_tier=ReceiptActorTier.ADMINISTRATIVE,
     )
 
 

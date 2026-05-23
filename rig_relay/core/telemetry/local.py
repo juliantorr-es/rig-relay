@@ -69,13 +69,15 @@ def get_degradation_marker_path(session_id: str) -> Path:
 
 
 def write_degradation_marker(session_id: str) -> Path | None:
+    from rig_relay.core.telemetry.types import TelemetryMode
+
     path = get_degradation_marker_path(session_id)
     if session_id in _degradation_marker_written:
         return path
     marker = {
         "schema_version": "rig.relay.telemetry_degradation.v1",
         "session_id": session_id,
-        "degradation_mode": "disabled",
+        "degradation_mode": TelemetryMode.DISABLED_BY_USER.value,
         "degradation_reason": "Telemetry disabled — harness operating in reduced-adaptation mode",
         "generated_at": datetime.now(UTC).isoformat(),
         "preserved_capabilities": [

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
-import os
 from pathlib import Path
 import signal
 import subprocess
@@ -56,39 +55,11 @@ def build_command(
 
 
 def sanitize_env() -> dict[str, str]:
-    env = os.environ.copy()
-    blocklist = {
-        "AWS_ACCESS_KEY_ID",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_SESSION_TOKEN",
-        "GITHUB_TOKEN",
-        "GH_TOKEN",
-        "GITLAB_TOKEN",
-        "BITBUCKET_TOKEN",
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "GOOGLE_API_KEY",
-        "COHERE_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "MISTRAL_API_KEY",
-        "TOGETHER_API_KEY",
-        "OPENCODE_SERVER_PASSWORD",
-        "OPENCODE_API_KEY",
-        "NPM_TOKEN",
-        "PYPI_TOKEN",
-        "DOCKER_PASSWORD",
-        "RIG_RELAY_TOKEN",
-        "RIG_TOKEN",
-        "AZURE_CLIENT_SECRET",
-        "GCP_SA_KEY",
-        "SSH_AUTH_SOCK",
-        "SSH_AGENT_PID",
-        "GNUPGHOME",
-        "KEYCHAIN",
-        "KEYRING",
-    }
-    for key in blocklist:
-        env.pop(key, None)
+    from rig_relay.core.tools.security import sanitize_env_for_subprocess
+
+    env = sanitize_env_for_subprocess()
+    env.pop("OPENCODE_SERVER_PASSWORD", None)
+    env.pop("OPENCODE_API_KEY", None)
     return env
 
 

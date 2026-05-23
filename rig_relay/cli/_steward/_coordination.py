@@ -155,13 +155,21 @@ class StewardCoordinationBridge:
         )
 
     def record_queue_read(
-        self, session_id: str, queue_item_count: int, lane_count: int
+        self,
+        session_id: str,
+        queue_item_count: int,
+        lane_count: int,
+        *,
+        issue_item_count: int = 0,
+        work_item_count: int | None = None,
     ) -> None:
-        self._record(
-            "steward.queue.read",
-            session_id,
-            {"queue_item_count": queue_item_count, "lane_count": lane_count},
-        )
+        if work_item_count is None:
+            work_item_count = queue_item_count + issue_item_count
+        payload = {"queue_item_count": queue_item_count, "lane_count": lane_count}
+        if issue_item_count:
+            payload["issue_item_count"] = issue_item_count
+            payload["work_item_count"] = work_item_count
+        self._record("steward.queue.read", session_id, payload)
 
     def record_task_considered(
         self,

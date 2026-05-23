@@ -16,6 +16,7 @@ import { state } from './state.js';
 import { renderWidget, renderAllWidgets, updateIntentResult } from './widgets.js';
 import { renderStatusBar } from './status.js';
 import { renderChat, restoreIntentButton } from './chat.js';
+import { updateAnalyticsData } from './widgets/analytics.js';
 
 // ════════════════════════════════════════════════════════════════
 // STAGE 0: Render Batch — requestAnimationFrame dedup
@@ -226,6 +227,12 @@ export function handleProjectionPatch(patch) {
 }
 
 export function handleProjection(data) {
+  // ── Analytics projection: route to dedicated state path ──
+  if (data && data.schema_version === 'rig.relay.analytics_projection.v1') {
+    handleAnalyticsProjection(data);
+    return;
+  }
+
   const serverDigest = (data && data.digest) || '';
   const projection = data || {};
 
@@ -540,6 +547,230 @@ export function handleProgressEvents(events) {
   state.progressEvents = (events || []).slice(-100);
   // Batch: schedule full render to pick up the new events list
   scheduleRender(state.projection);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Analytics Projection — dedicated state path, no collision with main projection
+// Ownership: frontend/desktop/js/projection.js
+// ════════════════════════════════════════════════════════════════
+
+var _WIDGET_ID_TO_FRONTEND_KEY = {
+  governance_gate_health: 'governance_gate_health',
+  session_health_scorecard: 'session_health',
+  tool_latency_heatmap: 'tool_latency',
+  release_gate_blocker_burndown: 'release_blockers',
+  dependency_risk_surface: 'dependency_risk',
+  out_of_scope_findings: 'findings',
+  correlation_integrity: 'correlation_integrity',
+  local_inference_capability: 'local_inference',
+};
+
+function _convertAnalyticsProjection(projection) {
+  var widgets = projection.widgets || [];
+  var engineAvailable = projection.engine_available != null ? projection.engine_available : false;
+  var result = Object.create(null);
+  result.engine_available = engineAvailable;
+
+  for (var wi = 0; wi < widgets.length; wi++) {
+    var widget = widgets[wi];
+    var widgetId = widget.widget_id;
+    var frontendKey = _WIDGET_ID_TO_FRONTEND_KEY[widgetId];
+    if (!frontendKey) continue;
+    var data = widget.data || [];
+    var converted = _convertWidget(widgetId, data, engineAvailable);
+    if (converted) result[frontendKey] = converted;
+  }
+  return result;
+}
+
+function _convertWidget(widgetId, data, engineAvailable) {
+  switch (widgetId) {
+    case 'governance_gate_health':
+      return _convertGovernanceGateHealth(data);
+    case 'session_health_scorecard':
+      return _convertSessionHealth(data);
+    case 'tool_latency_heatmap':
+      return _convertToolLatency(data);
+    case 'release_gate_blocker_burndown':
+      return _convertReleaseBlockers(data);
+    case 'dependency_risk_surface':
+      return _convertDependencyRisk(data);
+    case 'out_of_scope_findings':
+      return _convertFindings(data);
+    case 'correlation_integrity':
+      return _convertCorrelationIntegrity(data);
+    case 'local_inference_capability':
+      return _convertLocalInference(data);
+    default:
+      return null;
+  }
+}
+
+function _convertGovernanceGateHealth(data) {
+  var decisions = { allowed: 0, blocked: 0, critical: 0 };
+  if (!data || !data.length) {
+    return { available: false, decisions: decisions, total: 0 };
+  }
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var status = (row.status || '').toLowerCase();
+    var count = row.count || 0;
+    if (status === 'allowed' || status === 'passed' || status === 'approved') {
+      decisions.allowed += count;
+    } else if (status === 'blocked' || status === 'rejected' || status === 'denied') {
+      decisions.blocked += count;
+    } else if (status === 'critical' || status === 'error' || status === 'fatal') {
+      decisions.critical += count;
+    }
+  }
+  var total = decisions.allowed + decisions.blocked + decisions.critical;
+  return { available: total > 0, decisions: decisions, total: total };
+}
+
+function _convertSessionHealth(data) {
+  if (!data || !data.length) {
+    return { available: false, sessions: { healthy: 0, degraded: 0, failed: 0 }, total: 0 };
+  }
+  var sessions = { healthy: 0, degraded: 0, failed: 0 };
+  var rawSessions = data[0] ? (data[0].sessions || []) : [];
+  for (var i = 0; i < rawSessions.length; i++) {
+    var s = rawSessions[i];
+    var errorRate = s.error_rate || 0;
+    if (errorRate >= 0.2) {
+      sessions.failed++;
+    } else if (errorRate > 0) {
+      sessions.degraded++;
+    } else {
+      sessions.healthy++;
+    }
+  }
+  var total = sessions.healthy + sessions.degraded + sessions.failed;
+  return { available: total > 0, sessions: sessions, total: total };
+}
+
+function _convertToolLatency(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, tools: [] };
+  }
+  var rawTools = data[0].tools || [];
+  var tools = [];
+  for (var i = 0; i < rawTools.length; i++) {
+    var t = rawTools[i];
+    tools.push({
+      name: t.tool_name || '',
+      p50_ms: t.p50_latency_ms || 0,
+      p95_ms: t.p95_latency_ms || 0,
+      p99_ms: t.avg_latency_ms || 0,
+    });
+  }
+  return { available: tools.length > 0, tools: tools };
+}
+
+function _convertReleaseBlockers(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, open: 0, resolved: 0, total: 0, trend: '' };
+  }
+  var d = data[0];
+  var open = d.open_blockers || 0;
+  var total = d.total_blockers || 0;
+  var resolved = Math.max(0, total - open);
+  return { available: true, open: open, resolved: resolved, total: total, trend: d.trend || '' };
+}
+
+function _convertDependencyRisk(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, packages: [] };
+  }
+  var rawRisks = data[0].risks || [];
+  var packages = [];
+  for (var i = 0; i < rawRisks.length; i++) {
+    var r = rawRisks[i];
+    var severity = (r.severity || '').toLowerCase();
+    var risk;
+    if (severity === 'critical' || severity === 'high') {
+      risk = 'high';
+    } else if (severity === 'medium') {
+      risk = 'medium';
+    } else {
+      risk = 'low';
+    }
+    packages.push({
+      name: r.kind || '',
+      risk: risk,
+      current: r.count != null ? String(r.count) : '',
+      latest: '',
+    });
+  }
+  return { available: packages.length > 0, packages: packages };
+}
+
+function _convertFindings(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, total: 0, open: 0, resolved: 0, by_severity: { critical: 0, high: 0, medium: 0, low: 0 } };
+  }
+  var d = data[0];
+  var findings = d.findings || [];
+  var bySeverity = { critical: 0, high: 0, medium: 0, low: 0 };
+  var open = 0;
+  var resolved = 0;
+  for (var i = 0; i < findings.length; i++) {
+    var f = findings[i];
+    var sev = (f.severity || '').toLowerCase();
+    var st = (f.status || '').toLowerCase();
+    var count = f.count || 0;
+    if (sev === 'critical' || sev === 'high' || sev === 'medium' || sev === 'low') {
+      bySeverity[sev] += count;
+    }
+    if (st === 'open' || st === 'new' || st === 'in_progress') {
+      open += count;
+    } else if (st === 'closed' || st === 'resolved' || st === 'done' || st === 'fixed') {
+      resolved += count;
+    }
+  }
+  var total = open + resolved;
+  return { available: total > 0, total: total, open: open, resolved: resolved, by_severity: bySeverity };
+}
+
+function _convertCorrelationIntegrity(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, status: 'unknown', matched: 0, unmatched: 0, total: 0 };
+  }
+  var d = data[0];
+  var matched = d.distinct_report_hashes || 0;
+  var total = (d.report_count || 0) + (d.turn_count || 0);
+  return {
+    available: true,
+    status: d.integrity_status || 'unknown',
+    matched: matched,
+    unmatched: 0,
+    total: total,
+  };
+}
+
+function _convertLocalInference(data) {
+  if (!data || !data.length || !data[0]) {
+    return { available: false, models: [] };
+  }
+  var rawProviders = data[0].providers || [];
+  var models = [];
+  for (var i = 0; i < rawProviders.length; i++) {
+    var p = rawProviders[i];
+    var tps = p.tokens_per_sec || 0;
+    models.push({
+      name: p.model || '',
+      status: tps > 0 ? 'running' : 'stopped',
+      tokens_per_sec: tps,
+    });
+  }
+  return { available: models.length > 0, models: models };
+}
+
+export function handleAnalyticsProjection(data) {
+  if (!data) return;
+  var converted = _convertAnalyticsProjection(data);
+  state.analytics = converted;
+  updateAnalyticsData(converted);
+  renderAllWidgets();
 }
 
 // ── Reset for reconnect ──────────────────────────────────────────────

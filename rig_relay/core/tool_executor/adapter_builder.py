@@ -8,7 +8,7 @@ from rig_relay.core.tools.base import InvokeContext
 
 if TYPE_CHECKING:
     from rig_relay.core.agent_loop import AgentLoop
-    from rig_relay.core.tool_executor.context import ToolExecutionContext
+    from rig_relay.core.tool_executor.context import ToolSessionContext, ToolTurnContext
 
 
 class ToolRuntimeAdapterBuilder:
@@ -16,20 +16,25 @@ class ToolRuntimeAdapterBuilder:
 
     Accepts both an AgentLoop reference (for tool invocation
     infrastructure: tool_manager, agent_manager, session_logger, etc.)
-    and a ToolExecutionContext (for execution boundary state:
-    session_id, turn_id, trace_runtime, approval ports, etc.).
+    and a ToolSessionContext (for execution boundary state:
+    session_id, trace_runtime, approval ports, etc.).
 
-    The loop reference is the legitimate bridge between ToolRuntime
-    and the agent harness. The context object carries execution-scoped
-    state that crosses the runtime boundary.
+    Per-turn context is set via set_turn_context() before each batch.
     """
 
-    __slots__ = ("_loop", "_ctx", "_build_count")
+    __slots__ = ("_loop", "_session_ctx", "_turn_ctx", "_build_count")
 
-    def __init__(self, *, loop: AgentLoop, ctx: ToolExecutionContext) -> None:
+    def __init__(self, *, loop: AgentLoop, session_ctx: ToolSessionContext) -> None:
         self._loop: AgentLoop = loop
-        self._ctx = ctx
+        self._session_ctx = session_ctx
+        self._turn_ctx: ToolTurnContext | None = None
         self._build_count = 0
+
+    def set_turn_context(self, turn_ctx: ToolTurnContext) -> None:
+        self._turn_ctx = turn_ctx
+
+    def clear_turn_context(self) -> None:
+        self._turn_ctx = None
 
     def build_tool_runtime(self) -> ToolRuntime:
         self._build_count += 1
@@ -54,7 +59,8 @@ class ToolRuntimeAdapterBuilder:
 
     async def _invoke_adapter(self, args_dict: dict) -> AsyncGenerator[Any, None]:
         loop = self._loop
-        ctx = self._ctx
+        turn_ctx = self._turn_ctx
+        user_message_id = turn_ctx.user_message_id if turn_ctx else ""
         tool_name = args_dict.pop("_tool_runtime_name", "")
         tool_meta = args_dict.pop("_tool_runtime_meta", {})
         subprocess_runner = tool_meta.get("subprocess_runner")
@@ -62,11 +68,11 @@ class ToolRuntimeAdapterBuilder:
         async for item in tool_instance.invoke(
             ctx=InvokeContext(
                 tool_call_id="",
-                parent_turn_id=ctx.user_message_id,
+                parent_turn_id=user_message_id,
                 agent_manager=loop.agent_manager,
                 session_dir=loop.session_logger.session_dir,
                 entrypoint_metadata=loop.entrypoint_metadata,
-                approval_callback=ctx.approval_callback,
+                approval_callback=self._session_ctx.approval_callback,
                 user_input_callback=loop.user_input_callback,
                 sampling_callback=loop._sampling_handler,
                 plan_file_path=loop._plan_session.plan_file_path,
@@ -159,18 +165,23 @@ class ToolRuntimeAdapterBuilder:
         if loop.bypass_tool_permissions:
             return True, ""
         try:
-            tool_instance = loop.tool_manager.get(tool_name)
+            clean_args = {
+                k: v for k, v in args_dict.items() if not k.startswith("_tool_runtime")
+            }
+            decision = loop._governance_runtime.should_execute_tool(
+                tool_call_id=call_id,
+                tool_name=tool_name,
+                tool_args=clean_args,
+                execution_mode="tool",
+            )
             from rig_relay.core._agent_models import ToolExecutionResponse
 
-            decision = await loop._should_execute_tool(
-                tool_instance, tool_instance.ArgsModel(**args_dict), call_id
-            )
             if decision.verdict == ToolExecutionResponse.SKIP:
                 return False, decision.feedback or "Tool execution skipped"
             return True, ""
         except Exception:
             reason = "permission_unavailable"
-            turn_id = getattr(self._ctx, "user_message_id", None)
+            turn_id = self._turn_ctx.user_message_id if self._turn_ctx else ""
             from rig_relay.core.logger import logger
 
             logger.warning(
@@ -190,20 +201,23 @@ class ToolRuntimeAdapterBuilder:
         self, tool_name: str, args_dict: dict, call_id: str
     ) -> tuple[bool, str]:
         loop = self._loop
-        ctx = self._ctx
-        if ctx.approval_callback is None:
+        callback = self._session_ctx.approval_callback or loop.approval_callback
+        if callback is None:
             return True, ""
         try:
             tool_instance = loop.tool_manager.get(tool_name)
             from rig_relay.core.types import ApprovalResponse
 
-            response, feedback = await ctx.approval_callback(
-                tool_name, tool_instance.ArgsModel(**args_dict), call_id, []
-            )
+            try:
+                args = tool_instance.ArgsModel(**args_dict)
+            except Exception:
+                args = args_dict
+
+            response, feedback = await callback(tool_name, args, call_id, [])
             return response == ApprovalResponse.YES, feedback or ""
         except Exception:
             reason = "approval_unavailable"
-            turn_id = getattr(ctx, "user_message_id", None)
+            turn_id = self._turn_ctx.user_message_id if self._turn_ctx else ""
             from rig_relay.core.logger import logger
 
             logger.warning(
@@ -230,7 +244,7 @@ class ToolRuntimeAdapterBuilder:
             tool_instance = loop.tool_manager.get(tool_name)
         except Exception:
             reason = "patch_gate_unavailable"
-            turn_id = getattr(self._ctx, "user_message_id", None)
+            turn_id = self._turn_ctx.user_message_id if self._turn_ctx else ""
             from rig_relay.core.logger import logger
 
             logger.warning(

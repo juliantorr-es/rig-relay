@@ -1,20 +1,43 @@
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
-from rig_relay.core.conversation_runtime.models import TurnBatchResult
+from rig_relay.core.conversation_runtime.models import (
+    ConversationRuntimeCallbacks,
+    ConversationRuntimePhaseEvent,
+    ConversationRuntimeRequest,
+    TurnBatchResult,
+)
 from rig_relay.core.hooks.models import HookType, HookUserMessage
-from rig_relay.core.types import LLMMessage, Role
+from rig_relay.core.types import BaseEvent, LLMMessage, Role
+
+if TYPE_CHECKING:
+    pass
 
 
-class _ConversationLoopAdapter:
-    """Adapter implementing ConversationRuntimeCallbacks for AgentLoop."""
+class _ConversationLoopAdapter(ConversationRuntimeCallbacks):
+    """Adapter implementing ConversationRuntimeCallbacks for AgentLoop.
+
+    All methods required by the Protocol are present — no cast() needed.
+    setup_turn, emit_phase_event, and yield_user_message_event are
+    reserved for future migration of turn-setup into the adapter.
+    """
 
     __slots__ = ("_loop", "_user_msg")
 
     def __init__(self, loop: Any, user_msg: str) -> None:
         self._loop = loop
         self._user_msg = user_msg
+
+    # ── Turn lifecycle ──────────────────────────────────────────
+
+    def setup_turn(self, request: ConversationRuntimeRequest) -> None:
+        """Reserved for future migration. Currently handled in AgentLoop._conversation_loop."""
+        raise NotImplementedError(
+            "setup_turn not yet implemented; handled inline in AgentLoop._conversation_loop"
+        )
 
     def get_turn(self) -> Any:
         return self._loop._current_turn
@@ -26,16 +49,28 @@ class _ConversationLoopAdapter:
         self._loop._current_turn.mark_outcome(outcome, reason)
 
     def persist_turn_state(self) -> None:
-        pass
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        loop.create_task(self._loop._save_messages())
+
+    def emit_phase_event(self, event: ConversationRuntimePhaseEvent) -> None:
+        """Reserved for future migration. Phase events managed by ConversationRuntime."""
+        raise NotImplementedError(
+            "emit_phase_event not yet implemented; handled inline in ConversationRuntime"
+        )
+
+    # ── Middleware ───────────────────────────────────────────────
 
     async def middleware_before_turn(
         self, ctx: dict[str, str]
-    ) -> tuple[Any, list[Any]]:
+    ) -> tuple[Any, list[BaseEvent]]:
         """Run AgentLoop middleware pipeline and return (result, events)."""
         result = await self._loop.middleware_pipeline.run_before_turn(
             self._loop._get_context()
         )
-        events: list[Any] = []
+        events: list[BaseEvent] = []
         async for event in self._loop._handle_middleware_result(result):
             events.append(event)
         return result, events
@@ -44,7 +79,11 @@ class _ConversationLoopAdapter:
         if self._loop._hooks_manager:
             self._loop._hooks_manager.reset_retry_count()
 
-    async def build_context_envelope(self, request: Any) -> Any:
+    # ── Context ──────────────────────────────────────────────────
+
+    async def build_context_envelope(
+        self, request: ConversationRuntimeRequest
+    ) -> Any | None:
         """Build context envelope asynchronously. No run_until_complete."""
         await self._loop._build_context_envelope(self._user_msg)
         return self._loop._current_context_envelope
@@ -55,16 +94,20 @@ class _ConversationLoopAdapter:
             turn.context_envelope_id = receipt.envelope_id
             turn.context_section_count = receipt.section_count
 
-    async def stream_llm_turn(self) -> Any:
+    # ── LLM ──────────────────────────────────────────────────────
+
+    async def stream_llm_turn(self) -> AsyncGenerator[BaseEvent, None]:
         async for event in self._loop._perform_llm_turn():
             yield event
 
-    def is_user_cancellation_event(self, event: Any) -> bool:
+    def is_user_cancellation_event(self, event: BaseEvent) -> bool:
         from rig_relay.core.utils.tags import is_user_cancellation_event
 
         return is_user_cancellation_event(event)
 
-    async def stream_hooks_post_turn(self) -> Any:
+    # ── Hooks ────────────────────────────────────────────────────
+
+    async def stream_hooks_post_turn(self) -> AsyncGenerator[BaseEvent, None]:
         if not self._loop._hooks_manager:
             return
         async for hook_event in self._loop._hooks_manager.run(
@@ -74,7 +117,7 @@ class _ConversationLoopAdapter:
         ):
             yield hook_event
 
-    def is_hook_user_message(self, event: Any) -> bool:
+    def is_hook_user_message(self, event: BaseEvent) -> bool:
         return isinstance(event, HookUserMessage)  # type: ignore[name-defined]
 
     def inject_hook_message(self, hook_message: Any) -> None:
@@ -85,6 +128,8 @@ class _ConversationLoopAdapter:
                 injected=True,
             )
         )
+
+    # ── Loop control ─────────────────────────────────────────────
 
     def last_message_has_no_tool_calls(self) -> bool:
         """Check whether the model turn produced pending tool calls to execute.
@@ -109,15 +154,30 @@ class _ConversationLoopAdapter:
             assistant_is_final=not has_tool_calls and not has_failed,
         )
 
-    async def execute_tool_batch(self) -> Any:
+    # ── Tool execution ─────────────────────────────────────────
+
+    async def execute_tool_batch(self) -> AsyncGenerator[BaseEvent, None]:
         """Execute tool calls stored from stream_llm_turn().
 
         _perform_llm_turn() stores resolved tool calls in
         _pending_tool_resolved instead of executing them.
-        This method executes those pending calls via _handle_tool_calls().
+        This method executes those pending calls via _execute_pending_tool_batch().
         """
         async for event in self._loop._execute_pending_tool_batch():
             yield event
 
+    # ── Budget ──────────────────────────────────────────────────
+
     def check_max_turns(self) -> int | None:
         return self._loop._max_turns
+
+    # ── Event emission ─────────────────────────────────────────
+
+    def yield_user_message_event(self) -> AsyncGenerator[BaseEvent, None]:
+        """Reserved for future migration. Currently handled inline in AgentLoop._conversation_loop."""
+
+        async def _stub() -> AsyncGenerator[BaseEvent, None]:
+            if False:
+                yield
+
+        return _stub()

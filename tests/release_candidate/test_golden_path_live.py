@@ -22,6 +22,7 @@ from rig_relay.core.telemetry.quarantine import (
     get_quarantine_summary,
     list_quarantined_packets,
 )
+from rig_relay.core.telemetry.types import TelemetryMode
 from rig_relay.core.tools.builtins.get_context import (
     GetContext,
     GetContextArgs,
@@ -195,7 +196,7 @@ async def test_telemetry_disabled_mode_is_visible_and_non_destructive(
         )
         projection = projection_messages[-1]["data"]
 
-        assert projection["telemetry_mode"] == "disabled"
+        assert projection["telemetry_mode"] == TelemetryMode.DISABLED_BY_USER.value
         assert projection["telemetry_degraded"] is True
 
         log_local_event(session_id, "telemetry.disabled.test", {"sample": "value"})

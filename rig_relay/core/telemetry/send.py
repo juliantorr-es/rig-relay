@@ -152,6 +152,7 @@ class TelemetryClient:
 
     def get_effective_telemetry_mode(self) -> str:
         from rig_relay.core.telemetry.local import is_telemetry_enabled
+        from rig_relay.core.telemetry.types import TelemetryMode, compute_telemetry_mode
 
         try:
             config = self._config_getter()
@@ -159,16 +160,14 @@ class TelemetryClient:
             remote_enabled = config.enable_remote_telemetry or config.enable_telemetry
         except Exception:
             if not is_telemetry_enabled():
-                return "disabled"
-            return "full"
+                return TelemetryMode.DISABLED_BY_USER.value
+            return TelemetryMode.FULL.value
 
         if not is_telemetry_enabled():
-            return "disabled"
+            return TelemetryMode.DISABLED_BY_USER.value
         if not local_enabled:
-            return "disabled"
-        if not remote_enabled:
-            return "degraded"
-        return "full"
+            return TelemetryMode.DISABLED_BY_USER.value
+        return compute_telemetry_mode(local_enabled, remote_enabled).value
 
     def is_active(self) -> bool:
         return (

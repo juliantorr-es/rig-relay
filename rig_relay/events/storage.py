@@ -139,6 +139,16 @@ class LocalFileBackend:
     def compact(
         self, max_entries: int | None = None, max_bytes: int | None = None
     ) -> int:
+        import warnings
+
+        warnings.warn(
+            "StorageBackend.compact() is deprecated for authoritative event "
+            "streams. Compaction discards older events without archival. "
+            "Use only for disposable analytical caches and derived projections. "
+            "Authoritative event ledgers must remain append-only.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         entries = self.read()
         original_count = len(entries)
         if original_count == 0:

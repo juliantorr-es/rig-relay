@@ -15,6 +15,7 @@ from rig_relay.evidence.receipt_envelope import (
     PLACEHOLDER_UNKNOWN,
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptDecision,
     ReceiptEnvelope,
     ReceiptEvidence,
@@ -55,7 +56,7 @@ def sample_actor() -> ReceiptActor:
         actor_kind=ReceiptActorKind.AGENT,
         display_name="Rig Relay CLI Agent",
         is_human=False,
-        is_authoritative=True,
+        authority_tier=ReceiptActorTier.ADMINISTRATIVE,
     )
 
 
@@ -100,7 +101,7 @@ class TestReceiptActorModel:
         assert a.actor_kind == ReceiptActorKind.SYSTEM
         assert a.display_name is None
         assert a.is_human is False
-        assert a.is_authoritative is False
+        assert a.authority_tier == ReceiptActorTier.NONE
 
     def test_full_construction(self) -> None:
         a = ReceiptActor(
@@ -108,7 +109,7 @@ class TestReceiptActorModel:
             actor_kind=ReceiptActorKind.AGENT,
             display_name="Agent 1",
             is_human=False,
-            is_authoritative=True,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
         )
         assert a.model_dump(mode="json")["actor_kind"] == "agent"
 

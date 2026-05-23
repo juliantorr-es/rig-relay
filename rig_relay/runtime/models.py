@@ -91,6 +91,7 @@ class RuntimeInvocationStatus(StrEnum):
     TIMED_OUT = "timed_out"
     CANCELLED = "cancelled"
     BLOCKED = "blocked"
+    BUDGET_EXCEEDED = "budget_exceeded"
 
 
 # =============================================================================

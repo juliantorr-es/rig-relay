@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import re
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
 ALLOWED_MARKDOWN = frozenset({
     "AGENTS.md",
     "README.md",
@@ -90,6 +92,10 @@ def check_input_manifest(manifest: dict) -> MarkdownLeakReport:
     for entry in manifest.get("inputs", []):
         source_path = entry.get("source_path")
         if not source_path:
+            continue
+        if is_confidential_artifact_path(source_path):
+            report.blocked_paths.append(Path(source_path))
+            report.passed = False
             continue
         allowed, reason = check_input_path(source_path)
         sp = Path(source_path)

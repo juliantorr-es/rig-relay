@@ -13,6 +13,7 @@ class GateStatus(StrEnum):
 
 class CompilerGate(StrEnum):
     SCHEMA_VALIDATION = "schema_validation"
+    AST_SAFETY = "ast_safety"
     IMPORTABILITY = "importability"
     PYRIGHT = "pyright_type_check"
     RUFF_LINT = "ruff_lint"
@@ -31,6 +32,7 @@ class CompilerGate(StrEnum):
     def failure_class(self) -> str:
         _map: dict[str, str] = {
             "schema_validation": "constraint_violation",
+            "ast_safety": "constraint_violation",
             "importability": "type_error",
             "pyright_type_check": "type_error",
             "ruff_lint": "format_error",

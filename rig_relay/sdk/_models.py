@@ -170,6 +170,8 @@ class RigClient:
     )
     _REFUSAL_MUTATION = "mutation_refused_by_default"
     _MUTATION_TIER_THRESHOLD = 4
+    _agent_loop_sessions: dict[str, object] = field(default_factory=dict, repr=False)
+    _a2a_server: object | None = field(default=None, repr=False)
 
     def status(self) -> RigStatus:
         github_available = _provider_manifest_exists("github")
@@ -436,30 +438,293 @@ class RigClient:
             response_data=response,
         )
 
-    def start_acp_session(self, trace_id: str) -> RigRunResult:
-        return asyncio.run(self.async_start_acp_session(trace_id))
+    # ── AgentLoop-backed operations ──
 
-    async def async_start_acp_session(self, trace_id: str = "") -> RigRunResult:
-        from rig_relay.protocols.acp.agent import RigACPAgent
+    async def _create_agent_loop(self) -> object:
+        from rig_relay import __version__
+        from rig_relay.core.agent_loop import AgentLoop
+        from rig_relay.core.agents.models import CHAT as CHAT_AGENT, BuiltinAgentName
+        from rig_relay.core.config import MissingAPIKeyError, VibeConfig
+        from rig_relay.core.telemetry.build_metadata import build_entrypoint_metadata
 
-        op_id = str(uuid4())
         try:
-            agent = RigACPAgent()
-            session = await agent.create_session()
+            config = VibeConfig.load()
+        except MissingAPIKeyError:
+            return self._build_run_result(
+                str(uuid4()),
+                "agent_loop_create",
+                self.trace_id,
+                RigVerdict.FAILED,
+                "missing_api_key",
+            )
+        except Exception:
+            return self._build_run_result(
+                str(uuid4()),
+                "agent_loop_create",
+                self.trace_id,
+                RigVerdict.FAILED,
+                "config_load_failed",
+            )
+
+        try:
+            entrypoint_meta = build_entrypoint_metadata(
+                agent_entrypoint="programmatic",
+                agent_version=__version__,
+                client_name="rig_sdk",
+                client_version="1.0.0",
+            )
+            agent_loop = AgentLoop(
+                config=config,
+                agent_name=BuiltinAgentName.DEFAULT,
+                enable_streaming=True,
+                entrypoint_metadata=entrypoint_meta,
+                defer_heavy_init=True,
+            )
+            agent_loop.agent_manager.register_agent(CHAT_AGENT)
+            await agent_loop.wait_until_ready()
+            return agent_loop
+        except Exception:
+            return self._build_run_result(
+                str(uuid4()),
+                "agent_loop_create",
+                self.trace_id,
+                RigVerdict.FAILED,
+                "agent_loop_construct_failed",
+            )
+
+    async def async_start_agent_chat(
+        self, prompt: str, trace_id: str = ""
+    ) -> RigRunResult:
+        op_id = str(uuid4())
+        tid = trace_id or self.trace_id
+
+        agent_loop = await self._create_agent_loop()
+        if not hasattr(agent_loop, "act"):
+            from rig_relay.sdk._models import RigRunResult as _RRR
+
+            if isinstance(agent_loop, _RRR):
+                return agent_loop
+            return self._build_run_result(
+                op_id, "agent_chat", tid, RigVerdict.FAILED, "agent_loop_create_failed"
+            )
+
+        try:
+            response_parts: list[str] = []
+            from rig_relay.core.types import AssistantEvent
+
+            async for event in agent_loop.act(prompt):  # type: ignore[union-attr]
+                if isinstance(event, AssistantEvent) and event.content:
+                    response_parts.append(event.content)
+
+            response_text = (
+                "".join(response_parts) if response_parts else "(no response)"
+            )
+            response_hash = compute_sha256(response_text)
             return self._build_run_result(
                 op_id,
-                "acp_session",
-                trace_id,
+                "agent_chat",
+                tid,
                 RigVerdict.COMPLETED,
                 response_data={
-                    "session_id": session.session_id,
-                    "status": session.status.value,
+                    "response": response_text,
+                    "response_hash": response_hash,
+                    "content_light": False,
                 },
             )
         except Exception:
             return self._build_run_result(
-                op_id, "acp_session", trace_id, RigVerdict.FAILED, "unknown_capability"
+                op_id, "agent_chat", tid, RigVerdict.FAILED, "agent_chat_failed"
             )
+        finally:
+            try:
+                await agent_loop.aclose()  # type: ignore[union-attr]
+            except Exception:
+                pass
+
+    async def async_list_tools(self, trace_id: str = "") -> RigRunResult:
+        op_id = str(uuid4())
+        tid = trace_id or self.trace_id
+
+        agent_loop = await self._create_agent_loop()
+        if not hasattr(agent_loop, "tool_manager"):
+            if isinstance(agent_loop, RigRunResult):
+                return agent_loop
+            return self._build_run_result(
+                op_id, "list_tools", tid, RigVerdict.FAILED, "agent_loop_create_failed"
+            )
+
+        try:
+            tools = agent_loop.tool_manager.available_tools  # type: ignore[union-attr]
+            tool_data = [
+                {
+                    "name": name,
+                    "description": (
+                        tool_cls.__doc__ or "" if hasattr(tool_cls, "__doc__") else ""
+                    ),
+                    "parameters": (
+                        tool_cls.get_parameters()
+                        if hasattr(tool_cls, "get_parameters")
+                        else {}
+                    ),
+                }
+                for name, tool_cls in tools.items()
+            ]
+            return self._build_run_result(
+                op_id,
+                "list_tools",
+                tid,
+                RigVerdict.COMPLETED,
+                response_data={"tools": tool_data},
+            )
+        except Exception:
+            return self._build_run_result(
+                op_id, "list_tools", tid, RigVerdict.FAILED, "list_tools_failed"
+            )
+        finally:
+            try:
+                await agent_loop.aclose()  # type: ignore[union-attr]
+            except Exception:
+                pass
+
+    async def async_invoke_tool(
+        self, tool_name: str, args: dict[str, Any] | None = None, trace_id: str = ""
+    ) -> RigRunResult:
+        op_id = str(uuid4())
+        tid = trace_id or self.trace_id
+
+        agent_loop = await self._create_agent_loop()
+        if not hasattr(agent_loop, "tool_manager"):
+            if isinstance(agent_loop, RigRunResult):
+                return agent_loop
+            return self._build_run_result(
+                op_id, "invoke_tool", tid, RigVerdict.FAILED, "agent_loop_create_failed"
+            )
+
+        try:
+            from rig_relay.core.tools.base import InvokeContext
+            from rig_relay.core.tools.manager import NoSuchToolError
+            from rig_relay.core.types import ToolStreamEvent
+
+            try:
+                tool_instance = agent_loop.tool_manager.get(tool_name)  # type: ignore[union-attr]
+            except NoSuchToolError:
+                return self._build_run_result(
+                    op_id, "invoke_tool", tid, RigVerdict.FAILED, "unknown_tool"
+                )
+
+            invoke_ctx = InvokeContext(
+                tool_call_id=str(uuid4()),
+                session_dir=agent_loop.session_dir,  # type: ignore[union-attr]
+                tool_manager=agent_loop.tool_manager,  # type: ignore[union-attr]
+            )
+
+            results: list[dict[str, Any]] = []
+            async for event in tool_instance.invoke(ctx=invoke_ctx, **(args or {})):
+                if isinstance(event, ToolStreamEvent):
+                    results.append({"type": "stream", "message": event.message})
+                else:
+                    results.append({"type": "result", "data": str(event)[:1024]})
+
+            return self._build_run_result(
+                op_id,
+                "invoke_tool",
+                tid,
+                RigVerdict.COMPLETED,
+                response_data={"tool_name": tool_name, "results": results},
+            )
+        except Exception:
+            return self._build_run_result(
+                op_id, "invoke_tool", tid, RigVerdict.FAILED, "tool_invoke_failed"
+            )
+        finally:
+            try:
+                await agent_loop.aclose()  # type: ignore[union-attr]
+            except Exception:
+                pass
+
+    # ── ACP session (wired to real AgentLoop) ──
+
+    def start_acp_session(self, trace_id: str) -> RigRunResult:
+        return asyncio.run(self.async_start_acp_session(trace_id))
+
+    async def async_start_acp_session(self, trace_id: str = "") -> RigRunResult:
+        op_id = str(uuid4())
+        tid = trace_id or self.trace_id
+
+        agent_loop = await self._create_agent_loop()
+        if not hasattr(agent_loop, "session_id"):
+            if isinstance(agent_loop, RigRunResult):
+                return agent_loop
+            return self._build_run_result(
+                op_id, "acp_session", tid, RigVerdict.FAILED, "agent_loop_create_failed"
+            )
+
+        session_id = agent_loop.session_id  # type: ignore[union-attr]
+        self._agent_loop_sessions[session_id] = agent_loop
+
+        receipt_id = str(uuid4())
+        receipt_ref = RigReceiptRef(
+            receipt_id=receipt_id, surface="acp", trace_id=tid, verdict="completed"
+        )
+
+        return self._build_run_result(
+            op_id,
+            "acp_session",
+            tid,
+            RigVerdict.COMPLETED,
+            response_data={"session_id": session_id, "status": "active"},
+        ).__class__(
+            operation_id=op_id,
+            operation_kind="acp_session",
+            verdict=RigVerdict.COMPLETED,
+            trace_id=tid,
+            operation_hash=compute_sha256(f"acp_session:{op_id}"),
+            response_hash=compute_sha256(session_id),
+            receipt_ref=receipt_ref,
+        )
+
+    async def async_send_acp_message(
+        self, session_id: str, message: str, trace_id: str = ""
+    ) -> RigRunResult:
+        op_id = str(uuid4())
+        tid = trace_id or self.trace_id
+
+        agent_loop = self._agent_loop_sessions.get(session_id)
+        if agent_loop is None:
+            return self._build_run_result(
+                op_id, "acp_message", tid, RigVerdict.FAILED, "session_not_found"
+            )
+
+        try:
+            response_parts: list[str] = []
+            from rig_relay.core.types import AssistantEvent
+
+            async for event in agent_loop.act(message):  # type: ignore[union-attr]
+                if isinstance(event, AssistantEvent) and event.content:
+                    response_parts.append(event.content)
+
+            response_text = (
+                "".join(response_parts) if response_parts else "(no response)"
+            )
+            response_hash = compute_sha256(response_text)
+            return self._build_run_result(
+                op_id,
+                "acp_message",
+                tid,
+                RigVerdict.COMPLETED,
+                response_data={
+                    "session_id": session_id,
+                    "response": response_text,
+                    "response_hash": response_hash,
+                    "content_light": False,
+                },
+            )
+        except Exception:
+            return self._build_run_result(
+                op_id, "acp_message", tid, RigVerdict.FAILED, "acp_message_failed"
+            )
+
+    # ── A2A delegation (wired to real A2AServer) ──
 
     def send_a2a_local_task(
         self, task_id: str, agent_id: str, trace_id: str
@@ -469,27 +734,90 @@ class RigClient:
     async def async_send_a2a_local_task(
         self, task_id: str, agent_id: str, trace_id: str = ""
     ) -> RigRunResult:
+        import json
+
         from rig_relay.protocols.a2a._lifecycle import (
             build_delegation_receipt,
-            build_task_card,
-            transition_task,
+            delegation_allowed_by_governance,
         )
-        from rig_relay.protocols.a2a._models import A2ATaskStatus
+        from rig_relay.protocols.a2a.server import A2AServer
 
         op_id = str(uuid4())
-        card = build_task_card(task_id, agent_id, trace_id=trace_id)
-        card = transition_task(card, A2ATaskStatus.SUBMITTED)
-        card = transition_task(card, A2ATaskStatus.RUNNING)
+        tid = trace_id or self.trace_id
+
+        allowed, reason = delegation_allowed_by_governance(
+            "rig_sdk", agent_id, str(task_id)
+        )
+        if not allowed:
+            receipt = build_delegation_receipt(
+                "rig_sdk", agent_id, task_id, trace_id=tid, verdict="refused"
+            )
+            return self._build_run_result(
+                op_id,
+                "a2a_local_task",
+                tid,
+                RigVerdict.REFUSED,
+                reason,
+                response_data=receipt.to_dict(),
+            )
+
+        if self._a2a_server is None:
+            self._a2a_server = A2AServer(agent_id=agent_id)
+
+        raw_request = json.dumps({
+            "jsonrpc": "2.0",
+            "id": op_id,
+            "method": "tasks/send",
+            "params": {
+                "task_id": task_id,
+                "description": f"SDK delegation to {agent_id}",
+                "trace_id": tid,
+            },
+        })
+
+        try:
+            response_str = self._a2a_server.handle_jsonrpc_request(raw_request)  # type: ignore[union-attr]
+            response = json.loads(response_str)
+        except Exception:
+            return self._build_run_result(
+                op_id, "a2a_local_task", tid, RigVerdict.FAILED, "a2a_dispatch_failed"
+            )
+
+        if "error" in response:
+            return self._build_run_result(
+                op_id, "a2a_local_task", tid, RigVerdict.FAILED, "a2a_server_error"
+            )
+
         receipt = build_delegation_receipt(
-            "rig_sdk", agent_id, task_id, trace_id=trace_id, verdict="completed"
+            "rig_sdk", agent_id, task_id, trace_id=tid, verdict="completed"
         )
         return self._build_run_result(
             op_id,
             "a2a_local_task",
-            trace_id,
+            tid,
             RigVerdict.COMPLETED,
             response_data=receipt.to_dict(),
         )
+
+    # ── Sync wrappers for wired operations ──
+
+    def start_agent_chat(self, prompt: str, trace_id: str = "") -> RigRunResult:
+        return asyncio.run(self.async_start_agent_chat(prompt, trace_id))
+
+    def list_tools(self, trace_id: str = "") -> RigRunResult:
+        return asyncio.run(self.async_list_tools(trace_id))
+
+    def invoke_tool(
+        self, tool_name: str, args: dict[str, Any] | None = None, trace_id: str = ""
+    ) -> RigRunResult:
+        return asyncio.run(self.async_invoke_tool(tool_name, args, trace_id))
+
+    def send_acp_message(
+        self, session_id: str, message: str, trace_id: str = ""
+    ) -> RigRunResult:
+        return asyncio.run(self.async_send_acp_message(session_id, message, trace_id))
+
+    # ── GitHub provider ──
 
     def check_github_provider_status_sync(self, trace_id: str = "") -> RigRunResult:
         return asyncio.run(self.check_github_provider_status(trace_id))

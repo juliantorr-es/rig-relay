@@ -42,3 +42,6 @@ Rules:
 | 2026-05-14 | rig-relay | phase-k | context compiler phase 3 repo index | summary | [2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md](2026-05-14--rig-relay--phase-k--context-compiler-phase-3-repo-index--summary.md) |
 | 2026-05-18 | rig-relay | no-phase | frontend boot stabilization fsm effects | summary | [2026-05-18--rig-relay--no-phase--frontend-boot-stabilization-fsm-effects--summary.md](2026-05-18--rig-relay--no-phase--frontend-boot-stabilization-fsm-effects--summary.md) |
 | 2026-05-20 | rig-relay | no-phase | analytics data lake hardening lane | summary | [2026-05-20--rig-relay--no-phase--analytics-data-lake-hardening-lane--summary.md](2026-05-20--rig-relay--no-phase--analytics-data-lake-hardening-lane--summary.md) |
+| 2026-05-22 | rig-relay | no-phase | steward loop elevation | summary | [2026-05-22--rig-relay--no-phase--steward-loop-elevation--summary.md](2026-05-22--rig-relay--no-phase--steward-loop-elevation--summary.md) |
+| 2026-05-23 | rig-relay | no-phase | steward v0 complexity refactoring | summary | [2026-05-23--rig-relay--no-phase--steward-v0-complexity-refactoring--summary.md](2026-05-23--rig-relay--no-phase--steward-v0-complexity-refactoring--summary.md) |
+

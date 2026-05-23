@@ -28,6 +28,7 @@ BLOCKER_CLASSES: tuple[str, ...] = (
     "dirty_overlap",
     "lane_ownership_collision",
     "failed_gate",
+    "gate_unreadable",
     "missing_final_report",
     "missing_required_artifact",
     "schema_validation_failure",
@@ -59,7 +60,13 @@ _REPAIR_BLOCKER_CLASSES: frozenset[str] = frozenset({
     "steward_command_construction_failed",
 })
 
-_GATE_FAILURE_VERDICTS: frozenset[str] = frozenset({"FAIL", "BLOCKED", "ERROR"})
+_GATE_FAILURE_VERDICTS: frozenset[str] = frozenset({
+    "FAIL",
+    "BLOCKED",
+    "ERROR",
+    "PENDING",
+    "RUNNING",
+})
 _RUNNABLE_STATUSES: frozenset[str] = frozenset({"queued", "active", "blocked"})
 _LAUNCHABLE_STATES: frozenset[str] = frozenset({
     "continue_lane",
