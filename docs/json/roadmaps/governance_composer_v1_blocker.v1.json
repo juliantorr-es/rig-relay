@@ -1,0 +1,62 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-24T01:15:00Z",
+  "mission_title": "Governance Composer v1 — Shared Authorization Decision Spine: Structured Design Blocker",
+  "branch": "feature/persistent-confidential-campaign-runtime-v1",
+  "head_before": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "head_after": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "dirty_state_before": "Steward plugin modified by parallel lane (preserved)",
+  "dirty_state_after": {
+    "this_mission_modified": [],
+    "this_mission_created": [
+      "docs/json/roadmaps/governance_composer_v1_design.v1.json",
+      "docs/json/roadmaps/governance_composer_v1_blocker.v1.json"
+    ],
+    "pre_existing_modified": ".opencode/plugins/rig-roadmap-steward.ts (parallel lane — untouched)"
+  },
+  "files_changed": 0,
+  "files_created": 2,
+  "files_deleted": 0,
+  "tests_run": 0,
+  "tests_intentionally_skipped": "Design-phase audit only — implementation blocker documented. Tests deferred to implementation phase.",
+  "test_classifications": {},
+  "evidence_artifacts": [
+    "docs/json/roadmaps/governance_composer_v1_design.v1.json",
+    "docs/json/roadmaps/governance_composer_v1_blocker.v1.json"
+  ],
+  "schema_validation_results": "Design artifact validates against rig.relay.mission_report.v1",
+  "telemetry_and_redaction_implications": "Composer would emit content-light GateDecision using existing governance_gate_decision schema. No raw content in composer output. Evidence store filesystem receipts are content-light by design.",
+  "dependency_changes": "No new dependencies needed for composer. GovernanceRuntime, GovernanceEngine, GovernanceDecisionEvidence, FilesystemReceiptStore all exist.",
+  "completed_work": [
+    "Audit: Proposal-vs-execution distinction — MUTATION_PROPOSAL exists as dead enum, MUTATION_EXECUTION is only produced mode",
+    "Audit: GovernanceRuntime can produce lawful allow for search_replace when wired with evidence store + session_rules for ALWAYS permission",
+    "Audit: GovernanceEngine.evaluate_action_legality() is functional — returns ALLOWED with allow_mutation=True, no blocked provider/dirty violations",
+    "Audit: RuntimeToolExecutionRunner ToolRuntime callback precedence — individual callbacks override policy_object via `or` chain",
+    "Audit: AgentLoop executor.py mode mapping is broken (always UNKNOWN) — gates 1/1.6/1.7 dead in AgentLoop path",
+    "Audit: CapabilityGate blocks both proposal and execution on SETUP_REQUIRED — no unlock() callers in Python",
+    "Decision: Authorize proposals first, defer execution admission. MUTATION_PROPOSAL skips unsolvable LocalActionEnvelopeGate while keeping meaningful authorization gates (profile, governance engine) active. search_replace currently uses MUTATION_EXECUTION — must change to MUTATION_PROPOSAL (one-line change in tool_runtime_adapter.py:102). Execution admission with signed envelopes, unlocked profiles, leases is separate concern.",
+    "Gate classification: 6 gates classified — (1) CapabilityGate: execution admission deferred; (2) GovernanceEngine: authorization decision; (3) LocalActionEnvelopeGate: execution admission deferred; (4) Permission/Approval: authorization decision input; (5) Dirty guard: downstream tool safety check; (6) Lease: coordination guard.",
+    "Build-vs-block decision: BLOCK — 5 structural barriers. Cannot implement narrow v1 composer without multi-file governance refactor: CapabilityGate profile lifecycle (no unlock callers), tool_runtime.py:391 allow_mutation hardcode (bypasses engine), executor.py:86-100 broken mode mapping (AgentLoop gates dead), evidence store wiring (GovernanceRuntime.evidence never set), RuntimeToolExecutionRunner callback injection (no permission_decision pass-through)."
+  ],
+  "intentionally_deferred_work": [
+    "Governance composer implementation — blocked by 5 structural issues: (1) CapabilityGate profile lifecycle — ProfileStore.unlock() has no Python callers, profile must be unlocked for isolated temp-repo tests; (2) tool_runtime.py:391 hardcodes allow_mutation=True, bypassing GovernanceEngine — must change to allow_mutation=False or plumb from composer decision; (3) executor.py:86-100 broken mode mapping makes AgentLoop gates dead — must fix for parity; (4) GovernanceRuntime.evidence never wired — must connect GovernanceDecisionEvidence(store=FilesystemReceiptStore(root)); (5) RuntimeToolExecutionRunner must accept permission_decision/approval_decision callbacks that override policy_object.",
+    "LocalActionEnvelopeGate satisfaction — requires public_key_provider and signed envelope infrastructure (execution-admission concern)",
+    "CapabilityGate profile lifecycle — requires ProfileStore.unlock() integration (execution-admission concern)",
+    "AgentLoop executor mode mapping fix — separate bug in executor.py:86-100",
+    "Stage B built-in mutation denial",
+    "Stage C additional wrappers",
+    "Steward handoff correlation"
+  ],
+  "discovered_out_of_scope_risks": [
+    "AgentLoop executor.py mode mapping is broken — all tools pass through with exec_mode=UNKNOWN, bypassing profile/governance/local-action-envelope gates. OpenCode bridge path is the ONLY path exercising these gates. Governance refactor must fix both paths.",
+    "MUTATION_PROPOSAL has zero gate-behavioral meaning beyond skipping Gate 1.7 — both modes trigger identical profile and governance engine checks. Enum needs distinct semantics.",
+    "ToolRuntime gate 1.6 hardcode (allow_mutation=True) silently bypasses GovernanceEngine for ALL callers. Fix may surface previously-hidden governance denials in AgentLoop path.",
+    "5 implementation blockers: CapabilityGate profile (no unlock callers), allow_mutation hardcode (tool_runtime.py:391), executor mode mapping (always UNKNOWN), evidence store not wired (GovernanceRuntime.evidence=None), runtime callback injection missing (ToolRuntime receives no permission_decision)."
+  ],
+  "remaining_seams": [
+    "5 structural blockers before composer implementation viable",
+    "AgentLoop and RuntimeToolExecutionRunner must consume same composer boundary",
+    "MUTATION_PROPOSAL must define authorization-vs-execution semantics",
+    "OpenCode bridge must carry composer-issued decision identifier in result envelope"
+  ]
+}

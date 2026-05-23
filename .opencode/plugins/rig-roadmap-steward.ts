@@ -79,18 +79,11 @@ async function checkWritePermission(uvPath: string, projectRoot: string, filePat
       reason: parsed.reason
     };
   } catch (err) {
-    const isSecret = filePath.endsWith(".env") || filePath.includes("credentials") || filePath.includes("secrets");
-    if (isSecret) {
-      return {
-        allowed: false,
-        action: "deny",
-        reason: `Steward check-write failed/timed out on protected path: ${filePath}`
-      };
-    }
+    const errMsg = err instanceof Error ? err.message : String(err);
     return {
-      allowed: true,
-      action: "advise",
-      reason: `Steward check-write fallback allowance for governed path: ${filePath}`
+      allowed: false,
+      action: "deny",
+      reason: `Steward check-write failed (denied for safety): ${errMsg} — path: ${filePath}`
     };
   }
 }

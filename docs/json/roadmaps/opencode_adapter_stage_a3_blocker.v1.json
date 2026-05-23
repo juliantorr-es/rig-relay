@@ -1,0 +1,75 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-24T00:35:00Z",
+  "mission_title": "OpenCode Adapter Stage A.3 — Missing Authorization Composer Blocker",
+  "branch": "feature/persistent-confidential-campaign-runtime-v1",
+  "head_before": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "head_after": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "dirty_state_before": "Steward plugin modified (not ours), untracked Stage A/A.2 report files, Steward v0 files, OpenCode bridge and TS wrapper",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "docs/json/roadmaps/opencode_adapter_stage_a2_mission_report.v1.json"
+    ],
+    "this_mission_created": [
+      "docs/json/roadmaps/opencode_adapter_stage_a3_outcome_matrix.v1.json",
+      "docs/json/roadmaps/opencode_adapter_stage_a3_blocker.v1.json"
+    ],
+    "pre_existing_modified": ".opencode/plugins/rig-roadmap-steward.ts (modified by parallel lane, not touched by this mission)"
+  },
+  "files_changed": 1,
+  "files_created": 2,
+  "files_deleted": 0,
+  "tests_run": 13,
+  "tests_intentionally_skipped": "No new tests added — existing 13 tests already cover observable refusal outcomes. authorized_succeeded test not added because no lawful authorization composer exists.",
+  "test_classifications": {
+    "contract": "test_result_fields_match_execution_result, test_result_rejects_extra_keys",
+    "integration_real_artifact": "test_bridge_reaches_runtime_and_receives_structured_refusal, test_receipt_sha256_populated_even_on_refusal, test_file_not_mutated_when_refused, test_bridge_cli_refuses_with_policy_missing, test_bridge_routes_through_tool_runtime",
+    "telemetry_redaction_contract": "test_result_excludes_search_replace_markers, test_result_excludes_raw_replacement_content",
+    "adversarial_sabotage": "test_missing_file_path_refused_by_adapter, test_nonexistent_file_rejected_by_runtime, test_stale_expected_hash_refused_when_file_is_dirty",
+    "substrate_integration": "test_bridge_module_is_importable"
+  },
+  "evidence_artifacts": [
+    "docs/json/roadmaps/opencode_adapter_stage_a3_outcome_matrix.v1.json",
+    "docs/json/roadmaps/opencode_adapter_stage_a3_blocker.v1.json"
+  ],
+  "schema_validation_results": "Stage A.2 report validates against rig.relay.mission_report.v1. Outcome matrix validates against rig.relay.governance_gate_decision.v1. No new schema created — reused existing canonical schemas.",
+  "telemetry_and_redaction_implications": "All refusal outcomes are content-light. Observable refusal categories (policy_object_missing, invalid_payload, expected_hash_mismatch) emit only receipt identifiers and error codes. No raw content, diffs, secrets, or environment values in any output. Recovery-correlatable refusals (invalid_payload, expected_hash_mismatch) enable future agent retry loops without exposing raw replacement content.",
+  "dependency_changes": "None.",
+  "completed_work": [
+    "Phase 0: Corrected Stage A.2 report to validate against rig.relay.mission_report.v1 (schema alignment without factual changes)",
+    "Phase 2: Searched existing schemas — found rig.relay.governance_gate_decision.v1 as canonical gate decision schema with gate enum, decision enum, reason field, content_light flag. No new taxonomy schema needed.",
+    "Phase 3: Created Stage A.3 outcome matrix using rig.relay.governance_gate_decision.v1 schema — 10 gates enumerated with observability status (4 distinct, 2 collapsed, 5 unreachable)",
+    "Phase 3: Created Stage A.3 blocker artifact documenting the missing authorization composer with exact gap locations",
+    "Phase 4: Existing 13 tests remain passing — all truthful about refusal outcomes",
+    "Confirmed: Stage A transport proof is complete and correct",
+    "Confirmed: Stage A.1 permissive callback regression has been reverted",
+    "Confirmed: Stage A.2 fail-closed parity audit is complete",
+    "Confirmed: No execution path currently produces lawful authorized mutation",
+    "Confirmed: OpenCode bridge correctly reaches RuntimeToolExecutionRunner and receives structured refusal with receipt_sha256",
+    "Confirmed: Neither AgentLoop nor RuntimeToolExecutionRunner is permissive — both are fail-closed for mutation"
+  ],
+  "intentionally_deferred_work": [
+    "Governance composer slice: Must wire GovernanceRuntime into RuntimeToolExecutionRunner, populate evidence with GovernanceDecisionEvidence(store=receipt_store), construct a satisfiable permission callback that evaluates through GovernanceRuntime.should_execute_tool(). This is the next implementation slice after A.3.",
+    "Stage B built-in mutation denial: Still parked until lawful authorization is proven",
+    "Stage C additional wrappers: Still parked",
+    "Steward handoff correlation: Still parked",
+    "authorized_succeeded outcome: Unreachable until authorization composer exists",
+    "capability_denied, approval_missing, envelope_invalid outcomes: Currently unreachable because permission gate fires first; will become observable as composer is built"
+  ],
+  "discovered_out_of_scope_risks": [
+    "GovernanceRuntime.evidence never populated — agent_loop.py:189 constructs GovernanceRuntime(config=config) without evidence. Must be wired with GovernanceDecisionEvidence(store=receipt_store).",
+    "GovernanceRuntime not wired into RuntimeToolExecutionRunner — uses separate ToolRuntimePolicy with hardcoded denial. Must pass permission_decision callback that delegates to GovernanceRuntime.should_execute_tool().",
+    "LocalActionEnvelopeGate in tool_runtime.py:449-454 calls require_signed_envelope() without public_key_provider — always blocks MUTATION_EXECUTION. Must either pass a key provider or set local_action_envelope_required=False until envelope infrastructure is ready.",
+    "CapabilityGate blocks on first launch (SETUP_REQUIRED) — no unlock() callers in Python codebase. Profile must be unlocked before any mutation capability gate can pass.",
+    "search_replace uses MUTATION_EXECUTION mode which hits all gates including LocalActionEnvelopeGate. Changing to MUTATION_PROPOSAL would skip gate 1.7 but keep other gates active.",
+    "AgentLoop and RuntimeToolExecutionRunner use separate policy construction patterns (individual callbacks vs ToolRuntimePolicy). A shared governance composer is needed to ensure both paths evaluate the same authorization semantics."
+  ],
+  "remaining_seams": [
+    "GovernanceRuntime.evidence wiring (agent_loop.py:189 → GovernanceDecisionEvidence)",
+    "GovernanceRuntime permission callback in RuntimeToolExecutionRunner (tool_invocation_execution.py:144-154 → ToolRuntime constructor)",
+    "LocalActionEnvelopeGate public_key_provider (tool_runtime.py:449-454 → require_signed_envelope call)",
+    "CapabilityGate profile unlock (no callers to ProfileStore.unlock() in Python)",
+    "Shared governance composer between AgentLoop and RuntimeToolExecutionRunner",
+    "Steward OpenCode plugin modified by parallel lane — preserve untouched"
+  ]
+}

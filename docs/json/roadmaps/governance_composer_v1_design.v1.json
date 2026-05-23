@@ -1,0 +1,58 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-24T01:00:00Z",
+  "mission_title": "Governance Composer v1 — Shared Authorization Decision Spine: Design Artifact",
+  "branch": "feature/persistent-confidential-campaign-runtime-v1",
+  "head_before": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "head_after": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "dirty_state_before": "Steward plugin modified by parallel lane (preserved), Stage A untracked files",
+  "dirty_state_after": {
+    "this_mission_modified": [],
+    "this_mission_created": [
+      "docs/json/roadmaps/governance_composer_v1_design.v1.json"
+    ],
+    "pre_existing_modified": ".opencode/plugins/rig-roadmap-steward.ts (parallel lane — untouched)"
+  },
+  "files_changed": 0,
+  "files_created": 1,
+  "files_deleted": 0,
+  "tests_run": 0,
+  "tests_intentionally_skipped": "Design phase only — no implementation yet. Tests deferred to implementation phase.",
+  "test_classifications": {},
+  "evidence_artifacts": [
+    "docs/json/roadmaps/governance_composer_v1_design.v1.json"
+  ],
+  "schema_validation_results": "Design artifact validates against rig.relay.mission_report.v1",
+  "telemetry_and_redaction_implications": "Design requires content-light decision outputs using existing GateDecision model. No raw content, diffs, prompts, secrets, or environment values in composer output. Reuses rig.relay.governance_gate_decision.v1 for gated evidence events.",
+  "dependency_changes": "GovernanceRuntime, GovernanceEngine, GovernanceDecisionEvidence, FilesystemReceiptStore — all existing. No new dependencies.",
+  "completed_work": [
+    "Phase 1: Deep audit of proposal-vs-execution distinction — MUTATION_PROPOSAL exists as dead enum value, MUTATION_EXECUTION is the only mode produced by tool adapters",
+    "Phase 1: Audit of GovernanceRuntime — can produce lawful allow decisions for search_replace when wired with evidence store and session_rules resolving ALWAYS permission",
+    "Phase 1: Audit of GovernanceEngine.evaluate_action_legality() — functional stateless evaluator, returns ALLOWED when allow_mutation=True and no blocked provider/dirty violations",
+    "Phase 1: Audit of RuntimeToolExecutionRunner ToolRuntime construction — individual callbacks take precedence over policy_object via Python `or` chain",
+    "Phase 1: Audit of CapabilityGate — blocks both MUTATION_EXECUTION and MUTATION_PROPOSAL modes on SETUP_REQUIRED profile; no unlock() callers in Python",
+    "Phase 1: Audit of AgentLoop executor.py — broken mode mapping (always returns UNKNOWN), making gates 1/1.6/1.7 dead code in that path",
+    "Phase 1: Gate classification: 6 gates classified as authorization decision input, execution admission, tool safety check, or concurrency guard"
+  ],
+  "intentionally_deferred_work": [
+    "LocalActionEnvelopeGate satisfaction — requires public_key_provider and signed envelope infrastructure (deferred execution-admission concern)",
+    "CapabilityGate profile lifecycle — requires ProfileStore.unlock() integration from cockpit/ACP UI (deferred execution-admission concern)",
+    "AgentLoop executor mode mapping fix — executor.py always returns UNKNOWN for ToolMutationClass strings; needs separate fix (deferred to AgentLoop governance integration)",
+    "Dirty guard as authorization input — currently checked inside tool, not fed into composer (deferred to composer v2)",
+    "Lease/coordination as execution admission — currently skipped in bridge path (deferred to execution admission layer)"
+  ],
+  "discovered_out_of_scope_risks": [
+    "AgentLoop executor.py mode mapping is broken — all tools pass through with exec_mode=UNKNOWN, bypassing profile/governance/local-action-envelope gates entirely. This means AgentLoop's own mutation path has dead gates. OpenCode bridge path is actually the ONLY path that exercises these gates.",
+    "CapabilityGate profile lifecycle is an execution-admission concern that should not block proposal authorization — a mutation proposal can be authorized for review without an unlocked profile, but execution requires the profile to be unlocked.",
+    "ToolRuntime gate 1.6 hardcodes allow_mutation=True at tool_runtime.py:391 — even if GovernanceEngine is wired, this hardcode bypasses the engine's mutation check. Must be changed to allow_mutation=False or plumbed from the composer decision.",
+    "MUTATION_PROPOSAL has zero behavioral differences from MUTATION_EXECUTION except skipping Gate 1.7 — both modes trigger identical profile and governance engine checks. The enum value needs gate-specific behavior to be meaningful."
+  ],
+  "remaining_seams": [
+    "Evidence store installation: composer must create/pass FilesystemReceiptStore to GovernanceDecisionEvidence to satisfy _persist_governance_decision()",
+    "Permission resolution: composer must set session_rules or config to make search_replace resolve to ALWAYS (without bypass_tool_permissions=True which skips all gates)",
+    "ToolRuntime gate 1.6 allow_mutation hardcode: tool_runtime.py:391 sets allow_mutation=True unconditionally — must be changed to use actual composer decision",
+    "tool_runtime_adapter.py mode mapping: SEARCH_REPLACE hardcoded to MUTATION_EXECUTION — must be changed to MUTATION_PROPOSAL for proposal authorization path",
+    "RuntimeToolExecutionRunner callback injection: must accept and pass permission_decision/approval_request to ToolRuntime.__init__",
+    "CapabilityGate: blocks both proposal and execution on SETUP_REQUIRED — classified as execution-admission concern, deferred"
+  ]
+}

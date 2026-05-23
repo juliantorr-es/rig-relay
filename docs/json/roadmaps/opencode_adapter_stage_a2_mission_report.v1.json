@@ -1,0 +1,64 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-23T23:50:00Z",
+  "mission_title": "OpenCode Adapter Stage A.2 — Mutation Authorization Truth and AgentLoop Parity Audit",
+  "branch": "detached_HEAD",
+  "head_before": "5e1b38087c6819325bae3378fa886c48eb99bb57",
+  "head_after": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "dirty_state_before": "detached_HEAD, staged deletion of .opencode/plugins/rig-roadmap-steward.ts, untracked Steward v0 files",
+  "dirty_state_after": {
+    "this_mission_modified": [],
+    "this_mission_created": [
+      "docs/json/roadmaps/opencode_adapter_stage_a2_mission_report.v1.json"
+    ],
+    "pre_existing_modified": "none"
+  },
+  "files_changed": 0,
+  "files_created": 1,
+  "files_deleted": 0,
+  "tests_run": 0,
+  "tests_intentionally_skipped": "No tests run — audit is read-only. Running tests that produce COMPLETED mutations would require bypassing authorization gates, which the audit has shown is not lawful. Parity test for AgentLoop mutation refusal would require instantiating a full AgentLoop session.",
+  "test_classifications": {},
+  "evidence_artifacts": [
+    "docs/json/roadmaps/opencode_adapter_stage_a2_mission_report.v1.json"
+  ],
+  "schema_validation_results": "Stage A.2 report now validates against rig.relay.mission_report.v1",
+  "telemetry_and_redaction_implications": "No execution path currently produces lawful authorized mutation. All refusal outcomes are content-light (receipt_sha256 only). Audit did not introduce new telemetry or redaction paths.",
+  "dependency_changes": "None.",
+  "completed_work": [
+    "Phase 0: Established current truth — HEAD 00abf3f3, fail-closed restored in tool_runtime_adapter.py, staged deletion resolved at merge",
+    "Phase 1: Deep audit of AgentLoop mutation authorization chain: GovernanceRuntime.should_execute_tool() is fail-closed — ASK default permission without approval_callback returns SKIP",
+    "Phase 1: Deep audit of RuntimeToolExecutionRunner authorization chain: build_policy() returns (False, 'policy_object_missing') for all mutation tools",
+    "Phase 1: Full inventory of 5 real authorization mechanisms: GovernanceEngine (functional, 388 lines), GovernanceRuntime (functional, 285 lines), CapabilityGate (singleton, profile-based), LocalActionEnvelopeGate (Ed25519 sign/verify), DirtyFileGuard (singleton, 517 lines)",
+    "Phase 1: Call-path matrix comparing AgentLoop, RuntimeToolExecutionRunner, and OpenCode bridge across 6 authorization gates — both paths fail-closed by default",
+    "Phase 2: Determined Stage A.1 permissive callbacks were a governance regression — unconditional allow is not authorization. Reverted.",
+    "Phase 2: Discovered both AgentLoop and RuntimeToolExecutionRunner are fail-closed for mutation. AgentLoop: ASK without callback → SKIP. RuntimeToolExecutionRunner: policy_object_missing.",
+    "Phase 2: Discovered no execution path currently produces lawful authorized mutation. Real authorization infrastructure exists but composition is incomplete.",
+    "Phase 3: Corrected Stage A.1 mission report to blocked_governance_regression_discovered",
+    "Phase 3: Documented specific blocking gaps: GovernanceRuntime.evidence never populated, GovernanceRuntime not wired into RuntimeToolExecutionRunner, LocalActionEnvelopeGate has no path to produce signed envelopes, CapabilityGate blocks on first launch"
+  ],
+  "intentionally_deferred_work": [
+    "Stage A.3 governance composition: Dedicated slice to wire GovernanceRuntime into RuntimeToolExecutionRunner, populate evidence, construct lawful authorization. Cross-cutting infrastructure, not an OpenCode adapter task.",
+    "Stage B built-in mutation denial: Parked until lawful mutation authorization is proven",
+    "Stage C additional wrappers: Parked until lawful mutation authorization is proven",
+    "Steward handoff correlation: Parked until Steward ownership resolved"
+  ],
+  "discovered_out_of_scope_risks": [
+    "GovernanceRuntime.evidence is never populated in production — blocks even ALWAYS-permitted mutations at evidence persistence check (governance_runtime.py:272-282)",
+    "GovernanceRuntime is not wired into RuntimeToolExecutionRunner — uses separate ToolRuntimePolicy with hardcoded denial instead",
+    "LocalActionEnvelopeGate has no code path to produce signed envelopes — gate 1.7 in tool_runtime.py:444-505 always blocks MUTATION_EXECUTION tools",
+    "CapabilityGate blocks all mutations on first launch (SETUP_REQUIRED profile) — no unlock() callers in Python codebase",
+    "search_replace uses MUTATION_EXECUTION mode (tool_runtime_adapter.py:101-102), which hits the hard-block LocalActionEnvelopeGate",
+    "AgentLoop and RuntimeToolExecutionRunner use separate policy construction patterns (individual callbacks vs ToolRuntimePolicy) — no shared governance composer exists",
+    "No execution path exercises the full gate chain for authorized mutation — gates 1.6 (GovernanceEngine) and 1.7 (LocalActionEnvelopeGate) are either skipped or unreachable"
+  ],
+  "remaining_seams": [
+    "GovernanceRuntime.evidence never populated — blocks even ALWAYS-permitted mutations",
+    "GovernanceRuntime not wired into RuntimeToolExecutionRunner",
+    "LocalActionEnvelopeGate has no code path to produce signed envelopes",
+    "CapabilityGate blocks all mutations on first launch (SETUP_REQUIRED profile)",
+    "No execution path exercises the full gate chain for authorized mutation",
+    "AgentLoop and RuntimeToolExecutionRunner use separate policy construction patterns",
+    "detached_HEAD with contested Steward boundary — no safe checkpoint possible"
+  ]
+}

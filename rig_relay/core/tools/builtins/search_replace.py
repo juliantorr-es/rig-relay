@@ -12,6 +12,8 @@ from typing import ClassVar, NamedTuple, final
 import anyio
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from rig_relay.coordination.patch_proposal import PatchProposal
+from rig_relay.coordination.patch_workflow import PatchWorkflowStore
 from rig_relay.coordination.store import CoordinationStore
 from rig_relay.core.guard import get_guard
 from rig_relay.core.rewind.manager import FileSnapshot
@@ -175,6 +177,33 @@ class SearchReplaceResult(BaseModel):
     status: str = "success"
     error_kind: str | None = None
     refusal_reason: str | None = None
+    duration_ms: float | None = None
+
+
+class SearchReplaceProposalResult(BaseModel):
+    """Content-light result of a non-mutating proposal computation.
+
+    Contains no raw file content, old/new text, SEARCH/REPLACE markers,
+    diffs, or secrets. Only metadata: hashes, block counts, status,
+    and an optional reference to a persisted PatchProposal artifact.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "rig.relay.search_replace_proposal_result.v1"
+    file: str
+    status: str = "proposal_computed"
+    blocks_applied: int = 0
+    failed_block_count: int = 0
+    total_block_count: int = 0
+    warnings: list[str] = Field(default_factory=list)
+    before_file_sha256: dict[str, str] = Field(default_factory=dict)
+    after_file_sha256: dict[str, str] = Field(default_factory=dict)
+    before_bytes: int = 0
+    after_bytes: int = 0
+    error_kind: str | None = None
+    refusal_reason: str | None = None
+    proposal_id: str | None = None
     duration_ms: float | None = None
 
 
