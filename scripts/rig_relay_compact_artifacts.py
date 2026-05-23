@@ -29,6 +29,15 @@ from typing import Any
 
 import duckdb
 
+from rig_relay.core.paths import (
+    filter_exportable_artifact_paths,
+    refuse_confidential_input,
+)
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 
@@ -226,8 +235,13 @@ def _find_compactable_datasets(derived_dir: Path) -> list[dict[str, Any]]:
     """Find JSONL datasets in derived/ that are compactable (not raw, have a query)."""
     if not derived_dir.is_dir():
         return []
+    allowed, _reason = refuse_confidential_input(
+        derived_dir, "artifact_compaction_derived_dir", REPO_ROOT
+    )
+    if not allowed:
+        return []
     datasets: list[dict[str, Any]] = []
-    for f in sorted(derived_dir.iterdir()):
+    for f in filter_exportable_artifact_paths(sorted(derived_dir.iterdir()), REPO_ROOT):
         if f.suffix != ".jsonl":
             continue
         stem = f.stem
@@ -418,7 +432,7 @@ def compact_all(
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compact derived JSONL datasets to Parquet using DuckDB. "
-        "Dry-run by default. Use --confirm to write."
+        "Dry-run by default. Use --execute to write."
     )
     parser.add_argument(
         "--root",
@@ -444,6 +458,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="dry_run",
         help="Actually write Parquet files.",
     )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute artifact compaction. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
     return parser.parse_args(argv)
 
 
@@ -456,13 +482,76 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     confirm = not args.dry_run
-    manifest = compact_all(root=root, dataset_filter=args.dataset, confirm=confirm)
+    execute = args.execute or confirm
 
-    if manifest["summary"]["dry_run"]:
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_compact_artifacts",
+        authority_tier="local_mutation",
+        capability_id="artifact_compaction",
+        execute_requested=execute,
+    )
+
+    if not args.execute and not confirm:
+        manifest = compact_all(root=root, dataset_filter=args.dataset, confirm=False)
         print("=== DRY RUN — No files written ===")
-    else:
-        print("=== Compaction Complete ===")
+        print(
+            f"Datasets: {manifest['summary']['total_datasets']} total, "
+            f"{manifest['summary']['compacted']} compacted, "
+            f"{manifest['summary']['skipped']} skipped"
+        )
+        for ds in manifest["datasets"]:
+            action = ds.get("action", "?")
+            name = ds["name"]
+            size = ds.get("size_mb", 0)
+            rows = ds.get("rows", 0)
+            parquet = " (parquet exists)" if ds.get("parquet_exists") else ""
+            print(f"  [{action:12s}] {name:45s} {size:.2f} MB ({rows} rows){parquet}")
+        for w in manifest["warnings"]:
+            print(f"WARNING: {w}")
+        if manifest["summary"]["total_datasets"] > 0:
+            print()
+            print("Run with --execute to write Parquet files.")
+        print()
+        print("Nothing was written.")
+        if args.json:
+            r = emit_structured_result(
+                script_name="rig_relay_compact_artifacts",
+                authority_tier="local_mutation",
+                capability_id="artifact_compaction",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        return 0
 
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_compact_artifacts",
+            authority_tier="local_mutation",
+            capability_id="artifact_compaction",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print(
+                    "  EVIDENCE: persistence failed — compaction blocked (fail-closed)"
+                )
+        return 1
+
+    manifest = compact_all(root=root, dataset_filter=args.dataset, confirm=True)
+
+    print("=== Compaction Complete ===")
     print(
         f"Datasets: {manifest['summary']['total_datasets']} total, "
         f"{manifest['summary']['compacted']} compacted, "
@@ -486,13 +575,21 @@ def main(argv: list[str] | None = None) -> int:
     for w in manifest["warnings"]:
         print(f"WARNING: {w}")
 
-    if not confirm and manifest["summary"]["total_datasets"] > 0:
-        print()
-        print("Run with --confirm to write Parquet files.")
-
-    if not confirm:
-        print()
-        print("Nothing was written.")
+    if args.json:
+        r = emit_structured_result(
+            script_name="rig_relay_compact_artifacts",
+            authority_tier="local_mutation",
+            capability_id="artifact_compaction",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="executed",
+            can_execute=True,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+            artifacts=manifest.get("summary"),
+        )
+        print(json.dumps(r, indent=2))
 
     return 0
 

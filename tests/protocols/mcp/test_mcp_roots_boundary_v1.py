@@ -197,4 +197,4 @@ class TestDescriptorIntegrityRegression:
         server = RigMCPServer()
         result = server.call_tool_sync("rig.request_user_approval", {"action": "test"})
         assert result.get("status") == "blocked"
-        assert result.get("refusal_code") == "mutation_tier_mcp"
+        assert result.get("refusal_code") == "mutation_tier_mcp_hmac_required"

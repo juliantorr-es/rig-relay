@@ -1100,7 +1100,11 @@ class TestAuditIntegration:
         self, lease_store: ExecutionLeaseStore, tmp_path: Path
     ) -> None:
         """Audit actor is included in the envelope when provided."""
-        from rig_relay.evidence.receipt_envelope import ReceiptActor, ReceiptActorKind
+        from rig_relay.evidence.receipt_envelope import (
+            ReceiptActor,
+            ReceiptActorKind,
+            ReceiptActorTier,
+        )
 
         audit_path = tmp_path / "audit.jsonl"
         audit_store = AuditTrailStore(audit_path)
@@ -1109,7 +1113,7 @@ class TestAuditIntegration:
             actor_id="test-agent",
             actor_kind=ReceiptActorKind.AGENT,
             display_name="Test Agent",
-            is_authoritative=False,
+            authority_tier=ReceiptActorTier.NONE,
         )
 
         req = _request(

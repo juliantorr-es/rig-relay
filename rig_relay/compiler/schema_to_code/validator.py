@@ -8,11 +8,19 @@ from typing import Any
 
 from rig_relay.compiler.gates import GateMatrix, GateResult, GateStatus
 from rig_relay.compiler.hashes import compute_sha256
+from rig_relay.compiler.schema_to_code._ast_safety import check_ast_safety
 from rig_relay.compiler.schema_to_code.generator import render_template
 from rig_relay.compiler.schema_to_code.reader import (
     derive_model_spec_from_schema,
     load_target_schema,
 )
+
+
+def validate_minimum_safety(schema_path: Path, generated_file_path: Path) -> GateMatrix:
+    gate_matrix = GateMatrix()
+    _run_gate_schema_validation(gate_matrix, schema_path)
+    _run_gate_ast_safety(gate_matrix, generated_file_path)
+    return gate_matrix
 
 
 def validate_generated_code(
@@ -28,6 +36,7 @@ def validate_generated_code(
         gate_matrix = GateMatrix()
 
     _run_gate_schema_validation(gate_matrix, schema_path)
+    _run_gate_ast_safety(gate_matrix, generated_file_path)
     _run_gate_importability(gate_matrix, worktree_path, generated_file_path, repo_root)
     _run_gate_pyright(gate_matrix, generated_file_path, repo_root)
     _run_gate_ruff_lint(gate_matrix, generated_file_path, repo_root)
@@ -61,6 +70,31 @@ def _run_gate_schema_validation(matrix: GateMatrix, schema_path: Path) -> None:
             gate_kind="schema_validation",
             status=status,
             evidence_hash=compute_sha256(str(status)),
+            duration_ms=int((time.monotonic() - start) * 1000),
+        )
+    )
+
+
+def _run_gate_ast_safety(matrix: GateMatrix, candidate_file: Path) -> None:
+    start = time.monotonic()
+    try:
+        source = candidate_file.read_text(encoding="utf-8")
+        result = check_ast_safety(source)
+        if result.safe:
+            status = GateStatus.PASS
+            evidence = compute_sha256("ast-clean")
+        else:
+            status = GateStatus.FAIL
+            evidence = compute_sha256(json.dumps(result.violations))
+    except Exception:
+        status = GateStatus.FAIL
+        evidence = compute_sha256("ast-safety-error")
+    matrix.add(
+        GateResult(
+            gate_id="gate-ast-safety",
+            gate_kind="ast_safety",
+            status=status,
+            evidence_hash=evidence,
             duration_ms=int((time.monotonic() - start) * 1000),
         )
     )

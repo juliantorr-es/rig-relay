@@ -19,6 +19,7 @@ from rig_relay.core.telemetry.manifest import (
     write_session_manifest,
 )
 from rig_relay.core.telemetry.receipts import load_receipts, write_session_receipts
+from rig_relay.core.telemetry.types import TelemetryMode, compute_telemetry_mode
 from rig_relay.core.telemetry.validation import (
     EvidenceValidationResult,
     validate_evidence_session,
@@ -28,9 +29,11 @@ __all__ = [
     "EvidenceManifest",
     "EvidenceManifestEntry",
     "EvidenceValidationResult",
+    "TelemetryMode",
     "build_manifest_bytes",
     "build_session_manifest",
     "compute_degradation_mode",
+    "compute_telemetry_mode",
     "get_telemetry_degradation_state",
     "load_manifest",
     "load_receipts",

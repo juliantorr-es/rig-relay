@@ -11,6 +11,7 @@ from rig_relay.evidence.governance_decision_evidence import (
 )
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptEnvelope,
     ReceiptSubjectKind,
     build_governance_decision_envelope,
@@ -51,7 +52,7 @@ class TestGovernanceDecisionToEvidence:
         envelope = build_governance_decision_envelope(gd)
         assert envelope.actor.actor_id == "governance_runtime"
         assert envelope.actor.actor_kind == ReceiptActorKind.RUNTIME
-        assert envelope.actor.is_authoritative is True
+        assert envelope.actor.authority_tier == ReceiptActorTier.ADMINISTRATIVE
 
     def test_envelope_subject_is_governance_decision(self) -> None:
         gd = _make_gate_decision()

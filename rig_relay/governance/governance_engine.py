@@ -23,6 +23,7 @@ from rig_relay.governance.decisions import (
     GateDecision,
     GovernanceDecisionKind,
     GovernanceReasonSeverity,
+    uuid7,
 )
 from rig_relay.runtime.models import (
     RuntimeCapabilityKind,
@@ -106,6 +107,9 @@ class GovernanceEngine:
         allow_mutation: bool = False,
         allow_network: bool = False,
         dirty_policy_satisfied: bool = True,
+        receipt_store: object | None = None,
+        session_id: str | None = None,
+        surface: str | None = None,
     ) -> GateDecision:
         """Evaluate whether a proposed action is legal under governance.
 
@@ -120,12 +124,15 @@ class GovernanceEngine:
             allow_mutation: Whether mutation is explicitly allowed.
             allow_network: Whether network access is explicitly allowed.
             dirty_policy_satisfied: Whether dirty-file policy is satisfied.
+            receipt_store: Optional ReceiptStore for audit trail persistence.
+            session_id: Optional session ID for cross-surface correlation.
+            surface: Optional surface identifier.
 
         Returns:
             A GateDecision with the evaluation result.
 
-        This method is pure: no filesystem reads, git calls, subprocess,
-        global state mutation, or tool execution.
+        When receipt_store is provided, the decision is persisted as a
+        ReceiptEnvelope through the evidence spine for audit trail purposes.
         """
         reasons: list[DecisionReason] = []
         blocked: list[BlockedIntent] = []
@@ -136,17 +143,30 @@ class GovernanceEngine:
 
         # ── Not applicable: no capabilities, unknown intent ──────────
         if not caps and not intent_kind:
+            decision = GovernanceDecisionKind.NOT_APPLICABLE
+            reasons_na = [
+                DecisionReason(
+                    code="no_requested_capabilities",
+                    message="No capabilities requested and no intent kind specified",
+                    severity=GovernanceReasonSeverity.INFO,
+                )
+            ]
+            if receipt_store is not None:
+                _emit_decision_receipt(
+                    receipt_store,
+                    workspace_id=workspace_id,
+                    decision=decision,
+                    reasons=reasons_na,
+                    session_id=session_id,
+                    surface=surface,
+                )
             return GateDecision(
+                schema_version="rig.relay.governance_decision.v1",
+                decision_id=uuid7(),
                 workspace_id=workspace_id,
-                decision=GovernanceDecisionKind.NOT_APPLICABLE,
+                decision=decision,
                 gate=_DEFAULT_GATE,
-                reasons=[
-                    DecisionReason(
-                        code="no_requested_capabilities",
-                        message="No capabilities requested and no intent kind specified",
-                        severity=GovernanceReasonSeverity.INFO,
-                    )
-                ],
+                reasons=reasons_na,
             )
 
         # ── Dirty policy ────────────────────────────────────────────
@@ -277,8 +297,19 @@ class GovernanceEngine:
                     )
                 )
 
+        if receipt_store is not None:
+            _emit_decision_receipt(
+                receipt_store,
+                workspace_id=workspace_id,
+                decision=decision,
+                reasons=reasons,
+                session_id=session_id,
+                surface=surface,
+            )
+
         return GateDecision(
             schema_version="rig.relay.governance_decision.v1",
+            decision_id=uuid7(),
             workspace_id=workspace_id,
             decision=decision,
             gate=_DEFAULT_GATE,
@@ -286,6 +317,72 @@ class GovernanceEngine:
             allowed_intents=allowed,
             blocked_intents=blocked,
         )
+
+
+def _emit_decision_receipt(
+    receipt_store: object,
+    *,
+    workspace_id: str | None,
+    decision: GovernanceDecisionKind,
+    reasons: list[DecisionReason],
+    session_id: str | None,
+    surface: str | None,
+) -> None:
+    try:
+        from rig_relay.evidence.receipt_envelope import (
+            ReceiptActor,
+            ReceiptActorKind,
+            ReceiptActorTier,
+            ReceiptDecision,
+            ReceiptSubject,
+            ReceiptSubjectKind,
+            build_receipt_envelope,
+        )
+
+        env_id = uuid7()
+        reason_codes = [r.code for r in reasons]
+        rationale = "; ".join(reason_codes) if reason_codes else None
+
+        actor = ReceiptActor(
+            actor_id="governance_engine",
+            actor_kind=ReceiptActorKind.RUNTIME,
+            display_name="Governance Engine",
+            is_human=False,
+            authority_tier=ReceiptActorTier.ADMINISTRATIVE,
+        )
+
+        subject = ReceiptSubject(
+            subject_id=env_id,
+            subject_kind=ReceiptSubjectKind.GOVERNANCE_DECISION,
+            workspace_id=workspace_id,
+            session_id=session_id,
+        )
+
+        receipt_decision = ReceiptDecision(
+            decision=decision.value,
+            rationale=rationale,
+            gate=_DEFAULT_GATE,
+            governance_decision_id=env_id,
+            surface=surface,
+            authority_tier="administrative",
+            content_light_classification="public_safe",
+        )
+
+        envelope = build_receipt_envelope(
+            envelope_id=env_id,
+            receipt_kind="governance_decision",
+            actor=actor,
+            subject=subject,
+            decision=receipt_decision,
+            session_id=session_id,
+            authority_tier="administrative",
+        )
+
+        append_fn = getattr(receipt_store, "append", None)
+        if append_fn is not None and callable(append_fn):
+            append_fn(envelope)
+    except Exception:
+        pass
 
 
 __all__ = ["GovernanceEngine", "_is_mutation_capability"]

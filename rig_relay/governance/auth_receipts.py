@@ -196,7 +196,6 @@ def resolve_authorization(
     receipt_json: str | None = None,
     action_scope: dict[str, Any] | None = None,
     policy: dict[str, Any] | None = None,
-    checkpoint_dev_bypass_enabled: bool = False,
 ) -> AuthorizationResult:
     if policy is None:
         policy = DEFAULT_POLICY
@@ -211,23 +210,14 @@ def resolve_authorization(
             return AuthorizationResult(authorized=False, reason=reason)
         return AuthorizationResult(authorized=True, receipt=receipt)
 
-    if not checkpoint_dev_bypass_enabled:
-        return AuthorizationResult(authorized=False, reason="dev_bypass_disabled")
-
-    dev_receipt = generate_dev_receipt(
-        action, action_scope, policy.get("receipt_ttl_seconds", 300)
-    )
-    return AuthorizationResult(authorized=True, receipt=dev_receipt)
+    return AuthorizationResult(authorized=False, reason="missing_receipt")
 
 
 def mint_dev_receipt(
     action: str,
     action_scope: dict[str, Any] | None = None,
     ttl_seconds: int = 300,
-    checkpoint_dev_bypass_enabled: bool = False,
 ) -> dict[str, Any] | None:
-    if not checkpoint_dev_bypass_enabled:
-        return None
     return generate_dev_receipt(action, action_scope, ttl_seconds)
 
 

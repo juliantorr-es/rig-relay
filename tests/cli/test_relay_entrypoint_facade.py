@@ -9,6 +9,8 @@ Verifies that:
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 pytestmark = [pytest.mark.integration]
@@ -66,6 +68,59 @@ def test_rig_relay_no_args_routes_to_cockpit(monkeypatch):
     entrypoint.main([])
 
     cockpit.assert_called_once_with([])
+
+
+def test_rig_relay_steward_dispatch_loops_until_terminal(
+    monkeypatch, capsys, tmp_path: Path
+):
+    import rig_relay.cli.entrypoint as entrypoint
+
+    calls: list[list[str]] = []
+    last_run_path = (
+        tmp_path
+        / ".build"
+        / "rig-relay"
+        / "derived"
+        / "opencode_idle_steward_last_run_v1.json"
+    )
+
+    def fake_steward(argv: list[str]) -> int:
+        calls.append(list(argv))
+        last_run_path.parent.mkdir(parents=True, exist_ok=True)
+        state = "advance_to_next_lane" if len(calls) == 1 else "no_action"
+        selected_task = (
+            {
+                "task_id": "issue_1",
+                "title": "Fix cache workspace scoping",
+            }
+            if len(calls) == 1
+            else None
+        )
+        last_run_path.write_text(
+            json.dumps(
+                {
+                    "steward_state": state,
+                    "selected_task": selected_task,
+                }
+            ),
+            encoding="utf-8",
+        )
+        return 0
+
+    monkeypatch.setattr("rig_relay.cli.steward.main", fake_steward)
+
+    exit_code = entrypoint._run_steward_until_terminal(
+        ["--project-root", str(tmp_path), "--worktree", "default"]
+    )
+
+    assert exit_code == 0
+    assert len(calls) == 2
+    out = capsys.readouterr().out
+    assert (
+        "steward cycle 1: dispatched next task issue_1 - Fix cache workspace scoping"
+        in out
+    )
+    assert "steward cycle 2: no runnable work remains" in out
 
 
 def test_relay_cli_acp_entrypoint_has_callable_main():

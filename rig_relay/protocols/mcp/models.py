@@ -22,7 +22,7 @@ import hashlib
 import json
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MCPToolTier(IntEnum):
@@ -35,11 +35,18 @@ class MCPToolTier(IntEnum):
 
 
 class MCPTool(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     description: str
     input_schema: dict[str, Any] = Field(default_factory=dict)
     tier: MCPToolTier = MCPToolTier.READ_ONLY
     requires_approval: bool = False
+    descriptor_hash: str = ""
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.descriptor_hash:
+            self.descriptor_hash = compute_descriptor_hash(self)
 
 
 class MCPResource(BaseModel):
@@ -60,6 +67,21 @@ class ServerCapabilities:
     tools: dict[str, Any] = field(default_factory=dict)
     resources: dict[str, Any] = field(default_factory=dict)
     prompts: dict[str, Any] = field(default_factory=dict)
+
+
+def _canonical_sha256(data: dict[str, Any]) -> str:
+    canonical = json.dumps(data, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def compute_descriptor_hash(tool: MCPTool) -> str:
+    return _canonical_sha256({
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": tool.input_schema,
+        "tier": int(tool.tier),
+        "server_identity": "rig.relay.mcp.local",
+    })
 
 
 # ═══ Tier 0 — Read-only context ═════════════════════════════════════════
@@ -346,21 +368,6 @@ class ContentLightClass:
     FORBIDDEN_RAW = "forbidden_raw"
 
 
-def _canonical_sha256(data: dict[str, Any]) -> str:
-    canonical = json.dumps(data, sort_keys=True)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def compute_descriptor_hash(tool: MCPTool) -> str:
-    return _canonical_sha256({
-        "name": tool.name,
-        "description": tool.description,
-        "input_schema": tool.input_schema,
-        "tier": int(tool.tier),
-        "server_identity": "rig.relay.mcp.local",
-    })
-
-
 @dataclass
 class MCPDescriptorIdentity:
     descriptor_id: str
@@ -381,6 +388,31 @@ class MCPDescriptorIdentity:
     drift_reason: str | None = None
 
 
+class MCPEvidenceEnvelope(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    envelope_schema: str = "rig.relay.mcp.evidence_envelope.v1"
+    request_id: str
+    session_id: str = ""
+    actor_id: str = ""
+    surface: str = "mcp"
+    authority_tier: int = 0
+    capability_id: str = ""
+    input_hash: str = ""
+    output_hash: str = ""
+    payload_schema: str = ""
+    policy_decision_id: str = ""
+    approval_receipt_id: str = ""
+    trace_id: str = ""
+    artifact_refs: list[str] = Field(default_factory=list)
+    content_light_classification: str = ContentLightClass.PUBLIC_SAFE
+    redaction_scan_id: str = ""
+    source_of_truth_refs: list[str] = Field(default_factory=list)
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    producer: str = "rig.relay.mcp.server"
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
 __all__ = [
     "GATED_TOOLS",
     "PROMPTS",
@@ -391,7 +423,9 @@ __all__ = [
     "TIER_3_TOOLS",
     "TIER_4_TOOLS",
     "TIER_5_TOOLS",
+    "ContentLightClass",
     "MCPDescriptorIdentity",
+    "MCPEvidenceEnvelope",
     "MCPPrompt",
     "MCPResource",
     "MCPTool",

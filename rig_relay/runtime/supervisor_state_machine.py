@@ -1,3 +1,12 @@
+"""Event-driven RuntimeSupervisor supervision state machine.
+
+Converts the implicit while-True polling loop in RuntimeSupervisor.execute
+into explicit validated state transitions. Handles subprocess lifecycle
+(IDLE -> SPAWNING -> RUNNING/HEARTBEATING/STALL_DETECTED/RECOVERING ->
+TERMINATING -> KILLED/COMPLETED/FAILED) with heartbeat timeout, stall
+detection, and recovery transitions driven by explicit events.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -6,90 +15,129 @@ from datetime import UTC, datetime
 from enum import StrEnum, auto
 from typing import Any
 
+# ── States ────────────────────────────────────────────────────────────
 
-class RuntimeSupervisorState(StrEnum):
+
+class SupervisorState(StrEnum):
     IDLE = auto()
-    LEASED = auto()
     SPAWNING = auto()
     RUNNING = auto()
-    DRAINING = auto()
+    HEARTBEATING = auto()
+    STALL_DETECTED = auto()
+    RECOVERING = auto()
+    TERMINATING = auto()
+    KILLED = auto()
     COMPLETED = auto()
     FAILED = auto()
-    TIMED_OUT = auto()
-    KILLED = auto()
-    CANCELLED = auto()
 
 
-class RuntimeSupervisorEvent(StrEnum):
-    LEASE_ACQUIRED = auto()
+# ── Events ────────────────────────────────────────────────────────────
+
+
+class SupervisorEvent(StrEnum):
     SPAWN_STARTED = auto()
     SPAWN_SUCCEEDED = auto()
-    STDOUT_CHUNK = auto()
-    STDERR_CHUNK = auto()
+    SPAWN_FAILED = auto()
     PROCESS_EXITED = auto()
-    DRAIN_COMPLETED = auto()
+    OUTPUT_CHUNK = auto()
+    HEARTBEAT_TIMER = auto()
+    STALL_TIMER = auto()
+    STALL_RECOVERED = auto()
+    HARD_STALL = auto()
     TIMEOUT = auto()
+    BUDGET_EXCEEDED = auto()
     KILL_SENT = auto()
     CANCELLED = auto()
-    FAILURE = auto()
+    ERROR = auto()
+
+
+# ── Transition helpers ────────────────────────────────────────────────
+
+_TERMINAL_STATES: frozenset[SupervisorState] = frozenset({
+    SupervisorState.KILLED,
+    SupervisorState.COMPLETED,
+    SupervisorState.FAILED,
+})
+
+_PROCESS_ALIVE_STATES: frozenset[SupervisorState] = frozenset({
+    SupervisorState.RUNNING,
+    SupervisorState.HEARTBEATING,
+    SupervisorState.STALL_DETECTED,
+    SupervisorState.RECOVERING,
+})
+
+_TRANSITIONS: dict[SupervisorState, dict[SupervisorEvent, SupervisorState]] = {
+    SupervisorState.IDLE: {SupervisorEvent.SPAWN_STARTED: SupervisorState.SPAWNING},
+    SupervisorState.SPAWNING: {
+        SupervisorEvent.SPAWN_SUCCEEDED: SupervisorState.RUNNING,
+        SupervisorEvent.SPAWN_FAILED: SupervisorState.FAILED,
+        SupervisorEvent.ERROR: SupervisorState.FAILED,
+    },
+    SupervisorState.RUNNING: {
+        SupervisorEvent.HEARTBEAT_TIMER: SupervisorState.HEARTBEATING,
+        SupervisorEvent.STALL_TIMER: SupervisorState.STALL_DETECTED,
+        SupervisorEvent.TIMEOUT: SupervisorState.TERMINATING,
+        SupervisorEvent.BUDGET_EXCEEDED: SupervisorState.TERMINATING,
+        SupervisorEvent.CANCELLED: SupervisorState.TERMINATING,
+    },
+    SupervisorState.HEARTBEATING: {
+        SupervisorEvent.HEARTBEAT_TIMER: SupervisorState.HEARTBEATING,
+        SupervisorEvent.OUTPUT_CHUNK: SupervisorState.RUNNING,
+        SupervisorEvent.STALL_TIMER: SupervisorState.STALL_DETECTED,
+        SupervisorEvent.TIMEOUT: SupervisorState.TERMINATING,
+        SupervisorEvent.BUDGET_EXCEEDED: SupervisorState.TERMINATING,
+        SupervisorEvent.CANCELLED: SupervisorState.TERMINATING,
+    },
+    SupervisorState.STALL_DETECTED: {
+        SupervisorEvent.HEARTBEAT_TIMER: SupervisorState.STALL_DETECTED,
+        SupervisorEvent.OUTPUT_CHUNK: SupervisorState.RECOVERING,
+        SupervisorEvent.HARD_STALL: SupervisorState.TERMINATING,
+        SupervisorEvent.TIMEOUT: SupervisorState.TERMINATING,
+        SupervisorEvent.BUDGET_EXCEEDED: SupervisorState.TERMINATING,
+        SupervisorEvent.CANCELLED: SupervisorState.TERMINATING,
+    },
+    SupervisorState.RECOVERING: {
+        SupervisorEvent.HEARTBEAT_TIMER: SupervisorState.HEARTBEATING,
+        SupervisorEvent.STALL_TIMER: SupervisorState.STALL_DETECTED,
+        SupervisorEvent.TIMEOUT: SupervisorState.TERMINATING,
+        SupervisorEvent.BUDGET_EXCEEDED: SupervisorState.TERMINATING,
+        SupervisorEvent.CANCELLED: SupervisorState.TERMINATING,
+    },
+    SupervisorState.TERMINATING: {SupervisorEvent.KILL_SENT: SupervisorState.KILLED},
+    SupervisorState.KILLED: {},
+    SupervisorState.COMPLETED: {},
+    SupervisorState.FAILED: {},
+}
+
+
+# ── Dataclass ─────────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True, slots=True)
-class RuntimeSupervisorTransition:
-    from_state: RuntimeSupervisorState
-    to_state: RuntimeSupervisorState
-    event: RuntimeSupervisorEvent
+class SupervisorTransition:
+    from_state: SupervisorState
+    to_state: SupervisorState
+    event: SupervisorEvent
     reason: str | None
     attributes: dict[str, Any]
     timestamp: str
 
 
-class InvalidRuntimeSupervisorTransition(Exception):
+# ── Exception ─────────────────────────────────────────────────────────
+
+
+class InvalidSupervisorTransition(Exception):
     pass
 
 
-_TRANSITIONS: dict[
-    RuntimeSupervisorState, dict[RuntimeSupervisorEvent, RuntimeSupervisorState]
-] = {
-    RuntimeSupervisorState.IDLE: {
-        RuntimeSupervisorEvent.LEASE_ACQUIRED: RuntimeSupervisorState.LEASED
-    },
-    RuntimeSupervisorState.LEASED: {
-        RuntimeSupervisorEvent.SPAWN_STARTED: RuntimeSupervisorState.SPAWNING,
-        RuntimeSupervisorEvent.FAILURE: RuntimeSupervisorState.FAILED,
-        RuntimeSupervisorEvent.CANCELLED: RuntimeSupervisorState.CANCELLED,
-    },
-    RuntimeSupervisorState.SPAWNING: {
-        RuntimeSupervisorEvent.SPAWN_SUCCEEDED: RuntimeSupervisorState.RUNNING,
-        RuntimeSupervisorEvent.FAILURE: RuntimeSupervisorState.FAILED,
-        RuntimeSupervisorEvent.CANCELLED: RuntimeSupervisorState.CANCELLED,
-    },
-    RuntimeSupervisorState.RUNNING: {
-        RuntimeSupervisorEvent.STDOUT_CHUNK: RuntimeSupervisorState.RUNNING,
-        RuntimeSupervisorEvent.STDERR_CHUNK: RuntimeSupervisorState.RUNNING,
-        RuntimeSupervisorEvent.TIMEOUT: RuntimeSupervisorState.TIMED_OUT,
-        RuntimeSupervisorEvent.KILL_SENT: RuntimeSupervisorState.KILLED,
-        RuntimeSupervisorEvent.CANCELLED: RuntimeSupervisorState.CANCELLED,
-        RuntimeSupervisorEvent.FAILURE: RuntimeSupervisorState.FAILED,
-    },
-    RuntimeSupervisorState.DRAINING: {
-        RuntimeSupervisorEvent.DRAIN_COMPLETED: RuntimeSupervisorState.COMPLETED,
-        RuntimeSupervisorEvent.FAILURE: RuntimeSupervisorState.FAILED,
-        RuntimeSupervisorEvent.TIMEOUT: RuntimeSupervisorState.TIMED_OUT,
-    },
-    RuntimeSupervisorState.COMPLETED: {},
-    RuntimeSupervisorState.FAILED: {},
-    RuntimeSupervisorState.TIMED_OUT: {},
-    RuntimeSupervisorState.KILLED: {},
-    RuntimeSupervisorState.CANCELLED: {},
-}
+# ── State Machine ─────────────────────────────────────────────────────
 
 
 class RuntimeSupervisorStateMachine:
     def __init__(self, *, on_transition: Callable[..., Any] | None = None) -> None:
-        self._state = RuntimeSupervisorState.IDLE
-        self._previous_state: RuntimeSupervisorState | None = None
-        self._last_event: RuntimeSupervisorEvent | None = None
+        self._state = SupervisorState.IDLE
+        self._previous_state: SupervisorState | None = None
+        self._last_event: SupervisorEvent | None = None
         self._transition_count = 0
         self._exit_code: int | None = None
         self._timed_out = False
@@ -99,54 +147,88 @@ class RuntimeSupervisorStateMachine:
         self._on_transition = on_transition
 
     @property
-    def current_state(self) -> RuntimeSupervisorState:
+    def current_state(self) -> SupervisorState:
         return self._state
 
     @property
     def is_terminal(self) -> bool:
-        return self._state in {
-            RuntimeSupervisorState.COMPLETED,
-            RuntimeSupervisorState.FAILED,
-            RuntimeSupervisorState.TIMED_OUT,
-            RuntimeSupervisorState.KILLED,
-            RuntimeSupervisorState.CANCELLED,
-        }
+        return self._state in _TERMINAL_STATES
 
     def transition(
         self,
-        event: RuntimeSupervisorEvent,
+        event: SupervisorEvent,
         *,
         reason: str | None = None,
         attributes: dict[str, Any] | None = None,
-    ) -> RuntimeSupervisorTransition:
+    ) -> SupervisorTransition:
         attrs = dict(attributes or {})
-        if event in {
-            RuntimeSupervisorEvent.STDOUT_CHUNK,
-            RuntimeSupervisorEvent.STDERR_CHUNK,
-        }:
-            self._stdout_bytes = int(attrs.get("stdout_bytes", self._stdout_bytes))
-            self._stderr_bytes = int(attrs.get("stderr_bytes", self._stderr_bytes))
-        if event == RuntimeSupervisorEvent.TIMEOUT:
-            self._timed_out = bool(attrs.get("timed_out", True))
-        if event == RuntimeSupervisorEvent.KILL_SENT:
+        if event == SupervisorEvent.TIMEOUT:
+            self._timed_out = True
+        if event == SupervisorEvent.KILL_SENT:
             self._killed = True
         if "exit_code" in attrs and attrs["exit_code"] is not None:
             self._exit_code = int(attrs["exit_code"])
+        if "stdout_bytes" in attrs:
+            self._stdout_bytes = int(attrs["stdout_bytes"])
+        if "stderr_bytes" in attrs:
+            self._stderr_bytes = int(attrs["stderr_bytes"])
+
         target = self._resolve_target(event, attrs)
+
         if self.is_terminal and target != self._state:
-            raise InvalidRuntimeSupervisorTransition(f"{self._state} is terminal")
-        if self._state == target and self._last_event == event:
-            return self._build_transition(
-                self._state, target, event, reason, attrs, emit=False
+            raise InvalidSupervisorTransition(
+                f"{self._state.value} is terminal; refusing {event.value}"
             )
         previous = self._state
         self._previous_state = previous
         self._state = target
         self._last_event = event
         self._transition_count += 1
-        transition = self._build_transition(previous, target, event, reason, attrs)
-        self._emit(transition)
+        transition = SupervisorTransition(
+            from_state=previous,
+            to_state=target,
+            event=event,
+            reason=reason,
+            attributes=attrs,
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+        if self._on_transition is not None:
+            self._on_transition(
+                from_state=transition.from_state,
+                to_state=transition.to_state,
+                event=transition.event,
+                reason=transition.reason,
+                attributes=transition.attributes,
+                timestamp=transition.timestamp,
+            )
         return transition
+
+    def next_wait_seconds(
+        self, deadline_ts: float, heartbeat_s: float, stall_check_s: float
+    ) -> float:
+        """Return the max wall-clock seconds to wait before checking conditions.
+
+        The caller should pass this to asyncio.wait_for(proc.wait(), timeout=...).
+        On TimeoutError the caller re-evaluates conditions (deadline, stall,
+        heartbeat) and feeds the appropriate event.
+        """
+        now = datetime.now(UTC).timestamp()
+        remaining = deadline_ts - now
+        if remaining <= 0:
+            return 0.0
+        if self._state == SupervisorState.TERMINATING:
+            return min(5.0, remaining)
+        check = remaining
+        if heartbeat_s > 0:
+            check = min(check, heartbeat_s)
+        if stall_check_s > 0 and self._state in {
+            SupervisorState.RUNNING,
+            SupervisorState.HEARTBEATING,
+            SupervisorState.STALL_DETECTED,
+            SupervisorState.RECOVERING,
+        }:
+            check = min(check, stall_check_s)
+        return max(0.01, check)
 
     def export_projection(self) -> dict[str, Any]:
         return {
@@ -164,81 +246,47 @@ class RuntimeSupervisorStateMachine:
         }
 
     def _resolve_target(
-        self, event: RuntimeSupervisorEvent, attributes: dict[str, Any]
-    ) -> RuntimeSupervisorState:
-        target: RuntimeSupervisorState | None = None
-        match event:
-            case RuntimeSupervisorEvent.PROCESS_EXITED:
-                if self._state != RuntimeSupervisorState.RUNNING:
-                    raise InvalidRuntimeSupervisorTransition(
-                        f"Invalid transition from {self._state} via {event}"
-                    )
-                target = RuntimeSupervisorState.DRAINING
-            case RuntimeSupervisorEvent.DRAIN_COMPLETED:
-                if self._state != RuntimeSupervisorState.DRAINING:
-                    raise InvalidRuntimeSupervisorTransition(
-                        f"Invalid transition from {self._state} via {event}"
-                    )
-                if attributes.get("exit_code") == 0 or self._exit_code == 0:
-                    target = RuntimeSupervisorState.COMPLETED
-                else:
-                    target = RuntimeSupervisorState.FAILED
-            case RuntimeSupervisorEvent.TIMEOUT:
-                target = RuntimeSupervisorState.TIMED_OUT
-            case RuntimeSupervisorEvent.KILL_SENT:
-                target = RuntimeSupervisorState.KILLED
-            case RuntimeSupervisorEvent.CANCELLED:
-                target = RuntimeSupervisorState.CANCELLED
-            case RuntimeSupervisorEvent.FAILURE:
-                target = RuntimeSupervisorState.FAILED
-            case _:
-                allowed = _TRANSITIONS.get(self._state, {})
-                if target := allowed.get(event):
-                    pass
-        if target is None:
-            raise InvalidRuntimeSupervisorTransition(
-                f"Invalid transition from {self._state} via {event}"
-            )
-        return target
+        self, event: SupervisorEvent, attributes: dict[str, Any]
+    ) -> SupervisorState:
+        if event == SupervisorEvent.PROCESS_EXITED:
+            if self._state in _TERMINAL_STATES:
+                raise InvalidSupervisorTransition(
+                    f"{self._state.value} is terminal; refusing PROCESS_EXITED"
+                )
+            if self._state not in _PROCESS_ALIVE_STATES:
+                raise InvalidSupervisorTransition(
+                    f"PROCESS_EXITED invalid from {self._state.value}"
+                )
+            exit_code = attributes.get("exit_code")
+            if exit_code is not None and exit_code != 0:
+                return SupervisorState.FAILED
+            return SupervisorState.COMPLETED
 
-    def _build_transition(
-        self,
-        from_state: RuntimeSupervisorState,
-        to_state: RuntimeSupervisorState,
-        event: RuntimeSupervisorEvent,
-        reason: str | None,
-        attributes: dict[str, Any],
-        *,
-        emit: bool = True,
-    ) -> RuntimeSupervisorTransition:
-        transition = RuntimeSupervisorTransition(
-            from_state=from_state,
-            to_state=to_state,
-            event=event,
-            reason=reason,
-            attributes=attributes,
-            timestamp=datetime.now(UTC).isoformat(),
+        allowed = _TRANSITIONS.get(self._state, {})
+        if target := allowed.get(event):
+            return target
+
+        raise InvalidSupervisorTransition(
+            f"Invalid transition from {self._state.value} via {event.value}"
         )
-        if emit:
-            self._emit(transition)
-        return transition
 
-    def _emit(self, transition: RuntimeSupervisorTransition) -> None:
-        if self._on_transition is not None:
-            self._on_transition(
-                from_state=transition.from_state,
-                to_state=transition.to_state,
-                event=transition.event,
-                reason=transition.reason,
-                attributes=transition.attributes,
-                timestamp=transition.timestamp,
-            )
+
+# ── Backward-compatible aliases ───────────────────────────────────────
+
+RuntimeSupervisorState = SupervisorState
+RuntimeSupervisorEvent = SupervisorEvent
+RuntimeSupervisorTransition = SupervisorTransition
+InvalidRuntimeSupervisorTransition = InvalidSupervisorTransition
 
 
 __all__ = [
     "InvalidRuntimeSupervisorTransition",
+    "InvalidSupervisorTransition",
     "RuntimeSupervisorEvent",
     "RuntimeSupervisorState",
     "RuntimeSupervisorStateMachine",
     "RuntimeSupervisorTransition",
+    "SupervisorEvent",
+    "SupervisorState",
+    "SupervisorTransition",
 ]

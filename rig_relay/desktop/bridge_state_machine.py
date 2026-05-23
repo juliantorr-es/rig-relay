@@ -1,4 +1,4 @@
-"""Desktop bridge lifecycle state machine."""
+"""Desktop bridge lifecycle state machine — phase-based with strict validation."""
 
 from __future__ import annotations
 
@@ -13,21 +13,12 @@ from typing import Any
 
 class DesktopBridgeState(StrEnum):
     UNINITIALIZED = auto()
-    RESOLVING_FRONTEND = auto()
-    ASSETS_VERIFIED = auto()
-    CONFIG_BUILT = auto()
-    SERVER_CREATED = auto()
-    SERVER_BOUND = auto()
-    SELF_PROBED = auto()
-    WEBVIEW_CREATED = auto()
-    WEBVIEW_STARTED = auto()
-    FRONTEND_CONFIG_LOADED = auto()
-    WEBSOCKET_CONNECTED = auto()
-    AUTHENTICATED = auto()
-    PROJECTION_SENT = auto()
-    PROJECTION_RENDERED = auto()
-    FAILED = auto()
-    CLOSED = auto()
+    TOKEN_GENERATING = auto()
+    TOKEN_VERIFYING = auto()
+    PORT_BINDING = auto()
+    LISTENING = auto()
+    ERROR = auto()
+    SHUTDOWN = auto()
 
 
 class DesktopBridgeEvent(StrEnum):
@@ -66,100 +57,78 @@ class TerminalBridgeStateError(RuntimeError):
     """Raised when a terminal bridge state rejects transitions."""
 
 
+_TERMINAL_STATES = frozenset({DesktopBridgeState.ERROR, DesktopBridgeState.SHUTDOWN})
+
+_OPERATIONAL_EVENTS = frozenset({
+    DesktopBridgeEvent.SELF_PROBED,
+    DesktopBridgeEvent.WEBVIEW_CREATED,
+    DesktopBridgeEvent.WEBVIEW_STARTED,
+    DesktopBridgeEvent.FRONTEND_CONFIG_LOADED,
+    DesktopBridgeEvent.WEBSOCKET_CONNECTED,
+    DesktopBridgeEvent.AUTHENTICATED,
+    DesktopBridgeEvent.PROJECTION_SENT,
+    DesktopBridgeEvent.PROJECTION_RENDERED,
+})
+
 _TRANSITIONS: dict[DesktopBridgeState, dict[DesktopBridgeEvent, DesktopBridgeState]] = {
     DesktopBridgeState.UNINITIALIZED: {
-        DesktopBridgeEvent.RESOLVING_FRONTEND: DesktopBridgeState.RESOLVING_FRONTEND,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+        DesktopBridgeEvent.RESOLVING_FRONTEND: DesktopBridgeState.TOKEN_GENERATING,
+        DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+        DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
     },
-    DesktopBridgeState.RESOLVING_FRONTEND: {
-        DesktopBridgeEvent.ASSETS_VERIFIED: DesktopBridgeState.ASSETS_VERIFIED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+    DesktopBridgeState.TOKEN_GENERATING: {
+        DesktopBridgeEvent.ASSETS_VERIFIED: DesktopBridgeState.TOKEN_GENERATING,
+        DesktopBridgeEvent.CONFIG_BUILT: DesktopBridgeState.TOKEN_VERIFYING,
+        DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+        DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
     },
-    DesktopBridgeState.ASSETS_VERIFIED: {
-        DesktopBridgeEvent.CONFIG_BUILT: DesktopBridgeState.CONFIG_BUILT,
-        DesktopBridgeEvent.RESOLVING_FRONTEND: DesktopBridgeState.ASSETS_VERIFIED,
-        DesktopBridgeEvent.ASSETS_VERIFIED: DesktopBridgeState.ASSETS_VERIFIED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+    DesktopBridgeState.TOKEN_VERIFYING: {
+        DesktopBridgeEvent.SERVER_CREATED: DesktopBridgeState.PORT_BINDING,
+        DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+        DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
     },
-    DesktopBridgeState.CONFIG_BUILT: {
-        DesktopBridgeEvent.SERVER_CREATED: DesktopBridgeState.SERVER_CREATED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+    DesktopBridgeState.PORT_BINDING: {
+        DesktopBridgeEvent.SERVER_BOUND: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+        DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
     },
-    DesktopBridgeState.SERVER_CREATED: {
-        DesktopBridgeEvent.SERVER_BOUND: DesktopBridgeState.SERVER_BOUND,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+    DesktopBridgeState.LISTENING: {
+        DesktopBridgeEvent.SELF_PROBED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.WEBVIEW_CREATED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.WEBVIEW_STARTED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.FRONTEND_CONFIG_LOADED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.WEBSOCKET_CONNECTED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.AUTHENTICATED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.PROJECTION_SENT: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.PROJECTION_RENDERED: DesktopBridgeState.LISTENING,
+        DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+        DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
     },
-    DesktopBridgeState.SERVER_BOUND: {
-        DesktopBridgeEvent.SELF_PROBED: DesktopBridgeState.SELF_PROBED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.SELF_PROBED: {
-        DesktopBridgeEvent.WEBVIEW_CREATED: DesktopBridgeState.WEBVIEW_CREATED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.WEBVIEW_CREATED: {
-        DesktopBridgeEvent.WEBVIEW_STARTED: DesktopBridgeState.WEBVIEW_STARTED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.WEBVIEW_STARTED: {
-        DesktopBridgeEvent.WEBSOCKET_CONNECTED: DesktopBridgeState.WEBSOCKET_CONNECTED,
-        DesktopBridgeEvent.FRONTEND_CONFIG_LOADED: DesktopBridgeState.FRONTEND_CONFIG_LOADED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.FRONTEND_CONFIG_LOADED: {
-        DesktopBridgeEvent.WEBSOCKET_CONNECTED: DesktopBridgeState.WEBSOCKET_CONNECTED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.WEBSOCKET_CONNECTED: {
-        DesktopBridgeEvent.AUTHENTICATED: DesktopBridgeState.AUTHENTICATED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.AUTHENTICATED: {
-        DesktopBridgeEvent.PROJECTION_SENT: DesktopBridgeState.PROJECTION_SENT,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.PROJECTION_SENT: {
-        DesktopBridgeEvent.PROJECTION_RENDERED: DesktopBridgeState.PROJECTION_RENDERED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-    },
-    DesktopBridgeState.PROJECTION_RENDERED: {
-        DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
-        DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-    },
-    DesktopBridgeState.FAILED: {},
-    DesktopBridgeState.CLOSED: {},
+    DesktopBridgeState.ERROR: {DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN},
+    DesktopBridgeState.SHUTDOWN: {},
 }
 
 _EVENT_TO_STATE: dict[DesktopBridgeEvent, DesktopBridgeState] = {
-    DesktopBridgeEvent.RESOLVING_FRONTEND: DesktopBridgeState.RESOLVING_FRONTEND,
-    DesktopBridgeEvent.ASSETS_VERIFIED: DesktopBridgeState.ASSETS_VERIFIED,
-    DesktopBridgeEvent.CONFIG_BUILT: DesktopBridgeState.CONFIG_BUILT,
-    DesktopBridgeEvent.SERVER_CREATED: DesktopBridgeState.SERVER_CREATED,
-    DesktopBridgeEvent.SERVER_BOUND: DesktopBridgeState.SERVER_BOUND,
-    DesktopBridgeEvent.SELF_PROBED: DesktopBridgeState.SELF_PROBED,
-    DesktopBridgeEvent.WEBVIEW_CREATED: DesktopBridgeState.WEBVIEW_CREATED,
-    DesktopBridgeEvent.WEBVIEW_STARTED: DesktopBridgeState.WEBVIEW_STARTED,
-    DesktopBridgeEvent.FRONTEND_CONFIG_LOADED: DesktopBridgeState.FRONTEND_CONFIG_LOADED,
-    DesktopBridgeEvent.WEBSOCKET_CONNECTED: DesktopBridgeState.WEBSOCKET_CONNECTED,
-    DesktopBridgeEvent.AUTHENTICATED: DesktopBridgeState.AUTHENTICATED,
-    DesktopBridgeEvent.PROJECTION_SENT: DesktopBridgeState.PROJECTION_SENT,
-    DesktopBridgeEvent.PROJECTION_RENDERED: DesktopBridgeState.PROJECTION_RENDERED,
-    DesktopBridgeEvent.FAILED: DesktopBridgeState.FAILED,
-    DesktopBridgeEvent.CLOSED: DesktopBridgeState.CLOSED,
+    DesktopBridgeEvent.RESOLVING_FRONTEND: DesktopBridgeState.TOKEN_GENERATING,
+    DesktopBridgeEvent.ASSETS_VERIFIED: DesktopBridgeState.TOKEN_GENERATING,
+    DesktopBridgeEvent.CONFIG_BUILT: DesktopBridgeState.TOKEN_VERIFYING,
+    DesktopBridgeEvent.SERVER_CREATED: DesktopBridgeState.PORT_BINDING,
+    DesktopBridgeEvent.SERVER_BOUND: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.SELF_PROBED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.WEBVIEW_CREATED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.WEBVIEW_STARTED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.FRONTEND_CONFIG_LOADED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.WEBSOCKET_CONNECTED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.AUTHENTICATED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.PROJECTION_SENT: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.PROJECTION_RENDERED: DesktopBridgeState.LISTENING,
+    DesktopBridgeEvent.FAILED: DesktopBridgeState.ERROR,
+    DesktopBridgeEvent.CLOSED: DesktopBridgeState.SHUTDOWN,
 }
+
+
+def _state_accepts_operational(state: DesktopBridgeState) -> bool:
+    return state is DesktopBridgeState.LISTENING
 
 
 class DesktopBridgeStateMachine:
@@ -192,8 +161,16 @@ class DesktopBridgeStateMachine:
         return self._state
 
     @property
+    def is_listening(self) -> bool:
+        return self._state is DesktopBridgeState.LISTENING
+
+    @property
+    def is_active(self) -> bool:
+        return self._state is DesktopBridgeState.LISTENING
+
+    @property
     def is_terminal(self) -> bool:
-        return self._state in {DesktopBridgeState.FAILED, DesktopBridgeState.CLOSED}
+        return self._state in _TERMINAL_STATES
 
     @property
     def transition_count(self) -> int:
@@ -227,10 +204,7 @@ class DesktopBridgeStateMachine:
             return self._build_transition(
                 self._state, state, event, reason, attrs, record=False
             )
-        if self.is_terminal and state not in {
-            DesktopBridgeState.FAILED,
-            DesktopBridgeState.CLOSED,
-        }:
+        if self.is_terminal and state not in _TERMINAL_STATES:
             raise TerminalBridgeStateError(f"{self._state} is terminal")
         allowed = _TRANSITIONS.get(self._state, {})
         if allowed.get(event) != state:
@@ -255,17 +229,17 @@ class DesktopBridgeStateMachine:
     ) -> DesktopBridgeTransition:
         self._failed_step = str((attributes or {}).get("step_id") or event.name)
         return self.transition_to(
-            DesktopBridgeState.FAILED, event, reason=reason, attributes=attributes
+            DesktopBridgeState.ERROR, event, reason=reason, attributes=attributes
         )
 
     def close(self, event: str = "closed") -> DesktopBridgeTransition:
         bridge_event = DesktopBridgeEvent.CLOSED
-        if self._state == DesktopBridgeState.CLOSED:
+        if self._state == DesktopBridgeState.SHUTDOWN:
             return self._build_transition(
                 self._state, self._state, bridge_event, event, {}, record=False
             )
         return self.transition_to(
-            DesktopBridgeState.CLOSED, bridge_event, reason=event, attributes=None
+            DesktopBridgeState.SHUTDOWN, bridge_event, reason=event, attributes=None
         )
 
     def export_projection(self) -> dict[str, Any]:

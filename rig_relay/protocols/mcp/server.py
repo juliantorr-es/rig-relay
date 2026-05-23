@@ -17,13 +17,12 @@ Transport: stdio (local) or Streamable HTTP (remote).
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 import hashlib
+import hmac
 import json
 from pathlib import Path
 import secrets
-import sys
 import time
 from typing import Any
 import uuid
@@ -31,7 +30,11 @@ import uuid
 from rig_relay.coordination.council import RedactionMode
 from rig_relay.evidence.redaction import _FORBIDDEN_FIELD_KEYS, _SECRET_VALUE_PATTERNS
 from rig_relay.protocols._transport_budgets import BudgetTracker
-from rig_relay.protocols.mcp._auth_metadata import build_descriptor_identity
+from rig_relay.protocols.mcp._auth_metadata import (
+    MCPPerUserAuthorization,
+    _tier_scopes,
+    build_descriptor_identity,
+)
 from rig_relay.protocols.mcp._refusal_adapter import classify_tool_descriptor_suspicious
 from rig_relay.protocols.mcp.models import (
     GATED_TOOLS,
@@ -40,6 +43,7 @@ from rig_relay.protocols.mcp.models import (
     READ_ONLY_TOOLS,
     ContentLightClass,
     MCPDescriptorIdentity,
+    MCPEvidenceEnvelope,
     MCPPrompt,
     MCPResource,
     MCPTool,
@@ -75,6 +79,9 @@ class RigMCPServer:
         self._session_token_fingerprint = hashlib.sha256(
             f"rig.relay.mcp.session:{self._session_token}".encode()
         ).hexdigest()[:16]
+        self._hmac_key = hashlib.sha256(
+            f"rig.relay.mcp.hmac:{self._session_token}".encode()
+        ).digest()
         self._require_auth = require_auth
         self._initialized = False
         self._budgets = BudgetTracker()
@@ -136,6 +143,9 @@ class RigMCPServer:
             self._persist_outcome(result, request_id, name)
             return result
 
+        # ── Per-user authorization record ─────────────────────
+        _per_user_auth = self._build_per_user_auth(tool, session_token)
+
         # ── Descriptor integrity ─────────────────────────────
         ok, refusal_code = self._verify_descriptor_integrity(name, tool)
         if not ok:
@@ -170,10 +180,28 @@ class RigMCPServer:
                     "surface": "mcp",
                     "capability_id": f"rig.{name}",
                     "authority_tier": int(tool.tier),
-                    "message": "Mutation-tier tool blocked: signed authorization receipt required. "
-                    "MCP mutation tools are FORBIDDEN until approval receipts are "
-                    "cryptographically enforced server-side per cross_surface_authority_spine v1.",
-                    "refusal_code": "mutation_tier_mcp",
+                    "message": "Mutation-tier tool blocked: cryptographically signed authorization receipt required. "
+                    "MCP mutation tools are FORBIDDEN until governance-pipeline-integrated HMAC receipts "
+                    "are enforced per cross_surface_authority_spine v1.",
+                    "refusal_code": "mutation_tier_mcp_hmac_required",
+                    "approval_required": True,
+                    "content_light": True,
+                    "content_light_classification": "public_safe",
+                    "request_id": request_id,
+                }
+                self._persist_outcome(result, request_id, name)
+                return result
+            hmac_ok, hmac_reason = self._verify_auth_receipt_hmac(receipt)
+            if not hmac_ok:
+                result = {
+                    "status": "blocked",
+                    "tool": name,
+                    "surface": "mcp",
+                    "capability_id": f"rig.{name}",
+                    "authority_tier": int(tool.tier),
+                    "message": f"Mutation-tier tool blocked: HMAC verification failed ({hmac_reason}). "
+                    "Governance-pipeline integration required for MCP tier-4+ tools.",
+                    "refusal_code": f"hmac_verification_failed:{hmac_reason}",
                     "approval_required": True,
                     "content_light": True,
                     "content_light_classification": "public_safe",
@@ -200,6 +228,13 @@ class RigMCPServer:
             self._persist_outcome(result, request_id, name)
             return result
 
+        # ── Tier authorization scoping ────────────────────────
+        tier_refusal = self._validate_tier_authorization(tool)
+        if tier_refusal is not None:
+            tier_refusal["request_id"] = request_id
+            self._persist_outcome(tier_refusal, request_id, name)
+            return tier_refusal
+
         dispatch_result = await self._dispatch(tool.name, arguments)
         classification, refusal = self._scan_tool_output(dispatch_result)
         if refusal is not None:
@@ -214,6 +249,9 @@ class RigMCPServer:
             "content_light_classification": classification,
             "request_id": request_id,
         }
+        result = self._enrich_with_evidence_envelope(
+            result, name, tool, request_id, arguments
+        )
         self._persist_outcome(result, request_id, name)
         return result
 
@@ -250,6 +288,9 @@ class RigMCPServer:
             self._persist_outcome(result, request_id, name)
             return result
 
+        # ── Per-user authorization record ─────────────────────
+        _per_user_auth = self._build_per_user_auth(tool, session_token)
+
         # ── Descriptor integrity ─────────────────────────────
         ok, refusal_code = self._verify_descriptor_integrity(name, tool)
         if not ok:
@@ -281,10 +322,28 @@ class RigMCPServer:
                     "surface": "mcp",
                     "capability_id": f"rig.{name}",
                     "authority_tier": int(tool.tier),
-                    "message": "Mutation-tier tool blocked: signed authorization receipt required. "
-                    "MCP mutation tools are FORBIDDEN until approval receipts are "
-                    "cryptographically enforced server-side per cross_surface_authority_spine v1.",
-                    "refusal_code": "mutation_tier_mcp",
+                    "message": "Mutation-tier tool blocked: cryptographically signed authorization receipt required. "
+                    "MCP mutation tools are FORBIDDEN until governance-pipeline-integrated HMAC receipts "
+                    "are enforced per cross_surface_authority_spine v1.",
+                    "refusal_code": "mutation_tier_mcp_hmac_required",
+                    "approval_required": True,
+                    "content_light": True,
+                    "content_light_classification": "public_safe",
+                    "request_id": request_id,
+                }
+                self._persist_outcome(result, request_id, name)
+                return result
+            hmac_ok, hmac_reason = self._verify_auth_receipt_hmac(receipt)
+            if not hmac_ok:
+                result = {
+                    "status": "blocked",
+                    "tool": name,
+                    "surface": "mcp",
+                    "capability_id": f"rig.{name}",
+                    "authority_tier": int(tool.tier),
+                    "message": f"Mutation-tier tool blocked: HMAC verification failed ({hmac_reason}). "
+                    "Governance-pipeline integration required for MCP tier-4+ tools.",
+                    "refusal_code": f"hmac_verification_failed:{hmac_reason}",
                     "approval_required": True,
                     "content_light": True,
                     "content_light_classification": "public_safe",
@@ -311,6 +370,13 @@ class RigMCPServer:
             self._persist_outcome(result, request_id, name)
             return result
 
+        # ── Tier authorization scoping ────────────────────────
+        tier_refusal = self._validate_tier_authorization(tool)
+        if tier_refusal is not None:
+            tier_refusal["request_id"] = request_id
+            self._persist_outcome(tier_refusal, request_id, name)
+            return tier_refusal
+
         if tool.tier is not None and tool.tier.value < MCPToolTier.MUTATION.value:
             dispatch_result = self._dispatch_sync(tool.name, arguments)
             classification, refusal = self._scan_tool_output(dispatch_result)
@@ -326,12 +392,49 @@ class RigMCPServer:
                 "content_light_classification": classification,
                 "request_id": request_id,
             }
+            result = self._enrich_with_evidence_envelope(
+                result, name, tool, request_id, arguments
+            )
             self._persist_outcome(result, request_id, name)
             return result
 
         result = {"error": f"Tool not dispatched: {name}", "code": -32601}
         self._persist_outcome(result, request_id, name)
         return result
+
+    # ── Descriptor integrity ──────────────────────────────────────
+
+    def _verify_auth_receipt_hmac(
+        self, receipt: dict[str, Any] | str
+    ) -> tuple[bool, str]:
+        if isinstance(receipt, str):
+            try:
+                receipt = json.loads(receipt)
+            except json.JSONDecodeError:
+                return False, "invalid_receipt_json"
+        if not isinstance(receipt, dict):
+            return False, "invalid_receipt_type"
+        provided_sig = receipt.get("hmac_signature", "")
+        if not provided_sig:
+            return False, "missing_hmac_signature"
+        provided_timestamp = receipt.get("timestamp", "")
+        provided_tool = receipt.get("tool", "")
+        provided_nonce = receipt.get("nonce", "")
+        if not provided_timestamp or not provided_tool:
+            return False, "incomplete_receipt_fields"
+        payload = (f"{provided_tool}:{provided_timestamp}:{provided_nonce}").encode()
+        expected_sig = hmac.HMAC(self._hmac_key, payload, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(provided_sig, expected_sig):
+            return False, "hmac_signature_mismatch"
+        ttl = 300
+        try:
+            receipt_time = datetime.fromisoformat(provided_timestamp)
+            now = datetime.now(UTC).replace(tzinfo=None)
+            if abs((now - receipt_time).total_seconds()) > ttl:
+                return False, "receipt_expired"
+        except (ValueError, TypeError):
+            return False, "invalid_timestamp"
+        return True, ""
 
     # ── Descriptor integrity ──────────────────────────────────────
 
@@ -407,30 +510,173 @@ class RigMCPServer:
             "content_light": True,
             "descriptor_id": descriptor.descriptor_id if descriptor else None,
             "descriptor_hash": descriptor.descriptor_hash if descriptor else None,
+            "policy_decision_id": self._build_decision_id(f"{name}:{refusal_code}")
+            if name
+            else "",
             "content_light_classification": "public_safe",
             "request_id": str(uuid.uuid4()),
             "generated_at": datetime.now(UTC).isoformat(),
         }
 
+    def _emit_tool_called_telemetry(
+        self, result: dict[str, Any], name: str, request_id: str
+    ) -> None:
+        """Emit rig.relay.tool.called telemetry event (content-light only)."""
+        try:
+            from rig_relay.core.logger import logger
+            from rig_relay.core.telemetry.constants import EventName
+
+            is_refused = result.get("status") in ("refused", "blocked")
+            has_error = "error" in result
+
+            payload = {
+                "event_name": EventName.TOOL_CALLED,
+                "surface": "mcp",
+                "tool_name": name,
+                "capability_id": f"rig.{name}",
+                "request_id": request_id,
+                "policy_decision_id": result.get("policy_decision_id", ""),
+                "authority_tier": result.get("authority_tier", 0),
+                "content_light_classification": result.get(
+                    "content_light_classification", "public_safe"
+                ),
+                "session_id": result.get("session_id", ""),
+                "refusal_code": result.get("refusal_code", ""),
+                "status": result.get(
+                    "status", "ok" if not is_refused and not has_error else "error"
+                ),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+            logger.info("MCP tool called: %s", json.dumps(payload, default=str))
+        except Exception:
+            pass
+
     def _build_decision_id(self, seed: str) -> str:
         return f"gd-mcp-{hashlib.sha256(seed.encode('utf-8')).hexdigest()[:16]}"
+
+    def _build_policy_decision_id(self, tool: MCPTool) -> str:
+        tier = int(tool.tier) if tool.tier is not None else 0
+        descriptor_hash = compute_descriptor_hash(tool)
+        if tier < MCPToolTier.PATCH_PROPOSAL.value:
+            decision = f"{descriptor_hash}:allowed_read_only"
+        elif tier == MCPToolTier.PATCH_PROPOSAL.value:
+            decision = f"{descriptor_hash}:blocked_pending_approval"
+        else:
+            decision = f"{descriptor_hash}:blocked_mutation"
+        return hashlib.sha256(decision.encode("utf-8")).hexdigest()[:16]
+
+    def _enrich_with_evidence_envelope(
+        self,
+        result: dict[str, Any],
+        name: str,
+        tool: MCPTool | None,
+        request_id: str,
+        arguments: dict[str, Any],
+    ) -> dict[str, Any]:
+        tier = int(tool.tier) if tool is not None and tool.tier is not None else 0
+        input_canonical = json.dumps(arguments, sort_keys=True, default=str)
+        input_hash = hashlib.sha256(input_canonical.encode("utf-8")).hexdigest()
+        output_canonical = json.dumps(result, sort_keys=True, default=str)
+        output_hash = hashlib.sha256(output_canonical.encode("utf-8")).hexdigest()
+
+        policy_decision_id = (
+            self._build_policy_decision_id(tool)
+            if tool is not None
+            else self._build_decision_id(request_id)
+        )
+
+        envelope = MCPEvidenceEnvelope(
+            request_id=request_id,
+            session_id=hashlib.sha256(self._session_token.encode("utf-8")).hexdigest()[
+                :16
+            ]
+            if self._require_auth
+            else "",
+            actor_id=f"mcp:{self._session_token_fingerprint}"
+            if self._require_auth
+            else "mcp:anonymous",
+            surface="mcp",
+            authority_tier=tier,
+            capability_id=f"rig.{name}",
+            input_hash=input_hash,
+            output_hash=output_hash,
+            payload_schema="rig.relay.mcp.tool_result.v1",
+            policy_decision_id=policy_decision_id,
+            trace_id=request_id,
+            content_light_classification=result.get(
+                "content_light_classification", ContentLightClass.PUBLIC_SAFE
+            ),
+            payload=result,
+        )
+
+        result["_evidence_envelope"] = envelope.model_dump(mode="json")
+        result["session_id"] = envelope.session_id
+        result["actor_id"] = envelope.actor_id
+        result["policy_decision_id"] = policy_decision_id
+        result["trace_id"] = envelope.trace_id
+        result["input_hash"] = input_hash
+        result["output_hash"] = output_hash
+        return result
+
+    def _build_per_user_auth(
+        self, tool: MCPTool, session_token: str
+    ) -> MCPPerUserAuthorization:
+        user_id_hash = hashlib.sha256(
+            f"rig.relay.mcp.user:{session_token or self._session_token}".encode()
+        ).hexdigest()[:16]
+        tier = int(tool.tier) if tool.tier is not None else 0
+        scopes = _tier_scopes(tool.tier)
+        authorised = tier < MCPToolTier.PATCH_PROPOSAL.value
+
+        return MCPPerUserAuthorization(
+            user_id_hash=user_id_hash,
+            tool_name=tool.name,
+            scopes_granted=scopes if authorised else [],
+            authorization_status="allowed" if authorised else "refused",
+            expires_at=(
+                datetime
+                .now(UTC)
+                .replace(minute=(datetime.now(UTC).minute + 30) % 60)
+                .isoformat()
+                if authorised
+                else ""
+            ),
+        )
+
+    def _validate_tier_authorization(self, tool: MCPTool) -> dict | None:
+        if not self._require_auth:
+            return None
+
+        tier = int(tool.tier) if tool.tier is not None else 0
+
+        if tier >= MCPToolTier.PATCH_PROPOSAL.value:
+            return self._build_refusal(
+                tool.name,
+                RefusalCode.UNAUTHORIZED_TIER,
+                f"Tier {tier} tools are not authorized in the read-only MCP surface. "
+                "Only tier 0-2 tools are available for local session auth.",
+                tier,
+            )
+
+        return None
 
     def _persist_outcome(
         self, outcome: dict[str, Any], request_id: str, tool_name: str
     ) -> None:
+        self._emit_tool_called_telemetry(outcome, tool_name, request_id)
         if self._receipt_store is None:
             return
         try:
             from rig_relay.evidence.receipt_envelope import (
                 ReceiptActor,
                 ReceiptActorKind,
+                ReceiptActorTier,
                 ReceiptDecision,
                 ReceiptSubject,
                 ReceiptSubjectKind,
                 build_receipt_envelope,
             )
 
-            descriptor = self._descriptors.get(tool_name)
             tier = outcome.get("authority_tier", 0)
             refusal_code = outcome.get("refusal_code", "")
             is_refused = outcome.get("status") in ("refused", "blocked")
@@ -440,7 +686,7 @@ class RigMCPServer:
                 actor_kind=ReceiptActorKind.RUNTIME,
                 display_name="Rig MCP Server",
                 is_human=False,
-                is_authoritative=True,
+                authority_tier=ReceiptActorTier.ADMINISTRATIVE,
             )
 
             subject = ReceiptSubject(
@@ -513,6 +759,31 @@ class RigMCPServer:
                 "Resolved path outside workspace root.",
             )
         return None
+
+    def _validate_resource_uri(self, uri: str) -> tuple[Path | None, dict | None]:
+        if not uri.startswith("rig://"):
+            return None, self._build_refusal(
+                uri,
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Resource URI must use rig:// scheme.",
+            )
+        trimmed = uri.removeprefix("rig://")
+        if ".." in trimmed or trimmed.startswith("/"):
+            return None, self._build_refusal(
+                uri,
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Resource URI contains path traversal.",
+            )
+        try:
+            candidate = (self._workspace_root / ".rig" / trimmed).resolve()
+            candidate.relative_to(self._workspace_root)
+        except (OSError, ValueError):
+            return None, self._build_refusal(
+                uri,
+                RefusalCode.ROOT_SCOPE_VIOLATION,
+                "Resource URI resolves outside workspace root.",
+            )
+        return candidate, None
 
     def _filter_drift_for_listing(
         self, tools: list[MCPTool]
@@ -973,48 +1244,69 @@ class RigMCPServer:
     # ═══ Transport — stdio ═══════════════════════════════════════════════
 
     async def serve_stdio(self) -> None:
-        loop = asyncio.get_event_loop()
-        while True:
-            line = await loop.run_in_executor(None, sys.stdin.readline)
-            if not line:
-                break
-            line_str = line.strip()
-            if not line_str:
-                continue
+        from mcp.server import Server
+        from mcp.server.stdio import stdio_server
+        from mcp.types import (
+            Prompt as MCPStdioPrompt,
+            PromptArgument,
+            Resource as MCPStdioResource,
+            Tool as MCPStdioTool,
+        )
+        from pydantic import AnyUrl
 
-            try:
-                request = json.loads(line_str)
-            except json.JSONDecodeError:
-                response = self._jsonrpc_error(-32700, "Parse error", None)
-                sys.stdout.write(json.dumps(response) + "\n")
-                sys.stdout.flush()
-                continue
+        from rig_relay.core.logger import logger
 
-            request_id = request.get("id")
-            method = request.get("method", "")
-            params = request.get("params", {})
-            jsonrpc = request.get("jsonrpc")
+        mcp_srv = Server(name="Rig Relay MCP Server", version="0.1.0")
 
-            if jsonrpc != "2.0" or not method:
-                response = self._jsonrpc_error(-32600, "Invalid Request", request_id)
-                sys.stdout.write(json.dumps(response) + "\n")
-                sys.stdout.flush()
-                continue
+        @mcp_srv.list_tools()
+        async def _list_tools() -> list[MCPStdioTool]:
+            tools = self.list_tools()
+            clean_tools, drifted = self._filter_drift_for_listing(tools)
+            if drifted:
+                logger.warning("MCP descriptor drift detected: %s", drifted)
+            return [
+                MCPStdioTool(
+                    name=t.name, description=t.description, inputSchema=t.input_schema
+                )
+                for t in clean_tools
+            ]
 
-            trace_id = params.get("trace_id", "") if isinstance(params, dict) else ""
-            result = await self._handle_jsonrpc(method, params, request_id)
-            if "error" in result:
-                response = {
-                    "jsonrpc": "2.0",
-                    "error": result["error"],
-                    "id": request_id,
-                }
-            else:
-                response = {"jsonrpc": "2.0", "result": result, "id": request_id}
-            if trace_id:
-                response["trace_id"] = trace_id
-            sys.stdout.write(json.dumps(response) + "\n")
-            sys.stdout.flush()
+        @mcp_srv.call_tool(validate_input=False)
+        async def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            return await self.call_tool(name, arguments)
+
+        @mcp_srv.list_resources()
+        async def _list_resources() -> list[MCPStdioResource]:
+            return [
+                MCPStdioResource(
+                    uri=AnyUrl(r.uri),
+                    name=r.name,
+                    description=r.description,
+                    mimeType=r.mime_type,
+                )
+                for r in self.list_resources()
+            ]
+
+        @mcp_srv.list_prompts()
+        async def _list_prompts() -> list[MCPStdioPrompt]:
+            return [
+                MCPStdioPrompt(
+                    name=p.name,
+                    description=p.description,
+                    arguments=[
+                        PromptArgument(
+                            name=a["name"], required=a.get("required", False)
+                        )
+                        for a in p.arguments
+                    ],
+                )
+                for p in self.list_prompts()
+            ]
+
+        async with stdio_server() as (read_stream, write_stream):
+            await mcp_srv.run(
+                read_stream, write_stream, mcp_srv.create_initialization_options()
+            )
 
     def _jsonrpc_error(
         self,
@@ -1091,6 +1383,120 @@ class RigMCPServer:
 
     async def serve_streamable_http(self, host: str, port: int) -> None:
         raise NotImplementedError("Streamable HTTP transport deferred")
+
+    @property
+    def budget_tracker(self) -> BudgetTracker:
+        return self._budgets
+
+    def process_jsonrpc_sync(self, raw_json: str) -> str:
+        try:
+            request = json.loads(raw_json)
+        except json.JSONDecodeError:
+            return json.dumps(
+                self._jsonrpc_error(-32700, "Parse error", None), default=str
+            )
+
+        if not isinstance(request, dict):
+            return json.dumps(
+                self._jsonrpc_error(-32600, "Invalid Request", None), default=str
+            )
+
+        request_id = request.get("id")
+        method = request.get("method", "")
+        params = request.get("params", {})
+        jsonrpc = request.get("jsonrpc")
+
+        if jsonrpc != "2.0" or not method:
+            return json.dumps(
+                self._jsonrpc_error(-32600, "Invalid Request", request_id), default=str
+            )
+
+        request_size = len(raw_json.encode("utf-8"))
+        if not self._budgets.can_accept_request(request_size):
+            return json.dumps(
+                self._jsonrpc_error(-32000, "Request rejected by budget", request_id),
+                default=str,
+            )
+
+        self._budgets.track_request()
+        try:
+            match method:
+                case "tools/list":
+                    tools = self.list_tools()
+                    clean_tools, drifted = self._filter_drift_for_listing(tools)
+                    result: dict[str, Any] = {
+                        "tools": [
+                            {
+                                "name": t.name,
+                                "description": t.description,
+                                "input_schema": t.input_schema,
+                                "tier": int(t.tier),
+                            }
+                            for t in clean_tools
+                        ],
+                        "content_light": True,
+                    }
+                    if drifted:
+                        result["descriptor_drift_detected"] = drifted
+                case "tools/call":
+                    name = params.get("name", "")
+                    arguments = params.get("arguments", {})
+                    session_token = params.get("session_token", "")
+                    result = self.call_tool_sync(
+                        name, arguments, session_token=session_token
+                    )
+                case "initialize":
+                    result = {
+                        "capabilities": self._capabilities,
+                        "server_info": {
+                            "name": "Rig Relay MCP Server",
+                            "version": "0.1.0",
+                        },
+                        "content_light": True,
+                    }
+                case "resources/list":
+                    result = {
+                        "resources": [
+                            {
+                                "uri": r.uri,
+                                "name": r.name,
+                                "description": r.description,
+                                "mime_type": r.mime_type,
+                            }
+                            for r in self.list_resources()
+                        ]
+                    }
+                case "prompts/list":
+                    result = {
+                        "prompts": [
+                            {
+                                "name": p.name,
+                                "description": p.description,
+                                "arguments": p.arguments,
+                            }
+                            for p in self.list_prompts()
+                        ]
+                    }
+                case _:
+                    err = self._jsonrpc_error(
+                        -32601, f"Method not found: {method}", request_id
+                    )
+                    return json.dumps(err, default=str)
+        finally:
+            self._budgets.release_request()
+
+        if "error" in result:
+            return json.dumps(
+                self._jsonrpc_error(
+                    result["error"].get("code", -32603),
+                    result["error"].get("message", "Internal error"),
+                    request_id,
+                ),
+                default=str,
+            )
+        return json.dumps(
+            {"jsonrpc": "2.0", "result": result, "id": request_id}, default=str
+        )
 
 
 __all__ = ["RigMCPServer"]

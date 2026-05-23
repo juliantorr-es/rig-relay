@@ -32,18 +32,16 @@ def test_valid_transition_chain() -> None:
     sm.transition(DesktopBridgeEvent.PROJECTION_SENT)
     sm.transition(DesktopBridgeEvent.PROJECTION_RENDERED)
 
-    assert sm.current_state is DesktopBridgeState.PROJECTION_RENDERED
+    assert sm.current_state is DesktopBridgeState.LISTENING
     assert sm.transition_count == 13
     assert seen[0][0] == "uninitialized"
-    assert seen[-1][1] == "projection_rendered"
+    assert seen[-1][1] == "listening"
 
 
 def test_invalid_transition_refused() -> None:
     sm = DesktopBridgeStateMachine()
     with pytest.raises(InvalidBridgeTransitionError):
-        sm.transition_to(
-            DesktopBridgeState.SERVER_BOUND, DesktopBridgeEvent.SERVER_BOUND
-        )
+        sm.transition_to(DesktopBridgeState.LISTENING, DesktopBridgeEvent.SERVER_BOUND)
 
 
 def test_terminal_failure_immutability() -> None:
@@ -69,8 +67,8 @@ def test_export_projection_is_json_safe() -> None:
     sm.transition(DesktopBridgeEvent.RESOLVING_FRONTEND)
     sm.fail(DesktopBridgeEvent.FAILED, "no frontend")
     projection = sm.export_projection()
-    assert projection["state"] == "failed"
-    assert projection["previous_state"] == "resolving_frontend"
+    assert projection["state"] == "error"
+    assert projection["previous_state"] == "token_generating"
     assert projection["last_event"] == "failed"
     assert projection["failed_step"] == "FAILED"
     assert projection["transition_count"] == 2
@@ -88,6 +86,6 @@ def test_trace_hook_receives_transition_payload() -> None:
     assert seen
     payload = seen[0]
     assert payload["from_state"] == DesktopBridgeState.UNINITIALIZED
-    assert payload["to_state"] == DesktopBridgeState.RESOLVING_FRONTEND
+    assert payload["to_state"] == DesktopBridgeState.TOKEN_GENERATING
     assert payload["event"] == DesktopBridgeEvent.RESOLVING_FRONTEND
     assert payload["reason"] == "startup"

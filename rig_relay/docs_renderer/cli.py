@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rig_relay.core.logger import logger
 from rig_relay.tracing.golden_path import build_golden_path_event
 from rig_relay.tracing.store import get_default_trace_store
 
@@ -12,8 +13,8 @@ def _emit_render_trace(event_type: str, *, payload: dict | None = None) -> None:
         store = get_default_trace_store()
         event = build_golden_path_event(event_type=event_type, payload=payload or {})
         store.write(event)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to emit render trace %s: %s", event_type, e)
 
 
 from datetime import UTC, datetime
@@ -21,8 +22,6 @@ import json
 from pathlib import Path
 import subprocess
 from typing import cast
-
-from markupsafe import Markup
 
 from rig_relay.docs_renderer.archive import render_collection_page, render_index
 from rig_relay.docs_renderer.css import CSS
@@ -86,7 +85,8 @@ def _git_sha() -> str:
             cwd=DOCS_OUT.parent,
         )
         return result.stdout.strip()[:12]
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to get git SHA: %s", e)
         return "unknown"
 
 
@@ -206,7 +206,8 @@ def _render_new_system_pages(manifest: dict) -> list[dict]:
                 "summary": page_model.get("description", ""),
                 "_source_path": str(output_path),
             })
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to render new system page '%s': %s", page_id, e)
             continue
     return new_pages
 
@@ -301,9 +302,12 @@ def _render_jinja2_pages() -> list[dict]:
             "og_image_width": "1200",
             "og_image_height": "630",
             "twitter_card": "summary_large_image",
-            "structured_data_json": Markup(
-                '{"@context":"https://schema.org","@type":"WebSite","name":"Rig Relay","url":"https://juliantorr-es.github.io/rig-relay/"}'
-            ),
+            "structured_data_json": {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "Rig Relay",
+                "url": "https://juliantorr-es.github.io/rig-relay/",
+            },
             "model": graph_model,
             "sections": [],
             "relative_root": ".",
@@ -317,8 +321,8 @@ def _render_jinja2_pages() -> list[dict]:
             "summary": "Searchable graph of 14,000 nodes across files, schemas, artifacts, functions, classes, and dependencies",
             "_source_path": "docs/pages/codebase-evidence-graph.html",
         })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to render evidence graph page: %s", e)
 
     # Developer portfolio page
     try:
@@ -432,9 +436,20 @@ def _render_jinja2_pages() -> list[dict]:
             "og_image_width": "1200",
             "og_image_height": "630",
             "twitter_card": "summary_large_image",
-            "structured_data_json": Markup(
-                '{"@context":"https://schema.org","@type":"Person","name":"Julian Torres","url":"https://juliantorr-es.github.io/juliantorr-es/","description":"Software developer building governed agent infrastructure.","knowsAbout":["Python","GitHub API","Governance","Receipt-backend evidence"],"sameAs":["https://github.com/juliantorr-es"]}'
-            ),
+            "structured_data_json": {
+                "@context": "https://schema.org",
+                "@type": "Person",
+                "name": "Julian Torres",
+                "url": "https://juliantorr-es.github.io/juliantorr-es/",
+                "description": "Software developer building governed agent infrastructure.",
+                "knowsAbout": [
+                    "Python",
+                    "GitHub API",
+                    "Governance",
+                    "Receipt-backend evidence",
+                ],
+                "sameAs": ["https://github.com/juliantorr-es"],
+            },
             "header_brand": "Julian Torres",
             "footer_brand": "Julian Torres",
             "nav_heading": "Portfolio",
@@ -454,8 +469,8 @@ def _render_jinja2_pages() -> list[dict]:
             "summary": "Evidence-backed developer portfolio — tech stack, projects, governance, and public claims",
             "_source_path": "docs/pages/portfolio.html",
         })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to render portfolio page: %s", e)
 
     return new_pages
 
@@ -548,9 +563,13 @@ def _render_homepage_jinja2(output_path: Path) -> None:
         "canonical_url": "https://juliantorr-es.github.io/rig-relay/",
         "theme_color": "#1e3a5f",
         "robots": "index,follow",
-        "structured_data_json": Markup(
-            '{"@context":"https://schema.org","@type":"WebSite","name":"Rig Relay","url":"https://juliantorr-es.github.io/rig-relay/","description":"Governed local agent platform — inspectable, auditable, refusal-first."}'
-        ),
+        "structured_data_json": {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Rig Relay",
+            "url": "https://juliantorr-es.github.io/rig-relay/",
+            "description": "Governed local agent platform — inspectable, auditable, refusal-first.",
+        },
         "header_brand": "Rig Relay",
         "footer_brand": "Rig Relay",
         "nav_heading": "Evidence Console",
@@ -653,8 +672,8 @@ def _render_domain_pages(site_meta: SiteMeta) -> tuple[list[dict], SafetyReport]
                 for line in seams_path.read_text(encoding="utf-8").splitlines()
                 if line.strip()
             ]
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load known test seams: %s", e)
     new_pages.append(
         _write_and_check(
             render_known_seams_page(seams, site_meta),
@@ -825,6 +844,18 @@ def main() -> int:
     print(f"  search: {SEARCH_INDEX}")
     print(f"  manifest: {RENDER_MANIFEST}")
     _emit_render_trace("docs.render.completed", payload={"status": "success"})
+
+    from rig_relay.docs_renderer.validation import check_static_safety
+
+    static_issues = check_static_safety(DOCS_OUT)
+    if static_issues:
+        print(f"\n  ⚠ Static output safety: {len(static_issues)} issue(s)")
+        for issue in static_issues:
+            print(f"    - {issue}")
+            logger.warning("Static safety issue: %s", issue)
+    else:
+        print("\n  ✓ Static output safety: no issues found")
+
     return 0
 
 

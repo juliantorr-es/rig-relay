@@ -67,7 +67,7 @@ class TestTierAuthorization:
             session_token=server._session_token,
         )
         assert result.get("status") == "blocked"
-        assert result.get("refusal_code") == "mutation_tier_mcp"
+        assert result.get("refusal_code") == "mutation_tier_mcp_hmac_required"
 
     def test_valid_token_does_not_allow_git_release_tool(self) -> None:
         from rig_relay.protocols.mcp.server import RigMCPServer

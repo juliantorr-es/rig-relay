@@ -50,11 +50,15 @@ __all__ = [
     "get_auth_status",
     "get_credential_store_ref_hash",
     "get_sdk_status",
+    "invoke_tool",
+    "list_tools",
     "run_github_live_read",
     "run_google_workspace_live_read",
     "run_mcp_read_only",
     "send_a2a_local_task",
+    "send_acp_message",
     "start_acp_session",
+    "start_agent_chat",
 ]
 
 
@@ -552,3 +556,30 @@ def _validate_google_live_auth_setup(issues: list[str]) -> dict[str, object]:
         else "Set the required environment variables for Google OAuth"
     )
     return {"ready": ready, "issues": issues, "recommendation": recommendation}
+
+
+# ── Wired SDK operations (AgentLoop, ToolManager, ACP, A2A) ──
+
+
+def start_agent_chat(prompt: str, trace_id: str = "") -> RigRunResult:
+    """Run a one-shot agent chat through the real AgentLoop."""
+    return asyncio.run(RigClient().async_start_agent_chat(prompt, trace_id))
+
+
+def list_tools(trace_id: str = "") -> RigRunResult:
+    """List all tools from the real tool manager."""
+    return asyncio.run(RigClient().async_list_tools(trace_id))
+
+
+def invoke_tool(
+    tool_name: str, args: dict[str, Any] | None = None, trace_id: str = ""
+) -> RigRunResult:
+    """Invoke a tool through the real tool manager."""
+    return asyncio.run(RigClient().async_invoke_tool(tool_name, args, trace_id))
+
+
+def send_acp_message(session_id: str, message: str, trace_id: str = "") -> RigRunResult:
+    """Send a message to an ACP session backed by a real AgentLoop."""
+    return asyncio.run(
+        RigClient().async_send_acp_message(session_id, message, trace_id)
+    )

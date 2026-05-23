@@ -1,18 +1,11 @@
-"""ToolExecutionContext — explicit context for the tool execution boundary.
+"""Tool execution contexts — explicit, immutable boundary for tool execution.
 
-Carries all state ToolExecutor, CouncilGate, and ToolRuntimeAdapterBuilder
-need to function without reaching into AgentLoop private internals.
+Design: ToolSessionContext carries all session-scoped state and is
+constructed once per AgentLoop session. ToolTurnContext carries
+per-batch turn state and is constructed fresh before each tool batch.
+Both are frozen (immutable) — no update_turn mutation.
 
-Design: session-scoped fields (session_id, workspace_root, config,
-tool_manager, trace_runtime, rewind_manager, callback ports) are set
-at construction and are stable for the life of the context. Per-turn
-fields (turn_id, user_message_id, bypass_permissions, current_turn)
-are updated via update_turn() before each tool batch.
-
-Note: a future slice should split this into a frozen ToolExecutionContext
-(session fields) and an immutable ToolExecutionTurnContext (per-batch fields)
-to eliminate the update_turn mutation. The current mutable design is a
-pragmatic compromise to avoid refactoring every call site in one pass.
+Protocols define structural interfaces for dependency injection.
 """
 
 from __future__ import annotations
@@ -76,57 +69,39 @@ class GovernanceTelemetryPort(Protocol):
     ) -> None: ...
 
 
-@dataclass(frozen=False)
-class ToolExecutionContext:
-    """Explicit context for tool execution — no reach-through to AgentLoop.
+@dataclass(frozen=True)
+class ToolSessionContext:
+    """Immutable per-session context for tool execution.
 
-    Injected into ToolExecutor, CouncilGate, and ToolRuntimeAdapterBuilder
-    at construction time. Session fields are stable. Per-turn fields are
-    updated via update_turn() before each tool batch.
-
-    A future slice should split session/turn into separate immutable contexts.
+    Constructed once per AgentLoop session. All fields are stable
+    for the life of the session and never change.
     """
 
-    # ── Per-session state (stable across turns) ────────────────
     session_id: str = ""
     workspace_root: Path | None = None
-    config: Any | None = None
-    tool_manager: Any | None = None
-    trace_runtime: Any | None = None
-    rewind_manager: Any | None = None
+    config: Any = None
+    tool_manager: Any = None
+    trace_runtime: Any = None
+    rewind_manager: Any = None
 
-    # ── Callback ports (stable across turns) ──────────────────
-    approval_callback: Any | None = None
-    result_sink: Any | None = None
+    approval_callback: Any = None
+    result_sink: Any = None
     handle_tool_response: Callable[..., None] | None = None
     add_message: Callable[[Any], None] | None = None
     telemetry_client: GovernanceTelemetryPort | None = None
 
-    # ── Per-turn state (updated via update_turn before each batch) ──
+    stats: Any = None
+
+
+@dataclass(frozen=True)
+class ToolTurnContext:
+    """Immutable per-turn context for a single tool execution batch.
+
+    Constructed fresh before each tool batch. Carries only the
+    per-turn fields that were previously mutated via update_turn().
+    """
+
     turn_id: str = ""
     user_message_id: str = ""
     bypass_permissions: bool = False
     current_turn: Any = None
-
-    stats: Any = None
-
-    def update_turn(
-        self,
-        *,
-        turn_id: str = "",
-        user_message_id: str = "",
-        bypass_permissions: bool = False,
-        current_turn: Any = None,
-    ) -> None:
-        """Update per-turn fields before a tool batch.
-
-        Called from AgentLoop._execute_pending_tool_batch() before
-        delegating tool execution to ToolExecutor.execute_batch().
-        """
-        if turn_id:
-            self.turn_id = turn_id
-        if user_message_id:
-            self.user_message_id = user_message_id
-        self.bypass_permissions = bypass_permissions
-        if current_turn is not None:
-            self.current_turn = current_turn

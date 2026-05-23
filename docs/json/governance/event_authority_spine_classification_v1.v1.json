@@ -1,0 +1,184 @@
+{
+  "schema_version": "rig.relay.event_authority_classification.v1",
+  "document_id": "event-authority-spine-classification-v1",
+  "title": "Event Authority Spine Classification v1",
+  "status": "canonical",
+  "generated_at": "2026-05-22T12:00:00Z",
+  "head_commit": "pending",
+  "branch": "main",
+  "principle": "One store per authority tier. Append-only domain events are authoritative. Projections, caches, and analytical snapshots are derived and disposable. No store may claim 'canonical' unless its domain is explicitly declared.",
+  "classification": [
+    {
+      "store": "CoordinationStore",
+      "path": ".build/rig-relay/coordination/events.jsonl",
+      "domain": ["task claims", "path leases", "session registration", "heartbeats", "dispatches", "completions", "conflicts", "artifact references", "handoffs"],
+      "authority_tier": "authoritative_domain_event",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Authoritative runtime events for cross-session coordination lifecycle. The steward is the sole coordination writer."
+    },
+    {
+      "store": "ReceiptStore",
+      "path": "<root>/envelopes/",
+      "domain": ["governance decision receipts", "tool invocation receipts", "mutation envelopes"],
+      "authority_tier": "authoritative_evidence_receipt",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Authoritative validated evidence output. JSON shard files + manifest.jsonl remain source-of-truth for governance decisions."
+    },
+    {
+      "store": "AuditTrailStore",
+      "path": "user-supplied (no default)",
+      "domain": ["receipt creation", "decision recording", "execution lifecycle", "worktree management", "validation completion", "projection building"],
+      "authority_tier": "audit_evidence_appendix",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Not cryptographically signed. Append-only guarantees are best-effort local (flush + fsync per append)."
+    },
+    {
+      "store": "DecisionEventStore",
+      "path": ".rig/ralph/events/ralph_decisions.jsonl",
+      "domain": ["mission candidate evaluation", "approval decisions", "execution enablement"],
+      "authority_tier": "advisory_recommendation_history",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Advisory only — Ralph recommends, steward disposes. Ralph events are recommendation history until explicitly promoted."
+    },
+    {
+      "store": "LaneEventStore",
+      "path": ".rig/ralph/lanes/events/ralph_lane_events.jsonl",
+      "domain": ["worktree lane lifecycle", "mission assignment", "review bundle tracking"],
+      "authority_tier": "advisory_recommendation_history",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Advisory only. Lane events track worktree lifecycle but do not own authoritative task claims (CoordinationStore owns those)."
+    },
+    {
+      "store": "ReportStore",
+      "path": ".rig/reports/reports.jsonl",
+      "domain": ["mission reports", "findings", "architecture seams", "security concerns", "validation gaps"],
+      "authority_tier": "authoritative_agent_observation",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Authoritative append-only agent observation ledger. 14 report kinds. Reports are raw observations; canonical findings ledger is separate."
+    },
+    {
+      "store": "TelemetryObservability",
+      "path": "~/.rig/relay/sessions/<id>/observability.jsonl",
+      "domain": ["session telemetry", "tool call observations", "context assembly events", "conversation turn tracking"],
+      "authority_tier": "telemetry_observation",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Canonical event stream for a single session's telemetry. Not the canonical event stream for cross-session lifecycle (CoordinationStore owns that)."
+    },
+    {
+      "store": "EventStore (Event Fabric)",
+      "path": ".build/rig-relay/events/event_fabric_v1.jsonl",
+      "domain": ["generic content-light JSONL events"],
+      "authority_tier": "temporary_compatibility",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Pending explicit disposition as either projection bus (migrated to CoordinationStore + Telemetry) or retired."
+    },
+    {
+      "store": "LocalFileBackend / MemoryBackend",
+      "path": "configurable",
+      "domain": ["generic storage backend for JSONL content-light events"],
+      "authority_tier": "storage_protocol_only",
+      "append_only": false,
+      "destructive_compaction": true,
+      "canonical_claim": "Protocol for reading/writing JSONL. compact() is DEPRECATED for authoritative event streams — use only for disposable analytical caches."
+    },
+    {
+      "store": "IntentAudit",
+      "path": ".build/rig-relay/desktop/intents/intent_events.jsonl",
+      "domain": ["desktop intent lifecycle", "authorization checks", "result artifacts"],
+      "authority_tier": "audit_evidence_appendix",
+      "append_only": true,
+      "destructive_compaction": false,
+      "canonical_claim": "Durable, content-light audit events and result artifacts for the Desktop Intent API."
+    }
+  ],
+  "competing_claims_corrected": [
+    {
+      "file": "docs/evidence/README.md",
+      "line": 10,
+      "old_claim": "observability.jsonl is the canonical event stream for a session.",
+      "corrected_claim": "observability.jsonl is the canonical event stream for a single session's telemetry observations. Cross-session lifecycle events are authoritative in CoordinationStore."
+    },
+    {
+      "file": "docs/governance/usage-data-doctrine.md",
+      "line": 19,
+      "old_claim": ".events/ is the canonical event stream.",
+      "corrected_claim": ".events/ (Event Fabric) was a proposed canonical event stream. It is now classified as temporary compatibility pending disposition."
+    },
+    {
+      "file": "docs/governance/usage-data-doctrine.md",
+      "line": 393,
+      "old_claim": "observability.jsonl is the canonical event stream (evidence-retained fields).",
+      "corrected_claim": "observability.jsonl is the per-session telemetry stream. Coordination events are the cross-session authoritative runtime events."
+    },
+    {
+      "file": "docs/governance/cross-session-coordination.md",
+      "line": 39,
+      "old_claim": "Every coordination primitive emits a canonical event row into the session's observability.jsonl stream.",
+      "corrected_claim": "Every coordination primitive emits an authoritative event row into CoordinationStore's events.jsonl. The session's observability.jsonl captures telemetry observations, not coordination events."
+    }
+  ],
+  "authority_hierarchy": [
+    {
+      "tier": 1,
+      "name": "Authoritative Domain Events",
+      "stores": ["CoordinationStore"],
+      "rule": "Append-only. Never compacted. Source of truth for derived current-state projections. Workers must not write to this tier."
+    },
+    {
+      "tier": 2,
+      "name": "Authoritative Evidence Receipts",
+      "stores": ["ReceiptStore"],
+      "rule": "Append-only. Validated outputs with content-light payloads and SHA256 references. Referenced by domain events, not embedded in them."
+    },
+    {
+      "tier": 3,
+      "name": "Audit & Observation Appendices",
+      "stores": ["AuditTrailStore", "IntentAudit", "ReportStore"],
+      "rule": "Append-only. Provide provenance and context. May reference tier 1/2 events. Not themselves lifecycle authority."
+    },
+    {
+      "tier": 4,
+      "name": "Telemetry Observations",
+      "stores": ["TelemetryObservability"],
+      "rule": "Append-only per session. Product analytics and diagnostic source. May be retained with time-limited GC. Not domain event authority."
+    },
+    {
+      "tier": 5,
+      "name": "Advisory & Recommendation History",
+      "stores": ["DecisionEventStore", "LaneEventStore"],
+      "rule": "Append-only. Records recommendations. May be promoted to tier 3+ if recommendations become authorized actions."
+    },
+    {
+      "tier": 6,
+      "name": "Disposable Analytical Caches & Projections",
+      "stores": ["LocalFileBackend", "MemoryBackend", "DuckDB projections"],
+      "rule": "May be compacted, truncated, or rebuilt from authoritative stores. Never claim canonical or authoritative status."
+    }
+  ],
+  "deprecation_notices": [
+    {
+      "target": "StorageBackend.compact()",
+      "file": "rig_relay/events/storage.py",
+      "action": "DeprecationWarning emitted on call. Use only for disposable analytical caches."
+    },
+    {
+      "target": "Event Fabric canonical claim",
+      "file": "docs/governance/usage-data-doctrine.md",
+      "action": "Reclassified as temporary compatibility. CoordinationStore is authoritative for runtime lifecycle."
+    },
+    {
+      "target": "observability.jsonl as cross-session canonical",
+      "file": "docs/evidence/README.md",
+      "action": "Clarified as per-session telemetry only. CoordinationStore is cross-session authority."
+    }
+  ],
+  "content_light": true
+}

@@ -97,7 +97,7 @@ class TestBridgeStateMachineStarting:
         assert sm.current_state != "ready"
 
         sm.transition(DesktopBridgeEvent.RESOLVING_FRONTEND, reason="start")
-        assert sm.current_state == DesktopBridgeState.RESOLVING_FRONTEND
+        assert sm.current_state == DesktopBridgeState.TOKEN_GENERATING
         assert sm.current_state != DesktopBridgeState.UNINITIALIZED
 
 

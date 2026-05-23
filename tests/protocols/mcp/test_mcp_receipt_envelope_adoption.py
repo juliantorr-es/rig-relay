@@ -18,7 +18,7 @@ class TestMCPRefusalReceiptEnvelopeAdoption:
         assert result["capability_id"] == "rig.rig.request_user_approval"
         assert "authority_tier" in result
         assert result["authority_tier"] == MCPToolTier.MUTATION.value
-        assert result["refusal_code"] == "mutation_tier_mcp"
+        assert result["refusal_code"] == "mutation_tier_mcp_hmac_required"
         assert result["content_light"] is True
         assert "content_light_classification" in result
         assert result["content_light_classification"] == "public_safe"

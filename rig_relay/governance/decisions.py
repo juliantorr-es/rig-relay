@@ -19,8 +19,21 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import hashlib
 import json
+import os
+import time
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+def uuid7() -> str:
+    """RFC 9562 UUIDv7: 48-bit Unix ms timestamp + 74 random bits."""
+    ms = int(time.time() * 1000)
+    rand = os.urandom(10)
+    rand_bytes = list(rand)
+    rand_bytes[0] = (rand_bytes[0] & 0x0F) | 0x70
+    rand_bytes[2] = (rand_bytes[2] & 0x3F) | 0x80
+    r = bytes(rand_bytes)
+    return f"{ms:016x}-{r[0:2].hex()}-{r[2:4].hex()}-{r[4:6].hex()}-{r[6:10].hex()}"
 
 
 class GovernanceDecisionKind(StrEnum):
@@ -121,11 +134,7 @@ class GateDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "rig.relay.governance_decision.v1"
-    decision_id: str = Field(
-        default_factory=lambda: _generate_decision_id(
-            None, "", datetime.now(UTC).isoformat()
-        )
-    )
+    decision_id: str = Field(default_factory=uuid7)
     workspace_id: str | None = None
     decision: GovernanceDecisionKind
     gate: str

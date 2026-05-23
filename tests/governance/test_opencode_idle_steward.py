@@ -776,7 +776,7 @@ class TestStreamingFlags:
         item = _make_queue_item("t1")
         _write_queue(tmp_path, [item])
         _write_prompt(tmp_path, ".rig/roadmap/prompts/t1.txt")
-        _run_steward(tmp_path, dry_run=True)
+        _run_steward(tmp_path, dry_run=True, show_reasoning=True)
         run = _read_last_run(tmp_path)
         cmd = run.get("command_meta")
         if cmd and cmd.get("argv"):
@@ -1217,10 +1217,12 @@ def _read_capsule(root: Path) -> dict:
 
 
 def _minimal_capsule(**overrides) -> dict:
+    from datetime import UTC, datetime
+
     base = {
         "schema_version": "rig.relay.opencode_steward_context_capsule.v1",
         "capsule_id": "test-capsule-001",
-        "generated_at": "2026-05-21T12:00:00+00:00",
+        "generated_at": datetime.now(UTC).isoformat(),
         "source_artifact_paths": [],
         "source_artifact_hashes": [],
         "active_lane_summary": {"total_active_lanes": 0, "lanes": []},
@@ -1400,6 +1402,24 @@ class TestCapsuleFallback:
         assert run["steward_state"] in ("continue_lane", "advance_to_next_lane")
         assert run["compiler_fallback_status"] == "missing"
         assert run.get("selected_task") is not None
+
+    def test_stale_capsule_produces_stale_fallback(self, tmp_path: Path) -> None:
+        from datetime import UTC, datetime, timedelta
+
+        _init_git(tmp_path)
+        stale_time = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+        _write_capsule(
+            tmp_path,
+            _minimal_capsule(
+                generated_at=stale_time,
+                recommended_action="no_action",
+                recommendation_rationale_codes=["empty_queue"],
+            ),
+        )
+        _write_queue(tmp_path, [])
+        _run_steward(tmp_path, dry_run=True)
+        run = _read_last_run(tmp_path)
+        assert run["compiler_fallback_status"] == "stale"
 
 
 class TestCapsuleDispatchAuthority:

@@ -1464,6 +1464,19 @@
           "title_override": "GitHub App Integration Audit v0"
         }
       ]
+    },
+    {
+      "collection_id": "issues",
+      "title": "Issues",
+      "description": "Repo-local issue tracker and ledger artifacts.",
+      "order": 36,
+      "documents": [
+        {
+          "document_id": "issue-tracker",
+          "path": "docs/json/issues/issue_tracker.v1.json",
+          "title_override": "Issue Tracker"
+        }
+      ]
     }
   ],
   "disclosure_policy": {

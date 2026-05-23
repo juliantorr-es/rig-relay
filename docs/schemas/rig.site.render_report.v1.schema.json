@@ -74,6 +74,24 @@
       "type": "integer",
       "minimum": 0
     },
+    "candidate_id": {
+      "type": "string"
+    },
+    "deterministic_digest": {
+      "type": "string"
+    },
+    "failed_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failure_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["success", "fail"]
+    },
     "pages": {
       "type": "array",
       "items": {

@@ -16,7 +16,10 @@ from rig_relay.compiler.schema_to_code.reader import (
     derive_model_spec_from_schema,
     load_target_schema,
 )
-from rig_relay.compiler.schema_to_code.validator import validate_generated_code
+from rig_relay.compiler.schema_to_code.validator import (
+    validate_generated_code,
+    validate_minimum_safety,
+)
 from rig_relay.compiler.worktree import CompilerWorktree
 
 
@@ -84,7 +87,7 @@ def compile_schema_to_code(
                 worktree_dir, generated_file, schema_path, repo_root=repo_root
             )
         else:
-            gate_matrix = GateMatrix()
+            gate_matrix = validate_minimum_safety(schema_path, generated_file)
 
         overall = gate_matrix.overall_status.value
         status = "accepted" if overall == "pass" else "rejected"

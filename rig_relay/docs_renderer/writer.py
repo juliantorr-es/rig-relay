@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
 
 def render_search_index(pages: list[dict]) -> str:
     entries = []
@@ -20,11 +22,16 @@ def render_search_index(pages: list[dict]) -> str:
 
 
 def render_manifest(pages: list[dict], collections: list[str], git_sha: str) -> str:
+    exportable_pages = [
+        p
+        for p in pages
+        if not is_confidential_artifact_path(p.get("_source_path", ""))
+    ]
     return json.dumps(
         {
             "generated_at": datetime.now(UTC).isoformat(),
             "git_commit": git_sha,
-            "page_count": len(pages),
+            "page_count": len(exportable_pages),
             "collection_page_count": len(collections),
             "pages": [
                 {
@@ -32,7 +39,7 @@ def render_manifest(pages: list[dict], collections: list[str], git_sha: str) -> 
                     "title": p.get("title", ""),
                     "source_json_path": p.get("_source_path", ""),
                 }
-                for p in pages
+                for p in exportable_pages
             ],
             "collections": collections,
         },

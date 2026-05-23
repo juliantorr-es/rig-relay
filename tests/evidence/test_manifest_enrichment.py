@@ -7,6 +7,7 @@ import tempfile
 from rig_relay.evidence.receipt_envelope import (
     ReceiptActor,
     ReceiptActorKind,
+    ReceiptActorTier,
     ReceiptDecision,
     ReceiptEnvelope,
     ReceiptSubject,
@@ -33,7 +34,7 @@ def _make_envelope(
         actor_kind=ReceiptActorKind.RUNTIME,
         display_name="Test Actor",
         is_human=False,
-        is_authoritative=True,
+        authority_tier=ReceiptActorTier.ADMINISTRATIVE,
     )
     subject = ReceiptSubject(
         subject_id="write_file",

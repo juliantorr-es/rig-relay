@@ -27,6 +27,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
 DEFAULT_BUDGET_PATH = (
@@ -74,28 +76,54 @@ CATEGORY_LABELS: dict[str, str] = {
 }
 
 
+def _repo_root(build_root: Path) -> Path:
+    resolved = build_root.resolve(strict=False)
+    parts = resolved.parts
+    for idx in range(len(parts) - 1):
+        if parts[idx] == ".build" and parts[idx + 1] == "rig-relay":
+            if idx == 0:
+                return Path(resolved.anchor or ".")
+            return Path(*parts[:idx])
+    if len(resolved.parents) >= 2:
+        return resolved.parents[1]
+    return resolved.parent
+
+
 def _size_mb(path: Path) -> float:
     """Return directory/file size in MB."""
+    repo_root = _repo_root(path)
+    if is_confidential_artifact_path(path, repo_root):
+        return 0.0
     if path.is_file():
         return path.stat().st_size / 1_048_576.0
     total = 0
     for f in path.rglob("*"):
         if f.is_file():
+            if is_confidential_artifact_path(f, repo_root):
+                continue
             total += f.stat().st_size
     return total / 1_048_576.0
 
 
 def _file_count(path: Path) -> int:
     """Count files recursively."""
-    return sum(1 for f in path.rglob("*") if f.is_file())
+    repo_root = _repo_root(path)
+    return sum(
+        1
+        for f in path.rglob("*")
+        if f.is_file() and not is_confidential_artifact_path(f, repo_root)
+    )
 
 
 def _largest_files(path: Path, n: int = 10) -> list[dict[str, Any]]:
     """Return the n largest files as [{path, size_mb, modified_days_ago}]."""
     now = datetime.now(UTC)
+    repo_root = _repo_root(path)
     files: list[dict[str, Any]] = []
     for f in path.rglob("*"):
         if not f.is_file():
+            continue
+        if is_confidential_artifact_path(f, repo_root):
             continue
         try:
             mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
@@ -117,11 +145,14 @@ def _count_stale_leases(leases_dir: Path, stale_hours: int = 24) -> int:
     """Count lease files older than stale_hours."""
     if not leases_dir.is_dir():
         return 0
+    repo_root = _repo_root(leases_dir)
     now = datetime.now(UTC)
     cutoff = now - timedelta(hours=stale_hours)
     count = 0
     for f in leases_dir.rglob("*"):
         if not f.is_file():
+            continue
+        if is_confidential_artifact_path(f, repo_root):
             continue
         try:
             mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
@@ -136,9 +167,12 @@ def _find_rollup_candidates(derived_dir: Path) -> list[dict[str, Any]]:
     """Find JSONL files in derived/ that have no corresponding .parquet."""
     if not derived_dir.is_dir():
         return []
+    repo_root = _repo_root(derived_dir)
     candidates: list[dict[str, Any]] = []
     for f in sorted(derived_dir.iterdir()):
         if f.suffix != ".jsonl":
+            continue
+        if is_confidential_artifact_path(f, repo_root):
             continue
         parquet_path = f.with_suffix(".parquet")
         candidates.append({
@@ -166,6 +200,7 @@ def _find_prune_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str,
     """Find files older than their category retention."""
     now = datetime.now(UTC)
     candidates: list[dict[str, Any]] = []
+    repo_root = _repo_root(root)
 
     retention_map: dict[str, int] = {
         "coordination": budget.get("coordination_events_days", 14),
@@ -187,6 +222,8 @@ def _find_prune_candidates(root: Path, budget: dict[str, Any]) -> list[dict[str,
         cutoff = now - timedelta(days=days)
         for f in target.rglob("*"):
             if not f.is_file():
+                continue
+            if is_confidential_artifact_path(f, repo_root):
                 continue
             try:
                 mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
@@ -235,11 +272,14 @@ def audit_storage(
     """
     if budget is None:
         budget = dict(DEFAULT_BUDGET)
+    repo_root = _repo_root(root)
 
     # Category sizes
     categories: dict[str, dict[str, Any]] = {}
     for subdir in sorted(root.iterdir()):
         if not subdir.is_dir():
+            continue
+        if is_confidential_artifact_path(subdir, repo_root):
             continue
         label = CATEGORY_LABELS.get(subdir.name, subdir.name)
         categories[subdir.name] = {

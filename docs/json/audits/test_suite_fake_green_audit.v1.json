@@ -1,0 +1,417 @@
+{
+  "schema_version": "rig.audit.test_suite_fake_green.v1",
+  "audit_kind": "test_suite_fake_green_audit",
+  "audit_id": "2026-05-22--rig-relay--test-suite-fake-green-audit--phase-j",
+  "generated_at": "2026-05-22T00:00:00Z",
+  "branch": "main",
+  "head": "dcc0ea1fc85a3a2af6208308dbcf800b9c79b792",
+  "dirty_state": {
+    "modified_files": [
+      "rig_relay/core/conversation_loop_adapter.py",
+      "rig_relay/core/governance_runtime.py",
+      "rig_relay/docs_renderer/cli.py",
+      "rig_relay/events/storage.py",
+      "rig_relay/site_renderer/renderer.py",
+      "rig_relay/site_renderer/templates/base.html.j2",
+      "scripts/rig_site_render.py",
+      "tests/core/test_conversation_runtime_phase3_behavior_parity.py"
+    ],
+    "untracked_files": [
+      "Archive 3.zip",
+      "docs/json/governance/event_authority_spine_classification_v1.v1.json"
+    ]
+  },
+  "summary": {
+    "total_test_files": 730,
+    "estimated_test_functions": 11862,
+    "markers_usage": {
+      "contract_files": 31,
+      "integration_files": 27,
+      "real_artifact_files": 16,
+      "adversarial_files": 23,
+      "substrate_files": 12,
+      "sabotage_files": 1,
+      "e2e_files": 3,
+      "concurrency_files": 0,
+      "hypothesis_files": 0
+    },
+    "original_report_claims_verified": 8,
+    "original_report_claims_disproven": 3,
+    "original_report_claims_accurate": 5
+  },
+
+  "claim_verifications": [
+    {
+      "claim": "_make_schema_tolerant bypasses strict validation in validate_json_schema",
+      "verdict": "disproven",
+      "evidence": "_make_schema_tolerant is dead code - defined at rig_relay/site_renderer/loaders.py:18 but never called externally. validate_json_schema at line 92 loads raw schema from disk and validates against it. additionalProperties: false IS enforced.",
+      "residual_concern": "_strip_internal_fields removes 4 renderer-internal fields before validation (lines 40-43), which is by-design tolerance but not a schema-authority bypass."
+    },
+    {
+      "claim": "ToolRuntime cache check runs before governance, bypassing permission denial",
+      "verdict": "disproven",
+      "evidence": "Cache check is at rig_relay/core/tool_runtime.py:670, explicitly labeled 'Cache check (after all governance, before invocation)'. The execution order is: profile gate → governance engine → local action envelope → permission → approval → patch gate → cache check → invocation.",
+      "residual_concern": "Tests at tests/core/test_tool_runtime.py:132-148 test cache-hit as an always-success path but never assert that permission-denied + cache-hit = REFUSED. The ordering is correct in production, but no contradiction test exists."
+    },
+    {
+      "claim": "scripts/rig_relay_validate_schemas.py strict mode uses broken Draft7Validator(data) instead of check_schema(data)",
+      "verdict": "disproven",
+      "evidence": "Production code at scripts/rig_relay_validate_schemas.py:96 correctly uses jsonschema.Draft7Validator.check_schema(data). The correct API is in place.",
+      "residual_concern": "No test in tests/coordination/test_schema_validation.py exercises strict=True mode. The correct production code is untested."
+    },
+    {
+      "claim": "Compiler tests test_compiler_experiment_0.py do not test the live compiler in rig_relay/compiler/schema_to_code/",
+      "verdict": "confirmed",
+      "evidence": "tests/compiler/test_compiler_experiment_0.py imports from rig_relay.compiler_experiments.experiment_0 (a prototype). Zero test files import from rig_relay.compiler.schema_to_code. The live compiler in rig_relay/compiler/schema_to_code/generator.py uses Jinja to generate Python from schema field names with no AST safety gate tested.",
+      "severity": "P0"
+    },
+    {
+      "claim": "Phase 3 behavior parity tests use fake adapters, not production adapter",
+      "verdict": "confirmed",
+      "evidence": "tests/core/test_conversation_runtime_phase3_behavior_parity.py defines ProductionStyleAdapter (a test-local fake with boolean _tool_call_mode) at line 27. It claims to 'prove execute_tool_batch delegates correctly' but never uses the real _ConversationLoopAdapter at rig_relay/core/conversation_loop_adapter.py:11.",
+      "severity": "P1"
+    },
+    {
+      "claim": "Schema validation tests never exercise strict=True",
+      "verdict": "confirmed",
+      "evidence": "tests/coordination/test_schema_validation.py calls validate_schema() without strict=True throughout. The test_validate_all_schemas_on_real_dir test at line 168 calls validate_all_schemas(SCHEMAS_DIR) without strict=True. No test exercises the check_schema() code path at scripts/rig_relay_validate_schemas.py:96.",
+      "severity": "P1"
+    },
+    {
+      "claim": "Existing AgentLoop tool-call test is good and should be mandatory acceptance gate",
+      "verdict": "confirmed",
+      "evidence": "tests/test_agent_tool_call.py:119-150 constructs actual AgentLoop with FakeBackend (legitimate mock at external LLM boundary) and asserts the real event sequence: UserMessageEvent → AssistantEvent → ToolCallEvent → ToolResultEvent → AssistantEvent. This test uses actual production objects for the tool-call path.",
+      "severity": "good"
+    },
+    {
+      "claim": "Classification over-labeling in compiler experiment tests",
+      "verdict": "confirmed",
+      "evidence": "tests/compiler/test_compiler_experiment_0.py:pytestmark assigns 5 markers (contract, integration, real_artifact, adversarial, substrate) at module level. Tests like test_no_full_template_framework_created check template file count is <= 1 - this is not adversarial or substrate.",
+      "severity": "P3"
+    },
+    {
+      "claim": "No property-based testing with Hypothesis",
+      "verdict": "confirmed",
+      "evidence": "Zero test files import Hypothesis. Parsers, schemas, path policies, redaction contracts, and JSONL formats have no generated edge-case coverage.",
+      "severity": "P3"
+    },
+    {
+      "claim": "Coordination ledger integrity tests are good substrate tests",
+      "verdict": "confirmed (good)",
+      "evidence": "tests/coordination/test_coordination_event_ledger.py and test_ledger_corruption_detection.py use actual CoordinationStore, JSONL event ledger, DuckDB projection, and subprocess concurrency. They verify unique sequences, duplicate-event resistance, and corruption detection.",
+      "severity": "good"
+    },
+    {
+      "claim": "WebSocket security rejection tests are good boundary tests",
+      "verdict": "confirmed (good)",
+      "evidence": "tests/desktop/test_websocket_security_rejections.py tests foreign origin rejection, null origin rejection, invalid JSON, auth failure, oversized messages, abuse shutdown, and token redaction against an actual WebSocket server boundary.",
+      "severity": "good"
+    }
+  ],
+
+  "worst_offenders_ranked": [
+    {
+      "rank": 1,
+      "severity": "P0",
+      "seam": "Compiler live safety",
+      "description": "The live compiler at rig_relay/compiler/schema_to_code/ has ZERO tests. The only compiler test file tests a prototype (compiler_experiments/experiment_0). The live compiler uses Jinja to generate Python from schema property names with no AST safety gate, no import restriction, and no template-path validation tested.",
+      "affected_files": [
+        "rig_relay/compiler/schema_to_code/generator.py",
+        "rig_relay/compiler/schema_to_code/validator.py",
+        "rig_relay/compiler/schema_to_code/reader.py",
+        "rig_relay/compiler/schema_to_code/compiler.py"
+      ],
+      "test_files_that_exist": [
+        "tests/compiler/test_compiler_experiment_0.py"
+      ],
+      "test_files_missing": [
+        "tests/compiler/test_schema_to_code_generator.py",
+        "tests/compiler/test_schema_to_code_validator.py"
+      ],
+      "recommended_red_first_tests": [
+        "malicious schema property name is rejected before template rendering",
+        "arbitrary dict IR with import/exec/call is rejected",
+        "arbitrary template path is disallowed in promoted runs",
+        "AST gate refuses call/import/assignment expressions before candidate import",
+        "candidate is never imported before structural safety passes",
+        "validated candidate hash equals promoted source hash"
+      ]
+    },
+    {
+      "rank": 2,
+      "severity": "P1",
+      "seam": "Conversation runtime adapter tests encode wrong model",
+      "description": "Phase 3 behavior parity tests use a test-local fake ProductionStyleAdapter instead of the real _ConversationLoopAdapter. One test inspects source strings with inspect.getsource instead of testing behavior. The file claims to prove delegation correctness but never exercises the production adapter's last_message_has_no_tool_calls() or get_turn_batch_result().",
+      "affected_files": [
+        "tests/core/test_conversation_runtime_phase3_behavior_parity.py",
+        "tests/core/test_conversation_runtime_phase3_loop_transfer.py"
+      ],
+      "production_files": [
+        "rig_relay/core/conversation_loop_adapter.py",
+        "rig_relay/core/conversation_runtime/runtime.py"
+      ],
+      "recommended_action": "Delete or rewrite phase3 behavior_parity.py. Replace with tests using real _ConversationLoopAdapter + real AgentLoop. Ensure existing test_agent_tool_call.py is mandatory acceptance gate."
+    },
+    {
+      "rank": 3,
+      "severity": "P1",
+      "seam": "Schema validator strict mode is untested",
+      "description": "Production validate_schema() correctly uses jsonschema.Draft7Validator.check_schema() in strict mode, but no test exercises strict=True. The non-strict tests pass because they only check JSON parse and Python token contamination. The actual metaschema validation code path at scripts/rig_relay_validate_schemas.py:96 has zero test coverage.",
+      "affected_files": [
+        "scripts/rig_relay_validate_schemas.py:96-98"
+      ],
+      "test_files": [
+        "tests/coordination/test_schema_validation.py"
+      ],
+      "recommended_red_first_tests": [
+        "strict: valid schema passes metaschema validation",
+        "strict: malformed schema fails check_schema",
+        "strict: empty schema fails",
+        "strict: recursive $ref schema passes",
+        "strict validation over real schema inventory produces sensible results"
+      ]
+    },
+    {
+      "rank": 4,
+      "severity": "P2",
+      "seam": "ToolRuntime cache safety contradiction test missing",
+      "description": "Cache ordering IS correct in production (after all governance). But no test proves the invariant: permission-denied + valid-cache-hit = REFUSED (not CACHED). The existing cache tests only assert happy-path cache-hit and cache-miss. Persistent cache at rig_relay/core/tools/cache.py is completely untested.",
+      "affected_files": [
+        "rig_relay/core/tool_runtime.py:670-687",
+        "rig_relay/core/tools/cache.py"
+      ],
+      "test_files": [
+        "tests/core/test_tool_runtime.py",
+        "tests/core/test_tool_runtime_v1.py",
+        "tests/core/test_tool_runtime_ledger.py",
+        "tests/governance/test_tool_runtime_fail_closed.py"
+      ],
+      "recommended_red_first_tests": [
+        "cache hit + permission denied = REFUSED (not CACHED)",
+        "cache hit + approval denied = REFUSED (not CACHED)",
+        "write_file/search_replace/bash never cache",
+        "read_file/grep raw content never persists to DuckDB",
+        "same command in two explicit worktrees produces distinct cache keys",
+        "bundle/export rejects tool_cache.duckdb"
+      ]
+    },
+    {
+      "rank": 5,
+      "severity": "P2",
+      "seam": "Site renderer security coverage missing adversarial contexts",
+      "description": "Site renderer tests have good HTML text escaping (test_renderer_escapes_or_sanitizes_html_content). But they lack JSON-LD breakout tests, javascript:/data: URL rejection tests, and strict schema enforcement tests. _make_schema_tolerant exists as dead code that could inadvertently be activated.",
+      "affected_files": [
+        "rig_relay/site_renderer/loaders.py:18-29 (dead code: _make_schema_tolerant)",
+        "rig_relay/site_renderer/loaders.py:45-95 (validate_json_schema)"
+      ],
+      "test_files": [
+        "tests/site_renderer/test_fake_green_resistance.py",
+        "tests/site_renderer/test_structured_data.py"
+      ],
+      "recommended_tests": [
+        "JSON-LD </script> breakout is neutralized",
+        "javascript:/data:/file: URLs are rejected in href/canonical",
+        "missing jsonschema blocks render (not silently passes)",
+        "render failures cannot produce stale/partial public output",
+        "remove dead _make_schema_tolerant code or document its purpose"
+      ]
+    },
+    {
+      "rank": 6,
+      "severity": "P3",
+      "seam": "Test classification over-labeling",
+      "description": "Multiple test files assign 4-5 markers at module level including adversarial and substrate for tests that are shallow contract checks. tests/compiler/test_compiler_experiment_0.py assigns 5 markers but includes checks like 'template file count <= 1' and 'CLI return code is one of 0, 1, or 2'.",
+      "affected_files": [
+        "tests/compiler/test_compiler_experiment_0.py",
+        "tests/docs_renderer/test_renderer_refactor.py",
+        "tests/site_renderer/test_site_renderer.py"
+      ],
+      "recommended_action": "Narrow classifications to describe the actual failure mode being proven. Split files if needed so each test function carries its honest label."
+    },
+    {
+      "rank": 7,
+      "severity": "P3",
+      "seam": "No property-based testing for high-risk parsing/contract boundaries",
+      "description": "Zero Hypothesis usage. Schema field names, URL schemes, redaction keys, path normalization, JSONL corruptions, and tool argument fingerprints are ideal Hypothesis targets where generated counterexamples find bugs human-authored tests miss.",
+      "recommended_targets": [
+        "Schema field/class identifiers (compiler injection surface)",
+        "URL schemes and HTML/script breakout strings",
+        "Redaction keys and nested payload shapes",
+        "Path normalization and worktree collision cases",
+        "JSONL malformed/corruption edge cases",
+        "Tool argument fingerprints and cache isolation"
+      ]
+    }
+  ],
+
+  "genuinely_good_tests": [
+    {
+      "seam": "Coordination ledger integrity",
+      "files": [
+        "tests/coordination/test_coordination_event_ledger.py",
+        "tests/coordination/test_ledger_corruption_detection.py"
+      ],
+      "strength": "Tests actual CoordinationStore, JSONL event ledger, DuckDB read-side projection, and subprocess concurrency. Verifies unique sequences, duplicate-event resistance, and corruption detection against deliberately injected malformed data."
+    },
+    {
+      "seam": "WebSocket security rejection",
+      "files": [
+        "tests/desktop/test_websocket_security_rejections.py"
+      ],
+      "strength": "Tests against actual WebSocket server boundary. Covers foreign origin rejection, null origin, invalid JSON, auth failure, oversized messages, abuse shutdown, token redaction."
+    },
+    {
+      "seam": "AgentLoop tool-call contract",
+      "files": [
+        "tests/test_agent_tool_call.py"
+      ],
+      "strength": "Constructs actual AgentLoop, uses FakeBackend only at LLM/provider boundary (legitimate mock). Asserts real event sequence through tool execution: UserMessageEvent → AssistantEvent → ToolCallEvent → ToolResultEvent → AssistantEvent. Uses real production objects for the tool-call path."
+    },
+    {
+      "seam": "Telemetry degradation",
+      "files": [
+        "tests/telemetry/test_degradation.py"
+      ],
+      "strength": "Tests explicit enabled/disabled runtime behavior, degradation markers, and missing observability when disabled."
+    },
+    {
+      "seam": "Site renderer HTML escaping",
+      "files": [
+        "tests/site_renderer/test_fake_green_resistance.py"
+      ],
+      "strength": "Legitimate HTML-text-context escaping test injecting <script>alert('xss')</script> into page title and verifying rendered output escapes it."
+    }
+  ],
+
+  "mission_context_packet": {
+    "mission_name": "test-suite-fake-green-remediation",
+    "phases": [
+      {
+        "wave": "A",
+        "priority": "P0-critical",
+        "name": "Compiler live safety — red-first sabotage tests",
+        "objective": "Write tests that fail against the current compiler code before any hardening. Prove the compiler rejects hostile schema field names, arbitrary IR injection, template-path substitution, and generates Python only after AST safety gates.",
+        "tests_required": [
+          "test_schema_property_name_code_injection_is_rejected",
+          "test_arbitrary_dict_ir_with_import_is_rejected",
+          "test_template_path_substitution_is_disallowed_in_promoted_runs",
+          "test_ast_gate_rejects_call_expression_before_candidate_import",
+          "test_candidate_is_never_imported_after_hostile_input",
+          "test_validated_candidate_hash_equals_promoted_source_hash",
+          "test_enum_pattern_bounds_and_nested_objects_survive_generation"
+        ],
+        "out_of_scope": "Do not modify the live compiler yet. These tests must fail against current production code (red-first)."
+      },
+      {
+        "wave": "B",
+        "priority": "P1-high",
+        "name": "Conversation runtime adapter — rewrite fake-adapter tests",
+        "objective": "Rewrite or delete tests that use fake ProductionStyleAdapter. Replace with tests using real _ConversationLoopAdapter + real AgentLoop. Elevate existing test_agent_tool_call.py to mandatory acceptance gate.",
+        "files_to_delete_or_rewrite": [
+          "tests/core/test_conversation_runtime_phase3_behavior_parity.py"
+        ],
+        "files_to_keep_and_promote": [
+          "tests/test_agent_tool_call.py"
+        ],
+        "tests_required": [
+          "production adapter get_turn_batch_result returns correct pending state",
+          "production adapter last_message_has_no_tool_calls returns True when no pending tools",
+          "real adapter reports pending tools after tool-call model turn",
+          "unresolved tool call follows explicit failure path"
+        ]
+      },
+      {
+        "wave": "C",
+        "priority": "P1-high",
+        "name": "Schema validator strict mode — add strict=True test coverage",
+        "objective": "Add tests that exercise validate_schema(..., strict=True). Verify the correct check_schema() code path at scripts/rig_relay_validate_schemas.py:96 is exercised and validates against real schema inventory.",
+        "tests_required": [
+          "test_strict_valid_schema_passes_metaschema_validation",
+          "test_strict_malformed_schema_fails",
+          "test_strict_empty_schema_fails",
+          "test_strict_validation_over_real_schema_inventory"
+        ]
+      },
+      {
+        "wave": "D",
+        "priority": "P2-medium",
+        "name": "ToolRuntime cache — add governance-contradiction tests",
+        "objective": "Cache ordering IS correct in production, but no test proves permission denial wins over cache hit. Add contradiction tests and persistent cache safety tests.",
+        "tests_required": [
+          "test_cache_hit_permission_denied_returns_refused",
+          "test_cache_hit_approval_denied_returns_refused",
+          "test_mutation_tools_never_cache",
+          "test_content_bearing_read_results_never_cache",
+          "test_worktree_boundaries_produce_distinct_cache_keys",
+          "test_bundle_export_rejects_cache_database"
+        ]
+      },
+      {
+        "wave": "E",
+        "priority": "P2-medium",
+        "name": "Site renderer — security context tests and dead code removal",
+        "objective": "Add JSON-LD breakout, URL scheme rejection, and strict schema enforcement tests. Remove or document _make_schema_tolerant dead code.",
+        "tests_required": [
+          "test_jsonld_script_breakout_is_neutralized",
+          "test_javascript_urls_in_href_are_rejected",
+          "test_missing_jsonschema_blocks_render",
+          "test_render_failure_produces_no_stale_partial_output"
+        ]
+      },
+      {
+        "wave": "F",
+        "priority": "P3-low",
+        "name": "Classification cleanup and Hypothesis seed",
+        "objective": "Narrow test classification markers to describe actual failure modes. Add property-based tests for the highest-leverage surfaces (schema field names, JSONL corruption, URL schemes)."
+      }
+    ],
+    "red_first_policy": "Before each hardening patch, write the test that currently fails against the confirmed defect. Do not accept implementation work where the new test was never demonstrably red against the old defect.",
+    "existing_good_tests_as_gates": [
+      "tests/test_agent_tool_call.py (AgentLoop tool-call contract)",
+      "tests/coordination/test_coordination_event_ledger.py (Ledger integrity)",
+      "tests/coordination/test_ledger_corruption_detection.py (Corruption detection)",
+      "tests/desktop/test_websocket_security_rejections.py (WS security)",
+      "tests/telemetry/test_degradation.py (Telemetry degradation)"
+    ]
+  },
+
+  "files_created_in_this_mission": [
+    "docs/json/audits/test_suite_fake_green_audit.v1.json"
+  ],
+
+  "completed_work": [
+    "Verified 11 claims from the original report against live production code at dcc0ea1f",
+    "Disproven 3 claims (make_schema_tolerant bypass, cache-before-governance, broken check_schema) — production code was already correct or dead code was never called",
+    "Confirmed 5 defects (no live compiler tests, fake-adapter phase3 tests, strict mode untested, cache contradiction tests missing, classification over-labeling)",
+    "Confirmed 3 genuinely good test suites (coordination ledger, WebSocket security, AgentLoop tool-call)",
+    "Created structured audit artifact with worst-offender-first ranking",
+    "Created mission context packet with 6-phase remediation plan"
+  ],
+
+  "intentionally_deferred_work": [
+    "Writing actual red-first sabotage tests (scope: document + plan only)",
+    "Modifying production code (audit-only, no remediation)",
+    "Full test reclassification sweep (identified but deferred to Wave F)"
+  ],
+
+  "discovered_out_of_scope_risks": [
+    {
+      "risk": "Dead code _make_schema_tolerant could be inadvertently activated by future refactor, creating a real schema-authority bypass",
+      "files": ["rig_relay/site_renderer/loaders.py:18-29"],
+      "recommendation": "Remove the dead function or add a regression test proving it is never called"
+    },
+    {
+      "risk": "Persistent tool cache (rig_relay/core/tools/cache.py) has zero test coverage. If cache stores mutation results or content-bearing read results, it creates a privacy/safety risk.",
+      "files": ["rig_relay/core/tools/cache.py"],
+      "recommendation": "Write cache-safety tests as part of Wave D"
+    },
+    {
+      "risk": "Current event_authority_spine_classification_v1.v1.json is untracked — may contain an agent's work product that should be committed or finalized",
+      "files": ["docs/json/governance/event_authority_spine_classification_v1.v1.json"]
+    },
+    {
+      "risk": "Archive 3.zip in root is untracked — may contain stale test evidence or telemetry that should be discarded or archived properly",
+      "files": ["Archive 3.zip"]
+    }
+  ]
+}

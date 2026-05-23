@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from rig_relay.core.tool_executor.adapter_builder import ToolRuntimeAdapterBuilder
 from rig_relay.core.tool_executor.concurrency import ToolConcurrencyManager
-from rig_relay.core.tool_executor.context import ToolExecutionContext
+from rig_relay.core.tool_executor.context import ToolSessionContext, ToolTurnContext
 from rig_relay.core.tool_executor.council_gate import CouncilGate
 from rig_relay.core.tool_runtime_models import (
     ToolRuntimeExecutionMode,
@@ -28,25 +28,28 @@ class ToolExecutor:
     """Orchestrates single-tool and concurrent tool execution.
 
     Composes adapter_builder, council_gate, and concurrency manager.
-    Receives all runtime state via ToolExecutionContext — no
-    reach-through to AgentLoop internals.
-
-    Replaces AgentLoop._execute_tool_call, _process_one_tool_call,
-    _run_tools_concurrently, _execute_tool_to_queue, _handle_tool_calls,
-    _maybe_auto_gc, and _consult_council_before_mutation.
+    Receives all runtime state via ToolSessionContext (session-scoped)
+    and ToolTurnContext (per-batch) — no reach-through to AgentLoop internals.
     """
 
-    __slots__ = ("_ctx", "adapter_builder", "council_gate", "concurrency")
+    __slots__ = (
+        "_session_ctx",
+        "_turn_ctx",
+        "adapter_builder",
+        "council_gate",
+        "concurrency",
+    )
 
     def __init__(
         self,
         *,
-        ctx: ToolExecutionContext,
+        session_ctx: ToolSessionContext,
         adapter_builder: ToolRuntimeAdapterBuilder,
         council_gate: CouncilGate,
         concurrency: ToolConcurrencyManager,
     ) -> None:
-        self._ctx = ctx
+        self._session_ctx = session_ctx
+        self._turn_ctx: ToolTurnContext | None = None
         self.adapter_builder = adapter_builder
         self.council_gate = council_gate
         self.concurrency = concurrency
@@ -55,17 +58,23 @@ class ToolExecutor:
         self, tool_call: ResolvedToolCall
     ) -> AsyncGenerator[ToolResultEvent | ToolStreamEvent]:
         """Execute a single tool call with span, council gating, and result adaptation."""
-        ctx = self._ctx
-        assert ctx.trace_runtime is not None, (
-            "ToolExecutionContext.trace_runtime not set"
+        session_ctx = self._session_ctx
+        turn_ctx = self._turn_ctx
+        assert turn_ctx is not None, "ToolTurnContext not set for batch execution"
+        assert session_ctx.trace_runtime is not None, (
+            "ToolSessionContext.trace_runtime not set"
         )
-        assert ctx.tool_manager is not None, "ToolExecutionContext.tool_manager not set"
-        assert ctx.rewind_manager is not None, (
-            "ToolExecutionContext.rewind_manager not set"
+        assert session_ctx.tool_manager is not None, (
+            "ToolSessionContext.tool_manager not set"
         )
-        assert ctx.result_sink is not None, "ToolExecutionContext.result_sink not set"
+        assert session_ctx.rewind_manager is not None, (
+            "ToolSessionContext.rewind_manager not set"
+        )
+        assert session_ctx.result_sink is not None, (
+            "ToolSessionContext.result_sink not set"
+        )
 
-        async with ctx.trace_runtime.tool_span(
+        async with session_ctx.trace_runtime.tool_span(
             tool_name=tool_call.tool_name,
             call_id=tool_call.call_id,
             arguments=tool_call.validated_args.model_dump_json(),
@@ -91,7 +100,7 @@ class ToolExecutor:
                     exec_mode = ToolRuntimeExecutionMode.READ_ONLY
 
             try:
-                ctx.tool_manager.get(tn)
+                session_ctx.tool_manager.get(tn)
             except Exception as exc:
                 yield self._tool_failure_event(
                     tool_call, f"Error getting tool '{tn}': {exc}", span=span
@@ -102,30 +111,25 @@ class ToolExecutor:
                 tool_name=tn,
                 tool_args=tool_call.args_dict,
                 tool_call_id=cid,
-                turn_id=ctx.user_message_id,
-                session_id=ctx.session_id,
+                turn_id=turn_ctx.user_message_id,
+                session_id=session_ctx.session_id,
                 execution_mode=exec_mode,
-                bypass_permissions=ctx.bypass_permissions,
+                bypass_permissions=turn_ctx.bypass_permissions,
             )
-            # NOTE: ToolRuntimeRequest.turn_id carries the user_message_id
-            # (client message identifier) because downstream ToolRuntime and
-            # InvokeContext use it as parent_turn_id for tool invocation
-            # correlation. The context's turn_id field (conversation turn UUID)
-            # is a separate identity used for turn phase tracking.
 
             try:
-                of_interest = ctx.tool_manager.get(tn)
+                of_interest = session_ctx.tool_manager.get(tn)
                 snapshot = of_interest.get_file_snapshot(tool_call.validated_args)
                 if snapshot is not None:
-                    ctx.rewind_manager.add_snapshot(snapshot)
+                    session_ctx.rewind_manager.add_snapshot(snapshot)
             except Exception:
                 pass
 
             recommendation = await self.council_gate.consult(
-                tn, tool_call.args_dict, tool_call.tool_class
+                tn, tool_call.args_dict, tool_call.tool_class, turn_ctx
             )
             if recommendation == "BLOCK":
-                turn = ctx.current_turn
+                turn = turn_ctx.current_turn
                 if turn is not None:
                     turn.tool_skip_count += 1
                 from rig_relay.core.types import ToolResultEvent as TRE
@@ -139,14 +143,14 @@ class ToolExecutor:
                     tool_call_id=cid,
                 )
                 return
-            if recommendation == "REVIEW" and ctx.approval_callback is not None:
+            if recommendation == "REVIEW" and session_ctx.approval_callback is not None:
                 from rig_relay.core.types import ApprovalResponse
 
-                response, feedback = await ctx.approval_callback(
+                response, feedback = await session_ctx.approval_callback(
                     tn, tool_call.validated_args, cid, []
                 )
                 if response != ApprovalResponse.YES:
-                    turn = ctx.current_turn
+                    turn = turn_ctx.current_turn
                     if turn is not None:
                         turn.tool_skip_count += 1
                     from rig_relay.core.types import ToolResultEvent as TRE
@@ -167,7 +171,7 @@ class ToolExecutor:
                 cancel = str(
                     get_user_cancellation_message(CancellationReason.TOOL_INTERRUPTED)
                 )
-                turn = ctx.current_turn
+                turn = turn_ctx.current_turn
                 if turn is not None:
                     turn.tool_failure_count += 1
                 yield self._tool_failure_event(
@@ -175,7 +179,7 @@ class ToolExecutor:
                 )
                 raise
 
-            turn = ctx.current_turn
+            turn = turn_ctx.current_turn
             if turn is not None and result.duration_ms is not None:
                 turn.tool_total_duration_ms += result.duration_ms
 
@@ -192,7 +196,7 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_success_count += 1
-                    ctx.result_sink.record(result)
+                    session_ctx.result_sink.record(result)
                     yield cached_event
 
                 case ToolRuntimeStatus.COMPLETED | ToolRuntimeStatus.DEGRADED:
@@ -212,15 +216,15 @@ class ToolExecutor:
                         result_dict = response_model.model_dump()
                         text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
                         try:
-                            of_interest = ctx.tool_manager.get(tn)
+                            of_interest = session_ctx.tool_manager.get(tn)
                             extra = of_interest.get_result_extra(response_model)
                             if extra:
                                 text += "\n\n" + extra
                         except Exception:
                             pass
 
-                    if ctx.handle_tool_response is not None:
-                        ctx.handle_tool_response(
+                    if session_ctx.handle_tool_response is not None:
+                        session_ctx.handle_tool_response(
                             tool_call=tool_call,
                             text=text,
                             status="success",
@@ -245,7 +249,7 @@ class ToolExecutor:
                     )
                     if turn is not None:
                         turn.tool_success_count += 1
-                    ctx.result_sink.record(result)
+                    session_ctx.result_sink.record(result)
 
                 case ToolRuntimeStatus.REFUSED:
                     refusal = result.refusal
@@ -265,14 +269,14 @@ class ToolExecutor:
                     if turn is not None:
                         turn.tool_skip_count += 1
                     yield skip_event
-                    if ctx.handle_tool_response is not None:
-                        ctx.handle_tool_response(
+                    if session_ctx.handle_tool_response is not None:
+                        session_ctx.handle_tool_response(
                             tool_call=tool_call,
                             text=reason_text,
                             status="skipped",
                             span=span,
                         )
-                    ctx.result_sink.record(result)
+                    session_ctx.result_sink.record(result)
 
                 case ToolRuntimeStatus.FAILED:
                     error_msg = (
@@ -284,7 +288,7 @@ class ToolExecutor:
                     yield self._tool_failure_event(
                         tool_call, error_msg, None, span=span
                     )
-                    ctx.result_sink.record(result)
+                    session_ctx.result_sink.record(result)
 
                 case _:
                     error_msg = (
@@ -305,9 +309,9 @@ class ToolExecutor:
         cancelled: bool = False,
         span: Any = None,
     ) -> Any:
-        ctx = self._ctx
-        if ctx.handle_tool_response is not None:
-            ctx.handle_tool_response(
+        session_ctx = self._session_ctx
+        if session_ctx.handle_tool_response is not None:
+            session_ctx.handle_tool_response(
                 tool_call=tool_call, text=error_msg, status="failure", span=span
             )
         from rig_relay.core.types import ToolResultEvent
@@ -320,50 +324,59 @@ class ToolExecutor:
             tool_call_id=tool_call.call_id,
         )
 
-    async def execute_batch(self, resolved: Any) -> AsyncGenerator[Any]:
+    async def execute_batch(
+        self, resolved: Any, turn_ctx: ToolTurnContext
+    ) -> AsyncGenerator[Any]:
         """Execute the full tool batch: failed events, tool-call events,
         concurrent execution, and passive auto-GC.
         """
-        ctx = self._ctx
+        session_ctx = self._session_ctx
+        self._turn_ctx = turn_ctx
+        self.adapter_builder.set_turn_context(turn_ctx)
+        try:
+            for failed in resolved.failed_calls:
+                error_msg = (
+                    f"<{TOOL_ERROR_TAG}>{failed.tool_name}: {failed.error}"
+                    f"</{TOOL_ERROR_TAG}>"
+                )
+                from rig_relay.core.types import ToolResultEvent
 
-        for failed in resolved.failed_calls:
-            error_msg = (
-                f"<{TOOL_ERROR_TAG}>{failed.tool_name}: {failed.error}"
-                f"</{TOOL_ERROR_TAG}>"
+                yield ToolResultEvent(
+                    tool_name=failed.tool_name,
+                    tool_class=None,
+                    error=error_msg,
+                    tool_call_id=failed.call_id,
+                )
+                if session_ctx.stats is not None:
+                    session_ctx.stats.tool_calls_failed += 1
+
+            if not resolved.tool_calls:
+                return
+
+            for tc in resolved.tool_calls:
+                from rig_relay.core.types import ToolCallEvent as TCE
+
+                yield TCE(
+                    tool_name=tc.tool_name,
+                    tool_class=tc.tool_class,
+                    args=tc.validated_args,
+                    tool_call_id=tc.call_id,
+                )
+
+            async for event in self.execute_concurrently(resolved.tool_calls):
+                yield event
+
+            from rig_relay.core._auto_gc import maybe_auto_gc
+
+            assert session_ctx.workspace_root is not None, (
+                "ToolSessionContext.workspace_root not set"
             )
-            from rig_relay.core.types import ToolResultEvent
-
-            yield ToolResultEvent(
-                tool_name=failed.tool_name,
-                tool_class=None,
-                error=error_msg,
-                tool_call_id=failed.call_id,
+            await maybe_auto_gc(
+                session_ctx.config, session_ctx.workspace_root, session_ctx.stats
             )
-            if ctx.stats is not None:
-                ctx.stats.tool_calls_failed += 1
-
-        if not resolved.tool_calls:
-            return
-
-        for tc in resolved.tool_calls:
-            from rig_relay.core.types import ToolCallEvent as TCE
-
-            yield TCE(
-                tool_name=tc.tool_name,
-                tool_class=tc.tool_class,
-                args=tc.validated_args,
-                tool_call_id=tc.call_id,
-            )
-
-        async for event in self.execute_concurrently(resolved.tool_calls):
-            yield event
-
-        from rig_relay.core._auto_gc import maybe_auto_gc
-
-        assert ctx.workspace_root is not None, (
-            "ToolExecutionContext.workspace_root not set"
-        )
-        await maybe_auto_gc(ctx.config, ctx.workspace_root, ctx.stats)
+        finally:
+            self._turn_ctx = None
+            self.adapter_builder.clear_turn_context()
 
     async def execute_concurrently(
         self, tool_calls: list[ResolvedToolCall]

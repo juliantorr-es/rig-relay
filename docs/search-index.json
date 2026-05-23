@@ -1111,6 +1111,18 @@
     "path": "pages/out-of-scope-findings.html"
   },
   {
+    "document_id": "agent-instruction-template",
+    "title": "Agent Instruction Template (AGENTS.md)",
+    "summary": "Canonical agent instruction template governing agent behavior, conventions, and tool usage. Referenced by the docs site and steward context assembler as the authoritative instruction source.",
+    "tags": [
+      "agent",
+      "instructions",
+      "governance",
+      "template"
+    ],
+    "path": "pages/agent-instruction-template.html"
+  },
+  {
     "document_id": "agent-loop-boundary",
     "title": "Agent Loop Boundary",
     "summary": "Defines the AgentLoop turn/session conductor boundary: what it owns, what it delegates, allowed and forbidden dependencies, and how new runtime components are added.",
@@ -1713,6 +1725,19 @@
     "summary": "Full integration audit and design map for the Rig Relay GitHub App across registration, permissions, webhooks, backend event handling, frontend UX, token/private-key storage, repository authorization, trace/evidence integration, and release gates. This is an audit/design document, not an implementation.",
     "tags": [],
     "path": "pages/github-app-integration-audit-v0.html"
+  },
+  {
+    "document_id": "issue-tracker",
+    "title": "Issue Tracker",
+    "summary": "Canonical issue board for transcript-derived findings. Open items live in the append-only ledger; the page summarizes state and points at the schema.",
+    "tags": [
+      "issues",
+      "tracker",
+      "ledger",
+      "transcript",
+      "backlog"
+    ],
+    "path": "pages/issue-tracker.html"
   },
   {
     "document_id": "privacy-notice-alpha",

@@ -210,6 +210,23 @@ function _switchMode(mode) {
   _renderPanelColumn();
   renderAllWidgets();
 
+  // ── Analytics mode: subscribe to dedicated analytics projection path ──
+  if (mode === 'analytics') {
+    sendMessage({
+      type: 'analytics_subscribe',
+      widgets: [
+        'governance_gate_health',
+        'session_health_scorecard',
+        'tool_latency_heatmap',
+        'release_gate_blocker_burndown',
+        'dependency_risk_surface',
+        'out_of_scope_findings',
+        'correlation_integrity',
+        'local_inference_capability',
+      ],
+    });
+  }
+
   // ── Kernel mode FSM: keep runtime state in sync ───────────────────
   // Precondition: runtime kernel initialized (window.__RIG_RELAY_RUNTIME__ exists)
   var rt = window.__RIG_RELAY_RUNTIME__;

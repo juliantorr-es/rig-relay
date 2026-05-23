@@ -36,6 +36,10 @@ import sys
 from typing import Any
 import zipfile
 
+from rig_relay.core.paths import (
+    filter_exportable_artifact_paths,
+    refuse_confidential_input,
+)
 from rig_relay.evidence.redaction import assert_remote_safe, classify_shareable_field
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -147,6 +151,29 @@ def create_bundle(
     reports = reports_dir or DEFAULT_REPORTS_DIR
     output = output_dir or DEFAULT_OUTPUT_DIR
 
+    for candidate, op in (
+        (derived, "telemetry_derived_dir"),
+        (reports, "telemetry_reports_dir"),
+        (output, "telemetry_output_dir"),
+    ):
+        allowed, reason = refuse_confidential_input(candidate, op, REPO_ROOT)
+        if not allowed:
+            raise ValueError(reason)
+
+    if consent_file is not None:
+        allowed, reason = refuse_confidential_input(
+            consent_file, "telemetry_consent_file", REPO_ROOT
+        )
+        if not allowed:
+            raise ValueError(reason)
+
+    if state_root is not None:
+        allowed, reason = refuse_confidential_input(
+            state_root, "telemetry_state_root", REPO_ROOT
+        )
+        if not allowed:
+            raise ValueError(reason)
+
     now = datetime.now(UTC)
     bundle_id = f"bundle_{now.strftime('%Y%m%dT%H%M%S')}_{participant_id}"
     timestamp = now.isoformat()
@@ -155,10 +182,16 @@ def create_bundle(
     included_files: list[dict[str, Any]] = []
     row_counts: dict[str, int] = {}
     forbidden_issues: list[str] = []
+    derived_entries = filter_exportable_artifact_paths(
+        sorted(derived.iterdir()) if derived.is_dir() else [], REPO_ROOT
+    )
+    report_entries = filter_exportable_artifact_paths(
+        sorted(reports.iterdir()) if reports.is_dir() else [], REPO_ROOT
+    )
 
     # Derived datasets
     if derived.is_dir():
-        for f in sorted(derived.iterdir()):
+        for f in derived_entries:
             if f.name == "export_manifest.json":
                 continue
             if f.suffix in {".jsonl", ".json"}:
@@ -212,7 +245,7 @@ def create_bundle(
 
     # Reports
     if reports.is_dir():
-        for f in sorted(reports.iterdir()):
+        for f in report_entries:
             if f.suffix == ".md":
                 text = f.read_text(encoding="utf-8")
                 forbidden_issues.extend(_forbidden_content_in_text(text, f.name))
@@ -345,11 +378,11 @@ def create_bundle(
             json.dumps(consent_data, indent=2).encode("utf-8"),
         ))
     if derived.is_dir():
-        for f in sorted(derived.iterdir()):
+        for f in derived_entries:
             if f.suffix in {".jsonl", ".json"}:
                 content_entries.append((f"derived/{f.name}", f.read_bytes()))
     if reports.is_dir():
-        for f in sorted(reports.iterdir()):
+        for f in report_entries:
             if f.suffix == ".md":
                 content_entries.append((f"reports/{f.name}", f.read_bytes()))
 

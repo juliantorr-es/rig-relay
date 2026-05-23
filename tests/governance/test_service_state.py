@@ -5,6 +5,7 @@ import secrets
 from typing import Any
 from unittest.mock import patch
 
+from rig_relay.core.telemetry.types import TelemetryMode
 from rig_relay.desktop.intents import execute_desktop_intent
 from rig_relay.governance.service_state import (
     CapabilityGate,
@@ -68,7 +69,7 @@ class TestProfileStore:
         assert profile.local_auth_enabled is False
         assert profile.passkey_registered is False
         assert profile.platform_credential_registered is False
-        assert profile.telemetry_mode == "disabled"
+        assert profile.telemetry_mode == TelemetryMode.ENABLED_FIRST_PARTY.value
         assert store.exists()
 
     def test_save_and_load_roundtrips(self, tmp_path: Path):

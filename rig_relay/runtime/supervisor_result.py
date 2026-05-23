@@ -15,6 +15,7 @@ class RuntimeSupervisorResultClassification(StrEnum):
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     KILLED = "killed"
+    BUDGET_KILLED = "budget_killed"
     CANCELLED = "cancelled"
     SPAWN_FAILED = "spawn_failed"
     CLEANUP_FAILED = "cleanup_failed"
@@ -58,6 +59,7 @@ class RuntimeSupervisorResourceUsage(BaseModel):
     signal: int | None = None
     timed_out: bool = False
     killed: bool = False
+    killed_reason: str | None = None
     cancelled: bool = False
     pid: int | None = None
 

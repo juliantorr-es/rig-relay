@@ -436,6 +436,12 @@ jobs:
     name: Release Evidence Gate (advisory)
     runs-on: ubuntu-latest
     continue-on-error: true
+    needs:
+      - schema-validation
+      - static-site-renderer
+      - deepseek-opencode-usage-report
+      - deepseek-lane-routing
+      - github-live-auth
 
     steps:
       - name: Checkout repository

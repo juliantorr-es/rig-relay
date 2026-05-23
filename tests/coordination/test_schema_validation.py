@@ -186,3 +186,96 @@ def test_all_schemas_have_dollar_schema():
         elif data["$schema"] != "http://json-schema.org/draft-07/schema#":
             failures.append(f"{path.name}: Unexpected $schema: {data['$schema']}")
     assert not failures, "\n" + "\n".join(failures)
+
+
+# ── validate_schema strict-mode regression ──────────────────────────────────
+
+
+def test_validate_schema_strict_valid(tmp_path):
+    s = tmp_path / "valid.schema.json"
+    s.write_text(
+        json.dumps({
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+        })
+    )
+    is_valid, errors = validate_schema(s, strict=True)
+    assert is_valid, f"Valid schema should pass strict validation: {errors}"
+
+
+def test_validate_schema_strict_malformed_fails(tmp_path):
+    s = tmp_path / "malformed.schema.json"
+    s.write_text(
+        json.dumps({
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "not_a_real_type",
+        })
+    )
+    is_valid, errors = validate_schema(s, strict=True)
+    assert not is_valid, (
+        f"Malformed schema with invalid type should fail strict validation. "
+        f"errors={errors}"
+    )
+
+
+def test_validate_schema_strict_empty_is_valid(tmp_path):
+    s = tmp_path / "empty.schema.json"
+    s.write_text(json.dumps({}))
+    is_valid, errors = validate_schema(s, strict=True)
+    assert is_valid, f"Empty schema {{}} is valid per Draft 7: errors={errors}"
+
+
+def test_validate_schema_strict_integer_type(tmp_path):
+    s = tmp_path / "int.schema.json"
+    s.write_text(
+        json.dumps({
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "integer",
+        })
+    )
+    is_valid, errors = validate_schema(s, strict=True)
+    assert is_valid, f"Valid integer schema should pass: {errors}"
+
+
+def test_validate_schema_strict_rejects_invalid_draft(tmp_path):
+    s = tmp_path / "bad-draft.schema.json"
+    s.write_text(
+        json.dumps({
+            "$schema": "http://json-schema.org/draft-99/schema#",
+            "type": "object",
+        })
+    )
+    is_valid, errors = validate_schema(s, strict=True)
+    assert not is_valid, f"Invalid $schema draft should fail. errors={errors}"
+
+
+def test_validate_all_schemas_strict_on_real_dir():
+    all_valid, all_errors, total, failed = validate_all_schemas(
+        SCHEMAS_DIR, strict=True
+    )
+    assert total >= 30, f"Expected at least 30 schemas, got {total}"
+    assert all_valid, (
+        f"Strict metaschema validation failed for {failed}/{total} schemas:\n"
+        + "\n".join(all_errors[:20])
+    )
+    assert failed == 0, f"Expected 0 strict-validation failures, got {failed}"
+
+
+def test_validate_schema_strict_catches_metaschema_violation(tmp_path):
+    invalid_but_parseable = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": "not_an_object",
+    }
+    s = tmp_path / "bad-properties.schema.json"
+    s.write_text(json.dumps(invalid_but_parseable))
+
+    non_strict_valid, _ = validate_schema(s, strict=False)
+    strict_valid, strict_errors = validate_schema(s, strict=True)
+
+    assert non_strict_valid, "Non-strict should pass for valid JSON"
+    assert not strict_valid, (
+        "Strict mode should reject 'properties' that is not an object. "
+        f"errors={strict_errors}"
+    )

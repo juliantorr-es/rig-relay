@@ -14,6 +14,10 @@ import platform
 import socket
 import subprocess
 
+from rig_relay.core.paths import is_confidential_artifact_path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 def get_git_info() -> tuple[str, str, bool]:
     branch = _run_git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
@@ -173,6 +177,8 @@ def build_with_pyinstaller(spec_file: str) -> BuildResult:
     result.output_dir = dist_dir
     for p in sorted(dist_dir.rglob("*")):
         if p.is_file() and not p.is_symlink():
+            if is_confidential_artifact_path(p, REPO_ROOT):
+                continue
             try:
                 size = p.stat().st_size
             except OSError:
@@ -180,6 +186,8 @@ def build_with_pyinstaller(spec_file: str) -> BuildResult:
             kind = _classify_artifact(p, dist_dir)
             result.artifacts.append((kind, p, size))
         elif p.is_dir() and any(f.is_file() for f in p.rglob("*")):
+            if is_confidential_artifact_path(p, REPO_ROOT):
+                continue
             result.artifacts.append(("bundle_dir", p, _dir_total_size(p)))
 
     result.success = True
@@ -276,6 +284,8 @@ def build_manifest_entrypoint(
 
     artifact_entries: list[dict] = []
     for kind, path, size in all_artifacts:
+        if is_confidential_artifact_path(path, REPO_ROOT):
+            continue
         if path.is_file():
             sha = sha256_file(path)
         else:
@@ -352,6 +362,8 @@ def _sha256_dir(dirpath: Path) -> str:
     h = hashlib.sha256()
     for f in sorted(dirpath.rglob("*")):
         if f.is_file() and not f.is_symlink():
+            if is_confidential_artifact_path(f, REPO_ROOT):
+                continue
             h.update(str(f.relative_to(dirpath)).encode())
             h.update(sha256_file(f).encode())
     return h.hexdigest()
@@ -387,6 +399,8 @@ def write_checksums(manifest: dict, output_dir: Path) -> Path:
     lines: list[str] = []
     for artifact in manifest["artifacts"]:
         if artifact["kind"] == "bundle_dir":
+            continue
+        if is_confidential_artifact_path(artifact["path"], REPO_ROOT):
             continue
         fname = Path(artifact["path"]).name
         lines.append(f"{artifact['sha256']}  {fname}")

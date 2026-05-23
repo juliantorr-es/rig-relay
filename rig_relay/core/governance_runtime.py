@@ -81,14 +81,53 @@ class GovernanceRuntime:
                 authority_tier="local_mutation",
             )
 
+        tool_permission = self._resolve_tool_permission(tool_name)
+
+        if tool_permission == ToolPermission.NEVER:
+            return ToolDecision(
+                verdict=ToolExecutionResponse.SKIP,
+                approval_type=ToolPermission.NEVER,
+                feedback=f"Tool '{tool_name}' is permanently disabled.",
+                decision_id=_generate_decision_id(f"{seed}:never"),
+                surface="agent_loop",
+                authority_tier="local_mutation",
+            )
+
+        if tool_permission == ToolPermission.ASK:
+            if self.approval_callback is not None:
+                feedback_from_callback = self._invoke_approval_callback_sync(
+                    tool_name, tool_args, tool_call_id
+                )
+                if feedback_from_callback is not None:
+                    return ToolDecision(
+                        verdict=ToolExecutionResponse.EXECUTE,
+                        approval_type=ToolPermission.ASK,
+                        feedback=feedback_from_callback,
+                        decision_id=_generate_decision_id(f"{seed}:approved"),
+                        surface="agent_loop",
+                        authority_tier="local_mutation",
+                    )
+            return ToolDecision(
+                verdict=ToolExecutionResponse.SKIP,
+                approval_type=ToolPermission.ASK,
+                feedback=f"Tool '{tool_name}' requires approval but no approval callback is available or approval was not granted.",
+                decision_id=_generate_decision_id(f"{seed}:ask_no_callback"),
+                surface="agent_loop",
+                authority_tier="local_mutation",
+            )
+
+        if tool_permission == ToolPermission.ALWAYS:
+            pass
+
         if _is_likely_mutation_tool(tool_name):
+            allow_mutation = tool_permission == ToolPermission.ALWAYS
             capability = _TOOL_NAME_TO_CAPABILITY.get(tool_name, "file_write_proposal")
             governance_result = self.evaluate_mutation_legality(
                 workspace_id=None,
                 intent_id=tool_call_id,
                 intent_kind=tool_name,
                 requested_capabilities=[capability],
-                allow_mutation=False,
+                allow_mutation=allow_mutation,
                 allow_network=False,
                 dirty_policy_satisfied=True,
             )
@@ -130,6 +169,39 @@ class GovernanceRuntime:
             if not _is_likely_mutation_tool(tool_name)
             else "local_mutation",
         )
+
+    def _invoke_approval_callback_sync(
+        self, tool_name: str, tool_args: dict, tool_call_id: str
+    ) -> str | None:
+        if self.approval_callback is None:
+            return None
+        try:
+            from rig_relay.core.types import ApprovalResponse
+
+            response, feedback = self.approval_callback(
+                tool_name, tool_args, tool_call_id, []
+            )
+            if response == ApprovalResponse.YES:
+                return feedback or "approved"
+            return None
+        except Exception:
+            return None
+
+    def _resolve_tool_permission(self, tool_name: str) -> ToolPermission:
+        for rule in self.session_rules:
+            if rule.tool_name == tool_name:
+                return ToolPermission.ALWAYS
+        if self.config is None:
+            return ToolPermission.ASK
+        tools_config = getattr(self.config, "tools", {}) or {}
+        tool_overrides = tools_config.get(tool_name) or {}
+        permission_str = tool_overrides.get("permission")
+        if permission_str is not None:
+            try:
+                return ToolPermission(permission_str)
+            except ValueError:
+                pass
+        return ToolPermission.ASK
 
     async def ask_approval(
         self,

@@ -12,7 +12,6 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field
 
 from rig_relay.coordination.store import CoordinationStore
-from rig_relay.core.config import VibeConfig
 from rig_relay.core.guard import DirtyFileGuard, get_guard
 from rig_relay.core.telemetry.local import dump_canonical_json
 from rig_relay.core.telemetry.tool_contract import (
@@ -274,7 +273,6 @@ class Checkpoint(
     ) -> CheckpointResult | None:
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"
-        config = VibeConfig()
         if args.authorization_receipt:
             valid, reason = self._validate_receipt(args.authorization_receipt, action)
             if not valid:
@@ -282,28 +280,6 @@ class Checkpoint(
                 return CheckpointResult(
                     ok=False,
                     message=f"Checkpoint refused: {reason}",
-                    refusal_reason=reason,
-                )
-        elif config.checkpoint_dev_bypass_enabled:
-            # Dev bypass enabled: generate dev receipt internally
-            from rig_relay.governance.auth_receipts import mint_dev_receipt
-
-            dev_receipt = mint_dev_receipt(
-                action, ttl_seconds=60, checkpoint_dev_bypass_enabled=True
-            )
-            if dev_receipt is None:
-                self._emit_authorization_refused(args, "dev_bypass_disabled", guard)
-                return CheckpointResult(
-                    ok=False,
-                    message="Checkpoint refused: dev_bypass_disabled",
-                    refusal_reason="dev_bypass_disabled",
-                )
-            valid, reason = self._validate_receipt(json.dumps(dev_receipt), action)
-            if not valid:
-                self._emit_authorization_refused(args, reason, guard)
-                return CheckpointResult(
-                    ok=False,
-                    message=f"Checkpoint refused (dev bypass failed): {reason}",
                     refusal_reason=reason,
                 )
         else:
@@ -433,11 +409,15 @@ class Checkpoint(
                 if self._paths_overlap(rel_path, reserved_path):
                     return f"Path '{rel_path}' is reserved for write by session {reservation.session_id} (task {reservation.task_id})"
 
+        # Bound to verifiable real-session provenance
+        if guard.captured_at is None:
+            return "checkpoint_guard_provenance_missing"
+
         snapshot = guard.snapshot_for(rel_path)
         if snapshot is not None:
             guard_report = guard.report()
-            if rel_path not in guard_report["files_touched_by_mission"]:
-                return f"File '{rel_path}' was dirty at mission start and was not safely patched by this session"
+            return "checkpoint_protected_dirty_path_refused"
+                
         return None
 
     @staticmethod

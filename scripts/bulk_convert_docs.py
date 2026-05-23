@@ -6,15 +6,23 @@ conversations, findings, legal, release, protocols, demo, ui, etc.)
 and produces rig.documentation.page.v1 JSON output.
 
 Skips: allowed exceptions, already-migrated files (when JSON exists).
+
+Dry-run by default. Pass --execute to perform document mutation.
 """
 
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import json
 from pathlib import Path
 import re
 import subprocess
+
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS = REPO_ROOT / "docs"
@@ -261,7 +269,106 @@ def _doc_type(md_path: str) -> str:  # noqa: PLR0911
     return "reference"
 
 
+def _count_dry_run() -> tuple[int, int, int, int]:
+    converted = 0
+    skipped_allowed = 0
+    skipped_migrated = 0
+    skipped_no_content = 0
+
+    for md_path in sorted(Path("docs").rglob("*.md")):
+        rel = str(md_path)
+        if Path(rel).name in _ALLOWED_MARKDOWN and md_path.parent == Path("."):
+            skipped_allowed += 1
+            continue
+        if rel in _ALREADY_MIGRATED:
+            skipped_migrated += 1
+            continue
+        json_path = _json_path(rel)
+        if (REPO_ROOT / json_path).exists():
+            skipped_migrated += 1
+            continue
+        full_path = REPO_ROOT / rel
+        if not full_path.is_file():
+            skipped_no_content += 1
+            continue
+        converted += 1
+
+    return converted, skipped_allowed, skipped_migrated, skipped_no_content
+
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Bulk Markdown-to-JSON documentation converter."
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute document mutation. Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    args = _parse_args()
+
+    governed = require_governed_execution_with_evidence(
+        script_name="bulk_convert_docs",
+        authority_tier="local_mutation",
+        capability_id="doc_bulk_convert",
+        execute_requested=args.execute,
+    )
+
+    if not args.execute:
+        converted, skipped_allowed, skipped_migrated, skipped_no_content = (
+            _count_dry_run()
+        )
+        print(
+            f"DRY-RUN: Would convert {converted} Markdown files to JSON. Pass --execute to proceed."
+        )
+        print(f"  Skipped (allowed exceptions): {skipped_allowed}")
+        print(f"  Skipped (already migrated): {skipped_migrated}")
+        print(f"  Skipped (no content): {skipped_no_content}")
+        if args.json:
+            r = emit_structured_result(
+                script_name="bulk_convert_docs",
+                authority_tier="local_mutation",
+                capability_id="doc_bulk_convert",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        return 0
+
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="bulk_convert_docs",
+            authority_tier="local_mutation",
+            capability_id="doc_bulk_convert",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+        )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — convert blocked (fail-closed)")
+        return 1
+
     git_sha = _git_sha()
     converted = 0
     skipped_allowed = 0
@@ -276,7 +383,6 @@ def main() -> int:
         if rel in _ALREADY_MIGRATED:
             skipped_migrated += 1
             continue
-        # Skip already-converted (when JSON exists and is newer)
         json_path = _json_path(rel)
         if (REPO_ROOT / json_path).exists():
             skipped_migrated += 1
@@ -298,6 +404,27 @@ def main() -> int:
     print(f"Converted: {converted}")
     print(f"Skipped (allowed): {skipped_allowed}")
     print(f"Skipped (already migrated): {skipped_migrated}")
+
+    if args.json:
+        r = emit_structured_result(
+            script_name="bulk_convert_docs",
+            authority_tier="local_mutation",
+            capability_id="doc_bulk_convert",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="executed",
+            can_execute=True,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+            artifacts={
+                "converted": converted,
+                "skipped_allowed": skipped_allowed,
+                "skipped_migrated": skipped_migrated,
+            },
+        )
+        print(json.dumps(r, indent=2))
+
     return 0
 
 

@@ -58,7 +58,9 @@ def check_required_gates(root: Path, gates: list[str]) -> list[str]:
             import json
 
             gate_data = json.loads(gate_path.read_text(encoding="utf-8"))
-            verdict = gate_data.get("verdict") or gate_data.get("status") or ""
+            verdict = gate_data.get("verdict")
+            if verdict is None:
+                verdict = gate_data.get("status") or ""
             if isinstance(verdict, str) and verdict.upper() in _GATE_FAILURE_VERDICTS:
                 failures.append(f"gate_failed:{gate_rel}")
         except Exception:
@@ -171,7 +173,10 @@ def classify_blockers(
         )
     )
     if gate_failures:
-        blockers.append("failed_gate")
+        if any(f.startswith("gate_unreadable:") for f in gate_failures):
+            blockers.append("gate_unreadable")
+        else:
+            blockers.append("failed_gate")
     if comp["max_continuations_exceeded"] or comp["max_failed_attempts_exceeded"]:
         blockers.append("max_attempts_exceeded")
     blockers.extend(check_completion_blockers(item, comp))
@@ -183,12 +188,20 @@ def select_task(
     lanes: list[dict[str, Any]],
     root: Path,
     dirty_files: set[str],
+    *,
+    claimed_task_ids: set[str] | None = None,
 ) -> tuple[dict[str, Any] | None, list[str], dict[str, Any] | None]:
     ownership = active_lane_files(lanes)
+    claimed_task_ids = claimed_task_ids or set()
+    skipped_blockers: list[str] = []
     active_items = [i for i in items if i.get("status") == "active"]
     active_items.sort(key=lambda i: i.get("priority", 999))
 
     for active in active_items:
+        task_id = str(active.get("task_id", ""))
+        if task_id and task_id in claimed_task_ids:
+            skipped_blockers.append("lane_ownership_collision")
+            continue
         errors = validate_queue_item(active)
         if errors:
             continue
@@ -217,6 +230,10 @@ def select_task(
     queued.sort(key=lambda i: i.get("priority", 999))
 
     for item in queued:
+        task_id = str(item.get("task_id", ""))
+        if task_id and task_id in claimed_task_ids:
+            skipped_blockers.append("lane_ownership_collision")
+            continue
         errors = validate_queue_item(item)
         prompt_path = item.get("prompt_path", "")
         prompt_hash = _prompt_sha256(root, prompt_path)
@@ -229,7 +246,7 @@ def select_task(
         if not blockers:
             return item, blockers, comp
 
-    return None, [], None
+    return None, list(dict.fromkeys(skipped_blockers)), None
 
 
 def classify_state(
@@ -252,6 +269,8 @@ def classify_substrate_blocker(
 ) -> str | None:
     if fallback_status.startswith("invalid"):
         return "context_capsule_invalid"
+    if fallback_status == "stale":
+        return "context_capsule_stale"
     return None
 
 
@@ -336,16 +355,277 @@ def read_prompt_text(root: Path, prompt_path: str) -> str | None:
     return resolved.read_text(encoding="utf-8")
 
 
+def classify_paths(root: Path, paths: list[str]) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {
+        "implementation_files": [],
+        "schemas": [],
+        "canonical_configs": [],
+        "generated_derived": [],
+        "tests": [],
+        "telemetry": [],
+        "projections": [],
+        "unknown_unclassified": [],
+    }
+    for p in paths:
+        p_clean = p.replace("\\", "/")
+        if (
+            "rig_relay/core/telemetry/" in p_clean
+            or "rig_relay/core/telemetry_runtime/" in p_clean
+            or "telemetry-contribution-policy" in p_clean
+            or p_clean.endswith("telemetry.py")
+        ):
+            result["telemetry"].append(p)
+        elif (
+            "rig_relay/desktop/projection.py" in p_clean
+            or "rig_relay/review_projection/" in p_clean
+            or "docs/json/site/" in p_clean
+        ):
+            result["projections"].append(p)
+        elif (
+            "tests/" in p_clean
+            or p_clean.endswith("_test.py")
+            or p_clean.startswith("test_")
+        ):
+            result["tests"].append(p)
+        elif "docs/schemas/" in p_clean:
+            result["schemas"].append(p)
+        elif "docs/json/governance/" in p_clean or "docs/json/issues/" in p_clean:
+            result["canonical_configs"].append(p)
+        elif (
+            ".build/" in p_clean
+            or ".rig/opencode/worker_reports/" in p_clean
+            or p_clean.endswith(".html")
+            or "search-index.json" in p_clean
+        ):
+            result["generated_derived"].append(p)
+        elif p_clean.endswith(".py") and (
+            "rig_relay/" in p_clean or p_clean.startswith("scripts/")
+        ):
+            result["implementation_files"].append(p)
+        else:
+            result["unknown_unclassified"].append(p)
+    return result
+
+
+def _glob_match(path: str, pattern: str) -> bool:
+    import re
+
+    # Normalize slashes
+    p_path = path.replace("\\", "/")
+    p_pat = pattern.replace("\\", "/")
+
+    # Replace **/ with a special marker first to avoid conflicts
+    p = p_pat.replace("**/", "<GLOBSTAR_SLASH>")
+    p = p.replace("**", "<GLOBSTAR>")
+    # Escape the rest
+    escaped = re.escape(p)
+    # Replace markers
+    escaped = escaped.replace("<GLOBSTAR_SLASH>", "(?:.*/)?")
+    escaped = escaped.replace("<GLOBSTAR>", ".*")
+    escaped = escaped.replace(r"\*", "[^/]*")
+    escaped = escaped.replace(r"\?", "[^/]")
+    regex_str = "^" + escaped + "$"
+    return bool(re.match(regex_str, p_path))
+
+
+def explain_artifact(root: Path, path: str) -> dict[str, Any]:
+    try:
+        path_obj = Path(path)
+        if not path_obj.is_absolute():
+            resolved = (root / path_obj).resolve()
+        else:
+            resolved = path_obj.resolve()
+        resolved_root = root.resolve()
+        if not str(resolved).startswith(str(resolved_root)):
+            return {
+                "family_name": "External Path",
+                "class": "unknown",
+                "governing_schema": "none",
+                "mutation_path": "Path lies outside workspace boundary. Do not modify.",
+                "content_light": True,
+                "validation_command": "none",
+                "related_artifacts": [],
+                "risk": "Traversal outside workspace.",
+                "protected_write_disposition": "deny",
+            }
+        rel_path = str(resolved.relative_to(resolved_root)).replace("\\", "/")
+    except Exception:
+        return {
+            "family_name": "Invalid Path",
+            "class": "unknown",
+            "governing_schema": "none",
+            "mutation_path": "Path cannot be resolved safely.",
+            "content_light": True,
+            "validation_command": "none",
+            "related_artifacts": [],
+            "risk": "Invalid path syntax or traversal.",
+            "protected_write_disposition": "deny",
+        }
+
+    profile_path = root / "docs/json/governance/steward_profile.v1.json"
+    profile: dict[str, Any] = {}
+    if profile_path.exists():
+        try:
+            import json
+
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    families = profile.get("artifact_families", [])
+    for family in families:
+        for pattern in family.get("patterns", []):
+            if _glob_match(rel_path, pattern):
+                return {
+                    "family_name": family["name"],
+                    "class": family["class"],
+                    "governing_schema": family.get("governing_schema", "none"),
+                    "mutation_path": family["mutation_path"],
+                    "content_light": family["content_light"],
+                    "validation_command": family["validation_command"],
+                    "related_artifacts": family["related_artifacts"],
+                    "risk": family["risk"],
+                    "protected_write_disposition": family[
+                        "protected_write_disposition"
+                    ],
+                }
+
+    return {
+        "family_name": "Generic Workspace File",
+        "class": "unknown",
+        "governing_schema": "none",
+        "mutation_path": "Edit as normal.",
+        "content_light": False,
+        "validation_command": "uv run pytest",
+        "related_artifacts": [],
+        "risk": "None identified.",
+        "protected_write_disposition": "allow",
+    }
+
+
+def check_write_permission(root: Path, path: str) -> dict[str, Any]:
+    explanation = explain_artifact(root, path)
+    disp = explanation["protected_write_disposition"]
+    if disp == "deny":
+        return {
+            "allowed": False,
+            "action": "deny",
+            "reason": f"Access denied: {explanation['family_name']} - {explanation['mutation_path']}",
+        }
+    return {
+        "allowed": True,
+        "action": disp,
+        "reason": f"{explanation['family_name']}: {explanation['mutation_path']}",
+    }
+
+
+def build_validation_plan(root: Path, paths: list[str]) -> dict[str, Any]:
+    targeted: list[dict[str, Any]] = []
+    deferred: list[dict[str, Any]] = [
+        {
+            "command": "uv run pytest",
+            "reason": "Full-suite pass should run once after the patch stabilizes",
+        }
+    ]
+    skipped: list[dict[str, Any]] = []
+
+    seen_cmds = set()
+
+    for p in paths:
+        p_clean = p.replace("\\", "/")
+        explanation = explain_artifact(root, p)
+        val_cmd = explanation.get("validation_command")
+
+        if (
+            "rig_relay/core/telemetry/" in p_clean
+            or "rig_relay/core/telemetry_runtime/" in p_clean
+            or "telemetry-contribution-policy" in p_clean
+        ):
+            cmd = "uv run pytest tests/telemetry/"
+            if cmd not in seen_cmds:
+                seen_cmds.add(cmd)
+                targeted.append({
+                    "command": cmd,
+                    "classification": ["unit", "integration", "telemetry"],
+                    "reason": "Validates telemetry emission and formatting changes",
+                })
+        elif (
+            "rig_relay/cli/_steward/" in p_clean
+            or "rig_relay/cli/steward.py" in p_clean
+            or "rig_relay/governance/steward_context_assembler.py" in p_clean
+        ):
+            cmd = "uv run pytest tests/governance/test_opencode_idle_steward.py"
+            if cmd not in seen_cmds:
+                seen_cmds.add(cmd)
+                targeted.append({
+                    "command": cmd,
+                    "classification": ["integration", "real-artifact"],
+                    "reason": "Validates steward loop and dispatch logic",
+                })
+            cmd2 = "uv run pytest tests/governance/test_steward_actions.py"
+            if cmd2 not in seen_cmds:
+                seen_cmds.add(cmd2)
+                targeted.append({
+                    "command": cmd2,
+                    "classification": ["integration", "real-artifact"],
+                    "reason": "Validates steward v0 companion subcommands",
+                })
+        elif (
+            "rig_relay/coordination/" in p_clean
+            or "rig_relay/cli/_steward/_coordination.py" in p_clean
+        ):
+            cmd = "uv run pytest tests/coordination/test_steward_coordination_bridge.py"
+            if cmd not in seen_cmds:
+                seen_cmds.add(cmd)
+                targeted.append({
+                    "command": cmd,
+                    "classification": ["integration", "substrate"],
+                    "reason": "Validates coordination state projection and lease handling",
+                })
+        elif p_clean.endswith(".md"):
+            skipped.append({
+                "path": p,
+                "reason": "Markdown documentation files do not affect runtime execution.",
+            })
+        elif "tests/" in p_clean:
+            cmd = f"uv run pytest {p}"
+            if cmd not in seen_cmds:
+                seen_cmds.add(cmd)
+                targeted.append({
+                    "command": cmd,
+                    "classification": ["unit"],
+                    "reason": f"Verifies changed test file {p}",
+                })
+        elif val_cmd and val_cmd not in {"none", "uv run pytest"}:
+            if val_cmd not in seen_cmds:
+                seen_cmds.add(val_cmd)
+                targeted.append({
+                    "command": val_cmd,
+                    "classification": ["integration"],
+                    "reason": f"Validator for {explanation['family_name']} family",
+                })
+
+    return {
+        "recommended_targeted_validation": targeted,
+        "defer_until_converged": deferred,
+        "intentionally_skipped_validation": skipped,
+    }
+
+
 __all__ = [
     "all_completion_criteria_satisfied",
+    "build_validation_plan",
     "check_completion_blockers",
     "check_completion_criteria",
     "check_file_blockers",
     "check_prompt_blocker",
     "check_required_gates",
+    "check_write_permission",
     "classify_blockers",
+    "classify_paths",
     "classify_state",
     "classify_substrate_blocker",
+    "explain_artifact",
     "read_prompt_text",
     "select_task",
     "validate_queue_item",

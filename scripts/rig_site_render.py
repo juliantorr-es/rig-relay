@@ -124,9 +124,9 @@ def _safe_relative_path(path: Path | str, start: Path | str) -> str:
 
 def _build_structured_data_homepage(
     schema_count: int, head_sha: str, description: str
-) -> str:
+) -> list[dict[str, str]]:
     """Build JSON-LD structured data for the homepage."""
-    data = [
+    return [
         {
             "@context": "https://schema.org",
             "@type": "WebSite",
@@ -145,13 +145,13 @@ def _build_structured_data_homepage(
             "license": "https://www.gnu.org/licenses/agpl-3.0.html",
         },
     ]
-    res = json.dumps(data, separators=(",", ":"))
-    return res.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def _build_structured_data_evidence(title: str, description: str, route: str) -> str:
+def _build_structured_data_evidence(
+    title: str, description: str, route: str
+) -> dict[str, Any]:
     """Build JSON-LD structured data for an evidence page."""
-    data = {
+    return {
         "@context": "https://schema.org",
         "@type": "TechArticle",
         "headline": title,
@@ -159,8 +159,6 @@ def _build_structured_data_evidence(title: str, description: str, route: str) ->
         "url": route,
         "isPartOf": {"@type": "WebSite", "name": "Rig Relay"},
     }
-    res = json.dumps(data, separators=(",", ":"))
-    return res.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def _count_schemas(repo_root: Path) -> int:

@@ -70,9 +70,21 @@ class ReceiptEvidenceKind(StrEnum):
     RUNTIME_EVENT = "runtime_event"
     TOOL_RECEIPT = "tool_receipt"
     PROJECTION_INTEGRITY = "projection_integrity"
+    BUDGET_KILL = "budget_kill"
 
 
 # ── Models ────────────────────────────────────────────────────────────
+
+
+class ReceiptActorTier(StrEnum):
+    """Authority tier for receipt actors (cross_surface_authority_spine v1)."""
+
+    NONE = "none"
+    READ_ONLY_PROJECTION = "read_only_projection"
+    LOCAL_MUTATION = "local_mutation"
+    REMOTE_MUTATION = "remote_mutation"
+    DESTRUCTIVE_MUTATION = "destructive_mutation"
+    ADMINISTRATIVE = "administrative"
 
 
 class ReceiptActor(BaseModel):
@@ -87,7 +99,7 @@ class ReceiptActor(BaseModel):
     actor_kind: ReceiptActorKind
     display_name: str | None = None
     is_human: bool = False
-    is_authoritative: bool = False
+    authority_tier: ReceiptActorTier = ReceiptActorTier.NONE
 
 
 class ReceiptSubject(BaseModel):
@@ -187,6 +199,10 @@ class ReceiptEnvelope(BaseModel):
     envelope_id: str
     receipt_kind: str
     request_id: str | None = None
+    authority_tier: str | None = None
+    trace_id: str | None = None
+    session_id: str | None = None
+    receipt_sha256: str | None = None
     actor: ReceiptActor
     subject: ReceiptSubject
     input: ReceiptInput | None = None
@@ -221,6 +237,9 @@ def build_receipt_envelope(
     evidence_override: list[ReceiptEvidence] | None = None,
     source_artifact_paths: list[str] | None = None,
     created_at: str | None = None,
+    authority_tier: str | None = None,
+    trace_id: str | None = None,
+    session_id: str | None = None,
 ) -> ReceiptEnvelope:
     """Build a content-light ReceiptEnvelope from available inputs.
 
@@ -243,6 +262,9 @@ def build_receipt_envelope(
             directly. When combined with a receipt_payload, both are included.
         created_at: ISO 8601 timestamp. Auto-generated (current UTC) if
             not provided. For deterministic output, always pass this.
+        authority_tier: Authority tier for cross_surface_authority_spine.
+        trace_id: Distributed trace correlation ID.
+        session_id: Session correlation ID.
 
     Returns:
         A ReceiptEnvelope with all fields populated.
@@ -283,6 +305,9 @@ def build_receipt_envelope(
         evidence=evidence,
         source_artifact_paths=source_artifact_paths,
         created_at=stamp,
+        authority_tier=authority_tier,
+        trace_id=trace_id,
+        session_id=session_id,
     )
 
 
@@ -292,6 +317,7 @@ __all__ = [
     "PLACEHOLDER_UNKNOWN",
     "ReceiptActor",
     "ReceiptActorKind",
+    "ReceiptActorTier",
     "ReceiptDecision",
     "ReceiptEnvelope",
     "ReceiptEvidence",
@@ -312,6 +338,8 @@ def build_governance_decision_envelope(
     session_id: str | None = None,
     actor_id: str = "governance_runtime",
     created_at: str | None = None,
+    trace_id: str | None = None,
+    receipt_store: object | None = None,
 ) -> ReceiptEnvelope:
     """Convert a GateDecision into a content-light ReceiptEnvelope.
 
@@ -328,6 +356,8 @@ def build_governance_decision_envelope(
         session_id: Optional session ID for cross-surface correlation.
         actor_id: Identifier for the governance actor.
         created_at: ISO 8601 timestamp. Auto-generated if not provided.
+        trace_id: Distributed trace correlation ID.
+        receipt_store: Optional receipt store for persistence.
 
     Returns:
         A ReceiptEnvelope ready for persistence via ReceiptStore.append().
@@ -348,7 +378,7 @@ def build_governance_decision_envelope(
         actor_kind=ReceiptActorKind.RUNTIME,
         display_name="Governance Runtime",
         is_human=False,
-        is_authoritative=True,
+        authority_tier=ReceiptActorTier.ADMINISTRATIVE,
     )
 
     subject = ReceiptSubject(
@@ -390,7 +420,7 @@ def build_governance_decision_envelope(
         except Exception:
             pass
 
-    return build_receipt_envelope(
+    envelope = build_receipt_envelope(
         envelope_id=envelope_id,
         receipt_kind="governance_decision",
         actor=actor,
@@ -399,4 +429,17 @@ def build_governance_decision_envelope(
         decision=receipt_decision,
         evidence_override=evidence_items,
         created_at=created_at,
+        authority_tier=authority_tier,
+        trace_id=trace_id,
+        session_id=session_id,
     )
+
+    if receipt_store is not None:
+        append_fn = getattr(receipt_store, "append", None)
+        if append_fn is not None and callable(append_fn):
+            try:
+                append_fn(envelope)
+            except Exception:
+                pass
+
+    return envelope

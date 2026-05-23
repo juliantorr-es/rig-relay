@@ -1,0 +1,1258 @@
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> rig_relay/context_egress/boundary.py:1:1
+  |
+1 | / from __future__ import annotations
+2 | |
+3 | | import os
+4 | | from pathlib import Path
+5 | |
+6 | | from rig_relay.context_egress.models import BoundedMissionManifest, ContextClassification, ProviderMode
+7 | | from rig_relay.core.paths._confidential_artifacts import is_confidential_artifact_path, resolve_confidential_artifact_root
+  | |__________________________________________________________________________________________________________________________^
+8 |
+9 |   _HARD_REFUSAL_PATTERNS = [
+  |
+help: Organize imports
+3  | import os
+4  | from pathlib import Path
+5  |
+   - from rig_relay.context_egress.models import BoundedMissionManifest, ContextClassification, ProviderMode
+   - from rig_relay.core.paths._confidential_artifacts import is_confidential_artifact_path, resolve_confidential_artifact_root
+6  + from rig_relay.context_egress.models import (
+7  +     BoundedMissionManifest,
+8  +     ContextClassification,
+9  +     ProviderMode,
+10 + )
+11 + from rig_relay.core.paths._confidential_artifacts import (
+12 +     is_confidential_artifact_path,
+13 +     resolve_confidential_artifact_root,
+14 + )
+15 |
+16 | _HARD_REFUSAL_PATTERNS = [
+17 |     ".env",
+
+error[F401][*]: `os` imported but unused
+ --> rig_relay/context_egress/boundary.py:3:8
+  |
+1 | from __future__ import annotations
+2 |
+3 | import os
+  |        ^^
+4 | from pathlib import Path
+  |
+help: Remove unused import: `os`
+1 | from __future__ import annotations
+2 |
+  - import os
+3 | from pathlib import Path
+4 |
+5 | from rig_relay.context_egress.models import BoundedMissionManifest, ContextClassification, ProviderMode
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> rig_relay/context_egress/compiler.py:1:1
+   |
+ 1 | / import hashlib
+ 2 | | import json
+ 3 | | from pathlib import Path
+ 4 | |
+ 5 | | from rig_relay.context_egress.boundary import refuse_provider_context_input, validate_confidential_output_sink
+ 6 | | from rig_relay.context_egress.models import (
+ 7 | |     BoundedMissionManifest,
+ 8 | |     CacheReadinessStatus,
+ 9 | |     ContextClassification,
+10 | |     ContextEfficiencyEvidence,
+11 | |     ContextSectionKind,
+12 | |     EgressCandidate,
+13 | |     EgressCandidateSection,
+14 | |     EgressCrosswalk,
+15 | |     EgressReceipt,
+16 | |     ProviderMode,
+17 | |     ProviderPolicyAttestation,
+18 | |     RetentionMode,
+19 | | )
+20 | | from rig_relay.context_egress.projection import project_python_source
+21 | | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+22 | | from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+   | |___________________________________________________________________________________________^
+23 |
+24 |   def _hash_str(s: str) -> str:
+   |
+help: Organize imports
+2  | import json
+3  | from pathlib import Path
+4  |
+   - from rig_relay.context_egress.boundary import refuse_provider_context_input, validate_confidential_output_sink
+5  + from rig_relay.context_egress.boundary import (
+6  +     refuse_provider_context_input,
+7  +     validate_confidential_output_sink,
+8  + )
+9  | from rig_relay.context_egress.models import (
+10 |     BoundedMissionManifest,
+11 |     CacheReadinessStatus,
+--------------------------------------------------------------------------------
+22 | )
+23 | from rig_relay.context_egress.projection import project_python_source
+24 | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+   - from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+25 + from rig_relay.core.paths._confidential_artifacts import (
+26 +     resolve_confidential_artifact_root,
+27 + )
+28 +
+29 |
+30 | def _hash_str(s: str) -> str:
+31 |     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> rig_relay/context_egress/compiler.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import hashlib
+3 | import json
+4 | from pathlib import Path
+
+error[F401][*]: `json` imported but unused
+ --> rig_relay/context_egress/compiler.py:2:8
+  |
+1 | import hashlib
+2 | import json
+  |        ^^^^
+3 | from pathlib import Path
+  |
+help: Remove unused import: `json`
+1 | import hashlib
+  - import json
+2 | from pathlib import Path
+3 |
+4 | from rig_relay.context_egress.boundary import refuse_provider_context_input, validate_confidential_output_sink
+
+error[PLR0911]: Too many return statements (7 > 6)
+  --> rig_relay/context_egress/compiler.py:27:5
+   |
+25 |     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+26 |
+27 | def compile_egress_candidate(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+28 |     input_path: Path | str,
+29 |     manifest: BoundedMissionManifest,
+   |
+
+error[PLR0915]: Too many statements (57 > 50)
+  --> rig_relay/context_egress/compiler.py:27:5
+   |
+25 |     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+26 |
+27 | def compile_egress_candidate(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+28 |     input_path: Path | str,
+29 |     manifest: BoundedMissionManifest,
+   |
+
+error[PLR0914]: Too many local variables (23/15)
+  --> rig_relay/context_egress/compiler.py:27:5
+   |
+25 |     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+26 |
+27 | def compile_egress_candidate(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+28 |     input_path: Path | str,
+29 |     manifest: BoundedMissionManifest,
+   |
+
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> rig_relay/context_egress/models.py:1:1
+  |
+1 | / from __future__ import annotations
+2 | |
+3 | | from datetime import datetime
+4 | | from enum import StrEnum
+5 | | from typing import Literal
+6 | |
+7 | | from pydantic import BaseModel, Field
+  | |_____________________________________^
+8 |
+9 |   class ProviderMode(StrEnum):
+  |
+help: Organize imports
+6  |
+7  | from pydantic import BaseModel, Field
+8  |
+9  +
+10 | class ProviderMode(StrEnum):
+11 |     PUBLIC_CONTEXT_ONLY = "public_context_only"
+12 |     HOSTED_PROVIDER_STANDARD_CONFIDENTIAL_MINIMIZED = "hosted_provider_standard_confidential_minimized"
+
+error[F401][*]: `typing.Literal` imported but unused
+ --> rig_relay/context_egress/models.py:5:20
+  |
+3 | from datetime import datetime
+4 | from enum import StrEnum
+5 | from typing import Literal
+  |                    ^^^^^^^
+6 |
+7 | from pydantic import BaseModel, Field
+  |
+help: Remove unused import: `typing.Literal`
+2 |
+3 | from datetime import datetime
+4 | from enum import StrEnum
+  - from typing import Literal
+5 |
+6 | from pydantic import BaseModel, Field
+7 |
+
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> rig_relay/context_egress/projection.py:1:1
+  |
+1 | / import ast
+2 | | import builtins
+3 | | import hashlib
+  | |______________^
+4 |
+5 |   def get_opaque_id(original: str) -> str:
+  |
+help: Organize imports
+2 | import builtins
+3 | import hashlib
+4 |
+5 +
+6 | def get_opaque_id(original: str) -> str:
+7 |     h = hashlib.sha256(original.encode()).hexdigest()[:8]
+8 |     return f"OPAQUE_{h}"
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> rig_relay/context_egress/projection.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import ast
+3 | import builtins
+4 | import hashlib
+
+error[ANN204]: Missing return type annotation for special method `__init__`
+  --> rig_relay/context_egress/projection.py:10:9
+   |
+ 9 | class StructuralProjector(ast.NodeTransformer):
+10 |     def __init__(self):
+   |         ^^^^^^^^
+11 |         super().__init__()
+12 |         self.crosswalk = {}
+   |
+help: Add return type annotation: `None`
+
+error[ANN201]: Missing return type annotation for public function `visit_Name`
+  --> rig_relay/context_egress/projection.py:23:9
+   |
+21 |         return opaque
+22 |
+23 |     def visit_Name(self, node: ast.Name):
+   |         ^^^^^^^^^^
+24 |         node.id = self._obfuscate(node.id)
+25 |         return self.generic_visit(node)
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_FunctionDef`
+  --> rig_relay/context_egress/projection.py:27:9
+   |
+25 |         return self.generic_visit(node)
+26 |
+27 |     def visit_FunctionDef(self, node: ast.FunctionDef):
+   |         ^^^^^^^^^^^^^^^^^
+28 |         node.name = self._obfuscate(node.name)
+29 |         if ast.get_docstring(node):
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_AsyncFunctionDef`
+  --> rig_relay/context_egress/projection.py:33:9
+   |
+31 |         return self.generic_visit(node)
+32 |
+33 |     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+34 |         node.name = self._obfuscate(node.name)
+35 |         if ast.get_docstring(node):
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_ClassDef`
+  --> rig_relay/context_egress/projection.py:39:9
+   |
+37 |         return self.generic_visit(node)
+38 |
+39 |     def visit_ClassDef(self, node: ast.ClassDef):
+   |         ^^^^^^^^^^^^^^
+40 |         node.name = self._obfuscate(node.name)
+41 |         if ast.get_docstring(node):
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_arg`
+  --> rig_relay/context_egress/projection.py:45:9
+   |
+43 |         return self.generic_visit(node)
+44 |
+45 |     def visit_arg(self, node: ast.arg):
+   |         ^^^^^^^^^
+46 |         node.arg = self._obfuscate(node.arg)
+47 |         return self.generic_visit(node)
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_Attribute`
+  --> rig_relay/context_egress/projection.py:49:9
+   |
+47 |         return self.generic_visit(node)
+48 |
+49 |     def visit_Attribute(self, node: ast.Attribute):
+   |         ^^^^^^^^^^^^^^^
+50 |         node.attr = self._obfuscate(node.attr)
+51 |         return self.generic_visit(node)
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_Constant`
+  --> rig_relay/context_egress/projection.py:53:9
+   |
+51 |         return self.generic_visit(node)
+52 |         
+53 |     def visit_Constant(self, node: ast.Constant):
+   |         ^^^^^^^^^^^^^^
+54 |         if isinstance(node.value, (str, bytes)):
+55 |             node.value = "<REDACTED>"
+   |
+help: Add return type annotation
+
+error[ANN201]: Missing return type annotation for public function `visit_JoinedStr`
+  --> rig_relay/context_egress/projection.py:58:9
+   |
+56 |         return self.generic_visit(node)
+57 |         
+58 |     def visit_JoinedStr(self, node: ast.JoinedStr):
+   |         ^^^^^^^^^^^^^^^
+59 |         # f-strings become a redacted string
+60 |         return ast.Constant(value="<REDACTED>")
+   |
+help: Add return type annotation
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> rig_relay/context_egress/residual_scanner.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | def scan_for_residual_risks(minimized_content: str, crosswalk: dict[str, str]) -> tuple[bool, list[str]]:
+3 |     """
+4 |     Returns (has_residual_risk, list_of_findings).
+
+error[D212][*]: Multi-line docstring summary should start at the first line
+ --> rig_relay/context_egress/residual_scanner.py:2:5
+  |
+1 |   def scan_for_residual_risks(minimized_content: str, crosswalk: dict[str, str]) -> tuple[bool, list[str]]:
+2 | /     """
+3 | |     Returns (has_residual_risk, list_of_findings).
+4 | |     Scans the minimized content to ensure no sensitive material leaked.
+5 | |     """
+  | |_______^
+6 |       findings = []
+  |
+help: Remove whitespace after opening quotes
+1 | def scan_for_residual_risks(minimized_content: str, crosswalk: dict[str, str]) -> tuple[bool, list[str]]:
+  -     """
+  -     Returns (has_residual_risk, list_of_findings).
+2 +     """Returns (has_residual_risk, list_of_findings).
+3 |     Scans the minimized content to ensure no sensitive material leaked.
+4 |     """
+5 |     findings = []
+
+error[B007]: Loop control variable `opaque` not used within loop body
+  --> rig_relay/context_egress/residual_scanner.py:9:19
+   |
+ 8 |     # Check if any original project-specific symbol somehow survived
+ 9 |     for original, opaque in crosswalk.items():
+   |                   ^^^^^^
+10 |         # Avoid false positives for very short common strings if they were replaced
+11 |         if len(original) > 3 and original in minimized_content:
+   |
+help: Rename unused `opaque` to `_opaque`
+
+error[PLR2004]: Magic value used in comparison, consider replacing `3` with a constant variable
+  --> rig_relay/context_egress/residual_scanner.py:11:28
+   |
+ 9 |     for original, opaque in crosswalk.items():
+10 |         # Avoid false positives for very short common strings if they were replaced
+11 |         if len(original) > 3 and original in minimized_content:
+   |                            ^
+12 |             findings.append(f"Residual symbol detected: {original}")
+   |
+
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> rig_relay/context_egress/validation.py:1:1
+  |
+1 | / import json
+2 | | from pathlib import Path
+3 | | from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+  | |___________________________________________________________________________________________^
+4 |
+5 |   def write_validation_report(report_data: dict, egress_decision_id: str, repo_root: Path | None = None) -> None:
+  |
+help: Organize imports
+1  | import json
+2  | from pathlib import Path
+   - from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+3  |
+4  + from rig_relay.core.paths._confidential_artifacts import (
+5  +     resolve_confidential_artifact_root,
+6  + )
+7  +
+8  +
+9  | def write_validation_report(report_data: dict, egress_decision_id: str, repo_root: Path | None = None) -> None:
+10 |     """
+11 |     Writes the local fixture-validation report for the context egress compiler token efficiency addendum.
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> rig_relay/context_egress/validation.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import json
+3 | from pathlib import Path
+4 | from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+
+error[D212][*]: Multi-line docstring summary should start at the first line
+  --> rig_relay/context_egress/validation.py:6:5
+   |
+ 5 |   def write_validation_report(report_data: dict, egress_decision_id: str, repo_root: Path | None = None) -> None:
+ 6 | /     """
+ 7 | |     Writes the local fixture-validation report for the context egress compiler token efficiency addendum.
+ 8 | |     Never scans real repository content; only accepts structured fixture-run evidence.
+ 9 | |     """
+   | |_______^
+10 |       base_dir = resolve_confidential_artifact_root(repo_root) / "context_egress" / egress_decision_id
+11 |       base_dir.mkdir(parents=True, exist_ok=True)
+   |
+help: Remove whitespace after opening quotes
+3 | from rig_relay.core.paths._confidential_artifacts import resolve_confidential_artifact_root
+4 |
+5 | def write_validation_report(report_data: dict, egress_decision_id: str, repo_root: Path | None = None) -> None:
+  -     """
+  -     Writes the local fixture-validation report for the context egress compiler token efficiency addendum.
+6 +     """Writes the local fixture-validation report for the context egress compiler token efficiency addendum.
+7 |     Never scans real repository content; only accepts structured fixture-run evidence.
+8 |     """
+9 |     base_dir = resolve_confidential_artifact_root(repo_root) / "context_egress" / egress_decision_id
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> rig_relay/core/paths/__init__.py:1:1
+   |
+ 1 | / from __future__ import annotations
+ 2 | |
+ 3 | | from rig_relay.core.paths._local_config_walk import (
+ 4 | |     WALK_MAX_DEPTH,
+ 5 | |     ConfigWalkResult,
+ 6 | |     walk_local_config_dirs,
+ 7 | | )
+ 8 | | from rig_relay.core.paths._confidential_artifacts import (
+ 9 | |     CONFIDENTIAL_ARTIFACT_ROOT,
+10 | |     filter_exportable_artifact_paths,
+11 | |     is_confidential_artifact_path,
+12 | |     refuse_confidential_input,
+13 | |     resolve_confidential_artifact_root,
+14 | | )
+15 | | from rig_relay.core.paths._vibe_home import (
+16 | |     CACHE_FILE,
+17 | |     DEFAULT_TOOL_DIR,
+18 | |     GLOBAL_ENV_FILE,
+19 | |     HISTORY_FILE,
+20 | |     LOG_DIR,
+21 | |     LOG_FILE,
+22 | |     PLANS_DIR,
+23 | |     SESSION_LOG_DIR,
+24 | |     SESSIONS_ROOT,
+25 | |     TRUSTED_FOLDERS_FILE,
+26 | |     VIBE_HOME,
+27 | |     GlobalPath,
+28 | |     get_legacy_history_path,
+29 | |     get_legacy_log_path,
+30 | |     get_vibe_home_diagnostics,
+31 | |     is_legacy_vibe_home,
+32 | |     resolve_history_path,
+33 | |     resolve_log_path,
+34 | | )
+35 | | from rig_relay.core.paths.conventions import AGENTS_MD_FILENAME
+   | |_______________________________________________________________^
+36 |
+37 |   __all__ = [
+   |
+help: Organize imports
+1  | from __future__ import annotations
+2  |
+   - from rig_relay.core.paths._local_config_walk import (
+   -     WALK_MAX_DEPTH,
+   -     ConfigWalkResult,
+   -     walk_local_config_dirs,
+   - )
+3  | from rig_relay.core.paths._confidential_artifacts import (
+4  |     CONFIDENTIAL_ARTIFACT_ROOT,
+5  |     filter_exportable_artifact_paths,
+--------------------------------------------------------------------------------
+7  |     refuse_confidential_input,
+8  |     resolve_confidential_artifact_root,
+9  | )
+10 + from rig_relay.core.paths._local_config_walk import (
+11 +     WALK_MAX_DEPTH,
+12 +     ConfigWalkResult,
+13 +     walk_local_config_dirs,
+14 + )
+15 | from rig_relay.core.paths._vibe_home import (
+16 |     CACHE_FILE,
+17 |     DEFAULT_TOOL_DIR,
+
+error[RUF022][*]: `__all__` is not sorted
+  --> rig_relay/core/paths/__init__.py:37:11
+   |
+35 |   from rig_relay.core.paths.conventions import AGENTS_MD_FILENAME
+36 |
+37 |   __all__ = [
+   |  ___________^
+38 | |     "AGENTS_MD_FILENAME",
+39 | |     "CACHE_FILE",
+40 | |     "CONFIDENTIAL_ARTIFACT_ROOT",
+41 | |     "DEFAULT_TOOL_DIR",
+42 | |     "GLOBAL_ENV_FILE",
+43 | |     "HISTORY_FILE",
+44 | |     "LOG_DIR",
+45 | |     "LOG_FILE",
+46 | |     "PLANS_DIR",
+47 | |     "SESSIONS_ROOT",
+48 | |     "SESSION_LOG_DIR",
+49 | |     "TRUSTED_FOLDERS_FILE",
+50 | |     "VIBE_HOME",
+51 | |     "WALK_MAX_DEPTH",
+52 | |     "ConfigWalkResult",
+53 | |     "filter_exportable_artifact_paths",
+54 | |     "GlobalPath",
+55 | |     "is_confidential_artifact_path",
+56 | |     "get_legacy_history_path",
+57 | |     "get_legacy_log_path",
+58 | |     "get_vibe_home_diagnostics",
+59 | |     "refuse_confidential_input",
+60 | |     "resolve_confidential_artifact_root",
+61 | |     "is_legacy_vibe_home",
+62 | |     "resolve_history_path",
+63 | |     "resolve_log_path",
+64 | |     "walk_local_config_dirs",
+65 | | ]
+   | |_^
+   |
+help: Apply an isort-style sorting to `__all__`
+50 |     "VIBE_HOME",
+51 |     "WALK_MAX_DEPTH",
+52 |     "ConfigWalkResult",
+   -     "filter_exportable_artifact_paths",
+53 |     "GlobalPath",
+   -     "is_confidential_artifact_path",
+54 +     "filter_exportable_artifact_paths",
+55 |     "get_legacy_history_path",
+56 |     "get_legacy_log_path",
+57 |     "get_vibe_home_diagnostics",
+58 +     "is_confidential_artifact_path",
+59 +     "is_legacy_vibe_home",
+60 |     "refuse_confidential_input",
+61 |     "resolve_confidential_artifact_root",
+   -     "is_legacy_vibe_home",
+62 |     "resolve_history_path",
+63 |     "resolve_log_path",
+64 |     "walk_local_config_dirs",
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/context_egress/test_artifacts_and_receipts.py:1:1
+   |
+ 1 | / import pytest
+ 2 | | from datetime import datetime, timezone
+ 3 | | from rig_relay.context_egress.compiler import compile_egress_candidate
+ 4 | | from rig_relay.context_egress.models import (
+ 5 | |     BoundedMissionManifest,
+ 6 | |     ProviderMode,
+ 7 | |     ProviderPolicyAttestation,
+ 8 | |     RetentionMode
+ 9 | | )
+   | |_^
+10 |
+11 |   def test_crosswalk_separated_contract(tmp_path):
+   |
+help: Organize imports
+1  + from datetime import datetime, timezone
+2  +
+3  | import pytest
+   - from datetime import datetime, timezone
+4  +
+5  | from rig_relay.context_egress.compiler import compile_egress_candidate
+6  | from rig_relay.context_egress.models import (
+7  |     BoundedMissionManifest,
+8  |     ProviderMode,
+9  |     ProviderPolicyAttestation,
+   -     RetentionMode
+10 +     RetentionMode,
+11 | )
+12 |
+13 +
+14 | def test_crosswalk_separated_contract(tmp_path):
+15 |     """contract/integration: Local crosswalk is written separately and cannot appear in provider-bound candidate output."""
+16 |     source_file = tmp_path / "foo.py"
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_artifacts_and_receipts.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import pytest
+3 | from datetime import datetime, timezone
+4 | from rig_relay.context_egress.compiler import compile_egress_candidate
+
+error[F401][*]: `pytest` imported but unused
+ --> tests/context_egress/test_artifacts_and_receipts.py:1:8
+  |
+1 | import pytest
+  |        ^^^^^^
+2 | from datetime import datetime, timezone
+3 | from rig_relay.context_egress.compiler import compile_egress_candidate
+  |
+help: Remove unused import: `pytest`
+  - import pytest
+1 | from datetime import datetime, timezone
+2 | from rig_relay.context_egress.compiler import compile_egress_candidate
+3 | from rig_relay.context_egress.models import (
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_artifacts_and_receipts.py:31:41
+   |
+29 |         retention_mode=RetentionMode.STANDARD,
+30 |         human_approved_confidential_minimization=True,
+31 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+32 |         approval_scope="test",
+33 |         attestation_source_class="fixture"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import pytest
+   - from datetime import datetime, timezone
+2  + from datetime import datetime, timezone, UTC
+3  | from rig_relay.context_egress.compiler import compile_egress_candidate
+4  | from rig_relay.context_egress.models import (
+5  |     BoundedMissionManifest,
+--------------------------------------------------------------------------------
+28 |         endpoint_family="chat",
+29 |         retention_mode=RetentionMode.STANDARD,
+30 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+31 +         approval_timestamp=datetime.now(UTC),
+32 |         approval_scope="test",
+33 |         attestation_source_class="fixture"
+34 |     )
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_artifacts_and_receipts.py:68:41
+   |
+66 |         retention_mode=RetentionMode.STANDARD,
+67 |         human_approved_confidential_minimization=True,
+68 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+69 |         approval_scope="test",
+70 |         attestation_source_class="fixture"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import pytest
+   - from datetime import datetime, timezone
+2  + from datetime import datetime, timezone, UTC
+3  | from rig_relay.context_egress.compiler import compile_egress_candidate
+4  | from rig_relay.context_egress.models import (
+5  |     BoundedMissionManifest,
+--------------------------------------------------------------------------------
+65 |         endpoint_family="chat",
+66 |         retention_mode=RetentionMode.STANDARD,
+67 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+68 +         approval_timestamp=datetime.now(UTC),
+69 |         approval_scope="test",
+70 |         attestation_source_class="fixture"
+71 |     )
+
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> tests/context_egress/test_e2e_no_transmission.py:1:1
+  |
+1 | / import ast
+2 | | import pytest
+3 | | from pathlib import Path
+  | |________________________^
+4 |
+5 |   def test_no_forbidden_imports_structural_scan_substrate():
+  |
+help: Organize imports
+1 | import ast
+2 + from pathlib import Path
+3 +
+4 | import pytest
+  - from pathlib import Path
+5 |
+6 +
+7 | def test_no_forbidden_imports_structural_scan_substrate():
+8 |     """substrate/adversarial: Structural scan proves subsystem contains no provider client, network client, socket, upload, etc."""
+9 |     subsystem_dir = Path("/Users/user/Developer/GitHub/rig-relay/rig_relay/context_egress")
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_e2e_no_transmission.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import ast
+3 | import pytest
+4 | from pathlib import Path
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/context_egress/test_e2e_no_transmission.py:30:5
+   |
+28 |       monkeypatch.setattr(socket, "socket", mock_socket)
+29 |       
+30 | /     from rig_relay.context_egress.compiler import compile_egress_candidate
+31 | |     from rig_relay.context_egress.models import BoundedMissionManifest, ProviderMode, ProviderPolicyAttestation, RetentionMode
+32 | |     from datetime import datetime, timezone
+   | |___________________________________________^
+33 |       
+34 |       source_file = tmp_path / "foo.py"
+   |
+help: Organize imports
+27 |         
+28 |     monkeypatch.setattr(socket, "socket", mock_socket)
+29 |     
+30 +     from datetime import datetime, timezone
+31 +
+32 |     from rig_relay.context_egress.compiler import compile_egress_candidate
+   -     from rig_relay.context_egress.models import BoundedMissionManifest, ProviderMode, ProviderPolicyAttestation, RetentionMode
+   -     from datetime import datetime, timezone
+33 +     from rig_relay.context_egress.models import (
+34 +         BoundedMissionManifest,
+35 +         ProviderMode,
+36 +         ProviderPolicyAttestation,
+37 +         RetentionMode,
+38 +     )
+39 |     
+40 |     source_file = tmp_path / "foo.py"
+41 |     source_file.write_text("def my_secret_func(): pass")
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_e2e_no_transmission.py:52:41
+   |
+50 |         retention_mode=RetentionMode.STANDARD,
+51 |         human_approved_confidential_minimization=True,
+52 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+53 |         approval_scope="test",
+54 |         attestation_source_class="fixture"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import ast
+2  | import pytest
+3  | from pathlib import Path
+4  + from datetime import UTC
+5  |
+6  | def test_no_forbidden_imports_structural_scan_substrate():
+7  |     """substrate/adversarial: Structural scan proves subsystem contains no provider client, network client, socket, upload, etc."""
+--------------------------------------------------------------------------------
+50 |         endpoint_family="chat",
+51 |         retention_mode=RetentionMode.STANDARD,
+52 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+53 +         approval_timestamp=datetime.now(UTC),
+54 |         approval_scope="test",
+55 |         attestation_source_class="fixture"
+56 |     )
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/context_egress/test_efficiency_addendum.py:1:1
+   |
+ 1 | / import pytest
+ 2 | | from pathlib import Path
+ 3 | | from datetime import datetime, timezone
+ 4 | | import json
+ 5 | | import hashlib
+ 6 | |
+ 7 | | from rig_relay.context_egress.models import (
+ 8 | |     BoundedMissionManifest,
+ 9 | |     ProviderMode,
+10 | |     ContextClassification,
+11 | |     ProviderPolicyAttestation,
+12 | |     RetentionMode,
+13 | |     CacheReadinessStatus,
+14 | |     ContextSectionKind
+15 | | )
+16 | | from rig_relay.context_egress.compiler import compile_egress_candidate, write_egress_artifacts
+17 | | from rig_relay.context_egress.validation import write_validation_report
+   | |_______________________________________________________________________^
+18 |
+19 |   def create_dummy_manifest(mode: ProviderMode = ProviderMode.HOSTED_PROVIDER_STANDARD_CONFIDENTIAL_MINIMIZED) -> BoundedMissionManifest:
+   |
+help: Organize imports
+   - import pytest
+   - from pathlib import Path
+1  | from datetime import datetime, timezone
+2  + import hashlib
+3  | import json
+   - import hashlib
+4  + from pathlib import Path
+5  +
+6  + import pytest
+7  |
+8  + from rig_relay.context_egress.compiler import (
+9  +     compile_egress_candidate,
+10 +     write_egress_artifacts,
+11 + )
+12 | from rig_relay.context_egress.models import (
+13 |     BoundedMissionManifest,
+   -     ProviderMode,
+14 +     CacheReadinessStatus,
+15 |     ContextClassification,
+16 +     ContextSectionKind,
+17 +     ProviderMode,
+18 |     ProviderPolicyAttestation,
+19 |     RetentionMode,
+   -     CacheReadinessStatus,
+   -     ContextSectionKind
+20 | )
+   - from rig_relay.context_egress.compiler import compile_egress_candidate, write_egress_artifacts
+21 | from rig_relay.context_egress.validation import write_validation_report
+22 |
+23 +
+24 | def create_dummy_manifest(mode: ProviderMode = ProviderMode.HOSTED_PROVIDER_STANDARD_CONFIDENTIAL_MINIMIZED) -> BoundedMissionManifest:
+25 |     return BoundedMissionManifest(
+26 |         mission_id="test_efficiency",
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_efficiency_addendum.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import pytest
+3 | from pathlib import Path
+4 | from datetime import datetime, timezone
+
+error[F401][*]: `pathlib.Path` imported but unused
+ --> tests/context_egress/test_efficiency_addendum.py:2:21
+  |
+1 | import pytest
+2 | from pathlib import Path
+  |                     ^^^^
+3 | from datetime import datetime, timezone
+4 | import json
+  |
+help: Remove unused import: `pathlib.Path`
+1 | import pytest
+  - from pathlib import Path
+2 | from datetime import datetime, timezone
+3 | import json
+4 | import hashlib
+
+error[F401][*]: `json` imported but unused
+ --> tests/context_egress/test_efficiency_addendum.py:4:8
+  |
+2 | from pathlib import Path
+3 | from datetime import datetime, timezone
+4 | import json
+  |        ^^^^
+5 | import hashlib
+  |
+help: Remove unused import: `json`
+1 | import pytest
+2 | from pathlib import Path
+3 | from datetime import datetime, timezone
+  - import json
+4 | import hashlib
+5 |
+6 | from rig_relay.context_egress.models import (
+
+error[F401][*]: `hashlib` imported but unused
+ --> tests/context_egress/test_efficiency_addendum.py:5:8
+  |
+3 | from datetime import datetime, timezone
+4 | import json
+5 | import hashlib
+  |        ^^^^^^^
+6 |
+7 | from rig_relay.context_egress.models import (
+  |
+help: Remove unused import: `hashlib`
+2 | from pathlib import Path
+3 | from datetime import datetime, timezone
+4 | import json
+  - import hashlib
+5 |
+6 | from rig_relay.context_egress.models import (
+7 |     BoundedMissionManifest,
+
+error[F401][*]: `rig_relay.context_egress.models.CacheReadinessStatus` imported but unused
+  --> tests/context_egress/test_efficiency_addendum.py:13:5
+   |
+11 |     ProviderPolicyAttestation,
+12 |     RetentionMode,
+13 |     CacheReadinessStatus,
+   |     ^^^^^^^^^^^^^^^^^^^^
+14 |     ContextSectionKind
+15 | )
+   |
+help: Remove unused import: `rig_relay.context_egress.models.CacheReadinessStatus`
+10 |     ContextClassification,
+11 |     ProviderPolicyAttestation,
+12 |     RetentionMode,
+   -     CacheReadinessStatus,
+13 |     ContextSectionKind
+14 | )
+15 | from rig_relay.context_egress.compiler import compile_egress_candidate, write_egress_artifacts
+
+error[F401][*]: `rig_relay.context_egress.validation.write_validation_report` imported but unused
+  --> tests/context_egress/test_efficiency_addendum.py:17:49
+   |
+15 | )
+16 | from rig_relay.context_egress.compiler import compile_egress_candidate, write_egress_artifacts
+17 | from rig_relay.context_egress.validation import write_validation_report
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+18 |
+19 | def create_dummy_manifest(mode: ProviderMode = ProviderMode.HOSTED_PROVIDER_STANDARD_CONFIDENTIAL_MINIMIZED) -> BoundedMissionManifest:
+   |
+help: Remove unused import: `rig_relay.context_egress.validation.write_validation_report`
+14 |     ContextSectionKind
+15 | )
+16 | from rig_relay.context_egress.compiler import compile_egress_candidate, write_egress_artifacts
+   - from rig_relay.context_egress.validation import write_validation_report
+17 |
+18 | def create_dummy_manifest(mode: ProviderMode = ProviderMode.HOSTED_PROVIDER_STANDARD_CONFIDENTIAL_MINIMIZED) -> BoundedMissionManifest:
+19 |     return BoundedMissionManifest(
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_efficiency_addendum.py:38:41
+   |
+36 |         retention_mode=RetentionMode.STANDARD,
+37 |         human_approved_confidential_minimization=True,
+38 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+39 |         approval_scope="test_scope",
+40 |         attestation_source_class="TestSource"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import pytest
+2  | from pathlib import Path
+   - from datetime import datetime, timezone
+3  + from datetime import datetime, timezone, UTC
+4  | import json
+5  | import hashlib
+6  |
+--------------------------------------------------------------------------------
+35 |         endpoint_family="test_endpoint",
+36 |         retention_mode=RetentionMode.STANDARD,
+37 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+38 +         approval_timestamp=datetime.now(UTC),
+39 |         approval_scope="test_scope",
+40 |         attestation_source_class="TestSource"
+41 |     )
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/context_egress/test_models_and_provider_policy.py:1:1
+   |
+ 1 | / import pytest
+ 2 | | from datetime import datetime, timezone
+ 3 | | from rig_relay.context_egress.models import (
+ 4 | |     ProviderMode,
+ 5 | |     ContextClassification,
+ 6 | |     ProviderPolicyAttestation,
+ 7 | |     RetentionMode
+ 8 | | )
+   | |_^
+ 9 |
+10 |   def test_provider_modes_exist_contract():
+   |
+help: Organize imports
+   - import pytest
+1  | from datetime import datetime, timezone
+2  +
+3  + import pytest
+4  +
+5  | from rig_relay.context_egress.models import (
+   -     ProviderMode,
+6  |     ContextClassification,
+7  +     ProviderMode,
+8  |     ProviderPolicyAttestation,
+   -     RetentionMode
+9  +     RetentionMode,
+10 | )
+11 |
+12 +
+13 | def test_provider_modes_exist_contract():
+14 |     """contract/substrate: Ensure required provider modes are defined."""
+15 |     assert ProviderMode.PUBLIC_CONTEXT_ONLY
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_models_and_provider_policy.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import pytest
+3 | from datetime import datetime, timezone
+4 | from rig_relay.context_egress.models import (
+
+error[F401][*]: `pytest` imported but unused
+ --> tests/context_egress/test_models_and_provider_policy.py:1:8
+  |
+1 | import pytest
+  |        ^^^^^^
+2 | from datetime import datetime, timezone
+3 | from rig_relay.context_egress.models import (
+  |
+help: Remove unused import: `pytest`
+  - import pytest
+1 | from datetime import datetime, timezone
+2 | from rig_relay.context_egress.models import (
+3 |     ProviderMode,
+
+error[F401][*]: `rig_relay.context_egress.models.ContextClassification` imported but unused
+ --> tests/context_egress/test_models_and_provider_policy.py:5:5
+  |
+3 | from rig_relay.context_egress.models import (
+4 |     ProviderMode,
+5 |     ContextClassification,
+  |     ^^^^^^^^^^^^^^^^^^^^^
+6 |     ProviderPolicyAttestation,
+7 |     RetentionMode
+  |
+help: Remove unused import: `rig_relay.context_egress.models.ContextClassification`
+2 | from datetime import datetime, timezone
+3 | from rig_relay.context_egress.models import (
+4 |     ProviderMode,
+  -     ContextClassification,
+5 |     ProviderPolicyAttestation,
+6 |     RetentionMode
+7 | )
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_models_and_provider_policy.py:24:41
+   |
+22 |         retention_mode=RetentionMode.ZERO_DATA_RETENTION,
+23 |         human_approved_confidential_minimization=True,
+24 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+25 |         approval_scope="test",
+26 |         attestation_source_class="fixture"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import pytest
+   - from datetime import datetime, timezone
+2  + from datetime import datetime, timezone, UTC
+3  | from rig_relay.context_egress.models import (
+4  |     ProviderMode,
+5  |     ContextClassification,
+--------------------------------------------------------------------------------
+21 |         endpoint_family="chat",
+22 |         retention_mode=RetentionMode.ZERO_DATA_RETENTION,
+23 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+24 +         approval_timestamp=datetime.now(UTC),
+25 |         approval_scope="test",
+26 |         attestation_source_class="fixture"
+27 |     )
+
+error[UP017][*]: Use `datetime.UTC` alias
+  --> tests/context_egress/test_models_and_provider_policy.py:35:41
+   |
+33 |         retention_mode=RetentionMode.STANDARD,
+34 |         human_approved_confidential_minimization=True,
+35 |         approval_timestamp=datetime.now(timezone.utc),
+   |                                         ^^^^^^^^^^^^
+36 |         approval_scope="test",
+37 |         attestation_source_class="fixture"
+   |
+help: Convert to `datetime.UTC` alias
+1  | import pytest
+   - from datetime import datetime, timezone
+2  + from datetime import datetime, timezone, UTC
+3  | from rig_relay.context_egress.models import (
+4  |     ProviderMode,
+5  |     ContextClassification,
+--------------------------------------------------------------------------------
+32 |         endpoint_family="chat",
+33 |         retention_mode=RetentionMode.STANDARD,
+34 |         human_approved_confidential_minimization=True,
+   -         approval_timestamp=datetime.now(timezone.utc),
+35 +         approval_timestamp=datetime.now(UTC),
+36 |         approval_scope="test",
+37 |         attestation_source_class="fixture"
+38 |     )
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/context_egress/test_pre_read_refusal.py:1:1
+   |
+ 1 | / import pytest
+ 2 | | from pathlib import Path
+ 3 | | from rig_relay.context_egress.boundary import refuse_provider_context_input
+ 4 | | from rig_relay.context_egress.models import (
+ 5 | |     BoundedMissionManifest,
+ 6 | |     ProviderMode,
+ 7 | |     ContextClassification
+ 8 | | )
+   | |_^
+ 9 |
+10 |   def test_public_context_only_adversarial_contract(tmp_path):
+   |
+help: Organize imports
+1  + from pathlib import Path
+2  +
+3  | import pytest
+   - from pathlib import Path
+4  +
+5  | from rig_relay.context_egress.boundary import refuse_provider_context_input
+6  | from rig_relay.context_egress.models import (
+7  |     BoundedMissionManifest,
+8  +     ContextClassification,
+9  |     ProviderMode,
+   -     ContextClassification
+10 | )
+11 |
+12 +
+13 | def test_public_context_only_adversarial_contract(tmp_path):
+14 |     """contract/adversarial: public_context_only permits only public-attested fixture context and refuses every non-public classification."""
+15 |     manifest = BoundedMissionManifest(
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_pre_read_refusal.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import pytest
+3 | from pathlib import Path
+4 | from rig_relay.context_egress.boundary import refuse_provider_context_input
+
+error[F401][*]: `pytest` imported but unused
+ --> tests/context_egress/test_pre_read_refusal.py:1:8
+  |
+1 | import pytest
+  |        ^^^^^^
+2 | from pathlib import Path
+3 | from rig_relay.context_egress.boundary import refuse_provider_context_input
+  |
+help: Remove unused import: `pytest`
+  - import pytest
+1 | from pathlib import Path
+2 | from rig_relay.context_egress.boundary import refuse_provider_context_input
+3 | from rig_relay.context_egress.models import (
+
+error[I001][*]: Import block is un-sorted or un-formatted
+ --> tests/context_egress/test_projection_and_residual_scanner.py:1:1
+  |
+1 | / import pytest
+2 | | from rig_relay.context_egress.projection import project_python_source
+3 | | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+  | |_____________________________________________________________________________^
+4 |
+5 |   def test_structural_projection_unit_contract():
+  |
+help: Organize imports
+1 | import pytest
+2 +
+3 | from rig_relay.context_egress.projection import project_python_source
+4 | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+5 |
+6 +
+7 | def test_structural_projection_unit_contract():
+8 |     """unit/contract: Fixture Python projection removes comments and docstrings, replaces sensitive identifiers."""
+9 |     source = '''
+
+error[I002][*]: Missing required import: `from __future__ import annotations`
+--> tests/context_egress/test_projection_and_residual_scanner.py:1:1
+help: Insert required import: `from __future__ import annotations`
+1 + from __future__ import annotations
+2 | import pytest
+3 | from rig_relay.context_egress.projection import project_python_source
+4 | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+
+error[F401][*]: `pytest` imported but unused
+ --> tests/context_egress/test_projection_and_residual_scanner.py:1:8
+  |
+1 | import pytest
+  |        ^^^^^^
+2 | from rig_relay.context_egress.projection import project_python_source
+3 | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+  |
+help: Remove unused import: `pytest`
+  - import pytest
+1 | from rig_relay.context_egress.projection import project_python_source
+2 | from rig_relay.context_egress.residual_scanner import scan_for_residual_risks
+3 |
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/scripts/test_confidential_telemetry_boundary.py:1:1
+   |
+ 1 | / from __future__ import annotations
+ 2 | |
+ 3 | | import json
+ 4 | | import zipfile
+ 5 | | from pathlib import Path
+ 6 | |
+ 7 | | import pytest
+ 8 | |
+ 9 | | from rig_relay.core.paths import filter_exportable_artifact_paths
+10 | | from scripts.rig_relay_contribute_telemetry_bundle import contribute_bundle
+11 | | from scripts.rig_relay_create_telemetry_bundle import create_bundle
+12 | | from scripts.rig_relay_upload_google_drive import upload_bundle
+   | |_______________________________________________________________^
+13 |
+14 |   pytestmark = [pytest.mark.integration, pytest.mark.sabotage]
+   |
+help: Organize imports
+1 | from __future__ import annotations
+2 |
+3 | import json
+4 + from pathlib import Path
+5 | import zipfile
+  - from pathlib import Path
+6 |
+7 | import pytest
+8 |
+
+error[F401][*]: `json` imported but unused
+ --> tests/scripts/test_confidential_telemetry_boundary.py:3:8
+  |
+1 | from __future__ import annotations
+2 |
+3 | import json
+  |        ^^^^
+4 | import zipfile
+5 | from pathlib import Path
+  |
+help: Remove unused import: `json`
+1 | from __future__ import annotations
+2 |
+  - import json
+3 | import zipfile
+4 | from pathlib import Path
+5 |
+
+error[I001][*]: Import block is un-sorted or un-formatted
+  --> tests/site_renderer/test_confidential_artifact_boundary.py:1:1
+   |
+ 1 | / from __future__ import annotations
+ 2 | |
+ 3 | | import json
+ 4 | | from pathlib import Path
+ 5 | |
+ 6 | | import pytest
+ 7 | |
+ 8 | | from rig_relay.site_renderer.loaders import load_input_manifest
+ 9 | | from rig_relay.site_renderer.renderer import render_page
+10 | | from rig_relay.docs_renderer.writer import render_manifest
+   | |__________________________________________________________^
+11 |
+12 |   pytestmark = [pytest.mark.integration, pytest.mark.sabotage]
+   |
+help: Organize imports
+5  |
+6  | import pytest
+7  |
+8  + from rig_relay.docs_renderer.writer import render_manifest
+9  | from rig_relay.site_renderer.loaders import load_input_manifest
+10 | from rig_relay.site_renderer.renderer import render_page
+   - from rig_relay.docs_renderer.writer import render_manifest
+11 |
+12 | pytestmark = [pytest.mark.integration, pytest.mark.sabotage]
+13 |
+
+Found 62 errors.
+[*] 48 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

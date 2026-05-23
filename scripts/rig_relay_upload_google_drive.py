@@ -36,12 +36,17 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from rig_relay.core.paths import refuse_confidential_input
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from rig_relay.cli.governance_guard import (
+    emit_structured_result,
+    require_governed_execution_with_evidence,
+)
 from rig_relay.governance.auth_receipts import validate_receipt
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -50,6 +55,31 @@ DEFAULT_RECEIPT_DIR = REPO_ROOT / ".build" / "rig-relay" / "drive-uploads"
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _confidential_refusal_receipt(
+    *,
+    bundle_path: Path,
+    folder_id: str | None,
+    participant_id: str,
+    share_level: str,
+    operation: str,
+) -> dict[str, Any]:
+    now = datetime.now(UTC)
+    return {
+        "schema_version": "rig.relay.google_drive_upload_receipt.v1",
+        "bundle_id": "",
+        "participant_id": participant_id,
+        "share_level": share_level,
+        "destination": "google_drive",
+        "drive_file_id": None,
+        "drive_folder_id": folder_id,
+        "uploaded_at": now.isoformat(),
+        "upload_method": "dry_run",
+        "bundle_sha256": "",
+        "status": "failed",
+        "warnings": [operation],
+    }
 
 
 def _upload_dry_run(
@@ -66,6 +96,18 @@ def _upload_dry_run(
     Returns:
         Upload receipt dict with status='dry_run'.
     """
+    allowed, reason = refuse_confidential_input(
+        bundle_path, "google_drive_upload_bundle", REPO_ROOT
+    )
+    if not allowed:
+        return _confidential_refusal_receipt(
+            bundle_path=bundle_path,
+            folder_id=folder_id,
+            participant_id=participant_id,
+            share_level=share_level,
+            operation=reason,
+        )
+
     now = datetime.now(UTC)
     bundle_sha256 = _sha256_file(bundle_path)
 
@@ -119,6 +161,31 @@ def _upload_real(
     from typing import cast
 
     from rig_relay.identity.state_paths import default_relay_state_root
+
+    allowed, reason = refuse_confidential_input(
+        bundle_path, "google_drive_upload_bundle", REPO_ROOT
+    )
+    if not allowed:
+        return _confidential_refusal_receipt(
+            bundle_path=bundle_path,
+            folder_id=folder_id,
+            participant_id=participant_id,
+            share_level=share_level,
+            operation=reason,
+        )
+
+    if state_root is not None:
+        allowed, reason = refuse_confidential_input(
+            state_root, "google_drive_state_root", REPO_ROOT
+        )
+        if not allowed:
+            return _confidential_refusal_receipt(
+                bundle_path=bundle_path,
+                folder_id=folder_id,
+                participant_id=participant_id,
+                share_level=share_level,
+                operation=reason,
+            )
 
     SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
@@ -293,6 +360,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Confirm and proceed with real upload (requires --no-dry-run).",
     )
     parser.add_argument(
+        "--execute",
+        action="store_true",
+        default=False,
+        help="Execute remote mutation (Google Drive upload). Default is dry-run.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Emit structured JSON output.",
+    )
+    parser.add_argument(
         "--authorization-receipt",
         type=Path,
         default=None,
@@ -320,15 +399,53 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: Bundle not found: {args.bundle}", file=sys.stderr)
         return 1
 
-    if not args.dry_run and not args.confirm:
-        print(
-            "Error: Real upload requires --confirm. Use --dry-run for safe preview.",
-            file=sys.stderr,
+    execute = args.execute or args.confirm
+    governed = require_governed_execution_with_evidence(
+        script_name="rig_relay_upload_google_drive",
+        authority_tier="remote_mutation",
+        capability_id="google_drive_upload",
+        execute_requested=execute,
+        allow_network=True,
+    )
+
+    if not execute:
+        print("DRY-RUN: Use --execute or --confirm + --no-dry-run for real upload.")
+        if args.json:
+            r = emit_structured_result(
+                script_name="rig_relay_upload_google_drive",
+                authority_tier="remote_mutation",
+                capability_id="google_drive_upload",
+                dry_run=True,
+                execute_requested=False,
+                decision=governed.decision,
+                status="dry_run",
+            )
+            print(json.dumps(r, indent=2))
+        return 0
+
+    if not governed.can_execute:
+        r = emit_structured_result(
+            script_name="rig_relay_upload_google_drive",
+            authority_tier="remote_mutation",
+            capability_id="google_drive_upload",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="blocked_by_governance",
+            can_execute=False,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
         )
+        if args.json:
+            print(json.dumps(r, indent=2))
+        else:
+            print(f"BLOCKED: {governed.decision.decision.value}")
+            if governed.evidence_status == "persistence_failed":
+                print("  EVIDENCE: persistence failed — upload blocked (fail-closed)")
         return 1
 
-    # Authorization gate for real uploads
     if not args.dry_run and args.confirm:
+        # Authorization gate for real uploads
         if args.authorization_receipt:
             try:
                 receipt_data = json.loads(
@@ -393,6 +510,22 @@ def main(argv: list[str] | None = None) -> int:
         print("\n[Dry-run mode — no network upload performed]")
     elif status == "uploaded":
         print(f"\nUploaded to Drive file ID: {receipt.get('drive_file_id')}")
+
+    if args.json:
+        r = emit_structured_result(
+            script_name="rig_relay_upload_google_drive",
+            authority_tier="remote_mutation",
+            capability_id="google_drive_upload",
+            dry_run=False,
+            execute_requested=True,
+            decision=governed.decision,
+            status="executed" if status == "uploaded" else status,
+            can_execute=True,
+            evidence_ref=governed.evidence_ref,
+            evidence_status=governed.evidence_status,
+            artifacts={"bundle_sha256": receipt.get("bundle_sha256")},
+        )
+        print(json.dumps(r, indent=2))
 
     return 0
 

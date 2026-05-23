@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from rig_relay.core.telemetry import (
+    TelemetryMode,
     compute_degradation_mode,
     get_telemetry_degradation_state,
 )
@@ -18,7 +19,7 @@ def test_full_mode_when_both_enabled() -> None:
         "mode": "beta_orchestration",
     }
     result = compute_degradation_mode(settings)
-    assert result["degradation_mode"] == "full"
+    assert result["degradation_mode"] == TelemetryMode.FULL.value
     assert result["degraded_capabilities"] == []
     assert "enabled" in result["degradation_reason"].lower()
 
@@ -31,7 +32,7 @@ def test_degraded_mode_when_remote_disabled() -> None:
         "mode": "governed_local",
     }
     result = compute_degradation_mode(settings)
-    assert result["degradation_mode"] == "degraded"
+    assert result["degradation_mode"] == TelemetryMode.ENABLED_FIRST_PARTY.value
     assert "remote_upload" in result["degraded_capabilities"]
 
 
@@ -43,7 +44,7 @@ def test_disabled_mode_when_local_disabled() -> None:
         "mode": "beta_orchestration",
     }
     result = compute_degradation_mode(settings)
-    assert result["degradation_mode"] == "disabled"
+    assert result["degradation_mode"] == TelemetryMode.DISABLED_BY_USER.value
     assert "governed_mode" in result["degraded_capabilities"]
 
 
@@ -55,7 +56,7 @@ def test_degraded_capabilities_list_non_empty_when_degraded() -> None:
         "mode": "governed_local",
     }
     result = compute_degradation_mode(settings)
-    assert result["degradation_mode"] == "degraded"
+    assert result["degradation_mode"] == TelemetryMode.ENABLED_FIRST_PARTY.value
     assert len(result["degraded_capabilities"]) > 0
 
 
@@ -166,7 +167,7 @@ def test_degradation_marker_written_when_disabled(tmp_path: Path) -> None:
         log_local_event(session_id, "rig.relay.session.started", {"v": 1})
         marker = read_degradation_marker(session_id)
         assert marker is not None
-        assert marker["degradation_mode"] == "disabled"
+        assert marker["degradation_mode"] == TelemetryMode.DISABLED_BY_USER.value
         assert marker["session_id"] == session_id
         assert "preserved_capabilities" in marker
         assert "degraded_capabilities" in marker
@@ -230,7 +231,7 @@ def test_disabled_mode_degradation_marker_available(tmp_path: Path) -> None:
         log_local_event(session_id, "rig.relay.session.started", {"v": 1})
         marker = read_degradation_marker(session_id)
         assert marker is not None
-        assert marker["degradation_mode"] == "disabled"
+        assert marker["degradation_mode"] == TelemetryMode.DISABLED_BY_USER.value
         assert marker["export_allowed"] is False
         assert "core_harness_execution" in marker["preserved_capabilities"]
         assert "adaptive_diagnostics" in marker["degraded_capabilities"]
@@ -299,7 +300,9 @@ def test_enabled_vs_disabled_behavior_difference(tmp_path: Path) -> None:
         assert not obs_disabled.exists(), "disabled = no observability file"
         assert marker_enabled is None, "enabled = no degradation marker"
         assert marker_disabled is not None, "disabled = degradation marker present"
-        assert marker_disabled["degradation_mode"] == "disabled"
+        assert (
+            marker_disabled["degradation_mode"] == TelemetryMode.DISABLED_BY_USER.value
+        )
         assert marker_disabled["export_allowed"] is False
     finally:
         set_telemetry_enabled(original_state)

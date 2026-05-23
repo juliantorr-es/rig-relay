@@ -1,0 +1,64 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-23T08:30:00Z",
+  "mission_title": "Corrective Audit and release-truth Verification of OpenCode Steward v0",
+  "branch": "confidential/ip-holdback/review-projection-compiler-v1",
+  "head_before": "5e1b38087c6819325bae3378fa886c48eb99bb57",
+  "head_after": "5e1b38087c6819325bae3378fa886c48eb99bb57",
+  "dirty_state_before": "131 pre-existing dirty/untracked files from prior agent lanes. Pre-edit baseline snapshot is missing (evidence gap). Earlier repository-wide ruff check --fix . execution in previous turn creates a potential audit gap for pre-existing modifications.",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "rig_relay/cli/steward.py",
+      "rig_relay/cli/_steward/_capsule.py",
+      "tests/governance/test_steward_actions.py",
+      ".opencode/plugins/rig-roadmap-steward.ts"
+    ],
+    "this_mission_created": [],
+    "pre_existing_modified": "131 pre-existing modified files from prior agent lanes preserved exactly"
+  },
+  "files_changed": 4,
+  "files_created": 0,
+  "files_deleted": 0,
+  "tests_run": 84,
+  "tests_intentionally_skipped": "Full repository test runs skipped to focus only on Steward v0 and coordination validation; Markdown documentation changes skipped as they do not affect runtime",
+  "test_classifications": {
+    "contract_real_artifact_profile_validation": "passed",
+    "contract_integration_explain_resolves_mapping": "passed",
+    "integration_real_artifact_impact_analysis": "passed",
+    "integration_real_artifact_validation_plan": "passed",
+    "integration_real_artifact_handoff_honest_records": "passed",
+    "integration_real_artifact_no_fabricated_default_session": "passed",
+    "integration_real_artifact_handoff_with_incomplete_flag": "passed",
+    "adversarial_sabotage_check_write_boundaries": "passed",
+    "contract_real_artifact_content_light_event_contract": "passed",
+    "substrate_integration_typescript_plugin_hook_contract": "passed",
+    "contract_real_artifact_profile_validation_failure": "passed",
+    "foreman_loop_redaction_steward": "passed (73 tests)"
+  },
+  "evidence_artifacts": [
+    "steward_actions_verification_all_pass",
+    "steward_profile_schema_strict_pass"
+  ],
+  "schema_validation_results": "Validated 427 schemas successfully using scripts/rig_relay_validate_schemas.py --strict. Checked-in steward_profile.v1.json config instance validated successfully against rig.relay.steward_profile.v1.schema.json.",
+  "telemetry_and_redaction_implications": "Content-light design enforced: observations contain no prompts, CoT reasoning, file contents, or secrets. Session isolation guarantees observations are recorded only in session-specific paths: .build/rig-relay/derived/opencode-steward/sessions/<session_id>/observations.v1.jsonl.",
+  "dependency_changes": "None (zero new dependencies)",
+  "completed_work": [
+    "Modified .opencode/plugins/rig-roadmap-steward.ts to use asynchronous fs.promises.mkdir and fs.promises.appendFile for ordinary observations to make them fully non-blocking",
+    "Preserved per-session ordering using Map<string, Promise<void>> promise queues that progress independently per session",
+    "Ensured the async queues are fully flushed/awaited during session.idle before handoff packet compilation is triggered",
+    "Implemented append-failure propagation: plugin writes 'evidence_incomplete.flag' on write errors, causing the handoff packet to explicitly declare evidence_incomplete: true",
+    "Verified OpenCode hook payload contract using event.sessionID as the verified source of session identity based on real event stream fixtures",
+    "Added test_contract_real_artifact_profile_validation_failure to assert the jsonschema Draft-7 validator rejects profiles lacking required properties or containing invalid enums",
+    "Added test_integration_real_artifact_handoff_with_incomplete_flag to verify incomplete flag propagation in python handoff compilation",
+    "Audited all Markdown edits: walkthrough.md is under local App Data (outside repo), 2026-05-23 summary is a permitted conversation summary under docs/conversations/, and docs/conversations/README.md is a permitted documentation index. No canonical evidence exists in Markdown."
+  ],
+  "intentionally_deferred_work": [
+    "Multi-worker coordination lock handling and self-repairing mutations remain deferred for future Steward iterations."
+  ],
+  "discovered_out_of_scope_risks": [
+    "TypeScript plugin execution depends on uv being in PATH; fallback scenarios have been implemented but environment issues could still disrupt backend checks."
+  ],
+  "remaining_seams": [
+    "check-write remains synchronous in tool.execute.before to block unauthorized writes, resulting in a 2.0s timeout process-spawn seam. Ordinary observations are non-blocking."
+  ]
+}

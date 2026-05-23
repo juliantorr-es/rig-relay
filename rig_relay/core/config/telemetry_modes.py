@@ -165,6 +165,8 @@ def compute_degradation_mode(settings: dict[str, Any]) -> dict[str, Any]:
     """
     from datetime import UTC, datetime
 
+    from rig_relay.core.telemetry.types import TelemetryMode
+
     local = bool(settings.get("local_operational_enabled", True))
     remote = bool(settings.get("remote_beta_sharing_enabled", False))
     share_level = settings.get("share_level", "off")
@@ -172,11 +174,11 @@ def compute_degradation_mode(settings: dict[str, Any]) -> dict[str, Any]:
     degraded: list[str] = []
 
     if local and remote:
-        degradation_mode = "full"
+        degradation_mode = TelemetryMode.FULL.value
     elif local and not remote:
-        degradation_mode = "degraded"
+        degradation_mode = TelemetryMode.ENABLED_FIRST_PARTY.value
     else:
-        degradation_mode = "disabled"
+        degradation_mode = TelemetryMode.DISABLED_BY_USER.value
 
     if not local:
         degraded.extend(DISABLED_FEATURES_LOCAL_OFF)
@@ -197,12 +199,15 @@ def compute_degradation_mode(settings: dict[str, Any]) -> dict[str, Any]:
                 degraded.append(f)
 
     match degradation_mode:
-        case "full":
+        case TelemetryMode.FULL.value:
             reason = "All telemetry features enabled"
-        case "degraded":
+        case TelemetryMode.ENABLED_FIRST_PARTY.value:
             reason = "Remote beta sharing disabled — remote features unavailable"
-        case "disabled":
+        case TelemetryMode.DISABLED_BY_USER.value:
             reason = "Local operational telemetry disabled by configuration"
+        case _:
+            reason = "Unknown degradation mode"
+            degradation_mode = TelemetryMode.DISABLED_BY_USER.value
 
     return {
         "degradation_mode": degradation_mode,

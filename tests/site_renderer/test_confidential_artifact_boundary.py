@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from rig_relay.docs_renderer.writer import render_manifest
 from rig_relay.site_renderer.loaders import load_input_manifest
 from rig_relay.site_renderer.renderer import render_page
-from rig_relay.docs_renderer.writer import render_manifest
 
 pytestmark = [pytest.mark.integration, pytest.mark.sabotage]
 

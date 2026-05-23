@@ -166,7 +166,7 @@ class TestJSONRPCValidation:
             json.dumps({"jsonrpc": "2.0", "method": None, "id": 1})
         )
         parsed = json.loads(result)
-        assert parsed["error"]["code"] == -32601
+        assert parsed["error"]["code"] == -32600
 
     def test_missing_id_in_request(self):
         server = RigMCPServer()
@@ -199,7 +199,7 @@ class TestJSONRPCValidation:
         result = server.process_jsonrpc_sync(raw)
         parsed = json.loads(result)
         assert parsed["error"]["code"] == -32000
-        assert "budget exceeded" in parsed["error"]["message"]
+        assert "rejected by budget" in parsed["error"]["message"].lower()
 
     def test_deeply_nested_json(self):
         server = RigMCPServer()

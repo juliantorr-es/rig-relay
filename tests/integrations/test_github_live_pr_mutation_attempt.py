@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+import hashlib
+import hmac
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -25,6 +29,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GOV = REPO_ROOT / "docs" / "json" / "governance"
 
 
+def _make_test_hmac_key() -> bytes:
+    return hashlib.sha256(b"test-governance-spine-p0-key").digest()
+
+
+def _make_test_approval_receipt(
+    hmac_key: bytes,
+    *,
+    scope: str = "live_pr_mutation,contents_write",
+    ttl_offset: int = 0,
+) -> dict[str, Any]:
+    now = datetime.now(UTC) + timedelta(seconds=ttl_offset)
+    timestamp = now.isoformat()
+    nonce = hashlib.sha256(timestamp.encode()).hexdigest()[:16]
+    payload = f"{scope}:{timestamp}:{nonce}".encode()
+    sig = hmac.HMAC(hmac_key, payload, hashlib.sha256).hexdigest()
+    return {
+        "hmac_signature": sig,
+        "timestamp": timestamp,
+        "scope": scope,
+        "nonce": nonce,
+        "tool": "live_pr_mutation",
+    }
+
+
 def test_blocked_by_default():
     report = build_live_pr_mutation_attempt(generated_at_utc="2026-05-20T00:00:00Z")
     assert "blocked" in report["status"]
@@ -41,7 +69,10 @@ def test_missing_rc_blocks():
 
 def test_missing_execute_flag_blocks():
     report = build_live_pr_mutation_attempt(
-        activate_live_gate=True, approval_ok=True, fake_boundary=FakeGitHubBoundary()
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=FakeGitHubBoundary(),
     )
     gates = {g["gate"]: g["passed"] for g in report["gates"]}
     assert gates["execute_flag_set"] is False
@@ -52,7 +83,7 @@ def test_missing_approval_blocks():
         allow_execute=True, activate_live_gate=True, fake_boundary=FakeGitHubBoundary()
     )
     gates = {g["gate"]: g["passed"] for g in report["gates"]}
-    assert gates["approval_ok"] is False
+    assert gates["approval_hmac_verified"] is False
 
 
 def test_all_15_steps_defined():
@@ -71,7 +102,8 @@ def test_simulated_success():
     report = build_live_pr_mutation_attempt(
         allow_execute=True,
         activate_live_gate=True,
-        approval_ok=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
         fake_boundary=fb,
         generated_at_utc="2026-05-20T00:00:00Z",
     )
@@ -87,7 +119,11 @@ def test_simulated_success():
 def test_simulated_blocked_missing_bridge():
     fb = FakeGitHubBoundary()
     report = build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     {g["gate"]: g["passed"] for g in report["gates"]}
     # May pass or fail depending on preflight artifact state; just verify no crash
@@ -99,7 +135,11 @@ def test_rate_limit_blocks():
     fb.set_rate_limited(True)
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
     report = build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     gates = {g["gate"]: g["passed"] for g in report["gates"]}
     assert gates["rate_limit_ok"] is False
@@ -110,7 +150,11 @@ def test_permission_denied_blocks():
     fb.set_permission("contents:write", False)
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
     report = build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     gates_p = {g["gate"]: g["passed"] for g in report["gates"]}
     assert gates_p["permission_contents_write"] is False
@@ -135,7 +179,11 @@ def test_rollback_plan_artifact_written():
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
     fb = FakeGitHubBoundary()
     build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     rp = GOV / "github_live_pr_mutation_rollback_plan_v1.v1.json"
     assert rp.exists()
@@ -145,7 +193,11 @@ def test_no_forbidden_fields():
     fb = FakeGitHubBoundary()
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
     report = build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     s = json.dumps(report, sort_keys=True)
     for f in (
@@ -185,7 +237,11 @@ def test_pr_body_does_not_leak():
     fb = FakeGitHubBoundary()
     write_live_mutation_preflight(allow_live=True, simulate=True, access_token="tok")
     report = build_live_pr_mutation_attempt(
-        allow_execute=True, activate_live_gate=True, approval_ok=True, fake_boundary=fb
+        allow_execute=True,
+        activate_live_gate=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
+        fake_boundary=fb,
     )
     s = json.dumps(report, sort_keys=True)
     assert "vulnerable_code" not in s
@@ -202,7 +258,8 @@ def test_partial_failure_rollback():
     build_live_pr_mutation_attempt(
         allow_execute=True,
         activate_live_gate=True,
-        approval_ok=True,
+        approval_receipt=_make_test_approval_receipt(_make_test_hmac_key()),
+        hmac_key=_make_test_hmac_key(),
         fake_boundary=fb,
         generated_at_utc="2026-05-20T00:00:00Z",
     )
