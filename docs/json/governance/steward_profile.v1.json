@@ -1,0 +1,80 @@
+{
+  "schema_version": "rig.relay.steward_profile.v1",
+  "profile_identifier": "rig-relay-steward-profile-v1",
+  "content_light": true,
+  "artifact_families": [
+    {
+      "name": "Secrets & Credentials",
+      "patterns": [
+        "**/.env",
+        "**/*.env",
+        "**/credentials",
+        "**/secrets/*"
+      ],
+      "class": "unknown",
+      "mutation_path": "Secrets must never be committed or written in this workspace.",
+      "content_light": true,
+      "validation_command": "none",
+      "related_artifacts": [],
+      "risk": "Exposes credentials and blocks CI.",
+      "protected_write_disposition": "deny"
+    },
+    {
+      "name": "Schema Files",
+      "patterns": [
+        "docs/schemas/*.json"
+      ],
+      "class": "schema",
+      "mutation_path": "Edit schema directly. Run scripts/rig_relay_validate_schemas.py.",
+      "content_light": false,
+      "validation_command": "uv run python scripts/rig_relay_validate_schemas.py",
+      "related_artifacts": [],
+      "risk": "Can break schema validation or code generation downstream.",
+      "protected_write_disposition": "advise"
+    },
+    {
+      "name": "Canonical Governance/Issue JSON",
+      "patterns": [
+        "docs/json/governance/*.json",
+        "docs/json/issues/*.json"
+      ],
+      "class": "canonical",
+      "mutation_path": "Edit manually if appropriate. Run scripts/rig_relay_validate_schemas.py.",
+      "content_light": true,
+      "validation_command": "uv run python scripts/rig_relay_validate_schemas.py",
+      "related_artifacts": [],
+      "risk": "Can corrupt governance records or cause validation failures.",
+      "protected_write_disposition": "advise"
+    },
+    {
+      "name": "Coordination Ledgers",
+      "patterns": [
+        ".build/rig-relay/coordination/**/*.jsonl",
+        ".build/rig-relay/coordination/**/*.json"
+      ],
+      "class": "receipt",
+      "mutation_path": "Managed by CoordinationStore. Do not manually edit.",
+      "content_light": true,
+      "validation_command": "uv run pytest tests/coordination/test_steward_coordination_bridge.py",
+      "related_artifacts": [],
+      "risk": "Can cause lease and lock corruption or split-brain coordination states.",
+      "protected_write_disposition": "require_approval"
+    },
+    {
+      "name": "Static Generated Projections",
+      "patterns": [
+        "docs/**/*.html",
+        "docs/search-index.json",
+        "docs/sitemap.xml",
+        "docs/render-manifest.json"
+      ],
+      "class": "projection",
+      "mutation_path": "Regenerate through scripts/render_static_docs.py.",
+      "content_light": false,
+      "validation_command": "uv run python scripts/render_static_docs.py",
+      "related_artifacts": [],
+      "risk": "Direct edits will be overwritten on the next docs build.",
+      "protected_write_disposition": "advise"
+    }
+  ]
+}

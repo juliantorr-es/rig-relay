@@ -1,0 +1,280 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "issue-tracker",
+  "document_type": "reference",
+  "title": "Issue Tracker",
+  "summary": "Canonical issue board for transcript-derived findings. Open items live in the append-only ledger; the page summarizes state and points at the schema.",
+  "status": "active",
+  "created_at": "2026-05-22",
+  "updated_at": "2026-05-22",
+  "source_commit": "dcc0ea1f",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "issues",
+    "tracker",
+    "ledger",
+    "transcript",
+    "backlog"
+  ],
+  "audience": [
+    "contributor",
+    "maintainer",
+    "agent"
+  ],
+  "canonical_path": "docs/json/issues/issue_tracker.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "heading-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Issue Tracker",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "summary-1",
+      "type": "paragraph",
+      "content": "Tracker seeded from the Archive 3 review transcript. Open rows are actionable follow-ups; the resolved row records the cleanest completed fix so the backlog stays honest about what is already closed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "callout-1",
+      "type": "callout",
+      "severity": "info",
+      "content": "The ledger is append-only JSONL. It is meant for durable issue tracking inside the repo, not for ad hoc notes. Each entry uses a strict schema so downstream docs, search, and analytics can read it without heuristics.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "schema-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Ledger Contract",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "schema-ref",
+      "type": "schema_ref",
+      "schema_ref": "docs/schemas/rig.relay.issue.v1.schema.json",
+      "caption": "Issue ledger entries validate against this schema."
+    },
+    {
+      "block_id": "ledger-ref-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Ledger File",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "ledger-ref",
+      "type": "file_reference",
+      "path": "docs/json/issues/issue_ledger.v1.jsonl",
+      "caption": "Append-only JSONL issue ledger seeded from the transcript."
+    },
+    {
+      "block_id": "counts-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Tracker Summary",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "counts-table",
+      "type": "table",
+      "columns": [
+        "Metric",
+        "Count"
+      ],
+      "rows": [
+        [
+          "Total issues",
+          "12"
+        ],
+        [
+          "Open",
+          "11"
+        ],
+        [
+          "Resolved",
+          "1"
+        ],
+        [
+          "Critical",
+          "3"
+        ],
+        [
+          "High",
+          "6"
+        ],
+        [
+          "Medium",
+          "3"
+        ],
+        [
+          "Low",
+          "0"
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "resolved-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Resolved",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "resolved-table",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Severity",
+        "Area",
+        "Title",
+        "Resolution"
+      ],
+      "rows": [
+        [
+          "issue_20260522_schema_validator_metaschema_fix",
+          "medium",
+          "scripts/rig_relay_validate_schemas.py",
+          "Schema validator now checks schemas with the correct metaschema path",
+          "Switched schema self-validation to check_schema() and reran the validator successfully."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "open-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Open Issues",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "open-table",
+      "type": "table",
+      "columns": [
+        "ID",
+        "Severity",
+        "Area",
+        "Title",
+        "Next step"
+      ],
+      "rows": [
+        [
+          "issue_20260522_schema_validator_strict_regression_tests_missing",
+          "medium",
+          "tests/coordination",
+          "Strict schema validator still lacks regression tests",
+          "Add valid-schema, invalid-schema, and inventory-wide strict-mode coverage."
+        ],
+        [
+          "issue_20260522_agentloop_extraction_transitional",
+          "high",
+          "rig_relay/core",
+          "AgentLoop extraction still depends on façade backreferences",
+          "Finish the port-based extraction and remove the remaining façade coupling."
+        ],
+        [
+          "issue_20260522_model_runtime_frozen_session_metadata",
+          "high",
+          "rig_relay/core/model_runtime",
+          "ModelRuntime snapshots session metadata at construction",
+          "Read live turn/session context instead of constructor-time copies."
+        ],
+        [
+          "issue_20260522_failed_tool_resolution_short_circuits",
+          "critical",
+          "rig_relay/core/conversation_loop_adapter.py",
+          "Failed tool resolution can short-circuit into final assistant output",
+          "Split valid tool, failed tool, and final assistant continuations."
+        ],
+        [
+          "issue_20260522_governed_context_injection_unproven",
+          "medium",
+          "rig_relay/core/context_runtime",
+          "Governed context injection still lacks direct contract tests",
+          "Add a model-facing test for message order, receipt binding, and deduplication."
+        ],
+        [
+          "issue_20260522_tool_cache_workspace_scoping",
+          "high",
+          "rig_relay/core/tools/cache.py",
+          "Tool result cache still falls back to ambient cwd and package-local storage",
+          "Pass explicit workspace identity and move cache storage out of the package tree."
+        ],
+        [
+          "issue_20260522_generated_code_quarantine_incomplete",
+          "critical",
+          "scripts/rig_compiler_schema_to_code.py",
+          "Generated-code compiler still accepts unsafe arbitrary input forms",
+          "Constrain the IR, remove arbitrary templates, and inspect AST before import."
+        ],
+        [
+          "issue_20260522_static_site_compiler_safety_incomplete",
+          "critical",
+          "rig_relay/site_renderer",
+          "Static site renderer still has unsafe JSON-LD and disclosure seams",
+          "Fail closed on missing validator, harden structured data, and fix telemetry disclosure."
+        ],
+        [
+          "issue_20260522_telemetry_contract_split",
+          "high",
+          "rig_relay/desktop",
+          "Telemetry mode vocabulary still splits across runtime, profile, and projection",
+          "Define one enum and make all projection and runtime layers use it."
+        ],
+        [
+          "issue_20260522_steward_claim_and_lease_cleanup_leaks",
+          "high",
+          "rig_relay/cli/steward.py",
+          "Steward leaves partial claims behind on failure paths",
+          "Rollback claims on downstream failure and separate preview events from dispatch."
+        ],
+        [
+          "issue_20260522_wrong_architecture_test_still_passing",
+          "high",
+          "tests/core",
+          "ConversationRuntime parity test still protects the old architecture",
+          "Rewrite or delete the parity test so it matches the current production flow."
+        ]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ]
+}
