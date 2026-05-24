@@ -9,9 +9,7 @@ from typing import TYPE_CHECKING, Any
 from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
 from rig_relay.core.guard import get_guard
 from rig_relay.core.tools.base import ToolPermission
-
-if TYPE_CHECKING:
-    from rig_relay.core.tools.permissions import ApprovedRule, RequiredPermission
+from rig_relay.core.tools.permissions import ApprovedRule, RequiredPermission
 
 
 def _generate_decision_id(seed: str) -> str:
@@ -263,6 +261,62 @@ class GovernanceRuntime:
 
     def add_session_rule(self, rule: ApprovedRule) -> None:
         self.session_rules.append(rule)
+
+    def set_tool_permission(
+        self,
+        tool_name: str,
+        permission: ToolPermission,
+        save_permanently: bool = False,
+    ) -> None:
+        if save_permanently:
+            from rig_relay.core.config import VibeConfig
+
+            VibeConfig.save_updates(
+                {"tools": {tool_name: {"permission": permission.value}}}
+            )
+        if self.config is None:
+            return
+        tools = getattr(self.config, "tools", {}) or {}
+        if tool_name not in tools:
+            tools[tool_name] = {}
+        tools[tool_name]["permission"] = permission.value
+
+    def is_permission_covered(
+        self, tool_name: str, rp: RequiredPermission
+    ) -> bool:
+        from rig_relay.core.tools.utils import wildcard_match
+
+        return any(
+            rule.tool_name == tool_name
+            and rule.scope == rp.scope
+            and wildcard_match(rp.invocation_pattern, rule.session_pattern)
+            for rule in self.session_rules
+        )
+
+    def approve_always(
+        self,
+        tool_name: str,
+        required_permissions: list[RequiredPermission] | None,
+        save_permanently: bool = False,
+    ) -> None:
+        if required_permissions:
+            for rp in required_permissions:
+                self.add_session_rule(
+                    ApprovedRule(
+                        tool_name=tool_name,
+                        scope=rp.scope,
+                        session_pattern=rp.session_pattern,
+                    )
+                )
+            if save_permanently and self.config is not None:
+                self.config.add_tool_allowlist_patterns(
+                    tool_name,
+                    [rp.session_pattern for rp in required_permissions],
+                )
+        else:
+            self.set_tool_permission(
+                tool_name, ToolPermission.ALWAYS, save_permanently=save_permanently
+            )
 
     def evaluate_mutation_legality(self, **kwargs: Any) -> Any:
         from rig_relay.governance.governance_engine import GovernanceEngine

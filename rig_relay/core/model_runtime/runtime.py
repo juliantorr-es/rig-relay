@@ -1,13 +1,12 @@
 """ModelRuntime — LLM call execution and middleware metadata assembly.
 
 Owns the model-request boundary: preparation, streaming/non-streaming
-completion, provider error translation, stats accounting, and backend
-request metadata. Depends on explicit configuration, not hidden agent
-state.
+completion, provider error translation, stats accounting, backend
+request metadata, and canonical middleware pipeline configuration.
+Depends on explicit configuration, not hidden agent state.
 
-Phase 1 extraction target:
-  LLMCallMixin → ModelRuntime
-  MiddlewareMetadataMixin → ModelRuntime (absorbed)
+Phase 1 extraction — absorbed from former LLMCallMixin and
+MiddlewareMetadataMixin; those mixin modules are now deleted.
 """
 
 from __future__ import annotations
