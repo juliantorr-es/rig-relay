@@ -177,6 +177,13 @@ class ValidateArgs(BaseModel):
         description="pytest-xdist distribution mode: loadfile, load, each.",
     )
 
+    preparation_receipt_sha256: str | None = Field(
+        default=None,
+        description="SHA256 of a durable preparation receipt from prepare_checkpoint. "
+        "When provided, validate verifies prepared paths have no index/worktree "
+        "delta before running checks, and records the prepared index digest in results.",
+    )
+
 
 # ── Check result model ────────────────────────────────────────────────
 
@@ -300,6 +307,14 @@ class ValidateResult(BaseModel):
     changed_files: list[str] | None = None
     before_git_state: ValidateGitState | None = None
     after_git_state: ValidateGitState | None = None
+    prepared_index_tree_digest: str | None = Field(
+        default=None,
+        description="Index tree digest from preparation receipt, when validation was bound to a prepared state.",
+    )
+    worktree_matched_prepared_index: bool | None = Field(
+        default=None,
+        description="True when prepared paths had no worktree/index delta before validation ran. None when no preparation receipt was provided.",
+    )
     error_kind: str | None = None
     refusal_reason: str | None = None
 

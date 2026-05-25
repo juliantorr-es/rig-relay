@@ -54,7 +54,9 @@ class TestACPSetMode:
         assert (
             acp_session.agent_loop.agent_profile.name == BuiltinAgentName.AUTO_APPROVE
         )
-        assert acp_session.agent_loop.bypass_tool_permissions is True
+        assert (
+            acp_session.agent_loop.bypass_tool_permissions is False
+        )  # MISSION_SCOPED_AUTO does not bypass
 
     @pytest.mark.asyncio
     async def test_set_mode_to_plan(self, acp_agent_loop: VibeAcpAgentLoop) -> None:

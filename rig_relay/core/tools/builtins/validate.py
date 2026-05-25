@@ -162,6 +162,8 @@ class _ValidateProfileExecutionContext:
     cache_enabled: bool
     scheduler_enabled: bool
     scheduler_warnings: list[str]
+    prepared_digest: str | None = None
+    worktree_matched: bool | None = None
 
 
 @dataclass(slots=True)
@@ -278,6 +280,7 @@ class Validate(
         ToolDeterminismClass.DETERMINISTIC_REPO_STATE
     )
     mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
+    _MAX_CHANGED_PATHS_SHOWN: ClassVar[int] = 5
 
     @classmethod
     def format_call_display(cls, args: ValidateArgs) -> ToolCallDisplay:
@@ -475,6 +478,8 @@ class Validate(
         start: float,
         before_git_state: ValidateGitState | None = None,
         after_git_state: ValidateGitState | None = None,
+        prepared_index_tree_digest: str | None = None,
+        worktree_matched_prepared_index: bool | None = None,
     ) -> ValidateResult:
         total_ms = (time.perf_counter() - start) * 1000
         passed = sum(1 for r in results if r.status == "passed")
@@ -509,6 +514,8 @@ class Validate(
             blocker_summary=blocker_summary,
             before_git_state=before_git_state,
             after_git_state=after_git_state,
+            prepared_index_tree_digest=prepared_index_tree_digest,
+            worktree_matched_prepared_index=worktree_matched_prepared_index,
         )
         return result.model_copy(
             update={
@@ -781,6 +788,76 @@ class Validate(
             if prepared.run.scheduler_enabled:
                 prepared.run.scheduler_store.release_lock(prepared.cache_key)
 
+    def _check_preparation_binding(
+        self, args: ValidateArgs, cwd: str
+    ) -> tuple[str | None, bool | None, ValidateResult | None]:
+        """Check worktree/index delta for preparation-bound validation.
+
+        Returns (prepared_digest, worktree_matched, refusal_result).
+        If refusal_result is not None, the caller should return it immediately.
+        """
+        if not args.preparation_receipt_sha256:
+            return None, None, None
+        try:
+            from rig_relay.governance.auth_receipts import load_preparation_receipt
+
+            receipt = load_preparation_receipt(args.preparation_receipt_sha256)
+            if receipt is None:
+                refusal = self._refuse(
+                    args,
+                    error_kind="preparation_receipt_missing",
+                    reason="Preparation receipt not found. Run prepare_checkpoint again.",
+                )
+                return None, None, refusal
+
+            prepared_digest: str | None = None
+
+            expected_paths = receipt.get("prepared_paths", []) or []
+            dig = receipt.get("post_index_tree_digest")
+            if dig:
+                prepared_digest = dig
+
+            import subprocess as _sp
+
+            proc = _sp.run(
+                ["git", "diff", "--name-only"] + expected_paths,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=str(cwd),
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                changed = [p for p in proc.stdout.strip().splitlines() if p]
+                visible = min(len(changed), self._MAX_CHANGED_PATHS_SHOWN)
+                extra = (
+                    f" and {len(changed) - self._MAX_CHANGED_PATHS_SHOWN} more"
+                    if len(changed) > self._MAX_CHANGED_PATHS_SHOWN
+                    else ""
+                )
+                refusal = ValidateResult(
+                    status="refused",
+                    profile=args.profile,
+                    error_kind="worktree_changed_after_preparation",
+                    refusal_reason=(
+                        "Prepared paths have unstaged changes since preparation: "
+                        f"{', '.join(changed[:visible])}" + extra
+                    ),
+                    suggested_next_action=(
+                        "Review the unstaged changes. Either revert the "
+                        "working-tree edits to match the prepared index, or run "
+                        "prepare_checkpoint again with updated expected hashes "
+                        "for the changed files."
+                    ),
+                )
+                refusal = refusal.model_copy(
+                    update={"retryable": _validate_retryable(refusal)}
+                )
+                return None, None, refusal
+
+            return prepared_digest, True, None
+        except Exception:
+            return None, None, None  # Best-effort
+
     async def _prepare_validate_profile_run(
         self, args: ValidateArgs, ctx: InvokeContext | None, recorder: Any | None = None
     ) -> _ValidateProfileExecutionContext | ValidateResult | str:
@@ -821,6 +898,14 @@ class Validate(
             return self._refuse(args, error_kind="unsafe_paths", reason=refusal)
 
         before_git_state = await _collect_git_state(run_context.cwd)
+
+        # ── Bound validation: verify prepared paths match index ───
+        prepared_digest_val, worktree_matched_val, binding_refusal = (
+            self._check_preparation_binding(args, run_context.cwd)
+        )
+        if binding_refusal is not None:
+            return binding_refusal
+
         policy_reason = _check_dirty_policy(
             before_git_state, args.expected_dirty_policy, normalized_paths
         )
@@ -870,6 +955,8 @@ class Validate(
             cache_enabled=run_context.cache_enabled,
             scheduler_enabled=run_context.scheduler_enabled,
             scheduler_warnings=run_context.scheduler_warnings,
+            prepared_digest=prepared_digest_val,
+            worktree_matched=worktree_matched_val,
         )
 
     async def _execute_validate_profile_run(
@@ -899,6 +986,8 @@ class Validate(
             run.start,
             before_git_state=run.before_git_state,
             after_git_state=after_git_state,
+            prepared_index_tree_digest=run.prepared_digest,
+            worktree_matched_prepared_index=run.worktree_matched,
         )
         run.state_machine.transition(
             ValidateProfileEvent.PROFILE_COMPLETED,

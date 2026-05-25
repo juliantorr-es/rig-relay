@@ -37,6 +37,7 @@ class MatchedRuleKind(StrEnum):
     WORKTREE_VALIDATION = "worktree_validation"
     CANONICAL_EVIDENCE_WRITE = "canonical_evidence_write"
     GOVERNED_CHECKPOINT = "governed_checkpoint"
+    GOVERNED_CHECKPOINT_PREPARATION = "governed_checkpoint_preparation"
 
 
 # ── Invariant policy rails — never weakened by mission claim ─────────
@@ -229,6 +230,27 @@ class MissionExecutionAuthority:
 
         # 3. Mutation tools: check file paths against write scope
         is_mutation = mutation_class in _NORMAL_WORK_MUTATION_CLASSES
+
+        if tool_name == "prepare_checkpoint":
+            if self.admitted_checkpoint:
+                return AuthorityEvaluation(
+                    decision=AuthorityDecision.ALLOWED_IN_SCOPE,
+                    source=AuthoritySource.MISSION_CLAIM,
+                    matched_rule_kind=MatchedRuleKind.GOVERNED_CHECKPOINT_PREPARATION,
+                    requires_approval=False,
+                    mission_id=self.mission_id,
+                    claim_id=self.claim_id,
+                    provenance_sha256=self.provenance_sha256,
+                )
+            return AuthorityEvaluation(
+                decision=AuthorityDecision.REQUIRES_CONSECUTIAL_APPROVAL,
+                source=AuthoritySource.MISSION_CLAIM,
+                matched_rule_kind=MatchedRuleKind.CONSEQUENTIAL_ACTION,
+                requires_approval=True,
+                mission_id=self.mission_id,
+                claim_id=self.claim_id,
+                provenance_sha256=self.provenance_sha256,
+            )
 
         if tool_name == "checkpoint":
             if self.admitted_checkpoint:

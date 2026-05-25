@@ -440,3 +440,59 @@ class LocalRepositoryOperatingPicture(BaseModel):
         default_factory=list,
         description="Recommendations explicitly marked as recommendations, not facts.",
     )
+
+
+class DigestionTelemetryProjection(BaseModel):
+    """Content-light telemetry projection from full operating picture.
+
+    All raw local detail is stripped. Only categories, counts, status
+    classes, confidence classes, and opaque digests remain. Safe for
+    telemetry and portable evidence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    opaque_repository_id_digest: str = Field(
+        description="Opaque digest that does not reveal repo identity details."
+    )
+    is_git_repo: bool = Field(description="Whether this is a Git repository.")
+    is_github_backed: bool = Field(
+        description="Whether at least one remote is github.com."
+    )
+    is_local_only: bool = Field(
+        description="Whether only local and no remotes are configured."
+    )
+    ecosystem_summary: list[dict] = Field(
+        default_factory=list,
+        description="Ecosystem categories with counts, no raw paths.",
+    )
+    command_summary: list[dict] = Field(
+        default_factory=list,
+        description="Command summaries by kind and safety, no command strings.",
+    )
+    instruction_file_summary: list[dict] = Field(
+        default_factory=list,
+        description="Instruction summaries by kind, no paths or content.",
+    )
+    topology_summary: list[dict] = Field(
+        default_factory=list, description="Subsystem kind counts, no directory names."
+    )
+    git_state_summary: dict = Field(
+        default_factory=dict,
+        description="Git dirty state summary: branch presence, dirty file count, diverged, head_sha presence.",
+    )
+    structural_inspection_capabilities: list[str] = Field(
+        default_factory=list, description="Available structural inspection tool names."
+    )
+    freshness_digest: str = Field(
+        description="Opaque digest of the freshness timestamp."
+    )
+    known_gap_count: int = Field(
+        default=0,
+        description="Count of known information gaps in the operating picture.",
+    )
+    indeterminate_item_count: int = Field(
+        default=0,
+        description="Count of indeterminate items requiring user confirmation.",
+    )
+    generated_at: str = Field(description="ISO 8601 timestamp of digestion.")

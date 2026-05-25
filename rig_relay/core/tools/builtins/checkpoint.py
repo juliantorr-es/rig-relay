@@ -1,4 +1,3 @@
-# ruff: noqa: PLR0911
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
@@ -30,12 +29,35 @@ from rig_relay.core.types import ToolCallEvent, ToolResultEvent, ToolStreamEvent
 
 
 class CheckpointArgs(BaseModel):
-    session_id: str | None = Field(default=None, description="Session identifier. Auto-populated by the agent loop. Leave as default.")
-    task_id: str | None = Field(default=None, description="Task identifier. Auto-populated by the agent loop. Leave as default.")
-    message: str = Field(description="Commit message. Auto-prefixed with 'checkpoint(task_id):' unless starts with 'checkpoint('.")
-    include_paths: list[str] = Field(default_factory=list, description="Repository-relative file paths to include in the commit. Files must already be staged. Empty requires allow_partial=True.")
-    validation_summary: list[str] = Field(default_factory=list, description="Command strings that passed before this checkpoint (e.g., 'ruff check', 'pytest'). Included in commit message for audit.")
-    allow_partial: bool = Field(default=False, description="Allow checkpoint with empty include_paths or unrelated staged files from other lanes.")
+    session_id: str | None = Field(
+        default=None,
+        description="Session identifier. Auto-populated by the agent loop. Leave as default.",
+    )
+    task_id: str | None = Field(
+        default=None,
+        description="Task identifier. Auto-populated by the agent loop. Leave as default.",
+    )
+    message: str = Field(
+        description="Commit message. Auto-prefixed with 'checkpoint(task_id):' unless starts with 'checkpoint('."
+    )
+    include_paths: list[str] = Field(
+        default_factory=list,
+        description="Repository-relative file paths to include in the commit. Files must already be staged. Empty requires allow_partial=True.",
+    )
+    validation_summary: list[str] = Field(
+        default_factory=list,
+        description="Command strings that passed before this checkpoint (e.g., 'ruff check', 'pytest'). Included in commit message for audit.",
+    )
+    allow_partial: bool = Field(
+        default=False,
+        description="Allow checkpoint with empty include_paths or unrelated staged files from other lanes.",
+    )
+    preparation_receipt_sha256: str | None = Field(
+        default=None,
+        description="SHA256 of a durable checkpoint preparation receipt from prepare_checkpoint. "
+        "When provided, checkpoint verifies the current index matches the preparation "
+        "receipt before committing. Refuses if the receipt is missing, stale, or invalid.",
+    )
     authorization_receipt: str | None = Field(
         default=None,
         description="JSON string of a signed authorization receipt for checkpoint commit.",
@@ -45,12 +67,14 @@ class CheckpointArgs(BaseModel):
 class CheckpointResult(BaseModel):
     ok: bool
     commit_sha: str | None = None
-    message: str
+    message: str = ""
     files_committed: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     artifact_sha256: str | None = None
     refusal_reason: str | None = None
     authorization_receipt_sha256: str | None = None
+    error_kind: str | None = Field(default=None)
+    suggested_next_action: str | None = Field(default=None)
 
 
 class CheckpointPorcelainProtocolError(Exception):
@@ -150,10 +174,10 @@ class Checkpoint(
                     gate="checkpoint",
                     decision="blocked",
                     reason="git_status_failed",
-                tool_name="checkpoint",
-                severity="warning",
-                mutation_intent=True,
-            )
+                    tool_name="checkpoint",
+                    severity="warning",
+                    mutation_intent=True,
+                )
             self._emit_checkpoint_refused(args, refusal_result)
             yield refusal_result
             return
@@ -315,6 +339,115 @@ class Checkpoint(
             receipt_candidate=True,
         )
 
+    def _verify_preparation_receipt(
+        self, receipt_sha256: str, repo_root: Path, requested_paths: set[str]
+    ) -> CheckpointResult | None:
+        """Verify a durable preparation receipt matches the current index.
+
+        Returns None if verification passes (proceed to commit).
+        Returns CheckpointResult with ok=False if verification fails.
+        """
+        try:
+            from rig_relay.governance.auth_receipts import load_preparation_receipt
+        except ImportError:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason="preparation_receipt_verification_unavailable",
+                error_kind="preparation_receipt_verification_unavailable",
+                suggested_next_action=(
+                    "Preparation receipt verification is not available. "
+                    "Retry checkpoint without a preparation receipt or ensure the "
+                    "receipt infrastructure is accessible."
+                ),
+            )
+
+        # 1. Load the receipt
+        receipt = load_preparation_receipt(receipt_sha256)
+        if receipt is None:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason=f"Preparation receipt not found: {receipt_sha256}",
+                error_kind="preparation_receipt_missing",
+                suggested_next_action=(
+                    "The preparation receipt referenced by this checkpoint does not "
+                    "exist in the durable ledger. Run prepare_checkpoint again to "
+                    "create a new preparation receipt."
+                ),
+            )
+
+        # 2. Verify index tree digest matches
+        from rig_relay.core.git_index_operations import compute_index_tree_digest
+
+        current_digest = compute_index_tree_digest(repo_root)
+        expected_digest = receipt.get("post_index_tree_digest")
+
+        if current_digest is None:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason="Cannot compute current index tree digest. Index may be empty or unmerged.",
+                error_kind="index_tree_digest_unavailable",
+                suggested_next_action="Ensure the index has staged content and is fully merged.",
+            )
+
+        if expected_digest is None:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason="Preparation receipt has no post_index_tree_digest.",
+                error_kind="preparation_receipt_missing_digest",
+                suggested_next_action="The preparation receipt is missing the expected index tree digest. Run prepare_checkpoint again.",
+            )
+
+        if current_digest != expected_digest:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason=(
+                    f"Current index tree digest ({current_digest[:12]}...) does not "
+                    f"match preparation receipt ({expected_digest[:12]}...). "
+                    "The index has changed since preparation."
+                ),
+                error_kind="prepared_index_changed",
+                suggested_next_action=(
+                    "The index content has changed since prepare_checkpoint was run. "
+                    "Re-inspect changes and create a new preparation request with "
+                    "updated expected file hashes."
+                ),
+            )
+
+        # 3. Verify prepared paths match requested include_paths
+        prepared_set = set(receipt.get("prepared_paths", []) or [])
+        if not requested_paths.issubset(prepared_set):
+            extra = requested_paths - prepared_set
+            return CheckpointResult(
+                ok=False,
+                refusal_reason=(
+                    f"Requested checkpoint paths not in preparation receipt: {sorted(extra)}"
+                ),
+                error_kind="checkpoint_paths_not_prepared",
+                suggested_next_action=(
+                    "Run prepare_checkpoint with the intended checkpoint paths "
+                    f"including: {sorted(extra)}"
+                ),
+            )
+
+        # 4. Verify receipt hasn't expired (if expiration is set)
+        expires_at = receipt.get("expires_at")
+        if expires_at is not None:
+            try:
+                from datetime import datetime
+
+                expiry = datetime.fromisoformat(expires_at)
+                if datetime.now(UTC) > expiry:
+                    return CheckpointResult(
+                        ok=False,
+                        refusal_reason="Preparation receipt has expired.",
+                        error_kind="preparation_receipt_expired",
+                        suggested_next_action="Run prepare_checkpoint again to create a fresh receipt.",
+                    )
+            except (ValueError, TypeError):
+                pass
+
+        return None  # Verification passed
+
     def _validate_preconditions(
         self,
         args: CheckpointArgs,
@@ -362,6 +495,7 @@ class Checkpoint(
                     refusal_reason="detached_head_refused",
                 )
             import sys
+
             is_test = "pytest" in sys.modules
             if not is_test and branch in {"main", "master"}:
                 return CheckpointResult(
@@ -375,6 +509,14 @@ class Checkpoint(
                 message=f"Checkpoint refused: branch verification failed: {exc}",
                 refusal_reason="branch_legality_failed",
             )
+
+        # ── Step 2.5: Preparation receipt verification ─────────────
+        if args.preparation_receipt_sha256:
+            result = self._verify_preparation_receipt(
+                args.preparation_receipt_sha256, repo_root, requested
+            )
+            if result is not None:
+                return result
 
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"
@@ -458,10 +600,7 @@ class Checkpoint(
         repo_root: Path,
         receipt_digest: str | None = None,
     ) -> CheckpointResult | None:
-        add_result = self._git("add", "--", *sorted(requested), cwd=repo_root)
-        if isinstance(add_result, CheckpointResult):
-            return add_result
-
+        """Commit the current index exactly — no git add re-staging."""
         subject = (
             args.message
             if args.message.startswith("checkpoint(")
@@ -477,15 +616,44 @@ class Checkpoint(
             body_lines.append(f"- {path}")
         if receipt_digest:
             body_lines.append(f"Rig-Authorization-Receipt-SHA256: {receipt_digest}")
+        if args.preparation_receipt_sha256:
+            body_lines.append(
+                f"Rig-Preparation-Receipt-SHA256: {args.preparation_receipt_sha256}"
+            )
         if args.validation_summary:
             body_lines.append("Validation:")
             for cmd in args.validation_summary:
                 body_lines.append(f"- {cmd}")
         full_message = subject + "\n" + "\n".join(body_lines)
 
+        # Commit EXACTLY the current index — no git add.
         commit_result = self._git("commit", "-m", full_message, cwd=repo_root)
         if isinstance(commit_result, CheckpointResult):
             return commit_result
+
+        # Verify committed tree matches preparation
+        if args.preparation_receipt_sha256:
+            try:
+                from rig_relay.core.git_index_operations import compute_head_tree_digest
+                from rig_relay.governance.auth_receipts import load_preparation_receipt
+
+                receipt = load_preparation_receipt(args.preparation_receipt_sha256)
+                if receipt is not None:
+                    expected = receipt.get("post_index_tree_digest")
+                    committed_tree = compute_head_tree_digest(repo_root)
+                    if expected and committed_tree and committed_tree != expected:
+                        return CheckpointResult(
+                            ok=False,
+                            refusal_reason=(
+                                f"Committed tree ({committed_tree[:12]}...) does not "
+                                f"match preparation receipt ({expected[:12]}...)."
+                            ),
+                            error_kind="committed_tree_mismatch",
+                            suggested_next_action="Investigate commit mismatch. Contact administrator.",
+                        )
+            except Exception:
+                pass  # Post-commit verification is best-effort
+
         return None
 
     def _git(self, *args: str, cwd: Path, strip: bool = True) -> str | CheckpointResult:
@@ -566,7 +734,6 @@ class Checkpoint(
 
         snapshot = guard.snapshot_for(rel_path)
         if snapshot is not None:
-            guard_report = guard.report()
             return "checkpoint_protected_dirty_path_refused"
 
         return None

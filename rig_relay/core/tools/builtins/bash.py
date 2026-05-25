@@ -237,7 +237,17 @@ class BashToolConfig(BaseToolConfig):
     )
     sensitive_patterns: list[str] = Field(
         default=["sudo"],
-        description="Command prefixes that always ASK regardless of arity approval.",
+        description=(
+        ),
+    )
+    restrict_raw_shell: bool = Field(
+        default=True,
+        description=(
+            "When True, raw shell commands that do not match the known "
+            "validation reroute registry (pytest, ruff, pyright, git, "
+            "cat->read_file, grep) are refused in scoped missions. "
+            "Set to False for developer/unrestricted mode."
+        ),
     )
 
 
@@ -408,6 +418,33 @@ class Bash(
             return False
         return tokens[0] in self.config.sensitive_patterns
 
+    @staticmethod
+    def _matches_validate_reroute(command: str) -> bool:
+        """Check if command matches the validate tool reroute patterns.
+        Only pytest, ruff check, and pyright are recognized. cat, grep,
+        git, and python -c are deliberately excluded — the agent must
+        use dedicated governed tools for those operations."""
+        try:
+            tokens = command.split()
+        except Exception:
+            return False
+        if not tokens:
+            return False
+        root = tokens[0]
+        # pytest / pytest3
+        if root in ("pytest", "pytest3"):
+            return True
+        # python -m pytest
+        if root == "python" and len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "pytest":
+            return True
+        # ruff check
+        if root == "ruff" and len(tokens) >= 2 and tokens[1] == "check":
+            return True
+        # pyright
+        if root == "pyright":
+            return True
+        return False
+
     def _resolve_guardrail_permission(
         self, command_parts: list[str]
     ) -> PermissionContext | None:
@@ -457,6 +494,24 @@ class Bash(
             )
 
         if not find_execution_required:
+            # Governed Command Execution Airlock v1:
+            # In contained missions (restrict_raw_shell=True), refuse raw
+            # commands that don't match the known validation reroute registry.
+            if getattr(self.config, "restrict_raw_shell", False):
+                # Governed Command Execution Airlock v1:
+                # In contained missions, only validation commands (pytest, ruff, pyright)
+                # may pass through raw bash via reroute to the governed validate tool.
+                # cat, grep, git, and python -c are NOT exceptions — the agent must
+                # use the dedicated governed tools (read_file, grep tool, git_status, etc.)
+                if not _matches_validate_reroute(full_command):
+                    return PermissionContext(
+                        permission=ToolPermission.NEVER,
+                        reason=(
+                            "Raw shell execution is unavailable in this workspace-contained "
+                            "mission. Use governed file tools for reads or edits, or the "
+                            "validation tool for approved tests and static checks."
+                        ),
+                    )
             return None
         return PermissionContext(
             permission=ToolPermission.ASK, required_permissions=find_execution_required

@@ -48,6 +48,8 @@ class BuiltinAgentName(StrEnum):
     CLEANER = "cleaner"
     BUILDER = "builder"
     BUG_EXTERMINATOR = "bug-exterminator"
+    MISSION_SCOPED_AUTO = "mission-scoped-auto"
+    UNSAFE_RAW_SHELL = "unsafe-raw-shell"
 
 
 @dataclass(frozen=True)
@@ -147,10 +149,55 @@ ACCEPT_EDITS = AgentProfile(
         },
     },
 )
+MISSION_SCOPED_AUTO = AgentProfile(
+    BuiltinAgentName.MISSION_SCOPED_AUTO,
+    "Mission Scoped Auto",
+    "Autonomous coding within admitted workspace scope — auto-approves scoped reads, edits, validation, and governed Git inspection. Raw shell and destructive Git are refused.",
+    AgentSafety.NEUTRAL,
+    overrides={
+        "bypass_tool_permissions": False,
+        "base_disabled": ["bash", "exit_plan_mode"],
+        "tools": {
+            "write_file": {"permission": "always"},
+            "search_replace": {"permission": "always"},
+            "read_file": {"permission": "always"},
+            "grep": {"permission": "always"},
+            "validate": {"permission": "always"},
+            "git_status": {"permission": "always"},
+            "git_diff": {"permission": "always"},
+            "git_ls_files": {"permission": "always"},
+            "checkpoint": {"permission": "always"},
+        },
+    },
+)
+
+# Legacy alias: AUTO_APPROVE now resolves to mission-scoped behavior
 AUTO_APPROVE = AgentProfile(
     BuiltinAgentName.AUTO_APPROVE,
-    "Auto Approve",
-    "Auto-approves all tool executions",
+    "Auto Approve (Scoped)",
+    "[Legacy alias for Mission Scoped Auto] Autonomous coding within admitted workspace scope. Raw shell is refused.",
+    AgentSafety.NEUTRAL,
+    overrides={
+        "bypass_tool_permissions": False,
+        "base_disabled": ["bash", "exit_plan_mode"],
+        "tools": {
+            "write_file": {"permission": "always"},
+            "search_replace": {"permission": "always"},
+            "read_file": {"permission": "always"},
+            "grep": {"permission": "always"},
+            "validate": {"permission": "always"},
+            "git_status": {"permission": "always"},
+            "git_diff": {"permission": "always"},
+            "git_ls_files": {"permission": "always"},
+            "checkpoint": {"permission": "always"},
+        },
+    },
+)
+
+UNSAFE_RAW_SHELL = AgentProfile(
+    BuiltinAgentName.UNSAFE_RAW_SHELL,
+    "Unsafe Raw Shell (Diagnostic Only)",
+    "Diagnostic/developer mode with raw shell access. Bypasses approval gates but remains subject to hard runtime safety boundaries (workspace enforcement, dirty-file guard, destructive Git refusal). Not suitable for autonomous missions.",
     AgentSafety.YOLO,
     overrides={"bypass_tool_permissions": True, "base_disabled": ["exit_plan_mode"]},
 )
@@ -311,7 +358,9 @@ BUILTIN_AGENTS: dict[str, AgentProfile] = {
     BuiltinAgentName.DEFAULT: DEFAULT,
     BuiltinAgentName.PLAN: PLAN,
     BuiltinAgentName.ACCEPT_EDITS: ACCEPT_EDITS,
-    BuiltinAgentName.AUTO_APPROVE: AUTO_APPROVE,
+    BuiltinAgentName.MISSION_SCOPED_AUTO: MISSION_SCOPED_AUTO,
+    BuiltinAgentName.AUTO_APPROVE: AUTO_APPROVE,  # legacy alias
+    BuiltinAgentName.UNSAFE_RAW_SHELL: UNSAFE_RAW_SHELL,
     BuiltinAgentName.EXPLORE: EXPLORE,
     BuiltinAgentName.LEAN: LEAN,
     BuiltinAgentName.ORCHESTRATOR: ORCHESTRATOR,

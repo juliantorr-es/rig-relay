@@ -105,7 +105,10 @@ def git_status_short(root: Path) -> str:
 def _git(*args: str, cwd: Path | None = None) -> str:
     try:
         return subprocess.check_output(
-            ["git", *args], text=True, stderr=subprocess.DEVNULL, cwd=cwd or Path.cwd()
+            ["git", "--no-optional-locks", *args],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            cwd=cwd or Path.cwd(),
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return ""
@@ -114,7 +117,10 @@ def _git(*args: str, cwd: Path | None = None) -> str:
 def _git_ls_files(root: Path) -> list[str]:
     try:
         out = subprocess.check_output(
-            ["git", "ls-files"], text=True, stderr=subprocess.DEVNULL, cwd=root
+            ["git", "--no-optional-locks", "ls-files"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            cwd=root,
         )
         return [l.strip() for l in out.splitlines() if l.strip()]
     except (subprocess.CalledProcessError, FileNotFoundError):

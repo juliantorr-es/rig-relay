@@ -65,8 +65,11 @@ class GitWorkspaceStateResult(BaseModel):
     upstream: str | None = None
     ahead_count: int | None = None
     behind_count: int | None = None
-    checkpoint_readiness: str = "blocked"
     primary_blocker: str | None = None
+    local_git_checkpoint_precheck: str  # git_preconditions_blocked, preparation_required, prepared_index_detected, prepared_index_changed, git_preconditions_satisfied, no_changes
+    preparation_required: bool = False
+    prepared_index_tree_digest: str | None = None
+    checkpoint_authorization_evaluated: bool = False
     staged_paths: list[str] = Field(default_factory=list)
     unstaged_paths: list[str] = Field(default_factory=list)
     untracked_paths: list[str] = Field(default_factory=list)
@@ -120,8 +123,10 @@ class GitWorkspaceState(
         if not is_inside:
             yield GitWorkspaceStateResult(
                 repository_state="not_a_repository",
-                checkpoint_readiness="blocked",
                 primary_blocker="not_a_repository",
+                local_git_checkpoint_precheck="git_preconditions_blocked",
+                preparation_required=False,
+                checkpoint_authorization_evaluated=False,
                 suggested_next_action="Initialize a git repository.",
             )
             return
@@ -130,8 +135,10 @@ class GitWorkspaceState(
         if raw is None:
             yield GitWorkspaceStateResult(
                 repository_state="clean",
-                checkpoint_readiness="blocked",
                 primary_blocker="git_status_unavailable",
+                local_git_checkpoint_precheck="git_preconditions_blocked",
+                preparation_required=False,
+                checkpoint_authorization_evaluated=False,
                 suggested_next_action="Unable to read git status.",
             )
             return
@@ -259,6 +266,28 @@ def _parse_renamed(line: str, parsed: _StatusV2Parsed) -> None:
         parsed.unstaged_paths.append(dst)
 
 
+def _compute_local_checkpoint_precheck(
+    repository_state: str, has_staged: bool, blockers: list[str]
+) -> str:
+    """Compute local Git checkpoint precheck state.
+
+    Does NOT claim full authorization — only evaluates Git facts.
+    checkpoint_authorization_evaluated remains False until mission authority
+    integration is complete.
+    """
+    if blockers:
+        return "git_preconditions_blocked"
+    if repository_state in {"conflicted", "detached_head", "unborn_branch"}:
+        return "git_preconditions_blocked"
+    if repository_state == "not_a_repository":
+        return "git_preconditions_blocked"
+    if not has_staged:
+        if repository_state == "dirty":
+            return "preparation_required"
+        return "no_changes"
+    return "git_preconditions_satisfied"
+
+
 def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
     repository_state = _compute_repository_state(parsed)
 
@@ -286,11 +315,13 @@ def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
         parsed.is_detached, parsed.branch, parsed.conflicted_paths
     )
 
-    readiness = (
-        "blocked"
-        if checkpoint_blockers
-        or repository_state in {"conflicted", "detached_head", "unborn_branch"}
-        else "ready"
+    local_git_checkpoint_precheck = _compute_local_checkpoint_precheck(
+        repository_state, bool(parsed.staged_paths), checkpoint_blockers
+    )
+    preparation_required = bool(
+        not parsed.staged_paths
+        and (parsed.unstaged_paths or parsed.untracked_paths)
+        and not checkpoint_blockers
     )
 
     checkpoint_candidate_paths = list(parsed.staged_paths)
@@ -311,8 +342,11 @@ def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
         upstream=parsed.upstream,
         ahead_count=parsed.ahead_count,
         behind_count=parsed.behind_count,
-        checkpoint_readiness=readiness,
         primary_blocker=checkpoint_blockers[0] if checkpoint_blockers else None,
+        local_git_checkpoint_precheck=local_git_checkpoint_precheck,
+        preparation_required=preparation_required,
+        prepared_index_tree_digest=None,
+        checkpoint_authorization_evaluated=False,
         staged_paths=parsed.staged_paths,
         unstaged_paths=parsed.unstaged_paths,
         untracked_paths=parsed.untracked_paths,
@@ -411,15 +445,17 @@ def _build_suggested_next_action(
             f"protected branch '{branch}'.",
         ),
         (
-            has_unstaged and not has_staged,
-            "Changes are unstaged. Use governed native tools (write_file, "
-            "search_replace) to stage admitted files, then checkpoint.",
+            has_unstaged
+            and not has_staged
+            and not is_detached
+            and branch not in _PROTECTED_BRANCHES,
+            "Admitted changes are unstaged. Use prepare_checkpoint with admitted "
+            "paths and expected worktree SHA256 values before checkpointing.",
         ),
         (
-            has_staged,
+            has_staged and not is_detached and branch not in _PROTECTED_BRANCHES,
             "Staged files are checkpoint candidates. "
-            "Run validation, then checkpoint with include_paths containing "
-            "the staged files.",
+            "Run validation, then checkpoint to commit the prepared index.",
         ),
         (
             repository_state == "unborn_branch",
@@ -429,7 +465,7 @@ def _build_suggested_next_action(
     for condition, message in rules:
         if condition:
             return message
-    return "Nothing to checkpoint. Make changes and stage them using native tools."
+    return "Nothing to checkpoint. Make changes and use prepare_checkpoint before committing."
 
 
 __all__ = ["GitWorkspaceState", "GitWorkspaceStateArgs", "GitWorkspaceStateResult"]

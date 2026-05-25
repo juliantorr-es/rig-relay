@@ -20,6 +20,150 @@
 <link rel="stylesheet" href="css/notifications.css">
 <link rel="stylesheet" href="css/analytics.css">
 <link rel="stylesheet" href="css/delight.css">
+<style>
+.start-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+}
+.start-state-content {
+  text-align: center;
+  max-width: 400px;
+}
+.start-state-content h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+.start-hint {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+.start-footer {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+.primary-action-btn {
+  padding: 10px 24px;
+  font-size: 1rem;
+  background: var(--accent-color, #4a90d9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.primary-action-btn:hover {
+  opacity: 0.9;
+}
+.operating-picture-widget {
+  padding: 16px;
+  background: var(--surface-bg, #1e1e2e);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary, #cdd6f4);
+}
+.operating-picture-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary, #a6adc8);
+}
+.op-header {
+  margin-bottom: 12px;
+}
+.op-repo-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+.op-git-badge, .op-dirty-badge, .op-clean-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-right: 6px;
+}
+.op-git-badge { background: var(--surface-alt, #313244); color: var(--text-secondary, #a6adc8); }
+.op-dirty-badge { background: #f38ba8; color: #1e1e2e; }
+.op-clean-badge { background: #a6e3a1; color: #1e1e2e; }
+.op-section {
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-color, #45475a);
+}
+.op-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #a6adc8);
+}
+.op-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.op-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: var(--surface-alt, #313244);
+  color: var(--text-primary, #cdd6f4);
+}
+.op-tag-definite { background: #a6e3a1; color: #1e1e2e; }
+.op-tag-inferred { background: #f9e2af; color: #1e1e2e; }
+.op-tag-source { background: #89b4fa; color: #1e1e2e; }
+.op-cmd-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.op-cmd-list li {
+  padding: 3px 0;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+.op-cmd-safe { color: #a6e3a1; }
+.op-cmd-warn { color: #f9e2af; }
+.op-cmd-more { color: var(--text-secondary, #a6adc8); font-style: italic; }
+.op-cmd-kind {
+  color: var(--text-secondary, #a6adc8);
+  margin-right: 4px;
+}
+.op-topo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.op-topo-item {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: var(--surface-alt, #313244);
+}
+.op-propose-btn {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: var(--accent-color, #4a90d9);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.op-rec-list {
+  padding-left: 16px;
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+.op-rec-list li {
+  padding: 2px 0;
+  color: var(--text-secondary, #a6adc8);
+}
+</style>
 </head>
 <body>
 
@@ -50,6 +194,51 @@
 
   <!-- STAGE 4: #main-grid — primary surface, visible after first projection -->
   <div id="main-grid" data-mode="operator" role="main" aria-label="Content area">
+    <div id="start-state" class="start-state" style="display: none;">
+      <div class="start-state-content">
+        <h2>Rig Relay</h2>
+        <p class="start-hint">Open a local repository to begin.</p>
+        <button id="open-local-repo-btn" class="primary-action-btn" 
+                onclick="(function(){
+                  var btn = document.getElementById('open-local-repo-btn');
+                  var orig = btn.textContent;
+                  btn.disabled = true;
+                  btn.textContent = 'Opening...';
+                  if(!window.pywebview || !window.pywebview.api) {
+                    alert('pywebview bridge not available. Please restart Rig Relay.');
+                    btn.disabled = false;
+                    btn.textContent = orig;
+                    return;
+                  }
+                  window.pywebview.api.choose_local_repository().then(function(result) {
+                    btn.disabled = false;
+                    btn.textContent = orig;
+                    if (result.status === 'cancelled') {
+                      // Keep start state visible
+                      return;
+                    }
+                    if (result.status === 'error') {
+                      alert('Could not open repository: ' + (result.message || 'Unknown error'));
+                      return;
+                    }
+                    if (result.status === 'opened') {
+                      document.getElementById('start-state').style.display = 'none';
+                      // Request a projection refresh to show the operating picture
+                      if (window.RigRelay && typeof window.RigRelay.dispatchIntent === 'function') {
+                        window.RigRelay.dispatchIntent('refresh_projection', {});
+                      }
+                    }
+                  }).catch(function(err) {
+                    btn.disabled = false;
+                    btn.textContent = orig;
+                    console.error('Repository selection failed:', err);
+                  });
+                })()">
+          Open Local Repository
+        </button>
+        <p class="start-footer">Select a folder containing a Git repository.</p>
+      </div>
+    </div>
     <div id="chat-column" role="complementary" aria-label="Chat">
       <div id="chat-surface">
         <div id="chat-transcript" role="log" aria-live="polite" aria-label="Chat transcript" aria-relevant="additions">
@@ -66,7 +255,9 @@
       </div>
     </div>
     <!-- STAGE 5: #widget-* — widget containers, populated dynamically by projection pipeline -->
-    <div id="panel-column" role="complementary" aria-label="Widgets panel"></div>
+    <div id="panel-column" role="complementary" aria-label="Widgets panel">
+      <div id="widget-operating-picture"></div>
+    </div>
   </div>
 
   <div id="expanded-overlay" role="dialog" aria-label="Expanded widget" aria-modal="true">

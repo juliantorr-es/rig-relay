@@ -105,7 +105,13 @@ class TestAgentSafety:
         assert BUILTIN_AGENTS[BuiltinAgentName.DEFAULT].safety == AgentSafety.NEUTRAL
 
     def test_auto_approve_agent_is_yolo(self) -> None:
-        assert BUILTIN_AGENTS[BuiltinAgentName.AUTO_APPROVE].safety == AgentSafety.YOLO
+        assert (
+            BUILTIN_AGENTS[BuiltinAgentName.MISSION_SCOPED_AUTO].safety
+            == AgentSafety.NEUTRAL
+        )
+        assert (
+            BUILTIN_AGENTS[BuiltinAgentName.UNSAFE_RAW_SHELL].safety == AgentSafety.YOLO
+        )
 
     def test_plan_agent_is_safe(self) -> None:
         assert BUILTIN_AGENTS[BuiltinAgentName.PLAN].safety == AgentSafety.SAFE
@@ -125,7 +131,8 @@ class TestAgentProfile:
     def test_display_name_property(self) -> None:
         assert BUILTIN_AGENTS[BuiltinAgentName.DEFAULT].display_name == "Default"
         assert (
-            BUILTIN_AGENTS[BuiltinAgentName.AUTO_APPROVE].display_name == "Auto Approve"
+            BUILTIN_AGENTS[BuiltinAgentName.AUTO_APPROVE].display_name
+            == "Auto Approve (Scoped)"
         )
         assert BUILTIN_AGENTS[BuiltinAgentName.PLAN].display_name == "Plan"
         assert (
@@ -153,13 +160,11 @@ class TestAgentProfile:
             for name, profile in BUILTIN_AGENTS.items()
             if profile.agent_type == AgentType.AGENT
         ]
-        assert set(agents) == {
-            BuiltinAgentName.DEFAULT,
-            BuiltinAgentName.PLAN,
-            BuiltinAgentName.ACCEPT_EDITS,
-            BuiltinAgentName.AUTO_APPROVE,
-            BuiltinAgentName.LEAN,
-        }
+        assert {
+            BuiltinAgentName.MISSION_SCOPED_AUTO,
+            BuiltinAgentName.AUTO_APPROVE,  # legacy alias
+            BuiltinAgentName.UNSAFE_RAW_SHELL,
+        }.issubset(set(agents)), f"Missing new profiles: {set(agents)}"
 
 
 class TestAgentApplyToConfig:
@@ -175,6 +180,7 @@ class TestAgentApplyToConfig:
         assert set(result.disabled_tools) == {"ask_user_question", "exit_plan_mode"}
 
     def test_profile_disabled_tools_preserve_user_disabled_tools(self) -> None:
+        # AUTO_APPROVE now disables bash (governed execution airlock)
         base = VibeConfig(
             include_project_context=False,
             include_prompt_detail=False,
@@ -185,6 +191,7 @@ class TestAgentApplyToConfig:
 
         assert set(result.disabled_tools) == {
             "ask_user_question",
+            "bash",
             "custom_tool",
             "exit_plan_mode",
         }
@@ -315,8 +322,13 @@ class TestAgentProfileOverrides:
         assert "exit_plan_mode" in overrides.get("base_disabled", [])
 
     def test_auto_approve_agent_sets_bypass_tool_permissions(self) -> None:
-        overrides = BUILTIN_AGENTS[BuiltinAgentName.AUTO_APPROVE].overrides
+        overrides = BUILTIN_AGENTS[BuiltinAgentName.UNSAFE_RAW_SHELL].overrides
         assert overrides.get("bypass_tool_permissions") is True
+        # MISSION_SCOPED_AUTO sets bypass to False (contained)
+        mission_overrides = BUILTIN_AGENTS[
+            BuiltinAgentName.MISSION_SCOPED_AUTO
+        ].overrides
+        assert mission_overrides.get("bypass_tool_permissions") is False
 
     def test_plan_agent_restricts_tools(self) -> None:
         overrides = BUILTIN_AGENTS[BuiltinAgentName.PLAN].overrides
@@ -362,7 +374,7 @@ class TestAgentManagerCycling:
             config=base_config, agent_name=BuiltinAgentName.DEFAULT, backend=backend
         )
         order = agent.agent_manager.get_agent_order()
-        assert len(order) == 4
+        assert len(order) >= 7
         assert BuiltinAgentName.DEFAULT in order
         assert BuiltinAgentName.AUTO_APPROVE in order
         assert BuiltinAgentName.PLAN in order

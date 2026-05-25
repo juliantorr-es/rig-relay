@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-import subprocess
 from typing import NewType
 import uuid
 
@@ -18,6 +17,41 @@ from rig_relay.digestion.models import (
     IdentityStatus,
     RepositoryIdentityCandidate,
 )
+
+
+class _GitError(Exception):
+    """Raised when a read-only git observation fails."""
+
+
+def _git_readonly(cwd: Path, *args: str) -> str:
+    """Run a read-only git observation command with --no-optional-locks.
+
+    Suppresses optional Git operations that may take locks or refresh the
+    index. Used for all digestion-time repository observation to prevent
+    unintended writes (e.g., git status silently rewriting .git/index).
+
+    Args:
+        cwd: Working directory (the git repo root).
+        *args: Git subcommand and arguments.
+
+    Returns:
+        Stripped stdout of the git command.
+
+    Raises:
+        _GitError: If the git command fails or git is not available.
+    """
+    import subprocess
+
+    try:
+        return subprocess.check_output(
+            ["git", "--no-optional-locks", *args],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            cwd=cwd,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        raise _GitError(f"git {' '.join(args)} failed: {exc}") from exc
+
 
 # ── Placeholder identity types (modeled but not created in 1A) ──
 
@@ -104,42 +138,31 @@ def _digest_text(text: str) -> str:
 def resolve_git_worktree_root(path: Path) -> Path | None:
     """Resolve the Git worktree root for a given path.
 
-    Uses `git rev-parse --show-toplevel`. Returns None if not in a git repo.
+    Uses `git --no-optional-locks rev-parse --show-toplevel`.
+    Returns None if not in a git repo.
     """
     try:
-        result = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            cwd=path,
-        ).strip()
+        result = _git_readonly(path, "rev-parse", "--show-toplevel")
         return Path(result).resolve() if result else None
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except _GitError:
         return None
 
 
 def resolve_git_branch(path: Path) -> str | None:
     """Resolve the current Git branch name."""
     try:
-        result = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            cwd=path,
-        ).strip()
+        result = _git_readonly(path, "rev-parse", "--abbrev-ref", "HEAD")
         return result if result and result != "HEAD" else None
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except _GitError:
         return None
 
 
 def resolve_git_head_sha(path: Path) -> str | None:
     """Resolve the full SHA of HEAD."""
     try:
-        result = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, cwd=path
-        ).strip()
+        result = _git_readonly(path, "rev-parse", "HEAD")
         return result if result else None
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except _GitError:
         return None
 
 
@@ -151,10 +174,8 @@ def resolve_git_remotes(path: Path) -> list[dict[str, str]]:
     to avoid leaking remote details into casual state).
     """
     try:
-        result = subprocess.check_output(
-            ["git", "remote", "-v"], text=True, stderr=subprocess.DEVNULL, cwd=path
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        result = _git_readonly(path, "remote", "-v")
+    except _GitError:
         return []
 
     _REMOTE_LINE_MIN_PARTS = 2
@@ -196,36 +217,43 @@ def resolve_git_porcelain_v2(path: Path) -> str:
     and file-status information suitable for script consumption.
     """
     try:
-        return subprocess.check_output(
-            ["git", "status", "--porcelain=v2", "--branch"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            cwd=path,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        return _git_readonly(path, "status", "--porcelain=v2", "--branch")
+    except _GitError:
         return ""
 
 
 def parse_dirty_state_from_porcelain(porcelain_output: str) -> DirtyState:
-    """Parse dirty file counts from git porcelain v2 output."""
-    _PORCELAIN_V2_XY_WIDTH = 2
+    """Parse dirty file counts from git porcelain v2 output.
+
+    Porcelain v2 format (regular entries):
+        1 XY sub mH mI mW hH hI path
+    where XY is at positions 2-3 of the line (0-indexed).
+
+    Untracked files have a single '?' prefix at position 0.
+    """
+    _PORCELAIN_V2_MIN_LINE = 4
 
     state = DirtyState()
     for line in porcelain_output.splitlines():
         if line.startswith("#") or not line.strip():
             continue
-        xy = (
-            line[:_PORCELAIN_V2_XY_WIDTH] if len(line) >= _PORCELAIN_V2_XY_WIDTH else ""
-        )
+        # Untracked files: '?' prefix at position 0
+        if line.startswith("?"):
+            state.untracked += 1
+            continue
+        # Regular entries: XY status at positions 2-3
+        if len(line) < _PORCELAIN_V2_MIN_LINE:
+            continue
+        x = line[2]
+        y = line[3]
+        xy = x + y
         if "u" in xy.lower():
             state.conflicted += 1
-        elif xy == "??":
-            state.untracked += 1
-        elif xy[0] != "." and xy[1] != ".":
+        elif x != "." and y != ".":
             state.staged += 1
-        elif xy[1] != ".":
+        elif y != ".":
             state.modified += 1
-        elif xy[0] != ".":
+        elif x != ".":
             state.modified += 1
     return state
 

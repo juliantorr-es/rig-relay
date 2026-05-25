@@ -23,6 +23,7 @@ import { setNotificationRailOpen } from '../state.js';
 import { initDelight } from '../delight.js';
 import { createProtocolClient } from '../protocol/client.js';
 import '../widgets/analytics.js';
+import '../widgets/operating_picture.js';
 
 const LIFECYCLE = {
   BOOT_STARTED: 'frontend_boot_started',

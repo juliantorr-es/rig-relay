@@ -51,6 +51,17 @@ function scheduleRender(projection) {
       _pendingProjection = null;
       renderStatusBar();
       renderAllWidgets();
+      // Render operating picture widget if available
+      if (projection.operating_picture && projection.operating_picture.available) {
+        var opWidget = window.RigRelay && window.RigRelay.widgets && window.RigRelay.widgets.operatingPicture;
+        if (opWidget && typeof opWidget.render === 'function') {
+          try {
+            opWidget.render(projection);
+          } catch(e) {
+            console.warn('Failed to render operating picture widget:', e);
+          }
+        }
+      }
     }
   });
 }
@@ -272,6 +283,17 @@ export function handleProjection(data) {
   }
 
   scheduleRender(projection);
+
+  // Show/hide start state based on operating picture availability
+  const startState = document.getElementById('start-state');
+  if (startState) {
+    const op = projection.operating_picture;
+    if (op && op.available) {
+      startState.style.display = 'none';
+    } else {
+      startState.style.display = 'flex';
+    }
+  }
 }
 
 export function handleChatState(data) {

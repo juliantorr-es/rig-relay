@@ -79,7 +79,9 @@ class TestACPSetConfigOptionMode:
         assert (
             acp_session.agent_loop.agent_profile.name == BuiltinAgentName.AUTO_APPROVE
         )
-        assert acp_session.agent_loop.bypass_tool_permissions is True
+        assert (
+            acp_session.agent_loop.bypass_tool_permissions is False
+        )  # MISSION_SCOPED_AUTO does not bypass
 
         # Verify config_options reflect the new state
         mode_config = response.config_options[0]

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from rig_relay.digestion.app_paths import RigApplicationPaths
 from rig_relay.digestion.ecosystem_detector import DetectedEcosystem, detect_ecosystems
-from rig_relay.digestion.freshness import DigestionFreshness, compute_freshness
+from rig_relay.digestion.freshness import compute_dirty_state_digest, compute_freshness
 from rig_relay.digestion.identity import (
     CheckoutIdentity,
     RepositoryIdentityCandidate,
@@ -20,23 +20,21 @@ from rig_relay.digestion.identity import (
     derive_repository_identity_candidate,
     derive_worktree_identity_candidate,
 )
-from rig_relay.digestion.instruction_scanner import (
-    InstructionFile,
-    InstructionScope,
-    discover_instructions,
-)
+from rig_relay.digestion.instruction_scanner import discover_instructions
 from rig_relay.digestion.intake import IntakeResult, RepositoryIntakeService
-from rig_relay.digestion.mission_proposer import MissionProposalInput, propose_mission
+from rig_relay.digestion.mission_proposer import propose_mission
 from rig_relay.digestion.models import (
     DetectedCommand,
+    DigestionFreshness,
+    DigestionTelemetryProjection,
+    InstructionFile,
+    InstructionScope,
     LocalRepositoryOperatingPicture,
+    MissionProposalInput,
     OpenedRepository,
     TopologyEntry,
 )
-from rig_relay.digestion.telemetry_projection import (
-    DigestionTelemetryProjection,
-    build_telemetry_projection,
-)
+from rig_relay.digestion.telemetry_projection import build_telemetry_projection
 from rig_relay.digestion.topology_mapper import map_topology
 from rig_relay.digestion.validation_detector import detect_validation_candidates
 
@@ -58,6 +56,7 @@ __all__ = [
     "TopologyEntry",
     "WorktreeIdentity",
     "build_telemetry_projection",
+    "compute_dirty_state_digest",
     "compute_freshness",
     "derive_checkout_identity_candidate",
     "derive_repository_identity_candidate",

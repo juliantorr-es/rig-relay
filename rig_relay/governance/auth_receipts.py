@@ -1,4 +1,3 @@
-# ruff: noqa: PLR0911
 """Rig Relay Authorization Receipts — Governance Seam.
 
 Owned by ``rig_relay.governance``. Legacy adapter at ``vibe.core.auth.receipt``.
@@ -276,6 +275,101 @@ def generate_mission_checkpoint_receipt(
     return receipt
 
 
+def generate_preparation_receipt(
+    *,
+    mission_id: str | None = None,
+    authority_provenance_sha256: str | None = None,
+    claim_id: str | None = None,
+    session_id: str = "",
+    task_id: str = "",
+    branch: str = "",
+    prepared_paths: list[str] | None = None,
+    change_kinds: list[str] | None = None,
+    expected_worktree_sha256_values: list[str] | None = None,
+    pre_index_tree_digest: str | None = None,
+    post_index_tree_digest: str | None = None,
+    index_mutation_performed: bool = False,
+    worktree_root: str | None = None,
+) -> dict[str, Any]:
+    """Generate a durable checkpoint preparation receipt.
+
+    Records the exact index state produced by prepare_checkpoint.
+    checkpoint consumes this receipt to verify the committed index
+    matches the prepared state.
+    """
+    now = datetime.now(UTC)
+    authz_id = _generate_id()
+    challenge = secrets.token_bytes(32)
+    challenge_hash = _sha256_bytes(challenge)
+
+    receipt: dict[str, Any] = {
+        "schema_version": "rig.relay.checkpoint_preparation_receipt.v1",
+        "preparation_id": authz_id,
+        "created_at": now.isoformat(),
+        "action": "prepare_checkpoint.stage",
+        "authorization_source": "mission_execution_authority",
+        "user_verified": True,
+        "user_verified_kind": "transitive_mission_authority",
+        "mission_identity": mission_id,
+        "authority_provenance_sha256": authority_provenance_sha256,
+        "claim_id": claim_id,
+        "session_id": session_id,
+        "task_id": task_id,
+        "branch": branch,
+        "worktree_root": worktree_root,
+        "prepared_paths": prepared_paths or [],
+        "change_kinds": change_kinds or [],
+        "expected_worktree_sha256_values": expected_worktree_sha256_values or [],
+        "pre_index_tree_digest": pre_index_tree_digest,
+        "post_index_tree_digest": post_index_tree_digest,
+        "index_mutation_performed": index_mutation_performed,
+        "challenge_sha256": challenge_hash,
+        "expires_at": None,
+        "receipt_sha256": "",
+    }
+
+    receipt_data = json.dumps(receipt, sort_keys=True).encode("utf-8")
+    receipt["receipt_sha256"] = _sha256_bytes(receipt_data)
+    return receipt
+
+
+def persist_preparation_receipt(receipt: dict[str, Any]) -> str | None:
+    """Persist a preparation receipt to the canonical durable ledger.
+
+    Returns the file path on success, None on failure.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    try:
+        receipts_dir = _Path(".build/rig-relay/desktop/preparation-receipts")
+        receipts_dir.mkdir(parents=True, exist_ok=True)
+        receipt_path = receipts_dir / f"{receipt['receipt_sha256']}.json"
+        receipt_path.write_text(
+            _json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return str(receipt_path)
+    except Exception:
+        return None
+
+
+def load_preparation_receipt(receipt_sha256: str) -> dict[str, Any] | None:
+    """Load a preparation receipt from the canonical durable ledger by its SHA256."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    try:
+        receipt_path = (
+            _Path(".build/rig-relay/desktop/preparation-receipts")
+            / f"{receipt_sha256}.json"
+        )
+        if not receipt_path.exists():
+            return None
+        return _json.loads(receipt_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def resolve_authorization(
     action: str,
     receipt_json: str | None = None,
@@ -311,8 +405,11 @@ __all__ = [
     "action_requires_authorization",
     "generate_dev_receipt",
     "generate_mission_checkpoint_receipt",
+    "generate_preparation_receipt",
     "is_read_only_action",
+    "load_preparation_receipt",
     "mint_dev_receipt",
+    "persist_preparation_receipt",
     "resolve_authorization",
     "validate_receipt",
 ]

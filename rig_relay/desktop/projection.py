@@ -55,6 +55,7 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "live_mutation_readiness",
     "carte_blanche_dashboard",
     "site_editor",
+    "operating_picture",
 })
 
 
@@ -959,6 +960,15 @@ def _build_live_mutation_readiness() -> dict[str, Any]:
     }
 
 
+def _build_operating_picture() -> dict[str, Any]:
+    """Return a default unavailable operating_picture section.
+
+    The cockpit bridge will inject the actual operating picture data
+    once a repository is opened and Ralph has scanned it.
+    """
+    return {"available": False, "reason": "no_repository_opened"}
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -1125,6 +1135,7 @@ def build_projection(
     live_mutation_readiness = _build_live_mutation_readiness()
     carte_blanche_dashboard = _build_carte_blanche_dashboard()
     site_editor = _build_site_editor_projection()
+    operating_picture = _build_operating_picture()
 
     source_status = {
         "current_state": current_state["available"],
@@ -1146,6 +1157,7 @@ def build_projection(
         "security_lifecycle_program": security_lifecycle_program["available"],
         "live_mutation_readiness": live_mutation_readiness["available"],
         "carte_blanche_dashboard": carte_blanche_dashboard["available"],
+        "operating_picture": operating_picture["available"],
     }
 
     warnings: list[str] = []
@@ -1190,6 +1202,7 @@ def build_projection(
         "live_mutation_readiness": live_mutation_readiness,
         "carte_blanche_dashboard": carte_blanche_dashboard,
         "site_editor": site_editor,
+        "operating_picture": operating_picture,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

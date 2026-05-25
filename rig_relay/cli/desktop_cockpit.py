@@ -164,6 +164,7 @@ class CockpitAPI:
         self._mode = mode
         self._provider_windows: dict[str, Any] = {}
         self._runtime_config: dict[str, Any] | None = None
+        self._opened_repo: Any = None
 
         if mode == "fixture":
             self._agent_loop = None
@@ -480,6 +481,46 @@ class CockpitAPI:
                         "text": str(text or ""),
                     }
             return {"status": "error", "message": f"No {provider} window found"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def choose_local_repository(self) -> dict:
+        """Open a native folder chooser and preview the selected repository.
+
+        The operating picture is read-only and ephemeral — no durable
+        state is persisted until the user explicitly registers the
+        repository and admits a mission.
+        """
+        import webview  # type: ignore[import-untyped]
+
+        if not webview.windows:
+            return {"status": "error", "message": "No pywebview window available"}
+
+        result = webview.windows[0].create_file_dialog(
+            webview.FileDialog.FOLDER, directory=str(Path.home())
+        )
+
+        if not result:
+            return {"status": "cancelled"}
+
+        if isinstance(result, (list, tuple)):
+            result = result[0]
+
+        selected_path = str(result)
+
+        try:
+            from rig_relay.digestion.intake import RepositoryIntakeService
+
+            service = RepositoryIntakeService()
+            intake_result = service.open_local_repository(Path(selected_path))
+            self._opened_repo = intake_result
+            return {
+                "status": "opened",
+                "path": selected_path,
+                "operating_picture": intake_result.operating_picture.model_dump(
+                    mode="json"
+                ),
+            }
         except Exception as e:
             return {"status": "error", "message": str(e)}
 

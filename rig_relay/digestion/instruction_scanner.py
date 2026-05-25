@@ -31,6 +31,19 @@ _KNOWN_INSTRUCTION_FILES: dict[str, str] = {
     ".windsurfrules": "agent_instructions",
 }
 
+_EXCLUDED_SCAN_DIRS: frozenset[str] = frozenset({
+    "__pycache__",
+    ".git",
+    "node_modules",
+    ".venv",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    "target",
+    "dist",
+    "build",
+})
+
 
 def discover_instructions(repo_root: Path) -> list[InstructionFile]:
     """Discover instruction and governance files with scope metadata.
@@ -56,6 +69,9 @@ def discover_instructions(repo_root: Path) -> list[InstructionFile]:
         workflows_dir = github_dir / "workflows"
         if workflows_dir.is_dir():
             _scan_workflows(root_path, workflows_dir, instructions)
+
+    # Scan entire tree for nested instruction files
+    _scan_tree(root_path, instructions)
 
     # Build parent-child chains for nested instructions
     _build_scope_chain(instructions)
@@ -141,6 +157,58 @@ def _scan_workflows(
             has_agent_guidance=False,
             has_validation_commands=False,
         )
+
+
+def _scan_tree(repo_root: Path, instructions: dict[str, InstructionScope]) -> None:
+    """Walk the entire repo tree for nested instruction files.
+
+    Skips excluded directories and previously-discovered files.
+    Sets parent_instruction_path to None — _build_scope_chain resolves
+    parent-child relationships.
+    """
+    from rig_relay.digestion.models import InstructionKind, InstructionScope
+
+    for dirpath, dirnames, filenames in repo_root.walk():
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in _EXCLUDED_SCAN_DIRS and not d.startswith(".")
+        ]
+
+        for filename in filenames:
+            if filename not in _KNOWN_INSTRUCTION_FILES:
+                continue
+
+            full_path = dirpath / filename
+            if not full_path.is_file():
+                continue
+
+            rel_path = str(full_path.relative_to(repo_root))
+            if rel_path in instructions:
+                continue
+
+            scope_root = str(Path(rel_path).parent)
+            scope_depth = 0 if scope_root == "." else len(Path(rel_path).parent.parts)
+
+            kind = _KNOWN_INSTRUCTION_FILES[filename]
+
+            applies_to_paths: list[str]
+            if scope_root == ".":
+                applies_to_paths = ["*"]
+            else:
+                applies_to_paths = [f"{scope_root}/*"]
+
+            instructions[rel_path] = InstructionScope(
+                path=rel_path,
+                kind=kind,
+                scope_root=scope_root,
+                scope_depth=scope_depth,
+                applies_to_paths=applies_to_paths,
+                applies_to_kind="all",
+                parent_instruction_path=None,
+                has_agent_guidance=(kind == InstructionKind.AGENT_INSTRUCTIONS),
+                has_validation_commands=False,
+            )
 
 
 def _build_scope_chain(instructions: dict[str, InstructionScope]) -> None:
