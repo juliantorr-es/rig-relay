@@ -685,8 +685,10 @@ class CockpitAPI:
             }
 
         try:
+            from rig_relay.digestion.app_paths import RigApplicationPaths
             from rig_relay.digestion.mission_admission import admit_mission
 
+            app_paths = RigApplicationPaths.for_production()
             ws = self._execution_workspace
             admission = admit_mission(
                 execution_workspace_id=ws.workspace_id,
@@ -695,6 +697,7 @@ class CockpitAPI:
                 workspace_root=ws.managed_root_path,
                 admitted_paths=admitted_paths or ["."],
                 admitted_validation_commands=[],
+                app_support_root=str(app_paths.support_root),
                 checkpoint_admitted=True,
             )
 

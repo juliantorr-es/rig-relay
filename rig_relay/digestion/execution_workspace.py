@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -18,6 +19,7 @@ import uuid
 from rig_relay.digestion.execution_models import (
     CleanupResult,
     ExecutionWorkspace,
+    ForceCleanupAuthorization,
     ProvisioningInput,
     ProvisioningStatus,
     WorkspaceCleanupDisposition,
@@ -46,11 +48,14 @@ class ExecutionWorkspaceProvider(ABC):
 
     @abstractmethod
     def cleanup(
-        self, workspace: ExecutionWorkspace, disposition: str, force: bool = False
+        self,
+        workspace: ExecutionWorkspace,
+        disposition: str,
+        force_authorization: ForceCleanupAuthorization | None = None,
     ) -> CleanupResult:
         """Clean up an execution workspace.
 
-        Normal runtime path must NOT use force=True.
+        Normal runtime path must NOT use force_authorization.
         Dirty workspaces must be retained, not silently removed.
         """
         ...
@@ -223,12 +228,15 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
         )
 
     def cleanup(
-        self, workspace: ExecutionWorkspace, disposition: str, force: bool = False
+        self,
+        workspace: ExecutionWorkspace,
+        disposition: str,
+        force_authorization: ForceCleanupAuthorization | None = None,
     ) -> CleanupResult:
         """Clean up a managed worktree.
 
-        Normal path: force=False. Dirty workspaces are retained.
-        Force removal only for explicit user-approved cleanup.
+        Normal path: force_authorization=None. Dirty workspaces are retained.
+        Force removal only with valid ForceCleanupAuthorization.
         """
         ws_path = Path(workspace.managed_root_path)
 
@@ -241,7 +249,7 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
             )
 
         state = self.inspect(workspace)
-        if state.is_dirty and not force:
+        if state.is_dirty and force_authorization is None:
             return CleanupResult(
                 workspace_id=workspace.workspace_id,
                 status="retained",
@@ -250,12 +258,56 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
                 force_used=False,
             )
 
+        use_force = False
+        if force_authorization is not None:
+            # Validate authorization
+            if force_authorization.execution_workspace_id != workspace.workspace_id:
+                return CleanupResult(
+                    workspace_id=workspace.workspace_id,
+                    status="retained",
+                    reason="Force cleanup authorization does not match this workspace.",
+                    force_used=False,
+                )
+
+            if force_authorization.disposition != "user_approved_cleanup":
+                return CleanupResult(
+                    workspace_id=workspace.workspace_id,
+                    status="retained",
+                    reason="Force cleanup authorization has invalid disposition.",
+                    force_used=False,
+                )
+
+            current_digest = _compute_workspace_clean_digest(ws_path)
+            if force_authorization.dirty_state_digest != current_digest:
+                return CleanupResult(
+                    workspace_id=workspace.workspace_id,
+                    status="retained",
+                    reason="Workspace dirty state changed since authorization. "
+                    "Re-authorize before force cleanup.",
+                    force_used=False,
+                )
+
+            # Validate persistence
+            persisted = _load_force_cleanup_auth(
+                self._support_root, force_authorization
+            )
+            if persisted is None:
+                return CleanupResult(
+                    workspace_id=workspace.workspace_id,
+                    status="retained",
+                    reason="Force cleanup authorization not found in app storage. "
+                    "Persist authorization before cleanup.",
+                    force_used=False,
+                )
+
+            use_force = True
+
         try:
             # git worktree remove refuses when cwd is the worktree itself.
             # Resolve the main repository root from the worktree's .git metadata.
             main_repo = _resolve_main_repo_from_worktree(ws_path) or ws_path.parent
             args: list[str] = ["worktree", "remove"]
-            if force:
+            if use_force:
                 args.append("--force")
             args.append(str(ws_path))
             _git_admin(main_repo, *args)
@@ -263,14 +315,14 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
                 workspace_id=workspace.workspace_id,
                 status="removed",
                 reason="Worktree and managed branch removed.",
-                force_used=force,
+                force_used=use_force,
             )
         except subprocess.CalledProcessError as e:
             return CleanupResult(
                 workspace_id=workspace.workspace_id,
                 status="retained",
                 reason=f"Cleanup failed: {e}",
-                force_used=force,
+                force_used=use_force,
             )
 
 
@@ -310,6 +362,15 @@ def _branch_exists(repo_root: Path, branch: str) -> bool:
     """Check whether a branch exists in the repository."""
     result = _git_readonly(repo_root, "branch", "--list", branch)
     return bool(result)
+
+
+# ── Deferred risk: hook TOCTOU ──
+# There is a time-of-check/time-of-use gap: a hook can appear or
+# effective hook configuration can change after inspection but before
+# git worktree add executes. This is acceptable for Phase 1 single-user
+# local environments. Before public release, provisioning needs an
+# execution mechanism that cannot run an unadmitted hook even if the
+# repository changes between inspection and mutation.
 
 
 def _inspect_hooks(repo_root: Path) -> str | None:
@@ -429,6 +490,41 @@ def _persist_workspace_record(
     (record_dir / "workspace-record.json").write_text(
         workspace.model_dump_json(indent=2)
     )
+
+
+def _persist_force_cleanup_auth(
+    support_root: Path, auth: ForceCleanupAuthorization
+) -> None:
+    auth_dir = (
+        support_root
+        / "repositories"
+        / auth.execution_workspace_id
+        / "cleanup-authorizations"
+    )
+    auth_dir.mkdir(parents=True, exist_ok=True)
+    (auth_dir / f"{auth.authorization_id}.json").write_text(
+        auth.model_dump_json(indent=2)
+    )
+
+
+def _load_force_cleanup_auth(
+    support_root: Path, auth: ForceCleanupAuthorization
+) -> ForceCleanupAuthorization | None:
+    auth_path = (
+        support_root
+        / "repositories"
+        / auth.execution_workspace_id
+        / "cleanup-authorizations"
+        / f"{auth.authorization_id}.json"
+    )
+    if not auth_path.is_file():
+        return None
+    try:
+        return ForceCleanupAuthorization.model_validate(
+            json.loads(auth_path.read_text())
+        )
+    except Exception:
+        return None
 
 
 def _refused(

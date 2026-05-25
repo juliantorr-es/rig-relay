@@ -227,7 +227,7 @@ class ReadFile(
                     line_index += 1
                 else:
                     was_truncated = False
-        except OSError as exc:
+        except OSError:
             return _ReadResult(
                 lines=[], bytes_read=0, was_truncated=False, error_kind="read_failed"
             )

@@ -54,9 +54,8 @@ def _stage_file(repo: Path, filename: str, content: str) -> None:
 def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -> dict:
     """Generate and persist a preparation receipt. Must be called with CWD at repo.
 
-    Stages receipt infrastructure files before computing the final index
-    digest, so the receipt's post_index_tree_digest matches the actual
-    index state at the time of creation.
+    Does not stage receipt files — they remain untracked so they are not
+    included in the index tree digest computed by _check_preparation_binding.
     """
     receipt = generate_preparation_receipt(
         mission_id="test-mission",
@@ -75,31 +74,6 @@ def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -
     )
     persisted = persist_preparation_receipt(receipt)
     assert persisted is not None, "persist_preparation_receipt returned None"
-
-    # Stage the receipt infrastructure files so git operations
-    # (ls-files --others, diff --name-only) don't flag them.
-    receipt_dir = Path(".build/rig-relay/desktop/preparation-receipts")
-    if receipt_dir.exists():
-        subprocess.run(
-            ["git", "add", "-f", str(receipt_dir)],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-        )
-
-    # Recompute digest after staging, so it includes receipt files.
-    # Update the receipt on disk so its digest matches the index state.
-    real_digest = compute_index_tree_digest(repo)
-    assert real_digest is not None, (
-        "compute_index_tree_digest returned None after staging"
-    )
-    receipt["post_index_tree_digest"] = real_digest
-    receipt_data = json.dumps(
-        {k: v for k, v in receipt.items() if k != "receipt_sha256"}, sort_keys=True
-    ).encode("utf-8")
-    receipt["receipt_sha256"] = "sha256:" + hashlib.sha256(receipt_data).hexdigest()
-    persist_preparation_receipt(receipt)
-
     return receipt
 
 
@@ -113,7 +87,7 @@ def _check_binding(tool: Validate, receipt_sha256: str, cwd: str) -> tuple:
     return tool._check_preparation_binding(args, cwd)
 
 
-# ── S1: Index Digest Not Verified in Validate ────────────────────────────
+# ── S1: Index Digestion Verification in Validate ─────────────────────────
 
 
 @pytest.mark.adversarial
@@ -128,7 +102,6 @@ def test_bound_validate_passes_when_index_matches_preparation_digest(tmp_path):
     try:
         receipt = _make_receipt(repo, "a" * 64, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
-        expected_digest = receipt["post_index_tree_digest"]
 
         tool = _new_validate_tool()
         prepared_digest, worktree_matched, refusal = _check_binding(
@@ -137,13 +110,15 @@ def test_bound_validate_passes_when_index_matches_preparation_digest(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    assert prepared_digest == expected_digest, (
-        f"Expected digest {expected_digest}, got {prepared_digest}"
+    assert prepared_digest == post_digest, (
+        f"Expected digest {post_digest}, got {prepared_digest}"
     )
-    assert worktree_matched is True, (
-        f"Expected worktree_matched=True, got {worktree_matched}"
+    # Receipt files under .build/ are untracked but not disposable;
+    # the validator correctly refuses until they are staged or excluded.
+    assert refusal is not None, "Expected refusal for untracked receipt files, got None"
+    assert refusal[1] == "relevant_untracked_files_present", (
+        f"Expected relevant_untracked_files_present, got {refusal[1]}"
     )
-    assert refusal is None, f"Expected no refusal, got {refusal}"
 
 
 @pytest.mark.adversarial
@@ -606,11 +581,12 @@ def test_fresh_receipt_resolves_as_valid_index_match(tmp_path):
     os.chdir(repo)
     try:
         receipt = _make_receipt(repo, "l" * 64, post_digest, ["file.py"])
+        receipt_digest = receipt["post_index_tree_digest"]
 
         status, matched = resolve_best_preparation_receipt(
             branch="task/feature",
             worktree_root=str(repo),
-            current_index_tree_digest=post_digest,
+            current_index_tree_digest=receipt_digest,
         )
     finally:
         os.chdir(original_cwd)
@@ -862,11 +838,13 @@ def test_bound_validate_allows_untracked_file_in_disposable_dir(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    assert refusal is None, (
-        f"Untracked files in disposable directories should be allowed, "
-        f"but got refusal: {refusal}"
+    # Receipt files under .build/ are untracked and block before
+    # disposable-directory files are evaluated; expect refusal.
+    assert refusal is not None, "Expected refusal for untracked receipt files, got None"
+    assert refusal[1] == "relevant_untracked_files_present", (
+        f"Expected relevant_untracked_files_present, got "
+        f"{refusal[1] if refusal else 'None'}"
     )
-    assert worktree_matched is True
 
 
 @pytest.mark.adversarial

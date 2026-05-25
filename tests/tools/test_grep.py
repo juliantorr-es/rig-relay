@@ -7,7 +7,7 @@ import shutil
 import jsonschema
 import pytest
 
-from rig_relay.core.tools.base import BaseToolState, ToolError
+from rig_relay.core.tools.base import BaseToolState
 from rig_relay.core.tools.builtins.grep import (
     Grep,
     GrepArgs,
@@ -41,7 +41,9 @@ def grep_gnu_only(tmp_path, monkeypatch):
 
 def test_detects_ripgrep_when_available(grep):
     if shutil.which("rg"):
-        assert grep._detect_backend() == GrepBackend.RIPGREP
+        backend, error = grep._detect_backend()
+        assert backend == GrepBackend.RIPGREP
+        assert error is None
 
 
 def test_falls_back_to_gnu_grep(grep, monkeypatch):
@@ -55,16 +57,16 @@ def test_falls_back_to_gnu_grep(grep, monkeypatch):
     monkeypatch.setattr("shutil.which", mock_which)
 
     if shutil.which("grep"):
-        assert grep._detect_backend() == GrepBackend.GNU_GREP
+        backend, error = grep._detect_backend()
+        assert backend == GrepBackend.GNU_GREP
+        assert error is None
 
 
 def test_raises_error_if_no_grep_available(grep, monkeypatch):
     monkeypatch.setattr("shutil.which", lambda cmd: None)
-
-    with pytest.raises(ToolError) as err:
-        grep._detect_backend()
-
-    assert "Neither ripgrep (rg) nor grep is installed" in str(err.value)
+    backend, error = grep._detect_backend()
+    assert backend is None
+    assert error == "tool_unavailable"
 
 
 @pytest.mark.asyncio
@@ -103,18 +105,17 @@ async def test_returns_empty_on_no_matches(grep, tmp_path):
 
 @pytest.mark.asyncio
 async def test_fails_with_empty_pattern(grep):
-    with pytest.raises(ToolError) as err:
-        await collect_result(grep.run(GrepArgs(pattern="")))
-
-    assert "Empty search pattern" in str(err.value)
+    result = await collect_result(grep.run(GrepArgs(pattern="")))
+    assert result.match_count == 0
+    assert result.error_kind == "invalid_pattern"
 
 
 @pytest.mark.asyncio
 async def test_fails_with_nonexistent_path(grep):
-    with pytest.raises(ToolError) as err:
-        await collect_result(grep.run(GrepArgs(pattern="test", path="nonexistent")))
-
-    assert "Path does not exist" in str(err.value)
+    result = await collect_result(
+        grep.run(GrepArgs(pattern="test", path="nonexistent"))
+    )
+    assert result.error_kind is not None
 
 
 @pytest.mark.asyncio

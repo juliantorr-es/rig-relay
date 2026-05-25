@@ -136,3 +136,28 @@ class CleanupResult(BaseModel):
         default=False,
         description="Whether --force was used. Must be False in normal path.",
     )
+
+
+class ForceCleanupAuthorization(BaseModel):
+    """Explicit user authorization for forced workspace cleanup.
+
+    Required for force=True cleanup. Without valid authorization,
+    dirty workspaces are retained. Normal (non-force) cleanup of
+    clean workspaces does not require this authorization.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    authorization_id: str = Field(
+        description="App-assigned UUID for this authorization."
+    )
+    execution_workspace_id: str = Field(
+        description="Workspace being authorized for cleanup."
+    )
+    dirty_state_digest: str = Field(
+        description="SHA256 digest of the workspace's current dirty state at authorization time."
+    )
+    disposition: str = Field(
+        description="Cleanup disposition: user_approved_cleanup only."
+    )
+    authorized_at: str = Field(description="ISO 8601 timestamp of authorization.")

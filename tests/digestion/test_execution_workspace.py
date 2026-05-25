@@ -11,6 +11,7 @@ import pytest
 
 from rig_relay.digestion.app_paths import RigApplicationPaths
 from rig_relay.digestion.execution_models import (
+    ForceCleanupAuthorization,
     ProvisioningInput,
     ProvisioningStatus,
     WorkspaceCleanupDisposition,
@@ -106,6 +107,24 @@ def test_source_checkout_untouched_after_provisioning(
     assert_no_filesystem_mutation(
         before_wt, after_wt, "source checkout working tree after provisioning"
     )
+
+    # Verify expected Git administrative mutations are present
+    # Managed branch exists at the admitted base SHA
+    branch_result = subprocess.check_output(
+        ["git", "branch", "--list", pinput.proposed_managed_branch],
+        text=True,
+        cwd=python_repo,
+    ).strip()
+    assert branch_result, (
+        f"Managed branch '{pinput.proposed_managed_branch}' was not created"
+    )
+
+    # Linked worktree record exists in .git/worktrees/
+    worktree_dir = python_repo / ".git" / "worktrees"
+    assert worktree_dir.is_dir(), "Worktree admin directory not created"
+    # The worktree directory name is typically the basename of the worktree path
+    entries = list(worktree_dir.iterdir())
+    assert len(entries) >= 1, "No worktree records found in .git/worktrees/"
 
 
 # -- Test 3: Git repository replacement at same path -------------------
@@ -278,6 +297,8 @@ def test_cleanup_retains_dirty_workspace(
     registration_service: RepositoryRegistrationService,
     provider: GitWorktreeExecutionWorkspaceProvider,
 ) -> None:
+    import uuid
+
     _reg, pinput = _register_and_plan(python_repo, registration_service)
     ws = provider.provision(pinput)
     assert ws.managed_root_path
@@ -286,19 +307,56 @@ def test_cleanup_retains_dirty_workspace(
     ws_path = Path(ws.managed_root_path)
     (ws_path / "uncommitted.txt").write_text("uncommitted\n")
 
-    # Normal cleanup must retain
-    result = provider.cleanup(
-        ws, WorkspaceCleanupDisposition.USER_APPROVED_CLEANUP, force=False
-    )
+    # Normal cleanup without authorization must retain
+    result = provider.cleanup(ws, WorkspaceCleanupDisposition.USER_APPROVED_CLEANUP)
     assert result.status == "retained"
     assert not result.force_used
 
-    # Force cleanup should succeed
-    result2 = provider.cleanup(
-        ws, WorkspaceCleanupDisposition.USER_APPROVED_CLEANUP, force=True
+    # Forged/missing authorization must refuse
+    fake_auth = ForceCleanupAuthorization(
+        authorization_id=str(uuid.uuid4()),
+        execution_workspace_id="wrong-workspace-id",
+        dirty_state_digest="wrong-digest",
+        disposition="user_approved_cleanup",
+        authorized_at="2024-01-01T00:00:00Z",
     )
-    assert result2.status == "removed"
-    assert result2.force_used
+    result2 = provider.cleanup(
+        ws,
+        WorkspaceCleanupDisposition.USER_APPROVED_CLEANUP,
+        force_authorization=fake_auth,
+    )
+    assert result2.status == "retained", (
+        f"Forged authorization must be refused, got: {result2.status}"
+    )
+
+    # Valid authorization: compute actual dirty state digest
+    dirty_digest = _compute_dirty_digest(ws_path)
+    valid_auth = ForceCleanupAuthorization(
+        authorization_id=str(uuid.uuid4()),
+        execution_workspace_id=ws.workspace_id,
+        dirty_state_digest=dirty_digest,
+        disposition="user_approved_cleanup",
+        authorized_at="2024-01-01T00:00:00Z",
+    )
+    result3 = provider.cleanup(
+        ws,
+        WorkspaceCleanupDisposition.USER_APPROVED_CLEANUP,
+        force_authorization=valid_auth,
+    )
+    # Authorization must be persisted to pass validation
+    # Since we haven't persisted it, it should also be retained
+    assert result3.status == "retained", (
+        f"Unpersisted authorization must be refused, got: {result3.status}"
+    )
+
+
+def _compute_dirty_digest(ws_path: Path) -> str:
+    import hashlib
+
+    result = subprocess.check_output(
+        ["git", "--no-optional-locks", "status", "--porcelain"], text=True, cwd=ws_path
+    )
+    return hashlib.sha256(result.encode()).hexdigest()
 
 
 # -- Test 9: Mission admission binds workspace, not source checkout ----
@@ -308,6 +366,7 @@ def test_mission_admission_binds_workspace(
     python_repo: Path,
     registration_service: RepositoryRegistrationService,
     provider: GitWorktreeExecutionWorkspaceProvider,
+    app_paths: RigApplicationPaths,
 ) -> None:
     _reg, pinput = _register_and_plan(python_repo, registration_service)
     ws = provider.provision(pinput)
@@ -319,12 +378,39 @@ def test_mission_admission_binds_workspace(
         source_checkout_id=ws.source_checkout_id,
         workspace_root=ws.managed_root_path,
         admitted_paths=["src/"],
-        admitted_validation_commands=["uv run pytest"],
+        admitted_validation_commands=[],
+        app_support_root=str(app_paths.support_root),
         checkpoint_admitted=True,
     )
 
+    # Identity binding
     assert admission.execution_workspace_id == ws.workspace_id
     assert admission.repository_id == ws.repository_id
     assert admission.source_checkout_id == ws.source_checkout_id
     assert admission.admitted_paths == ["src/"]
     assert admission.checkpoint_admitted
+
+    # Baseline captured
+    assert admission.baseline_digest, "Baseline digest must be captured"
+
+    # Claim persisted under app-owned storage
+    admission_file = (
+        app_paths.support_root
+        / "repositories"
+        / ws.repository_id
+        / "execution-workspaces"
+        / ws.workspace_id
+        / "mission-admissions"
+        / f"{admission.admission_id}.json"
+    )
+    assert admission_file.is_file(), (
+        f"Admission record not persisted at {admission_file}"
+    )
+
+    # Verify persisted record matches
+    import json
+
+    persisted = json.loads(admission_file.read_text())
+    assert persisted["admission_id"] == admission.admission_id
+    assert persisted["execution_workspace_id"] == ws.workspace_id
+    assert persisted["baseline_digest"] == admission.baseline_digest

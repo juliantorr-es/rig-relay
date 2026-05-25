@@ -27,7 +27,6 @@ from rig_relay.core.tools.base import (
     BaseToolConfig,
     BaseToolState,
     InvokeContext,
-    ToolError,
     ToolPermission,
 )
 from rig_relay.core.tools.determinism import (
