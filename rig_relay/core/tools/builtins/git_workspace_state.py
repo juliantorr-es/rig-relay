@@ -412,6 +412,42 @@ def _build_result(
         except Exception:
             pass
 
+    # ── Validation receipt resolution ─────────────────────────────────
+    if (
+        preparation_receipt_status == "valid_index_match"
+        and parsed.branch
+        and args.preparation_receipt_sha256 is not None
+        and current_digest is not None
+    ):
+        try:
+            from rig_relay.governance.receipt_store import (
+                find_active_validation_receipts,
+            )
+
+            validation_receipts = find_active_validation_receipts(
+                preparation_receipt_sha256=args.preparation_receipt_sha256,
+                branch=parsed.branch,
+                worktree_root=str(Path.cwd().resolve()),
+            )
+            if validation_receipts:
+                best = validation_receipts[0]
+                v_digest = best.get("prepared_index_tree_digest")
+                v_outcome = best.get("validation_outcome", "")
+                if v_outcome == "passed" and v_digest == current_digest:
+                    validation_binding_status = "valid_prepared_index_match"
+                    local_git_checkpoint_precheck = "checkpoint_candidate"
+                    suggested_next_action = (
+                        "Validation passed against the prepared index. Call checkpoint."
+                    )
+                elif v_digest != current_digest:
+                    validation_binding_status = "stale_index_mismatch"
+                    suggested_next_action = (
+                        "Validation is stale — index has changed since validation. "
+                        "Re-run bound validation."
+                    )
+        except Exception:
+            pass
+
     # ── Map receipt status to precheck states ──────────────────────────
     _status_to_precheck: dict[str, str] = {
         "valid_index_match": "prepared_index_valid",

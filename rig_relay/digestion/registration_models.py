@@ -150,27 +150,22 @@ class WorkspacePreparationPlan(BaseModel):
 
 
 def generate_stable_repository_id(
-    is_github_backed: bool,
-    remote_identity_digest: str | None,
-    worktree_root_digest: str | None = None,
+    is_github_backed: bool, remote_identity_digest: str | None
 ) -> str:
     """Generate a stable opaque repository identifier.
 
-    GitHub-backed: SHA256 of remote_identity_digest for durable reconciliation.
-    Local-only with a known worktree root: SHA256 of the worktree digest for
-    path-stable identification.
-    Local-only without a worktree root digest: app-assigned UUID (fallback).
+    GitHub-backed: deterministic SHA256 of remote_identity_digest.
+    Local-only: always generates a new app-assigned UUID. The caller
+    (register_repository) is responsible for finding existing
+    registrations through correlation signals before calling this.
 
-    The identifier remains stable across HEAD changes, dirty state changes,
-    and path moves (for GitHub-backed repos). Local-only repos identified
-    by worktree root require reassociation after path moves.
+    Correlation signals (path_digest, git_common_dir_digest) are used
+    for REDISCOVERY, not IDENTITY derivation.
     """
     import hashlib
 
     if is_github_backed and remote_identity_digest is not None:
         return hashlib.sha256(f"github:{remote_identity_digest}".encode()).hexdigest()
-    if worktree_root_digest is not None:
-        return hashlib.sha256(f"local:{worktree_root_digest}".encode()).hexdigest()
     return str(uuid.uuid4())
 
 

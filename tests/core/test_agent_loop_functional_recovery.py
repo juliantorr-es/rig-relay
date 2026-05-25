@@ -1122,26 +1122,24 @@ async def test_mission_scoped_auto_can_mutate_and_validate(tmp_working_directory
     ]
     assert len(tr_events) >= 1, "No ToolResultEvent for write_file"
 
-    # Verify mutation outcome: under MISSION_SCOPED_AUTO, governance runs.
-    # In test environments without evidence persistence infrastructure,
-    # mutations may be skipped with an evidence-specific reason.
-    # This proves governance is active (not bypassed) and the failure
-    # is infrastructure, not permission/approval.
+    # Evidence persistence is now bootstrapped (agent_loop.py wires
+    # FilesystemReceiptStore into GovernanceRuntime at init).
+    # Mutation MUST succeed under MISSION_SCOPED_AUTO — no bypass, no skips.
     skipped = [e for e in tr_events if getattr(e, "skipped", False)]
-    if skipped:
-        reason = str(getattr(skipped[0], "skip_reason", ""))
-        assert "evidence" in reason.lower() or "persistence" in reason.lower(), (
-            f"Expected evidence persistence failure, got: {reason}"
-        )
-        # File may not have been modified (evidence persistence blocked mutation)
-        # This is correct behavior — governance requires evidence
-    else:
-        # Mutation succeeded (evidence available)
-        assert "return a + b" in source.read_text()
+    assert len(skipped) == 0, (
+        f"Mutation was skipped under MISSION_SCOPED_AUTO: "
+        f"{[getattr(e, 'skip_reason', '?') for e in skipped]}"
+    )
 
-    # If not skipped, file must be modified
-    if not skipped:
-        assert "return a + b" in source.read_text()
+    # File must be modified
+    assert "return a + b" in source.read_text(), (
+        f"File not modified: {source.read_text()}"
+    )
+
+    # Bypass must remain false (contained autonomy, not unsafe)
+    assert not loop.bypass_tool_permissions, (
+        "MISSION_SCOPED_AUTO must not bypass governance"
+    )
 
     await loop.aclose()
 
@@ -1184,19 +1182,36 @@ async def test_mission_scoped_auto_refuses_raw_bash(tmp_working_directory: Path)
     async for event in loop.act("Run echo hacked via bash"):
         events.append(event)
 
-    # Bash should not have executed. Either no ToolResultEvent for bash,
-    # or it was skipped/refused.
-    from rig_relay.core.types import ToolResultEvent
+    # Bash is in base_disabled — it is never loaded by the tool manager.
+    # The model may attempt to call it, but resolve_tool_calls puts it in
+    # failed_calls and no execution occurs. The observable contract is:
+    # bash is NOT in available_tools AND no bash ToolResultEvent exists.
+    assert "bash" not in loop.tool_manager.available_tools, (
+        "bash should not be available under MISSION_SCOPED_AUTO"
+    )
 
+    from rig_relay.core.types import ToolCallEvent, ToolResultEvent
+
+    # No bash tool call should have been dispatched
+    tc_events = [
+        e
+        for e in events
+        if isinstance(e, ToolCallEvent) and getattr(e, "tool_name", "") == "bash"
+    ]
+    assert len(tc_events) == 0, (
+        f"bash ToolCallEvent emitted — tool should not be dispatchable. "
+        f"Events: {[type(e).__name__ for e in events]}"
+    )
+
+    # No bash tool result should exist
     tr_events = [
         e
         for e in events
         if isinstance(e, ToolResultEvent) and getattr(e, "tool_name", "") == "bash"
     ]
-    if tr_events:
-        assert getattr(tr_events[0], "skipped", False) or getattr(
-            tr_events[0], "error", None
-        ), "Bash executed when it should be disabled"
+    assert len(tr_events) == 0, (
+        "bash ToolResultEvent emitted — tool should not have executed"
+    )
 
     # No file was created by bash
     assert not Path("hacked").exists()

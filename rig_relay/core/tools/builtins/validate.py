@@ -878,6 +878,51 @@ class Validate(
                     ),
                 )
 
+            # Check untracked files that may be observable by broad validators
+            untracked_proc = _sp.run(
+                ["git", "ls-files", "--others", "--exclude-standard"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=str(cwd),
+            )
+            if untracked_proc.returncode == 0 and untracked_proc.stdout.strip():
+                untracked = [p for p in untracked_proc.stdout.strip().splitlines() if p]
+                # Filter out known disposable directories
+                disposable_prefixes = (
+                    ".venv/",
+                    "node_modules/",
+                    "__pycache__/",
+                    ".pytest_cache/",
+                    ".mypy_cache/",
+                    ".ruff_cache/",
+                )
+                _MAX_UNTRACKED_SHOWN = 5
+                relevant_untracked = [
+                    p
+                    for p in untracked
+                    if not any(p.startswith(prefix) for prefix in disposable_prefixes)
+                ]
+                if relevant_untracked:
+                    return (
+                        prepared_digest,
+                        None,
+                        (
+                            "refused",
+                            "relevant_untracked_files_present",
+                            (
+                                f"Relevant untracked files exist and may be observed by validators: "
+                                f"{', '.join(relevant_untracked[:_MAX_UNTRACKED_SHOWN])}"
+                                + (
+                                    f" and {len(relevant_untracked) - _MAX_UNTRACKED_SHOWN} more"
+                                    if len(relevant_untracked) > _MAX_UNTRACKED_SHOWN
+                                    else ""
+                                )
+                            ),
+                            "Remove, stage, or explicitly exclude untracked files before bound validation.",
+                        ),
+                    )
+
             return prepared_digest, True, None
         except Exception:
             return None, None, None  # Best-effort
@@ -1024,6 +1069,44 @@ class Validate(
             prepared_index_tree_digest=run.prepared_digest,
             worktree_matched_prepared_index=run.worktree_matched,
         )
+
+        # ── Persist durable validation receipt when bound ──────────────
+        if (
+            run.prepared_digest is not None
+            and run.worktree_matched is True
+            and run.args.preparation_receipt_sha256
+        ):
+            try:
+                from rig_relay.governance.receipt_store import (
+                    generate_validation_receipt,
+                    persist_validation_receipt,
+                )
+
+                v_receipt = generate_validation_receipt(
+                    preparation_receipt_sha256=run.args.preparation_receipt_sha256,
+                    prepared_index_tree_digest=run.prepared_digest,
+                    validation_profile=run.args.profile,
+                    validation_outcome=(
+                        "passed"
+                        if overall_result.status == "passed"
+                        else overall_result.status
+                    ),
+                    worktree_matched_prepared_index=run.worktree_matched,
+                    untracked_observation_status="not_evaluated",
+                    branch=(run.before_git_state.branch if run.before_git_state else "")
+                    or "",
+                    worktree_root=run.cwd,
+                )
+                persisted = persist_validation_receipt(v_receipt)
+                if persisted is not None:
+                    overall_result = overall_result.model_copy(
+                        update={
+                            "validation_receipt_sha256": v_receipt["receipt_sha256"]
+                        }
+                    )
+            except Exception:
+                pass
+
         run.state_machine.transition(
             ValidateProfileEvent.PROFILE_COMPLETED,
             reason=f"validate {overall_result.status}",

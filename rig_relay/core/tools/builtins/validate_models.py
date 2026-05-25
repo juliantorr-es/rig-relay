@@ -315,6 +315,10 @@ class ValidateResult(BaseModel):
         default=None,
         description="True when prepared paths had no worktree/index delta before validation ran. None when no preparation receipt was provided.",
     )
+    validation_receipt_sha256: str | None = Field(
+        default=None,
+        description="SHA256 of a durable validation receipt, persisted when validation was bound to a prepared index.",
+    )
     error_kind: str | None = None
     refusal_reason: str | None = None
 

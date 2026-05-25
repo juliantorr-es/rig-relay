@@ -58,6 +58,13 @@ class CheckpointArgs(BaseModel):
         "When provided, checkpoint verifies the current index matches the preparation "
         "receipt before committing. Refuses if the receipt is missing, stale, or invalid.",
     )
+    validation_receipt_sha256: str | None = Field(
+        default=None,
+        description="SHA256 of a durable validation receipt from validate. "
+        "When provided, checkpoint verifies validation is bound to "
+        "the preparation receipt and the current index matches. "
+        "Refuses if validation is missing, stale, or unbound.",
+    )
     authorization_receipt: str | None = Field(
         default=None,
         description="JSON string of a signed authorization receipt for checkpoint commit.",
@@ -448,6 +455,68 @@ class Checkpoint(
 
         return None  # Verification passed
 
+    def _verify_validation_receipt(
+        self, validation_sha256: str, preparation_sha256: str | None, repo_root: Path
+    ) -> CheckpointResult | None:
+        """Verify a durable validation receipt is bound to the preparation receipt.
+
+        Returns None if verification passes.
+        Returns CheckpointResult with ok=False if verification fails.
+        """
+        try:
+            from rig_relay.governance.receipt_store import load_validation_receipt
+        except ImportError:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason="validation_receipt_verification_unavailable",
+                error_kind="validation_receipt_verification_unavailable",
+            )
+
+        receipt = load_validation_receipt(validation_sha256)
+        if receipt is None:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason=f"Validation receipt not found: {validation_sha256}",
+                error_kind="validation_receipt_missing",
+                suggested_next_action="Run bound validation to create a validation receipt.",
+            )
+
+        # Verify binds to same preparation receipt
+        receipt_prep = receipt.get("preparation_receipt_sha256")
+        if preparation_sha256 and receipt_prep != preparation_sha256:
+            return CheckpointResult(
+                ok=False,
+                refusal_reason="Validation receipt does not reference the same preparation receipt.",
+                error_kind="validation_preparation_mismatch",
+                suggested_next_action="Run bound validation against the current preparation receipt.",
+            )
+
+        # Verify validation outcome
+        outcome = receipt.get("validation_outcome")
+        if outcome != "passed":
+            return CheckpointResult(
+                ok=False,
+                refusal_reason=f"Validation did not pass (outcome: {outcome}).",
+                error_kind="validation_not_passed",
+                suggested_next_action="Fix validation failures and rerun bound validation.",
+            )
+
+        # Verify index digest matches
+        receipt_digest = receipt.get("prepared_index_tree_digest")
+        if receipt_digest:
+            from rig_relay.core.git_index_operations import compute_index_tree_digest
+
+            current = compute_index_tree_digest(repo_root)
+            if current is None or current != receipt_digest:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason="Current index does not match the validation receipt's prepared index digest.",
+                    error_kind="validation_stale_index",
+                    suggested_next_action="Re-run bound validation against the current prepared index.",
+                )
+
+        return None
+
     def _validate_preconditions(
         self,
         args: CheckpointArgs,
@@ -514,6 +583,16 @@ class Checkpoint(
         if args.preparation_receipt_sha256:
             result = self._verify_preparation_receipt(
                 args.preparation_receipt_sha256, repo_root, requested
+            )
+            if result is not None:
+                return result
+
+        # ── Step 3.2.6: Validation receipt verification ──────────────
+        if args.validation_receipt_sha256:
+            result = self._verify_validation_receipt(
+                args.validation_receipt_sha256,
+                args.preparation_receipt_sha256,
+                repo_root,
             )
             if result is not None:
                 return result
@@ -619,6 +698,10 @@ class Checkpoint(
         if args.preparation_receipt_sha256:
             body_lines.append(
                 f"Rig-Preparation-Receipt-SHA256: {args.preparation_receipt_sha256}"
+            )
+        if args.validation_receipt_sha256:
+            body_lines.append(
+                f"Rig-Validation-Receipt-SHA256: {args.validation_receipt_sha256}"
             )
         if args.validation_summary:
             body_lines.append("Validation:")

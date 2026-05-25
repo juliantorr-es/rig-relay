@@ -152,6 +152,7 @@ def test_dirty_state_in_workspace_plan(
 ) -> None:
     """Workspace plan detects dirty source checkout state."""
     result = _preview(dirty_repo)
+    registration_service.register_repository(result)
     plan = registration_service.plan_workspace(result)
 
     assert plan.source_checkout_is_dirty, "Plan must detect dirty source checkout"
@@ -179,6 +180,7 @@ def test_workspace_plan_for_git_repo(
 ) -> None:
     """Workspace plan for git repo produces valid proposal."""
     result = _preview(python_repo)
+    registration_service.register_repository(result)
     plan = registration_service.plan_workspace(result)
 
     assert plan.provider_eligibility == "git_worktree_available"

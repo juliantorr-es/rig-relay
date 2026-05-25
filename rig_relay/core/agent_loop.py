@@ -202,10 +202,11 @@ class AgentLoop(
         self._governance_runtime.session_rules = self._session_rules
 
         # Wire governance evidence persistence for mutation-capable operations.
-        from rig_relay.evidence.receipt_store import FilesystemReceiptStore
         from rig_relay.evidence.governance_decision_evidence import (
             GovernanceDecisionEvidence,
         )
+        from rig_relay.evidence.receipt_store import FilesystemReceiptStore
+
         governance_store = FilesystemReceiptStore(
             self._workspace_root / ".build" / "rig-relay" / "governance"
         )
