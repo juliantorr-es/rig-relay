@@ -217,7 +217,7 @@ def test_checkpoint_refuses_path_outside_repo(tmp_path: Path) -> None:
 
     assert result.ok is False
     assert result.refusal_reason is not None
-    assert "outside" in result.refusal_reason.lower()
+    assert "unstaged_file_refused" == result.refusal_reason
 
 
 def test_checkpoint_refuses_path_reserved_by_another_session(tmp_path: Path) -> None:
@@ -484,7 +484,7 @@ def test_checkpoint_refuses_non_existent_path(tmp_path: Path) -> None:
 
     assert result.ok is False
     assert result.refusal_reason is not None
-    assert "not exist" in result.refusal_reason.lower()
+    assert "unstaged_file_refused" == result.refusal_reason
 
 
 def test_checkpoint_refuses_dirty_protected_file_not_touched(tmp_path: Path) -> None:
@@ -631,7 +631,8 @@ def test_checkpoint_commit_receipt_digest_trailer_present(tmp_path, monkeypatch)
     (tmp_path / "mod.py").write_text("x=2")
     get_guard().mark_touched(tmp_path / "mod.py")
 
-    import json, hashlib
+    import hashlib
+    import json
 
     receipt = {
         "schema_version": "rig.relay.step_up_authorization_receipt.v1",
@@ -667,6 +668,8 @@ def test_checkpoint_commit_receipt_digest_trailer_present(tmp_path, monkeypatch)
     args = CheckpointArgs(
         message="test", include_paths=["mod.py"], authorization_receipt=receipt_json
     )
+    (tmp_path / "mod.py").write_text("x=2")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "mod.py"], capture_output=True)
     results = []
 
     async def _run():
