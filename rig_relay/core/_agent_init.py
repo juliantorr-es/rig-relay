@@ -1,27 +1,27 @@
-"""Init helpers mixin for AgentLoop.
+"""AgentLoop init helpers.
 
 Extracted from agent_loop.py. Provides helper methods for constructing
-the many subsystems that AgentLoop.__init__ wires together.
+the many subsystems that AgentLoop.__init__ wires together. Now explicit
+composition — methods receive the loop/facade rather than relying on
+MRO-based attribute resolution.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rig_relay.context.models import ContextRequest
 from rig_relay.core.types import LLMMessage, Role
 
-if TYPE_CHECKING:
-    from rig_relay.core.config import VibeConfig
 
+class InitHelpers:
+    """Composition-based init-time setup helpers for AgentLoop."""
 
-class InitHelpersMixin:
-    """Mixin providing init-time setup helpers."""
-
-    def _init_core_managers(
-        self,
-        config: VibeConfig,
+    @staticmethod
+    def init_core_managers(
+        loop,
+        config,
         agent_name: str,
         is_subagent: bool,
         defer_heavy_init: bool,
@@ -38,80 +38,82 @@ class InitHelpersMixin:
         from rig_relay.core.tools.mcp import MCPRegistry
         from rig_relay.core.tools.mcp_sampling import MCPSamplingHandler
 
-        self.mcp_registry = MCPRegistry()
-        self.connector_registry = self._create_connector_registry()
-        self.agent_manager = AgentManager(
-            lambda: self._base_config,
+        loop.mcp_registry = MCPRegistry()
+        loop.connector_registry = loop._create_connector_registry()
+        loop.agent_manager = AgentManager(
+            lambda: loop._base_config,
             initial_agent=agent_name,
             allow_subagent=is_subagent,
         )
-        self.tool_manager = ToolManager(
-            lambda: self.config,
-            mcp_registry=self.mcp_registry,
-            connector_registry=self.connector_registry,
+        loop.tool_manager = ToolManager(
+            lambda: loop.config,
+            mcp_registry=loop.mcp_registry,
+            connector_registry=loop.connector_registry,
             defer_mcp=defer_heavy_init,
         )
-        self.skill_manager = SkillManager(lambda: self.config)
-        self._plan_session = PlanSession()
+        loop.skill_manager = SkillManager(lambda: loop.config)
+        loop._plan_session = PlanSession()
 
-        self.format_handler = APIToolFormatHandler()
+        loop.format_handler = APIToolFormatHandler()
 
-        self._sampling_handler = MCPSamplingHandler(
-            backend_getter=lambda: self.backend,
-            config_getter=lambda: self.config,
-            metadata_getter=lambda: self._build_backend_metadata(
+        loop._sampling_handler = MCPSamplingHandler(
+            backend_getter=lambda: loop.backend,
+            config_getter=lambda: loop.config,
+            metadata_getter=lambda: loop._build_backend_metadata(
                 call_type="secondary_call"
             ).model_dump(exclude_none=True),
-            extra_headers_getter=self._get_extra_headers,
+            extra_headers_getter=loop._get_extra_headers,
         )
 
-        self.middleware_pipeline = MiddlewarePipeline()
-        self._setup_middleware()
+        loop.middleware_pipeline = MiddlewarePipeline()
 
-        self.session_id = generate_session_id()
-        self.parent_session_id = None
-        self.scratchpad_dir = (
-            init_scratchpad(self.session_id) if not is_subagent else None
+        loop.session_id = generate_session_id()
+        loop.parent_session_id = None
+        loop.scratchpad_dir = (
+            init_scratchpad(loop.session_id) if not is_subagent else None
         )
 
         system_prompt = get_universal_system_prompt(
-            self.tool_manager,
-            self.config,
-            self.skill_manager,
-            self.agent_manager,
+            loop.tool_manager,
+            loop.config,
+            loop.skill_manager,
+            loop.agent_manager,
             include_git_status=not defer_heavy_init,
-            scratchpad_dir=self.scratchpad_dir,
-            headless=self._headless,
+            scratchpad_dir=loop.scratchpad_dir,
+            headless=loop._headless,
         )
         system_message = LLMMessage(role=Role.system, content=system_prompt)
-        self.messages = self._make_message_list(
-            initial=[system_message], observer=self.message_observer
+        loop.messages = InitHelpers._make_message_list(
+            initial=[system_message], observer=loop.message_observer
         )
 
-    def _init_context_compiler(self, defer_heavy_init: bool) -> None:
+    @staticmethod
+    def init_context_compiler(loop, defer_heavy_init: bool) -> None:
         from rig_relay.context.repo_index import RepoContextIndex
 
-        self._repo_index = None
-        self._context_compiler = None
+        loop._repo_index = None
+        loop._context_compiler = None
 
         if not defer_heavy_init:
             try:
-                repo_index = RepoContextIndex(workspace_root=self._workspace_root)
+                repo_index = RepoContextIndex(workspace_root=loop._workspace_root)
                 if repo_index.is_available:
                     repo_index.populate()
-                    self._repo_index = repo_index
+                    loop._repo_index = repo_index
             except Exception:
                 pass
-            self._context_compiler = self._make_context_compiler(
-                repo_index=self._repo_index, receipt_store=self._make_receipt_store()
+            loop._context_compiler = InitHelpers._make_context_compiler(
+                repo_index=loop._repo_index,
+                receipt_store=InitHelpers._make_receipt_store(),
             )
 
-    def _init_telemetry_and_guard(
-        self,
-        config: VibeConfig,
-        entrypoint_metadata: Any,
+    @staticmethod
+    def init_telemetry_and_guard(
+        loop,
+        config,
+        entrypoint_metadata,
         is_subagent: bool,
-        hook_config_result: Any,
+        hook_config_result,
     ) -> None:
         from rig_relay.core.guard import (
             DirtyGuardFailurePolicy,
@@ -123,14 +125,14 @@ class InitHelpersMixin:
         from rig_relay.core.session.session_logger import SessionLogger
         from rig_relay.core.telemetry.send import TelemetryClient
 
-        self.telemetry_client = TelemetryClient(
-            config_getter=lambda: self.config,
-            session_id_getter=lambda: self.session_id,
-            parent_session_id_getter=lambda: self.parent_session_id,
-            entrypoint_metadata_getter=lambda: self.entrypoint_metadata,
-            consent_record_getter=self._load_consent_record,
+        loop.telemetry_client = TelemetryClient(
+            config_getter=lambda: loop.config,
+            session_id_getter=lambda: loop.session_id,
+            parent_session_id_getter=lambda: loop.parent_session_id,
+            entrypoint_metadata_getter=lambda: loop.entrypoint_metadata,
+            consent_record_getter=InitHelpers._load_consent_record,
         )
-        self.session_logger = SessionLogger(config.session_logging, self.session_id)
+        loop.session_logger = SessionLogger(config.session_logging, loop.session_id)
 
         try:
             policy = (
@@ -150,30 +152,32 @@ class InitHelpersMixin:
         except Exception:
             pass
 
-        self._hook_config_result = hook_config_result
-        self._hooks_manager = (
+        loop._hook_config_result = hook_config_result
+        loop._hooks_manager = (
             HooksManager(hook_config_result.hooks) if hook_config_result else None
         )
-        self.hook_config_issues = (
+        loop.hook_config_issues = (
             hook_config_result.issues if hook_config_result else []
         )
-        self.rewind_manager = RewindManager(
-            messages=self.messages,
-            save_messages=self._save_messages,
-            reset_session=self._reset_session,
+        loop.rewind_manager = RewindManager(
+            messages=loop.messages,
+            save_messages=loop._save_messages,
+            reset_session=loop._reset_session,
         )
 
-    def _init_ambient_context_packet(self) -> None:
-        self._context_packet = None
+    @staticmethod
+    def init_ambient_context_packet(loop) -> None:
+        loop._context_packet = None
         try:
             from rig_relay.context.compiler import execute as _ctx_build
             from rig_relay.context.models import ContextMode
 
-            self._context_packet = _ctx_build(ContextRequest(mode=ContextMode.MAP))
+            loop._context_packet = _ctx_build(ContextRequest(mode=ContextMode.MAP))
         except Exception:
             pass
 
-    def _load_consent_record(self) -> object | None:
+    @staticmethod
+    def _load_consent_record() -> object | None:
         try:
             from pathlib import Path
 
@@ -196,7 +200,7 @@ class InitHelpersMixin:
         return FilesystemReceiptStore(Path.cwd() / ".rig" / "relay" / "receipts")
 
     @staticmethod
-    def _make_context_compiler(repo_index: Any, receipt_store: Any) -> Any:
+    def _make_context_compiler(repo_index, receipt_store) -> Any:
         from rig_relay.context.compiler import ContextCompiler
 
         return ContextCompiler(
@@ -207,7 +211,7 @@ class InitHelpersMixin:
         )
 
     @staticmethod
-    def _make_message_list(initial: list, observer: Any) -> Any:
+    def _make_message_list(initial: list, observer) -> Any:
         from rig_relay.core.types import MessageList
 
         return MessageList(initial=initial, observer=observer)

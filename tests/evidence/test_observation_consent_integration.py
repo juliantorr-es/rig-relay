@@ -1,6 +1,6 @@
 """Integration tests for consent scope gating in observation capture.
 
-Tests the seam between ``_capture_model_observation_for_tool_response``
+Tests the production seam between ``TelemetryEvidenceService.capture_model_observation``
 and the consent store / ``observe_tool_call`` function.  All tests use
 monkeypatched consent records and a mock ``observe_tool_call`` — never
 a real consent file or real observability sink.
@@ -8,6 +8,7 @@ a real consent file or real observability sink.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar
 
 from pydantic import BaseModel
@@ -15,6 +16,8 @@ import pytest
 
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.llm.format import ResolvedToolCall
+from rig_relay.core.telemetry.send import TelemetryClient
+from rig_relay.core.telemetry_evidence_service import TelemetryEvidenceService
 from rig_relay.core.tools.base import BaseTool
 from rig_relay.evidence.model_observations import Backend as ObsBackend
 from rig_relay.identity.telemetry_consent import (
@@ -60,7 +63,7 @@ def _make_mock_observe_tool_call():
 class TestBackendToConsentKindMapping:
     """Verify that the consent kind derivation matches expected mapping.
 
-    These test the logic embedded in ``_capture_model_observation_for_tool_response``:
+    These test the logic embedded in ``TelemetryEvidenceService.capture_model_observation``:
     local backends (mlx, llama_cpp, ollama) → ``local_model`` kind
     everything else → ``provider`` kind
     """
@@ -117,21 +120,24 @@ class TestBackendToConsentKindMapping:
 class TestConsentScopeIntegration:
     """Verify that consent scoping at the capture seam works correctly.
 
-    Uses ``_capture_model_observation_for_tool_response`` directly via
-    ``_handle_tool_response`` with monkeypatched consent store and
+    Uses ``TelemetryEvidenceService.capture_model_observation`` directly
+    with monkeypatched consent store and
     ``observe_tool_call``.
     """
 
     @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Set up an AgentLoop with minimal config for each test.
+    def _setup(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        """Set up a real TelemetryEvidenceService with minimal valid config.
 
         Also monkeypatches ``observe_tool_call`` and ``ConsentStore.get``.
         """
-        from rig_relay.core._tool_response import ToolResponseMixin
-        from rig_relay.core.config.harness_files import init_harness_files_manager
+        from rig_relay.core.config.harness_files import (
+            init_harness_files_manager,
+            reset_harness_files_manager,
+        )
         from rig_relay.evidence.model_observations import observe_tool_call
 
+        reset_harness_files_manager()
         init_harness_files_manager("user", "project")
         monkeypatch.setenv("DEEPSEEK_API_KEY", "fake_key")
 
@@ -139,13 +145,19 @@ class TestConsentScopeIntegration:
         config.enable_local_observability = True
         config.enable_remote_telemetry = False
         config.active_model = "deepseek-v4-flash"
+        self._config = config
 
-        class DummyAgentLoop(ToolResponseMixin):
-            def __init__(self, cfg):
-                self.config = cfg
-                self.session_id = "test-consent-integration"
-
-        self._loop = DummyAgentLoop(config)
+        self._evidence = TelemetryEvidenceService(
+            telemetry_client=TelemetryClient(config_getter=lambda: config),
+            session_id="test-consent-integration",
+            config=config,
+            entrypoint_metadata=None,
+            workspace_root=tmp_path,
+            skill_manager=None,
+            agent_profile_name_getter=lambda: "test-agent",
+            current_user_message_id_getter=lambda: "msg-1",
+            active_model_getter=lambda: config.active_model,
+        )
 
         # Monkeypatch observe_tool_call to record calls instead of writing
         monkeypatch.setattr(
@@ -188,7 +200,7 @@ class TestConsentScopeIntegration:
     def test_not_requested_consent_does_not_observe(self, monkeypatch) -> None:
         """No consent record → NOT_REQUESTED status → observation denied."""
         self._set_consent_record(monkeypatch, build_initial_consent())
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -203,7 +215,7 @@ class TestConsentScopeIntegration:
             scopes=[TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING],
         )
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_called(1)
@@ -221,9 +233,9 @@ class TestConsentScopeIntegration:
 
         # Change the active provider's backend to mlx so the helper
         # classifies it as a local model observation.
-        monkeypatch.setattr(self._loop.config.get_active_provider(), "backend", "mlx")
+        monkeypatch.setattr(self._config.get_active_provider(), "backend", "mlx")
 
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_called(1)
@@ -239,8 +251,8 @@ class TestConsentScopeIntegration:
         )
         self._set_consent_record(monkeypatch, record)
         # Set backend to mlx so the helper classifies as local
-        monkeypatch.setattr(self._loop.config.get_active_provider(), "backend", "mlx")
-        self._loop._capture_model_observation_for_tool_response(
+        monkeypatch.setattr(self._config.get_active_provider(), "backend", "mlx")
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -255,7 +267,7 @@ class TestConsentScopeIntegration:
             scopes=[TelemetryConsentScope.LOCAL_MODEL_BENCHMARKING],
         )
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -271,7 +283,7 @@ class TestConsentScopeIntegration:
         )
         record = revoke_consent(record)
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -291,7 +303,7 @@ class TestConsentScopeIntegration:
             "rig_relay.identity.consent_store.ConsentStore.get", _broken_get
         )
         # This must not raise
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -300,7 +312,7 @@ class TestConsentScopeIntegration:
 
     def test_disabled_observability_skips_consent_evaluation(self, monkeypatch) -> None:
         """When enable_local_observability is False, consent is never checked."""
-        self._loop.config.enable_local_observability = False
+        self._config.enable_local_observability = False
 
         # Even with a perfectly valid consent record, no observation
         record = grant_consent(
@@ -309,7 +321,7 @@ class TestConsentScopeIntegration:
             scopes=[TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING],
         )
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=100.0
         )
         self._assert_observe_not_called()
@@ -324,7 +336,7 @@ class TestConsentScopeIntegration:
             scopes=[TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING],
         )
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "skipped", duration_ms=None
         )
         self._assert_observe_not_called()
@@ -339,7 +351,7 @@ class TestConsentScopeIntegration:
             scopes=[TelemetryConsentScope.PROVIDER_MODEL_BENCHMARKING],
         )
         self._set_consent_record(monkeypatch, record)
-        self._loop._capture_model_observation_for_tool_response(
+        self._evidence.capture_model_observation(
             self._tool_call, "success", duration_ms=200.0
         )
         self._assert_observe_called(1)

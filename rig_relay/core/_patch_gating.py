@@ -96,21 +96,3 @@ class PatchGatingService:
             ),
             tool_call_id=tool_call.call_id,
         )
-
-
-# ── Legacy mixin (kept for MRO compatibility during migration) ──
-
-
-class PatchGatingMixin:
-    """[DEPRECATED] Replaced by PatchGatingService.
-
-    Kept only for AgentLoop MRO compatibility during migration.
-    """
-
-    def _check_patch_proposal_gating(
-        self, tool_call: object, tool_instance: object
-    ) -> ToolResultEvent | None:
-        raise NotImplementedError(
-            "PatchGatingMixin._check_patch_proposal_gating is deprecated. "
-            "Use PatchGatingService.check() instead."
-        )

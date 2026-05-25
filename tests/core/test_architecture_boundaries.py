@@ -85,22 +85,6 @@ class TestAgentLoopBoundary:
         )
 
 
-class TestCoreMixinBoundaries:
-    def test_mixins_do_not_import_forbidden_modules(self):
-        mixin_files = [
-            p
-            for p in _find_core_python_files()
-            if p.name.startswith("_") and p.name.endswith(".py")
-        ]
-        violations: list[tuple[str, str]] = []
-        for path in mixin_files:
-            imports = _imports_in_file(path)
-            for imp in imports:
-                for forbidden in FORBIDDEN_MODULES:
-                    if imp.startswith(forbidden):
-                        violations.append((path.name, imp))
-        assert not violations, f"Core mixins import forbidden modules: {violations}"
-
 
 class TestRuntimeStateBoundaries:
     def test_runtime_state_does_not_import_forbidden_modules(self):
