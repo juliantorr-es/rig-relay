@@ -166,6 +166,8 @@ class CockpitAPI:
         self._runtime_config: dict[str, Any] | None = None
         self._opened_repo: Any = None
         self._opened_checkout_id: str | None = None
+        self._execution_workspace: Any = None
+        self._mission_admission: Any = None
 
         if mode == "fixture":
             self._agent_loop = None
@@ -600,6 +602,109 @@ class CockpitAPI:
                 "source_checkout_is_dirty": plan.source_checkout_is_dirty,
                 "warnings": plan.warnings,
                 "digest": plan.digest,
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def provision_workspace(self) -> dict:
+        """Provision a managed execution workspace from the current plan.
+
+        Requires register_repository() and plan_workspace() to have been called first.
+        Creates an isolated Git worktree for the admitted mission.
+        """
+        if self._opened_repo is None:
+            return {"status": "error", "message": "No repository previewed."}
+        if self._opened_checkout_id is None:
+            return {
+                "status": "error",
+                "message": "Repository must be registered first.",
+            }
+
+        try:
+            from rig_relay.digestion.app_paths import RigApplicationPaths
+            from rig_relay.digestion.execution_models import ProvisioningInput
+            from rig_relay.digestion.execution_workspace import (
+                GitWorktreeExecutionWorkspaceProvider,
+            )
+            from rig_relay.digestion.registration import RepositoryRegistrationService
+
+            app_paths = RigApplicationPaths.for_production()
+            reg_service = RepositoryRegistrationService(app_paths)
+            plan = reg_service.plan_workspace(
+                self._opened_repo, self._opened_checkout_id
+            )
+
+            if plan.provider_eligibility != "git_worktree_available":
+                return {
+                    "status": "refused",
+                    "provider_eligibility": plan.provider_eligibility,
+                    "warnings": plan.warnings,
+                }
+
+            pinput = ProvisioningInput(
+                plan_digest=plan.digest,
+                repository_id=plan.repository_id,
+                source_checkout_id=plan.checkout_id,
+                admitted_base_sha=plan.admitted_base_sha or "",
+                proposed_managed_branch=plan.proposed_managed_branch,
+                proposed_worktree_location=plan.proposed_worktree_location,
+                branch_prefix=plan.branch_prefix,
+                source_checkout_path=str(Path(self._opened_repo.repository.root_path)),
+            )
+
+            provider = GitWorktreeExecutionWorkspaceProvider(app_paths.support_root)
+            workspace = provider.provision(pinput)
+
+            if not workspace.managed_root_path:
+                return {
+                    "status": "refused",
+                    "reason": workspace.initial_clean_state_digest,
+                }
+
+            self._execution_workspace = workspace
+            return {
+                "status": "provisioned",
+                "workspace_id": workspace.workspace_id,
+                "managed_root_path": workspace.managed_root_path,
+                "managed_branch": workspace.managed_branch,
+                "base_commit_sha": workspace.base_commit_sha,
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def admit_mission(self, admitted_paths: list[str] | None = None) -> dict:
+        """Admit a bounded mission against the provisioned execution workspace.
+
+        Requires provision_workspace() to have been called first.
+        Binds mission authority to the execution workspace, not the source checkout.
+        """
+        if self._execution_workspace is None:
+            return {
+                "status": "error",
+                "message": "No execution workspace provisioned. Provision a workspace first.",
+            }
+
+        try:
+            from rig_relay.digestion.mission_admission import admit_mission
+
+            ws = self._execution_workspace
+            admission = admit_mission(
+                execution_workspace_id=ws.workspace_id,
+                repository_id=ws.repository_id,
+                source_checkout_id=ws.source_checkout_id,
+                workspace_root=ws.managed_root_path,
+                admitted_paths=admitted_paths or ["."],
+                admitted_validation_commands=[],
+                checkpoint_admitted=True,
+            )
+
+            self._mission_admission = admission
+            return {
+                "status": "admitted",
+                "admission_id": admission.admission_id,
+                "execution_workspace_id": admission.execution_workspace_id,
+                "admitted_paths": admission.admitted_paths,
+                "checkpoint_admitted": admission.checkpoint_admitted,
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}

@@ -40,6 +40,7 @@ class GitResult(BaseModel):
     returncode: int
     truncated_stdout: bool
     truncated_stderr: bool
+    error_kind: str | None = None
 
 
 class GitToolConfig(BaseToolConfig):
@@ -110,12 +111,16 @@ class GitBase[TArgs: BaseModel](
             )
 
             if proc.returncode != 0:
-                raise ToolError(
+                error_kind = self._classify_git_error(stderr)
+                err = ToolError(
                     f"Git {operation} failed with code {proc.returncode}\n"
                     f"STDOUT: {stdout[:200]}\n"
                     f"STDERR: {stderr[:200]}"
                 )
+                err.error_kind = error_kind  # type: ignore[attr-defined]
+                raise err
 
+            error_kind = self._classify_git_advisory(stdout, stderr, truncated_stdout)
             return GitResult(
                 operation=operation,
                 argv=argv,
@@ -124,12 +129,39 @@ class GitBase[TArgs: BaseModel](
                 returncode=proc.returncode,
                 truncated_stdout=truncated_stdout,
                 truncated_stderr=truncated_stderr,
+                error_kind=error_kind,
             )
 
         except ToolError:
             raise
         except Exception as e:
-            raise ToolError(f"Error executing git {operation}: {e}")
+            err = ToolError(f"Error executing git {operation}: {e}")
+            err.error_kind = "git_command_failed"  # type: ignore[attr-defined]
+            raise err
+
+    @staticmethod
+    def _classify_git_error(stderr: str) -> str:
+        """Classify git subprocess errors from stderr into a stable error_kind."""
+        stderr_lower = stderr.lower()
+        if "not a git repository" in stderr_lower:
+            return "invalid_revision"
+        if "did not match any file" in stderr_lower or "pathspec" in stderr_lower:
+            return "invalid_pathspec"
+        if "does not have any commits" in stderr_lower:
+            return "no_history"
+        return "git_command_failed"
+
+    @staticmethod
+    def _classify_git_advisory(
+        stdout: str, stderr: str, truncated_stdout: bool
+    ) -> str | None:
+        """Classify non-fatal git result conditions into a stable error_kind."""
+        if truncated_stdout:
+            return "output_truncated"
+        combined = (stdout + stderr).lower()
+        if "detached" in combined and "head" in combined:
+            return "detached_head"
+        return None
 
     def _validate_path(self, path: str) -> str:
         if not path.strip():

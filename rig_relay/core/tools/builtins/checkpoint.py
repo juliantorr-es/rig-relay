@@ -616,6 +616,15 @@ class Checkpoint(
                 error_kind="preparation_receipt_required",
             )
 
+        # Step 2.7: In governed mode, bound validation receipts are mandatory
+        if mission_auth is not None and not args.validation_receipt_sha256:
+            return CheckpointResult(
+                ok=False,
+                message="Checkpoint refused: validation receipt required for governed checkpoint",
+                refusal_reason="validation_receipt_required",
+                error_kind="validation_receipt_required",
+            )
+
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"
         if args.authorization_receipt:

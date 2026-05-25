@@ -145,6 +145,7 @@ class GetContextResult(BaseModel):
     receipt: dict[str, Any] = Field(default_factory=dict)
     canonical_packet_sha256: str | None = None
     optimized_packet_sha256: str | None = None
+    error_kind: str | None = None
 
 
 class GetContextToolConfig(BaseToolConfig):
@@ -210,6 +211,64 @@ class GetContext(
     def get_status_text(cls) -> str:
         return "Gathering context"
 
+    @staticmethod
+    def _determine_error_kind(packet: Any) -> str | None:
+        """Determine a stable error_kind from the assembled context packet.
+
+        Priority order (most severe first):
+          1. context_incomplete — packet has no subsystems in MAP/PACKET mode
+          2. unsupported_mode — fallback packet from unknown mode
+          3. context_stale — assembly plan indicates warnings with no subsystems
+          4. context_degraded — degradation warnings present
+          5. collision_detected — active collision warnings (non-fatal advisory)
+        """
+        mode = getattr(packet, "mode", None)
+        if mode is None:
+            mode_str = ""
+        else:
+            mode_str = mode.value if hasattr(mode, "value") else str(mode)
+        warnings = getattr(packet, "warnings", []) or []
+        subsystems = getattr(packet, "subsystems", []) or []
+        active_work = getattr(packet, "active_work", {}) or {}
+        collisions = active_work.get("collision_warnings", [])
+
+        # Check for unsupported mode (fallback from unknown)
+        for w in warnings:
+            detail = w.get("detail", "") if isinstance(w, dict) else ""
+            if "unknown context mode" in detail:
+                return "unsupported_mode"
+
+        # Context incomplete: MAP/PACKET mode but no subsystems and no collision
+        # context (the compiler should always produce subsystems for these modes)
+        if mode_str in {"map", "packet"} and not subsystems:
+            return "context_incomplete"
+
+        # Context stale: assembly plan has warnings but no subsystems populated
+        plan_summary = getattr(packet, "assembly_plan_summary", {}) or {}
+        if plan_summary.get("warning_count", 0) > 0 and not subsystems:
+            return "context_stale"
+
+        # Context degraded: check for degradation warning codes
+        _DEGRADED_CODES = frozenset({
+            "repo_scan_failed",
+            "work_map_failed",
+            "repo_index_unavailable",
+            "symbol_digest_failed",
+            "collision_degraded",
+            "handoff_degraded",
+            "compression_failed",
+        })
+        for w in warnings:
+            code = w.get("code", "") if isinstance(w, dict) else ""
+            if code in _DEGRADED_CODES:
+                return "context_degraded"
+
+        # Collision detected: non-fatal — context delivered with warnings
+        if collisions:
+            return "collision_detected"
+
+        return None
+
     async def run(
         self, args: GetContextArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | GetContextResult, None]:
@@ -240,6 +299,8 @@ class GetContext(
             # Build receipt
             receipt = build_receipt(packet)
 
+            error_kind = self._determine_error_kind(packet)
+
             yield GetContextResult(
                 context_id=packet.context_id,
                 mode=packet.mode.value,
@@ -255,7 +316,10 @@ class GetContext(
                 receipt=receipt.model_dump(mode="json"),
                 canonical_packet_sha256=packet.canonical_packet_sha256,
                 optimized_packet_sha256=packet.optimized_packet_sha256,
+                error_kind=error_kind,
             )
 
         except Exception as e:
-            raise ToolError(f"get_context failed: {e}") from e
+            err = ToolError(f"get_context failed: {e}")
+            err.error_kind = "context_unavailable"  # type: ignore[attr-defined]
+            raise err from e

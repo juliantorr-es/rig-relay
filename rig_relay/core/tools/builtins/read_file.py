@@ -45,6 +45,8 @@ class _ReadResult(NamedTuple):
     lines: list[str]
     bytes_read: int
     was_truncated: bool
+    error_kind: str | None = None
+    encoding_fallback: bool = False
 
 
 class ReadFileArgs(BaseModel):
@@ -66,6 +68,7 @@ class ReadFileResult(BaseModel):
     was_truncated: bool = Field(
         description="True if the reading was stopped due to the max_read_bytes limit."
     )
+    error_kind: str | None = None
 
 
 class ReadFileToolConfig(BaseToolConfig):
@@ -107,17 +110,44 @@ class ReadFile(
     async def run(
         self, args: ReadFileArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | ReadFileResult, None]:
-        file_path = self._prepare_and_validate_path(args)
+        file_path, error_kind = self._prepare_and_validate_path(args)
+        if error_kind is not None:
+            yield ReadFileResult(
+                path=args.path,
+                content="",
+                offset=args.offset,
+                lines_read=0,
+                was_truncated=False,
+                error_kind=error_kind,
+            )
+            return
 
         read_result = await self._read_file(args, file_path)
+        if read_result.error_kind is not None:
+            yield ReadFileResult(
+                path=str(file_path),
+                content="",
+                offset=args.offset,
+                lines_read=0,
+                was_truncated=False,
+                error_kind=read_result.error_kind,
+            )
+            return
 
-        yield ReadFileResult(
+        result = ReadFileResult(
             path=str(file_path),
             content="".join(read_result.lines),
             offset=args.offset,
             lines_read=len(read_result.lines),
             was_truncated=read_result.was_truncated,
         )
+
+        if result.was_truncated:
+            result.error_kind = "content_truncated"
+        elif read_result.encoding_fallback:
+            result.error_kind = "encoding_fallback_used"
+
+        yield result
 
     def resolve_permission(self, args: ReadFileArgs) -> PermissionContext | None:
         return resolve_file_tool_permission(
@@ -150,28 +180,32 @@ class ReadFile(
         ]
         return f"<{VIBE_WARNING_TAG}>\n{'\n\n'.join(sections)}\n</{VIBE_WARNING_TAG}>"
 
-    def _prepare_and_validate_path(self, args: ReadFileArgs) -> Path:
-        self._validate_inputs(args)
+    def _prepare_and_validate_path(self, args: ReadFileArgs) -> tuple[Path, str | None]:
+        if error_kind := self._validate_inputs(args):
+            return Path(args.path), error_kind
 
         file_path = normalize_tool_path(args.path)
         require_path_within_workdir(file_path)
 
-        self._validate_path(file_path)
-        return file_path
+        if error_kind := self._validate_path(file_path):
+            return file_path, error_kind
+        return file_path, None
 
     async def _read_file(self, args: ReadFileArgs, file_path: Path) -> _ReadResult:
+        encoding_fallback = False
         try:
             raw_lines: list[bytes] = []
             bytes_read = 0
             was_truncated = True
 
-            # Quick binary content check on the first chunk
             async with await anyio.Path(file_path).open("rb") as preview_f:
                 header = await preview_f.read(8192)
                 if is_likely_binary(header):
-                    raise ToolError(
-                        f"Refusing to read '{file_path.name}': content appears to be binary. "
-                        "Use bash with appropriate tools (e.g., xxd, strings) for binary files."
+                    return _ReadResult(
+                        lines=[],
+                        bytes_read=0,
+                        was_truncated=False,
+                        error_kind="binary_file_refused",
                     )
 
             async with await anyio.Path(file_path).open("rb") as f:
@@ -194,52 +228,56 @@ class ReadFile(
                 else:
                     was_truncated = False
         except OSError as exc:
-            raise ToolError(f"Error reading {file_path}: {exc}") from exc
+            return _ReadResult(
+                lines=[], bytes_read=0, was_truncated=False, error_kind="read_failed"
+            )
 
-        lines_to_return = decode_safe(b"".join(raw_lines)).text.splitlines(
-            keepends=True
-        )
+        raw_bytes = b"".join(raw_lines)
+        try:
+            raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            encoding_fallback = True
+
+        lines_to_return = decode_safe(raw_bytes).text.splitlines(keepends=True)
         return _ReadResult(
-            lines=lines_to_return, bytes_read=bytes_read, was_truncated=was_truncated
+            lines=lines_to_return,
+            bytes_read=bytes_read,
+            was_truncated=was_truncated,
+            encoding_fallback=encoding_fallback,
         )
 
-    def _validate_inputs(self, args: ReadFileArgs) -> None:
+    def _validate_inputs(self, args: ReadFileArgs) -> str | None:
         if not args.path.strip():
             raise ToolError("Path cannot be empty")
         if args.offset < 0:
-            raise ToolError("Offset cannot be negative")
+            return "invalid_line_range"
         if args.limit is not None and args.limit <= 0:
-            raise ToolError("Limit, if provided, must be a positive number")
+            return "invalid_line_range"
+        return None
 
-    def _validate_path(self, file_path: Path) -> None:
+    def _validate_path(self, file_path: Path) -> str | None:
         try:
             resolved_path = file_path.resolve()
         except ValueError:
-            raise ToolError(
-                f"Security error: Cannot read path '{file_path}' outside of the project directory '{Path.cwd()}'."
-            )
+            return "missing_path"
         except FileNotFoundError:
-            raise ToolError(f"File not found at: {file_path}")
+            return "missing_path"
 
         if not resolved_path.exists():
-            raise ToolError(f"File not found at: {file_path}")
+            return "missing_path"
         if resolved_path.is_dir():
-            raise ToolError(f"Path is a directory, not a file: {file_path}")
+            return "path_is_directory"
 
-        # Block binary files by extension
         if is_binary_extension(resolved_path):
-            raise ToolError(
-                f"Refusing to read '{resolved_path.name}': file appears to be binary. "
-                "Use bash with appropriate tools (e.g., xxd, strings) for binary files."
-            )
+            return "binary_file_refused"
 
-        # Enforce max file size
         file_size = resolved_path.stat().st_size
         if file_size > MAX_TEXT_FILE_BYTES:
             raise ToolError(
                 f"Refusing to read '{resolved_path.name}': file is "
                 f"{file_size / 1_048_576:.1f} MB, which exceeds the {MAX_TEXT_FILE_BYTES // 1_048_576} MB limit."
             )
+        return None
 
     @classmethod
     def format_call_display(cls, args: ReadFileArgs) -> ToolCallDisplay:

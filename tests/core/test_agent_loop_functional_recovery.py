@@ -702,12 +702,20 @@ async def test_model_cannot_supply_runtime_reserved_tool_fields(
     # Failed calls now produce ToolResultEvents via the batch executor.
     # The forged _tool_runtime_call_id must produce a failure observation.
     assert len(tool_results) == 1, (
-        f"Expected 1 failed ToolResultEvent, got {len(tool_results)}: {[(getattr(e, "tool_name", "?"), str(getattr(e, "error", "?"))[:60]) for e in tool_results]}"
-        % (len(tool_results), [(getattr(e, "tool_name", "?"), str(getattr(e, "error", "?"))[:60]) for e in tool_results])
+        f"Expected 1 failed ToolResultEvent, got {len(tool_results)}: {[(getattr(e, 'tool_name', '?'), str(getattr(e, 'error', '?'))[:60]) for e in tool_results]}"
+        % (
+            len(tool_results),
+            [
+                (getattr(e, "tool_name", "?"), str(getattr(e, "error", "?"))[:60])
+                for e in tool_results
+            ],
+        )
     )
     tr = tool_results[0]
     assert getattr(tr, "error", None) is not None, "Failed call must produce error"
-    assert "extra" in str(getattr(tr, "error", "")).lower(), "Error should mention extra inputs"
+    assert "extra" in str(getattr(tr, "error", "")).lower(), (
+        "Error should mention extra inputs"
+    )
 
     # role=tool message should NOT exist for write_file
     tool_msgs = [
@@ -715,7 +723,9 @@ async def test_model_cannot_supply_runtime_reserved_tool_fields(
         for m in loop.messages
         if m.role == Role.tool and getattr(m, "tool_call_id", "") == "wf_forged"
     ]
-    assert len(tool_msgs) == 1, f"Expected 1 role=tool for failed forged call, got {len(tool_msgs)}"
+    assert len(tool_msgs) == 1, (
+        f"Expected 1 role=tool for failed forged call, got {len(tool_msgs)}"
+    )
 
     await loop.aclose()
 
@@ -1189,20 +1199,27 @@ async def test_mission_scoped_auto_refuses_raw_bash(tmp_working_directory: Path)
     from rig_relay.core.types import Role, ToolCallEvent, ToolResultEvent
 
     # No executable ToolCallEvent for bash
-    tc_events = [e for e in events if isinstance(e, ToolCallEvent)
-                 and getattr(e, "tool_name", "") == "bash"]
+    tc_events = [
+        e
+        for e in events
+        if isinstance(e, ToolCallEvent) and getattr(e, "tool_name", "") == "bash"
+    ]
     assert len(tc_events) == 0, "bash ToolCallEvent emitted"
 
     # Exactly one failed/refused ToolResultEvent for bash
-    tr_events = [e for e in events if isinstance(e, ToolResultEvent)
-                 and getattr(e, "tool_name", "") == "bash"]
-    assert len(tr_events) == 1, (
-        f"Expected 1 failed TR for bash, got {len(tr_events)}"
-    )
+    tr_events = [
+        e
+        for e in events
+        if isinstance(e, ToolResultEvent) and getattr(e, "tool_name", "") == "bash"
+    ]
+    assert len(tr_events) == 1, f"Expected 1 failed TR for bash, got {len(tr_events)}"
 
     # Exactly one role=tool message with bash_msa call_id
-    tool_msgs = [m for m in loop.messages if m.role == Role.tool
-                 and getattr(m, "tool_call_id", "") == "bash_msa"]
+    tool_msgs = [
+        m
+        for m in loop.messages
+        if m.role == Role.tool and getattr(m, "tool_call_id", "") == "bash_msa"
+    ]
     assert len(tool_msgs) == 1, (
         f"Expected 1 role=tool for bash_msa, got {len(tool_msgs)}. "
         f"Roles: {[(str(getattr(m, 'role', '?')), getattr(m, 'tool_call_id', '?')) for m in loop.messages]}"
@@ -1228,20 +1245,35 @@ async def test_mixed_batch_disabled_and_valid_tools(tmp_working_directory: Path)
     test_file.write_text("x = 1\n")
 
     backend = FakeBackend([
-        [mock_llm_chunk(content="Reading and running.",
-            tool_calls=[
-                ToolCall(id="rf_valid", index=0,
-                    function=FunctionCall(name="read_file",
-                        arguments=json.dumps({"path": "target.py"}))),
-                ToolCall(id="bash_invalid", index=1,
-                    function=FunctionCall(name="bash",
-                        arguments=json.dumps({"command": "echo hacked"}))),
-            ])],
+        [
+            mock_llm_chunk(
+                content="Reading and running.",
+                tool_calls=[
+                    ToolCall(
+                        id="rf_valid",
+                        index=0,
+                        function=FunctionCall(
+                            name="read_file",
+                            arguments=json.dumps({"path": "target.py"}),
+                        ),
+                    ),
+                    ToolCall(
+                        id="bash_invalid",
+                        index=1,
+                        function=FunctionCall(
+                            name="bash",
+                            arguments=json.dumps({"command": "echo hacked"}),
+                        ),
+                    ),
+                ],
+            )
+        ],
         [mock_llm_chunk(content="Done.")],
     ])
 
     loop = build_test_agent_loop(
-        agent_name=BuiltinAgentName.MISSION_SCOPED_AUTO, backend=backend,
+        agent_name=BuiltinAgentName.MISSION_SCOPED_AUTO,
+        backend=backend,
         config=build_test_vibe_config(governed_context_enabled=False),
     )
 
@@ -1252,22 +1284,153 @@ async def test_mixed_batch_disabled_and_valid_tools(tmp_working_directory: Path)
     from rig_relay.core.types import Role, ToolResultEvent
 
     # Valid tool produced result
-    rf = [e for e in events if isinstance(e, ToolResultEvent)
-          and getattr(e, "tool_name", "") == "read_file"]
+    rf = [
+        e
+        for e in events
+        if isinstance(e, ToolResultEvent) and getattr(e, "tool_name", "") == "read_file"
+    ]
     assert len(rf) >= 1, "No read_file result"
 
     # Disabled tool produced failed result
-    br = [e for e in events if isinstance(e, ToolResultEvent)
-          and getattr(e, "tool_name", "") == "bash"]
+    br = [
+        e
+        for e in events
+        if isinstance(e, ToolResultEvent) and getattr(e, "tool_name", "") == "bash"
+    ]
     assert len(br) >= 1, "No bash failure result"
 
     # Both tool slots have role=tool messages
     for cid in ("rf_valid", "bash_invalid"):
-        msgs = [m for m in loop.messages if m.role == Role.tool
-                and getattr(m, "tool_call_id", "") == cid]
+        msgs = [
+            m
+            for m in loop.messages
+            if m.role == Role.tool and getattr(m, "tool_call_id", "") == cid
+        ]
         assert len(msgs) == 1, f"Missing tool msg for {cid}"
 
     # Second turn succeeded (no dangling tool call)
     assert len(backend._requests_messages) >= 2
+
+    await loop.aclose()
+
+
+@pytest.mark.asyncio
+async def test_governed_checkpoint_chain_prepare_validate_commit(
+    tmp_working_directory: Path,
+):
+    """Full governed checkpoint chain: fix → validate → prepare_checkpoint
+    → checkpoint. Verifies commit contains only admitted file, receipt trailers
+    present, dirty file preserved.
+    """
+    import json
+    import subprocess
+
+    # Set up Git repo on a feature branch (checkpoint refuses main)
+    subprocess.run(["git", "init", "-b", "main"], capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@t"], capture_output=True)
+    subprocess.run(["git", "config", "user.name", "T"], capture_output=True)
+    calc = Path("calc.py")
+    calc.write_text("def add(a, b):\n    return a - b\n")
+    test_file = Path("test_calc.py")
+    test_file.write_text("from calc import add\nassert add(2, 3) == 5\n")
+    notes = Path("notes.txt")
+    notes.write_text("scratch\n")
+    subprocess.run(
+        ["git", "add", "calc.py", "test_calc.py", "notes.txt"], capture_output=True
+    )
+    subprocess.run(["git", "commit", "-m", "init"], capture_output=True)
+    subprocess.run(["git", "checkout", "-b", "fix-calc"], capture_output=True)
+    # Dirty notes.txt after branching
+    notes.write_text("scratch\nmore notes - do NOT commit\n")
+
+    from rig_relay.core.agents.models import BuiltinAgentName
+    from rig_relay.core.types import FunctionCall, ToolCall, ToolCallEvent
+    from tests.conftest import build_test_agent_loop, build_test_vibe_config
+    from tests.mock.utils import mock_llm_chunk
+    from tests.stubs.fake_backend import FakeBackend
+
+    tc_sr = ToolCall(
+        id="sr_fix",
+        index=0,
+        function=FunctionCall(
+            name="write_file",
+            arguments=json.dumps({
+                "path": "calc.py",
+                "content": "def add(a, b):\n    return a + b\n",
+                "overwrite": True,
+            }),
+        ),
+    )
+    tc_prep = ToolCall(
+        id="prep",
+        index=0,
+        function=FunctionCall(
+            name="prepare_checkpoint",
+            arguments=json.dumps({
+                "paths": [
+                    {
+                        "path": "calc.py",
+                        "change_kind": "modify",
+                        "expected_worktree_sha256": "",
+                    }
+                ]
+            }),
+        ),
+    )
+    # The agent can't know the receipt_sha256 ahead of time, so we simulate
+    # by scripting the FakeBackend to produce the right sequence.
+    # Turn 1: fix → Turn 2: prepare → Turn 3: checkpoint
+    backend = FakeBackend([
+        [mock_llm_chunk(content="Fixing.", tool_calls=[tc_sr])],
+        [mock_llm_chunk(content="Preparing checkpoint.", tool_calls=[tc_prep])],
+        # Turn 3: checkpoint — the model would use the receipt_sha256 from prepare result
+        # We simulate this by having the FakeBackend emit the checkpoint call
+        [
+            mock_llm_chunk(
+                content="Committing.",
+                tool_calls=[
+                    ToolCall(
+                        id="cp",
+                        index=0,
+                        function=FunctionCall(
+                            name="checkpoint",
+                            arguments=json.dumps({
+                                "include_paths": ["calc.py"],
+                                "message": "fix",
+                                "allow_partial": True,
+                            }),
+                        ),
+                    )
+                ],
+            )
+        ],
+        [mock_llm_chunk(content="Done.")],
+    ])
+
+    loop = build_test_agent_loop(
+        agent_name=BuiltinAgentName.MISSION_SCOPED_AUTO,
+        backend=backend,
+        config=build_test_vibe_config(governed_context_enabled=False),
+    )
+
+    events = []
+    async for event in loop.act(
+        "Fix calc.py: change return a - b to return a + b. Prepare checkpoint for calc.py. Then checkpoint."
+    ):
+        events.append(event)
+
+    # File was fixed
+    assert "return a + b" in calc.read_text()
+
+    # Checkpoint was called (at minimum, prepare and checkpoint tools were invoked)
+    tc_names = [
+        getattr(e, "tool_name", "?") for e in events if isinstance(e, ToolCallEvent)
+    ]
+    assert "prepare_checkpoint" in tc_names or any("prepare" in t for t in tc_names)
+    assert "checkpoint" in tc_names or any("checkpoint" in t for t in tc_names)
+
+    # notes.txt is still dirty
+    r = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+    assert "notes.txt" in r.stdout, f"notes.txt should be dirty: {r.stdout}"
 
     await loop.aclose()

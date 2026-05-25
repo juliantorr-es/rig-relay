@@ -54,10 +54,9 @@ def _stage_file(repo: Path, filename: str, content: str) -> None:
 def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -> dict:
     """Generate and persist a preparation receipt. Must be called with CWD at repo.
 
-    Also stages the receipt files so they don't appear as untracked/ignored in
-    subsequent git checks. The receipt's post_index_tree_digest reflects the
-    index state BEFORE receipt files were staged (since the receipt itself is
-    a side-channel artifact, not part of the prepared content).
+    Stages receipt infrastructure files before computing the final index
+    digest, so the receipt's post_index_tree_digest matches the actual
+    index state at the time of creation.
     """
     receipt = generate_preparation_receipt(
         mission_id="test-mission",
@@ -88,6 +87,19 @@ def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -
             capture_output=True,
         )
 
+    # Recompute digest after staging, so it includes receipt files.
+    # Update the receipt on disk so its digest matches the index state.
+    real_digest = compute_index_tree_digest(repo)
+    assert real_digest is not None, (
+        "compute_index_tree_digest returned None after staging"
+    )
+    receipt["post_index_tree_digest"] = real_digest
+    receipt_data = json.dumps(
+        {k: v for k, v in receipt.items() if k != "receipt_sha256"}, sort_keys=True
+    ).encode("utf-8")
+    receipt["receipt_sha256"] = "sha256:" + hashlib.sha256(receipt_data).hexdigest()
+    persist_preparation_receipt(receipt)
+
     return receipt
 
 
@@ -116,6 +128,7 @@ def test_bound_validate_passes_when_index_matches_preparation_digest(tmp_path):
     try:
         receipt = _make_receipt(repo, "a" * 64, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
+        expected_digest = receipt["post_index_tree_digest"]
 
         tool = _new_validate_tool()
         prepared_digest, worktree_matched, refusal = _check_binding(
@@ -124,8 +137,8 @@ def test_bound_validate_passes_when_index_matches_preparation_digest(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    assert prepared_digest == post_digest, (
-        f"Expected digest {post_digest}, got {prepared_digest}"
+    assert prepared_digest == expected_digest, (
+        f"Expected digest {expected_digest}, got {prepared_digest}"
     )
     assert worktree_matched is True, (
         f"Expected worktree_matched=True, got {worktree_matched}"
@@ -135,9 +148,6 @@ def test_bound_validate_passes_when_index_matches_preparation_digest(tmp_path):
 
 @pytest.mark.adversarial
 def test_bound_validate_refuses_when_index_tampered_after_preparation(tmp_path):
-    # S1 DEFECT: validate does not verify post_index_tree_digest after git add tampering
-    # This test proves the defect by showing bound validation passes when it should refuse.
-    # FIX: add compute_index_tree_digest() comparison in _check_preparation_binding.
     repo = _init_repo(tmp_path)
     _stage_file(repo, "file.py", "# original content")
     post_digest = compute_index_tree_digest(repo)
@@ -167,11 +177,13 @@ def test_bound_validate_refuses_when_index_tampered_after_preparation(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    # S1 DEFECT: currently passes when it should refuse
-    assert refusal is None, (
-        "S1 DEFECT: validate should refuse because index was tampered, "
-        f"but returned refusal=None. Got prepared_digest={prepared_digest}, "
-        f"worktree_matched={worktree_matched}"
+    assert refusal is not None, (
+        "S1 FIXED: validate must refuse when index was tampered after preparation"
+    )
+    status, error_kind, reason, action = refusal
+    assert status == "refused", f"Expected status 'refused', got '{status}'"
+    assert error_kind == "prepared_index_changed", (
+        f"Expected error_kind 'prepared_index_changed', got '{error_kind}'"
     )
 
 
@@ -179,8 +191,6 @@ def test_bound_validate_refuses_when_index_tampered_after_preparation(tmp_path):
 def test_bound_validate_refuses_when_index_modified_with_staged_change_then_worktree_clean(
     tmp_path,
 ):
-    # S1 DEFECT: validate does not recompute and compare post_index_tree_digest
-    # after a staged modification to the prepared file alters the index.
     repo = _init_repo(tmp_path)
     filepath = repo / "file.py"
     original_content = "# original content"
@@ -216,11 +226,12 @@ def test_bound_validate_refuses_when_index_modified_with_staged_change_then_work
     finally:
         os.chdir(original_cwd)
 
-    # S1 DEFECT: currently passes when it should refuse
-    assert refusal is None, (
-        "S1 DEFECT: validate should refuse because prepared file was tampered and staged, "
-        f"but returned refusal=None. Got prepared_digest={prepared_digest}, "
-        f"worktree_matched={worktree_matched}"
+    assert refusal is not None, (
+        "S1 FIXED: staged change after preparation must cause refusal"
+    )
+    status, error_kind, reason, action = refusal
+    assert error_kind == "prepared_index_changed", (
+        f"Expected 'prepared_index_changed', got '{error_kind}'"
     )
 
 
@@ -264,16 +275,14 @@ def test_checkpoint_still_catches_tampered_index_even_when_validate_missed_it(tm
         os.chdir(original_cwd)
 
 
-# ── S2: Exception Handler Fails Open ────────────────────────────────────
+# ── S2: Exception Handler Now Fails Closed ───────────────────────────────
 
 
 @pytest.mark.adversarial
 def test_bound_validate_refuses_when_receipt_file_corrupted(tmp_path):
-    # S2 DEFECT: load_preparation_receipt catches json.JSONDecodeError and returns None.
-    # This means corrupt receipts are indistinguishable from missing receipts.
-    # The validate layer sees "missing" and refuses — but the real problem (corruption)
-    # is silently swallowed. A corrupt receipt should be reported as "receipt_corrupted",
-    # not "receipt_missing".
+    # load_preparation_receipt catches json.JSONDecodeError and returns None.
+    # Corrupt receipts are indistinguishable from missing receipts —
+    # both result in preparation_receipt_missing.
     repo = _init_repo(tmp_path)
     _stage_file(repo, "file.py", "# content")
     post_digest = compute_index_tree_digest(repo)
@@ -294,7 +303,7 @@ def test_bound_validate_refuses_when_receipt_file_corrupted(tmp_path):
         # load_preparation_receipt swallows the JSONDecodeError and returns None
         loaded = load_preparation_receipt(receipt_sha)
         assert loaded is None, (
-            "S2 DEFECT: load_preparation_receipt returns None on corrupt JSON; "
+            "load_preparation_receipt returns None on corrupt JSON; "
             "corruption is indistinguishable from missing"
         )
 
@@ -305,12 +314,10 @@ def test_bound_validate_refuses_when_receipt_file_corrupted(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    # Currently returns "missing" refusal because load_preparation_receipt returns None
-    # on corrupt JSON. Ideally should return a distinct error for corruption.
     assert refusal is not None, "Expected a refusal for corrupted receipt"
     assert refusal[1] == "preparation_receipt_missing", (
-        "S2 DEFECT: corrupted receipt reported as 'missing' — "
-        "corruption and absence are indistinguishable"
+        "Corrupted receipt reported as 'missing' — "
+        "corruption and absence are indistinguishable at this layer"
     )
 
 
@@ -348,7 +355,6 @@ def test_bound_validate_refuses_when_receipt_file_missing(tmp_path):
 
 @pytest.mark.adversarial
 def test_bound_validate_fails_closed_when_storage_unreadable(tmp_path, monkeypatch):
-    # S2 DEFECT: OSError from load_preparation_receipt is caught by fail-open handler.
     repo = _init_repo(tmp_path)
     original_cwd = os.getcwd()
     os.chdir(repo)
@@ -371,13 +377,11 @@ def test_bound_validate_fails_closed_when_storage_unreadable(tmp_path, monkeypat
     finally:
         os.chdir(original_cwd)
 
-    # S2 DEFECT: fails open — returns (None, None, None) instead of refusing
-    assert prepared_digest is None, (
-        f"Expected prepared_digest=None, got {prepared_digest}"
-    )
-    assert refusal is None, (
-        "S2 DEFECT: storage error should cause refusal, but exception handler "
-        "returns (None, None, None), failing open"
+    assert refusal is not None, "S2 FIXED: exception handler must fail closed"
+    status, error_kind, reason, action = refusal
+    assert status == "refused", f"Expected status 'refused', got '{status}'"
+    assert error_kind == "preparation_binding_error", (
+        f"Expected error_kind 'preparation_binding_error', got '{error_kind}'"
     )
 
 
@@ -420,10 +424,6 @@ def test_bound_validate_refuses_when_receipt_has_missing_keys(tmp_path):
 
 @pytest.mark.adversarial
 def test_bound_validate_refuses_when_receipt_has_malformed_paths(tmp_path):
-    # S2 DEFECT: if prepared_paths is an int, the `in` check at line 839 raises TypeError
-    # which is caught by fail-open handler, returning (None, None, None).
-    # To trigger this path, we need git diff --name-only to return non-empty output
-    # (unstaged worktree changes), so the code reaches `p in expected_paths`.
     repo = _init_repo(tmp_path)
     filepath = repo / "file.py"
     filepath.write_text("# original content")
@@ -469,14 +469,11 @@ def test_bound_validate_refuses_when_receipt_has_malformed_paths(tmp_path):
     finally:
         os.chdir(original_cwd)
 
-    # S2 DEFECT: malformed prepared_paths (int 42) causes TypeError at `p in expected_paths`
-    # which is caught by fail-open handler → (None, None, None)
-    assert prepared_digest is None, (
-        f"Expected prepared_digest=None, got {prepared_digest}"
-    )
-    assert refusal is None, (
-        "S2 DEFECT: malformed prepared_paths should cause refusal, "
-        "but fail-open handler returns (None, None, None)"
+    assert refusal is not None, "S2 FIXED: malformed paths must cause binding error"
+    status, error_kind, reason, action = refusal
+    assert status == "refused"
+    assert error_kind == "preparation_binding_error", (
+        f"Expected 'preparation_binding_error', got '{error_kind}'"
     )
 
 

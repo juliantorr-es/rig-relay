@@ -179,6 +179,7 @@ class GrepResult(BaseModel):
     was_truncated: bool = Field(
         description="True if output was cut short by max_matches or max_output_bytes."
     )
+    error_kind: str | None = None
 
     @property
     def parsed_matches(self) -> list[GrepMatch]:
@@ -219,28 +220,55 @@ class Grep(
             sensitive_patterns=self.config.sensitive_patterns,
         )
 
-    def _detect_backend(self) -> GrepBackend:
+    def _detect_backend(self) -> tuple[GrepBackend | None, str | None]:
         if shutil.which("rg"):
-            return GrepBackend.RIPGREP
+            return GrepBackend.RIPGREP, None
         if shutil.which("grep"):
-            return GrepBackend.GNU_GREP
-        raise ToolError(
-            "Neither ripgrep (rg) nor grep is installed. "
-            "Please install ripgrep: https://github.com/BurntSushi/ripgrep#installation"
-        )
+            return GrepBackend.GNU_GREP, None
+        return None, "tool_unavailable"
 
     async def run(
         self, args: GrepArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | GrepResult, None]:
-        backend = self._detect_backend()
-        self._validate_args(args)
+        backend, backend_error = self._detect_backend()
+        if backend_error is not None or backend is None:
+            yield GrepResult(
+                matches="",
+                match_count=0,
+                was_truncated=False,
+                error_kind=backend_error or "tool_unavailable",
+            )
+            return
+
+        validation_error = self._validate_args(args)
+        if validation_error is not None:
+            yield GrepResult(
+                matches="",
+                match_count=0,
+                was_truncated=False,
+                error_kind=validation_error,
+            )
+            return
 
         exclude_patterns = self._collect_exclude_patterns()
         cmd = self._build_command(args, exclude_patterns, backend)
-        stdout, stdout_bytes, stderr_bytes = await self._execute_search(cmd)
+        stdout, stdout_bytes, stderr_bytes, search_error = await self._execute_search(
+            cmd
+        )
+
+        if search_error is not None:
+            yield GrepResult(
+                matches="", match_count=0, was_truncated=False, error_kind=search_error
+            )
+            return
 
         max_matches = args.max_matches or self.config.default_max_matches
         result = self._parse_output(stdout, max_matches)
+
+        if result.was_truncated:
+            result.error_kind = "results_truncated"
+        elif backend == GrepBackend.GNU_GREP:
+            result.error_kind = "fallback_used"
 
         if ctx and ctx.session_dir and ctx.tool_call_id:
             try:
@@ -348,15 +376,17 @@ class Grep(
             "result count exceeded max_matches or output size exceeded max_output_bytes"
         )
 
-    def _validate_args(self, args: GrepArgs) -> None:
+    def _validate_args(self, args: GrepArgs) -> str | None:
         if not args.pattern.strip():
-            raise ToolError("Empty search pattern provided.")
+            return "invalid_pattern"
 
         path_obj = normalize_tool_path(args.path)
         require_path_within_workdir(path_obj)
 
         if not path_obj.exists():
-            raise ToolError(f"Path does not exist: {args.path}")
+            return "path_refused"
+
+        return None
 
     def _collect_exclude_patterns(self) -> list[str]:
         patterns = list(self.config.exclude_patterns)
@@ -434,7 +464,9 @@ class Grep(
 
         return cmd
 
-    async def _execute_search(self, cmd: list[str]) -> tuple[str, bytes, bytes]:
+    async def _execute_search(
+        self, cmd: list[str]
+    ) -> tuple[str, bytes, bytes, str | None]:
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -446,9 +478,7 @@ class Grep(
                 )
             except TimeoutError:
                 await kill_async_subprocess(proc, kill_process_group=False)
-                raise ToolError(
-                    f"Search timed out after {self.config.default_timeout}s"
-                )
+                return "", b"", b"", "search_failed"
 
             stdout = (
                 stdout_bytes.decode("utf-8", errors="ignore") if stdout_bytes else ""
@@ -458,15 +488,18 @@ class Grep(
             )
 
             if proc.returncode not in {0, 1}:
-                error_msg = stderr or f"Process exited with code {proc.returncode}"
-                raise ToolError(f"grep error: {error_msg}")
+                error_kind = "search_failed"
+                if (
+                    "regex" in (stderr or "").lower()
+                    or "invalid" in (stderr or "").lower()
+                ):
+                    error_kind = "invalid_pattern"
+                return stdout, stdout_bytes or b"", stderr_bytes or b"", error_kind
 
-            return stdout, stdout_bytes or b"", stderr_bytes or b""
+            return stdout, stdout_bytes or b"", stderr_bytes or b"", None
 
-        except ToolError:
-            raise
-        except Exception as exc:
-            raise ToolError(f"Error running grep: {exc}") from exc
+        except Exception:
+            return "", b"", b"", "search_failed"
 
     def _parse_output(self, stdout: str, max_matches: int) -> GrepResult:
         output_lines = stdout.splitlines() if stdout else []
