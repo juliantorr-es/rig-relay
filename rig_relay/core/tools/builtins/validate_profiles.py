@@ -35,7 +35,7 @@ def list_profiles() -> list[str]:
 _register(
     Profile(
         name="quick",
-        description="Fast sanity check: git status, targeted ruff, focused pytest",
+        description="Fast local feedback: git status, focused pytest, scoped ruff",
         checks=[
             ProfileCheck(
                 check_id="git_status",
@@ -51,7 +51,7 @@ _register(
 _register(
     Profile(
         name="python",
-        description="Python surface: ruff check, pyright, focused pytest",
+        description="Python surface: ruff check, pyright, pytest",
         checks=[
             ProfileCheck(
                 check_id="ruff_check",
@@ -64,6 +64,12 @@ _register(
                 command_kind="pyright",
                 argv=["uv", "run", "pyright"],
                 display="pyright",
+            ),
+            ProfileCheck(
+                check_id="pytest",
+                command_kind="pytest",
+                argv=["uv", "run", "pytest"],
+                display="pytest",
             ),
         ],
         default_timeout=300,

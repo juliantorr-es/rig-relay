@@ -9,8 +9,11 @@ from rig_relay.core.tool_executor.concurrency import ToolConcurrencyManager
 from rig_relay.core.tool_executor.context import ToolSessionContext, ToolTurnContext
 from rig_relay.core.tool_executor.council_gate import CouncilGate
 from rig_relay.core.tool_runtime_models import (
+    RefusalCode,
     ToolRuntimeExecutionMode,
+    ToolRuntimeRefusal,
     ToolRuntimeRequest,
+    ToolRuntimeResult,
     ToolRuntimeStatus,
 )
 from rig_relay.core.utils import (
@@ -18,6 +21,37 @@ from rig_relay.core.utils import (
     CancellationReason,
     get_user_cancellation_message,
 )
+
+
+class ToolObservationDeliveryError(Exception):
+    """Raised when handle_tool_response fails — tool observation cannot be
+    delivered to the conversation loop. Carries full correlation identity so
+    callers can surface it as a fatal batch/turn failure.
+    """
+
+    def __init__(
+        self,
+        tool_name: str,
+        tool_call_id: str,
+        *,
+        session_id: str = "",
+        turn_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        runtime_status: str = "",
+        message: str = "",
+        tool_executed: bool = True,
+    ) -> None:
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.tool_call_id = tool_call_id
+        self.session_id = session_id
+        self.turn_id = turn_id
+        self.correlation_id = correlation_id
+        self.causation_id = causation_id
+        self.runtime_status = runtime_status
+        self.tool_executed = tool_executed
+
 
 if TYPE_CHECKING:
     from rig_relay.core.llm.format import ResolvedToolCall
@@ -79,7 +113,12 @@ class ToolExecutor:
             call_id=tool_call.call_id,
             arguments=tool_call.validated_args.model_dump_json(),
         ) as span:
-            runtime = self.adapter_builder.build_tool_runtime()
+            runtime = self.adapter_builder.build_tool_runtime(
+                tool_call.tool_class,
+                mission_authority=getattr(self._turn_ctx, "mission_authority", None)
+                if self._turn_ctx
+                else None,
+            )
             tn = tool_call.tool_name
             cid = tool_call.call_id
 
@@ -111,10 +150,18 @@ class ToolExecutor:
                 tool_name=tn,
                 tool_args=tool_call.args_dict,
                 tool_call_id=cid,
-                turn_id=turn_ctx.user_message_id,
+                turn_id=turn_ctx.turn_id,
+                correlation_id=turn_ctx.correlation_id,
+                causation_id=turn_ctx.causation_id,
                 session_id=session_ctx.session_id,
                 execution_mode=exec_mode,
                 bypass_permissions=turn_ctx.bypass_permissions,
+                mutation_class=(
+                    tool_call.tool_class.mutation_class.value
+                    if getattr(tool_call.tool_class, "mutation_class", None)
+                    and hasattr(tool_call.tool_class.mutation_class, "value")
+                    else None
+                ),
             )
 
             try:
@@ -132,6 +179,21 @@ class ToolExecutor:
                 turn = turn_ctx.current_turn
                 if turn is not None:
                     turn.tool_skip_count += 1
+
+                refusal = ToolRuntimeRefusal(
+                    refusal_code=RefusalCode.CAPABILITY_GATED,
+                    message="Council consultation blocked this mutation",
+                    recoverable=False,
+                )
+                refused_result = ToolRuntimeResult.refused(
+                    tool_name=tn,
+                    tool_call_id=cid,
+                    correlation_id=turn_ctx.correlation_id,
+                    causation_id=turn_ctx.causation_id,
+                    turn_id=turn_ctx.turn_id,
+                    session_id=session_ctx.session_id,
+                    refusal=refusal,
+                )
                 from rig_relay.core.types import ToolResultEvent as TRE
 
                 yield TRE(
@@ -142,6 +204,14 @@ class ToolExecutor:
                     cancelled=False,
                     tool_call_id=cid,
                 )
+                self._deliver_tool_response_or_raise(
+                    tool_call=tool_call,
+                    text="Council consultation blocked this mutation",
+                    status="skipped",
+                    runtime_result=refused_result,
+                    tool_executed=False,
+                )
+                session_ctx.result_sink.record(refused_result)
                 return
             if recommendation == "REVIEW" and session_ctx.approval_callback is not None:
                 from rig_relay.core.types import ApprovalResponse
@@ -153,16 +223,40 @@ class ToolExecutor:
                     turn = turn_ctx.current_turn
                     if turn is not None:
                         turn.tool_skip_count += 1
+
+                    reason = feedback or "Council review not approved by user"
+                    refusal = ToolRuntimeRefusal(
+                        refusal_code=RefusalCode.APPROVAL_DENIED,
+                        message=reason,
+                        recoverable=True,
+                    )
+                    refused_result = ToolRuntimeResult.refused(
+                        tool_name=tn,
+                        tool_call_id=cid,
+                        correlation_id=turn_ctx.correlation_id,
+                        causation_id=turn_ctx.causation_id,
+                        turn_id=turn_ctx.turn_id,
+                        session_id=session_ctx.session_id,
+                        refusal=refusal,
+                    )
                     from rig_relay.core.types import ToolResultEvent as TRE
 
                     yield TRE(
                         tool_name=tn,
                         tool_class=tool_call.tool_class,
                         skipped=True,
-                        skip_reason=feedback or "Council review not approved by user",
+                        skip_reason=reason,
                         cancelled=False,
                         tool_call_id=cid,
                     )
+                    self._deliver_tool_response_or_raise(
+                        tool_call=tool_call,
+                        text=reason,
+                        status="skipped",
+                        runtime_result=refused_result,
+                        tool_executed=False,
+                    )
+                    session_ctx.result_sink.record(refused_result)
                     return
 
             try:
@@ -175,7 +269,12 @@ class ToolExecutor:
                 if turn is not None:
                     turn.tool_failure_count += 1
                 yield self._tool_failure_event(
-                    tool_call, cancel, None, cancelled=True, span=span
+                    tool_call,
+                    cancel,
+                    None,
+                    cancelled=True,
+                    span=span,
+                    runtime_result=None,
                 )
                 raise
 
@@ -198,6 +297,19 @@ class ToolExecutor:
                         turn.tool_success_count += 1
                     session_ctx.result_sink.record(result)
                     yield cached_event
+                    text = ""
+                    response_model = result.provider_tool_response
+                    if response_model is not None and hasattr(
+                        response_model, "model_dump"
+                    ):
+                        result_dict = response_model.model_dump()
+                        text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
+                    self._deliver_tool_response_or_raise(
+                        tool_call=tool_call,
+                        text=text or "[cached result]",
+                        status="success",
+                        runtime_result=result,
+                    )
 
                 case ToolRuntimeStatus.COMPLETED | ToolRuntimeStatus.DEGRADED:
                     for ev in result.tool_events:
@@ -223,15 +335,15 @@ class ToolExecutor:
                         except Exception:
                             pass
 
-                    if session_ctx.handle_tool_response is not None:
-                        session_ctx.handle_tool_response(
-                            tool_call=tool_call,
-                            text=text,
-                            status="success",
-                            result=result_dict,
-                            span=span,
-                            duration_ms=duration_sec * 1000,
-                        )
+                    self._deliver_tool_response_or_raise(
+                        tool_call=tool_call,
+                        text=text,
+                        status="success",
+                        result=result_dict,
+                        span=span,
+                        duration_ms=duration_sec * 1000,
+                        runtime_result=result,
+                    )
 
                     from rig_relay.core.types import ToolResultEvent as TRE
 
@@ -269,13 +381,14 @@ class ToolExecutor:
                     if turn is not None:
                         turn.tool_skip_count += 1
                     yield skip_event
-                    if session_ctx.handle_tool_response is not None:
-                        session_ctx.handle_tool_response(
-                            tool_call=tool_call,
-                            text=reason_text,
-                            status="skipped",
-                            span=span,
-                        )
+                    self._deliver_tool_response_or_raise(
+                        tool_call=tool_call,
+                        text=reason_text,
+                        status="skipped",
+                        span=span,
+                        runtime_result=result,
+                        tool_executed=False,
+                    )
                     session_ctx.result_sink.record(result)
 
                 case ToolRuntimeStatus.FAILED:
@@ -286,7 +399,7 @@ class ToolExecutor:
                     if turn is not None:
                         turn.tool_failure_count += 1
                     yield self._tool_failure_event(
-                        tool_call, error_msg, None, span=span
+                        tool_call, error_msg, None, span=span, runtime_result=result
                     )
                     session_ctx.result_sink.record(result)
 
@@ -298,7 +411,7 @@ class ToolExecutor:
                     if turn is not None:
                         turn.tool_failure_count += 1
                     yield self._tool_failure_event(
-                        tool_call, error_msg, None, span=span
+                        tool_call, error_msg, None, span=span, runtime_result=result
                     )
 
     def _tool_failure_event(
@@ -308,12 +421,16 @@ class ToolExecutor:
         decision: Any = None,
         cancelled: bool = False,
         span: Any = None,
+        runtime_result: Any = None,
     ) -> Any:
-        session_ctx = self._session_ctx
-        if session_ctx.handle_tool_response is not None:
-            session_ctx.handle_tool_response(
-                tool_call=tool_call, text=error_msg, status="failure", span=span
-            )
+        self._deliver_tool_response_or_raise(
+            tool_call=tool_call,
+            text=error_msg,
+            status="failure",
+            span=span,
+            runtime_result=runtime_result,
+            tool_executed=False,
+        )
         from rig_relay.core.types import ToolResultEvent
 
         return ToolResultEvent(
@@ -386,3 +503,53 @@ class ToolExecutor:
             tool_calls, self.execute_one_tool
         ):
             yield event
+
+    def _deliver_tool_response_or_raise(
+        self,
+        *,
+        tool_call: Any,
+        text: str,
+        status: str,
+        runtime_result: ToolRuntimeResult | None = None,
+        tool_executed: bool = True,
+        **extra_kwargs: Any,
+    ) -> None:
+        """Deliver the tool response via the session callback, or raise
+        ToolObservationDeliveryError if projection fails.
+        """
+        session_ctx = self._session_ctx
+        if session_ctx.handle_tool_response is None:
+            return
+        try:
+            session_ctx.handle_tool_response(
+                tool_call=tool_call,
+                text=text,
+                status=status,
+                runtime_result=runtime_result,
+                **extra_kwargs,
+            )
+        except Exception as exc:
+            turn_ctx = self._turn_ctx
+            raise ToolObservationDeliveryError(
+                tool_name=tool_call.tool_name,
+                tool_call_id=tool_call.call_id,
+                session_id=session_ctx.session_id,
+                turn_id=turn_ctx.turn_id if turn_ctx else "",
+                correlation_id=(
+                    getattr(runtime_result, "correlation_id", "")
+                    if runtime_result
+                    else ""
+                ),
+                causation_id=(
+                    getattr(runtime_result, "causation_id", "")
+                    if runtime_result
+                    else ""
+                ),
+                runtime_status=(
+                    getattr(runtime_result, "status", "").value
+                    if runtime_result
+                    else "unknown"
+                ),
+                message=str(exc),
+                tool_executed=tool_executed,
+            ) from exc

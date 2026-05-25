@@ -16,7 +16,6 @@ from rig_relay.cli._steward._campaign_models import (
 )
 from rig_relay.cli._steward._campaign_mutation import execute_proposal_based_mutation
 from rig_relay.cli._steward._campaign_registry import PathClassificationRegistry
-from rig_relay.cli._steward._mutation_apply_receipt import load_apply_receipt
 from rig_relay.cli._steward._mutation_payload import (
     MutationPayloadRecord,
     compute_payload_sha256,
@@ -301,15 +300,16 @@ def test_contract_canonical_receipt_validation_accepts_campaign_format():
     The campaign checkpoint receipt (with corrected schema_version and
     ISO 8601 expires_at) passes the canonical Checkpoint._validate_receipt.
     """
-    from rig_relay.core.tools.builtins.checkpoint import Checkpoint
-    from rig_relay.cli._steward._campaign_models import (
-        CampaignState,
-        CampaignManifestExtension,
-    )
+    import json
+
     from rig_relay.cli._steward._campaign_checkpoint import (
         issue_campaign_checkpoint_receipt,
     )
-    import json
+    from rig_relay.cli._steward._campaign_models import (
+        CampaignManifestExtension,
+        CampaignState,
+    )
+    from rig_relay.core.tools.builtins.checkpoint import Checkpoint
 
     state = CampaignState.model_validate({
         "campaign_id": "c1",
@@ -349,8 +349,9 @@ def test_contract_canonical_receipt_rejects_wrong_action():
     """Classification: contract/sabotage
     Receipt with wrong action is rejected by canonical Checkpoint.
     """
-    from rig_relay.core.tools.builtins.checkpoint import Checkpoint
     import json
+
+    from rig_relay.core.tools.builtins.checkpoint import Checkpoint
 
     receipt = {
         "schema_version": "rig.relay.step_up_authorization_receipt.v1",

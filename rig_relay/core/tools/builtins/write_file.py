@@ -41,8 +41,12 @@ from rig_relay.tracing.store import get_default_trace_store
 class WriteFileArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    path: str
-    content: str
+    path: str = Field(
+        description="Repository-relative file path to write. Parent directories created automatically."
+    )
+    content: str = Field(
+        description="Text content to write. Must be valid text (UTF-8)."
+    )
     overwrite: bool = Field(
         default=False, description="Must be set to true to overwrite an existing file."
     )
@@ -62,6 +66,9 @@ class WriteFileArgs(BaseModel):
             "The write will be REFUSED if this hash does not match the current file bytes — "
             "re-read the file and recompute the hash if you get a stale-hash refusal."
         ),
+    )
+    content_encoding: str = Field(
+        default="utf-8", description="Encoding to use when writing the file content."
     )
 
 
@@ -148,7 +155,11 @@ class WriteFile(
     ToolUIData[WriteFileArgs, WriteFileResult],
 ):
     description: ClassVar[str] = (
-        "Create or overwrite a UTF-8 file. Fails if file exists unless 'overwrite=True'."
+        "Create or overwrite a UTF-8 file. Use write_file for creating new files "
+        "or completely replacing existing files. For targeted modifications to "
+        "existing code, prefer search_replace. "
+        "Parents directories are created automatically. "
+        "Content is capped at 64KB. Fails if file exists unless overwrite=True."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.DETERMINISTIC_REPO_STATE
@@ -482,15 +493,11 @@ class WriteFile(
 
         # ── Atomic write ──
         try:
-            await self._atomic_write_text(
+            self._atomic_write_text(
                 file_path=file_path,
                 content=args.content,
                 encoding=args.content_encoding,
             )
-        except OSError:
-            raise
-        except Exception:
-            raise
             after_sha256 = sha256_file_bytes(file_path.read_bytes())
             assert after_sha256 is not None  # file was just written
             after_bytes = file_path.stat().st_size
@@ -514,6 +521,10 @@ class WriteFile(
                 coordination_store, coordination, result
             )
             yield result
+        except OSError:
+            raise
+        except Exception:
+            raise
         finally:
             if (
                 coordination_store is not None
@@ -538,7 +549,9 @@ class WriteFile(
         return False
 
     @staticmethod
-    def _atomic_write_text(file_path: Path, content: str) -> None:
+    def _atomic_write_text(
+        file_path: Path, content: str, encoding: str = "utf-8"
+    ) -> None:
         """Write text content atomically using same-directory temp file + os.replace().
 
         Creates a temporary file in the same directory as target, writes content,
@@ -626,7 +639,6 @@ async def apply_verified_candidate(
     import os
     import tempfile
 
-    from rig_relay.governance.dirty_guard import get_guard
     from rig_relay.governance.dirty_guard import get_guard
 
     resolved = operational_file_path.resolve()

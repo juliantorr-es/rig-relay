@@ -5,6 +5,7 @@ from enum import StrEnum
 
 class EventName(StrEnum):
     REQUEST_ACCOUNTED = "rig.relay.context.request_accounted"
+    AGENT_OUTCOME_PROJECTION = "rig.relay.agent_outcome.projection"
     TOOL_CALL_COMPLETED = "rig.relay.tool.call_completed"
     TOOL_CALLED = "rig.relay.tool.called"
     TOOL_REASONING_TRACE = "rig.relay.tool.reasoning_trace"

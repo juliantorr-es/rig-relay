@@ -92,6 +92,9 @@ class TelemetryEvidenceService:
         input_sha256: str = "",
         output_sha256: str = "",
         output_kind: ToolOutputKind = ToolOutputKind.INLINE,
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str = "",
     ) -> None:
         self._telemetry_client.send_tool_call_finished(
             tool_call=tool_call,
@@ -104,6 +107,9 @@ class TelemetryEvidenceService:
             input_sha256=input_sha256,
             output_sha256=output_sha256,
             output_kind=output_kind,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
             mutation_class=getattr(
                 tool_call.tool_class, "mutation_class", ToolMutationClass.UNKNOWN
             ),
@@ -122,6 +128,9 @@ class TelemetryEvidenceService:
         input_json: str = "",
         text: str = "",
         duration_ms: float | None = None,
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str = "",
     ) -> None:
         text_bytes = len(text.encode("utf-8"))
         determinism_class_str = getattr(
@@ -152,6 +161,50 @@ class TelemetryEvidenceService:
             truncated=text_bytes > _TRUNCATION_PROMPT_BYTES,
             determinism_class=str(determinism_class_str),
             mutation_class=str(mutation_class_str),
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+        )
+
+    def emit_agent_outcome_projection(
+        self, outcome: Any, correlation_id: str = "", causation_id: str = ""
+    ) -> None:
+        """Emit a content-light agent outcome projection event.
+
+        Only metadata fields are included — no raw text, file paths,
+        patch content, or tool output.
+        """
+        self._telemetry_client.send_telemetry_event(
+            event_name="rig.relay.agent_outcome.projection",
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            properties={
+                "session_id": outcome.session_id,
+                "turn_id": outcome.turn_id,
+                "schema_version": outcome.schema_version,
+                "tool_name": outcome.tool_name,
+                "tool_call_id": outcome.tool_call_id,
+                "projected_status": outcome.status,
+                "error_kind": outcome.error_kind,
+                "refusal_code": outcome.refusal_code,
+                "recoverable": outcome.recoverable,
+                "retryable": outcome.retryable,
+                "retryability_basis": outcome.retryability_basis,
+                "suggested_next_action_source": outcome.suggested_next_action_source,
+                "degraded_capabilities": outcome.degraded_capabilities,
+                "mutation_disposition": outcome.mutation_disposition,
+                "cache_hit": outcome.cache_hit,
+                "authority_decision": outcome.authority_decision,
+                "authority_source": outcome.authority_source,
+                "mission_identity": getattr(outcome, "mission_identity", None),
+                "matched_rule_kind": getattr(outcome, "matched_rule_kind", None),
+                "approval_avoided_by_mission_authority": (
+                    outcome.authority_decision == "allowed_in_scope"
+                    and outcome.authority_source == "mission_claim"
+                ),
+                "warning_count": len(outcome.warnings),
+            },
+            receipt_candidate=True,
         )
 
     def emit_artifact_written(

@@ -30,12 +30,12 @@ from rig_relay.core.types import ToolCallEvent, ToolResultEvent, ToolStreamEvent
 
 
 class CheckpointArgs(BaseModel):
-    session_id: str | None = None
-    task_id: str | None = None
-    message: str
-    include_paths: list[str] = Field(default_factory=list)
-    validation_summary: list[str] = Field(default_factory=list)
-    allow_partial: bool = False
+    session_id: str | None = Field(default=None, description="Session identifier. Auto-populated by the agent loop. Leave as default.")
+    task_id: str | None = Field(default=None, description="Task identifier. Auto-populated by the agent loop. Leave as default.")
+    message: str = Field(description="Commit message. Auto-prefixed with 'checkpoint(task_id):' unless starts with 'checkpoint('.")
+    include_paths: list[str] = Field(default_factory=list, description="Repository-relative file paths to include in the commit. Files must already be staged. Empty requires allow_partial=True.")
+    validation_summary: list[str] = Field(default_factory=list, description="Command strings that passed before this checkpoint (e.g., 'ruff check', 'pytest'). Included in commit message for audit.")
+    allow_partial: bool = Field(default=False, description="Allow checkpoint with empty include_paths or unrelated staged files from other lanes.")
     authorization_receipt: str | None = Field(
         default=None,
         description="JSON string of a signed authorization receipt for checkpoint commit.",
@@ -74,7 +74,16 @@ class Checkpoint(
     ToolUIData[CheckpointArgs, CheckpointResult],
 ):
     description: ClassVar[str] = (
-        "Create a governed local checkpoint commit for session-owned files."
+        "Create a governed local checkpoint commit for session-owned files. "
+        "Creates a LOCAL git commit only — does not push, merge, or promote. "
+        "Automatically receives a mission-issued authorization receipt when "
+        "the mission permits governed checkpoints.\n\n"
+        "Pre-condition: files in include_paths must already be staged. "
+        "Checkpoint does not auto-stage. Stage files before calling checkpoint.\n\n"
+        "Workflow: modify files → git add → validate → checkpoint → user pushes. "
+        "Example: checkpoint(message='refactor: extract helper', include_paths=['src/helpers.py', 'tests/test_helpers.py'], validation_summary=['ruff check', 'pytest'])\n\n"
+        "Refuses on: main/master branch, detached HEAD, merge conflicts, "
+        "files reserved by other sessions, protected dirty files from other lanes."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO

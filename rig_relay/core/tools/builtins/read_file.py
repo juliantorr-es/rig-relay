@@ -48,7 +48,7 @@ class _ReadResult(NamedTuple):
 
 
 class ReadFileArgs(BaseModel):
-    path: str
+    path: str = Field(description="Repository-relative path to the file to read.")
     offset: int = Field(
         default=0,
         description="Line number to start reading from (0-indexed, inclusive).",
@@ -90,7 +90,13 @@ class ReadFile(
 ):
     description: ClassVar[str] = (
         "Read a text file (encoding detected safely), returning content from a "
-        "specific line range. Reading is capped by a byte limit for safety."
+        "specific line range. Reading is capped by a byte limit for safety.\n\n"
+        "Use read_file when the target file is known and you need source context. "
+        "For searching code, prefer grep. For structural code patterns, use ast_grep. "
+        "For directory listings, use bash.\n\n"
+        "Offset is 0-indexed. When was_truncated=true, use offset+limit to page "
+        "through the file. Binary files are detected and refused. "
+        "Large files (>10MB) are refused. Output is capped at 64KB."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.DETERMINISTIC_REPO_STATE

@@ -16,6 +16,7 @@ from rig_relay.core.telemetry.tool_contract import (
     ToolMutationClass as ToolMutationClass,
     ToolOutputKind,
 )
+from rig_relay.core.tool_runtime_models import ToolRuntimeResult
 from rig_relay.core.types import LLMMessage, ToolResultEvent
 
 if TYPE_CHECKING:
@@ -45,6 +46,7 @@ class ToolResultRuntime:
         result: dict[str, Any] | None = None,
         span: trace.Span | None = None,
         duration_ms: float | None = None,
+        runtime_result: ToolRuntimeResult | None = None,
     ) -> None:
         loop = self._loop
 
@@ -68,6 +70,18 @@ class ToolResultRuntime:
         input_sha256 = hashlib.sha256(input_json.encode("utf-8")).hexdigest()
         output_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
+        corr_id = (
+            getattr(runtime_result, "correlation_id", "") or ""
+            if runtime_result
+            else ""
+        )
+        cause_id = (
+            getattr(runtime_result, "causation_id", "") or "" if runtime_result else ""
+        )
+        turn_id_val = (
+            getattr(runtime_result, "turn_id", "") or "" if runtime_result else ""
+        )
+
         output_kind = ToolOutputKind.INLINE
         if status == "failure":
             output_kind = ToolOutputKind.ERROR
@@ -84,6 +98,24 @@ class ToolResultRuntime:
                 tool_name=tool_call.tool_name,
                 sequence=len(loop.messages),
             )
+
+        # ── Agent outcome projection ──────────────────────────────────
+        if runtime_result is not None:
+            from rig_relay.core.tools._agent_outcome import (
+                derive_agent_outcome,
+                format_agent_outcome,
+                neutralize_reserved_delimiters,
+            )
+
+            outcome = derive_agent_outcome(runtime_result, tool_call.tool_class)
+            annotation = format_agent_outcome(outcome)
+            display_text = neutralize_reserved_delimiters(display_text)
+            display_text = f"{display_text}\n\n{annotation}"
+
+            if self._evidence is not None:
+                self._evidence.emit_agent_outcome_projection(
+                    outcome, correlation_id=corr_id, causation_id=cause_id
+                )
 
         loop.messages.append(
             LLMMessage.model_validate(
@@ -107,6 +139,9 @@ class ToolResultRuntime:
                 input_sha256=input_sha256,
                 output_sha256=output_sha256,
                 output_kind=output_kind,
+                correlation_id=corr_id,
+                causation_id=cause_id,
+                turn_id=turn_id_val,
             )
 
         if self._evidence is not None:
@@ -119,6 +154,9 @@ class ToolResultRuntime:
                 input_json=input_json,
                 text=text,
                 duration_ms=duration_ms,
+                correlation_id=corr_id,
+                causation_id=cause_id,
+                turn_id=turn_id_val,
             )
 
     def tool_failure_event(

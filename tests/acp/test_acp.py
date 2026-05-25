@@ -5,7 +5,8 @@ from collections.abc import AsyncGenerator
 import json
 import os
 from pathlib import Path
-from typing import Any
+import tomllib
+from typing import Any, cast
 
 from acp import (
     InitializeRequest,
@@ -30,8 +31,11 @@ from pydantic import BaseModel
 import pytest
 import tomli_w
 
-from rig_relay.acp.utils import ToolOption
-from rig_relay.core.types import FunctionCall, ToolCall
+from rig_relay.acp.acp_agent_loop import VibeAcpAgentLoop
+from rig_relay.acp.utils import ToolOption, build_permission_options
+from rig_relay.core.paths import VIBE_HOME
+from rig_relay.core.tools.permissions import PermissionScope, RequiredPermission
+from rig_relay.core.types import ApprovalResponse, FunctionCall, ToolCall
 from tests import TESTS_ROOT
 from tests.conftest import get_base_config
 from tests.mock.utils import get_mocking_env, mock_llm_chunk
@@ -751,42 +755,119 @@ class TestToolCallStructure:
             assert rejected_tool_call is not None
 
     @pytest.mark.asyncio
-    async def test_permission_options_include_granular_labels_for_bash(
-        self, vibe_home_dir: Path
-    ) -> None:
+    async def test_permission_options_include_granular_labels_for_bash(self) -> None:
         """Bash 'npm install foo' should produce granular labels in permission options."""
-        custom_results = [
-            mock_llm_chunk(
-                tool_calls=[
-                    ToolCall(
-                        function=FunctionCall(
-                            name="bash", arguments='{"command":"npm install foo"}'
-                        ),
-                        type="function",
-                        index=0,
-                    )
-                ]
-            ),
-            mock_llm_chunk(content="Done"),
+        permissions = [
+            RequiredPermission(
+                scope=PermissionScope.COMMAND_PATTERN,
+                invocation_pattern="npm install foo",
+                session_pattern="npm install *",
+                label="npm install *",
+            )
         ]
-        mock_env = get_mocking_env(custom_results)
-        async for process in get_acp_agent_loop_process(
-            mock_env=mock_env, vibe_home=vibe_home_dir
-        ):
-            permission_request = await start_session_with_request_permission(
-                process, "Run npm install foo"
-            )
-            assert permission_request.params is not None
 
-            # Verify granular permissions are passed in field_meta
-            allow_always = next(
-                o
-                for o in permission_request.params.options
-                if o.option_id == ToolOption.ALLOW_ALWAYS
+        result = build_permission_options(permissions)
+
+        allow_always = next(o for o in result if o.option_id == ToolOption.ALLOW_ALWAYS)
+        assert allow_always.name == "Allow for remainder of this session"
+        assert allow_always.field_meta is not None
+        assert "required_permissions" in allow_always.field_meta
+
+    @pytest.mark.asyncio
+    async def test_allow_always_permanent_persists_across_sessions(
+        self, acp_agent_loop: VibeAcpAgentLoop
+    ) -> None:
+        class _ApprovalArgs(BaseModel):
+            command: str
+
+        session_response = await acp_agent_loop.new_session(
+            cwd=str(Path.cwd()), mcp_servers=[]
+        )
+        session_id = session_response.session_id
+        acp_session = next(
+            (s for s in acp_agent_loop.sessions.values() if s.id == session_id), None
+        )
+        assert acp_session is not None
+
+        async def request_permission(
+            options: list, session_id: str, tool_call: ToolCall, **kwargs: Any
+        ) -> RequestPermissionResponse:
+            return RequestPermissionResponse(
+                outcome=AllowedOutcome(
+                    outcome="selected", option_id=ToolOption.ALLOW_ALWAYS_PERMANENT
+                )
             )
-            assert allow_always.name == "Allow for remainder of this session"
-            assert allow_always.field_meta is not None
-            assert "required_permissions" in allow_always.field_meta
+
+        cast(Any, acp_agent_loop.client).request_permission = request_permission
+
+        callback = acp_agent_loop._create_approval_callback(session_id)
+        approval = await callback(
+            "bash",
+            _ApprovalArgs(command="npm install foo"),
+            "tool-call-1",
+            [
+                RequiredPermission(
+                    scope=PermissionScope.COMMAND_PATTERN,
+                    invocation_pattern="npm install foo",
+                    session_pattern="npm *",
+                    label="npm *",
+                )
+            ],
+        )
+
+        assert approval == (ApprovalResponse.YES, None)
+
+        config_file = VIBE_HOME.path / "config.toml"
+        persisted = tomllib.load(config_file.open("rb"))
+        assert persisted["tools"]["bash"]["allowlist"] == ["npm"]
+
+    @pytest.mark.asyncio
+    async def test_allow_always_session_only_does_not_persist(
+        self, acp_agent_loop: VibeAcpAgentLoop
+    ) -> None:
+        class _ApprovalArgs(BaseModel):
+            command: str
+
+        session_response = await acp_agent_loop.new_session(
+            cwd=str(Path.cwd()), mcp_servers=[]
+        )
+        session_id = session_response.session_id
+        acp_session = next(
+            (s for s in acp_agent_loop.sessions.values() if s.id == session_id), None
+        )
+        assert acp_session is not None
+
+        async def request_permission(
+            options: list, session_id: str, tool_call: ToolCall, **kwargs: Any
+        ) -> RequestPermissionResponse:
+            return RequestPermissionResponse(
+                outcome=AllowedOutcome(
+                    outcome="selected", option_id=ToolOption.ALLOW_ALWAYS
+                )
+            )
+
+        cast(Any, acp_agent_loop.client).request_permission = request_permission
+
+        callback = acp_agent_loop._create_approval_callback(session_id)
+        approval = await callback(
+            "bash",
+            _ApprovalArgs(command="npm install foo"),
+            "tool-call-2",
+            [
+                RequiredPermission(
+                    scope=PermissionScope.COMMAND_PATTERN,
+                    invocation_pattern="npm install foo",
+                    session_pattern="npm *",
+                    label="npm *",
+                )
+            ],
+        )
+
+        assert approval == (ApprovalResponse.YES, None)
+
+        config_file = VIBE_HOME.path / "config.toml"
+        persisted = tomllib.load(config_file.open("rb"))
+        assert "tools" not in persisted or "bash" not in persisted["tools"]
 
     @pytest.mark.skip(reason="Long running tool call updates are not implemented yet")
     @pytest.mark.asyncio

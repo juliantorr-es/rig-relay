@@ -83,11 +83,11 @@ class TestBuildPermissionOptions:
 
         assert len(result) == 4
         allow_always = next(o for o in result if o.option_id == ToolOption.ALLOW_ALWAYS)
-        assert "session" in allow_always.name.lower()
+        assert allow_always.name == "Allow for remainder of this session"
         allow_permanent = next(
             o for o in result if o.option_id == ToolOption.ALLOW_ALWAYS_PERMANENT
         )
-        assert "Always allow" == allow_permanent.name
+        assert allow_permanent.name == "Always allow"
 
     def test_allow_always_has_field_meta(self) -> None:
         permissions = [

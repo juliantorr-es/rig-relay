@@ -127,6 +127,7 @@ def telemetry_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         properties: dict[str, Any],
         *,
         correlation_id: str | None = None,
+        causation_id: str | None = None,
         receipt_candidate: bool = False,
     ) -> None:
         merged = self.build_client_event_metadata() | properties

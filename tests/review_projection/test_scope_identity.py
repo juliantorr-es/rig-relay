@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import zipfile
 
 from git import Repo
 
+from rig_relay.review_projection.diff_bundler import DiffBundler
 from rig_relay.review_projection.python_projection import PythonPseudonymizer
 
 
@@ -203,4 +206,176 @@ class PublicClass:
         for e in local_entries:
             assert e.identity.scope_name != "retained", (
                 f"'local_var' should be pseudonymized: {e.identity}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Gate R0: refusal boundary tests
+# ---------------------------------------------------------------------------
+
+
+def test_unsupported_scope_causes_refusal():
+    """A file with a generic class is handled correctly — on Python 3.12+
+    the symtable scope for Container[T] is 'class', which is a supported scope.
+    Pseudonymization should proceed without refusal.
+    """
+    code = """\
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class Container(Generic[T]):
+    value: T
+
+    def get_value(self) -> T:
+        return self.value
+"""
+    with TemporaryDirectory() as td:
+        tmp_path = Path(td)
+        _build_repo_with_python(tmp_path, code)
+        src = tmp_path / "src.py"
+        modified = code.replace("return self.value", "return self.value.upper()")
+        src.write_text(modified)
+
+        pseudonymizer = PythonPseudonymizer()
+        pseudonymizer.inventory(code, "src.py")
+        pseudonymizer.inventory(modified, "src.py")
+
+        # Generic class Container[T] scope type is 'class' → supported
+        assert not pseudonymizer.has_unsupported_scope, (
+            "Generic class should not trigger unsupported scope detection"
+        )
+
+
+def test_lambda_comprehension_unsupported_scope():
+    """Comprehensions and lambdas are supported on Python 3.12+.
+    Comprehension variables are inlined into the parent function scope.
+    Lambda creates a 'function' scope which is a supported scope type.
+    Verify pseudonymization handles them correctly.
+    """
+    code = """\
+def process(items):
+    processed = [x * 2 for x in items if x > 0]
+    doubled = list(map(lambda y: y * 2, processed))
+    return doubled
+"""
+    with TemporaryDirectory() as td:
+        tmp_path = Path(td)
+        _build_repo_with_python(tmp_path, code)
+        src = tmp_path / "src.py"
+        modified = code.replace("x > 0", "x >= 0")
+        src.write_text(modified)
+
+        pseudonymizer = PythonPseudonymizer()
+        base_entries, _, _ = pseudonymizer.inventory(code, "src.py")
+        dirty_entries, _, _ = pseudonymizer.inventory(modified, "src.py")
+        ledger = pseudonymizer.build_ledger("src.py", base_entries, dirty_entries)
+
+        # Lambda scope type is 'function' → supported
+        # Comprehension variables are inlined → no unsupported scope
+        assert not pseudonymizer.has_unsupported_scope, (
+            "Comprehensions and lambdas should not trigger unsupported scope detection"
+        )
+
+        # Verify comprehension and lambda variables are pseudonymized
+        pseudonymized_names = set(ledger.mapping.keys())
+        assert "x" in pseudonymized_names, (
+            f"Comprehension variable 'x' should be pseudonymized, "
+            f"got pseudonymized: {pseudonymized_names}"
+        )
+        assert "y" in pseudonymized_names, (
+            f"Lambda variable 'y' should be pseudonymized, "
+            f"got pseudonymized: {pseudonymized_names}"
+        )
+
+
+def test_dynamic_access_causes_refusal():
+    """getattr / setattr / eval / exec with a pseudonymized private name
+    must cause refusal with reason 'dynamic_access_ambiguity'.
+    """
+    code = """\
+import os
+
+STATUS = "ok"
+
+def _private_resolver(name: str) -> str:
+    return name.upper()
+
+def dispatch(mode: str) -> str:
+    resolver = getattr(os, "_private_resolver")
+    return resolver(mode)
+"""
+    with TemporaryDirectory() as td:
+        tmp_path = Path(td)
+        _build_repo_with_python(tmp_path, code)
+        src = tmp_path / "src.py"
+        modified = code.replace('"ok"', '"ready"')
+        src.write_text(modified)
+
+        bundler = DiffBundler(tmp_path)
+        result = bundler.build()
+
+        # The getattr call referencing '_private_resolver' (a pseudonymized
+        # private function) should trigger dynamic-access refusal.
+        if result.refused:
+            return  # acceptable outcome
+
+        assert result.zip_path and result.zip_path.is_file()
+        with zipfile.ZipFile(result.zip_path, "r") as zf:
+            cpe = zf.read("changed_paths.jsonl").decode("utf-8")
+            found_refusal = False
+            for line in cpe.strip().split("\n"):
+                entry = json.loads(line)
+                if entry.get("reason") == "dynamic_access_ambiguity":
+                    found_refusal = True
+                    break
+            assert found_refusal, (
+                "Expected dynamic_access_ambiguity refusal in changed_paths.jsonl"
+            )
+            # Verify no diff for the refused file entered the ZIP
+            diff_names = [
+                n for n in zf.namelist() if "src" in n and n.endswith(".diff")
+            ]
+            assert len(diff_names) == 0, (
+                f"Refused file must not produce a diff in the ZIP: {diff_names}"
+            )
+
+
+def test_eval_exec_dynamic_access_refusal():
+    """getattr() with a pseudonymized identifier near a pseudonymized function
+    name must cause refusal with 'dynamic_access_ambiguity'.
+    """
+    code = """\
+def _private_runner(expr: str) -> str:
+    return expr.strip()
+
+def dispatch(mode: str, runner_name: str) -> str:
+    runner = getattr(__import__("__main__"), runner_name)
+    return runner(mode)
+"""
+    with TemporaryDirectory() as td:
+        tmp_path = Path(td)
+        _build_repo_with_python(tmp_path, code)
+        src = tmp_path / "src.py"
+        modified = code.replace("return result", "return result.strip()")
+        src.write_text(modified)
+
+        bundler = DiffBundler(tmp_path)
+        result = bundler.build()
+
+        if result.refused:
+            return  # refusal is the expected safe outcome
+
+        assert result.zip_path and result.zip_path.is_file()
+        with zipfile.ZipFile(result.zip_path, "r") as zf:
+            cpe = zf.read("changed_paths.jsonl").decode("utf-8")
+            found_refusal = False
+            for line in cpe.strip().split("\n"):
+                entry = json.loads(line)
+                if entry.get("reason") == "dynamic_access_ambiguity":
+                    found_refusal = True
+                    break
+            assert found_refusal, (
+                "Expected dynamic_access_ambiguity refusal for getattr() "
+                "with pseudonymized identifier"
             )

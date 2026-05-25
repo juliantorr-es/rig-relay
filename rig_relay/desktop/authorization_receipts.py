@@ -8,7 +8,11 @@ from typing import Any
 
 from rig_relay.governance.auth_receipts import generate_dev_receipt, validate_receipt
 
-SUPPORTED_DEV_ACTIONS = frozenset({"checkpoint.commit", "lease_cleanup.archive"})
+SUPPORTED_DEV_ACTIONS = frozenset({
+    "checkpoint.commit",
+    "lease_cleanup.archive",
+    "review_projection.disclose.authorize",
+})
 SUPPORTED_LOCAL_AUTH_ACTIONS = SUPPORTED_DEV_ACTIONS
 DEFAULT_RECEIPTS_DIR = (
     Path(__file__).resolve().parent.parent.parent

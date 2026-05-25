@@ -542,6 +542,25 @@ async def execute_proposal_based_mutation(  # noqa: PLR0911, PLR0912, PLR0913, P
             auth_receipt_local = _load_or_issue_checkpoint_auth(
                 cid, extension, campaign_state, mid, decision_id, repo_root
             )
+            checkpoint_paths = [
+                apply_receipt.canonical_path if apply_receipt else proposal_result.file
+            ]
+            stage_result = subprocess.run(
+                ["git", "-C", str(repo_root), "add", "--", *checkpoint_paths],
+                capture_output=True,
+                text=True,
+            )
+            if stage_result.returncode != 0:
+                return _result(
+                    "checkpoint_refused",
+                    cid,
+                    mid,
+                    reason=(
+                        "checkpoint_stage_failed: "
+                        f"{(stage_result.stderr or stage_result.stdout or '').strip()}"
+                    ),
+                    actual_after_hash=actual_after,
+                )
             if state.latest_checkpoint_sha:
                 trailer_ok = _check_receipt_trailer(repo_root, auth_receipt_local)
                 if trailer_ok:

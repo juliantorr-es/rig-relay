@@ -21,6 +21,7 @@ from rig_relay.core.tools.base import (
     InvokeContext,
     ToolPermission,
 )
+from rig_relay.core.tools.builtins.validate_models import ValidateArgs, ValidateResult
 from rig_relay.core.tools.permissions import PermissionContext
 from rig_relay.core.tools.reroute import BashRerouteMetadata, try_reroute
 from rig_relay.core.types import ToolStreamEvent
@@ -176,6 +177,31 @@ class _FakeGitDiffTool(
         self, args: dict[Any, Any], ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | _FakeGitDiffResult, None]:
         yield _FakeGitDiffResult(stdout="fake git diff")
+
+
+class _FakeValidateTool(
+    BaseTool[ValidateArgs, ValidateResult, BaseToolConfig, BaseToolState]
+):
+    description: ClassVar[str] = "Fake validate tool for testing reroute."
+
+    @classmethod
+    def _get_type_hints(cls) -> tuple[type[ValidateArgs], type[ValidateResult]]:
+        return ValidateArgs, ValidateResult
+
+    async def run(
+        self, args: ValidateArgs, ctx: InvokeContext | None = None
+    ) -> AsyncGenerator[ToolStreamEvent | ValidateResult, None]:
+        yield ValidateResult(
+            status="passed",
+            profile=args.profile,
+            scope=args.scope,
+            command_count=1,
+            passed_count=1,
+            failed_count=0,
+            skipped_count=0,
+            suggested_next_action=None,
+            retryable=None,
+        )
 
 
 # ── Fixtures ────────────────────────────────────────────────────
@@ -417,6 +443,60 @@ async def test_rerouted_git_status_records_metadata(
     assert metadata is not None
     assert metadata.original_command_category == "git"
     assert metadata.rerouted_tool_name == "git_status"
+
+
+@pytest.mark.asyncio
+async def test_rerouted_pytest_records_validate_profile(
+    ctx_with_tool_manager: InvokeContext,
+) -> None:
+    """Pytest commands reroute to validate with a fast local profile."""
+    ctx_with_tool_manager.tool_manager = _make_tool_manager(_FakeValidateTool)
+    was_rerouted, result_model, events, metadata = await try_reroute(
+        "uv run pytest tests/tools/test_validate.py", ctx_with_tool_manager, "/tmp"
+    )
+    assert was_rerouted is True
+    assert isinstance(result_model, ValidateResult)
+    assert result_model.profile == "quick"
+    assert result_model.command_count == 1
+    assert metadata is not None
+    assert metadata.original_command_category == "validate"
+    assert metadata.rerouted_tool_name == "validate"
+    event_messages = [e.message for e in events if isinstance(e, ToolStreamEvent)]
+    assert any("quick" in msg for msg in event_messages)
+
+
+@pytest.mark.asyncio
+async def test_rerouted_bare_pytest_prefers_python_profile(
+    ctx_with_tool_manager: InvokeContext,
+) -> None:
+    """Broad pytest commands reroute to the broader Python validation profile."""
+    ctx_with_tool_manager.tool_manager = _make_tool_manager(_FakeValidateTool)
+    was_rerouted, result_model, events, metadata = await try_reroute(
+        "pytest -q", ctx_with_tool_manager, "/tmp"
+    )
+    assert was_rerouted is True
+    assert isinstance(result_model, ValidateResult)
+    assert result_model.profile == "python"
+    assert metadata is not None
+    assert metadata.rerouted_tool_name == "validate"
+
+
+@pytest.mark.asyncio
+async def test_rerouted_schema_script_uses_schemas_profile(
+    ctx_with_tool_manager: InvokeContext,
+) -> None:
+    """Validate schema scripts reroute to the schemas profile."""
+    ctx_with_tool_manager.tool_manager = _make_tool_manager(_FakeValidateTool)
+    was_rerouted, result_model, events, metadata = await try_reroute(
+        "uv run python scripts/rig_relay_validate_schemas.py",
+        ctx_with_tool_manager,
+        "/tmp",
+    )
+    assert was_rerouted is True
+    assert isinstance(result_model, ValidateResult)
+    assert result_model.profile == "schemas"
+    assert metadata is not None
+    assert metadata.rerouted_tool_name == "validate"
 
 
 @pytest.mark.asyncio

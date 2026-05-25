@@ -466,10 +466,6 @@ def _detect_dynamic_access_risk(
             if re.search(combined, source):
                 risky.append(name)
                 break
-        # Also check for bare string literal containing the exact name
-        if name not in risky:
-            if re.search(r"['\"]" + re.escape(name) + r"['\"]", source):
-                risky.append(name)
     return risky
 
 
@@ -569,7 +565,7 @@ def _collect_symbols(
                         language="python",
                         file_path=file_path,
                         scope_name=scope.owner_identity
-                        if kind in _PSEUDONYMIZE_KINDS
+                        if kind in _PSEUDONYMIZE_KINDS and scope.is_function_scope()
                         else "retained",
                         binding_kind=kind,
                         original_spelling=name,

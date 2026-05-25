@@ -17,7 +17,9 @@ from rig_relay.review_projection.bundle_builder import BundleBuilder
 from rig_relay.review_projection.classification import ClassificationEngine
 from rig_relay.review_projection.models import (
     BundleManifest,
+    DisclosureAuthorizationReceipt,
     DisclosureReceipt,
+    DisclosureTarget,
     FileClassification,
     InclusionManifest,
     LocalCrosswalk,
@@ -212,6 +214,120 @@ def _run_projection(
     print(f"Candidate ZIP generated: review_projection_{projection_id}.zip")
 
 
+def _run_disclose_authorization(
+    candidate_zip_hash: str,
+    recipient_class: str,
+    provider_or_channel: str,
+    purpose: str | None,
+    retention: str | None,
+    training_use: str | None,
+    require_authorization: bool,
+    authorization_receipt_json: str | None,
+) -> None:
+    """Authorize disclosure intent for an existing candidate bundle.
+    Does NOT transmit the bundle — records intent only.
+    """
+    import datetime as _datetime
+    import hashlib as _hashlib
+    import uuid as _uuid
+
+    from rig_relay.governance.auth_receipts import resolve_authorization
+
+    repo_root = Path.cwd()
+    output_dir = repo_root / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Find the compilation receipt for this candidate ZIP hash
+    compilation_receipt = None
+    compilation_receipt_sha256 = ""
+    for rp in sorted(output_dir.glob("receipt_*.json")):
+        try:
+            rcpt = __import__("json").loads(rp.read_text("utf-8"))
+        except Exception:
+            continue
+        if rcpt.get("candidate_zip_sha256") == candidate_zip_hash:
+            compilation_receipt = rcpt
+            compilation_receipt_sha256 = _hashlib.sha256(rp.read_bytes()).hexdigest()
+            break
+
+    if compilation_receipt is None:
+        print(
+            f"REFUSED: No compilation receipt found for ZIP hash {candidate_zip_hash}"
+        )
+        print(
+            "Generate a candidate bundle first with: python -m rig_relay.review_projection.cli diff"
+        )
+        return
+
+    projection_id = compilation_receipt.get("projection_id", "unknown")
+
+    # 2. Require authorization if requested
+    if require_authorization:
+        action_scope = {
+            "target_sha256": candidate_zip_hash,
+            "projection_id": projection_id,
+            "recipient_class": recipient_class,
+            "provider_or_channel": provider_or_channel,
+        }
+        auth_result = resolve_authorization(
+            "review_projection.disclose.authorize",
+            receipt_json=authorization_receipt_json,
+            action_scope=action_scope,
+        )
+        if not auth_result.authorized:
+            print(f"REFUSED: {auth_result.reason}")
+            return
+        auth_receipt_hash = (
+            auth_result.receipt.get("receipt_sha256", "") if auth_result.receipt else ""
+        )
+    else:
+        print("WARNING: No authorization required — dev bypass mode")
+        auth_receipt_hash = None
+
+    # 3. Build authorization receipt
+    auth_id = f"dza_{_uuid.uuid4().hex[:16]}"
+    now = _datetime.datetime.now(_datetime.UTC).isoformat() + "Z"
+
+    receipt = DisclosureAuthorizationReceipt(
+        authorization_id=auth_id,
+        projection_id=projection_id,
+        candidate_zip_sha256=candidate_zip_hash,
+        compilation_receipt_sha256=compilation_receipt_sha256,
+        recipient_class=DisclosureTarget(recipient_class),
+        provider_or_channel=provider_or_channel,
+        purpose_or_context=purpose,
+        retention_assertion=retention,
+        training_use_assertion=training_use,
+        is_transmission_authorized=False,
+        approved_by="local_system_auth" if require_authorization else "dev_only",
+        approved_at=now,
+        authorization_receipt_sha256=auth_receipt_hash,
+    )
+
+    # 4. Write receipt
+    receipt_path = output_dir / f"disclosure_authorization_{auth_id}.json"
+    receipt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
+
+    # 5. Append to disclosure ledger
+    ledger_path = output_dir / "disclosure_authorization_ledger.jsonl"
+    with open(ledger_path, "a") as lf:
+        lf.write(receipt.model_dump_json() + "\n")
+
+    print(f"Disclosure authorization recorded: {auth_id}")
+    print(f"Receipt: {receipt_path}")
+    print(f"Ledger: {ledger_path}")
+    print(f"Projection: {projection_id}")
+    print(f"Recipient: {recipient_class} via {provider_or_channel}")
+    print()
+    print("This records authorization INTENT only. No bundle has been transmitted.")
+    print(
+        "Controlled disclosure measures recorded — does not determine trade-secret protection."
+    )
+    print(
+        "Recipient conditions are user-asserted, not independently verified by Rig Relay."
+    )
+
+
 def _run_diff_projection(repo_root: Path) -> None:
     from rig_relay.review_projection.diff_bundler import DiffBundler
 
@@ -319,6 +435,57 @@ def main():
         help="Disclosure target class",
     )
 
+    # Disclose — authorize disclosure intent against an existing candidate bundle
+    p_disclose = subparsers.add_parser(
+        "disclose",
+        help="Authorize disclosure of a candidate bundle (does not transmit)",
+    )
+    p_disclose.add_argument(
+        "--candidate-zip-hash",
+        type=str,
+        required=True,
+        help="SHA256 of the candidate ZIP bundle",
+    )
+    p_disclose.add_argument(
+        "--recipient-class",
+        type=str,
+        required=True,
+        choices=[t.value for t in DisclosureTarget],
+        help="Class of recipient",
+    )
+    p_disclose.add_argument(
+        "--provider-or-channel",
+        type=str,
+        required=True,
+        help="Provider or channel for disclosure",
+    )
+    p_disclose.add_argument(
+        "--purpose", type=str, default=None, help="Purpose or review context"
+    )
+    p_disclose.add_argument(
+        "--retention",
+        type=str,
+        default=None,
+        help="Retention assertion (user-recorded, not independently verified)",
+    )
+    p_disclose.add_argument(
+        "--training-use",
+        type=str,
+        default=None,
+        help="Training-use assertion (user-recorded, not independently verified)",
+    )
+    p_disclose.add_argument(
+        "--require-authorization",
+        action="store_true",
+        help="Require step-up authorization receipt",
+    )
+    p_disclose.add_argument(
+        "--authorization-receipt",
+        type=str,
+        default=None,
+        help="JSON authorization receipt string",
+    )
+
     args = parser.parse_args()
 
     if args.command == "project":
@@ -333,6 +500,17 @@ def main():
         _verify_bundle(args.zip_path)
     elif args.command == "diff":
         _run_diff_projection(args.repo_root)
+    elif args.command == "disclose":
+        _run_disclose_authorization(
+            args.candidate_zip_hash,
+            args.recipient_class,
+            args.provider_or_channel,
+            args.purpose,
+            args.retention,
+            args.training_use,
+            args.require_authorization,
+            args.authorization_receipt,
+        )
 
 
 if __name__ == "__main__":

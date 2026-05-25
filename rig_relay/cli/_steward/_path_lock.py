@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 import time
 
-
 _LOCK_TIMEOUT_SECONDS = 300
 
 

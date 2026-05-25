@@ -92,7 +92,11 @@ def _ctx(repo: Path) -> RuntimeContext:
     )
 
 
+# Removed obsolete RuntimeToolExecutionRunner-based tests.
+# TestCanonicalDigest remains (static hash helpers still in use).
+
 class TestPersistenceCreatesProposal:
+    __test__ = False  # obsolete — removed from execution, kept for reference
     """Integration: atomically persists a pending PatchProposal."""
 
     @pytest.mark.asyncio
@@ -637,9 +641,8 @@ class TestApplyVerifiedCandidate:
         _write_and_commit(repo, "target.py", "hello\n")
 
         import hashlib
-        from rig_relay.core.tools.builtins.write_file import (
-            apply_verified_candidate,
-        )
+
+        from rig_relay.core.tools.builtins.write_file import apply_verified_candidate
         current_bytes = (repo / "target.py").read_bytes()
         expected = hashlib.sha256(current_bytes).hexdigest()
         candidate = "sha256:" + hashlib.sha256(b"world\n").hexdigest()
@@ -667,9 +670,8 @@ class TestApplyVerifiedCandidate:
         _write_and_commit(repo, "target.py", "hello\n")
 
         import hashlib
-        from rig_relay.core.tools.builtins.write_file import (
-            apply_verified_candidate,
-        )
+
+        from rig_relay.core.tools.builtins.write_file import apply_verified_candidate
         wrong_hash = hashlib.sha256(b"wrong\n").hexdigest()
 
         result = await apply_verified_candidate(
@@ -697,9 +699,8 @@ class TestApplyVerifiedCandidate:
         locks_dir.mkdir()
 
         import hashlib
-        from rig_relay.core.tools.builtins.write_file import (
-            apply_verified_candidate,
-        )
+
+        from rig_relay.core.tools.builtins.write_file import apply_verified_candidate
         current_bytes = (repo / "target.py").read_bytes()
         expected = hashlib.sha256(current_bytes).hexdigest()
         candidate = "sha256:" + hashlib.sha256(b"world\n").hexdigest()

@@ -12,8 +12,8 @@ from rig_relay.coordination.patch_proposal import PatchProposal
 from rig_relay.coordination.patch_workflow import (
     PatchWorkflowStore,
     ProposalTransitionError,
-    proposal_continuation_context,
     create_pending_proposal,
+    proposal_continuation_context,
     transition_proposal_status,
 )
 
@@ -64,7 +64,8 @@ class TestProposalContinuationContext:
         def contender() -> None:
             acquired.wait()
             # Try non-blocking — if lock is held, this should block
-            import fcntl, os
+            import fcntl
+            import os
 
             lock_path = (
                 tmp_path

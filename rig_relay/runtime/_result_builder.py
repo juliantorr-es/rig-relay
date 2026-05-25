@@ -107,6 +107,8 @@ class _ExecutionMetadata:
     tool_status: str | None
     tool_error_kind: str | None
     refusal_reason: str | None
+    suggested_next_action: str | None
+    retryable: bool | None
     supervisor_result_envelope_id: str | None
     supervisor_result_envelope_sha256: str | None
     supervisor_result_classification: str | None
@@ -187,7 +189,21 @@ def _resolve_status_source(runtime_result: Any, intent: Any) -> tuple[str | None
             provider_status_value = (
                 "refused" if getattr(provider, "refusal_reason", None) else "failed"
             )
-    status_value = getattr(runtime_result.status, "value", runtime_result.status)
+    if intent.tool_name == RuntimeToolName.VALIDATE and provider_status_value == "failed":
+        provider_status_value = None  # Validate "failed" = checks found issues, not execution error
+    if intent.tool_name == RuntimeToolName.CHECKPOINT:
+        status_value = "completed" if getattr(runtime_result, "ok", False) else "failed"
+    else:
+        status_value = getattr(runtime_result.status, "value", runtime_result.status)
+
+    # Surface git tool returncode in status when provider doesn't expose .status
+    if provider_status_value is None and hasattr(provider, "returncode"):
+        returncode = getattr(provider, "returncode", None)
+        if returncode == 0:
+            provider_status_value = "completed"
+        elif returncode is not None:
+            provider_status_value = "failed"
+
     return provider_status_value or status_value, provider
 
 
@@ -288,6 +304,8 @@ def _resolve_execution_metadata(
     refusal_reason = provider_refusal or getattr(
         getattr(runtime_result, "refusal", None), "message", None
     )
+    suggested_next_action = _suggested_next_action(runtime_result, intent, provider)
+    retryable = _is_refusal_retryable(runtime_result, intent, provider)
     supervisor_result_envelope = getattr(provider, "supervisor_result_envelope", None)
     supervisor_result_envelope_id = None
     if isinstance(supervisor_result_envelope, dict):
@@ -298,6 +316,8 @@ def _resolve_execution_metadata(
         tool_status=tool_status,
         tool_error_kind=getattr(provider, "error_kind", None),
         refusal_reason=refusal_reason,
+        suggested_next_action=suggested_next_action,
+        retryable=retryable,
         supervisor_result_envelope_id=supervisor_result_envelope_id,
         supervisor_result_envelope_sha256=getattr(
             runtime_result, "supervisor_result_envelope_sha256", None
@@ -317,6 +337,8 @@ def to_execution_result(
     start: float,
     changed_paths: list[str] | None = None,
     tool_receipt_kind: str | None = None,
+    agent_outcome: dict[str, Any] | None = None,
+    agent_outcome_schema_valid: bool = False,
 ) -> RuntimeToolExecutionResult:
     """Build a RuntimeToolExecutionResult from a tool runtime result.
 
@@ -344,6 +366,8 @@ def to_execution_result(
         duration_ms=duration,
         error_kind=metadata.tool_error_kind,
         refusal_reason=metadata.refusal_reason,
+        suggested_next_action=metadata.suggested_next_action,
+        retryable=metadata.retryable,
         tool_receipt_kind=tool_receipt_kind or intent.tool_name.value,
         tool_receipt_schema_version=(
             f"rig.relay.{(tool_receipt_kind or intent.tool_name.value)}_receipt.v1"
@@ -353,6 +377,8 @@ def to_execution_result(
         supervisor_result_envelope_sha256=metadata.supervisor_result_envelope_sha256,
         supervisor_result_classification=metadata.supervisor_result_classification,
         git_summary=metadata.git_summary,
+        agent_outcome=agent_outcome,
+        agent_outcome_schema_valid=agent_outcome_schema_valid,
     )
     result = result.model_copy(
         update={
@@ -375,6 +401,123 @@ def attach_receipt(result: RuntimeToolExecutionResult) -> RuntimeToolExecutionRe
     receipt_model = build_runtime_tool_invocation_receipt(result)
     result = result.model_copy(update={"receipt": receipt_model})
     return result
+
+
+from rig_relay.core.tools._advice import suggested_next_action_for_error
+
+
+def _suggested_next_action(
+    runtime_result: Any, intent: Any, provider: Any
+) -> str | None:
+    from rig_relay.core.tools.builtins.validate_advice import (
+        suggested_next_action as validate_suggested_next_action,
+    )
+
+    suggestion: str | None = None
+    refusal = getattr(runtime_result, "refusal", None)
+    refusal_hint = getattr(refusal, "suggested_next_action", None)
+    if refusal_hint:
+        suggestion = refusal_hint
+
+    if suggestion is None:
+        error_kind = getattr(provider, "error_kind", None) or getattr(
+            runtime_result, "error_kind", None
+        )
+        refusal_reason = (
+            getattr(provider, "refusal_reason", None)
+            or getattr(refusal, "message", None)
+            or ""
+        ).lower()
+        tool_name = getattr(intent.tool_name, "value", intent.tool_name)
+
+        advice = None
+        match tool_name:
+            case "search_replace" | "write_file" | "checkpoint":
+                advice = suggested_next_action_for_error(tool_name, error_kind)
+            case "validate":
+                advice = validate_suggested_next_action(runtime_result)
+
+        if advice is not None:
+            suggestion = advice
+        elif refusal_reason:
+            if "policy_object_missing" in refusal_reason:
+                suggestion = (
+                    "Invoke the tool through the governed runtime runner with a "
+                    "policy object."
+                )
+            elif error_kind == "unsupported_tool":
+                suggestion = (
+                    "Choose a supported tool or route through the runtime executor."
+                )
+            elif error_kind == "invalid_payload":
+                suggestion = "Fix the request payload and retry."
+            else:
+                suggestion = "Re-read the refusal reason, correct the input, and retry."
+
+    return suggestion
+
+
+def _is_refusal_retryable(
+    runtime_result: Any, intent: Any, provider: Any
+) -> bool | None:
+    from rig_relay.core.tools.builtins.validate_advice import (
+        retryable as validate_retryable,
+    )
+
+    refusal = getattr(runtime_result, "refusal", None)
+    retryable: bool | None = None
+    if refusal is not None and getattr(refusal, "recoverable", None) is not None:
+        retryable = bool(refusal.recoverable)
+    else:
+        error_kind = getattr(provider, "error_kind", None) or getattr(
+            runtime_result, "error_kind", None
+        )
+        refusal_reason = (
+            getattr(provider, "refusal_reason", None)
+            or getattr(getattr(runtime_result, "refusal", None), "message", None)
+            or ""
+        ).lower()
+        tool_name = getattr(intent.tool_name, "value", intent.tool_name)
+
+        match tool_name:
+            case "search_replace" | "write_file":
+                retryable = error_kind in {
+                    "expected_hash_mismatch",
+                    "dirty_file_protected",
+                    "path_reserved",
+                    "overwrite_required",
+                    "parent_missing",
+                    "content_too_large",
+                    "empty_content",
+                    "parse_error",
+                    "block_parse_failed",
+                    "old_text_not_found",
+                    "multiple_matches_when_single_required",
+                    "replacement_count_mismatch",
+                    "path_refused",
+                    "unsafe_path",
+                    "path_is_directory",
+                    "file_not_found",
+                    "binary_file",
+                }
+            case "checkpoint":
+                retryable = error_kind in {
+                    "unstaged_file_refused",
+                    "path_reserved",
+                    "empty_message",
+                    "git_status_failed",
+                    "checkpoint_porcelain_protocol_invalid",
+                }
+            case "validate":
+                retryable = validate_retryable(runtime_result)
+
+        if retryable is None:
+            if "policy_object_missing" in refusal_reason:
+                retryable = False
+            elif error_kind == "unsupported_tool":
+                retryable = False
+
+    return retryable
 
 
 def build_validate_receipt(result: Any) -> Any:

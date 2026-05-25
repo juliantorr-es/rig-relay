@@ -804,7 +804,7 @@ class Bash(
         # ── Command rerouting ─────────────────────────────────
         # Check if the command is better handled by a dedicated tool
         rerouted, result_model, events, reroute_meta = await try_reroute(
-            args.command, ctx
+            args.command, ctx, args.cwd
         )
         if rerouted:
             yield BashResult(

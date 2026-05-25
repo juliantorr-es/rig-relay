@@ -19,6 +19,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rig_relay.core.telemetry.tool_contract import ToolMutationClass
 from rig_relay.runtime.context import RuntimeContext, RuntimeContextResolution
 from rig_relay.runtime.execution_request import ExecutionRequest
 from rig_relay.runtime.models import RuntimeCapabilityKind
@@ -43,6 +44,30 @@ class RuntimeToolName(StrEnum):
     GIT_SHOW = "git_show"
     GIT_LS_FILES = "git_ls_files"
     CHECKPOINT = "checkpoint"
+
+    @property
+    def mutation_class(self) -> ToolMutationClass:
+        """Canonical mutation classification for this tool name.
+
+        Enriches the existing runtime tool name registry with tool contract metadata.
+        This is NOT a separate registry — it is canonical metadata on the one
+        RuntimeToolName registry used by the runtime execution spine.
+        """
+        match self:
+            case (
+                RuntimeToolName.VALIDATE
+                | RuntimeToolName.GIT_STATUS
+                | RuntimeToolName.GIT_DIFF
+                | RuntimeToolName.GIT_LOG
+                | RuntimeToolName.GIT_BRANCH
+                | RuntimeToolName.GIT_SHOW
+                | RuntimeToolName.GIT_LS_FILES
+            ):
+                return ToolMutationClass.READ_ONLY
+            case RuntimeToolName.RUNTIME_EXEC:
+                return ToolMutationClass.UNKNOWN
+            case _:
+                return ToolMutationClass.WRITES_WORKSPACE
 
 
 class RuntimeToolInvocationStatus(StrEnum):
@@ -268,7 +293,7 @@ class RuntimeToolInvocationAdapter:
         # ── Tool-specific validation ────────────────────────────────
         return self._apply_tool_policy(intent, base_envelope, ctx)
 
-    def _apply_tool_policy(  # noqa: PLR0911 (dispatch by tool name)
+    def _apply_tool_policy(
         self,
         intent: RuntimeToolIntent,
         envelope: RuntimeToolInvocationEnvelope,
@@ -291,6 +316,8 @@ class RuntimeToolInvocationAdapter:
         if tool in {
             RuntimeToolName.WRITE_FILE,
             RuntimeToolName.SEARCH_REPLACE,
+            RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
+            RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
             RuntimeToolName.VALIDATE,
             RuntimeToolName.RUNTIME_EXEC,
             RuntimeToolName.BASH_LEGACY,

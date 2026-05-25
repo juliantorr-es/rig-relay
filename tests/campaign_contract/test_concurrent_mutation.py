@@ -9,19 +9,13 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import hashlib
+from pathlib import Path
 import subprocess
 import threading
-from pathlib import Path
 
 import pytest
 
-from rig_relay.campaign_contract.models import CampaignManifest, MissionDefinition
-from rig_relay.cli._steward._campaign_models import (
-    CampaignManifestExtension,
-    CampaignState,
-)
 from rig_relay.cli._steward._campaign_mutation import execute_proposal_based_mutation
-from rig_relay.cli._steward._campaign_registry import PathClassificationRegistry
 from rig_relay.cli._steward._mutation_payload import MutationPayloadRecord, save_payload
 from rig_relay.coordination.patch_proposal import PatchProposal
 from rig_relay.coordination.patch_workflow import PatchWorkflowStore
@@ -62,7 +56,6 @@ def _init_bare(tmp_path: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def _reset_guard() -> None:
-    from rig_relay.governance.dirty_guard import reset_guard
 
     reset_guard()
 

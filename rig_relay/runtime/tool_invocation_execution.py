@@ -106,6 +106,8 @@ class RuntimeToolExecutionResult(BaseModel):
     duration_ms: float | None = None
     error_kind: str | None = None
     refusal_reason: str | None = None
+    suggested_next_action: str | None = None
+    retryable: bool | None = None
     warnings: list[str] = Field(default_factory=list)
     tool_receipt_kind: str | None = None
     tool_receipt_schema_version: str | None = None
@@ -117,6 +119,8 @@ class RuntimeToolExecutionResult(BaseModel):
     supervisor_result_classification: str | None = None
     git_summary: GitSummary | None = None
     receipt: RuntimeToolInvocationReceipt | None = None
+    agent_outcome: dict[str, Any] | None = None
+    agent_outcome_schema_valid: bool = False
 
 
 # ── Import shared modules after model definitions ──────────────────────
@@ -202,6 +206,8 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 "git_show",
                 "git_ls_files",
                 "checkpoint",
+                "search_replace_proposal",
+                "create_pending_search_replace_proposal",
             }:
                 return True, ""
             return False, "policy_object_missing"
@@ -221,6 +227,8 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 "git_show",
                 "git_ls_files",
                 "checkpoint",
+                "search_replace_proposal",
+                "create_pending_search_replace_proposal",
             }:
                 return True, ""
             return False, "policy_object_missing"
@@ -527,6 +535,12 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
             return await self.execute_validate(sub_intent, resolution)
         elif sub_tool == RuntimeToolName.SEARCH_REPLACE:
             return await self.execute_search_replace(sub_intent, resolution)
+        elif sub_tool == RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+            return await self.execute_search_replace_proposal(sub_intent, resolution)
+        elif sub_tool == RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+            return await self.execute_create_pending_search_replace_proposal(
+                sub_intent, resolution
+            )
         elif sub_tool == RuntimeToolName.WRITE_FILE:
             return await self.execute_write_file(sub_intent, resolution)
         elif sub_tool == RuntimeToolName.BASH_LEGACY:
@@ -625,6 +639,14 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 tool_name=RuntimeToolName.SEARCH_REPLACE,
                 payload=args_dict,
                 status=RuntimeToolInvocationStatus.PREPARED,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
             )
             result = await self._run_search_replace_tool(envelope)
             yield result
@@ -639,6 +661,14 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 tool_name=RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
                 payload=args_dict,
                 status=RuntimeToolInvocationStatus.PREPARED,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
+                worktree_path=meta.get("worktree_path"),
+                repo_root=meta.get("workspace_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
             )
             result = await self._run_search_replace_proposal_tool(envelope)
             yield result
@@ -653,8 +683,14 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 tool_name=RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
                 payload=args_dict,
                 status=RuntimeToolInvocationStatus.PREPARED,
+                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
                 worktree_path=args_dict.get("worktree_path"),
                 repo_root=args_dict.get("repo_root"),
+                session_id=meta.get("session_id"),
+                task_id=meta.get("turn_id"),
+                lane_id=meta.get("lane_id"),
+                workspace_id=meta.get("workspace_id"),
+                agent_id=meta.get("actor"),
             )
             result = await self._run_create_pending_search_replace_proposal_tool(
                 envelope

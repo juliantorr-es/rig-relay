@@ -29,6 +29,14 @@ from rig_relay.runtime.tool_invocation_execution import (
     RuntimeToolExecutionStatus,
 )
 
+
+@pytest.fixture(autouse=True)
+def _reset_dirty_guard() -> None:
+    from rig_relay.governance.dirty_guard import reset_guard
+
+    reset_guard()
+
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 EXECUTION_SCHEMA_PATH = (
     REPO_ROOT
@@ -427,6 +435,8 @@ class TestValidateSchema:
             "duration_ms": None,
             "error_kind": None,
             "refusal_reason": None,
+            "suggested_next_action": None,
+            "retryable": None,
             "envelope_schema_valid": True,
             "warnings": [],
         }
@@ -953,6 +963,8 @@ class TestSchemaAlignment:
             audit_event_id="aev-001",
             changed_paths=["src/main.py"],
             receipt_sha256="abc123",
+            suggested_next_action="Follow up",
+            retryable=True,
             invocation_id="inv-001",
             tool_status="passed",
             duration_ms=42.0,
@@ -976,6 +988,8 @@ class TestSchemaAlignment:
             tool_status=None,
             tool_error_kind=None,
             receipt_sha256=None,
+            suggested_next_action=None,
+            retryable=None,
             duration_ms=None,
             error_kind=None,
             refusal_reason=None,

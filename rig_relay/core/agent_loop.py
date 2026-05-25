@@ -68,6 +68,8 @@ if TYPE_CHECKING:
     )
 
 
+import secrets
+
 from rig_relay.core._agent_helpers import requires_init
 from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision
@@ -100,6 +102,15 @@ from rig_relay.core.tool_executor import (
 )
 from rig_relay.core.tool_result_runtime import ToolResultRuntime
 from rig_relay.core.tool_runtime import ToolRuntime
+
+
+def _new_correlation_id() -> str:
+    return "corr_" + secrets.token_hex(6)
+
+
+def _new_causation_id() -> str:
+    return "cause_" + secrets.token_hex(8)
+
 
 _COUNCIL_MUTATION_TOOLS = frozenset({
     "BashTool",
@@ -162,6 +173,7 @@ class AgentLoop(
 
         self.stats = AgentStats()
         self.approval_callback: ApprovalCallback | None = None
+        self._mission_authority: Any = None
         self.user_input_callback: UserInputCallback | None = None
         self.entrypoint_metadata = entrypoint_metadata
 
@@ -691,6 +703,9 @@ class AgentLoop(
             user_message_id=self._current_user_message_id or "",
             bypass_permissions=self.bypass_tool_permissions,
             current_turn=self._current_turn,
+            correlation_id=_new_correlation_id(),
+            causation_id=_new_causation_id(),
+            mission_authority=self._mission_authority,
         )
 
         async for event in self._tool_executor.execute_batch(resolved, turn_ctx):
@@ -892,6 +907,61 @@ class AgentLoop(
         self.approval_callback = callback
         if self._governance_runtime is not None:
             self._governance_runtime.approval_callback = callback
+
+    def install_mission_authority(
+        self,
+        claim: Any,
+        worktree_root: str | None = None,
+        admitted_checkpoint: bool = False,
+        admitted_dependency_change: bool = False,
+        admitted_protected_surface: bool = False,
+        mission_id: str | None = None,
+    ) -> Any | None:
+        """Install authority derived from an admitted coordination claim."""
+        try:
+            from rig_relay.governance.mission_authority import (
+                derive_authority_from_claim,
+            )
+
+            authority = derive_authority_from_claim(
+                claim=claim,
+                worktree_root=worktree_root,
+                admitted_checkpoint=admitted_checkpoint,
+                admitted_dependency_change=admitted_dependency_change,
+                admitted_protected_surface=admitted_protected_surface,
+                mission_id=mission_id,
+            )
+
+            # ── Verify claim integrity ─────────────────────────────────
+            claim_status = getattr(claim, "status", None)
+            if claim_status != "active":
+                return None
+
+            claim_expires_at = getattr(claim, "expires_at", None)
+            if claim_expires_at is not None:
+                try:
+                    from datetime import UTC, datetime
+
+                    expires = datetime.fromisoformat(claim_expires_at)
+                    if datetime.now(UTC) > expires:
+                        return None
+                except (ValueError, TypeError):
+                    return None
+
+            if authority.status != "active" or not authority.is_active():
+                return None
+
+            claim_digest = getattr(claim, "state_sha256", None)
+            if claim_digest is not None and authority.provenance_sha256 != claim_digest:
+                return None
+
+            self._mission_authority = authority
+            return authority
+        except ImportError:
+            return None
+
+    def revoke_mission_authority(self) -> None:
+        self._mission_authority = None
 
     def set_user_input_callback(self, callback: object) -> None:
         self.user_input_callback = callback

@@ -42,11 +42,22 @@ ValidationStepKind = Literal[
 
 
 class ValidationStepRequest(BaseModel):
-    kind: str
-    paths: list[str] = Field(default_factory=list)
-    timeout_seconds: int | None = None
-    allow_mutation: bool = False
-    broad_validation_allowed: bool = False
+    kind: str = Field(
+        description="Step kind from allowlist: ruff_check, ruff_format_check, pyright, pyrefly, pytest, schema_validation, storage_audit, desktop_cockpit_dry_run, ruff_format_fix."
+    )
+    paths: list[str] = Field(
+        default_factory=list,
+        description="Files/paths to scope this step to. Overrides default_paths.",
+    )
+    timeout_seconds: int | None = Field(
+        default=None, description="Per-step timeout override in seconds."
+    )
+    allow_mutation: bool = Field(
+        default=False, description="Allow mutation for this step (ruff_format_fix)."
+    )
+    broad_validation_allowed: bool = Field(
+        default=False, description="Allow >max_paths for this step."
+    )
 
 
 class ValidationStepResult(BaseModel):
@@ -64,15 +75,37 @@ class ValidationStepResult(BaseModel):
 
 
 class ValidationSuiteArgs(BaseModel):
-    suite_name: str = "validation_suite"
-    steps: list[ValidationStepRequest] = Field(default_factory=list)
-    default_paths: list[str] = Field(default_factory=list)
-    broad_validation_allowed: bool = False
-    timeout_seconds: int = 300
-    max_paths: int = 8
-    allow_mutation: bool = False
-    session_id: str | None = None
-    task_id: str | None = None
+    suite_name: str = Field(
+        default="validation_suite", description="Name for this validation suite run."
+    )
+    steps: list[ValidationStepRequest] = Field(
+        default_factory=list,
+        description="Ordered validation steps to execute. Each step has a kind (ruff_check, pyright, pytest, etc.) and optional paths.",
+    )
+    default_paths: list[str] = Field(
+        default_factory=list,
+        description="Default paths applied to all steps unless overridden per-step.",
+    )
+    broad_validation_allowed: bool = Field(
+        default=False,
+        description="Allow >max_paths paths. Set true for repository-wide validation.",
+    )
+    timeout_seconds: int = Field(
+        default=300, description="Total suite timeout in seconds."
+    )
+    max_paths: int = Field(
+        default=8,
+        description="Maximum paths per step unless broad_validation_allowed=true.",
+    )
+    allow_mutation: bool = Field(
+        default=False, description="Allow mutation steps (ruff_format_fix)."
+    )
+    session_id: str | None = Field(
+        default=None, description="Session identifier. Auto-populated."
+    )
+    task_id: str | None = Field(
+        default=None, description="Task identifier. Auto-populated."
+    )
 
 
 class ValidationSuiteResult(BaseModel):
@@ -127,7 +160,13 @@ class ValidationSuite(
     ToolUIData[ValidationSuiteArgs, ValidationSuiteResult],
 ):
     description: ClassVar[str] = (
-        "Run allowlisted validation commands and return structured evidence."
+        "Run allowlisted validation commands and return structured evidence.\n\n"
+        "Allowed step kinds: ruff_check, ruff_format_check, pyright, pyrefly, "
+        "pytest, schema_validation, storage_audit, desktop_cockpit_dry_run, "
+        "ruff_format_fix (requires allow_mutation=true).\n\n"
+        "Use validation_suite for composing custom step sequences with fine-grained "
+        "path control. For fixed profile-based validation, use validate.\n\n"
+        "max_paths is capped at 8 unless broad_validation_allowed=true."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO

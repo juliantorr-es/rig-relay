@@ -32,7 +32,15 @@ class ToolConcurrencyManager:
 
         async def _signal_when_all_done() -> None:
             try:
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for r in results:
+                    if isinstance(r, Exception) and not isinstance(
+                        r, asyncio.CancelledError
+                    ):
+                        # Surface non-cancellation child-task exceptions
+                        # through the queue so the consumer can react.
+                        # ToolObservationDeliveryError must abort the batch.
+                        await queue.put(r)
             finally:
                 await queue.put(None)
 
@@ -43,6 +51,8 @@ class ToolConcurrencyManager:
                 event = await queue.get()
                 if event is None:
                     break
+                if isinstance(event, Exception):
+                    raise event
                 yield event
         except GeneratorExit:
             for t in tasks:

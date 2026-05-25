@@ -89,6 +89,20 @@
       ],
       "description": "SHA-256 hash of the tool receipt canonical JSON"
     },
+    "suggested_next_action": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Operator-facing next step for recovering from a refusal or failure"
+    },
+    "retryable": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "null" }
+      ],
+      "description": "Whether the refusal can usually be retried after following the advice"
+    },
     "envelope_id": {
       "oneOf": [
         { "type": "string" },

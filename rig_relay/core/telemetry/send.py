@@ -214,6 +214,7 @@ class TelemetryClient:
         properties: dict[str, Any],
         *,
         correlation_id: str | None = None,
+        causation_id: str | None = None,
         receipt_candidate: bool = False,
     ) -> None:
         # Local Observability Sink
@@ -226,6 +227,8 @@ class TelemetryClient:
                     event_name,
                     properties,
                     parent_session_id=self.parent_session_id,
+                    correlation_id=correlation_id,
+                    causation_id=causation_id,
                     receipt_candidate=receipt_candidate,
                 )
 
@@ -474,6 +477,9 @@ class TelemetryClient:
         output_kind: ToolOutputKind = ToolOutputKind.UNKNOWN,
         mutation_class: ToolMutationClass = ToolMutationClass.UNKNOWN,
         determinism_class: ToolDeterminismClass = ToolDeterminismClass.UNKNOWN,
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str = "",
     ) -> None:
         verdict_value = decision.verdict.value if decision else None
         approval_type_value = decision.approval_type.value if decision else None
@@ -492,6 +498,7 @@ class TelemetryClient:
 
         payload = {
             "tool_name": tool_call.tool_name,
+            "tool_call_id": tool_call.call_id,
             "status": status,
             "decision": verdict_value,
             "approval_type": approval_type_value,
@@ -507,9 +514,14 @@ class TelemetryClient:
             "tool_mutation_class": mutation_class,
             "tool_determinism_class": determinism_class,
             "receipt_candidate": True,
+            "turn_id": turn_id,
         }
         self.send_telemetry_event(
-            EventName.TOOL_CALL_COMPLETED, payload, receipt_candidate=True
+            EventName.TOOL_CALL_COMPLETED,
+            payload,
+            receipt_candidate=True,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
         )
 
     def send_tool_reasoning_trace(
@@ -533,6 +545,9 @@ class TelemetryClient:
         determinism_class: str = "unknown",
         mutation_class: str = "unknown",
         warnings: list[str] | None = None,
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str = "",
     ) -> None:
         """Emit a structured reasoning-trace event for a tool call.
 
@@ -558,9 +573,14 @@ class TelemetryClient:
             "determinism_class": determinism_class,
             "mutation_class": mutation_class,
             "warnings": warnings or [],
+            "turn_id": turn_id,
         }
         self.send_telemetry_event(
-            EventName.TOOL_REASONING_TRACE, payload, receipt_candidate=False
+            EventName.TOOL_REASONING_TRACE,
+            payload,
+            receipt_candidate=False,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
         )
 
     def send_user_copied_text(self, text: str) -> None:

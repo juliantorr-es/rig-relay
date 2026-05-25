@@ -99,6 +99,8 @@ _SUPPORTED_SUFFIXES: frozenset[str] = frozenset({
     ".yaml",
 })
 
+_ACCOUNTED_WITHHELD_SUFFIXES: frozenset[str] = frozenset({".ts", ".tsx", ".js", ".jsx"})
+
 
 class DiffBundler:
     """Orchestrate the review projection diff pipeline.
@@ -148,6 +150,13 @@ class DiffBundler:
                 continue
 
             suffix = Path(path).suffix
+            if suffix in _ACCOUNTED_WITHHELD_SUFFIXES:
+                states.append(
+                    FileProjectionState(
+                        path=path, state="withheld_unsupported_type", suffix=suffix
+                    )
+                )
+                continue
             if suffix not in _SUPPORTED_SUFFIXES:
                 continue
 
@@ -459,18 +468,26 @@ class DiffBundler:
         return 1, 0, 0
 
     # ------------------------------------------------------------------
-    # Main build pipeline
+    # Phase 1: Classify and project all changed files
     # ------------------------------------------------------------------
 
-    def build(self) -> DiffBundleResult:
-        result = DiffBundleResult()
-        snapshot = ProjectionSnapshot(self._repo_root)
-        result.projection_id = _derive_projection_id(snapshot)
-        commit_ts = self._commit_timestamp(snapshot)
-        scanner = ProjectionScanner(str(self._repo_root))
-
-        file_states = self._resolve_file_states(snapshot)
-
+    def _project_changed_files(
+        self,
+        file_states: list[FileProjectionState],
+        snapshot: ProjectionSnapshot,
+        scanner: ProjectionScanner,
+    ) -> (
+        tuple[
+            dict[str, str],
+            list[dict[str, object]],
+            list[dict[str, str]],
+            int,
+            int,
+            int,
+            ReplacementLedger | None,
+        ]
+        | None
+    ):
         pseudonymizer = PythonPseudonymizer()
         all_ledger: ReplacementLedger | None = None
         diff_files: dict[str, str] = {}
@@ -482,8 +499,15 @@ class DiffBundler:
 
         for fs in file_states:
             rel_path = fs.path
-
-            # Record unresolvable paths as explicit refusal
+            if fs.state == "withheld_unsupported_type":
+                changed_path_entries.append({
+                    "path": rel_path,
+                    "decision": "withheld",
+                    "reason": "no_semantic_typescript_backend",
+                    "state": fs.state,
+                    "suffix": fs.suffix,
+                })
+                continue
             if fs.state == "unresolvable":
                 refused_count += 1
                 changed_path_entries.append({
@@ -531,17 +555,38 @@ class DiffBundler:
             refused_count += ref
 
         if included_count == 0:
-            result.refused = True
-            result.refusal_reason = "All files refused or excluded"
-            result.files_excluded = excluded_count
-            result.files_refused = refused_count
-            return result
+            return None
+        return (
+            diff_files,
+            changed_path_entries,
+            all_findings,
+            included_count,
+            excluded_count,
+            refused_count,
+            all_ledger,
+        )
 
-        # Build evidence artifacts
+    # ------------------------------------------------------------------
+    # Phase 2: Assemble exported evidence artifacts
+    # ------------------------------------------------------------------
+
+    def _assemble_exported_evidence(
+        self,
+        diff_files: dict[str, str],
+        changed_path_entries: list[dict[str, object]],
+        all_findings: list[dict[str, str]],
+        included_count: int,
+        excluded_count: int,
+        refused_count: int,
+        snapshot: ProjectionSnapshot,
+        file_states: list[FileProjectionState],
+        projection_id: str,
+        commit_ts: str,
+    ) -> dict[str, str]:
         total_changed = len(file_states)
         assurance = {
             "schema_version": "rig.review_projection.projection_assurance.v1",
-            "projection_id": result.projection_id,
+            "projection_id": projection_id,
             "generated_at": commit_ts,
             "head_sha": snapshot.head_sha,
             "branch": snapshot.branch,
@@ -552,6 +597,9 @@ class DiffBundler:
             "files_included": included_count,
             "files_excluded": excluded_count,
             "files_refused": refused_count,
+            "files_withheld_unsupported_type": sum(
+                1 for e in changed_path_entries if e.get("decision") == "withheld"
+            ),
             "pre_scan_passed": all(
                 f.get("severity") != "block"
                 for f in all_findings
@@ -568,7 +616,7 @@ class DiffBundler:
 
         manifest = {
             "schema_version": "rig.review_projection.projection_manifest.v1",
-            "projection_id": result.projection_id,
+            "projection_id": projection_id,
             "head_sha": snapshot.head_sha,
             "branch": snapshot.branch,
             "is_detached": snapshot.is_detached,
@@ -579,6 +627,9 @@ class DiffBundler:
             "has_unstaged_changes": snapshot.has_unstaged_changes,
             "untracked_file_count": sum(
                 1 for p in snapshot.untracked_files if not p.startswith(".build/")
+            ),
+            "files_withheld_unsupported_type": sum(
+                1 for e in changed_path_entries if e.get("decision") == "withheld"
             ),
             "type": "projection_manifest",
         }
@@ -593,40 +644,57 @@ class DiffBundler:
         diff_files["projection_assurance.json"] = json.dumps(assurance, indent=2)
         diff_files["changed_paths.jsonl"] = changed_paths_jsonl
 
-        # Build deterministic ZIP
-        zip_path = self._output_dir / f"review_projection_{result.projection_id}.zip"
-        zip_hash = deterministic_zip_write(zip_path, diff_files)
-        result.zip_path = zip_path
-        result.zip_sha256 = zip_hash
+        return diff_files
 
-        # Local-only artifacts
+    # ------------------------------------------------------------------
+    # Phase 3: Write deterministic ZIP bundle
+    # ------------------------------------------------------------------
+
+    def _write_bundle(
+        self, diff_files: dict[str, str], projection_id: str
+    ) -> tuple[Path, str]:
+        zip_path = self._output_dir / f"review_projection_{projection_id}.zip"
+        zip_hash = deterministic_zip_write(zip_path, diff_files)
+        return zip_path, zip_hash
+
+    # ------------------------------------------------------------------
+    # Phase 4: Write local-only artifacts (never exported)
+    # ------------------------------------------------------------------
+
+    def _write_local_artifacts(
+        self,
+        all_ledger: ReplacementLedger | None,
+        all_findings: list[dict[str, str]],
+        projection_id: str,
+        snapshot: ProjectionSnapshot,
+        included_count: int,
+        excluded_count: int,
+        refused_count: int,
+        zip_hash: str,
+    ) -> tuple[Path, Path, Path]:
         crosswalk_data: dict[str, str] = {}
         if all_ledger is not None:
             crosswalk_data = all_ledger.mapping
 
         crosswalk_json = {
             "schema_version": "rig.review_projection.local_crosswalk.v1",
-            "projection_id": result.projection_id,
+            "projection_id": projection_id,
             "local_only_warning": True,
             "export_prohibited": True,
             "mappings": crosswalk_data,
             "candidate_zip_hash": zip_hash,
         }
 
-        cw_path = self._output_dir / f"crosswalk_{result.projection_id}.json"
+        cw_path = self._output_dir / f"crosswalk_{projection_id}.json"
         cw_path.write_text(json.dumps(crosswalk_json, indent=2), "utf-8")
-        result.crosswalk_path = cw_path
-
-        sf_path = self._output_dir / f"scan_findings_{result.projection_id}.jsonl"
+        sf_path = self._output_dir / f"scan_findings_{projection_id}.jsonl"
         sf_path.write_text(
             "\n".join(json.dumps(f, sort_keys=True) for f in all_findings) + "\n",
             "utf-8",
         )
-        result.scan_findings_path = sf_path
-
         receipt = {
             "schema_version": "rig.review_projection.compilation_receipt.v1",
-            "projection_id": result.projection_id,
+            "projection_id": projection_id,
             "created_at": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
             "head_sha": snapshot.head_sha,
             "branch": snapshot.branch,
@@ -649,12 +717,75 @@ class DiffBundler:
             "raw_source_content_in_manifest": False,
         }
 
-        rcpt_path = self._output_dir / f"receipt_{result.projection_id}.json"
+        rcpt_path = self._output_dir / f"receipt_{projection_id}.json"
         rcpt_path.write_text(json.dumps(receipt, indent=2), "utf-8")
+
+        return cw_path, sf_path, rcpt_path
+
+    # ------------------------------------------------------------------
+    # Main build pipeline
+    # ------------------------------------------------------------------
+
+    def build(self) -> DiffBundleResult:
+        result = DiffBundleResult()
+        snapshot = ProjectionSnapshot(self._repo_root)
+        result.projection_id = _derive_projection_id(snapshot)
+        commit_ts = self._commit_timestamp(snapshot)
+        scanner = ProjectionScanner(str(self._repo_root))
+
+        file_states = self._resolve_file_states(snapshot)
+
+        # Phase 1: Classify and project all changed files (no ZIP/evidence writing)
+        projection_result = self._project_changed_files(file_states, snapshot, scanner)
+        if projection_result is None:
+            result.refused = True
+            result.refusal_reason = "All files refused or excluded"
+            return result
+        (
+            diff_files,
+            changed_path_entries,
+            all_findings,
+            included_count,
+            excluded_count,
+            refused_count,
+            all_ledger,
+        ) = projection_result
+
+        # Phase 2: Assemble exported evidence (manifest, assurance, changed_paths)
+        diff_files = self._assemble_exported_evidence(
+            diff_files,
+            changed_path_entries,
+            all_findings,
+            included_count,
+            excluded_count,
+            refused_count,
+            snapshot,
+            file_states,
+            result.projection_id,
+            commit_ts,
+        )
+
+        # Phase 3: Write deterministic ZIP
+        zip_path, zip_hash = self._write_bundle(diff_files, result.projection_id)
+        result.zip_path = zip_path
+        result.zip_sha256 = zip_hash
+
+        # Phase 4: Write local-only artifacts (crosswalk, scan findings, receipt)
+        cw_path, sf_path, rcpt_path = self._write_local_artifacts(
+            all_ledger,
+            all_findings,
+            result.projection_id,
+            snapshot,
+            included_count,
+            excluded_count,
+            refused_count,
+            zip_hash,
+        )
+        result.crosswalk_path = cw_path
+        result.scan_findings_path = sf_path
         result.receipt_path = rcpt_path
 
         result.files_included = included_count
         result.files_excluded = excluded_count
         result.files_refused = refused_count
-
         return result

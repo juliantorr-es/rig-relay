@@ -160,13 +160,22 @@ class GitBase[TArgs: BaseModel](
 
 
 class GitStatusArgs(BaseModel):
-    short: bool = True
-    branch: bool = True
-    porcelain: bool = False
+    short: bool = Field(default=True, description="Use short format (--short).")
+    branch: bool = Field(
+        default=True, description="Show branch and upstream tracking info (--branch)."
+    )
+    porcelain: bool = Field(
+        default=False,
+        description="Machine-readable porcelain v1 format (--porcelain=v1 -z).",
+    )
 
 
 class GitStatus(GitBase[GitStatusArgs]):
-    description: ClassVar[str] = "Show the working tree status."
+    description: ClassVar[str] = (
+        "Show the working tree status. Use for raw git status output. "
+        "For structured workspace state (branch, staged/unstaged/untracked files, "
+        "checkpoint eligibility), prefer git_workspace_state."
+    )
     _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
 
     async def run(
@@ -345,14 +354,18 @@ class GitStatus(GitBase[GitStatusArgs]):
 
 
 class GitDiffArgs(BaseModel):
-    paths: list[str] = Field(default_factory=list)
-    cached: bool = False
-    stat: bool = False
+    paths: list[str] = Field(
+        default_factory=list, description="Files to diff. Empty = all changed files."
+    )
+    cached: bool = Field(default=False, description="Show staged changes (--cached).")
+    stat: bool = Field(default=False, description="Show diffstat only (--stat).")
 
 
 class GitDiff(GitBase[GitDiffArgs]):
     description: ClassVar[str] = (
-        "Show changes between commits, commit and working tree, etc."
+        "Show changes between commits, commit and working tree, etc. "
+        "Use for detailed diff inspection. For structured workspace state, "
+        "prefer git_workspace_state."
     )
 
     async def run(
@@ -383,13 +396,21 @@ class GitDiff(GitBase[GitDiffArgs]):
 
 
 class GitLogArgs(BaseModel):
-    max_count: int = 20
-    oneline: bool = True
-    paths: list[str] = Field(default_factory=list)
+    max_count: int = Field(
+        default=20, description="Number of commits to show. Capped at 100."
+    )
+    oneline: bool = Field(default=True, description="Single-line format (--oneline).")
+    paths: list[str] = Field(
+        default_factory=list,
+        description="Filter commits affecting these files. Empty = all history.",
+    )
 
 
 class GitLog(GitBase[GitLogArgs]):
-    description: ClassVar[str] = "Show commit logs."
+    description: ClassVar[str] = (
+        "Show commit logs. max_count is capped at 100. "
+        "Use for commit history inspection."
+    )
 
     async def run(
         self, args: GitLogArgs, ctx: InvokeContext | None = None
@@ -416,11 +437,17 @@ class GitLog(GitBase[GitLogArgs]):
 
 
 class GitBranchArgs(BaseModel):
-    show_current: bool = True
+    show_current: bool = Field(
+        default=True,
+        description="Show only current branch name (--show-current). Set False to list all branches.",
+    )
 
 
 class GitBranch(GitBase[GitBranchArgs]):
-    description: ClassVar[str] = "List branches."
+    description: ClassVar[str] = (
+        "Show current branch name (show_current=True) or list all branches (show_current=False). "
+        "Default shows only current branch."
+    )
 
     async def run(
         self, args: GitBranchArgs, ctx: InvokeContext | None = None
@@ -440,12 +467,20 @@ class GitBranch(GitBase[GitBranchArgs]):
 
 
 class GitShowArgs(BaseModel):
-    ref: str
-    paths: list[str] = Field(default_factory=list)
+    ref: str = Field(
+        description="Git ref to show: SHA, branch name, tag, or relative (HEAD~1)."
+    )
+    paths: list[str] = Field(
+        default_factory=list, description="Restrict diff to these paths."
+    )
 
 
 class GitShow(GitBase[GitShowArgs]):
-    description: ClassVar[str] = "Show various types of objects."
+    description: ClassVar[str] = (
+        "Show various types of Git objects: commits, files at specific refs. "
+        "ref can be a SHA, branch name, tag, or relative reference (HEAD~1). "
+        "Use for inspecting specific commits or file content at a ref."
+    )
 
     async def run(
         self, args: GitShowArgs, ctx: InvokeContext | None = None
@@ -470,15 +505,21 @@ class GitShow(GitBase[GitShowArgs]):
 
 
 class GitLsFilesArgs(BaseModel):
-    paths: list[str] = Field(default_factory=list)
-    others: bool = False
-    modified: bool = False
-    deleted: bool = False
+    paths: list[str] = Field(
+        default_factory=list, description="Files to check. Empty = all tracked files."
+    )
+    others: bool = Field(default=False, description="Show untracked files (--others).")
+    modified: bool = Field(
+        default=False, description="Show modified files (--modified)."
+    )
+    deleted: bool = Field(default=False, description="Show deleted files (--deleted).")
 
 
 class GitLsFiles(GitBase[GitLsFilesArgs]):
     description: ClassVar[str] = (
-        "Show information about files in the index and the working tree."
+        "Show information about files in the index and the working tree. "
+        "Use others=True for untracked, modified=True for changed, "
+        "deleted=True for removed files. Use for explicit file queries."
     )
 
     async def run(

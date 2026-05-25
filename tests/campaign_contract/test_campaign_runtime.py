@@ -847,8 +847,8 @@ def test_mutation_execution_routes_through_public_runtime(tmp_path, monkeypatch)
     coord = tmp_path / "coordination"
 
     # Persist proposal
-    from rig_relay.coordination.patch_workflow import PatchWorkflowStore
     from rig_relay.coordination.patch_proposal import PatchProposal
+    from rig_relay.coordination.patch_workflow import PatchWorkflowStore
 
     store = PatchWorkflowStore(coord)
     proposal = PatchProposal(

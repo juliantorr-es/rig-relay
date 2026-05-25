@@ -177,6 +177,28 @@
       ],
       "description": "Human-readable reason for refusal or failure"
     },
+    "suggested_next_action": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Operator-facing next step for recovering from a refusal or failure"
+    },
+    "retryable": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Whether the refusal can usually be retried after following the advice"
+    },
     "warnings": {
       "type": "array",
       "items": {
@@ -245,6 +267,21 @@
         }
       ],
       "description": "RuntimeToolInvocationReceipt, produced alongside the execution result"
+    },
+    "agent_outcome": {
+      "oneOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Canonical AgentToolOutcome projection derived from the tool runtime result"
+    },
+    "agent_outcome_schema_valid": {
+      "type": "boolean",
+      "description": "Whether the agent_outcome projection passed schema validation"
     },
     "git_summary": {
       "anyOf": [
@@ -320,6 +357,28 @@
             }
           ],
           "description": "Structured error kind from tool or adapter"
+        },
+        "suggested_next_action": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Operator-facing next step for recovering from a refusal or failure"
+        },
+        "retryable": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether the refusal can usually be retried after following the advice"
         },
         "supervisor_result_envelope_id": {
           "oneOf": [

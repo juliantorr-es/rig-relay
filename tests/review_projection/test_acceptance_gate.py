@@ -304,3 +304,49 @@ def test_no_changed_files_returns_refused(tmp_path: Path) -> None:
     result = bundler.build()
     assert result.refused
     assert result.refusal_reason == "All files refused or excluded"
+
+
+def test_typescript_files_accounted_as_withheld(tmp_path: Path) -> None:
+    """Changed .ts/.js files must appear as withheld in changed_paths.jsonl."""
+    from git import Repo
+    repo = Repo.init(tmp_path)
+    repo.git.config("user.name", "test")
+    repo.git.config("user.email", "test@test.test")
+    # Commit a Python file so there's something to diff
+    (tmp_path / "src.py").write_text("x = 1\n")
+    repo.index.add(["src.py"])
+    repo.index.commit("baseline")
+
+    # Modify a .ts file
+    (tmp_path / "src.py").write_text("x = 2\n")
+    ts_file = tmp_path / "tools" / "helper.ts"
+    ts_file.parent.mkdir(parents=True, exist_ok=True)
+    ts_file.write_text("export const y = 1;\n")
+
+    bundler = DiffBundler(tmp_path)
+    result = bundler.build()
+
+    assert not result.refused, f"Bundle refused: {result.refusal_reason}"
+    assert result.zip_path and result.zip_path.is_file()
+
+    with zipfile.ZipFile(result.zip_path, "r") as zf:
+        cpe = zf.read("changed_paths.jsonl").decode("utf-8")
+        found_withheld = False
+        for line in cpe.strip().split("\n"):
+            entry = json.loads(line)
+            if entry.get("decision") == "withheld" and entry.get("reason") == "no_semantic_typescript_backend":
+                found_withheld = True
+                assert "tools/helper.ts" in entry.get("path", "") or "helper.ts" in entry.get("path", "")
+                break
+        assert found_withheld, (
+            "Expected withheld entry for .ts file in changed_paths.jsonl"
+        )
+        # Verify no diff for the withheld file
+        diff_names = zf.namelist()
+        for n in diff_names:
+            assert "helper" not in n, f"Withheld file must not have a diff: {n}"
+        # Verify assurance contains withheld count
+        assurance = json.loads(zf.read("projection_assurance.json").decode())
+        assert assurance.get("files_withheld_unsupported_type", 0) >= 1, (
+            f"Assurance should report withheld file count: {assurance}"
+        )

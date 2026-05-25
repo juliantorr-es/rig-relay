@@ -26,6 +26,7 @@ class TestRuntimeProviderKind:
             RuntimeProviderKind.CUSTOM,
             RuntimeProviderKind.DRY_RUN,
             RuntimeProviderKind.STUB,
+            RuntimeProviderKind.LOCAL_INFERENCE,
         ]
 
     def test_string_values(self):
@@ -151,6 +152,7 @@ class TestRuntimeInvocationStatus:
             RuntimeInvocationStatus.TIMED_OUT,
             RuntimeInvocationStatus.CANCELLED,
             RuntimeInvocationStatus.BLOCKED,
+            RuntimeInvocationStatus.BUDGET_EXCEEDED,
         ]
 
     def test_string_values(self):

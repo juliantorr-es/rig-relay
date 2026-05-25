@@ -105,3 +105,6 @@ class ToolTurnContext:
     user_message_id: str = ""
     bypass_permissions: bool = False
     current_turn: Any = None
+    correlation_id: str = ""
+    causation_id: str = ""
+    mission_authority: Any = None

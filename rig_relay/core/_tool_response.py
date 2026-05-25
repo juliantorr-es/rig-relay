@@ -158,6 +158,7 @@ class ToolResponseMixin:
         decision: ToolDecision | None = None,
         cancelled: bool = False,
         span: trace.Span | None = None,
+        runtime_result: Any = None,
     ) -> ToolResultEvent:
         self._handle_tool_response(tool_call, error_msg, "failure", decision, span=span)
         return ToolResultEvent(

@@ -23,6 +23,10 @@ from rig_relay.core.telemetry.tool_contract import (
     ToolMutationClass,
 )
 from rig_relay.core.tools.base import BaseTool, BaseToolState, InvokeContext
+from rig_relay.core.tools.builtins.validate_advice import (
+    retryable as _validate_retryable,
+    suggested_next_action as _validate_suggested_next_action,
+)
 
 # Git state
 from rig_relay.core.tools.builtins.validate_git import (
@@ -54,6 +58,7 @@ from rig_relay.core.tools.builtins.validate_models import (
 # Paths
 from rig_relay.core.tools.builtins.validate_paths import (
     _is_python_path,
+    _is_test_path,
     _normalize_validate_paths,
     _scope_check_argv,
 )
@@ -259,9 +264,15 @@ class Validate(
     ToolUIData[ValidateArgs, ValidateResult],
 ):
     description: ClassVar[str] = (
-        "Run a read-only validation profile (quick, python, schemas, "
-        "receipt-policy, tool-hardening). Returns structured results "
-        "with blocker taxonomy."
+        "Run a read-only validation profile. Returns structured results with blocker taxonomy.\n\n"
+        "Available profiles:\n"
+        "  quick — Fast git status + focused pytest. Use for fast feedback during editing.\n"
+        "  python — ruff check + pyright + pytest. Use before committing or requesting review.\n"
+        "  schemas — Schema and receipt validation. Use when modifying schema files.\n"
+        "  receipt-policy — Content-light receipt validation. Use for evidence/telemetry changes.\n"
+        "  tool-hardening — Deterministic tool-envelope checks. Use when modifying built-in tools.\n"
+        "  worktree-readiness — Git state + dirty policy. Use before starting work in a lane.\n\n"
+        "Use validate for fixed profile-based validation. For custom step sequences, use validation_suite."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.DETERMINISTIC_REPO_STATE
@@ -332,6 +343,12 @@ class Validate(
             failed_count=result.failed_count,
             skipped_count=result.skipped_count,
             duration_ms=result.duration_ms,
+            suggested_next_action=(
+                result.suggested_next_action or _validate_suggested_next_action(result)
+            ),
+            retryable=result.retryable
+            if result.retryable is not None
+            else _validate_retryable(result),
             blocker_summary=dict(result.blocker_summary),
             error_kind=result.error_kind,
             refusal_reason=result.refusal_reason,
@@ -353,6 +370,16 @@ class Validate(
     ) -> list[ProfileCheck]:
         checks = list(profile.checks)
         if normalized_paths and profile.name == "quick":
+            if any(_is_test_path(p) for p in normalized_paths):
+                if not any(check.command_kind == "pytest" for check in checks):
+                    checks.append(
+                        ProfileCheck(
+                            check_id="pytest",
+                            command_kind="pytest",
+                            argv=["uv", "run", "pytest"],
+                            display="pytest (scoped)",
+                        )
+                    )
             if any(_is_python_path(p) for p in normalized_paths):
                 checks.append(
                     ProfileCheck(
@@ -470,7 +497,7 @@ class Validate(
         elif skipped == len(results):
             overall_status = "skipped"
 
-        return ValidateResult(
+        result = ValidateResult(
             status=overall_status,
             profile=profile.name,
             command_count=len(results),
@@ -483,15 +510,27 @@ class Validate(
             before_git_state=before_git_state,
             after_git_state=after_git_state,
         )
+        return result.model_copy(
+            update={
+                "suggested_next_action": _validate_suggested_next_action(result),
+                "retryable": _validate_retryable(result),
+            }
+        )
 
     def _refuse(
         self, args: ValidateArgs, *, error_kind: str, reason: str
     ) -> ValidateResult:
-        return ValidateResult(
+        result = ValidateResult(
             status="refused",
             profile=args.profile,
             error_kind=error_kind,
             refusal_reason=reason,
+        )
+        return result.model_copy(
+            update={
+                "suggested_next_action": _validate_suggested_next_action(result),
+                "retryable": _validate_retryable(result),
+            }
         )
 
     def _denied_profile_reason(
@@ -791,6 +830,12 @@ class Validate(
                 reason=policy_reason,
                 attributes={"profile": args.profile},
             )
+            refusal_result = ValidateResult(
+                status="failed",
+                profile=args.profile,
+                error_kind="dirty_workspace",
+                refusal_reason=policy_reason,
+            )
             return ValidateResult(
                 status="failed",
                 profile=args.profile,
@@ -798,6 +843,8 @@ class Validate(
                 refusal_reason=policy_reason,
                 before_git_state=before_git_state,
                 blocker_summary={"dirty_workspace": 1},
+                suggested_next_action=_validate_suggested_next_action(refusal_result),
+                retryable=_validate_retryable(refusal_result),
             )
 
         state_machine.transition(

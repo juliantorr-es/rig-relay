@@ -69,6 +69,8 @@ class RuntimeToolInvocationReceipt(BaseModel):
     tool_receipt_kind: str | None = None
     tool_receipt_schema_version: str | None = None
     receipt_sha256: str | None = None
+    suggested_next_action: str | None = None
+    retryable: bool | None = None
     supervisor_result_envelope_id: str | None = None
     supervisor_result_envelope_sha256: str | None = None
     supervisor_result_classification: str | None = None
@@ -112,6 +114,8 @@ def build_runtime_tool_invocation_receipt(
         tool_receipt_kind=result.tool_receipt_kind,
         tool_receipt_schema_version=result.tool_receipt_schema_version,
         receipt_sha256=result.receipt_sha256,
+        suggested_next_action=getattr(result, "suggested_next_action", None),
+        retryable=getattr(result, "retryable", None),
         supervisor_result_envelope_id=getattr(
             result, "supervisor_result_envelope_id", None
         ),

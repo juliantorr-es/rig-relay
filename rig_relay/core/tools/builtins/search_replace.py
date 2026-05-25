@@ -113,8 +113,12 @@ def _classify_block_errors(errors: list[str]) -> str:
 class SearchReplaceArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_path: str
-    content: str
+    file_path: str = Field(
+        description="Repository-relative path to the file to modify."
+    )
+    content: str = Field(
+        description="SEARCH/REPLACE blocks in the format: <<<<<<< SEARCH\\n[text]\\n=======\\n[replacement]\\n>>>>>>> REPLACE. Separate multiple blocks with blank lines. Must be valid UTF-8."
+    )
 
     @classmethod
     def _validate_utf8(cls, v: str) -> str:
@@ -257,6 +261,10 @@ class SearchReplace(
 ):
     description: ClassVar[str] = (
         "Replace sections of files using SEARCH/REPLACE blocks. "
+        "Prefer search_replace for targeted changes to existing files. "
+        "Use write_file only for new files or complete file replacement. "
+        "Blocks are applied sequentially — earlier blocks may succeed before later blocks fail. "
+        "Check blocks_applied, failed_block_count, and total_block_count for partial application.\n\n"
         "Supports fuzzy matching and detailed error reporting. "
         "Format: <<<<<<< SEARCH\\n[text]\\n=======\\n[replacement]\\n>>>>>>> REPLACE"
     )

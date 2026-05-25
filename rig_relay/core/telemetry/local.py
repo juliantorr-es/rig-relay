@@ -80,10 +80,15 @@ def write_degradation_marker(session_id: str) -> Path | None:
         "degradation_mode": TelemetryMode.DISABLED_BY_USER.value,
         "degradation_reason": "Telemetry disabled — harness operating in reduced-adaptation mode",
         "generated_at": datetime.now(UTC).isoformat(),
+        "runtime_correlation_preserved": True,
+        "persisted_observability_correlation_disabled": True,
+        "cross_session_trace_reconstruction_degraded": True,
+        "telemetry_reason": "user_opt_out",
         "preserved_capabilities": [
             "core_harness_execution",
             "local_static_validation",
             "frontend_basic_operation",
+            "runtime_correlation_identity",
         ],
         "degraded_capabilities": [
             "adaptive_diagnostics",
@@ -92,6 +97,8 @@ def write_degradation_marker(session_id: str) -> Path | None:
             "ralph_refinement",
             "orchestrator_adaptation",
             "subagent_behavior_refinement",
+            "persisted_observability_correlation",
+            "cross_session_trace_reconstruction",
         ],
         "disabled_capabilities": ["telemetry_bundle_export", "debug_packet_export"],
         "export_allowed": False,
@@ -119,6 +126,8 @@ def log_local_event(
     event_name: str,
     payload: dict[str, Any],
     parent_session_id: str | None = None,
+    correlation_id: str | None = None,
+    causation_id: str | None = None,
     receipt_candidate: bool = False,
 ) -> None:
     """Write a telemetry event to the local JSONL sink with a formal envelope."""
@@ -171,6 +180,8 @@ def log_local_event(
         "event_id": str(uuid.uuid4()),
         "session_id": session_id,
         "parent_session_id": parent_session_id,
+        "correlation_id": correlation_id or "",
+        "causation_id": causation_id or "",
         "sequence": sequence,
         "created_at": datetime.now(UTC).isoformat(),
         "event_name": normalized_name,

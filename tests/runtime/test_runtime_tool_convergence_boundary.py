@@ -173,8 +173,12 @@ class TestRuntimeDispatch:
             )
 
         monkeypatch.setattr(runner._tool_runtime, "execute_one", fake_execute_one)
+        from rig_relay.runtime import _execution_template, _lease_gate
         monkeypatch.setattr(
-            runner, "_release_mutation_lease", lambda *args: releases.append(args)
+            _execution_template, "release_mutation_lease", lambda *args, **kwargs: releases.append(args)
+        )
+        monkeypatch.setattr(
+            _lease_gate, "release_mutation_lease", lambda *args, **kwargs: releases.append(args)
         )
         result = await runner.execute_search_replace(intent, resolution)
         assert len(calls) == 1
@@ -211,8 +215,12 @@ class TestRuntimeDispatch:
             )
 
         monkeypatch.setattr(runner._tool_runtime, "execute_one", fake_execute_one)
+        from rig_relay.runtime import _execution_template, _lease_gate
         monkeypatch.setattr(
-            runner, "_release_mutation_lease", lambda *args: releases.append(args)
+            _execution_template, "release_mutation_lease", lambda *args, **kwargs: releases.append(args)
+        )
+        monkeypatch.setattr(
+            _lease_gate, "release_mutation_lease", lambda *args, **kwargs: releases.append(args)
         )
         result = await runner.execute_write_file(intent, resolution)
         assert len(calls) == 1
@@ -295,17 +303,23 @@ class TestRuntimeDispatch:
             return SimpleNamespace(status=SimpleNamespace(value="completed"))
 
         monkeypatch.setattr(runner._tool_runtime, "execute_one", fake_execute_one)
+        from rig_relay.runtime import _execution_template, _lease_gate
+        lease_block_mock = SimpleNamespace(
+            blocked=True,
+            error_kind="lease_conflict",
+            refusal_reason="lease conflict",
+            lease_info=None,
+            intent_id="intent-001",
+            tool_name="search_replace",
+            granted=False,
+        )
         monkeypatch.setattr(
-            runner,
-            "_claim_mutation_lease",
-            lambda envelope, file_path: SimpleNamespace(
-                blocked=SimpleNamespace(
-                    status=RuntimeToolExecutionStatus.BLOCKED,
-                    error_kind="lease_conflict",
-                    refusal_reason="lease conflict",
-                ),
-                lease_info=None,
-            ),
+            _execution_template, "claim_mutation_lease",
+            lambda envelope, file_path, coordination_root=None: lease_block_mock,
+        )
+        monkeypatch.setattr(
+            _lease_gate, "claim_mutation_lease",
+            lambda envelope, file_path, coordination_root=None: lease_block_mock,
         )
         result = await runner.execute_search_replace(intent, resolution)
         assert result.status == RuntimeToolExecutionStatus.BLOCKED

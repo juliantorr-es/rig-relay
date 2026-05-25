@@ -36,6 +36,7 @@ DEFAULT_POLICY: dict[str, Any] = {
         "lease_cleanup.remove",
         "credentials.configure",
         "update.restart_now",
+        "review_projection.disclose.authorize",
     ],
     "action_methods": {
         "remote_upload.confirm": [
@@ -51,6 +52,7 @@ DEFAULT_POLICY: dict[str, Any] = {
         "lease_cleanup.remove": ["none_dev_only", "local_system_auth"],
         "credentials.configure": ["none_dev_only", "local_system_auth"],
         "update.restart_now": ["none_dev_only", "local_system_auth"],
+        "review_projection.disclose.authorize": ["none_dev_only", "local_system_auth"],
     },
     "receipt_ttl_seconds": 300,
     "default_method": "local_system_auth",
@@ -149,6 +151,26 @@ def validate_receipt(
     if method not in allowed:
         return False, f"Method '{method}' not allowed for action '{action}'"
 
+    # ── Mission-issued receipt: verify provenance fields ──────────
+    if receipt.get("authorization_source") == "mission_execution_authority":
+        mission_id = receipt.get("mission_identity")
+        provenance = receipt.get("authority_provenance_sha256")
+        claim_id = receipt.get("claim_id")
+        if not mission_id:
+            return False, "Mission-issued receipt missing mission_identity"
+        if not provenance or not provenance.startswith("sha256:"):
+            return (
+                False,
+                "Mission-issued receipt missing valid authority_provenance_sha256",
+            )
+        if not claim_id:
+            return False, "Mission-issued receipt missing claim_id"
+        receipt_action_scope = receipt.get("action_scope") or {}
+        if not receipt_action_scope.get("branch") and not receipt_action_scope.get(
+            "include_paths"
+        ):
+            return False, "Mission-issued receipt missing action_scope binding"
+
     return True, "Receipt valid"
 
 
@@ -191,6 +213,69 @@ def generate_dev_receipt(
     return receipt
 
 
+def generate_mission_checkpoint_receipt(
+    *,
+    mission_id: str | None = None,
+    authority_provenance_sha256: str | None = None,
+    claim_id: str | None = None,
+    session_id: str = "",
+    task_id: str = "",
+    branch: str = "",
+    include_paths: list[str] | None = None,
+    ttl_seconds: int = 300,
+) -> dict[str, Any]:
+    """Generate a checkpoint authorization receipt issued under mission authority.
+
+    This receipt carries authorization_source="mission_execution_authority"
+    and records the canonical claim provenance. It satisfies the same
+    receipt validation as a human-issued receipt, but requires no step-up
+    approval because the mission authority already admitted the checkpoint.
+    """
+    now = datetime.now(UTC)
+    expires = now + timedelta(seconds=ttl_seconds)
+    authz_id = _generate_id()
+    challenge = secrets.token_bytes(32)
+    challenge_hash = _sha256_bytes(challenge)
+
+    action_scope: dict[str, Any] = {}
+    if include_paths:
+        action_scope["include_paths"] = include_paths
+    if branch:
+        action_scope["branch"] = branch
+    if session_id:
+        action_scope["session_id"] = session_id
+    if task_id:
+        action_scope["task_id"] = task_id
+
+    receipt: dict[str, Any] = {
+        "schema_version": "rig.relay.step_up_authorization_receipt.v1",
+        "authorization_id": authz_id,
+        "created_at": now.isoformat(),
+        "action": "checkpoint.commit",
+        "action_scope": action_scope,
+        "method": "none_dev_only",
+        # user_verified=True is a transitive truth: the mission authority was
+        # admitted by a verified user decision. Per-checkpoint user interaction
+        # did not occur. The `authorization_source` field distinguishes
+        # mission_execution_authority from human_consequential_approval.
+        "user_verified": True,
+        "user_verified_kind": "transitive_mission_authority",
+        "expires_at": expires.isoformat(),
+        "challenge_sha256": challenge_hash,
+        "credential_id_hash": None,
+        "authorization_source": "mission_execution_authority",
+        "mission_identity": mission_id,
+        "authority_provenance_sha256": authority_provenance_sha256,
+        "claim_id": claim_id,
+        "receipt_sha256": "",
+        "warnings": [],
+    }
+
+    receipt_data = json.dumps(receipt, sort_keys=True).encode("utf-8")
+    receipt["receipt_sha256"] = _sha256_bytes(receipt_data)
+    return receipt
+
+
 def resolve_authorization(
     action: str,
     receipt_json: str | None = None,
@@ -214,9 +299,7 @@ def resolve_authorization(
 
 
 def mint_dev_receipt(
-    action: str,
-    action_scope: dict[str, Any] | None = None,
-    ttl_seconds: int = 300,
+    action: str, action_scope: dict[str, Any] | None = None, ttl_seconds: int = 300
 ) -> dict[str, Any] | None:
     return generate_dev_receipt(action, action_scope, ttl_seconds)
 
@@ -227,6 +310,7 @@ __all__ = [
     "AuthorizationResult",
     "action_requires_authorization",
     "generate_dev_receipt",
+    "generate_mission_checkpoint_receipt",
     "is_read_only_action",
     "mint_dev_receipt",
     "resolve_authorization",

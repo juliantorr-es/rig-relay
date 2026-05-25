@@ -78,6 +78,8 @@ class RefusalCode(StrEnum):
     UNSUPPORTED_EXECUTION_MODE = "unsupported_execution_mode"
     CAPABILITY_GATED = "capability_gated"
     LOCAL_ACTION_ENVELOPE_REQUIRED = "local_action_envelope_required"
+    SCOPE_EXPANSION_REQUIRED = "scope_expansion_required"
+    CONSEQUENTIAL_APPROVAL_REQUIRED = "consequential_approval_required"
 
 
 class ToolRuntimeRequest(BaseModel):
@@ -92,6 +94,8 @@ class ToolRuntimeRequest(BaseModel):
     source_id: str | None = None
     invocation_id: str | None = None
     turn_id: str | None = None
+    correlation_id: str = ""
+    causation_id: str = ""
     session_id: str | None = None
     agent_id: str | None = None
     lane_id: str | None = None
@@ -103,6 +107,7 @@ class ToolRuntimeRequest(BaseModel):
     context_envelope_id: str | None = None
     local_action_envelope: dict[str, Any] | None = None
     bypass_permissions: bool = False
+    mutation_class: str | None = None
     audit_context: dict[str, Any] = Field(default_factory=dict)
     runtime_envelope_sha256: str | None = None
     receipt_context: dict[str, Any] = Field(default_factory=dict)
@@ -141,6 +146,10 @@ class ToolRuntimeResult(BaseModel):
     status: ToolRuntimeStatus
     tool_name: str = ""
     tool_call_id: str = ""
+    correlation_id: str = ""
+    causation_id: str = ""
+    turn_id: str | None = None
+    session_id: str | None = None
     source_kind: str | None = None
     source_id: str | None = None
     runtime_envelope_sha256: str | None = None
@@ -170,6 +179,12 @@ class ToolRuntimeResult(BaseModel):
     duration_ms: float | None = None
     cache_hit: bool = False
 
+    # ── Authority ──────────────────────────────────────────────────
+    authority_decision: str | None = None
+    authority_source: str | None = None
+    mission_id: str | None = None
+    matched_rule_kind: str | None = None
+
     def to_debug_dict(self) -> dict[str, Any]:
         """JSON-safe debug snapshot. Excludes large tool output bodies."""
         result: dict[str, Any] = {
@@ -183,6 +198,7 @@ class ToolRuntimeResult(BaseModel):
             "context_observation": self.context_observation_status,
             "duration_ms": self.duration_ms,
             "cache_hit": self.cache_hit,
+            "authority": self.authority_decision,
             "degraded": self.degraded_capabilities,
         }
         if self.refusal:
@@ -203,6 +219,10 @@ class ToolRuntimeResult(BaseModel):
         cls,
         tool_name: str = "",
         tool_call_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str | None = None,
+        session_id: str | None = None,
         provider_tool_response: Any = None,
         tool_events: list[Any] | None = None,
         cache_status: ToolRuntimeCacheStatus = ToolRuntimeCacheStatus.MISS,
@@ -213,6 +233,10 @@ class ToolRuntimeResult(BaseModel):
             status=ToolRuntimeStatus.COMPLETED,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            session_id=session_id,
             provider_tool_response=provider_tool_response,
             tool_events=tool_events or [],
             cache_status=cache_status,
@@ -225,12 +249,20 @@ class ToolRuntimeResult(BaseModel):
         cls,
         tool_name: str = "",
         tool_call_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str | None = None,
+        session_id: str | None = None,
         provider_tool_response: Any = None,
     ) -> ToolRuntimeResult:
         return cls(
             status=ToolRuntimeStatus.CACHED,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            session_id=session_id,
             provider_tool_response=provider_tool_response,
             cache_status=ToolRuntimeCacheStatus.HIT,
             cache_hit=True,
@@ -241,6 +273,10 @@ class ToolRuntimeResult(BaseModel):
         cls,
         tool_name: str = "",
         tool_call_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str | None = None,
+        session_id: str | None = None,
         refusal: ToolRuntimeRefusal | None = None,
         approval_status: ToolRuntimeApprovalStatus = ToolRuntimeApprovalStatus.DENIED,
     ) -> ToolRuntimeResult:
@@ -248,6 +284,10 @@ class ToolRuntimeResult(BaseModel):
             status=ToolRuntimeStatus.REFUSED,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            session_id=session_id,
             refusal=refusal,
             approval_status=approval_status,
             execution_enabled=False,
@@ -258,6 +298,10 @@ class ToolRuntimeResult(BaseModel):
         cls,
         tool_name: str = "",
         tool_call_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str | None = None,
+        session_id: str | None = None,
         error_kind: str | None = None,
         error_message: str | None = None,
         refusal: ToolRuntimeRefusal | None = None,
@@ -267,6 +311,10 @@ class ToolRuntimeResult(BaseModel):
             status=ToolRuntimeStatus.FAILED,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            session_id=session_id,
             error_kind=error_kind,
             error_message=error_message,
             refusal=refusal,
@@ -276,11 +324,22 @@ class ToolRuntimeResult(BaseModel):
 
     @classmethod
     def skipped(
-        cls, tool_name: str = "", tool_call_id: str = "", reason: str = ""
+        cls,
+        tool_name: str = "",
+        tool_call_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str | None = None,
+        session_id: str | None = None,
+        reason: str = "",
     ) -> ToolRuntimeResult:
         return cls(
             status=ToolRuntimeStatus.SKIPPED,
             tool_name=tool_name,
             tool_call_id=tool_call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            session_id=session_id,
             error_message=reason,
         )

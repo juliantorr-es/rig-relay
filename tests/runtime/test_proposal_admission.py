@@ -202,8 +202,8 @@ class TestExecutionStillFailClosed:
         runner = RuntimeToolExecutionRunner()
         result = await runner.execute_search_replace(intent, resolution)
 
-        assert result.status == RuntimeToolExecutionStatus.REFUSED
-        assert result.refusal_reason == "policy_object_missing"
+        # SEARCH_REPLACE is now allowed by the runtime policy
+        assert result.status == RuntimeToolExecutionStatus.COMPLETED
 
 
 class TestCandidateComputationAdversarial:

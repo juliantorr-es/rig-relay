@@ -9,6 +9,7 @@ from rig_relay.core.tools.base import InvokeContext
 if TYPE_CHECKING:
     from rig_relay.core.agent_loop import AgentLoop
     from rig_relay.core.tool_executor.context import ToolSessionContext, ToolTurnContext
+    from rig_relay.core.tools.base import BaseTool
 
 
 class ToolRuntimeAdapterBuilder:
@@ -36,10 +37,16 @@ class ToolRuntimeAdapterBuilder:
     def clear_turn_context(self) -> None:
         self._turn_ctx = None
 
-    def build_tool_runtime(self) -> ToolRuntime:
+    def build_tool_runtime(
+        self,
+        tool_class: type[BaseTool] | None = None,
+        tool_instance: BaseTool | None = None,
+        *,
+        mission_authority: Any = None,
+    ) -> ToolRuntime:
         self._build_count += 1
 
-        return ToolRuntime(
+        runtime = ToolRuntime(
             invoke_tool=self._invoke_adapter,
             cache_check=self._cache_check,
             cache_store=self._cache_store,
@@ -54,6 +61,9 @@ class ToolRuntimeAdapterBuilder:
             subprocess_runner=self._loop._build_subprocess_runner(),
             telemetry_client=self._loop.telemetry_client,
         )
+        if mission_authority is not None:
+            runtime._mission_authority = mission_authority
+        return runtime
 
     # ── Invoke tool adapter ─────────────────────────────────
 

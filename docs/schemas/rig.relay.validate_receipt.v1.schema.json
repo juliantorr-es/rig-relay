@@ -64,6 +64,28 @@
       ],
       "description": "Total wall-clock duration in milliseconds"
     },
+    "suggested_next_action": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Operator-facing next action for a refusal or failure"
+    },
+    "retryable": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Whether the validation request is retryable"
+    },
     "blocker_summary": {
       "oneOf": [
         {

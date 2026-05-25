@@ -72,9 +72,18 @@ class TestRuntimeToolName:
         assert list(RuntimeToolName) == [
             RuntimeToolName.WRITE_FILE,
             RuntimeToolName.SEARCH_REPLACE,
+            RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
+            RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
             RuntimeToolName.VALIDATE,
             RuntimeToolName.RUNTIME_EXEC,
             RuntimeToolName.BASH_LEGACY,
+            RuntimeToolName.GIT_STATUS,
+            RuntimeToolName.GIT_DIFF,
+            RuntimeToolName.GIT_LOG,
+            RuntimeToolName.GIT_BRANCH,
+            RuntimeToolName.GIT_SHOW,
+            RuntimeToolName.GIT_LS_FILES,
+            RuntimeToolName.CHECKPOINT,
         ]
 
     def test_string_values(self) -> None:

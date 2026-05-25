@@ -664,6 +664,15 @@ class RuntimeSupervisor:
                         "runtime.subprocess.timeout",
                         attributes={"timeout_seconds": timeout_s},
                     )
+                    try:
+                        proc.terminate()
+                        try:
+                            await asyncio.wait_for(proc.wait(), timeout=2.0)
+                        except TimeoutError:
+                            proc.kill()
+                            await proc.wait()
+                    except ProcessLookupError:
+                        pass
                     break
 
                 # Already-exited check
@@ -798,9 +807,17 @@ class RuntimeSupervisor:
             cancelled = True
             sm.transition(SupervisorEvent.CANCELLED)
             trace_event("runtime.subprocess.kill", attributes={"reason": "cancelled"})
+            if proc is not None:
+                try:
+                    proc.terminate()
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=2.0)
+                    except TimeoutError:
+                        proc.kill()
+                        await proc.wait()
+                except ProcessLookupError:
+                    pass
         finally:
-            for t in drain_tasks:
-                t.cancel()
             await asyncio.gather(*drain_tasks, return_exceptions=True)
             if proc is not None:
                 await _finalize_subprocess(proc)

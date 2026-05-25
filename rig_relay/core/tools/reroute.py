@@ -14,12 +14,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import hashlib
+from pathlib import Path
 import re
 import shlex
 from typing import Any
 
 from pydantic import BaseModel
 
+from rig_relay.core.tools.builtins.validate_models import RECEIPT_SCRIPT, SCHEMA_SCRIPT
 from rig_relay.core.types import ToolStreamEvent
 
 # ── Reroute registry ──────────────────────────────────────────────
@@ -127,12 +129,22 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
         porcelain = "--porcelain=v1" in tokens or "--porcelain" in tokens
         short = "--short" in tokens or "-s" in tokens or porcelain
         branch = "--branch" in tokens or "-b" in tokens
-        return {"_tool_name": "git_status", "short": short, "branch": branch, "porcelain": porcelain}
+        return {
+            "_tool_name": "git_status",
+            "short": short,
+            "branch": branch,
+            "porcelain": porcelain,
+        }
     if subcmd == "diff":
         paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
         cached = "--cached" in tokens
         stat = "--stat" in tokens
-        return {"_tool_name": "git_diff", "paths": paths, "cached": cached, "stat": stat}
+        return {
+            "_tool_name": "git_diff",
+            "paths": paths,
+            "cached": cached,
+            "stat": stat,
+        }
     if subcmd == "log":
         paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
         max_count = 20
@@ -148,7 +160,12 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
                     max_count = int(tokens[i + 1])
                 except ValueError:
                     pass
-        return {"_tool_name": "git_log", "paths": paths, "max_count": max_count, "oneline": oneline}
+        return {
+            "_tool_name": "git_log",
+            "paths": paths,
+            "max_count": max_count,
+            "oneline": oneline,
+        }
     if subcmd == "branch":
         show_current = "--show-current" in tokens or len(tokens) == 2
         return {"_tool_name": "git_branch", "show_current": show_current}
@@ -172,7 +189,13 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
         modified = "--modified" in tokens or "-m" in tokens
         deleted = "--deleted" in tokens or "-d" in tokens
         paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
-        return {"_tool_name": "git_ls_files", "paths": paths, "others": others, "modified": modified, "deleted": deleted}
+        return {
+            "_tool_name": "git_ls_files",
+            "paths": paths,
+            "others": others,
+            "modified": modified,
+            "deleted": deleted,
+        }
 
     return None
 
@@ -190,9 +213,163 @@ def _reroute_read_file_by_python(
     return {"path": m.group(1)} if m else None
 
 
+_UV_VALUE_FLAGS = {
+    "--directory",
+    "--project",
+    "--python",
+    "--with",
+    "--extra",
+    "--group",
+    "--package",
+    "--env-file",
+}
+
+_VALIDATE_TOOL_HARDENING_TARGETS = {
+    "tests/tools/test_bash_hardening.py",
+    "tests/tools/test_tool_receipt_emission.py",
+}
+
+
+def _strip_uv_run_prefix(tokens: list[str]) -> list[str]:
+    if len(tokens) < 2 or tokens[0] != "uv" or tokens[1] != "run":
+        return tokens
+
+    inner = tokens[2:]
+    index = 0
+    while index < len(inner):
+        token = inner[index]
+        if not token.startswith("-"):
+            return inner[index:]
+        if token in _UV_VALUE_FLAGS and index + 1 < len(inner):
+            index += 2
+            continue
+        index += 1
+    return []
+
+
+def _looks_like_validate_path(token: str) -> bool:
+    return (
+        token in {"tests", "test"}
+        or token.endswith(".py")
+        or token.startswith("tests/")
+        or "/tests/" in token
+        or "::" in token
+    )
+
+
+def _split_pytest_target(token: str) -> tuple[str | None, str | None]:
+    if "::" not in token:
+        return token if _looks_like_validate_path(token) else None, None
+    path, _selector = token.split("::", 1)
+    return path if _looks_like_validate_path(path) else None, token
+
+
+def _collect_validate_targets(tokens: list[str]) -> tuple[list[str], str | None]:
+    paths: list[str] = []
+    scope_parts: list[str] = []
+    for token in tokens:
+        if token == "--":
+            break
+        if token.startswith("-"):
+            continue
+        path, scope_token = _split_pytest_target(token)
+        if path is not None and path not in paths:
+            paths.append(path)
+        if scope_token is not None:
+            scope_parts.append(scope_token)
+    scope = " ".join(scope_parts) if scope_parts else None
+    return paths, scope
+
+
+def _is_focused_test_scope(paths: list[str]) -> bool:
+    return bool(paths) and all(path.endswith(".py") for path in paths)
+
+
+def _reroute_validate(
+    command: str, tokens: list[str], cwd: str | None = None
+) -> dict[str, Any] | None:
+    """Reroute validate-equivalent bash commands to the validate tool."""
+    inner = _strip_uv_run_prefix(tokens)
+    if not inner:
+        return None
+
+    command_root = cwd or str(Path.cwd())
+    command_name = inner[0]
+
+    if command_name in {"pytest", "pytest3"}:
+        paths, scope = _collect_validate_targets(inner[1:])
+        profile = "quick" if _is_focused_test_scope(paths) else "python"
+        if any(path in _VALIDATE_TOOL_HARDENING_TARGETS for path in paths):
+            profile = "tool-hardening"
+        return {
+            "_tool_name": "validate",
+            "profile": profile,
+            "paths": paths,
+            "scope": scope,
+            "workspace_root": command_root,
+        }
+
+    if (
+        command_name == "python"
+        and len(inner) >= 3
+        and inner[1] == "-m"
+        and inner[2] == "pytest"
+    ):
+        paths, scope = _collect_validate_targets(inner[3:])
+        profile = "quick" if _is_focused_test_scope(paths) else "python"
+        return {
+            "_tool_name": "validate",
+            "profile": profile,
+            "paths": paths,
+            "scope": scope,
+            "workspace_root": command_root,
+        }
+
+    if command_name == "ruff":
+        subcommand = inner[1] if len(inner) > 1 else ""
+        if subcommand != "check":
+            return None
+        paths, scope = _collect_validate_targets(inner[2:])
+        return {
+            "_tool_name": "validate",
+            "profile": "python",
+            "paths": paths,
+            "scope": scope,
+            "workspace_root": command_root,
+        }
+
+    if command_name == "pyright":
+        paths, scope = _collect_validate_targets(inner[1:])
+        return {
+            "_tool_name": "validate",
+            "profile": "python",
+            "paths": paths,
+            "scope": scope,
+            "workspace_root": command_root,
+        }
+
+    if command_name == "python" and len(inner) >= 2:
+        script = inner[1]
+        if script.endswith(SCHEMA_SCRIPT):
+            return {
+                "_tool_name": "validate",
+                "profile": "schemas",
+                "workspace_root": command_root,
+            }
+        if script.endswith(RECEIPT_SCRIPT):
+            return {
+                "_tool_name": "validate",
+                "profile": "receipt-policy",
+                "workspace_root": command_root,
+            }
+
+    return None
+
+
 # ── Registry ──────────────────────────────────────────────────────
 
 REROUTE_REGISTRY: list[RerouteEntry] = [
+    ("validate", _reroute_validate, "validate-equivalent command → validate"),
     ("read_file", _reroute_read_file, "cat/head/tail → read_file"),
     ("grep", _reroute_grep, "grep/rg → grep"),
     ("git_tool", _reroute_git, "git subcmd → git_<subcmd>"),
@@ -223,6 +400,8 @@ def detect_and_advertise_reroute(command: str) -> str | None:
 
 def _category_from_builder(builder: Any) -> str:
     """Map a reroute builder function to its original_command_category."""
+    if builder is _reroute_validate:
+        return "validate"
     if builder is _reroute_read_file:
         return "file_read"
     if builder is _reroute_grep:
@@ -239,7 +418,7 @@ def _empty_metadata() -> BashRerouteMetadata:
 
 
 async def try_reroute(
-    command: str, ctx: Any | None
+    command: str, ctx: Any | None, cwd: str | None = None
 ) -> tuple[bool, Any | None, list[ToolStreamEvent | Any], BashRerouteMetadata]:
     """Attempt to reroute a bash command to its dedicated builtin tool.
 
@@ -257,17 +436,23 @@ async def try_reroute(
         return False, None, [], _empty_metadata()
 
     for tool_name, builder, description in REROUTE_REGISTRY:
-        args_dict = builder(command, tokens)
+        if builder is _reroute_validate:
+            args_dict = builder(command, tokens, cwd)
+        else:
+            args_dict = builder(command, tokens)
         if args_dict is None:
             continue
 
         events: list[ToolStreamEvent | Any] = []
+        reroute_description = description
+        if tool_name == "validate" and (profile := args_dict.get("profile")):
+            reroute_description = f"{description} ({profile})"
 
         # Emit reroute advisory
         events.append(
             ToolStreamEvent(
                 tool_name="bash",
-                message=f"\u21aa Rerouting to {tool_name}. ({description})",
+                message=f"\u21aa Rerouting to {tool_name}. ({reroute_description})",
                 tool_call_id=ctx.tool_call_id if ctx else "",
             )
         )

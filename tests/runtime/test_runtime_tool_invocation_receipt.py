@@ -142,6 +142,8 @@ class TestBuildRuntimeToolInvocationReceipt:
             invocation_id="inv-001",
             tool_status="passed",
             receipt_sha256="abc123",
+            suggested_next_action="Follow up",
+            retryable=True,
             duration_ms=150.0,
             tool_receipt_kind="validate",
             tool_receipt_schema_version="rig.relay.validate_receipt.v1",
@@ -160,6 +162,8 @@ class TestBuildRuntimeToolInvocationReceipt:
         assert receipt.adapter_status == "completed"
         assert receipt.tool_status == "passed"
         assert receipt.receipt_sha256 == "abc123"
+        assert receipt.suggested_next_action == "Follow up"
+        assert receipt.retryable is True
         assert receipt.tool_receipt_kind == "validate"
         assert receipt.supervisor_result_envelope_id == "sup-env-001"
         assert receipt.supervisor_result_envelope_sha256 == "sha256:sup-env"
@@ -208,6 +212,8 @@ class TestBuildRuntimeToolInvocationReceipt:
             tool_status="refused",
             tool_error_kind="unsupported_tool",
             error_kind="unsupported_tool",
+            suggested_next_action="Use the governed runtime path",
+            retryable=False,
         )
         receipt = build_runtime_tool_invocation_receipt(
             result, created_at="2026-05-17T00:00:00Z"
@@ -215,6 +221,8 @@ class TestBuildRuntimeToolInvocationReceipt:
         assert receipt.adapter_status == "refused"
         assert receipt.tool_status == "refused"
         assert receipt.tool_error_kind == "unsupported_tool"
+        assert receipt.suggested_next_action == "Use the governed runtime path"
+        assert receipt.retryable is False
 
 
 # ── Schema tests ──────────────────────────────────────────────────────

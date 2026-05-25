@@ -117,6 +117,7 @@ def test_classification_mapping_is_complete():
         "failed",
         "timed_out",
         "killed",
+        "budget_killed",
         "cancelled",
         "spawn_failed",
         "cleanup_failed",

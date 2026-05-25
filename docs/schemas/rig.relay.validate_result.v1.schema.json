@@ -60,6 +60,28 @@
       ],
       "description": "Total elapsed time in milliseconds"
     },
+    "suggested_next_action": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Operator-facing next action for a refusal or failure"
+    },
+    "retryable": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Whether the validation request is retryable"
+    },
     "checks": {
       "oneOf": [
         {

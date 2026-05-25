@@ -101,32 +101,81 @@ class ValidateArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    profile: str
-    scope: str | None = None
-    paths: list[str] = Field(default_factory=list)
-    workspace_root: str | None = None
-    timeout_seconds: int | None = None
-    check_only: bool = True
-    allow_network: bool = False
-    allow_mutation: bool = False
-    env_profile: str | None = None
-    expected_dirty_policy: str | None = None
-    output_cap_bytes: int | None = None
+    profile: str = Field(
+        description="Validation profile: quick, python, schemas, receipt-policy, tool-hardening, worktree-readiness."
+    )
+    scope: str | None = Field(
+        default=None, description="Optional scope identifier for profile filtering."
+    )
+    paths: list[str] = Field(
+        default_factory=list,
+        description="Scope validation to specific repository-relative paths. Ruff and pytest auto-scoped to relevant file types.",
+    )
+    workspace_root: str | None = Field(
+        default=None,
+        description="Override workspace root path. Defaults to current working directory.",
+    )
+    timeout_seconds: int | None = Field(
+        default=None, description="Override default profile timeout in seconds."
+    )
+    check_only: bool = Field(
+        default=True,
+        description="When True, run checks without applying fixes. Set False to allow auto-fixes where supported.",
+    )
+    allow_network: bool = Field(
+        default=False, description="Allow profile checks that require network access."
+    )
+    allow_mutation: bool = Field(
+        default=False,
+        description="Allow profile checks that may modify files (e.g., auto-formatting).",
+    )
+    env_profile: str | None = Field(
+        default=None, description="Environment profile override for check execution."
+    )
+    expected_dirty_policy: str | None = Field(
+        default=None,
+        description="Expected dirty workspace policy: allow_dirty, clean, allow_listed_dirty.",
+    )
+    output_cap_bytes: int | None = Field(
+        default=None, description="Override default output byte cap for check results."
+    )
 
     # ── Cache policy ──────────────────────────────────────────
-    cache_policy: str = "enabled"
-    allow_failed_cache_reuse: bool = False
-    cache_root: str | None = None
+    cache_policy: str = Field(
+        default="enabled", description="Cache policy: enabled, disabled, force_rerun."
+    )
+    allow_failed_cache_reuse: bool = Field(
+        default=False, description="Reuse cached results even when previous run failed."
+    )
+    cache_root: str | None = Field(
+        default=None, description="Override cache storage location."
+    )
 
     # ── Scheduler policy ──────────────────────────────────────
-    scheduler_policy: str = "enabled"
-    lock_running_checks: bool = True
-    validation_phase: str = "pre_report"
+    scheduler_policy: str = Field(
+        default="enabled",
+        description="Scheduler policy for duplicate prevention: enabled, disabled.",
+    )
+    lock_running_checks: bool = Field(
+        default=True, description="Prevent concurrent duplicate check execution."
+    )
+    validation_phase: str = Field(
+        default="pre_report",
+        description="Validation phase: edit (during editing), pre_report (before committing), cleanup, final.",
+    )
 
     # ── Parallel policy ───────────────────────────────────────
-    parallel_policy: str = "auto"
-    max_workers: int | None = None
-    xdist_distribution: str = "loadfile"
+    parallel_policy: str = Field(
+        default="auto",
+        description="Parallel execution policy: auto, enabled, disabled.",
+    )
+    max_workers: int | None = Field(
+        default=None, description="Maximum parallel workers. None = auto-select."
+    )
+    xdist_distribution: str = Field(
+        default="loadfile",
+        description="pytest-xdist distribution mode: loadfile, load, each.",
+    )
 
 
 # ── Check result model ────────────────────────────────────────────────
@@ -220,6 +269,8 @@ class ValidateReceipt(BaseModel):
     failed_count: int = 0
     skipped_count: int = 0
     duration_ms: float | None = None
+    suggested_next_action: str | None = None
+    retryable: bool | None = None
     blocker_summary: dict[str, int] = Field(default_factory=dict)
     error_kind: str | None = None
     refusal_reason: str | None = None
@@ -242,6 +293,8 @@ class ValidateResult(BaseModel):
     failed_count: int = 0
     skipped_count: int = 0
     duration_ms: float | None = None
+    suggested_next_action: str | None = None
+    retryable: bool | None = None
     checks: list[ValidateCheckResult] = Field(default_factory=list)
     blocker_summary: dict[str, int] = Field(default_factory=dict)
     changed_files: list[str] | None = None

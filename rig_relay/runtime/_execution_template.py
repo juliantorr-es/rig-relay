@@ -146,6 +146,37 @@ class _ExecutionTemplateMixin:
             runtime_result = await runner._execute_runtime_tool(
                 intent=intent, envelope=envelope
             )
+
+            # ── Derive canonical agent outcome projection ──────────────
+            agent_outcome: dict[str, Any] | None = None
+            agent_outcome_schema_valid = False
+            _projection_failure_kind: str | None = None
+            try:
+                from rig_relay.core.tools._agent_outcome import (
+                    AgentToolOutcome,
+                    derive_agent_outcome,
+                )
+
+                mutation_cls = expected_tool.mutation_class
+                outcome: AgentToolOutcome = derive_agent_outcome(
+                    runtime_result, mutation_cls
+                )
+                outcome_json = outcome.model_dump(mode="json")
+                agent_outcome_schema_valid = True
+                agent_outcome = outcome_json
+            except Exception as exc:
+                _projection_failure_kind = type(exc).__name__
+                agent_outcome = {
+                    "schema_version": "rig.relay.agent_tool_outcome.v1",
+                    "tool_name": intent.tool_name.value,
+                    "tool_call_id": getattr(runtime_result, "tool_call_id", ""),
+                    "status": "degraded",
+                    "error_kind": "agent_outcome_projection_failed",
+                    "degraded_capabilities": ["agent_outcome_projection_failed"],
+                    "mutation_disposition": "unknown",
+                }
+                agent_outcome_schema_valid = False
+
             payload = envelope.payload or {}
             _changed_paths: list[str] = []
             if needs_lease and lease_file_path_attr:
@@ -159,6 +190,8 @@ class _ExecutionTemplateMixin:
                 start=start,
                 changed_paths=_changed_paths,
                 tool_receipt_kind=tool_receipt_kind,
+                agent_outcome=agent_outcome,
+                agent_outcome_schema_valid=agent_outcome_schema_valid,
             )
             runner._persist_if_configured(_out, envelope)
             return _out

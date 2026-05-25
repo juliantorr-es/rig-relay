@@ -92,10 +92,11 @@ def test_known_profiles_are_registered() -> None:
     assert "schemas" in profiles
     assert "receipt-policy" in profiles
     assert "tool-hardening" in profiles
+    assert "worktree-readiness" in profiles
 
 
 def test_quick_profile_has_expected_checks() -> None:
-    """Quick profile includes git_status check."""
+    """Quick profile includes git_status by default."""
     p = get_profile("quick")
     assert p is not None
     assert len(p.checks) >= 1
@@ -103,6 +104,28 @@ def test_quick_profile_has_expected_checks() -> None:
     assert "git_status" in check_ids
     assert not p.allow_mutation
     assert not p.allow_network
+
+
+def test_python_profile_has_expected_checks() -> None:
+    """Python profile includes ruff, pyright, and pytest checks."""
+    p = get_profile("python")
+    assert p is not None
+    check_ids = [c.check_id for c in p.checks]
+    assert len(check_ids) >= 3
+    assert "ruff_check" in check_ids
+    assert "pyright" in check_ids
+    assert "pytest" in check_ids
+
+
+def test_quick_profile_pytest_added_for_test_paths() -> None:
+    """Quick profile adds scoped pytest for focused test paths."""
+    from rig_relay.core.tools.builtins.validate import Validate
+
+    p = get_profile("quick")
+    assert p is not None
+    checks = Validate._build_checks(p, ["tests/tools/test_validate.py"])
+    check_ids = [c.check_id for c in checks]
+    assert "pytest" in check_ids
 
 
 def test_schemas_profile_has_schema_check() -> None:
@@ -371,6 +394,25 @@ def test_validate_result_no_raw_output() -> None:
         assert key not in dumped
 
 
+def test_validate_result_refusal_advice_fields() -> None:
+    """Validate refusal advice helper returns the operator next step."""
+    from rig_relay.core.tools.builtins.validate_advice import (
+        retryable as validate_retryable,
+        suggested_next_action as validate_suggested_next_action,
+    )
+
+    r = ValidateResult(
+        status="refused",
+        profile="unknown",
+        error_kind="tool_refusal",
+        refusal_reason="Unknown profile 'unknown'. Known profiles: quick",
+    )
+    suggestion = validate_suggested_next_action(r)
+    assert suggestion is not None
+    assert "Choose one of" in suggestion
+    assert validate_retryable(r) is True
+
+
 # ── Receipt model tests ──────────────────────────────────────────────
 
 
@@ -424,7 +466,7 @@ async def test_validate_run_emits_state_transitions(
     events: list[tuple[str, str]] = []
 
     class RecordingStateMachine(ValidateProfileStateMachine):
-        def __init__(self) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(
                 on_transition=lambda **payload: events.append((
                     str(payload["event"]),
@@ -457,8 +499,8 @@ async def test_validate_run_emits_state_transitions(
         lambda cwd, cmd_fp, kind: ("input-fp", {}),
     )
     monkeypatch.setattr(
-        "rig_relay.core.tools.builtins.validate.Validate._new_state_machine",
-        lambda self: RecordingStateMachine(),
+        "rig_relay.core.tools.builtins.validate.ValidateProfileStateMachine",
+        RecordingStateMachine,
     )
 
     tool = Validate(config_getter=lambda: ValidateToolConfig(), state=BaseToolState())
@@ -591,6 +633,10 @@ def test_build_receipt_from_result() -> None:
     assert receipt.blocker_summary == {"lint_failure": 1}
     assert receipt.error_kind is None
     assert receipt.refusal_reason is None
+    assert receipt.suggested_next_action == (
+        "Fix the lint violations, then rerun the profile on the affected files."
+    )
+    assert receipt.retryable is True
     assert len(receipt.check_receipts) == 2
 
     # Check first receipt mapping

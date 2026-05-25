@@ -99,6 +99,9 @@ async def _invoke_tool(
     runner = RuntimeToolExecutionRunner()
     result = await runner.execute_runtime_exec(intent, resolution)
 
+    # ── Canonical agent outcome projection ────────────────────────────
+    agent_outcome = getattr(result, "agent_outcome", None)
+
     response: dict[str, Any] = {
         "schema_version": result.schema_version,
         "status": result.status.value,
@@ -113,8 +116,52 @@ async def _invoke_tool(
         "duration_ms": result.duration_ms,
         "error_kind": result.error_kind,
         "refusal_reason": result.refusal_reason,
+        "suggested_next_action": result.suggested_next_action,
+        "legacy_retryable": result.retryable,
         "warnings": result.warnings,
     }
+
+    if agent_outcome is not None and isinstance(agent_outcome, dict):
+        # Copy canonical projection fields into the bridge response.
+        # These come from the same AgentToolOutcome derivation used by
+        # the AgentLoop path — no independent reconstruction.
+        for key in (
+            "schema_version",
+            "tool_name",
+            "tool_call_id",
+            "status",
+            "error_kind",
+            "refusal_code",
+            "recoverable",
+            "retryable",
+            "retryability_basis",
+            "suggested_next_action",
+            "suggested_next_action_source",
+            "degraded_capabilities",
+            "mutation_disposition",
+            "cache_hit",
+        ):
+            if key in agent_outcome and agent_outcome[key] is not None:
+                response[key] = agent_outcome[key]
+
+        # Content-light: expose warning count but never raw warning strings
+        warnings_list = agent_outcome.get("warnings", [])
+        response["warning_count"] = (
+            len(warnings_list) if isinstance(warnings_list, list) else 0
+        )
+
+        # Schema integrity
+        response["agent_outcome_schema_valid"] = getattr(
+            result, "agent_outcome_schema_valid", False
+        )
+    else:
+        # No projection available — the bridge must report this degradation
+        response["agent_outcome_schema_valid"] = False
+        response["error_kind"] = (
+            response.get("error_kind") or "agent_outcome_projection_unavailable"
+        )
+        response["retryable"] = response.get("retryable", False)
+        response["retryability_basis"] = "unsupported_no_safe_replay_rule"
     if result.git_summary is not None:
         response["git_summary"] = result.git_summary.model_dump(mode="json")
 
@@ -149,6 +196,7 @@ async def _invoke_search_replace(
 
 def main() -> None:
     """CLI entry point: read JSON from stdin, invoke, write JSON to stdout."""
+
     try:
         raw = sys.stdin.buffer.read()
         request = json.loads(raw)
@@ -194,6 +242,15 @@ def main() -> None:
         }
         if "expectedBeforeSha256" in request:
             args["expected_before_sha256"] = request["expectedBeforeSha256"]
+
+    # Auto-mint checkpoint authorization receipt if one wasn't provided.
+    # Mirrors the desktop path: _execute_mint_authorization_receipt_dev()
+    # in desktop/_intents/_chat.py, which mints a dev receipt before calling
+    # _execute_checkpoint_commit(). The bridge path was never wired.
+    if tool_name_str == "checkpoint" and "authorization_receipt" not in args:
+        from rig_relay.governance.auth_receipts import generate_dev_receipt
+        receipt = generate_dev_receipt("checkpoint.commit")
+        args["authorization_receipt"] = json.dumps(receipt)
 
     try:
         result = asyncio.run(

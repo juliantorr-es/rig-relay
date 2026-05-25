@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.observability.v1.schema.json",
+  "title": "Observability Envelope",
+  "description": "Canonical observability JSONL envelope. Each line is one event. Correlation and causation fields were added additively in correlation spine v1 and may be absent in legacy records.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "event_id", "session_id", "sequence", "created_at", "event_name", "payload"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.observability.v1" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "parent_session_id": { "type": ["string", "null"] },
+    "correlation_id": { "type": ["string", "null"] },
+    "causation_id": { "type": ["string", "null"] },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "event_name": { "type": "string", "minLength": 1 },
+    "payload": { "type": "object" },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "receipt_candidate": { "type": "boolean" }
+  }
+}

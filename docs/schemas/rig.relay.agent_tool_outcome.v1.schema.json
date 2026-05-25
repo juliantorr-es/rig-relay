@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.agent_tool_outcome.v1.schema.json",
+  "title": "AgentToolOutcome",
+  "description": "Content-safe projection of a governed tool execution result for agent consumption. Fields are deterministically derived from ToolRuntimeResult plus registered tool contract metadata plus bounded recovery-policy lookup.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool_name",
+    "tool_call_id",
+    "status",
+    "mutation_disposition"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.agent_tool_outcome.v1"
+    },
+    "tool_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_call_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "causation_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "turn_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "description": "Canonical lifecycle status preserved from ToolRuntimeStatus.value. Currently recognized values: completed, cached, refused, failed, timed_out, skipped, degraded. Unknown future values are permitted for forward compatibility."
+    },
+    "error_kind": {
+      "type": "string"
+    },
+    "refusal_code": {
+      "type": "string"
+    },
+    "recoverable": {
+      "type": "boolean"
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "retryability_basis": {
+      "type": "string"
+    },
+    "authority_decision": {
+      "type": "string"
+    },
+    "authority_source": {
+      "type": "string"
+    },
+    "mission_identity": {
+      "type": "string"
+    },
+    "matched_rule_kind": {
+      "type": "string"
+    },
+    "suggested_next_action": {
+      "type": "string"
+    },
+    "suggested_next_action_source": {
+      "type": "string",
+      "enum": [
+        "runtime_refusal",
+        "error_advice_mapping"
+      ]
+    },
+    "degraded_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mutation_disposition": {
+      "type": "string",
+      "enum": [
+        "not_applicable",
+        "not_performed",
+        "performed",
+        "previously_performed",
+        "unknown"
+      ]
+    },
+    "cache_hit": {
+      "type": "boolean"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

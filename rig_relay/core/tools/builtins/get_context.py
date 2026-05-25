@@ -72,10 +72,19 @@ class GetContextArgs(BaseModel):
         default_factory=list,
         description="Optional symbol names to include definitions for.",
     )
-    include_tests: bool = True
-    include_docs: bool = True
-    include_receipts: bool = True
-    include_other_agents: bool = True
+    include_tests: bool = Field(
+        default=True, description="Include test paths in context."
+    )
+    include_docs: bool = Field(
+        default=True, description="Include documentation paths in context."
+    )
+    include_receipts: bool = Field(
+        default=True, description="Include receipt/evidence paths in context."
+    )
+    include_other_agents: bool = Field(
+        default=True,
+        description="Include other active agent lanes in collision detection.",
+    )
     max_tokens: int = Field(
         default=60000, description="Maximum estimated tokens for the context output."
     )
@@ -157,6 +166,17 @@ class GetContext(
     ToolUIData[GetContextArgs, GetContextResult],
 ):
     description: ClassVar[str] = (
+        "Get governed repository context: repo topology, subsystem map, "
+        "active work lanes, collision warnings, and recommended context files. "
+        "Call this FIRST before planning or editing to understand the landscape "
+        "and avoid colliding with other agents. Read-only, receipt-backed.\n\n"
+        "Available modes:\n"
+        "  map — Fast topology only. Lightweight. Use at session start.\n"
+        "  packet — Full mission-ready context with active work lanes. Use before editing.\n"
+        "  handoff — Context for agent transfer between sessions.\n"
+        "  collision — Path-level conflict check against other active agent lanes.\n"
+        "  symbols — Symbol table definitions for specific symbols. Use before refactoring.\n"
+        "  digest — Coordination store digestion with cache.\n\n"
         "Get governed repository context: repo topology, subsystem map, "
         "active work lanes, collision warnings, and recommended context files. "
         "Call this BEFORE planning or editing to understand the landscape "

@@ -11,8 +11,8 @@ S4-B-process: Competing distinct proposals cross-worker proof.
 from __future__ import annotations
 
 import multiprocessing
-import subprocess
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -46,12 +46,11 @@ def _worker_same_proposal(
     repo_str: str, coord_str: str, barrier_file: str, queue: multiprocessing.Queue
 ) -> None:
     """Worker: load durable state, execute same proposal, return result."""
-    import asyncio
     import hashlib
     import json
     import os
-    import time
     from pathlib import Path as _Path
+    import time
 
     # File-based barrier: touch ready file, wait for all ready
     ready_file = _Path(barrier_file) / f"ready_{os.getpid()}"
@@ -60,15 +59,9 @@ def _worker_same_proposal(
     while len(list(_Path(barrier_file).glob("ready_*"))) < 2:
         time.sleep(0.05)
 
-    from rig_relay.campaign_contract.models import CampaignManifest, MissionDefinition
-    from rig_relay.cli._steward._campaign_models import (
-        CampaignManifestExtension,
-        CampaignState,
-    )
-    from rig_relay.cli._steward._campaign_registry import PathClassificationRegistry
+    from rig_relay.cli._steward._campaign_models import CampaignState
     from rig_relay.cli._steward._campaign_runtime import (
         execute_campaign_execution,
-        load_campaign_state,
         save_campaign_state,
     )
     from rig_relay.cli._steward._mutation_payload import (
@@ -77,12 +70,6 @@ def _worker_same_proposal(
     )
     from rig_relay.coordination.patch_proposal import PatchProposal
     from rig_relay.coordination.patch_workflow import PatchWorkflowStore
-    from rig_relay.core.tools.base import BaseToolState
-    from rig_relay.core.tools.builtins.search_replace import (
-        SearchReplace,
-        SearchReplaceArgs,
-        SearchReplaceConfig,
-    )
     from rig_relay.governance.dirty_guard import get_guard, reset_guard
 
     repo = Path(repo_str)

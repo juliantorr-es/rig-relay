@@ -233,6 +233,10 @@ class ToolRuntime:
             return ToolRuntimeResult.failed(
                 tool_name=request.tool_name,
                 tool_call_id=request.tool_call_id,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 error_kind="unexpected_runtime_error",
                 error_message=str(exc)[:500],
                 degraded_capabilities=["tool_runtime_internal_error"],
@@ -353,6 +357,10 @@ class ToolRuntime:
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
                     tool_call_id=cid,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    turn_id=request.turn_id,
+                    session_id=request.session_id,
                     refusal=ToolRuntimeRefusal(
                         refusal_code=RefusalCode.CAPABILITY_GATED,
                         message=f"Profile gate: {reason}",
@@ -417,6 +425,10 @@ class ToolRuntime:
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
                     tool_call_id=cid,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    turn_id=request.turn_id,
+                    session_id=request.session_id,
                     refusal=ToolRuntimeRefusal(
                         refusal_code=RefusalCode.CAPABILITY_GATED,
                         message=f"Governance blocked: {block_msg}",
@@ -477,6 +489,10 @@ class ToolRuntime:
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
                     tool_call_id=cid,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    turn_id=request.turn_id,
+                    session_id=request.session_id,
                     refusal=ToolRuntimeRefusal(
                         refusal_code=RefusalCode.LOCAL_ACTION_ENVELOPE_REQUIRED,
                         message=f"Local action envelope required: {reason_msg}",
@@ -537,6 +553,10 @@ class ToolRuntime:
                 return ToolRuntimeResult.refused(
                     tool_name=tn,
                     tool_call_id=cid,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    turn_id=request.turn_id,
+                    session_id=request.session_id,
                     refusal=ToolRuntimeRefusal(
                         refusal_code=RefusalCode.TOOL_PERMISSION_DENIED,
                         message=reason or f"Permission denied for '{tn}'",
@@ -561,8 +581,273 @@ class ToolRuntime:
                     turn_id=request.turn_id or "",
                 )
 
+        # ── Gate 2.5: Authority evaluation ───────────────────────
+        mission_authority = getattr(self, "_mission_authority", None)
+        if mission_authority is not None:
+            try:
+                from rig_relay.governance.mission_authority import AuthorityDecision
+
+                mutation_class_value = getattr(request, "mutation_class", None)
+                mutation_class_str: str | None = None
+                if mutation_class_value is not None:
+                    mutation_class_str = (
+                        mutation_class_value.value
+                        if hasattr(mutation_class_value, "value")
+                        else str(mutation_class_value)
+                    )
+
+                auth_eval = mission_authority.evaluate(
+                    tool_name=tn,
+                    tool_args=request.tool_args,
+                    mutation_class=mutation_class_str,
+                    execution_mode=request.execution_mode.value,
+                )
+
+                authority_decision = auth_eval.decision
+                authority_source = auth_eval.source.value
+                mission_auth_id = auth_eval.mission_id
+                matched_rule = auth_eval.matched_rule_kind
+
+                if authority_decision == AuthorityDecision.REFUSED_BY_POLICY:
+                    if self.telemetry_client is not None:
+                        self.telemetry_client.emit_governance_gate_decision(
+                            gate="mission_authority",
+                            decision="blocked",
+                            reason="refused_by_policy",
+                            tool_name=tn,
+                            mutation_intent=is_mutation,
+                            severity="warning",
+                            turn_id=request.turn_id or "",
+                        )
+                    self._stats_delta("tool_calls_rejected", 1)
+                    _finalize_span(
+                        status_str="refused",
+                        attrs={
+                            "tool.status": "refused",
+                            "tool.refusal_code": "capability_gated",
+                        },
+                    )
+                    return ToolRuntimeResult.refused(
+                        tool_name=tn,
+                        tool_call_id=cid,
+                        correlation_id=request.correlation_id,
+                        causation_id=request.causation_id,
+                        turn_id=request.turn_id,
+                        session_id=request.session_id,
+                        refusal=ToolRuntimeRefusal(
+                            refusal_code=RefusalCode.CAPABILITY_GATED,
+                            message="Action prohibited by mission authority policy",
+                            recoverable=False,
+                        ),
+                        approval_status=ToolRuntimeApprovalStatus.DENIED,
+                    ).model_copy(
+                        update={
+                            "source_kind": request.source_kind,
+                            "source_id": request.source_id,
+                            "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                            "authority_decision": authority_decision,
+                            "authority_source": authority_source,
+                            "mission_id": mission_auth_id,
+                            "matched_rule_kind": matched_rule,
+                        }
+                    )
+
+                if authority_decision == AuthorityDecision.REQUIRES_SCOPE_EXPANSION:
+                    if self.telemetry_client is not None:
+                        self.telemetry_client.emit_governance_gate_decision(
+                            gate="mission_authority",
+                            decision="blocked",
+                            reason="scope_expansion_required",
+                            tool_name=tn,
+                            mutation_intent=is_mutation,
+                            severity="warning",
+                            turn_id=request.turn_id or "",
+                        )
+                    self._stats_delta("tool_calls_rejected", 1)
+                    _finalize_span(
+                        status_str="refused",
+                        attrs={
+                            "tool.status": "refused",
+                            "tool.refusal_code": "scope_expansion_required",
+                        },
+                    )
+                    return ToolRuntimeResult.refused(
+                        tool_name=tn,
+                        tool_call_id=cid,
+                        correlation_id=request.correlation_id,
+                        causation_id=request.causation_id,
+                        turn_id=request.turn_id,
+                        session_id=request.session_id,
+                        refusal=ToolRuntimeRefusal(
+                            refusal_code=RefusalCode.SCOPE_EXPANSION_REQUIRED,
+                            message=(
+                                "Target paths outside current mission scope. "
+                                "Expand scope to proceed."
+                            ),
+                            recoverable=True,
+                            suggested_next_action=(
+                                "Request mission scope expansion to include "
+                                "the target paths, then retry."
+                            ),
+                        ),
+                        approval_status=ToolRuntimeApprovalStatus.DENIED,
+                    ).model_copy(
+                        update={
+                            "source_kind": request.source_kind,
+                            "source_id": request.source_id,
+                            "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                            "authority_decision": authority_decision,
+                            "authority_source": authority_source,
+                            "mission_id": mission_auth_id,
+                            "matched_rule_kind": matched_rule,
+                        }
+                    )
+
+                if (
+                    authority_decision
+                    == AuthorityDecision.REQUIRES_CONSECUTIAL_APPROVAL
+                ):
+                    if tn != "checkpoint":
+                        if self.telemetry_client is not None:
+                            self.telemetry_client.emit_governance_gate_decision(
+                                gate="mission_authority",
+                                decision="blocked",
+                                reason="consequential_approval_required",
+                                tool_name=tn,
+                                mutation_intent=is_mutation,
+                                severity="warning",
+                                turn_id=request.turn_id or "",
+                            )
+                        self._stats_delta("tool_calls_rejected", 1)
+                        _finalize_span(
+                            status_str="refused",
+                            attrs={
+                                "tool.status": "refused",
+                                "tool.refusal_code": "consequential_approval_required",
+                            },
+                        )
+                        return ToolRuntimeResult.refused(
+                            tool_name=tn,
+                            tool_call_id=cid,
+                            correlation_id=request.correlation_id,
+                            causation_id=request.causation_id,
+                            turn_id=request.turn_id,
+                            session_id=request.session_id,
+                            refusal=ToolRuntimeRefusal(
+                                refusal_code=RefusalCode.CONSEQUENTIAL_APPROVAL_REQUIRED,
+                                message="Action requires consequential approval",
+                                recoverable=True,
+                                suggested_next_action=(
+                                    "Request consequential approval for this action"
+                                ),
+                            ),
+                            approval_status=ToolRuntimeApprovalStatus.DENIED,
+                        ).model_copy(
+                            update={
+                                "source_kind": request.source_kind,
+                                "source_id": request.source_id,
+                                "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                                "authority_decision": authority_decision,
+                                "authority_source": authority_source,
+                                "mission_id": mission_auth_id,
+                                "matched_rule_kind": matched_rule,
+                            }
+                        )
+                    # For checkpoint: store authority context and continue to Gate 3 (approval)
+                    self._authority_decision = authority_decision
+                    self._authority_source = authority_source
+                    self._mission_auth_id = mission_auth_id
+                    self._matched_rule_kind = matched_rule
+
+                if authority_decision == AuthorityDecision.ALLOWED_IN_SCOPE:
+                    if trace_span is not None:
+                        trace_span.add_event(
+                            "tool.authority_allowed_in_scope",
+                            attributes={
+                                "decision": authority_decision,
+                                "matched_rule": matched_rule or "",
+                            },
+                        )
+                    self._authority_decision = authority_decision
+                    self._authority_source = authority_source
+                    self._mission_auth_id = mission_auth_id
+                    self._matched_rule_kind = matched_rule
+
+                    # ── Auto-issue checkpoint authorization receipt ──
+                    if tn == "checkpoint":
+                        try:
+                            from rig_relay.governance.auth_receipts import (
+                                generate_mission_checkpoint_receipt,
+                            )
+
+                            branch = ""
+                            if hasattr(request, "tool_args"):
+                                ta = request.tool_args
+                                branch = ta.get("branch", "")
+                                if not branch:
+                                    branch = ta.get("current_branch", "")
+
+                            receipt = generate_mission_checkpoint_receipt(
+                                mission_id=mission_auth_id,
+                                authority_provenance_sha256=getattr(
+                                    mission_authority, "provenance_sha256", None
+                                ),
+                                claim_id=getattr(mission_authority, "claim_id", None),
+                                session_id=request.session_id or "",
+                                task_id=getattr(request, "tool_call_id", ""),
+                                branch=branch,
+                                include_paths=request.tool_args.get(
+                                    "include_paths", []
+                                ),
+                            )
+                            import json as _json
+
+                            # ── Persist receipt durably before commit ──
+                            try:
+                                from pathlib import Path as _Path
+
+                                from rig_relay.desktop.authorization_receipts import (
+                                    DEFAULT_RECEIPTS_DIR as _RECEIPTS_DIR,
+                                )
+
+                                _receipt_dir = _Path(_RECEIPTS_DIR)
+                                _receipt_dir.mkdir(parents=True, exist_ok=True)
+                                _receipt_path = (
+                                    _receipt_dir / f"{receipt['receipt_sha256']}.json"
+                                )
+                                _receipt_path.write_text(
+                                    _json.dumps(receipt, indent=2, sort_keys=True)
+                                    + "\n",
+                                    encoding="utf-8",
+                                )
+                            except Exception:
+                                pass  # Best-effort persistence; commit still proceeds
+
+                            request.tool_args["authorization_receipt"] = _json.dumps(
+                                receipt
+                            )
+                        except ImportError:
+                            pass
+            except ImportError:
+                pass
+
         # ── 3. Approval request ─────────────────────────────────
-        approved, reason = await self._approval_request(tn, request.tool_args, cid)
+        authority_allowed = (
+            getattr(self, "_authority_decision", None) == "allowed_in_scope"
+        )
+        if authority_allowed:
+            approved, reason = True, "mission_authority_admitted"
+            if self.telemetry_client is not None:
+                self.telemetry_client.emit_governance_gate_decision(
+                    gate="approval_request",
+                    decision="allowed",
+                    reason="mission_authority_admitted",
+                    tool_name=tn,
+                    severity="info",
+                    turn_id=request.turn_id or "",
+                )
+        else:
+            approved, reason = await self._approval_request(tn, request.tool_args, cid)
         if not approved:
             if self.telemetry_client is not None:
                 if "unavailable" in (reason or "").lower():
@@ -596,6 +881,10 @@ class ToolRuntime:
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 refusal=ToolRuntimeRefusal(
                     refusal_code=RefusalCode.APPROVAL_DENIED,
                     message=reason or f"Approval denied for '{tn}'",
@@ -641,6 +930,10 @@ class ToolRuntime:
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 refusal=ToolRuntimeRefusal(
                     refusal_code=RefusalCode.PATCH_PROPOSAL_REQUIRED,
                     message="Patch proposal required for mutation tool",
@@ -677,7 +970,13 @@ class ToolRuntime:
                 status_str="ok", attrs={"tool.status": "cached", "cache.hit": True}
             )
             return ToolRuntimeResult.cached_result(
-                tool_name=tn, tool_call_id=cid, provider_tool_response=cached
+                tool_name=tn,
+                tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
+                provider_tool_response=cached,
             ).model_copy(
                 update={
                     "source_kind": request.source_kind,
@@ -689,16 +988,37 @@ class ToolRuntime:
         # ── 5. Invoke tool ──────────────────────────────────────
         expanded_args = self._expand_args(request.tool_args)
         expanded_args["_tool_runtime_name"] = tn
-        expanded_args["_tool_runtime_call_id"] = cid
-        expanded_args["worktree_path"] = request.worktree_path
-        expanded_args["repo_root"] = request.workspace_root
         tool_events: list[Any] = []
         result_model = None
         start_time = asyncio.get_event_loop().time()
 
         try:
             expanded_args["_tool_runtime_meta"] = tool_meta
-            async for item in self._invoke_tool(expanded_args):
+            tool_iter = self._invoke_tool(expanded_args)
+            if tool_iter is None or not hasattr(tool_iter, "__aiter__"):
+                self._stats_delta("tool_calls_failed", 1)
+                return ToolRuntimeResult.failed(
+                    tool_name=tn,
+                    tool_call_id=cid,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    turn_id=request.turn_id,
+                    session_id=request.session_id,
+                    error_kind="tool_invocation_failed",
+                    error_message=f"Tool '{tn}' invoke_tool returned {type(tool_iter).__name__} instead of async generator",
+                    refusal=ToolRuntimeRefusal(
+                        refusal_code=RefusalCode.TOOL_INVOCATION_FAILED,
+                        message=f"invoke_tool returned {type(tool_iter).__name__}",
+                        recoverable=True,
+                    ),
+                ).model_copy(
+                    update={
+                        "source_kind": request.source_kind,
+                        "source_id": request.source_id,
+                        "runtime_envelope_sha256": request.runtime_envelope_sha256,
+                    }
+                )
+            async for item in tool_iter:
                 if hasattr(item, "model_dump"):
                     result_model = item
                 else:
@@ -718,6 +1038,10 @@ class ToolRuntime:
             return ToolRuntimeResult.refused(
                 tool_name=tn,
                 tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 refusal=ToolRuntimeRefusal(
                     refusal_code=RefusalCode.TOOL_PERMISSION_DENIED,
                     message=f"ToolPermissionError during '{tn}'",
@@ -744,6 +1068,10 @@ class ToolRuntime:
             return ToolRuntimeResult.failed(
                 tool_name=tn,
                 tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 error_kind="tool_invocation_failed",
                 error_message=f"{tn} failed: {exc}"[:500],
                 refusal=ToolRuntimeRefusal(
@@ -771,6 +1099,10 @@ class ToolRuntime:
             return ToolRuntimeResult.failed(
                 tool_name=tn,
                 tool_call_id=cid,
+                correlation_id=request.correlation_id,
+                causation_id=request.causation_id,
+                turn_id=request.turn_id,
+                session_id=request.session_id,
                 error_kind="tool_invocation_failed",
                 error_message="Tool did not yield a result",
                 refusal=ToolRuntimeRefusal(
@@ -877,6 +1209,10 @@ class ToolRuntime:
             status=status,
             tool_name=tn,
             tool_call_id=cid,
+            correlation_id=request.correlation_id,
+            causation_id=request.causation_id,
+            turn_id=request.turn_id,
+            session_id=request.session_id,
             source_kind=request.source_kind,
             source_id=request.source_id,
             runtime_envelope_sha256=request.runtime_envelope_sha256,
@@ -888,6 +1224,10 @@ class ToolRuntime:
             execution_enabled=True,
             mutation_performed=False,
             degraded_capabilities=degraded,
+            authority_decision=getattr(self, "_authority_decision", None),
+            authority_source=getattr(self, "_authority_source", None),
+            mission_id=getattr(self, "_mission_auth_id", None),
+            matched_rule_kind=getattr(self, "_matched_rule_kind", None),
             duration_ms=duration * 1000,
             receipt_refs=[],
             supervisor_result_envelope_id=(

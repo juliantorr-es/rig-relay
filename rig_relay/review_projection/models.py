@@ -15,6 +15,7 @@ class FileClassification(StrEnum):
     SEMANTICALLY_PSEUDONYMIZED = auto()
     CONTRACT_EVIDENCE_RETAINED = auto()
     CONFIDENTIAL_REDACTED_REFUSED = auto()
+    UNSUPPORTED_FILE_TYPE_WITHHELD = auto()
     UNCLASSIFIED_REFUSED = auto()
 
 
@@ -133,3 +134,33 @@ class DisclosureReceipt(BaseModel):
     confidential_holdback_exported: Literal[False] = False
     raw_source_content_in_receipt: Literal[False] = False
     raw_source_content_in_manifest: Literal[False] = False
+
+
+class DisclosureAuthorizationReceipt(BaseModel):
+    """Records authorization intent to disclose a specific candidate bundle.
+    Does NOT claim disclosure occurred — that requires a separate completion event.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["rig.review_projection.disclosure_authorization.v1"] = (
+        "rig.review_projection.disclosure_authorization.v1"
+    )
+    authorization_id: str
+    projection_id: str
+    candidate_zip_sha256: str
+    compilation_receipt_sha256: str
+    recipient_class: DisclosureTarget
+    provider_or_channel: str
+    purpose_or_context: str | None = None
+    retention_assertion: str | None = None
+    training_use_assertion: str | None = None
+    is_transmission_authorized: bool = False
+    approved_by: str  # "local_system_auth" or "dev_only"
+    approved_at: str  # ISO 8601
+    authorization_receipt_sha256: str | None = None
+    # Safety assertions — user-acknowledged, not independently verified
+    human_export_approval_required: Literal[True] = True
+    controlled_disclosure_measures_recorded: Literal[True] = True
+    does_not_determine_trade_secret_protection: Literal[True] = True
+    recipient_conditions_are_user_asserted_not_verified: Literal[True] = True

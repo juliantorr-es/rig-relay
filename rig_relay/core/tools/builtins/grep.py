@@ -101,8 +101,13 @@ class GrepToolConfig(BaseToolConfig):
 
 
 class GrepArgs(BaseModel):
-    pattern: str
-    path: str = "."
+    pattern: str = Field(
+        description="Regex pattern. Rust regex syntax by default (ripgrep). Use . to match any char, | for alternation, \\b for word boundary. Case-insensitive for lowercase-only patterns."
+    )
+    path: str = Field(
+        default=".",
+        description="File or directory to search. Repository-relative. Default '.' searches entire workspace.",
+    )
     max_matches: int | None = Field(
         default=None, description="Override the default maximum number of matches."
     )
@@ -190,7 +195,14 @@ class Grep(
 ):
     description: ClassVar[str] = (
         "Recursively search files for a regex pattern using ripgrep (rg) or grep. "
-        "Respects .gitignore and .codeignore files by default when using ripgrep."
+        "Respects .gitignore and .codeignore files by default when using ripgrep.\n\n"
+        "Use grep for text, identifiers, messages, comments, filenames, configuration "
+        "strings, and broad recall. For structural code patterns, use ast_grep. "
+        "For known-file source context, use read_file.\n\n"
+        "Ripgrep uses Rust regex syntax by default. Case-insensitive for lowercase-only "
+        "patterns; case-sensitive when uppercase characters present. "
+        "Falls back to GNU grep -E (ERE) if ripgrep unavailable. "
+        "Results are capped at 100 matches by default (increase with max_matches)."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.DETERMINISTIC_REPO_STATE
