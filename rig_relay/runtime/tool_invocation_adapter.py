@@ -31,6 +31,8 @@ class RuntimeToolName(StrEnum):
 
     WRITE_FILE = "write_file"
     SEARCH_REPLACE = "search_replace"
+    SEARCH_REPLACE_PROPOSAL = "search_replace_proposal"
+    CREATE_PENDING_SEARCH_REPLACE_PROPOSAL = "create_pending_search_replace_proposal"
     VALIDATE = "validate"
     RUNTIME_EXEC = "runtime_exec"
     BASH_LEGACY = "bash_legacy"
@@ -266,7 +268,7 @@ class RuntimeToolInvocationAdapter:
         # ── Tool-specific validation ────────────────────────────────
         return self._apply_tool_policy(intent, base_envelope, ctx)
 
-    def _apply_tool_policy(
+    def _apply_tool_policy(  # noqa: PLR0911 (dispatch by tool name)
         self,
         intent: RuntimeToolIntent,
         envelope: RuntimeToolInvocationEnvelope,
@@ -308,23 +310,28 @@ class RuntimeToolInvocationAdapter:
         ctx: RuntimeContext,
     ) -> RuntimeToolInvocationEnvelope:
         """Apply policy for tools that need detailed payload normalization."""
-        match intent.tool_name:
-            case RuntimeToolName.WRITE_FILE:
-                return self._prepare_write_file(intent, envelope, ctx)
-            case RuntimeToolName.SEARCH_REPLACE:
-                return self._prepare_search_replace(intent, envelope, ctx)
-            case RuntimeToolName.VALIDATE:
-                return self._prepare_validate(intent, envelope, ctx)
-            case RuntimeToolName.RUNTIME_EXEC:
-                return self._prepare_runtime_exec(intent, envelope, ctx)
-            case RuntimeToolName.BASH_LEGACY:
-                return self._prepare_bash_legacy(intent, envelope)
-            case _:
-                return _refused(
-                    envelope,
-                    RuntimeToolInvocationErrorKind.UNSUPPORTED_TOOL,
-                    f"Unsupported tool: {intent.tool_name}",
-                )
+        tool = intent.tool_name
+        if tool == RuntimeToolName.WRITE_FILE:
+            return self._prepare_write_file(intent, envelope, ctx)
+        if tool == RuntimeToolName.SEARCH_REPLACE:
+            return self._prepare_search_replace(intent, envelope, ctx)
+        if tool == RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+            return self._prepare_search_replace_proposal(intent, envelope)
+        if tool == RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+            return self._prepare_create_pending_search_replace_proposal(
+                intent, envelope
+            )
+        if tool == RuntimeToolName.VALIDATE:
+            return self._prepare_validate(intent, envelope, ctx)
+        if tool == RuntimeToolName.RUNTIME_EXEC:
+            return self._prepare_runtime_exec(intent, envelope, ctx)
+        if tool == RuntimeToolName.BASH_LEGACY:
+            return self._prepare_bash_legacy(intent, envelope)
+        return _refused(
+            envelope,
+            RuntimeToolInvocationErrorKind.UNSUPPORTED_TOOL,
+            f"Unsupported tool: {tool}",
+        )
 
     def _prepare_write_file(
         self,
@@ -401,6 +408,65 @@ class RuntimeToolInvocationAdapter:
                 "set allow_main_repo_mutation=True to override",
             )
 
+        return _prepared(envelope, payload)
+
+    def _prepare_search_replace_proposal(
+        self, intent: RuntimeToolIntent, envelope: RuntimeToolInvocationEnvelope
+    ) -> RuntimeToolInvocationEnvelope:
+        """Prepare search_replace_proposal: require file_path + content.
+
+        Like _prepare_search_replace but skips the mutation-location check
+        because proposals do not mutate the active workspace. Path safety
+        and dirty-guard checks are handled inside SearchReplace.compute_proposal().
+        """
+        payload = dict(intent.payload)
+        file_path = payload.get("file_path", "")
+
+        if not file_path:
+            return _refused(
+                envelope,
+                RuntimeToolInvocationErrorKind.INVALID_PAYLOAD,
+                "search_replace_proposal payload requires 'file_path'",
+            )
+        if "content" not in payload:
+            return _refused(
+                envelope,
+                RuntimeToolInvocationErrorKind.INVALID_PAYLOAD,
+                "search_replace_proposal payload requires 'content' (SEARCH/REPLACE blocks)",
+            )
+
+        return _prepared(envelope, payload)
+
+    def _prepare_create_pending_search_replace_proposal(
+        self, intent: RuntimeToolIntent, envelope: RuntimeToolInvocationEnvelope
+    ) -> RuntimeToolInvocationEnvelope:
+        """Prepare create_pending_search_replace_proposal envelope.
+
+        Requires file_path, content (SEARCH/REPLACE blocks), and
+        idempotency_key in the payload. Candidate verification and
+        proposal persistence occur during runtime execution — this
+        adapter only validates required fields are present.
+        """
+        payload = dict(intent.payload)
+        file_path = payload.get("file_path", "")
+        if not file_path:
+            return _refused(
+                envelope,
+                RuntimeToolInvocationErrorKind.INVALID_PAYLOAD,
+                "create_pending_search_replace_proposal requires 'file_path'",
+            )
+        if "content" not in payload:
+            return _refused(
+                envelope,
+                RuntimeToolInvocationErrorKind.INVALID_PAYLOAD,
+                "create_pending_search_replace_proposal requires 'content'",
+            )
+        if "idempotency_key" not in payload:
+            return _refused(
+                envelope,
+                RuntimeToolInvocationErrorKind.INVALID_PAYLOAD,
+                "create_pending_search_replace_proposal requires 'idempotency_key'",
+            )
         return _prepared(envelope, payload)
 
     def _prepare_validate(

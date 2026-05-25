@@ -273,6 +273,47 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
             tool_receipt_kind="search_replace",
         )
 
+    async def execute_search_replace_proposal(
+        self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
+    ) -> RuntimeToolExecutionResult:
+        """Execute a non-mutating search_replace proposal through the adapter.
+
+        Proposals compute candidates without mutating the workspace.
+        No lease is required and no mutation-location check applies.
+        """
+        return await self._execute_with_gating(
+            intent=intent,
+            resolution=resolution,
+            expected_tool=RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
+            unsupported_reason=(
+                f"Tool '{intent.tool_name.value}' is not supported for "
+                "search_replace proposal execution"
+            ),
+            needs_lease=False,
+            tool_receipt_kind="search_replace_proposal",
+        )
+
+    async def execute_create_pending_search_replace_proposal(
+        self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
+    ) -> RuntimeToolExecutionResult:
+        """Create a pending search-replace proposal with idempotent persistence.
+
+        Verifies the candidate via SearchReplace.compute_proposal(),
+        computes a server-side candidate_fingerprint, and atomically
+        creates or replays a pending PatchProposal via the workflow store.
+        """
+        return await self._execute_with_gating(
+            intent=intent,
+            resolution=resolution,
+            expected_tool=RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
+            unsupported_reason=(
+                f"Tool '{intent.tool_name.value}' is not supported for "
+                "pending proposal creation"
+            ),
+            needs_lease=False,
+            tool_receipt_kind="create_pending_search_replace_proposal",
+        )
+
     async def execute_write_file(
         self, intent: RuntimeToolIntent, resolution: RuntimeContextResolution
     ) -> RuntimeToolExecutionResult:
@@ -576,22 +617,48 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
             yield result
             return
         if tool_name == "search_replace":
+            import uuid
+
             envelope = RuntimeToolInvocationEnvelope(
-                invocation_id=meta.get("invocation_id", ""),
-                intent_id=meta.get("runtime_intent_id", ""),
+                invocation_id=meta.get("invocation_id", f"inv-{uuid.uuid4().hex[:12]}"),
+                intent_id=args_dict.get("_tool_runtime_call_id", ""),
                 tool_name=RuntimeToolName.SEARCH_REPLACE,
+                payload=args_dict,
                 status=RuntimeToolInvocationStatus.PREPARED,
-                payload=payload,
-                cwd=meta.get("worktree_path") or meta.get("workspace_root"),
-                worktree_path=meta.get("worktree_path"),
-                repo_root=meta.get("workspace_root"),
-                session_id=meta.get("session_id"),
-                task_id=meta.get("turn_id"),
-                lane_id=meta.get("lane_id"),
-                workspace_id=meta.get("workspace_id"),
-                agent_id=meta.get("actor"),
             )
             result = await self._run_search_replace_tool(envelope)
+            yield result
+            return
+
+        if tool_name == "search_replace_proposal":
+            import uuid
+
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=f"inv-{uuid.uuid4().hex[:12]}",
+                intent_id=args_dict.get("_tool_runtime_call_id", ""),
+                tool_name=RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
+                payload=args_dict,
+                status=RuntimeToolInvocationStatus.PREPARED,
+            )
+            result = await self._run_search_replace_proposal_tool(envelope)
+            yield result
+            return
+
+        if tool_name == "create_pending_search_replace_proposal":
+            import uuid
+
+            envelope = RuntimeToolInvocationEnvelope(
+                invocation_id=f"inv-{uuid.uuid4().hex[:12]}",
+                intent_id=args_dict.get("_tool_runtime_call_id", ""),
+                tool_name=RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
+                payload=args_dict,
+                status=RuntimeToolInvocationStatus.PREPARED,
+                worktree_path=args_dict.get("worktree_path"),
+                repo_root=args_dict.get("repo_root"),
+            )
+            result = await self._run_create_pending_search_replace_proposal_tool(
+                envelope
+            )
             yield result
             return
         if tool_name == "write_file":
@@ -822,6 +889,180 @@ class RuntimeToolExecutionRunner(_ExecutionTemplateMixin):
                 result = item
 
         return result
+
+    async def _run_search_replace_proposal_tool(
+        self, envelope: RuntimeToolInvocationEnvelope
+    ) -> Any:
+        """Run a non-mutating search_replace proposal via compute_proposal()."""
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.search_replace import (
+            SearchReplace,
+            SearchReplaceArgs,
+            SearchReplaceConfig,
+        )
+
+        payload = envelope.payload or {}
+
+        args = SearchReplaceArgs(
+            file_path=payload.get("file_path", ""),
+            content=payload.get("content", ""),
+            expected_before_sha256=payload.get("expected_before_sha256"),
+            expected_replacements=payload.get("expected_replacements"),
+            allow_multiple=payload.get("allow_multiple", True),
+        )
+
+        invoke_ctx = self._build_invoke_context(envelope)
+        config = SearchReplaceConfig()
+        tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+        with self._cwd_for_envelope(envelope):
+            result = await tool.compute_proposal(args, ctx=invoke_ctx)
+
+        return result
+
+    async def _run_create_pending_search_replace_proposal_tool(
+        self, envelope: RuntimeToolInvocationEnvelope
+    ) -> Any:
+        """Verify candidate and atomically create-or-replay a pending proposal."""
+        import uuid
+
+        from rig_relay.coordination.patch_proposal import (
+            PatchProposal,
+            compute_candidate_fingerprint,
+        )
+        from rig_relay.coordination.patch_workflow import (
+            PatchWorkflowStore,
+            ProposalIdempotencyConflictError,
+        )
+        from rig_relay.core.tools.base import BaseToolState
+        from rig_relay.core.tools.builtins.search_replace import (
+            SearchReplace,
+            SearchReplaceArgs,
+            SearchReplaceConfig,
+            SearchReplaceProposalResult,
+        )
+        from rig_relay.runtime._lease_gate import resolve_coordination_root
+
+        payload = envelope.payload or {}
+        idempotency_key = payload.get("idempotency_key", "")
+
+        # 1. Verify candidate via SearchReplace.compute_proposal()
+        args = SearchReplaceArgs(
+            file_path=payload.get("file_path", ""),
+            content=payload.get("content", ""),
+            expected_before_sha256=payload.get("expected_before_sha256"),
+        )
+        invoke_ctx = self._build_invoke_context(envelope)
+        config = SearchReplaceConfig()
+        tool = SearchReplace(config_getter=lambda: config, state=BaseToolState())
+
+        with self._cwd_for_envelope(envelope):
+            candidate_result = await tool.compute_proposal(args, ctx=invoke_ctx)
+
+        # If candidate computation refused, return the refusal
+        if candidate_result.status != "proposal_computed":
+            return candidate_result
+
+        # 2. Compute server-side candidate_fingerprint (stable across retries)
+        before_hash = list(candidate_result.before_file_sha256.values())[0]
+        after_hash = list(candidate_result.after_file_sha256.values())[0]
+        file_path = payload.get("file_path", "")
+        candidate_fingerprint = compute_candidate_fingerprint(
+            file_path=file_path, before_hash=before_hash, after_hash=after_hash
+        )
+
+        # 3. Resolve coordination root from envelope — mandatory for persistence
+        worktree = envelope.worktree_path
+        repo = envelope.repo_root
+        if not worktree and not repo:
+            return SearchReplaceProposalResult(
+                file=file_path,
+                status="refused",
+                error_kind="context_missing",
+                refusal_reason=(
+                    "worktree_path and repo_root are missing; "
+                    "cannot resolve coordination store root for durable "
+                    "proposal persistence"
+                ),
+            )
+        coordination_root = resolve_coordination_root(
+            worktree_path=envelope.worktree_path, repo_root=envelope.repo_root
+        )
+
+        # 4. Build proposal and atomically create-or-replay
+        sha_prefix = "sha256:"
+        before_hex = (
+            before_hash[len(sha_prefix) :]
+            if before_hash.startswith(sha_prefix)
+            else before_hash
+        )
+        after_hex = (
+            after_hash[len(sha_prefix) :]
+            if after_hash.startswith(sha_prefix)
+            else after_hash
+        )
+
+        proposal_id = f"prop-{uuid.uuid4().hex[:12]}"
+        proposal = PatchProposal(
+            proposal_id=proposal_id,
+            mission_id="",
+            agent_id="",
+            title=f"Search-replace proposal for {file_path}",
+            summary=f"Proposes a change to {file_path}",
+            status="pending",
+            touched_paths=[file_path],
+            touched_path_hashes=[before_hash],
+            expected_before_sha256={file_path: f"sha256:{before_hex}"},
+            candidate_after_sha256={file_path: after_hex},
+            idempotency_key=idempotency_key,
+        )
+
+        store = PatchWorkflowStore(coordination_root)
+        try:
+            persisted, action = store.create_or_replay_pending_proposal(
+                proposal=proposal, fingerprint=candidate_fingerprint
+            )
+        except ProposalIdempotencyConflictError as exc:
+            return SearchReplaceProposalResult(
+                file=file_path,
+                status="refused",
+                error_kind="idempotency_conflict",
+                refusal_reason=str(exc),
+            )
+
+        store = PatchWorkflowStore(coordination_root)
+        try:
+            persisted, action = store.create_or_replay_pending_proposal(
+                proposal=proposal, fingerprint=candidate_fingerprint
+            )
+        except ProposalIdempotencyConflictError as exc:
+            return SearchReplaceProposalResult(
+                file=file_path,
+                status="refused",
+                error_kind="idempotency_conflict",
+                refusal_reason=str(exc),
+            )
+        except OSError as exc:
+            return SearchReplaceProposalResult(
+                file=file_path,
+                status="refused",
+                error_kind="pending_proposal_persistence_failed",
+                refusal_reason=str(exc),
+            )
+
+        # 5. Return content-light result
+        return SearchReplaceProposalResult(
+            file=file_path,
+            status=(
+                "pending_proposal_created"
+                if action == "created"
+                else "pending_proposal_replayed"
+            ),
+            before_file_sha256=candidate_result.before_file_sha256,
+            after_file_sha256=candidate_result.after_file_sha256,
+            before_bytes=candidate_result.before_bytes,
+            after_bytes=candidate_result.after_bytes,
+        )
 
     async def _run_write_file_tool(
         self, envelope: RuntimeToolInvocationEnvelope

@@ -50,6 +50,16 @@ class CheckpointResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     artifact_sha256: str | None = None
     refusal_reason: str | None = None
+    authorization_receipt_sha256: str | None = None
+
+
+class CheckpointPorcelainProtocolError(Exception):
+    """Raised when the Git porcelain protocol response is invalid.
+
+    This is a substrate failure, not a user-policy refusal.  The
+    checkpoint authority mechanism cannot prove workspace state
+    when the protocol stream is malformed.
+    """
 
 
 class CheckpointToolConfig(BaseToolConfig):
@@ -112,26 +122,57 @@ class Checkpoint(
         store = CoordinationStore(self.config.store_root)
         repo_root = Path.cwd().resolve()
         guard = get_guard()
+        self._receipt_digest: str | None = None
 
         # 1. Capture git state
-        porcelain_out = self._git("status", "--porcelain=v1", "-z", cwd=repo_root, strip=False)
-        if isinstance(porcelain_out, CheckpointResult):
-            refusal_result = porcelain_out
+        try:
+            porcelain_out = self._git_machine_output(
+                "status", "--porcelain=v1", "-z", cwd=repo_root
+            )
+        except subprocess.CalledProcessError as exc:
+            err = exc.stderr.strip() if exc.stderr else f"exit code {exc.returncode}"
+            refusal_result = CheckpointResult(
+                ok=False,
+                message="git status failed",
+                refusal_reason=f"git status failed: {err}",
+            )
             if tc is not None:
                 tc.emit_governance_gate_decision(
                     gate="checkpoint",
                     decision="blocked",
                     reason="git_status_failed",
-                    tool_name="checkpoint",
-                    severity="warning",
-                    mutation_intent=True,
-                )
+                tool_name="checkpoint",
+                severity="warning",
+                mutation_intent=True,
+            )
             self._emit_checkpoint_refused(args, refusal_result)
             yield refusal_result
             return
 
         # 2. Parse and validate
-        dirty_files = self._parse_porcelain_z(porcelain_out)
+        if porcelain_out:
+            try:
+                dirty_files = self._parse_porcelain_z(porcelain_out)
+            except CheckpointPorcelainProtocolError as e:
+                refusal_result = CheckpointResult(
+                    ok=False,
+                    message="porcelain protocol invalid",
+                    refusal_reason=f"checkpoint_porcelain_protocol_invalid: {e}",
+                )
+                if tc is not None:
+                    tc.emit_governance_gate_decision(
+                        gate="checkpoint",
+                        decision="blocked",
+                        reason="porcelain_protocol_invalid",
+                        tool_name="checkpoint",
+                        severity="warning",
+                        mutation_intent=True,
+                    )
+                self._emit_checkpoint_refused(args, refusal_result)
+                yield refusal_result
+                return
+        else:
+            dirty_files: dict[str, str] = {}
         requested = set(self._normalize_paths(args.include_paths))
         refusal = self._validate_preconditions(
             args, requested, dirty_files, store, guard, repo_root
@@ -155,7 +196,9 @@ class Checkpoint(
         branch = self._git_rev_parse("--abbrev-ref", "HEAD", cwd=repo_root)
 
         # 4. Stage and commit
-        if refusal := self._stage_and_commit(requested, args, repo_root):
+        if refusal := self._stage_and_commit(
+            requested, args, repo_root, self._receipt_digest
+        ):
             if tc is not None:
                 tc.emit_governance_gate_decision(
                     gate="checkpoint",
@@ -189,6 +232,7 @@ class Checkpoint(
             message=args.message,
             files_committed=sorted(requested),
             artifact_sha256=artifact["artifact_sha256"],
+            authorization_receipt_sha256=self._receipt_digest,
         )
 
         if tc is not None:
@@ -334,6 +378,23 @@ class Checkpoint(
                     message=f"Checkpoint refused: {reason}",
                     refusal_reason=reason,
                 )
+            # Build content-light digest of the validated receipt for
+            # the commit trailer and downstream recovery evidence.
+            import json as _json
+
+            try:
+                receipt_dict = _json.loads(args.authorization_receipt)
+                receipt_canonical = _json.dumps(
+                    receipt_dict, sort_keys=True, separators=(",", ":")
+                )
+                receipt_digest = (
+                    "sha256:"
+                    + hashlib.sha256(receipt_canonical.encode("utf-8")).hexdigest()
+                )
+                self._receipt_digest = receipt_digest
+            except (_json.JSONDecodeError, KeyError, TypeError):
+                receipt_digest = None
+                self._receipt_digest = None
         else:
             self._emit_authorization_refused(args, "missing_receipt", guard)
             return CheckpointResult(
@@ -382,7 +443,11 @@ class Checkpoint(
         return None
 
     def _stage_and_commit(
-        self, requested: set[str], args: CheckpointArgs, repo_root: Path
+        self,
+        requested: set[str],
+        args: CheckpointArgs,
+        repo_root: Path,
+        receipt_digest: str | None = None,
     ) -> CheckpointResult | None:
         add_result = self._git("add", "--", *sorted(requested), cwd=repo_root)
         if isinstance(add_result, CheckpointResult):
@@ -401,6 +466,8 @@ class Checkpoint(
         body_lines.append("Files:")
         for path in sorted(requested):
             body_lines.append(f"- {path}")
+        if receipt_digest:
+            body_lines.append(f"Rig-Authorization-Receipt-SHA256: {receipt_digest}")
         if args.validation_summary:
             body_lines.append("Validation:")
             for cmd in args.validation_summary:
@@ -431,6 +498,23 @@ class Checkpoint(
                 message="Git command failed",
                 refusal_reason=f"git {' '.join(args[:2])} failed: {err}",
             )
+
+    def _git_machine_output(self, *args: str, cwd: Path) -> str:
+        """Run git and return raw stdout as text without universal-newline translation.
+
+        Uses bytes capture + explicit UTF-8 decode to preserve NUL
+        terminators and literal bytes that universal_newlines would
+        corrupt (e.g., ``\r``, ``\r\n`` in filenames).
+        """
+        proc = subprocess.run(
+            ["git", "--no-optional-locks", *args],
+            capture_output=True,
+            check=True,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            timeout=15,
+        )
+        return proc.stdout.decode("utf-8")
 
     def _git_rev_parse(self, *args: str, cwd: Path | None = None) -> str:
         result = self._git("rev-parse", *args, cwd=cwd or Path.cwd())
@@ -475,7 +559,7 @@ class Checkpoint(
         if snapshot is not None:
             guard_report = guard.report()
             return "checkpoint_protected_dirty_path_refused"
-                
+
         return None
 
     @staticmethod
@@ -488,20 +572,61 @@ class Checkpoint(
 
     @staticmethod
     def _parse_porcelain_z(output: str) -> dict[str, str]:
+        """Parse git status --porcelain=v1 -z output.
+
+        Protocol: XY SP path NUL for ordinary entries.
+        Rename/copy: R/C SP newpath NUL oldpath NUL.
+
+        Preserves exact two-character XY status and pathname identity.
+        Raises CheckpointPorcelainProtocolError on malformed input.
+        """
+        if not output or output[-1] != "\0":
+            raise CheckpointPorcelainProtocolError("porcelain output must end with NUL")
+
         result: dict[str, str] = {}
-        entries = output.split("\0")
+        tokens = output.split("\0")
+        # Last token is empty due to terminal NUL
         i = 0
-        while i < len(entries):
-            entry = entries[i]
-            if len(entry) < Checkpoint._STATUS_LINE_LENGTH:
-                i += 1
-                continue
-            status = entry[:2]
-            raw_path = entry[3:]
-            if " -> " in raw_path:
-                raw_path = raw_path.split(" -> ")[-1]
-            result[raw_path] = status
-            i += 1
+        limit = len(tokens) - 1
+        while i < limit:
+            token = tokens[i]
+            if not token:
+                raise CheckpointPorcelainProtocolError(
+                    f"embedded empty record at token index {i}"
+                )
+            if len(token) < Checkpoint._STATUS_LINE_LENGTH:
+                raise CheckpointPorcelainProtocolError(
+                    f"too-short record at index {i}: {token!r}"
+                )
+            if token[2] != " ":
+                raise CheckpointPorcelainProtocolError(
+                    f"missing space delimiter at index {i}: {token!r}"
+                )
+
+            xy = token[:2]
+            path = token[3:]
+            advance = 1  # normal entry: advance by one token
+
+            if "R" in xy or "C" in xy:
+                # Rename/copy pair: consume the old-name token that
+                # follows.  Record only the destination (current)
+                # path.  The old-name is consumed for protocol
+                # correctness but not persisted as workspace identity.
+                next_i = i + 1
+                if next_i >= limit:
+                    raise CheckpointPorcelainProtocolError(
+                        f"incomplete rename/copy pair at index {i}"
+                    )
+                old_token = tokens[next_i]
+                if not old_token:
+                    raise CheckpointPorcelainProtocolError(
+                        f"empty old-name token for rename/copy at index {i}"
+                    )
+                advance = 2  # skip both: XY SP newpath + oldpath
+
+            result[path] = xy
+            i += advance
+
         return result
 
     @staticmethod

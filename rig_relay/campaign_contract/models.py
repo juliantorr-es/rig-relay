@@ -312,6 +312,34 @@ class PersistentCampaignLanePolicy(BaseModel):
 # ---- Mission definition ----------------------------------------------
 
 
+class ProposalBasedMutationExecutionSpec(BaseModel):
+    """Execution specification for a proposal-based mutation mission stage.
+
+    Declares that this mission's executable work is a governed mutation
+    through the proposal-based mutation lifecycle.  Extensible to
+    additional executor kinds via ``MissionExecutionSpec``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    execution_id: str = Field(min_length=1)
+    execution_kind: Literal["proposal_based_mutation"] = "proposal_based_mutation"
+    proposal_id: str = Field(min_length=1)
+    payload_id: str = Field(min_length=1)
+
+
+class MissionExecutionSpec(BaseModel):
+    """Typed wrapper for mission execution specifications.
+
+    One optional field per supported executor kind.  Only one kind may
+    be set at a time.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    proposal_based_mutation: ProposalBasedMutationExecutionSpec | None = None
+
+
 class MissionDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mission_id: str = Field(min_length=1)
@@ -322,6 +350,7 @@ class MissionDefinition(BaseModel):
     prerequisites: list[str]
     resolver_scope_declarations: list[str]
     completion_contract: dict[str, Any]
+    execution_spec: MissionExecutionSpec | None = None
     blocked_continuation_policy: ContinuationPolicy
     steward_authored_mission_insertion_prohibited: Literal[True]
 

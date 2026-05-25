@@ -90,7 +90,13 @@ class PatchProposal(BaseModel):
     summary: str
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     status: Literal[
-        "pending", "accepted", "rejected", "needs_revision", "superseded"
+        "pending",
+        "applying",
+        "applied",
+        "accepted",
+        "rejected",
+        "needs_revision",
+        "superseded",
     ] = "pending"
 
     # ── File-level metadata ─────────────────────────────────────────
@@ -98,9 +104,13 @@ class PatchProposal(BaseModel):
     touched_path_hashes: list[str] = Field(default_factory=list)
     base_head: str | None = None
     expected_before_sha256: dict[str, str] = Field(default_factory=dict)
+    candidate_after_sha256: dict[str, str] = Field(default_factory=dict)
 
     # ── Artifact references (content-light boundary) ────────────────
     artifact_refs: list[PatchProposalArtifactRef] = Field(default_factory=list)
+
+    # ── Idempotency (opaque caller-supplied request identifier) ─────
+    idempotency_key: str | None = None
 
     @field_validator("touched_path_hashes")
     @classmethod
@@ -151,6 +161,45 @@ def compute_proposal_fingerprint(proposal: PatchProposal) -> str:
     raw = proposal.model_dump(mode="json", exclude=excluded)
     canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _canonical_digest(value: str) -> str:
+    """Convert a SHA-256 digest string to canonical lowercase hex form.
+
+    Accepts raw hex (64 lowercase hex chars) or sha256:<hex> form.
+    Validates length and hex characters. Returns the raw hex digest.
+    Raises ValueError for malformed input.
+    """
+    stripped = value[7:] if value.startswith("sha256:") else value
+    if len(stripped) != _SHA256_HEX_LEN:
+        raise ValueError(
+            f"Invalid SHA-256 digest length: {len(stripped)} chars, expected 64"
+        )
+    if not all(c in "0123456789abcdef" for c in stripped):
+        raise ValueError("SHA-256 digest contains non-hex characters")
+    return stripped
+
+
+def compute_candidate_fingerprint(
+    *, file_path: str, before_hash: str, after_hash: str
+) -> str:
+    """Compute a SHA256 fingerprint from stable candidate fields only.
+
+    Canonicalizes both hashes to lowercase hex before computing.
+    Stable across retry attempts — two identical candidates always
+    produce the same fingerprint regardless of hash prefix.
+    """
+    raw = json.dumps(
+        {
+            "action": "create_pending_search_replace_proposal",
+            "file_path": file_path,
+            "before_hash": _canonical_digest(before_hash),
+            "after_hash": _canonical_digest(after_hash),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 # ── Dataclass for create-proposal return ───────────────────────────────

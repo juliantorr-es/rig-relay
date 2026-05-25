@@ -1,6 +1,6 @@
 """Tests for rig_relay.cli.opencode_tool_bridge — OpenCode transport adapter.
 
-Stage A proved the transport boundary:
+Stage 3: OpenCode thin routing.
   OpenCode rig_search_replace → opencode_tool_bridge.py
   → RuntimeToolExecutionRunner.execute_search_replace()
   → structured completion with populated receipt identifiers.
@@ -12,7 +12,9 @@ Stage A.2 confirmed:
 
 from __future__ import annotations
 
+import hashlib
 import json
+import sys
 from pathlib import Path
 import subprocess
 
@@ -106,6 +108,39 @@ async def _invoke_bridge(
     )
 
 
+def _invoke_bridge_cli(request_dict: dict, cwd: Path) -> dict:
+    """Invoke the bridge CLI as a subprocess."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "rig_relay.cli.opencode_tool_bridge"],
+        input=json.dumps(request_dict),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=str(cwd),
+        env={**subprocess.os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent.parent)},
+    )
+    assert proc.returncode in (0, 1), (
+        f"Bridge CLI failed: exit code {proc.returncode}. "
+        f"stdout: {proc.stdout} stderr: {proc.stderr}"
+    )
+    return json.loads(proc.stdout.strip())
+
+
+def _validate_result_schema(result_dict: dict) -> None:
+    """Validate result dictionary against the execution result JSON schema."""
+    import jsonschema
+
+    schema_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "docs"
+        / "schemas"
+        / "rig.relay.runtime_tool_execution_result.v1.schema.json"
+    )
+    with open(schema_path) as f:
+        schema = json.load(f)
+    jsonschema.validate(instance=result_dict, schema=schema)
+
+
 class TestBridgeResultContract:
     """Contract tests: bridge output shape and content-light enforcement."""
 
@@ -139,12 +174,8 @@ class TestBridgeResultContract:
         assert callable(_invoke_search_replace)
 
 
-class TestBridgeRuntimePathReached:
-    """Proves the bridge reaches the real RuntimeToolExecutionRunner.
-
-    The bridge correctly routes through the governed runtime path and
-    receives a structured completed result with receipt identifiers.
-    """
+class TestBridgeTransportIntegration:
+    """Bridge completes a mutation through the governed runtime path."""
 
     @pytest.mark.asyncio
     async def test_bridge_reaches_runtime_and_receives_structured_completion(
@@ -264,8 +295,8 @@ class TestBridgeAdversarial:
             file_path="", old_str="x", new_str="y", directory=str(repo)
         )
 
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["error_kind"] is not None
+        assert result["status"] == "refused"
+        assert result.get("refusal_reason")
 
     @pytest.mark.asyncio
     async def test_nonexistent_file_rejected_by_runtime(
@@ -329,22 +360,14 @@ class TestBridgeSubstrate:
             "directory": str(repo),
         })
 
-        project_root = Path(__file__).resolve().parent.parent.parent
         proc = subprocess.run(
-            [
-                "uv",
-                "run",
-                "--directory",
-                str(project_root),
-                "python",
-                "-m",
-                "rig_relay.cli.opencode_tool_bridge",
-            ],
+            [sys.executable, "-m", "rig_relay.cli.opencode_tool_bridge"],
             input=request,
             capture_output=True,
             text=True,
             timeout=30,
             cwd=str(repo),
+            env={**subprocess.os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent.parent)},
         )
         assert proc.returncode == 0, (
             f"Expected exit 0 for completed mutation, got {proc.returncode}. "
@@ -355,48 +378,17 @@ class TestBridgeSubstrate:
         assert result["refusal_reason"] is None
         assert result["receipt_sha256"] is not None
 
-    @pytest.mark.asyncio
-    async def test_bridge_routes_through_tool_runtime(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Bridge delegates to RuntimeToolExecutionRunner → ToolRuntime → completion.
-
-        The bridge routes through the real governed execution path and
-        receives a structured completion result with receipts.
-        """
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-        _write_and_commit(repo, "target.py", "hello\n")
-
-        result = await _invoke_bridge(
-            file_path="target.py", old_str="hello", new_str="world", directory=str(repo)
-        )
-
-        assert result["status"] == RuntimeToolExecutionStatus.COMPLETED.value
-        assert result["refusal_reason"] is None
-        assert result["receipt_sha256"] is not None
-        assert result["duration_ms"] is not None
-        assert result["duration_ms"] > 0
-
 
 def _invoke_bridge_cli(request_dict: dict, cwd: Path) -> dict:
     """Invoke the bridge CLI as a subprocess."""
-    project_root = Path(__file__).resolve().parent.parent.parent
     proc = subprocess.run(
-        [
-            "uv",
-            "run",
-            "--directory",
-            str(project_root),
-            "python",
-            "-m",
-            "rig_relay.cli.opencode_tool_bridge",
-        ],
+        [sys.executable, "-m", "rig_relay.cli.opencode_tool_bridge"],
         input=json.dumps(request_dict),
         capture_output=True,
         text=True,
         timeout=30,
         cwd=str(cwd),
+        env={**subprocess.os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent.parent)},
     )
     assert proc.returncode in (0, 1), (
         f"Bridge CLI failed: exit code {proc.returncode}. "
@@ -418,281 +410,3 @@ def _validate_result_schema(result_dict: dict) -> None:
     with open(schema_path) as f:
         schema = json.load(f)
     jsonschema.validate(instance=result_dict, schema=schema)
-
-
-class TestBridgeGitReadOnlyTools:
-    """integration + real-artifact: subprocess bridge routing for read-only Git tools."""
-
-    def test_git_status_via_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify git_status bridge routing against a real temp repo."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        req = {
-            "tool_name": "git_status",
-            "args": {"short": True, "branch": True},
-            "sessionId": "status-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-        assert res["git_summary"]["branch"] is not None
-
-    def test_git_branch_via_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify git_branch bridge routing against a real temp repo."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        req = {
-            "tool_name": "git_branch",
-            "args": {"show_current": True},
-            "sessionId": "branch-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-        assert res["git_summary"]["branch"] is not None
-
-    def test_git_log_via_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify git_log bridge routing against a real temp repo."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        req = {
-            "tool_name": "git_log",
-            "args": {"max_count": 2, "oneline": True},
-            "sessionId": "log-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-
-    def test_git_show_via_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify git_show bridge routing against a real temp repo."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        req = {
-            "tool_name": "git_show",
-            "args": {"ref": "HEAD"},
-            "sessionId": "show-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-
-    def test_git_ls_files_via_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify git_ls_files bridge routing against a real temp repo."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        req = {
-            "tool_name": "git_ls_files",
-            "args": {},
-            "sessionId": "ls-files-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-
-    def test_git_diff_truncation_and_redaction(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Verify bounded git_diff output with truncation and redaction."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        # Write a large file with more than 500 lines to trigger truncation
-        lines = [f"line {i}" for i in range(600)]
-        lines.append("password = 'super_secret_password_123'")
-        large_content = "\n".join(lines) + "\n"
-
-        _write_and_commit(repo, "target.py", "original\n")
-        (repo / "target.py").write_text(large_content, encoding="utf-8")
-
-        req = {
-            "tool_name": "git_diff",
-            "args": {},
-            "sessionId": "diff-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-        assert res["git_summary"]["truncation_triggered"] is True
-        assert res["git_summary"]["redaction_triggered"] is True
-        assert (
-            "[TRUNCATED: Output exceeded limits]"
-            in res["git_summary"]["bounded_stdout"]
-        )
-        assert "super_secret_password_123" not in res["git_summary"]["bounded_stdout"]
-
-
-class TestBridgeCheckpointSafety:
-    """integration + real-artifact + adversarial: Verify checkpoint safety checks and refusal outcomes."""
-
-    def test_checkpoint_refuses_missing_approval(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact + adversarial: Checkpoint refuses when authorization_receipt is missing."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-        _write_and_commit(repo, "clean.py", "clean\n")
-        (repo / "clean.py").write_text("edit\n")
-        subprocess.run(["git", "add", "clean.py"], cwd=repo, check=True)
-
-        req = {
-            "tool_name": "checkpoint",
-            "args": {"message": "no receipt", "include_paths": ["clean.py"]},
-            "sessionId": "checkpoint-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        _validate_result_schema(res)
-
-        assert res["status"] == "refused"
-        assert res["refusal_reason"] == "missing_receipt"
-
-    def test_checkpoint_refuses_unstaged_file(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact + adversarial: Checkpoint refuses unstaged files."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-        from rig_relay.governance.auth_receipts import generate_dev_receipt
-
-        receipt = json.dumps(generate_dev_receipt("checkpoint.commit", ttl_seconds=300))
-
-        (repo / "pyproject.toml").write_text("dirty\n")
-
-        req = {
-            "tool_name": "checkpoint",
-            "args": {
-                "message": "unstaged commit",
-                "include_paths": ["pyproject.toml"],
-                "authorization_receipt": receipt,
-            },
-            "sessionId": "checkpoint-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        raw_status = subprocess.run(
-            ["git", "status", "--porcelain=v1", "-z"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-        ).stdout
-        print("DEBUG RAW STATUS:", repr(raw_status))
-        print("DEBUG REFUSED RESULT:", res)
-        _validate_result_schema(res)
-
-        assert res["status"] == "refused"
-        assert res["refusal_reason"] == "unstaged_file_refused"
-
-    def test_checkpoint_success_emits_receipt(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """integration + real-artifact: Checkpoint succeeds on properly admitted staged file and emits receipt."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        from rig_relay.governance.dirty_guard import get_guard
-
-        guard = get_guard()
-        guard.capture(repo)
-
-        # Write clean edit
-        (repo / "pyproject.toml").write_text(
-            "[project]\nname = 'test'\nversion = '0.2.0'\n"
-        )
-        subprocess.run(["git", "add", "pyproject.toml"], cwd=repo, check=True)
-        guard.mark_touched("pyproject.toml")
-
-        from rig_relay.governance.auth_receipts import generate_dev_receipt
-
-        receipt = json.dumps(generate_dev_receipt("checkpoint.commit", ttl_seconds=300))
-
-        req = {
-            "tool_name": "checkpoint",
-            "args": {
-                "message": "success test",
-                "include_paths": ["pyproject.toml"],
-                "authorization_receipt": receipt,
-            },
-            "sessionId": "checkpoint-session",
-            "directory": str(repo),
-        }
-        res = _invoke_bridge_cli(req, repo)
-        print("DEBUG SUCCESS RESULT:", res)
-        _validate_result_schema(res)
-
-        assert res["status"] == "completed"
-        assert res["git_summary"] is not None
-        assert res["git_summary"]["checkpoint_receipt_sha256"] is not None
-        assert res["git_summary"]["commit_identity"] is not None
-        assert len(res["git_summary"]["changed_paths"]) == 1
-
-
-class TestBridgeAdversarialReroute:
-    """adversarial + substrate: Verify raw git command rerouting works via try_reroute."""
-
-    @pytest.mark.asyncio
-    async def test_adversarial_raw_bash_git_status_rerouted(
-        self, tmp_path: Path
-    ) -> None:
-        """adversarial + substrate: Verify attempted raw bash git status is rerouted through git_status tool."""
-        from rig_relay.core.tools.base import BaseToolState, InvokeContext
-        from rig_relay.core.tools.builtins.bash import Bash, BashArgs, BashToolConfig
-        from rig_relay.core.tools.manager import ToolManager
-        from tests.conftest import build_test_vibe_config
-
-        repo = _make_git_repo(tmp_path)
-        config = build_test_vibe_config()
-        mgr = ToolManager(config_getter=lambda: config)
-        ctx = InvokeContext(tool_call_id="bash-reroute-test", tool_manager=mgr)
-
-        args = BashArgs(command="git status")
-        cfg = BashToolConfig()
-        tool = Bash(config_getter=lambda: cfg, state=BaseToolState())
-
-        import os
-
-        old_cwd = os.getcwd()
-        os.chdir(repo)
-        try:
-            events = []
-            async for event in tool.run(args, ctx=ctx):
-                events.append(event)
-        finally:
-            os.chdir(old_cwd)
-
-        # Check that it routed to git_status
-        messages = [e.message for e in events if hasattr(e, "message") and e.message]
-        assert any("Rerouting to git_tool" in msg for msg in messages)

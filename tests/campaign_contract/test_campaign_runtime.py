@@ -477,7 +477,7 @@ def test_contract_integration_checkpoint_receipt_issues(tmp_path):
     receipt = issue_campaign_checkpoint_receipt(
         ext, state, "m1", ["m1_owned/foo.py"], digest, "validated"
     )
-    assert receipt["schema"] == "rig.relay.step_up_authorization_receipt.v1"
+    assert receipt["schema_version"] == "rig.relay.step_up_authorization_receipt.v1"
     assert receipt["action"] == "checkpoint.commit"
     assert receipt["action_scope"]["branch"] == (
         "confidential/steward-campaign/test-campaign"
@@ -816,3 +816,177 @@ def test_contract_integration_registry_digest_deterministic(tmp_path):
     d2 = compute_registry_digest(registry)
     assert d1 == d2
     assert len(d1) == 64
+
+
+# ---- Phase 7: Campaign execution dispatch (dogfood) -----------------
+
+
+def test_mutation_execution_routes_through_public_runtime(tmp_path, monkeypatch):
+    """S5-A: Declared mutation execution through public campaign dispatch."""
+    repo = _setup_working_repo(tmp_path, _setup_bare_remote(tmp_path))
+    monkeypatch.chdir(repo)
+
+    branch = "confidential/steward-campaign/c1"
+    subprocess.run(
+        ["git", "-C", str(repo), "checkout", "-b", branch], capture_output=True
+    )
+    (repo / "a.py").write_text("x = 1\n")
+    subprocess.run(["git", "-C", str(repo), "add", "a.py"], capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "init"], capture_output=True
+    )
+
+    from rig_relay.governance.dirty_guard import get_guard, reset_guard
+
+    reset_guard()
+    get_guard().capture()
+    get_guard().mark_touched(repo / "a.py")
+
+    import hashlib
+
+    coord = tmp_path / "coordination"
+
+    # Persist proposal
+    from rig_relay.coordination.patch_workflow import PatchWorkflowStore
+    from rig_relay.coordination.patch_proposal import PatchProposal
+
+    store = PatchWorkflowStore(coord)
+    proposal = PatchProposal(
+        proposal_id="prop-s5",
+        mission_id="m1",
+        agent_id="a1",
+        title="test",
+        summary="test",
+        status="pending",
+        touched_paths=["a.py"],
+        expected_before_sha256={},
+    )
+    store.save_proposal(proposal)
+
+    # Persist payload
+    from rig_relay.cli._steward._mutation_payload import (
+        MutationPayloadRecord,
+        save_payload,
+    )
+
+    blocks = "<<<<<<< SEARCH\nx = 1\n=======\nx = 2\n>>>>>>> REPLACE"
+    payload = MutationPayloadRecord(
+        payload_id="pay-s5",
+        proposal_id="prop-s5",
+        campaign_id="c1",
+        mission_id="m1",
+        file_path="a.py",
+        before_sha256=hashlib.sha256(b"x = 1\n").hexdigest(),
+        candidate_after_sha256=hashlib.sha256(b"x = 2\n").hexdigest(),
+        mutation_content=blocks,
+        payload_sha256=hashlib.sha256(blocks.encode()).hexdigest(),
+    )
+    save_payload(payload, repo)
+
+    # Write manifest with execution_spec
+    manifest = {
+        "ordered_missions": [
+            {
+                "mission_id": "m1",
+                "owned_path_scope": ["a.py"],
+                "read_context_scope": [],
+                "provider_context_scope": [],
+                "validation_commands": [],
+                "prerequisites": [],
+                "resolver_scope_declarations": [],
+                "completion_contract": {},
+                "blocked_continuation_policy": "halt_chain",
+                "steward_authored_mission_insertion_prohibited": True,
+                "execution_spec": {
+                    "proposal_based_mutation": {
+                        "execution_id": "exec-1",
+                        "execution_kind": "proposal_based_mutation",
+                        "proposal_id": "prop-s5",
+                        "payload_id": "pay-s5",
+                    }
+                },
+            }
+        ],
+        "user_approval_marker": True,
+        "operating_mode": "confidential_autonomous_campaign_nonpromoting",
+        "provider_disclosure_attestation": {
+            "mode": "hosted_confidential_full_source_user_approved",
+            "provider_family_identity": "fam",
+            "provider_model_identity": "m",
+            "actual_retention_control_mode_classification": "standard_retention",
+            "campaign_scope_digest": "d",
+            "campaign_scope_approval_marker": True,
+            "mission_level_provider_scope_enforcement_marker": True,
+        },
+        "absolute_exclusions": [
+            "credentials",
+            "secrets",
+            "tokens",
+            "private_authentication_material",
+            "patent_or_counsel_material",
+            "legal_strategy_material",
+            "confidential_audit_artifacts",
+            "confidential_build_sink",
+            "local_crosswalks",
+            "provider_policy_evidence_bodies",
+            "encrypted_snapshots",
+            "unrelated_repository_content",
+            "unclassified_paths",
+        ],
+        "mission_universe_immutable_after_execution_begins": True,
+    }
+    (repo / "manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    # Construct CampaignState separately with only its accepted fields
+    state_dict: dict[str, object] = {
+        "campaign_id": "c1",
+        "operating_mode": "confidential_autonomous_campaign_with_private_checkpoint_push",
+        "phase": "running",
+        "lane_identity": "l1",
+        "baseline_sha": "abc",
+        "active_branch": branch,
+        "assigned_remote_branch": branch,
+        "current_mission_id": "m1",
+        "manifest_digest": "dig",
+        "latest_checkpoint_sha": None,
+        "latest_pushed_sha": None,
+        "completed_missions": [],
+        "paused_missions": [],
+        "checkpoint_count": 0,
+        "push_count": 0,
+    }
+    from rig_relay.cli._steward._campaign_models import CampaignState
+
+    state = CampaignState.model_validate(state_dict)
+
+    from rig_relay.cli._steward._campaign_runtime import save_campaign_state
+
+    save_campaign_state(state, "c1", repo)
+
+    # Execute through public runtime
+    from rig_relay.cli._steward._campaign_runtime import execute_campaign_execution
+
+    result = execute_campaign_execution(
+        campaign_id="c1", mission_id="m1", repo_root=repo, coordination_root=coord
+    )
+    assert result["outcome"] == "campaign_mutation_completed"
+    assert result.get("status") == "completed"
+
+    # Verify file was mutated
+    assert (repo / "a.py").read_text() == "x = 2\n"
+
+    # Restart — reload state and call again
+    state2 = CampaignState.model_validate_json(
+        (
+            repo / ".rig" / "relay" / "campaigns" / "c1" / "state_projection.v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert "m1" in state2.completed_missions
+
+    result2 = execute_campaign_execution(
+        campaign_id="c1", mission_id="m1", repo_root=repo, coordination_root=coord
+    )
+    assert result2.get("status") == "already_completed"
+
+    # Source unchanged after restart
+    assert (repo / "a.py").read_text() == "x = 2\n"

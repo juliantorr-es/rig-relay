@@ -46,7 +46,9 @@
       "type": "string",
       "enum": [
         "pending",
-        "accepted",
+            "applying",
+            "applied",
+            "accepted",
         "rejected",
         "needs_revision",
         "superseded"
@@ -69,7 +71,7 @@
       "description": "Salted SHA256 hashes of affected paths."
     },
     "base_head": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Git commit hash or branch ref the proposal is based on."
     },
     "expected_before_sha256": {
@@ -80,12 +82,24 @@
       },
       "description": "Map of file path to expected SHA256 before mutation."
     },
+    "candidate_after_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "description": "Map of file path to computed candidate SHA256 after proposed mutation (not yet applied)."
+    },
     "artifact_refs": {
       "type": "array",
       "items": {
         "$ref": "#/definitions/PatchProposalArtifactRef"
       },
       "description": "References to external diff/patch artifacts."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Opaque caller-supplied request identifier for idempotent proposal creation. Optional for legacy artifacts; required for proposals created through the pending-proposal persistence action."
     }
   },
   "additionalProperties": false,

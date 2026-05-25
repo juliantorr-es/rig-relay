@@ -29,6 +29,8 @@
       "enum": [
         "write_file",
         "search_replace",
+        "search_replace_proposal",
+        "create_pending_search_replace_proposal",
         "validate",
         "runtime_exec",
         "bash_legacy",

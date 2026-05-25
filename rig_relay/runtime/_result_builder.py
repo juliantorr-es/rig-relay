@@ -117,7 +117,15 @@ def _execution_status_for(status_source: str | None) -> Any:
     from rig_relay.runtime.tool_invocation_execution import RuntimeToolExecutionStatus
 
     match status_source:
-        case "cached" | "completed" | "passed" | "success" | "timed_out":
+        case (
+            "cached"
+            | "completed"
+            | "passed"
+            | "success"
+            | "pending_proposal_created"
+            | "pending_proposal_replayed"
+            | "timed_out"
+        ):
             return RuntimeToolExecutionStatus.COMPLETED
         case "refused":
             return RuntimeToolExecutionStatus.REFUSED

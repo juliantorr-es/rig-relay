@@ -24,6 +24,10 @@ import { tool, type ToolResult } from "@opencode-ai/plugin";
 /** Content-light result returned to OpenCode. */
 interface BridgeResult {
   status: string;
+  outcome?: string;
+  apply_receipt_id?: string;
+  checkpoint_receipt_id?: string;
+  actual_after_hash?: string;
   intent_id?: string;
   tool_name?: string;
   receipt_sha256?: string | null;
