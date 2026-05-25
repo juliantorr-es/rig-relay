@@ -251,13 +251,14 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
             )
 
         try:
-            # git worktree remove also removes associated branches;
-            # run from parent dir since cwd cannot be the worktree being removed
+            # git worktree remove refuses when cwd is the worktree itself.
+            # Resolve the main repository root from the worktree's .git metadata.
+            main_repo = _resolve_main_repo_from_worktree(ws_path) or ws_path.parent
             args: list[str] = ["worktree", "remove"]
             if force:
                 args.append("--force")
             args.append(str(ws_path))
-            _git_admin(ws_path.parent, *args)
+            _git_admin(main_repo, *args)
             return CleanupResult(
                 workspace_id=workspace.workspace_id,
                 status="removed",
@@ -326,6 +327,29 @@ def _inspect_hooks(repo_root: Path) -> str | None:
     if hook_file.is_file() and os.access(hook_file, os.X_OK):
         return str(hook_file)
     return None
+
+
+def _resolve_main_repo_from_worktree(worktree_path: Path) -> Path | None:
+    """Resolve the main repository root from a worktree's .git metadata.
+
+    A worktree's .git file contains a line like:
+        gitdir: /path/to/main/.git/worktrees/<name>
+    The main repository root is three levels up from that path.
+    Returns None if resolution fails.
+    """
+    git_file = worktree_path / ".git"
+    if not git_file.is_file():
+        return None
+    try:
+        content = git_file.read_text().strip()
+        if not content.startswith("gitdir: "):
+            return None
+        gitdir_path = Path(content[8:].strip())
+    except Exception:
+        return None
+    # gitdir_path is like /path/to/main/.git/worktrees/<name>
+    # Go up 3 levels: worktrees/<name> → .git → main repo root
+    return gitdir_path.parent.parent.parent
 
 
 def _compute_provisioning_digest(input_: ProvisioningInput) -> str:

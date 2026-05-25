@@ -827,6 +827,97 @@ class Validate(
 
             import subprocess as _sp
 
+            from rig_relay.core.git_index_operations import compute_index_tree_digest
+
+            current_digest = compute_index_tree_digest(cwd)
+            if current_digest is None:
+                return (
+                    None,
+                    None,
+                    (
+                        "refused",
+                        "index_tree_digest_unavailable",
+                        "Cannot compute current index tree digest. Index may be empty or unmerged.",
+                        "Ensure the index has staged content and is fully merged before bound validation.",
+                    ),
+                )
+            if prepared_digest is not None and current_digest != prepared_digest:
+                return (
+                    None,
+                    None,
+                    (
+                        "refused",
+                        "prepared_index_changed",
+                        (
+                            f"Current index tree digest ({current_digest[:12]}...) does not "
+                            f"match preparation receipt ({prepared_digest[:12]}...). "
+                            "The staged index has changed since preparation."
+                        ),
+                        "Re-inspect changes and create a new prepare_checkpoint request with updated expected file hashes.",
+                    ),
+                )
+
+            # ── Verify branch binding ──
+            receipt_branch = receipt.get("branch")
+            if receipt_branch:
+                branch_proc = _sp.run(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    cwd=str(cwd),
+                )
+                current_branch = (
+                    branch_proc.stdout.strip() if branch_proc.returncode == 0 else None
+                )
+                if current_branch and current_branch != receipt_branch:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_branch_mismatch",
+                            f"Receipt was prepared on branch '{receipt_branch}' but current branch is '{current_branch}'.",
+                            "Run prepare_checkpoint on the current branch to create a branch-bound receipt.",
+                        ),
+                    )
+
+            # ── Verify worktree_root binding ──
+            from pathlib import Path
+
+            receipt_worktree = receipt.get("worktree_root")
+            if receipt_worktree:
+                current_worktree_proc = _sp.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    cwd=str(cwd),
+                )
+                current_worktree = (
+                    current_worktree_proc.stdout.strip()
+                    if current_worktree_proc.returncode == 0
+                    else None
+                )
+                if current_worktree:
+                    try:
+                        resolved_receipt_wt = str(Path(receipt_worktree).resolve())
+                        resolved_current_wt = str(Path(current_worktree).resolve())
+                    except Exception:
+                        resolved_receipt_wt = receipt_worktree
+                        resolved_current_wt = current_worktree
+                    if resolved_receipt_wt != resolved_current_wt:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_worktree_mismatch",
+                                "Receipt was prepared in a different worktree. Receipt worktree identity does not match current repository.",
+                                "Run prepare_checkpoint in the current worktree to create a worktree-bound receipt.",
+                            ),
+                        )
+
             proc = _sp.run(
                 ["git", "diff", "--name-only"],
                 capture_output=True,
@@ -1012,8 +1103,20 @@ class Validate(
                 out_ignored["ignored_unknown_count"] = _ignored_unknown_count
 
             return prepared_digest, True, None
-        except Exception:
-            return None, None, None  # Best-effort
+        except Exception as exc:
+            from rig_relay.core.logger import logger
+
+            logger.error("Preparation binding check failed: %s", exc, exc_info=True)
+            return (
+                None,
+                None,
+                (
+                    "refused",
+                    "preparation_binding_error",
+                    f"Preparation binding verification failed: {exc}. Cannot proceed with bound validation.",
+                    "Run prepare_checkpoint again to create a fresh receipt and retry bound validation.",
+                ),
+            )
 
     async def _prepare_validate_profile_run(
         self, args: ValidateArgs, ctx: InvokeContext | None, recorder: Any | None = None

@@ -456,6 +456,10 @@ class ToolExecutor:
                     f"<{TOOL_ERROR_TAG}>{failed.tool_name}: {failed.error}"
                     f"</{TOOL_ERROR_TAG}>"
                 )
+                if session_ctx.handle_failed_tool_response is not None:
+                    session_ctx.handle_failed_tool_response(failed)
+                if session_ctx.stats is not None:
+                    session_ctx.stats.tool_calls_failed += 1
                 from rig_relay.core.types import ToolResultEvent
 
                 yield ToolResultEvent(
@@ -464,10 +468,6 @@ class ToolExecutor:
                     error=error_msg,
                     tool_call_id=failed.call_id,
                 )
-                if session_ctx.handle_failed_tool_response is not None:
-                    session_ctx.handle_failed_tool_response(failed)
-                if session_ctx.stats is not None:
-                    session_ctx.stats.tool_calls_failed += 1
 
             if not resolved.tool_calls:
                 return

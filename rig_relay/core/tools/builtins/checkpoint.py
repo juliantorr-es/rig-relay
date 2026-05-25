@@ -219,7 +219,7 @@ class Checkpoint(
             dirty_files: dict[str, str] = {}
         requested = set(self._normalize_paths(args.include_paths))
         refusal = self._validate_preconditions(
-            args, requested, dirty_files, store, guard, repo_root
+            args, requested, dirty_files, store, guard, repo_root, ctx=ctx
         )
         if refusal:
             if tc is not None:
@@ -529,6 +529,7 @@ class Checkpoint(
         store: CoordinationStore,
         guard: DirtyFileGuard,
         repo_root: Path,
+        ctx: InvokeContext | None = None,
     ) -> CheckpointResult | None:
         # 1. Worktree binding: Verify we are in a valid Git worktree
         try:
@@ -601,11 +602,16 @@ class Checkpoint(
             if result is not None:
                 return result
 
-        # ── Step 2.6: In autonomous mode, preparation receipts are mandatory ─
-        if not args.preparation_receipt_sha256:
+        # ── Step 2.6: In autonomous/governed mode, preparation receipts are mandatory ─
+        mission_auth = (
+            getattr(getattr(ctx, "tool_runtime", None), "_mission_authority", None)
+            if ctx
+            else None
+        )
+        if mission_auth is not None and not args.preparation_receipt_sha256:
             return CheckpointResult(
                 ok=False,
-                message="Checkpoint refused: preparation receipt required for autonomous checkpoint",
+                message="Checkpoint refused: preparation receipt required for governed checkpoint",
                 refusal_reason="preparation_receipt_required",
                 error_kind="preparation_receipt_required",
             )
