@@ -1,0 +1,130 @@
+{
+  "schema_version": "rig.relay.audit_contract.v1",
+  "audit_id": "checkpoint-preparation-binding-truth-001",
+  "title": "Checkpoint Preparation Binding Truth Audit",
+  "description": "Adversarial security audit verifying that the files being validated and committed are exactly the files the governed preparation step admitted. Covers the prepare → resolve → validate → checkpoint seam across seven source files.",
+  "invariant": "A bound validation or checkpoint may proceed ONLY when: (1) Current branch matches receipt, (2) Canonical worktree identity matches receipt, (3) Current index tree digest matches receipt's post_index_tree_digest (RECOMPUTED, not trusted), (4) No unadmitted untracked files are observable by broad validators, (5) Receipt is not expired, consumed, or revoked, (6) Authorization provenance is intact, (7) Any error or uncertainty MUST refuse, not degrade silently.",
+  "generated_at": "2026-05-25",
+  "branch": "main",
+  "head_initial": "a3a1e6ff3173738d0c651abec5eac70b0d79077e",
+  "head_final": "7054c2da78fcc525748d3b233aaee73d1c062d8d",
+  "status": "open",
+  "seams": [
+    {
+      "seam_id": "S1",
+      "description": "Index digest never verified in validate._check_preparation_binding. The receipt contains post_index_tree_digest and git_workspace_state computes the current digest, but validate only runs git diff --name-only (working tree vs index). Index tampering after preparation passes bound validation.",
+      "severity": "high",
+      "affected_files": ["rig_relay/core/tools/builtins/validate.py"],
+      "adversarial_scenario": "Prepare a valid index (receipt stores digest X). git add a malicious file (index digest becomes Y). Ensure working tree matches the new index (git diff --name-only returns empty). Validation passes bound, minting a receipt against the tampered index.",
+      "expected_behavior": "validate._check_preparation_binding MUST recompute compute_index_tree_digest() and compare it to the receipt's post_index_tree_digest. Mismatch must refuse.",
+      "current_behavior": "validate reads digest from receipt but never compares against current index. Only checks git diff --name-only.",
+      "compensating_control": "checkpoint._verify_preparation_receipt DOES compute and compare index digest, catching the tampering at commit time. But the validation receipt is fraudulent.",
+      "test_classification": "adversarial",
+      "tests_written": 4,
+      "defect_proved": true
+    },
+    {
+      "seam_id": "S2",
+      "description": "Exception handler in _check_preparation_binding fails open. Any Exception returns (None, None, None) — the same return as 'no receipt provided' — silently disabling binding without refusing validation.",
+      "severity": "critical",
+      "affected_files": ["rig_relay/core/tools/builtins/validate.py"],
+      "adversarial_scenario": "Trigger any exception in the binding check (corrupted receipt JSON, disk I/O error, subprocess timeout, malformed prepared_paths field). The exception handler returns (None, None, None) and the caller treats refusal=None as 'proceed with validation unbound'.",
+      "expected_behavior": "Any error or uncertainty during binding verification MUST return a refusal tuple. Only expected non-error states (no receipt provided, clean validation) should allow proceeding.",
+      "current_behavior": "except Exception: return None, None, None with comment '# Best-effort'. Catches JSONDecodeError, OSError, TypeError, subprocess.TimeoutExpired, and any ImportError.",
+      "test_classification": "adversarial",
+      "tests_written": 5,
+      "defect_proved": true
+    },
+    {
+      "seam_id": "S3",
+      "description": "Receipt persistence authority split across auth_receipts.py and receipt_store.py, both with their own load_preparation_receipt and persist_preparation_receipt implementations writing to the same directory. validate.py imports from auth_receipts; git_workspace_state.py imports from receipt_store.",
+      "severity": "medium",
+      "affected_files": ["rig_relay/governance/auth_receipts.py", "rig_relay/governance/receipt_store.py", "rig_relay/core/tools/builtins/validate.py", "rig_relay/core/tools/builtins/checkpoint.py", "rig_relay/core/tools/builtins/git_workspace_state.py"],
+      "adversarial_scenario": "When desktop store (Application Support) is wired via _desktop_store_root(), auth_receipts still writes to .build/rig-relay/desktop/preparation-receipts/. auto-resolution and explicit validation can silently read from different authorities.",
+      "expected_behavior": "Single canonical receipt store boundary. All callers route through receipt_store.",
+      "current_behavior": "Currently converges on same directory but split across two modules with different consumers.",
+      "test_classification": "adversarial",
+      "tests_written": 3,
+      "defect_proved": false
+    },
+    {
+      "seam_id": "S4",
+      "description": "No consumed/revoked receipt lifecycle. expires_at is always None. After a receipt is consumed by a commit, it remains on disk with no consumed flag. If the exact same index state is recreated, resolve_best_preparation_receipt returns valid_index_match with the old receipt.",
+      "severity": "medium",
+      "affected_files": ["rig_relay/governance/auth_receipts.py", "rig_relay/governance/receipt_store.py"],
+      "adversarial_scenario": "Prepare, commit (consume receipt), recreate identical index state. Old receipt matches and resolve_best_preparation_receipt returns valid_index_match.",
+      "expected_behavior": "Consumed receipts must be excluded from active receipt resolution. Receipts must track consumed_at or revoked status.",
+      "test_classification": "adversarial",
+      "tests_written": 4,
+      "defect_proved": true
+    },
+    {
+      "seam_id": "S5",
+      "description": "Untracked file check scope limited to static disposable directory prefixes. May miss non-standard observable directories.",
+      "severity": "low",
+      "affected_files": ["rig_relay/core/tools/builtins/validate.py"],
+      "adversarial_scenario": "Create an untracked file outside the disposable prefix list that is observable by pytest/pyright. Current filter catches most cases but is not exhaustive.",
+      "test_classification": "adversarial",
+      "tests_written": 4,
+      "defect_proved": false
+    },
+    {
+      "seam_id": "S6",
+      "description": "Multiple matching receipts with identical index digests resolved to newest-by-created_at but no session/task/HEAD tiebreaking for ambiguous cases.",
+      "severity": "low",
+      "affected_files": ["rig_relay/governance/receipt_store.py"],
+      "adversarial_scenario": "Two different prepare runs produce identical index trees. resolve_best_preparation_receipt selects the newest but no lifecycle tiebreak exists.",
+      "test_classification": "adversarial",
+      "tests_written": 3,
+      "defect_proved": false
+    }
+  ],
+  "gaps_discovered": [
+    {
+      "gap_id": "G1",
+      "description": "validate._check_preparation_binding never checks receipt['worktree_root'] or receipt['branch']. A receipt from branch A accepted when validate runs on branch B. A receipt from any repository accepted.",
+      "severity": "medium"
+    },
+    {
+      "gap_id": "G2",
+      "description": "Symlink/path-alias worktrees not tested. receipt_store resolves paths with Path.resolve() but validate uses raw cwd.",
+      "severity": "medium"
+    },
+    {
+      "gap_id": "G3",
+      "description": "TOCTOU window: between validate-pass (missing index check) and checkpoint-catch, validation tools run against unverified index. Inherently racy until S1 is fixed.",
+      "severity": "low"
+    }
+  ],
+  "test_environment": {
+    "description": "Real temporary Git repositories via tmp_path fixture. No mocks of git, subprocess.run, or file I/O (except S2-test-3 which monkeypatches to force exception).",
+    "markers": ["adversarial"],
+    "test_count": 23,
+    "test_file": "tests/adversarial/test_checkpoint_preparation_binding.py"
+  },
+  "validation_criteria": [
+    "All S1 tests pass (proving the digest-not-verified defect exists)",
+    "All S2 tests pass (proving the fail-open defect exists)",
+    "All S3 tests pass (proving authority convergence today)",
+    "All S4 tests pass (proving replay is possible)",
+    "All S5 tests pass (proving untracked check works for common cases)",
+    "All S6 tests pass (proving resolution behavior)",
+    "No existing checkpoint or validate tests break",
+    "All tests use real git repositories (no mocks)"
+  ],
+  "recommended_fix_priority": [
+    {"rank": 1, "seam": "S2", "action": "Replace fail-open except Exception with refusal tuple. Catch only expected exceptions."},
+    {"rank": 2, "seam": "S1", "action": "Add compute_index_tree_digest(cwd) comparison to _check_preparation_binding before git diff check."},
+    {"rank": 3, "seam": "S2a", "action": "Differentiate corrupt vs missing receipts in load_preparation_receipt."},
+    {"rank": 4, "seam": "G1", "action": "Add worktree_root and branch binding checks to _check_preparation_binding."},
+    {"rank": 5, "seam": "S3", "action": "Consolidate receipt persistence under receipt_store. Route all callers through it."},
+    {"rank": 6, "seam": "S4", "action": "Add consumed_at lifecycle tracking. Mark receipts consumed after successful commit."}
+  ],
+  "out_of_scope": [
+    "Receipt schema formalization (JSON Schema for rig.relay.checkpoint_preparation_receipt.v1)",
+    "desktop_store_root implementation (deferred to desktop migration)",
+    "Time-based expiry with non-None expires_at values",
+    "Broad validator config introspection (reading pyproject.toml/conftest.py for observable directories)",
+    "HMAC signing of receipt chain (defense-in-depth, not breached by S1-S6)"
+  ]
+}

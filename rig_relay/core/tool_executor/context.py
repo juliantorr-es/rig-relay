@@ -87,6 +87,7 @@ class ToolSessionContext:
     approval_callback: Any = None
     result_sink: Any = None
     handle_tool_response: Callable[..., None] | None = None
+    handle_failed_tool_response: Callable[..., Any] | None = None
     add_message: Callable[[Any], None] | None = None
     telemetry_client: GovernanceTelemetryPort | None = None
 

@@ -699,14 +699,15 @@ async def test_model_cannot_supply_runtime_reserved_tool_fields(
         if isinstance(e, ToolResultEvent)
         and getattr(e, "tool_name", "") == "write_file"
     ]
-    # Either no write_file result at all, or if one exists it must be an error/refusal
-    assert len(tool_results) == 0, (
-        "write_file should not have executed with forged args. Got: %s"
-        % [
-            (getattr(e, "tool_name", "?"), getattr(e, "error", "?"))
-            for e in tool_results
-        ]
+    # Failed calls now produce ToolResultEvents via the batch executor.
+    # The forged _tool_runtime_call_id must produce a failure observation.
+    assert len(tool_results) == 1, (
+        f"Expected 1 failed ToolResultEvent, got {len(tool_results)}: {[(getattr(e, "tool_name", "?"), str(getattr(e, "error", "?"))[:60]) for e in tool_results]}"
+        % (len(tool_results), [(getattr(e, "tool_name", "?"), str(getattr(e, "error", "?"))[:60]) for e in tool_results])
     )
+    tr = tool_results[0]
+    assert getattr(tr, "error", None) is not None, "Failed call must produce error"
+    assert "extra" in str(getattr(tr, "error", "")).lower(), "Error should mention extra inputs"
 
     # role=tool message should NOT exist for write_file
     tool_msgs = [
@@ -714,7 +715,7 @@ async def test_model_cannot_supply_runtime_reserved_tool_fields(
         for m in loop.messages
         if m.role == Role.tool and getattr(m, "tool_call_id", "") == "wf_forged"
     ]
-    assert len(tool_msgs) == 0, "role=tool message found for rejected forged call"
+    assert len(tool_msgs) == 1, f"Expected 1 role=tool for failed forged call, got {len(tool_msgs)}"
 
     await loop.aclose()
 
@@ -1182,38 +1183,91 @@ async def test_mission_scoped_auto_refuses_raw_bash(tmp_working_directory: Path)
     async for event in loop.act("Run echo hacked via bash"):
         events.append(event)
 
-    # Bash is in base_disabled — it is never loaded by the tool manager.
-    # The model may attempt to call it, but resolve_tool_calls puts it in
-    # failed_calls and no execution occurs. The observable contract is:
-    # bash is NOT in available_tools AND no bash ToolResultEvent exists.
-    assert "bash" not in loop.tool_manager.available_tools, (
-        "bash should not be available under MISSION_SCOPED_AUTO"
+    # bash is absent from available_tools
+    assert "bash" not in loop.tool_manager.available_tools
+
+    from rig_relay.core.types import Role, ToolCallEvent, ToolResultEvent
+
+    # No executable ToolCallEvent for bash
+    tc_events = [e for e in events if isinstance(e, ToolCallEvent)
+                 and getattr(e, "tool_name", "") == "bash"]
+    assert len(tc_events) == 0, "bash ToolCallEvent emitted"
+
+    # Exactly one failed/refused ToolResultEvent for bash
+    tr_events = [e for e in events if isinstance(e, ToolResultEvent)
+                 and getattr(e, "tool_name", "") == "bash"]
+    assert len(tr_events) == 1, (
+        f"Expected 1 failed TR for bash, got {len(tr_events)}"
     )
 
-    from rig_relay.core.types import ToolCallEvent, ToolResultEvent
-
-    # No bash tool call should have been dispatched
-    tc_events = [
-        e
-        for e in events
-        if isinstance(e, ToolCallEvent) and getattr(e, "tool_name", "") == "bash"
-    ]
-    assert len(tc_events) == 0, (
-        f"bash ToolCallEvent emitted — tool should not be dispatchable. "
-        f"Events: {[type(e).__name__ for e in events]}"
+    # Exactly one role=tool message with bash_msa call_id
+    tool_msgs = [m for m in loop.messages if m.role == Role.tool
+                 and getattr(m, "tool_call_id", "") == "bash_msa"]
+    assert len(tool_msgs) == 1, (
+        f"Expected 1 role=tool for bash_msa, got {len(tool_msgs)}. "
+        f"Roles: {[(str(getattr(m, 'role', '?')), getattr(m, 'tool_call_id', '?')) for m in loop.messages]}"
     )
 
-    # No bash tool result should exist
-    tr_events = [
-        e
-        for e in events
-        if isinstance(e, ToolResultEvent) and getattr(e, "tool_name", "") == "bash"
-    ]
-    assert len(tr_events) == 0, (
-        "bash ToolResultEvent emitted — tool should not have executed"
+    # Second backend turn executed (no dangling tool call)
+    assert len(backend._requests_messages) >= 2, (
+        f"Expected >= 2 backend calls, got {len(backend._requests_messages)}"
     )
 
-    # No file was created by bash
+    # No file was created
     assert not Path("hacked").exists()
+
+    await loop.aclose()
+
+
+@pytest.mark.asyncio
+async def test_mixed_batch_disabled_and_valid_tools(tmp_working_directory: Path):
+    """Model emits one disabled (bash) + one valid (read_file) in same batch.
+    Both produce bound observations. Valid tool executes normally.
+    """
+    test_file = Path("target.py")
+    test_file.write_text("x = 1\n")
+
+    backend = FakeBackend([
+        [mock_llm_chunk(content="Reading and running.",
+            tool_calls=[
+                ToolCall(id="rf_valid", index=0,
+                    function=FunctionCall(name="read_file",
+                        arguments=json.dumps({"path": "target.py"}))),
+                ToolCall(id="bash_invalid", index=1,
+                    function=FunctionCall(name="bash",
+                        arguments=json.dumps({"command": "echo hacked"}))),
+            ])],
+        [mock_llm_chunk(content="Done.")],
+    ])
+
+    loop = build_test_agent_loop(
+        agent_name=BuiltinAgentName.MISSION_SCOPED_AUTO, backend=backend,
+        config=build_test_vibe_config(governed_context_enabled=False),
+    )
+
+    events = []
+    async for event in loop.act("Read target.py and run echo hacked"):
+        events.append(event)
+
+    from rig_relay.core.types import Role, ToolResultEvent
+
+    # Valid tool produced result
+    rf = [e for e in events if isinstance(e, ToolResultEvent)
+          and getattr(e, "tool_name", "") == "read_file"]
+    assert len(rf) >= 1, "No read_file result"
+
+    # Disabled tool produced failed result
+    br = [e for e in events if isinstance(e, ToolResultEvent)
+          and getattr(e, "tool_name", "") == "bash"]
+    assert len(br) >= 1, "No bash failure result"
+
+    # Both tool slots have role=tool messages
+    for cid in ("rf_valid", "bash_invalid"):
+        msgs = [m for m in loop.messages if m.role == Role.tool
+                and getattr(m, "tool_call_id", "") == cid]
+        assert len(msgs) == 1, f"Missing tool msg for {cid}"
+
+    # Second turn succeeded (no dangling tool call)
+    assert len(backend._requests_messages) >= 2
 
     await loop.aclose()

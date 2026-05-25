@@ -175,3 +175,24 @@ class ToolResultRuntime:
             cancelled=cancelled,
             tool_call_id=tool_call.call_id,
         )
+
+    def handle_failed_tool_response(self, failed: Any) -> LLMMessage:
+        """Append a role=tool message for a failed/unavailable tool call.
+
+        A model-issued tool call that cannot be dispatched (tool unavailable,
+        disabled, or argument validation failure) must still produce a bound
+        tool observation before the conversation continues.
+        Returns the appended LLMMessage for caller inspection.
+        """
+        loop = self._loop
+        error_msg = (
+            f"<tool_error>{failed.tool_name}: {failed.error}"
+            f"</tool_error>"
+        )
+        msg = LLMMessage.model_validate(
+            loop.format_handler.create_failed_tool_response_message(
+                failed, error_msg
+            )
+        )
+        loop.messages.append(msg)
+        return msg

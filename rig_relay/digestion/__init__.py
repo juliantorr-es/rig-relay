@@ -23,6 +23,7 @@ from rig_relay.digestion.identity import (
 )
 from rig_relay.digestion.instruction_scanner import discover_instructions
 from rig_relay.digestion.intake import IntakeResult, RepositoryIntakeService
+from rig_relay.digestion.mission_admission import MissionAdmission, admit_mission
 from rig_relay.digestion.mission_proposer import propose_mission
 from rig_relay.digestion.models import (
     DetectedCommand,
@@ -57,6 +58,7 @@ __all__ = [
     "InstructionScope",
     "IntakeResult",
     "LocalRepositoryOperatingPicture",
+    "MissionAdmission",
     "MissionProposalInput",
     "OpenedRepository",
     "RegisteredRepository",
@@ -68,6 +70,7 @@ __all__ = [
     "TopologyEntry",
     "WorkspacePreparationPlan",
     "WorktreeIdentity",
+    "admit_mission",
     "build_telemetry_projection",
     "compute_dirty_state_digest",
     "compute_freshness",

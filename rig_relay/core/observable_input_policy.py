@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # ── Disposable directory names (path components, not string prefixes) ──
 _DISPOSABLE_DIR_NAMES: frozenset[str] = frozenset({
     ".venv",
@@ -118,7 +117,8 @@ def classify_ignored_observable_inputs(
 
         # ── Observable by extension ───────────────────────────────────
         suffix = path.suffix.lower()
-        if suffix in _OBSERVABLE_EXTENSIONS:
+        name = path.name.lower()
+        if suffix in _OBSERVABLE_EXTENSIONS or name in _OBSERVABLE_EXTENSIONS:
             assessment.observable_count += 1
             assessment.observable_paths.append(raw_path)
             continue

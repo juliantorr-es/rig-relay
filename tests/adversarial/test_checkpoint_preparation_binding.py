@@ -3,18 +3,18 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 from pathlib import Path
+import subprocess
 
 import pytest
 
 from rig_relay.core.git_index_operations import compute_index_tree_digest
+from rig_relay.core.tools.base import BaseToolState
+from rig_relay.core.tools.builtins.validate import Validate
 from rig_relay.core.tools.builtins.validate_models import (
     ValidateArgs,
     ValidateToolConfig,
 )
-from rig_relay.core.tools.builtins.validate import Validate
-from rig_relay.core.tools.base import BaseToolState
 from rig_relay.governance.auth_receipts import (
     generate_preparation_receipt,
     load_preparation_receipt,
@@ -23,7 +23,6 @@ from rig_relay.governance.auth_receipts import (
 from rig_relay.governance.receipt_store import (
     find_active_preparation_receipts,
     load_preparation_receipt as rs_load_prep,
-    persist_preparation_receipt as rs_persist_prep,
     resolve_best_preparation_receipt,
 )
 
@@ -38,21 +37,28 @@ def _init_repo(tmp_path: Path, branch: str = "task/feature") -> Path:
         ["git", "config", "user.email", "test@example.com"], cwd=repo, check=True
     )
     subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
-    (repo / ".gitignore").write_text(".build/\n")
     (repo / "README.md").write_text("# Test")
-    subprocess.run(["git", "add", ".gitignore", "README.md"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "README.md"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=repo, check=True)
     return repo
 
 
 def _stage_file(repo: Path, filename: str, content: str) -> None:
     """Create a file and stage it with git add."""
-    (repo / filename).write_text(content)
+    full_path = repo / filename
+    full_path.parent.mkdir(parents=True, exist_ok=True)
+    full_path.write_text(content)
     subprocess.run(["git", "add", filename], cwd=repo, check=True, capture_output=True)
 
 
 def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -> dict:
-    """Generate and persist a preparation receipt. Must be called with CWD at repo."""
+    """Generate and persist a preparation receipt. Must be called with CWD at repo.
+
+    Also stages the receipt files so they don't appear as untracked/ignored in
+    subsequent git checks. The receipt's post_index_tree_digest reflects the
+    index state BEFORE receipt files were staged (since the receipt itself is
+    a side-channel artifact, not part of the prepared content).
+    """
     receipt = generate_preparation_receipt(
         mission_id="test-mission",
         authority_provenance_sha256=f"sha256:{sha256}",
@@ -70,6 +76,18 @@ def _make_receipt(repo: Path, sha256: str, post_digest: str, paths: list[str]) -
     )
     persisted = persist_preparation_receipt(receipt)
     assert persisted is not None, "persist_preparation_receipt returned None"
+
+    # Stage the receipt infrastructure files so git operations
+    # (ls-files --others, diff --name-only) don't flag them.
+    receipt_dir = Path(".build/rig-relay/desktop/preparation-receipts")
+    if receipt_dir.exists():
+        subprocess.run(
+            ["git", "add", "-f", str(receipt_dir)],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
     return receipt
 
 
@@ -392,7 +410,7 @@ def test_bound_validate_refuses_when_receipt_has_missing_keys(tmp_path):
         os.chdir(original_cwd)
 
     # prepared_digest stays None when post_index_tree_digest missing (line 824-826)
-    assert prepared_digest is None, f"Expected prepared_digest=None without digest key"
+    assert prepared_digest is None, "Expected prepared_digest=None without digest key"
     # Worktree check proceeds even without digest — note this behavior
     # (If there are no unstaged changes relative to empty index, it passes)
     assert refusal is None or refusal[1] != "preparation_receipt_missing_digest", (
@@ -662,7 +680,7 @@ def test_two_identical_digest_receipts_resolve_to_first_match(tmp_path):
     original_cwd = os.getcwd()
     os.chdir(repo)
     try:
-        receipt1 = _make_receipt(repo, "n" * 64, post_digest, ["other.py"])
+        _make_receipt(repo, "n" * 64, post_digest, ["other.py"])
         # Create a second receipt with the same digest but different identity
         receipt2 = generate_preparation_receipt(
             mission_id="test-mission-2",
@@ -723,10 +741,8 @@ def test_old_receipt_replayed_on_same_branch_still_matches(tmp_path):
 
         # Recreate the same index state (identical content, re-stage)
         _stage_file(repo, "file2.py", "# content2")
-        new_post_digest = compute_index_tree_digest(repo)
-        # This new digest is different from the old one now, but the old receipt
-        # still exists on disk. If we ever recreate the exact same index state,
-        # the old receipt can be replayed.
+        # The old receipt still exists on disk. If we ever recreate the exact
+        # same index state, the old receipt can be replayed.
         # Rather than trying to exactly recreate, let's just resolve with the
         # old receipt's digest and prove it's still findable.
         status, matched = resolve_best_preparation_receipt(
@@ -898,7 +914,7 @@ def test_two_receipts_same_branch_and_digest_returns_valid_match(tmp_path):
     original_cwd = os.getcwd()
     os.chdir(repo)
     try:
-        receipt1 = _make_receipt(repo, "u" * 64, post_digest, ["file.py"])
+        _make_receipt(repo, "u" * 64, post_digest, ["file.py"])
         receipt2 = generate_preparation_receipt(
             mission_id="test-mission-2",
             authority_provenance_sha256="sha256:" + "v" * 64,
@@ -962,7 +978,7 @@ def test_multiple_candidates_no_digest_match_returns_stale(tmp_path):
     original_cwd = os.getcwd()
     os.chdir(repo)
     try:
-        receipt1 = _make_receipt(repo, "w" * 64, post_digest_a, ["file_a.py"])
+        _make_receipt(repo, "w" * 64, post_digest_a, ["file_a.py"])
 
         # Create a second receipt with different content (different digest)
         _stage_file(repo, "file_b.py", "# content B")
@@ -1000,5 +1016,5 @@ def test_multiple_candidates_no_digest_match_returns_stale(tmp_path):
     assert matched is not None, "Expected first candidate receipt, got None"
     # The newest receipt (by created_at) should be returned as the mismatch
     assert matched["receipt_sha256"] == receipt2["receipt_sha256"], (
-        f"Expected newest receipt as mismatch candidate"
+        "Expected newest receipt as mismatch candidate"
     )

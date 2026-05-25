@@ -943,103 +943,66 @@ class Validate(
             )
             if ignored_proc.returncode == 0 and ignored_proc.stdout.strip():
                 ignored = [p for p in ignored_proc.stdout.strip().splitlines() if p]
-                # Classify ignored paths
-                _disposable_prefixes = (
-                    ".venv/",
-                    "node_modules/",
-                    "__pycache__/",
-                    ".pytest_cache/",
-                    ".mypy_cache/",
-                    ".ruff_cache/",
-                    ".tox/",
-                    ".eggs/",
-                    "build/",
-                    "dist/",
+                from rig_relay.core.observable_input_policy import (
+                    classify_ignored_observable_inputs,
                 )
-                _observable_extensions = (
-                    ".py",
-                    ".ts",
-                    ".tsx",
-                    ".js",
-                    ".jsx",
-                    ".json",
-                    ".toml",
-                    ".yaml",
-                    ".yml",
-                    ".env",
-                    ".cfg",
-                    ".ini",
-                    ".sql",
-                    ".sh",
-                    ".bash",
-                )
-                disposable: list[str] = []
-                observable: list[str] = []
-                unknown: list[str] = []
-                for path in ignored:
-                    is_disposable = any(
-                        path.startswith(prefix) for prefix in _disposable_prefixes
-                    )
-                    if is_disposable:
-                        disposable.append(path)
-                    elif path.endswith(_observable_extensions):
-                        observable.append(path)
-                    else:
-                        unknown.append(path)
 
-                _MAX_IGNORED_SHOWN = 5
-                if observable:
-                    _ignored_observable_count = len(observable)
-                    shown = min(len(observable), _MAX_IGNORED_SHOWN)
-                    extra = (
-                        f" and {len(observable) - _MAX_IGNORED_SHOWN} more"
-                        if len(observable) > _MAX_IGNORED_SHOWN
-                        else ""
-                    )
-                    return (
-                        prepared_digest,
-                        None,
-                        (
-                            "refused",
-                            "ignored_observable_inputs_present",
+                assessment = classify_ignored_observable_inputs(ignored)
+
+                # Record counts for receipt
+                _ignored_candidates = assessment.disposable_count
+                _ignored_observable_count = assessment.observable_count
+                _ignored_disposable_count = assessment.disposable_count
+                _ignored_unknown_count = assessment.unknown_count
+
+                if assessment.blocked:
+                    max_shown = 5
+                    if assessment.observable_count > 0:
+                        shown = min(len(assessment.observable_paths), max_shown)
+                        extra = (
+                            f" and {len(assessment.observable_paths) - max_shown} more"
+                            if len(assessment.observable_paths) > max_shown
+                            else ""
+                        )
+                        return (
+                            prepared_digest,
+                            None,
                             (
-                                f"Ignored files that validators can observe exist: "
-                                f"{', '.join(observable[:shown])}"
-                                + extra
-                                + ". These files are gitignored but may be imported "
-                                "or read during validation."
+                                "refused",
+                                "ignored_observable_inputs_present",
+                                (
+                                    f"Ignored files that validators can observe exist: "
+                                    f"{', '.join(assessment.observable_paths[:shown])}"
+                                    + extra
+                                    + ". These files are gitignored but may be imported "
+                                    "or read during validation."
+                                ),
+                                "Remove, explicitly admit, or git-add these files before bound validation.",
                             ),
-                            "Remove, explicitly admit, or git-add these files before bound validation.",
-                        ),
-                    )
-                if unknown:
-                    _ignored_unknown_count = len(unknown)
-                    shown = min(len(unknown), _MAX_IGNORED_SHOWN)
-                    extra = (
-                        f" and {len(unknown) - _MAX_IGNORED_SHOWN} more"
-                        if len(unknown) > _MAX_IGNORED_SHOWN
-                        else ""
-                    )
-                    return (
-                        prepared_digest,
-                        None,
-                        (
-                            "refused",
-                            "unknown_ignored_inputs_present",
+                        )
+                    else:
+                        shown = min(len(assessment.unknown_paths), max_shown)
+                        extra = (
+                            f" and {len(assessment.unknown_paths) - max_shown} more"
+                            if len(assessment.unknown_paths) > max_shown
+                            else ""
+                        )
+                        return (
+                            prepared_digest,
+                            None,
                             (
-                                f"Unknown ignored files exist: "
-                                f"{', '.join(unknown[:shown])}"
-                                + extra
-                                + ". These files may be observed during validation. "
-                                "Classify or remove them before bound validation."
+                                "refused",
+                                "unknown_ignored_inputs_present",
+                                (
+                                    f"Unknown ignored files exist: "
+                                    f"{', '.join(assessment.unknown_paths[:shown])}"
+                                    + extra
+                                    + ". These files may be observed during validation. "
+                                    "Classify or remove them before bound validation."
+                                ),
+                                "Classify, remove, or explicitly admit these files before bound validation.",
                             ),
-                            "Classify, remove, or explicitly admit these files before bound validation.",
-                        ),
-                    )
-                # Only disposable ignored files — record in result
-                if disposable:
-                    _ignored_disposable_count = len(disposable)
-                    _ignored_candidates = len(disposable)
+                        )
 
             # ── Store classification data for receipt generation ──
             if out_ignored is not None:

@@ -299,6 +299,7 @@ class AgentLoop(
             result_sink=self._tool_result_sink,
             stats=self.stats,
             handle_tool_response=self._tool_result_runtime.handle_tool_response,
+            handle_failed_tool_response=self._tool_result_runtime.handle_failed_tool_response,
             telemetry_client=self.telemetry_client,
         )
 
@@ -784,6 +785,7 @@ class AgentLoop(
             content=llm_result.message.content or "",
             message_id=llm_result.message.message_id,
         )
+
 
     async def _emit_failed_tool_events(
         self, failed_calls: list[FailedToolCall]

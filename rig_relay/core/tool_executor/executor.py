@@ -464,6 +464,8 @@ class ToolExecutor:
                     error=error_msg,
                     tool_call_id=failed.call_id,
                 )
+                if session_ctx.handle_failed_tool_response is not None:
+                    session_ctx.handle_failed_tool_response(failed)
                 if session_ctx.stats is not None:
                     session_ctx.stats.tool_calls_failed += 1
 

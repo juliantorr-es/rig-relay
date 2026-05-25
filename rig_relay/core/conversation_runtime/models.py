@@ -386,5 +386,6 @@ class TurnBatchResult(BaseModel):
 
     @property
     def has_tool_work(self) -> bool:
-        """True when there are pending tool calls to execute."""
-        return self.pending_batch is not None and len(self.pending_batch) > 0
+        """True when there are pending tool calls or failed calls to process."""
+        return (self.pending_batch is not None and len(self.pending_batch) > 0
+                or len(self.failed_calls) > 0)
