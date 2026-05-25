@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json",
+  "title": "Rig Relay Fleet Coordination Event v1",
+  "description": "Canonical fleet coordination event envelope — append-only JSONL authority ledger.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "claim_id",
+    "event_kind",
+    "mission_id",
+    "lane_id",
+    "agent_id",
+    "workspace_authority_id",
+    "timestamp",
+    "event_sequence",
+    "event_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.fleet_coordination_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "SHA256-based deterministic event identity, e.g. sha256(canonical_payload)[:24]"
+    },
+    "claim_id": {
+      "type": "string",
+      "description": "UUID4 claim lifecycle identity — stable across acquisition, renewal, transitions, release, and parking"
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "claim_requested",
+        "claim_acquired",
+        "claim_refused_conflict",
+        "claim_renewed",
+        "edit_started",
+        "tests_completed",
+        "ready_for_integration",
+        "integration_accepted",
+        "integration_refused_stale_base",
+        "claim_released",
+        "work_parked"
+      ]
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Mission identifier"
+    },
+    "lane_id": {
+      "type": "string",
+      "description": "Lane identifier within the mission"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Agent or session identifier performing the operation"
+    },
+    "workspace_authority_id": {
+      "type": "string",
+      "description": "Stable workspace authority identifier (maps to ExecutionWorkspace.workspace_id UUID or derived repository identity digest)"
+    },
+    "claimed_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Normalized repository-relative claimed paths (e.g. rig_relay/governance/receipt_store.py)"
+    },
+    "base_sha256_by_path": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "SHA256 file-content digests at claim acquisition time, keyed by relative path"
+    },
+    "lane_output_sha256_by_path": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "SHA256 file-content digests after lane edits/tests, recorded at ready_for_integration"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp"
+    },
+    "event_sequence": {
+      "type": "integer",
+      "description": "Monotonic sequence number derived from ledger file at append time"
+    },
+    "prior_event_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the immediate prior event in the ledger (null for first event)"
+    },
+    "event_digest": {
+      "type": "string",
+      "description": "SHA256 digest of this event's canonical JSON (excluding the event_digest field itself)"
+    },
+    "reason_code": {
+      "type": "string",
+      "enum": [
+        "conflict_path_overlap",
+        "conflict_exact_path",
+        "conflict_ancestor_path",
+        "conflict_descendant_path",
+        "stale_base",
+        "expired",
+        "explicit_release",
+        "work_parked"
+      ],
+      "description": "Typed reason for refusal or terminal transition"
+    },
+    "details": {
+      "type": "object",
+      "description": "Content-light metadata only — no sources, prompts, secrets, diffs, file bodies, or terminal stdout"
+    }
+  },
+  "additionalProperties": false
+}

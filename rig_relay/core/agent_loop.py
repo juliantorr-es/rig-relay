@@ -786,25 +786,6 @@ class AgentLoop(
             message_id=llm_result.message.message_id,
         )
 
-
-    async def _emit_failed_tool_events(
-        self, failed_calls: list[FailedToolCall]
-    ) -> AsyncGenerator[ToolResultEvent]:
-        for failed in failed_calls:
-            error_msg = f"<{TOOL_ERROR_TAG}>{failed.tool_name}: {failed.error}</{TOOL_ERROR_TAG}>"
-            yield ToolResultEvent(
-                tool_name=failed.tool_name,
-                tool_class=None,
-                error=error_msg,
-                tool_call_id=failed.call_id,
-            )
-            self.stats.tool_calls_failed += 1
-            self.messages.append(
-                self.format_handler.create_failed_tool_response_message(
-                    failed, error_msg
-                )
-            )
-
     def _expand_tool_call_args(self, args: Any) -> Any:
         envelope = self._current_context_envelope
         if envelope is None or envelope.symbol_manifest is None:

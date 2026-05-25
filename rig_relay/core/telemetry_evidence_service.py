@@ -118,6 +118,42 @@ class TelemetryEvidenceService:
             ),
         )
 
+    def emit_tool_call_failed_resolved(
+        self,
+        *,
+        tool_name: str,
+        call_id: str,
+        error: str = "",
+        failure_kind: str = "resolution_failure",
+        error_sha256: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+        turn_id: str = "",
+    ) -> None:
+        """Emit telemetry for a tool call that could not be dispatched
+        (unavailable, disabled, or argument validation failure).
+
+        A refused or malformed tool call is a governance outcome, not an
+        absence of activity. This ensures observability for containment decisions.
+        """
+        self._telemetry_client.send_telemetry_event(
+            "rig.relay.tool.failed_resolved",
+            {
+                "tool_name": tool_name,
+                "tool_call_id": call_id,
+                "error": error[:256] if error else "",
+                "failure_kind": failure_kind,
+                "error_sha256": error_sha256,
+                "agent_profile_name": self._agent_profile_name_getter(),
+                "model": self._active_model_getter(),
+                "message_id": self._current_user_message_id_getter(),
+                "turn_id": turn_id,
+            },
+            receipt_candidate=True,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+        )
+
     def emit_tool_reasoning_trace(
         self,
         *,

@@ -69,7 +69,11 @@ file_watcher_for_autocomplete = false
 
 # Behavior
 bypass_tool_permissions = false    # Skip tool approval prompts
-system_prompt_id = "cli"          # System prompt: "cli", "lean", or custom .md filename
+system_prompt_id = "cli"          # System prompt: "cli", "chat", "plan",
+                                  # "accept_edits", "mission_scoped_auto",
+                                  # "explore", "lean", "orchestrator",
+                                  # "builder", "cleaner", "bug_exterminator",
+                                  # or custom .md filename
 enable_telemetry = false
 enable_update_checks = false
 enable_auto_update = false
@@ -220,8 +224,8 @@ installed_agents = ["lean"]
 # (default: "default"). Valid values: "default", "plan", "accept-edits",
 # "auto-approve", "lean" (only when listed in installed_agents), or any
 # custom agent name from ~/.rig/relay/agents/ or .rig/relay/agents/. Subagents
-# (e.g. "explore") are rejected. Ignored in programmatic mode
-# (-p/--prompt), which falls back to the legacy "auto-approve" profile when --agent is not
+# (e.g. "explore") are rejected. Ignored in programmatic mode (-p/--prompt),
+# which falls back to the legacy "auto-approve" profile when --agent is not
 # provided.
 default_agent = "plan"
 ```
@@ -375,16 +379,24 @@ There are two kinds of agents:
 ### Agents
 
 - **default**: Standard interactive agent
+- **chat**: Read-only conversational agent
 - **plan**: Planning-focused agent
 - **accept-edits**: Auto-approves file edits but asks for other tools
-- **auto-approve**: Legacy profile that auto-approves all tool calls
+- **auto-approve**: Legacy alias for mission-scoped auto behavior
+- **mission-scoped-auto**: Auto-approves scoped reads, edits, validation, and governed Git inspection
 - **lean**: Specialized Lean 4 proof assistant. Not available by default — must be
   installed with `/leanstall` (removed with `/unleanstall`)
+- **builder**: Patch-applier subagent for scoped code changes
+- **cleaner**: Validation and cleanup subagent
+- **bug-exterminator**: Conflict-resolution subagent for stubborn regressions
 
 ### Subagents
 
 - **explore**: Read-only codebase exploration helper (grep + read_file only).
   Spawned by the model, not selectable by the user.
+- **builder**: Patch-application helper that writes code in a scratch worktree.
+- **cleaner**: Validation and cleanup helper.
+- **bug-exterminator**: Advanced conflict-resolution helper.
 
 Custom agents are TOML files in `~/.rig/relay/agents/NAME.toml`.
 

@@ -176,23 +176,77 @@ class ToolResultRuntime:
             tool_call_id=tool_call.call_id,
         )
 
-    def handle_failed_tool_response(self, failed: Any) -> LLMMessage:
+    def handle_failed_tool_response(
+        self,
+        failed: Any,
+        *,
+        turn_id: str = "",
+        correlation_id: str = "",
+        causation_id: str = "",
+    ) -> LLMMessage:
         """Append a role=tool message for a failed/unavailable tool call.
 
         A model-issued tool call that cannot be dispatched (tool unavailable,
         disabled, or argument validation failure) must still produce a bound
         tool observation before the conversation continues.
+
+        Emits structured telemetry for observability: a failed_resolved
+        tool call is a governance outcome (containment or admission failure),
+        not an absence of activity.
+
         Returns the appended LLMMessage for caller inspection.
         """
         loop = self._loop
-        error_msg = (
-            f"<tool_error>{failed.tool_name}: {failed.error}"
-            f"</tool_error>"
-        )
+        error_msg = f"<tool_error>{failed.tool_name}: {failed.error}</tool_error>"
         msg = LLMMessage.model_validate(
-            loop.format_handler.create_failed_tool_response_message(
-                failed, error_msg
-            )
+            loop.format_handler.create_failed_tool_response_message(failed, error_msg)
         )
         loop.messages.append(msg)
+
+        # ── Emit structured telemetry for failed-resolved tool calls ──
+        if self._evidence is not None:
+            error_str = getattr(failed, "error", "")
+            failure_kind = _classify_failure_kind(error_str)
+
+            try:
+                error_sha256 = hashlib.sha256(error_msg.encode("utf-8")).hexdigest()
+            except Exception:
+                error_sha256 = ""
+
+            try:
+                self._evidence.emit_tool_call_failed_resolved(
+                    tool_name=getattr(failed, "tool_name", "unknown"),
+                    call_id=getattr(failed, "call_id", ""),
+                    error=error_str,
+                    failure_kind=failure_kind,
+                    error_sha256=error_sha256,
+                    correlation_id=correlation_id,
+                    causation_id=causation_id,
+                    turn_id=turn_id,
+                )
+            except Exception:
+                pass
+
         return msg
+
+
+def _classify_failure_kind(error: str) -> str:
+    """Classify the failure kind from the error message text.
+
+    Returns one of: 'unknown_tool', 'disabled_tool', 'malformed_args', 'resolution_failure'
+    """
+    if (
+        "Unknown tool" in error
+        or "not found" in error.lower()
+        or "unavailable" in error.lower()
+    ):
+        return "unknown_tool"
+    if "disabled" in error.lower() or "not permitted" in error.lower():
+        return "disabled_tool"
+    if (
+        "invalid" in error.lower()
+        or "malformed" in error.lower()
+        or "validation" in error.lower()
+    ):
+        return "malformed_args"
+    return "resolution_failure"

@@ -108,7 +108,7 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
         # Even if path is the same, the underlying git repository may have been replaced
         plan_common_dir_digest = _compute_common_dir_digest_from_plan(input_)
         if plan_common_dir_digest and source_common_dir_raw:
-            current_common_dir = _digest_path(Path(source_common_dir_raw).resolve())
+            current_common_dir = _digest_common_dir_content(source_common_dir_raw)
             if current_common_dir != plan_common_dir_digest:
                 return _refused(
                     workspace_id,
@@ -277,7 +277,7 @@ class GitWorktreeExecutionWorkspaceProvider(ExecutionWorkspaceProvider):
                     force_used=False,
                 )
 
-            current_digest = _compute_workspace_clean_digest(ws_path)
+            current_digest = _compute_workspace_dirty_state_digest(ws_path)
             if force_authorization.dirty_state_digest != current_digest:
                 return CleanupResult(
                     workspace_id=workspace.workspace_id,
@@ -426,22 +426,67 @@ def _compute_provisioning_digest(input_: ProvisioningInput) -> str:
 
 
 def _compute_common_dir_digest_from_plan(input_: ProvisioningInput) -> str | None:
-    """Derive a common-dir digest from plan inputs if available.
+    """Return the admitted git-common-dir digest from the plan input.
 
-    In Slice 1C, the plan doesn't directly carry common_dir_digest —
-    it's derived from re-observation. The caller checks against the
-    registered checkout record's git_common_dir_digest.
-    Returns None if not verifiable from plan alone.
+    This digest was captured from the registered checkout record
+    at plan time. It is compared against the current common-directory
+    digest immediately before provisioning to detect repository
+    replacement at the same path.
     """
-    return None  # Verified against registered checkout record by caller
+    return input_.admitted_git_common_dir_digest
 
 
 def _compute_workspace_clean_digest(ws_path: Path) -> str:
-    """Compute a digest of the workspace's initial clean state."""
+    """Compute a digest of the workspace's initial clean state.
+
+    Used for baseline capture at admission time. Hashes HEAD + file list.
+    """
     try:
         lst = _git_readonly(ws_path, "ls-files")
         head = _git_readonly(ws_path, "rev-parse", "HEAD")
         return hashlib.sha256(f"{head}:{lst}".encode()).hexdigest()
+    except Exception:
+        return ""
+
+
+def _compute_workspace_dirty_state_digest(ws_path: Path) -> str:
+    """Compute a digest bound to actual pending dirty output.
+
+    Includes porcelain v2 status AND SHA256 digests of modified/untracked
+    file contents. This ensures cleanup authorization binds to the actual
+    output being destroyed, not merely file names and HEAD.
+    """
+    try:
+        porcelain = _git_readonly(ws_path, "status", "--porcelain=v2")
+        # Collect content digests of dirty files
+        file_digests: list[str] = []
+        for line in porcelain.splitlines():
+            if line.startswith("#") or not line.strip():
+                continue
+            if line.startswith("?"):
+                # Untracked file — path is after the first space
+                path = line[2:] if len(line) > 2 else line[1:]
+                fp = ws_path / path.strip()
+                if fp.is_file():
+                    try:
+                        file_digests.append(hashlib.sha256(fp.read_bytes()).hexdigest())
+                    except OSError:
+                        file_digests.append("unreadable")
+                continue
+            if len(line) >= 4:
+                # Regular entry — path is at position 8+ (varies)
+                parts = line.split(None, 8)
+                if len(parts) >= 9:
+                    fp = ws_path / parts[8]
+                    if fp.is_file():
+                        try:
+                            file_digests.append(
+                                hashlib.sha256(fp.read_bytes()).hexdigest()
+                            )
+                        except OSError:
+                            file_digests.append("unreadable")
+        combined = porcelain + "\n".join(sorted(file_digests))
+        return hashlib.sha256(combined.encode()).hexdigest()
     except Exception:
         return ""
 
@@ -467,6 +512,40 @@ def _count_dirty_from_porcelain(porcelain: str) -> int:
 
 def _digest_path(path: Path) -> str:
     return hashlib.sha256(str(path).encode()).hexdigest()
+
+
+def _digest_common_dir_content(common_dir_path: str) -> str:
+    """Compute a content-based digest of the Git common directory.
+
+    Hashes HEAD, config, and the directory inode to detect
+    repository replacement at the same filesystem path.
+    A recreated .git directory receives a different inode,
+    so destroying and reinitializing produces a different digest.
+    Normal commits within the same repo do not change this digest.
+    """
+    try:
+        common = Path(common_dir_path)
+        parts: list[str] = []
+        # 1. SHA256 of HEAD file
+        head_fp = common / "HEAD"
+        parts.append(
+            hashlib.sha256(head_fp.read_bytes()).hexdigest()
+            if head_fp.is_file()
+            else "missing"
+        )
+        # 2. SHA256 of config file
+        config_fp = common / "config"
+        parts.append(
+            hashlib.sha256(config_fp.read_bytes()).hexdigest()
+            if config_fp.is_file()
+            else "missing"
+        )
+        # 3. Filesystem inode — stable for the lifetime of this directory,
+        #    changes when .git is destroyed and recreated.
+        parts.append(str(common.stat().st_ino))
+        return hashlib.sha256(":".join(parts).encode()).hexdigest()
+    except Exception:
+        return ""
 
 
 def _utc_now_iso() -> str:

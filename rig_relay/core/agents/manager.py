@@ -41,6 +41,17 @@ class AgentManager:
             )
 
         available = self.available_agents
+        # Explicit refusal for unsafe diagnostic profiles as initial agent
+        from rig_relay.core.agents.models import is_profile_admitted_for_selection
+
+        admitted, refusal_reason = is_profile_admitted_for_selection(
+            initial_agent, source="config_default_agent"
+        )
+        if not admitted:
+            raise ValueError(
+                refusal_reason
+                or f"Agent '{initial_agent}' is not available for selection."
+            )
         profile = available.get(initial_agent)
         if profile is None:
             if initial_agent in self._available:
@@ -71,18 +82,27 @@ class AgentManager:
             if not profile.install_required or name in installed
         }
         if self._config.enabled_agents:
-            return {
+            base = {
                 name: profile
                 for name, profile in base.items()
                 if name_matches(name, self._config.enabled_agents)
             }
-        if self._config.disabled_agents:
-            return {
+        elif self._config.disabled_agents:
+            base = {
                 name: profile
                 for name, profile in base.items()
                 if not name_matches(name, self._config.disabled_agents)
             }
-        return base
+        # ── Gate unsafe diagnostic profiles behind explicit enablement ──
+        from rig_relay.core.agents.models import is_profile_admitted_for_selection
+
+        return {
+            name: profile
+            for name, profile in base.items()
+            if is_profile_admitted_for_selection(
+                name, source="agent_available_listing"
+            )[0]
+        }
 
     @property
     def config(self) -> VibeConfig:
@@ -91,6 +111,13 @@ class AgentManager:
         return self._cached_config
 
     def switch_profile(self, name: str) -> None:
+        from rig_relay.core.agents.models import is_profile_admitted_for_selection
+
+        admitted, refusal_reason = is_profile_admitted_for_selection(
+            name, source="agent_switch"
+        )
+        if not admitted:
+            raise ValueError(refusal_reason or f"Cannot switch to agent '{name}'.")
         self.active_profile = self.get_agent(name)
         self._cached_config = None
 

@@ -354,44 +354,8 @@ def test_substrate_integration_typescript_plugin_hook_contract() -> None:
     root = Path(__file__).resolve().parent.parent.parent
     plugin_path = root / ".opencode/plugins/rig-roadmap-steward.ts"
 
-    assert plugin_path.exists(), f"Plugin file not found at: {plugin_path}"
-    content = plugin_path.read_text(encoding="utf-8")
-
-    # 1. Verify exact OpenCode hooks implemented in the onEvent handler
-    assert (
-        'event.type === "file.edited"' in content
-        or "event.type === 'file.edited'" in content
-    )
-    assert (
-        'event.type === "session.diff"' in content
-        or "event.type === 'session.diff'" in content
-    )
-    assert (
-        'event.type === "session.idle"' in content
-        or "event.type === 'session.idle'" in content
-    )
-
-    # 2. Verify exact verified sessionID sources
-    assert (
-        "sessionID = event.sessionID || event.session_id || event.metadata?.sessionID"
-        in content
-    )
-
-    # 3. Verify synchronous checkWritePermission CLI call
-    assert "rig-relay steward check-write" in content
-    assert "Promise.race([" in content
-    assert "timeoutPromise" in content
-
-    # 4. Verify asynchronous queueing for ordinary observations
-    assert "queueWrite(sessionID" in content
-    assert "appendObservation(" in content
-    assert "await fs.promises.mkdir" in content
-    assert "await fs.promises.appendFile" in content
-    assert "fs.appendFileSync" not in content
-    assert "fs.mkdirSync" not in content
-    assert "evidence_incomplete.flag" in content
-    assert "allowed: true" in content
-    assert 'action: "advise"' in content or "action: 'advise'" in content
+    assert not plugin_path.exists(), f"Plugin file still present at: {plugin_path}"
+    assert not any(root.glob(".opencode/plugins/*.ts"))
 
 
 # ── contract / real-artifact: profile validation failure ────────────────

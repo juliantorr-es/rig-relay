@@ -5,6 +5,16 @@ Canonical re-exports for commonly used coordination types.
 
 from __future__ import annotations
 
+from rig_relay.coordination.fleet_claim_corridor import (
+    FleetClaimEvent,
+    FleetClaimEventKind,
+    FleetClaimInfo,
+    FleetClaimLedger,
+    FleetClaimProtocol,
+    FleetClaimResult,
+    FleetClaimState,
+    FleetClaimXattr,
+)
 from rig_relay.coordination.models import (
     CoordinationArtifactRef,
     CoordinationClaimResult,
@@ -63,6 +73,14 @@ __all__ = [
     "CoordinationWatchEvent",
     "CoordinationWatcher",
     "FileCoordinationStore",
+    "FleetClaimEvent",
+    "FleetClaimEventKind",
+    "FleetClaimInfo",
+    "FleetClaimLedger",
+    "FleetClaimProtocol",
+    "FleetClaimResult",
+    "FleetClaimState",
+    "FleetClaimXattr",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",
     "build_checkpoint_refused_payload",

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.fleet_claim_event.v1.schema.json",
+  "title": "Fleet Claim Event v1",
+  "description": "Content-light file-claim coordination event for the Fleet Claim Corridor v0. Canonical authority: append-only JSONL ledger.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "mission_id",
+    "lane_id",
+    "agent_id",
+    "claimed_paths",
+    "timestamp",
+    "event_sequence",
+    "event_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.fleet_claim_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Event identifier (SHA-256 hex digest)."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "claim_requested",
+        "claim_acquired",
+        "claim_refused_conflict",
+        "claim_renewed",
+        "edit_started",
+        "tests_completed",
+        "ready_for_integration",
+        "integration_accepted",
+        "integration_refused_stale_base",
+        "claim_released",
+        "work_parked"
+      ],
+      "description": "Kind of fleet claim lifecycle event."
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Identifier for the mission that produced this event."
+    },
+    "lane_id": {
+      "type": "string",
+      "description": "Identifier for the work lane that produced this event."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier for the agent that produced this event."
+    },
+    "claimed_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Repo-relative POSIX paths claimed in this event."
+    },
+    "prior_sha256": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "description": "Path-to-SHA256 mapping at claim acquisition time."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp."
+    },
+    "event_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing event sequence number assigned by the ledger."
+    },
+    "event_digest": {
+      "type": "string",
+      "description": "SHA-256 hex digest of this event's canonical JSON line."
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Refusal reason, integration note, or parked blocker context."
+    }
+  },
+  "additionalProperties": false
+}

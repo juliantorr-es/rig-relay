@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
+import os
 from pathlib import Path
 import tomllib
 from typing import TYPE_CHECKING, Any
@@ -127,14 +128,18 @@ PLAN = AgentProfile(
     "Plan",
     "Read-only agent for exploration and planning",
     AgentSafety.SAFE,
-    overrides=_plan_overrides(),
+    overrides={"system_prompt_id": "plan", **_plan_overrides()},
 )
 CHAT = AgentProfile(
     BuiltinAgentName.CHAT,
     "Chat",
     "Read-only conversational mode for questions and discussions",
     AgentSafety.SAFE,
-    overrides={"bypass_tool_permissions": True, "enabled_tools": CHAT_AGENT_TOOLS},
+    overrides={
+        "system_prompt_id": "chat",
+        "bypass_tool_permissions": True,
+        "enabled_tools": CHAT_AGENT_TOOLS,
+    },
 )
 ACCEPT_EDITS = AgentProfile(
     BuiltinAgentName.ACCEPT_EDITS,
@@ -142,6 +147,7 @@ ACCEPT_EDITS = AgentProfile(
     "Auto-approves file edits only",
     AgentSafety.DESTRUCTIVE,
     overrides={
+        "system_prompt_id": "accept_edits",
         "base_disabled": ["exit_plan_mode"],
         "tools": {
             "write_file": {"permission": "always"},
@@ -155,6 +161,7 @@ MISSION_SCOPED_AUTO = AgentProfile(
     "Autonomous coding within admitted workspace scope — auto-approves scoped reads, edits, validation, and governed Git inspection. Raw shell and destructive Git are refused.",
     AgentSafety.NEUTRAL,
     overrides={
+        "system_prompt_id": "mission_scoped_auto",
         "bypass_tool_permissions": False,
         "base_disabled": ["bash", "exit_plan_mode"],
         "tools": {
@@ -179,6 +186,7 @@ AUTO_APPROVE = AgentProfile(
     "[Legacy alias for Mission Scoped Auto] Autonomous coding within admitted workspace scope. Raw shell is refused.",
     AgentSafety.NEUTRAL,
     overrides={
+        "system_prompt_id": "mission_scoped_auto",
         "bypass_tool_permissions": False,
         "base_disabled": ["bash", "exit_plan_mode"],
         "tools": {
@@ -300,6 +308,7 @@ CLEANER = AgentProfile(
     safety=AgentSafety.NEUTRAL,
     agent_type=AgentType.SUBAGENT,
     overrides={
+        "system_prompt_id": "cleaner",
         "enabled_tools": [
             "grep",
             "read_file",
@@ -323,6 +332,7 @@ BUILDER = AgentProfile(
     safety=AgentSafety.DESTRUCTIVE,
     agent_type=AgentType.SUBAGENT,
     overrides={
+        "system_prompt_id": "builder",
         "enabled_tools": ["grep", "read_file", "write_file", "search_replace", "task"],
         "tools": {
             "write_file": {"permission": "always"},
@@ -339,6 +349,7 @@ BUG_EXTERMINATOR = AgentProfile(
     safety=AgentSafety.NEUTRAL,
     agent_type=AgentType.SUBAGENT,
     overrides={
+        "system_prompt_id": "bug_exterminator",
         "enabled_tools": [
             "grep",
             "read_file",
@@ -370,3 +381,28 @@ BUILTIN_AGENTS: dict[str, AgentProfile] = {
     BuiltinAgentName.BUILDER: BUILDER,
     BuiltinAgentName.BUG_EXTERMINATOR: BUG_EXTERMINATOR,
 }
+
+_UNSAFE_DIAGNOSTIC_PROFILES: set[str] = {BuiltinAgentName.UNSAFE_RAW_SHELL}
+
+
+def is_profile_admitted_for_selection(
+    profile_name: str, *, source: str = ""
+) -> tuple[bool, str | None]:
+    """Return (True, None) if the profile may be selected.
+
+    Return (False, reason) if blocked. UNSAFE_RAW_SHELL requires
+    RIG_RELAY_ALLOW_UNSAFE=1. Other profiles are always admitted.
+
+    source is a stable identifier for diagnostics: acp_mode_listing,
+    acp_set_session_mode, config_default_agent, cli_agent_argument,
+    agent_cycle, or session_restore.
+    """
+    if profile_name in _UNSAFE_DIAGNOSTIC_PROFILES:
+        if os.environ.get("RIG_RELAY_ALLOW_UNSAFE", "") != "1":
+            return False, (
+                f"Profile '{profile_name}' is a diagnostic-only mode "
+                f"that requires explicit enablement. Set "
+                f"RIG_RELAY_ALLOW_UNSAFE=1 to use it. "
+                f"(source: {source})"
+            )
+    return True, None

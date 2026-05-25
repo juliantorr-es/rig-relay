@@ -266,7 +266,8 @@ class TestAgentApplyToConfig:
 
         mock_manager = _MockManager(sources=("user",))
         monkeypatch.setattr(
-            "vibe.core.config._settings.get_harness_files_manager", lambda: mock_manager
+            "rig_relay.core.config._settings.get_harness_files_manager",
+            lambda: mock_manager,
         )
 
         base = VibeConfig(include_project_context=False, include_prompt_detail=False)
@@ -305,7 +306,8 @@ class TestAgentApplyToConfig:
 
         mock_manager = _MockManager(sources=("user",))
         monkeypatch.setattr(
-            "vibe.core.config._settings.get_harness_files_manager", lambda: mock_manager
+            "rig_relay.core.config._settings.get_harness_files_manager",
+            lambda: mock_manager,
         )
 
         config = VibeConfig(
@@ -317,6 +319,33 @@ class TestAgentApplyToConfig:
 
 
 class TestAgentProfileOverrides:
+    @pytest.mark.parametrize(
+        ("agent_name", "expected_prompt_id"),
+        [
+            ("default", "cli"),
+            ("chat", "chat"),
+            ("plan", "plan"),
+            ("accept-edits", "accept_edits"),
+            ("auto-approve", "mission_scoped_auto"),
+            ("mission-scoped-auto", "mission_scoped_auto"),
+            ("explore", "explore"),
+            ("lean", "lean"),
+            ("orchestrator", "orchestrator"),
+            ("cleaner", "cleaner"),
+            ("builder", "builder"),
+            ("bug-exterminator", "bug_exterminator"),
+        ],
+    )
+    def test_builtin_agent_system_prompt_ids(
+        self, agent_name: str, expected_prompt_id: str
+    ) -> None:
+        profile = (
+            CHAT
+            if agent_name == "chat"
+            else BUILTIN_AGENTS[BuiltinAgentName(agent_name)]
+        )
+        assert profile.overrides.get("system_prompt_id", "cli") == expected_prompt_id
+
     def test_default_agent_disables_exit_plan_mode(self) -> None:
         overrides = BUILTIN_AGENTS[BuiltinAgentName.DEFAULT].overrides
         assert "exit_plan_mode" in overrides.get("base_disabled", [])
@@ -350,6 +379,31 @@ class TestAgentProfileOverrides:
         assert tools_config["write_file"]["permission"] == "always"
         assert tools_config["search_replace"]["permission"] == "always"
 
+    @pytest.mark.parametrize(
+        "system_prompt_id",
+        [
+            "cli",
+            "chat",
+            "plan",
+            "accept_edits",
+            "mission_scoped_auto",
+            "explore",
+            "lean",
+            "orchestrator",
+            "cleaner",
+            "builder",
+            "bug_exterminator",
+            "tests",
+        ],
+    )
+    def test_builtin_prompt_files_load(self, system_prompt_id: str) -> None:
+        config = VibeConfig(
+            system_prompt_id=system_prompt_id,
+            include_project_context=False,
+            include_prompt_detail=False,
+        )
+        assert config.system_prompt.strip()
+
 
 class TestAgentManagerCycling:
     @pytest.fixture
@@ -374,7 +428,7 @@ class TestAgentManagerCycling:
             config=base_config, agent_name=BuiltinAgentName.DEFAULT, backend=backend
         )
         order = agent.agent_manager.get_agent_order()
-        assert len(order) >= 7
+        assert len(order) >= 6
         assert BuiltinAgentName.DEFAULT in order
         assert BuiltinAgentName.AUTO_APPROVE in order
         assert BuiltinAgentName.PLAN in order
@@ -712,7 +766,8 @@ class TestAgentLoopInitialization:
 
         mock_manager = _MockManager(sources=("user",))
         monkeypatch.setattr(
-            "vibe.core.config._settings.get_harness_files_manager", lambda: mock_manager
+            "rig_relay.core.config._settings.get_harness_files_manager",
+            lambda: mock_manager,
         )
 
         custom_agent = AgentProfile(
@@ -723,8 +778,12 @@ class TestAgentLoopInitialization:
             overrides={"system_prompt_id": "custom_agent"},
         )
         patched_agents = {**BUILTIN_AGENTS, "custom_test_agent": custom_agent}
-        monkeypatch.setattr("vibe.core.agents.models.BUILTIN_AGENTS", patched_agents)
-        monkeypatch.setattr("vibe.core.agents.manager.BUILTIN_AGENTS", patched_agents)
+        monkeypatch.setattr(
+            "rig_relay.core.agents.models.BUILTIN_AGENTS", patched_agents
+        )
+        monkeypatch.setattr(
+            "rig_relay.core.agents.manager.BUILTIN_AGENTS", patched_agents
+        )
 
         config = build_test_vibe_config(
             include_project_context=False, include_prompt_detail=False

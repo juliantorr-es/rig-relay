@@ -104,6 +104,13 @@ def build_permission_options(
 
 
 def is_valid_acp_mode(profiles: list[AgentProfile], mode_name: str) -> bool:
+    from rig_relay.core.agents.models import is_profile_admitted_for_selection
+
+    admitted, _ = is_profile_admitted_for_selection(
+        mode_name, source="acp_set_session_mode"
+    )
+    if not admitted:
+        return False
     return any(
         p.name == mode_name and p.agent_type == AgentType.AGENT for p in profiles
     )
@@ -117,6 +124,13 @@ def build_mode_state(
 
     for profile in profiles:
         if profile.agent_type != AgentType.AGENT:
+            continue
+        from rig_relay.core.agents.models import is_profile_admitted_for_selection
+
+        admitted, _ = is_profile_admitted_for_selection(
+            profile.name, source="acp_mode_listing"
+        )
+        if not admitted:
             continue
         session_modes.append(
             SessionMode(

@@ -32,7 +32,8 @@ class InspectStructureArgs(BaseModel):
             "Named inspection to run. Available: tool_contract_completeness, "
             "deterministic_failure_surface_coverage, "
             "git_operator_picture_coverage, "
-            "tool_runtime_request_classification."
+            "tool_runtime_request_classification, "
+            "agent_outcome_projection_propagation."
         )
     )
     paths: list[str] = Field(
@@ -747,7 +748,282 @@ _INSPECTIONS: dict[str, dict[str, Any]] = {
             "indeterminate_dynamic_construction",
         ],
     },
+    "agent_outcome_projection_propagation": {
+        "version": "1.0",
+        "description": (
+            "Inspect native AgentLoop projection sinks (derive_agent_outcome, "
+            "format_agent_outcome, ToolResultRuntime, telemetry evidence) to verify "
+            "canonical AgentToolOutcome fields survive through the model-visible path. "
+            "Checks for exclude_none serialization risks, missing fields in sinks, "
+            "and intentional telemetry exclusions. Native sinks only — no bridge inspection."
+        ),
+        "language_scope": "python",
+        "default_paths": [
+            "rig_relay/core/tools/_agent_outcome.py",
+            "rig_relay/core/tool_result_runtime",
+            "rig_relay/core/telemetry_evidence_service.py",
+        ],
+        "determinism_basis": "repository_snapshot",
+        "privacy_classification": "content_light_metadata",
+        "result_finding_kinds": [
+            "exclude_none_drops_conditional_field",
+            "formatter_filters_canonical_field",
+            "telemetry_missing_canonical_field",
+            "injection_path_alters_outcome",
+        ],
+    },
 }
+
+
+_PROJECTION_CANONICAL_ALWAYS: frozenset[str] = frozenset({
+    "schema_version",
+    "tool_name",
+    "tool_call_id",
+    "status",
+    "retryable",
+    "retryability_basis",
+    "mutation_disposition",
+    "authority_decision",
+    "authority_source",
+    "degraded_capabilities",
+    "cache_hit",
+})
+
+_PROJECTION_CANONICAL_CONDITIONAL: frozenset[str] = frozenset({
+    "error_kind",
+    "refusal_code",
+    "recoverable",
+    "suggested_next_action",
+    "suggested_next_action_source",
+    "mission_identity",
+    "matched_rule_kind",
+})
+
+_PROJECTION_TELEMETRY_INTENTIONAL_OMIT: frozenset[str] = frozenset({
+    "suggested_next_action",  # safety: only _source in telemetry
+    "warnings",  # safety: only warning_count in telemetry
+})
+
+_MODEL_DUMP_ATTRS: frozenset[str] = frozenset({"model_dump", "model_dump_json"})
+_FILTER_KWARGS: frozenset[str] = frozenset({"exclude", "include"})
+
+
+def _projection_scan_exclude_none(
+    file_path: str, tree: ast.AST, findings: list[StructuralFinding]
+) -> None:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name != "format_agent_outcome":
+            continue
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Call):
+                continue
+            for kw in child.keywords:
+                if not _is_exclude_none_true(kw):
+                    continue
+                for field in sorted(_PROJECTION_CANONICAL_CONDITIONAL):
+                    findings.append(
+                        _make_exclude_none_finding(file_path, child.lineno, field)
+                    )
+        return
+
+
+def _is_exclude_none_true(kw: ast.keyword) -> bool:
+    return (
+        kw.arg == "exclude_none"
+        and isinstance(kw.value, ast.Constant)
+        and kw.value.value is True
+    )
+
+
+def _make_exclude_none_finding(
+    file_path: str, line: int, field: str
+) -> StructuralFinding:
+    return StructuralFinding(
+        finding_kind="exclude_none_drops_conditional_field",
+        severity="warning",
+        certainty="advisory",
+        evidence_basis=["python_ast"],
+        file=file_path,
+        line=line,
+        subject=f"AgentToolOutcome.{field}",
+        detail=(
+            f"Field '{field}' can be None and is dropped "
+            f"by exclude_none=True in format_agent_outcome(). "
+            f"When absent, the model cannot distinguish "
+            f"'not applicable' from serialization loss."
+        ),
+    )
+
+
+def _projection_scan_telemetry(
+    file_path: str, tree: ast.AST, findings: list[StructuralFinding]
+) -> None:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name != "emit_agent_outcome_projection":
+            continue
+        telemetry_fields = _collect_telemetry_dict_keys(node)
+        missing_always = _PROJECTION_CANONICAL_ALWAYS - telemetry_fields
+        for field in sorted(missing_always):
+            if field in _PROJECTION_TELEMETRY_INTENTIONAL_OMIT:
+                findings.append(
+                    StructuralFinding(
+                        finding_kind="telemetry_missing_canonical_field",
+                        severity="info",
+                        certainty="advisory",
+                        evidence_basis=["python_ast"],
+                        file=file_path,
+                        line=node.lineno,
+                        subject=f"telemetry.{field}",
+                        detail=f"Field '{field}' intentionally excluded from telemetry (privacy/safety).",
+                    )
+                )
+            else:
+                findings.append(
+                    StructuralFinding(
+                        finding_kind="telemetry_missing_canonical_field",
+                        severity="warning",
+                        certainty="definite",
+                        evidence_basis=["python_ast"],
+                        file=file_path,
+                        line=node.lineno,
+                        subject=f"telemetry.{field}",
+                        detail=f"Canonical field '{field}' not found in telemetry properties dict.",
+                    )
+                )
+        return
+
+
+def _collect_telemetry_dict_keys(func_node: ast.AST) -> set[str]:
+    keys: set[str] = set()
+    for child in ast.walk(func_node):
+        if isinstance(child, ast.Dict):
+            for key_node in child.keys:
+                if isinstance(key_node, ast.Constant) and isinstance(
+                    key_node.value, str
+                ):
+                    keys.add(key_node.value)
+    return keys
+
+
+def _projection_scan_result_runtime(
+    file_path: str,
+    tree: ast.AST,
+    findings: list[StructuralFinding],
+    indeterminate: list[StructuralFinding],
+) -> None:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name != "handle_tool_response":
+            continue
+        has_filter = False
+        for child in ast.walk(node):
+            if isinstance(child, ast.DictComp):
+                continue
+            if not isinstance(child, ast.Call):
+                continue
+            if not isinstance(child.func, ast.Attribute):
+                continue
+            if child.func.attr not in _MODEL_DUMP_ATTRS:
+                continue
+            for kw in child.keywords:
+                if kw.arg not in _FILTER_KWARGS:
+                    continue
+                has_filter = True
+                findings.append(
+                    StructuralFinding(
+                        finding_kind="injection_path_alters_outcome",
+                        severity="blocker",
+                        certainty="definite",
+                        evidence_basis=["python_ast"],
+                        file=file_path,
+                        line=child.lineno,
+                        subject="AgentToolOutcome projection",
+                        detail=(
+                            f"handle_tool_response applies {kw.arg} filter "
+                            f"to AgentToolOutcome serialization. "
+                            f"Canonical fields may be dropped before the model sees them."
+                        ),
+                    )
+                )
+        if not has_filter:
+            indeterminate.append(
+                StructuralFinding(
+                    finding_kind="injection_path_alters_outcome",
+                    severity="info",
+                    certainty="advisory",
+                    evidence_basis=["python_ast"],
+                    file=file_path,
+                    line=node.lineno,
+                    subject="AgentToolOutcome projection",
+                    detail=(
+                        "No allowlist/filter detected in handle_tool_response. "
+                        "Full outcome appears to reach the model message. "
+                        "Verify with a real integration test."
+                    ),
+                )
+            )
+        return
+
+
+def _run_projection_inspection(
+    paths: list[str], max_findings: int, max_indeterminate: int
+) -> StructuralInspectionResult:
+    findings: list[StructuralFinding] = []
+    indeterminate: list[StructuralFinding] = []
+
+    resolved = _resolve_python_files(paths)
+
+    for file_path in resolved:
+        try:
+            tree = ast.parse(Path(file_path).read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError, OSError):
+            continue
+
+        if "_agent_outcome.py" in file_path:
+            _projection_scan_exclude_none(file_path, tree, findings)
+        if "telemetry_evidence_service.py" in file_path:
+            _projection_scan_telemetry(file_path, tree, findings)
+        if "tool_result_runtime" in file_path:
+            _projection_scan_result_runtime(file_path, tree, findings, indeterminate)
+
+    counts = {
+        "sinks_inspected": len(resolved),
+        "exclude_none_conditional_risks": sum(
+            1
+            for f in findings
+            if f.finding_kind == "exclude_none_drops_conditional_field"
+        ),
+        "telemetry_safety_exclusions": sum(1 for f in findings if f.severity == "info"),
+        "definite_blockers": sum(1 for f in findings if f.certainty == "definite"),
+    }
+
+    verdict = "findings" if any(f.certainty == "definite" for f in findings) else "pass"
+
+    return StructuralInspectionResult(
+        inspection_id="agent_outcome_projection_propagation",
+        inspection_version="1.0",
+        language_scope="python",
+        verdict=verdict,
+        summary=(
+            f"{len(resolved)} sink(s) inspected. "
+            f"{counts['exclude_none_conditional_risks']} exclude_none risks, "
+            f"{counts['definite_blockers']} definite blockers."
+        ),
+        counts=counts,
+        findings=findings[:max_findings],
+        indeterminate_items=indeterminate[:max_indeterminate],
+        suggested_next_action=(
+            "Address definite blockers by adding missing canonical fields to telemetry. "
+            "Consider replacing exclude_none with explicit field selection in format_agent_outcome."
+            if counts["definite_blockers"]
+            else None
+        ),
+    )
 
 
 _tool_contract_recipe = _INSPECTIONS["tool_contract_completeness"]
@@ -761,6 +1037,9 @@ _git_recipe["impl"] = _run_git_operator_picture_coverage
 
 _classification_recipe = _INSPECTIONS["tool_runtime_request_classification"]
 _classification_recipe["impl"] = _run_request_classification
+
+_projection_recipe = _INSPECTIONS["agent_outcome_projection_propagation"]
+_projection_recipe["impl"] = _run_projection_inspection
 
 
 class InspectStructureConfig(BaseToolConfig):
@@ -781,7 +1060,8 @@ class InspectStructure(
         "classified results rather than raw syntax hits. "
         "Available inspections: tool_contract_completeness, "
         "deterministic_failure_surface_coverage, git_operator_picture_coverage, "
-        "tool_runtime_request_classification. "
+        "tool_runtime_request_classification, "
+        "agent_outcome_projection_propagation. "
         "Each inspection has its own deterministic rule, result contract, and "
         "bounded output."
     )

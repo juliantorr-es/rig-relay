@@ -551,6 +551,9 @@ class CockpitAPI:
             result = service.register_repository(self._opened_repo)
             registered = result.repository
             self._opened_checkout_id = result.source_checkout.checkout_id
+            self._admitted_git_common_dir_digest = (
+                result.source_checkout.git_common_dir_digest
+            )
 
             return {
                 "status": "registered",
@@ -650,6 +653,9 @@ class CockpitAPI:
                 proposed_worktree_location=plan.proposed_worktree_location,
                 branch_prefix=plan.branch_prefix,
                 source_checkout_path=str(Path(self._opened_repo.repository.root_path)),
+                admitted_git_common_dir_digest=getattr(
+                    self, "_admitted_git_common_dir_digest", None
+                ),
             )
 
             provider = GitWorktreeExecutionWorkspaceProvider(app_paths.support_root)

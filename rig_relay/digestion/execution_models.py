@@ -71,6 +71,10 @@ class ProvisioningInput(BaseModel):
     source_checkout_path: str = Field(
         description="Filesystem path to the source checkout for revalidation."
     )
+    admitted_git_common_dir_digest: str | None = Field(
+        default=None,
+        description="Git common-directory digest from the registered checkout record, used to detect repository replacement at the same path.",
+    )
 
 
 class ExecutionWorkspace(BaseModel):

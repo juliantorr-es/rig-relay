@@ -225,9 +225,9 @@ def resolve_git_porcelain_v2(path: Path) -> str:
 def resolve_git_common_dir(path: Path) -> str | None:
     """Resolve the Git common directory for worktree correlation.
 
-    Returns a SHA256 digest of the resolved common-dir path.
-    Used to distinguish primary checkouts from linked worktrees
-    and to correlate worktrees sharing the same repository.
+    Returns a content-based digest of the common directory (HEAD, config)
+    so that replacing the repository at the same path produces a different
+    digest. Also used to correlate worktrees sharing the same repository.
 
     Returns None if not in a git repo.
     """
@@ -236,9 +236,42 @@ def resolve_git_common_dir(path: Path) -> str | None:
         if not raw:
             return None
         resolved = (path / raw).resolve()
-        return _digest_path(resolved)
+        return _digest_common_dir_files(resolved)
     except _GitError:
         return None
+
+
+def _digest_common_dir_files(common_dir: Path) -> str:
+    """Content-based digest of key Git common directory files.
+
+    Hashes HEAD, config, and the directory inode to detect
+    repository replacement at the same filesystem path.
+    A recreated .git directory receives a different inode,
+    so destroying and reinitializing produces a different digest.
+    Normal commits within the same repo do not change this digest.
+    """
+    try:
+        parts: list[str] = []
+        # 1. SHA256 of HEAD file
+        head_fp = common_dir / "HEAD"
+        parts.append(
+            hashlib.sha256(head_fp.read_bytes()).hexdigest()
+            if head_fp.is_file()
+            else "missing"
+        )
+        # 2. SHA256 of config file
+        config_fp = common_dir / "config"
+        parts.append(
+            hashlib.sha256(config_fp.read_bytes()).hexdigest()
+            if config_fp.is_file()
+            else "missing"
+        )
+        # 3. Filesystem inode — stable for the lifetime of this directory,
+        #    changes when .git is destroyed and recreated.
+        parts.append(str(common_dir.stat().st_ino))
+        return hashlib.sha256(":".join(parts).encode()).hexdigest()
+    except Exception:
+        return ""
 
 
 def parse_dirty_state_from_porcelain(porcelain_output: str) -> DirtyState:

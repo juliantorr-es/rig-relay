@@ -20,7 +20,14 @@ class Prompt(StrEnum):
 
 class SystemPrompt(Prompt):
     CLI = auto()
+    CHAT = auto()
+    PLAN = auto()
+    ACCEPT_EDITS = "accept-edits"
+    MISSION_SCOPED_AUTO = "mission-scoped-auto"
     EXPLORE = auto()
+    BUILDER = auto()
+    CLEANER = auto()
+    BUG_EXTERMINATOR = "bug-exterminator"
     TESTS = auto()
     LEAN = auto()
     ORCHESTRATOR = auto()

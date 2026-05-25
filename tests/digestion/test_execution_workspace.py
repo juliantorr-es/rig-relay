@@ -63,6 +63,7 @@ def _register_and_plan(python_repo, reg_svc):
         proposed_worktree_location=plan.proposed_worktree_location,
         branch_prefix="rig-mission",
         source_checkout_path=str(python_repo),
+        admitted_git_common_dir_digest=reg.source_checkout.git_common_dir_digest,
     )
     return reg, pinput
 
@@ -176,8 +177,9 @@ def test_same_path_different_git_repository_refused(
     assert (
         ProvisioningStatus.STALE_CHECKOUT_GIT_REPOSITORY_CHANGED.value
         in ws.initial_clean_state_digest
-        or ProvisioningStatus.STALE_HEAD.value in ws.initial_clean_state_digest
-        or ws.initial_clean_state_digest != ""
+    ), (
+        f"Expected STALE_CHECKOUT_GIT_REPOSITORY_CHANGED, "
+        f"got digest={ws.initial_clean_state_digest[:80]}"
     )
 
 
@@ -351,12 +353,11 @@ def test_cleanup_retains_dirty_workspace(
 
 
 def _compute_dirty_digest(ws_path: Path) -> str:
-    import hashlib
-
-    result = subprocess.check_output(
-        ["git", "--no-optional-locks", "status", "--porcelain"], text=True, cwd=ws_path
+    from rig_relay.digestion.execution_workspace import (
+        _compute_workspace_dirty_state_digest,
     )
-    return hashlib.sha256(result.encode()).hexdigest()
+
+    return _compute_workspace_dirty_state_digest(ws_path)
 
 
 # -- Test 9: Mission admission binds workspace, not source checkout ----
