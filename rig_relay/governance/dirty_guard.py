@@ -139,6 +139,22 @@ class DirtyFileGuard:
                 timeout=10,
             )
         except Exception as exc:
+            stderr_text = ""
+            if isinstance(exc, subprocess.CalledProcessError):
+                stderr_text = "".join(
+                    part for part in [exc.stderr, exc.output] if isinstance(part, str)
+                )
+            if "not a git repository" in stderr_text.lower():
+                self._capture_error = None
+                self._capture_failed = False
+                self._captured = True
+                self.baseline_id = uuid4().hex
+                self.dirty_snapshots.clear()
+                logger.info(
+                    "DirtyFileGuard: git status skipped for non-git directory %s",
+                    self._repo_root,
+                )
+                return
             self._capture_error = str(exc)
             self._captured = False
             self._capture_failed = True

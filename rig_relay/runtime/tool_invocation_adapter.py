@@ -34,6 +34,13 @@ class RuntimeToolName(StrEnum):
     VALIDATE = "validate"
     RUNTIME_EXEC = "runtime_exec"
     BASH_LEGACY = "bash_legacy"
+    GIT_STATUS = "git_status"
+    GIT_DIFF = "git_diff"
+    GIT_LOG = "git_log"
+    GIT_BRANCH = "git_branch"
+    GIT_SHOW = "git_show"
+    GIT_LS_FILES = "git_ls_files"
+    CHECKPOINT = "checkpoint"
 
 
 class RuntimeToolInvocationStatus(StrEnum):
@@ -268,22 +275,56 @@ class RuntimeToolInvocationAdapter:
         """Apply tool-specific policy checks and payload normalization."""
         tool = intent.tool_name
 
-        if tool == RuntimeToolName.WRITE_FILE:
-            return self._prepare_write_file(intent, envelope, ctx)
-        elif tool == RuntimeToolName.SEARCH_REPLACE:
-            return self._prepare_search_replace(intent, envelope, ctx)
-        elif tool == RuntimeToolName.VALIDATE:
-            return self._prepare_validate(intent, envelope, ctx)
-        elif tool == RuntimeToolName.RUNTIME_EXEC:
-            return self._prepare_runtime_exec(intent, envelope, ctx)
-        elif tool == RuntimeToolName.BASH_LEGACY:
-            return self._prepare_bash_legacy(intent, envelope)
-        else:
-            return _refused(
-                envelope,
-                RuntimeToolInvocationErrorKind.UNSUPPORTED_TOOL,
-                f"Unsupported tool: {tool}",
-            )
+        if tool in {
+            RuntimeToolName.GIT_STATUS,
+            RuntimeToolName.GIT_DIFF,
+            RuntimeToolName.GIT_LOG,
+            RuntimeToolName.GIT_BRANCH,
+            RuntimeToolName.GIT_SHOW,
+            RuntimeToolName.GIT_LS_FILES,
+            RuntimeToolName.CHECKPOINT,
+        }:
+            return _prepared(envelope, intent.payload)
+
+        if tool in {
+            RuntimeToolName.WRITE_FILE,
+            RuntimeToolName.SEARCH_REPLACE,
+            RuntimeToolName.VALIDATE,
+            RuntimeToolName.RUNTIME_EXEC,
+            RuntimeToolName.BASH_LEGACY,
+        }:
+            return self._apply_non_git_tool_policy(intent, envelope, ctx)
+
+        return _refused(
+            envelope,
+            RuntimeToolInvocationErrorKind.UNSUPPORTED_TOOL,
+            f"Unsupported tool: {tool}",
+        )
+
+    def _apply_non_git_tool_policy(
+        self,
+        intent: RuntimeToolIntent,
+        envelope: RuntimeToolInvocationEnvelope,
+        ctx: RuntimeContext,
+    ) -> RuntimeToolInvocationEnvelope:
+        """Apply policy for tools that need detailed payload normalization."""
+        match intent.tool_name:
+            case RuntimeToolName.WRITE_FILE:
+                return self._prepare_write_file(intent, envelope, ctx)
+            case RuntimeToolName.SEARCH_REPLACE:
+                return self._prepare_search_replace(intent, envelope, ctx)
+            case RuntimeToolName.VALIDATE:
+                return self._prepare_validate(intent, envelope, ctx)
+            case RuntimeToolName.RUNTIME_EXEC:
+                return self._prepare_runtime_exec(intent, envelope, ctx)
+            case RuntimeToolName.BASH_LEGACY:
+                return self._prepare_bash_legacy(intent, envelope)
+            case _:
+                return _refused(
+                    envelope,
+                    RuntimeToolInvocationErrorKind.UNSUPPORTED_TOOL,
+                    f"Unsupported tool: {intent.tool_name}",
+                )
 
     def _prepare_write_file(
         self,

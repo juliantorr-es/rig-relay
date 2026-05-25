@@ -54,12 +54,22 @@ class ClassificationEngine:
             return FileClassification.UNCLASSIFIED_REFUSED
 
         # 1. Excluded secret or private material (fail closed on credentials)
-        if any(part in file_path.parts for part in [".env", ".git", ".github", "secrets", "tokens"]):
+        if any(
+            part in file_path.parts
+            for part in [".env", ".git", ".github", "secrets", "tokens"]
+        ):
             return FileClassification.EXCLUDED_SECRET_OR_PRIVATE_MATERIAL
 
         # 2. Generated or projection sensitive
-        if any(part in file_path.parts for part in [".build", "docs", "artifacts"]):
+        # Schema files and contract config are not "generated" — classified by content.
+        if any(part in file_path.parts for part in [".build", "artifacts"]):
             return FileClassification.GENERATED_OR_PROJECTION_SENSITIVE
+        if "docs" in file_path.parts:
+            if not any(
+                schema_dir in file_path.parts
+                for schema_dir in ["schemas", "json/schemas"]
+            ):
+                return FileClassification.GENERATED_OR_PROJECTION_SENSITIVE
 
         # 3. Confidential holdback check (Policy)
         if self.policy_engine.is_confidential_path(file_path, self.repo_root):
@@ -82,5 +92,7 @@ class ClassificationEngine:
         if file_path.suffix == ".py":
             if self._is_approved_by_manifest(rel_path):
                 return FileClassification.TRANSFORM_ALLOWED
+        if file_path.suffix in (".json", ".toml", ".yml", ".yaml"):
+            return FileClassification.CONTRACT_EVIDENCE_RETAINED
 
         return FileClassification.UNCLASSIFIED_REFUSED

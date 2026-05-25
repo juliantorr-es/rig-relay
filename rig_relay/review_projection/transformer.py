@@ -25,10 +25,32 @@ class _AstTransformer(ast.NodeTransformer):
     def __init__(self, id_gen: OpaqueIdentifierGenerator):
         self.id_gen = id_gen
         self.reserved_names = {
-            "__init__", "self", "cls", "args", "kwargs", "True", "False", "None",
-            "Exception", "ValueError", "TypeError", "dict", "list", "str", "int", "bool",
-            "print", "super", "len", "isinstance", "getattr", "setattr", "hasattr",
-            "staticmethod", "classmethod", "property"
+            "__init__",
+            "self",
+            "cls",
+            "args",
+            "kwargs",
+            "True",
+            "False",
+            "None",
+            "Exception",
+            "ValueError",
+            "TypeError",
+            "dict",
+            "list",
+            "str",
+            "int",
+            "bool",
+            "print",
+            "super",
+            "len",
+            "isinstance",
+            "getattr",
+            "setattr",
+            "hasattr",
+            "staticmethod",
+            "classmethod",
+            "property",
         }
 
     def _should_transform(self, name: str) -> bool:
@@ -115,7 +137,7 @@ class PythonTransformer:
     def transform(self, source: str) -> tuple[str, dict[str, str]]:
         # 1. Strip comments using tokenize
         source_no_comments = self._strip_comments(source)
-        
+
         # 2. Parse AST
         try:
             tree = ast.parse(source_no_comments)

@@ -436,6 +436,24 @@ async def test_non_rerouted_command_records_was_rerouted_false(
 
 
 @pytest.mark.asyncio
+async def test_reroute_without_tool_manager_falls_back_to_bash() -> None:
+    """When reroute is unavailable, bash should continue instead of refusing."""
+    ctx = InvokeContext(tool_call_id="call-test-123")
+    was_rerouted, result_model, events, metadata = await try_reroute(
+        "cat missing_file.txt", ctx
+    )
+
+    assert was_rerouted is False
+    assert result_model is None
+    assert metadata is not None
+    assert metadata.raw_bash_skipped is False
+    assert metadata.final_outcome == "not_rerouted"
+
+    event_messages = [e.message for e in events if isinstance(e, ToolStreamEvent)]
+    assert any("tool_manager not available" in msg for msg in event_messages)
+
+
+@pytest.mark.asyncio
 async def test_raw_bash_skipped_true_when_rerouted(
     ctx_with_tool_manager: InvokeContext,
 ) -> None:

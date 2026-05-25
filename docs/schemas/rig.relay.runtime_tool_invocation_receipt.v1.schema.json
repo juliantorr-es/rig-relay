@@ -123,7 +123,94 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Non-fatal warnings from the execution"
+    },
+    "git_summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/git_summary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Schema-governed Git metadata projection for git/checkpoint tools"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "git_summary": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "head": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "dirty_files_count": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "null" }
+          ]
+        },
+        "changed_files_count": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "null" }
+          ]
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "truncation_triggered": {
+          "type": "boolean"
+        },
+        "redaction_triggered": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "base_identity": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "head_identity": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "commit_identity": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "checkpoint_receipt_sha256": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "bounded_stdout": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

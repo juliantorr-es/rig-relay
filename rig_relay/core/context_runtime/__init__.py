@@ -1,7 +1,11 @@
-"""ContextRuntime — context-envelope assembly and injection.
+"""ContextRuntime — governed and ad-hoc context assembly and injection.
 
-Phase 2 extraction — absorbed from former ContextEnvelopeMixin;
-that mixin module is now deleted.
+Phase 2 extraction target:
+  ContextEnvelopeMixin → ContextRuntime
+
+Fixes Defect 2: governed context packet output now reaches the model
+by setting _current_context_envelope and injecting system messages
+in both code paths (not just the ad-hoc path).
 """
 
 from __future__ import annotations

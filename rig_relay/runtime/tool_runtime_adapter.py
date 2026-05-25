@@ -19,6 +19,14 @@ from rig_relay.runtime.tool_invocation_adapter import (
 _MUTATION_TOOLS: frozenset[str] = frozenset({"search_replace", "write_file"})
 _SHELL_TOOLS: frozenset[str] = frozenset({"bash"})
 _READ_ONLY_TOOLS: frozenset[str] = frozenset({"validate"})
+_GIT_READ_ONLY_TOOLS: frozenset[str] = frozenset({
+    "git_status",
+    "git_diff",
+    "git_log",
+    "git_branch",
+    "git_show",
+    "git_ls_files",
+})
 
 
 @dataclass(frozen=True)
@@ -29,6 +37,15 @@ class RuntimeToolRuntimeRequestBundle:
 
 class RuntimeToolRuntimeAdapter:
     """Translate runtime envelopes into governed ToolRuntime requests."""
+
+    def __init__(self) -> None:
+        """Create the adapter.
+
+        The adapter stays conservative by default. Search/replace and write-file
+        are classified as mutation proposals so the runtime can route them
+        through the governed proposal path rather than the signed-envelope
+        execution gate.
+        """
 
     def build_request(
         self,
@@ -96,29 +113,46 @@ class RuntimeToolRuntimeAdapter:
                 return tool_name.value
 
     def _execution_mode(self, tool_name: RuntimeToolName) -> ToolRuntimeExecutionMode:
-        if tool_name == RuntimeToolName.VALIDATE:
+        if (
+            tool_name == RuntimeToolName.VALIDATE
+            or tool_name.value in _GIT_READ_ONLY_TOOLS
+        ):
             return ToolRuntimeExecutionMode.READ_ONLY
         if tool_name in {RuntimeToolName.SEARCH_REPLACE, RuntimeToolName.WRITE_FILE}:
+            return ToolRuntimeExecutionMode.MUTATION_PROPOSAL
+        if tool_name == RuntimeToolName.CHECKPOINT:
             return ToolRuntimeExecutionMode.MUTATION_EXECUTION
         if tool_name == RuntimeToolName.BASH_LEGACY:
             return ToolRuntimeExecutionMode.UNKNOWN
         return ToolRuntimeExecutionMode.UNKNOWN
 
     def _mutation_class(self, tool_name: RuntimeToolName) -> str:
-        if tool_name == RuntimeToolName.VALIDATE:
+        if (
+            tool_name == RuntimeToolName.VALIDATE
+            or tool_name.value in _GIT_READ_ONLY_TOOLS
+        ):
             return "read_only"
+        if tool_name == RuntimeToolName.CHECKPOINT:
+            return "filesystem_mutation"
         if tool_name == RuntimeToolName.BASH_LEGACY:
             return "shell"
         return "filesystem_mutation"
 
     def _determinism_class(self, tool_name: RuntimeToolName) -> str:
-        if tool_name == RuntimeToolName.VALIDATE:
+        if (
+            tool_name == RuntimeToolName.VALIDATE
+            or tool_name.value in _GIT_READ_ONLY_TOOLS
+        ):
             return "deterministic"
+        if tool_name == RuntimeToolName.CHECKPOINT:
+            return "non_deterministic"
         if tool_name == RuntimeToolName.BASH_LEGACY:
             return "non_deterministic"
         return "deterministic_with_io"
 
     def _approval_required(self, tool_name: RuntimeToolName) -> bool:
+        if tool_name.value in _GIT_READ_ONLY_TOOLS:
+            return False
         return tool_name != RuntimeToolName.VALIDATE
 
     def _patch_proposal_required(self, tool_name: RuntimeToolName) -> bool:
@@ -127,23 +161,32 @@ class RuntimeToolRuntimeAdapter:
     def build_policy(self) -> ToolRuntimePolicy:
         """Build a ToolRuntimePolicy that enforces read/mutation separation.
 
-        Read-only tools (validate) are allowed. Mutation tools
-        (search_replace, write_file) and shell tools (bash) are
-        denied with ``policy_object_missing`` because the runtime
-        path has no governance/approval wired.
+        Read-only tools (validate, git read-only tools) and checkpoint
+        are allowed. Mutation proposal tools (search_replace,
+        write_file) and shell tools (bash) are denied with
+        ``policy_object_missing`` because the runtime path has no
+        governance/approval wired for those cases.
         """
 
         async def _permission_decision(
             tool_name: str, args_dict: dict, call_id: str
         ) -> tuple[bool, str]:
-            if tool_name in _READ_ONLY_TOOLS:
+            if (
+                tool_name in _READ_ONLY_TOOLS
+                or tool_name in _GIT_READ_ONLY_TOOLS
+                or tool_name == RuntimeToolName.CHECKPOINT.value
+            ):
                 return True, ""
             return False, "policy_object_missing"
 
         async def _approval_request(
             tool_name: str, args_dict: dict, call_id: str
         ) -> tuple[bool, str]:
-            if tool_name in _READ_ONLY_TOOLS:
+            if (
+                tool_name in _READ_ONLY_TOOLS
+                or tool_name in _GIT_READ_ONLY_TOOLS
+                or tool_name == RuntimeToolName.CHECKPOINT.value
+            ):
                 return True, ""
             return False, "policy_object_missing"
 

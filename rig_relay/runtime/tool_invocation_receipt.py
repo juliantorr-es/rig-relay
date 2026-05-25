@@ -22,6 +22,27 @@ if TYPE_CHECKING:
 
 _SCHEMA_VERSION = "rig.relay.runtime_tool_invocation_receipt.v1"
 
+
+class GitSummary(BaseModel):
+    """Schema-governed Git metadata projection for git/checkpoint tools."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    branch: str | None = None
+    head: str | None = None
+    dirty_files_count: int | None = None
+    changed_files_count: int | None = None
+    changed_paths: list[str] = Field(default_factory=list)
+    truncation_triggered: bool = False
+    redaction_triggered: bool = False
+    warnings: list[str] = Field(default_factory=list)
+    base_identity: str | None = None
+    head_identity: str | None = None
+    commit_identity: str | None = None
+    checkpoint_receipt_sha256: str | None = None
+    bounded_stdout: str | None = None
+
+
 # ── Receipt model ─────────────────────────────────────────────────────
 
 
@@ -57,6 +78,7 @@ class RuntimeToolInvocationReceipt(BaseModel):
     duration_ms: float | None = None
     created_at: str = ""
     warnings: list[str] = Field(default_factory=list)
+    git_summary: GitSummary | None = None
 
 
 # ── Builder ───────────────────────────────────────────────────────────
@@ -105,7 +127,12 @@ def build_runtime_tool_invocation_receipt(
         duration_ms=result.duration_ms,
         created_at=stamp,
         warnings=list(result.warnings),
+        git_summary=result.git_summary,
     )
 
 
-__all__ = ["RuntimeToolInvocationReceipt", "build_runtime_tool_invocation_receipt"]
+__all__ = [
+    "GitSummary",
+    "RuntimeToolInvocationReceipt",
+    "build_runtime_tool_invocation_receipt",
+]

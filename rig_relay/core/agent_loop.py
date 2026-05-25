@@ -69,10 +69,17 @@ if TYPE_CHECKING:
 
 
 from rig_relay.core._agent_helpers import requires_init
-from rig_relay.core._agent_init import InitHelpers
+from rig_relay.core._agent_init import InitHelpersMixin
 from rig_relay.core._agent_models import ToolDecision
-from rig_relay.core._errors import AgentLoopError, AgentLoopStateError, TeleportError
-from rig_relay.core._patch_gating import PatchGatingService
+from rig_relay.core._context_envelope import ContextEnvelopeMixin
+from rig_relay.core._errors import AgentLoopError, TeleportError
+from rig_relay.core._governance import GovernanceMixin
+from rig_relay.core._llm_call import LLMCallMixin
+from rig_relay.core._middleware_metadata import MiddlewareMetadataMixin
+from rig_relay.core._patch_gating import PatchGatingMixin, PatchGatingService
+from rig_relay.core._session_lifecycle import SessionLifecycleMixin
+from rig_relay.core._telemetry import TelemetryMixin
+from rig_relay.core._tool_response import ToolResponseMixin
 from rig_relay.core.context_runtime import ContextRuntime
 from rig_relay.core.conversation_loop_adapter import _ConversationLoopAdapter
 from rig_relay.core.conversation_runtime import ConversationRuntime
@@ -102,7 +109,17 @@ _COUNCIL_MUTATION_TOOLS = frozenset({
 })
 
 
-class AgentLoop:
+class AgentLoop(
+    LLMCallMixin,
+    ToolResponseMixin,
+    PatchGatingMixin,
+    InitHelpersMixin,
+    SessionLifecycleMixin,
+    GovernanceMixin,
+    TelemetryMixin,
+    ContextEnvelopeMixin,
+    MiddlewareMetadataMixin,
+):
     def __init__(
         self,
         config: VibeConfig,
@@ -137,7 +154,7 @@ class AgentLoop:
         self._max_price = max_price
         self._model_runtime: ModelRuntime | None = None
 
-        InitHelpers.init_core_managers(self, config, agent_name, is_subagent, defer_heavy_init)
+        self._init_core_managers(config, agent_name, is_subagent, defer_heavy_init)
 
         self.backend_factory = lambda: backend or self._select_backend()
         self.backend = self.backend_factory()
@@ -161,8 +178,8 @@ class AgentLoop:
         self._current_context_envelope: ContextEnvelopeReceipt | None = None
         self._is_user_prompt_call: bool = False
 
-        InitHelpers.init_ambient_context_packet(self)
-        InitHelpers.init_context_compiler(self, defer_heavy_init)
+        self._init_ambient_context_packet()
+        self._init_context_compiler(defer_heavy_init)
         self._tool_runtime: ToolRuntime | None = None
         self._tool_result_sink = self._make_result_sink()
 
@@ -172,8 +189,8 @@ class AgentLoop:
         self._governance_runtime = GovernanceRuntime(config=config)
         self._governance_runtime.session_rules = self._session_rules
 
-        InitHelpers.init_telemetry_and_guard(
-            self, config, entrypoint_metadata, is_subagent, hook_config_result
+        self._init_telemetry_and_guard(
+            config, entrypoint_metadata, is_subagent, hook_config_result
         )
 
         self._model_runtime = ModelRuntime(
@@ -197,8 +214,6 @@ class AgentLoop:
             report_context_assembly=self._report_context_assembly,
             compact_fn=self.compact,
         )
-
-        self._setup_middleware()
 
         self._context_runtime = ContextRuntime(
             config=self.config,
@@ -786,57 +801,49 @@ class AgentLoop:
             execution_mode="tool",
         )
 
-    # ── ModelRuntime helpers ────────────────────────────────────────
-
-    def _require_model_runtime(self):
-        if self._model_runtime is None:
-            raise AgentLoopStateError(
-                "ModelRuntime is not initialized; "
-                "AgentLoop runtime methods require completed initialization."
-            )
-        return self._model_runtime
-
-    # ── ModelRuntime delegation ─────────────────────────────────────
+    # ── ModelRuntime delegation (Phase 1) ───────────────────────────
 
     async def _prepare_llm_call(self, *args: Any, **kwargs: Any) -> Any:
-        return await self._require_model_runtime().prepare_llm_call(*args, **kwargs)
+        return await self._model_runtime.prepare_llm_call(*args, **kwargs)  # type: ignore[union-attr]
 
     async def _chat(self, *args: Any, **kwargs: Any) -> Any:
-        return await self._require_model_runtime().chat(*args, **kwargs)
+        return await self._model_runtime.chat(*args, **kwargs)  # type: ignore[union-attr]
 
     async def _chat_streaming(
         self, *args: Any, **kwargs: Any
     ) -> AsyncGenerator[Any, None]:
-        if self._model_runtime is None:
-            raise AgentLoopStateError(
-                "ModelRuntime is not initialized; "
-                "AgentLoop runtime methods require completed initialization. "
-                "Call wait_until_ready() before _chat_streaming."
-            )
-        async for chunk in self._model_runtime.chat_streaming(*args, **kwargs):
+        mr = self._model_runtime
+        if mr is None:
+            async for chunk in LLMCallMixin._chat_streaming(self, *args, **kwargs):
+                yield chunk
+            return
+        async for chunk in mr.chat_streaming(*args, **kwargs):
             yield chunk
 
     def _update_stats(self, *args: Any, **kwargs: Any) -> None:
-        self._require_model_runtime()._update_stats(*args, **kwargs)
+        self._model_runtime._update_stats(*args, **kwargs)  # type: ignore[union-attr]
 
     def _reraise_llm_error(self, *args: Any, **kwargs: Any) -> None:
-        self._require_model_runtime()._reraise_llm_error(*args, **kwargs)
+        self._model_runtime._reraise_llm_error(*args, **kwargs)  # type: ignore[union-attr]
 
     def _build_backend_metadata(self, *args: Any, **kwargs: Any) -> Any:
-        return self._require_model_runtime().build_backend_metadata(*args, **kwargs)
+        return self._model_runtime.build_backend_metadata(*args, **kwargs)  # type: ignore[union-attr]
 
     def _get_extra_headers(self, *args: Any, **kwargs: Any) -> Any:
-        return self._require_model_runtime().get_extra_headers(*args, **kwargs)
+        return self._model_runtime.get_extra_headers(*args, **kwargs)  # type: ignore[union-attr]
 
     def _setup_middleware(self) -> None:
-        self._require_model_runtime().setup_middleware(self._max_turns, self._max_price)
+        if self._model_runtime is not None:
+            self._model_runtime.setup_middleware(self._max_turns, self._max_price)
+        else:
+            MiddlewareMetadataMixin._setup_middleware(self)
 
     async def _handle_middleware_result(self, result: Any) -> AsyncGenerator[Any, None]:
-        async for event in self._require_model_runtime().handle_middleware_result(result):
+        async for event in self._model_runtime.handle_middleware_result(result):  # type: ignore[union-attr]
             yield event
 
     def _get_context(self) -> Any:
-        return self._require_model_runtime().get_middleware_context()
+        return self._model_runtime.get_middleware_context()  # type: ignore[union-attr]
 
     # ── ContextRuntime delegation (Phase 2) ─────────────────────────
 
@@ -890,10 +897,7 @@ class AgentLoop:
         self.user_input_callback = callback
 
     def set_tool_permission(
-        self,
-        tool_name: str,
-        permission: ToolPermission,
-        save_permanently: bool = False,
+        self, tool_name: str, permission: ToolPermission, save_permanently: bool = False
     ) -> None:
         self._governance_runtime.set_tool_permission(
             tool_name, permission, save_permanently
@@ -903,9 +907,7 @@ class AgentLoop:
         if self._governance_runtime is not None:
             self._governance_runtime.add_session_rule(rule)
 
-    def _is_permission_covered(
-        self, tool_name: str, rp: RequiredPermission
-    ) -> bool:
+    def _is_permission_covered(self, tool_name: str, rp: RequiredPermission) -> bool:
         return self._governance_runtime.is_permission_covered(tool_name, rp)
 
     def approve_always(

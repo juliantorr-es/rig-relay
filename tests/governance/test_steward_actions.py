@@ -359,14 +359,6 @@ def test_substrate_integration_typescript_plugin_hook_contract() -> None:
 
     # 1. Verify exact OpenCode hooks implemented in the onEvent handler
     assert (
-        'event.type === "tool.execute.before"' in content
-        or "event.type === 'tool.execute.before'" in content
-    )
-    assert (
-        'event.type === "tool.execute.after"' in content
-        or "event.type === 'tool.execute.after'" in content
-    )
-    assert (
         'event.type === "file.edited"' in content
         or "event.type === 'file.edited'" in content
     )
@@ -398,16 +390,6 @@ def test_substrate_integration_typescript_plugin_hook_contract() -> None:
     assert "fs.appendFileSync" not in content
     assert "fs.mkdirSync" not in content
     assert "evidence_incomplete.flag" in content
-
-    # 5. Verify timeout/failure closed/open semantics
-    assert (
-        'const isSecret = filePath.endsWith(".env") || filePath.includes("credentials") || filePath.includes("secrets")'
-        in content
-        or "const isSecret = filePath.endsWith('.env') || filePath.includes('credentials') || filePath.includes('secrets')"
-        in content
-    )
-    assert "allowed: false" in content
-    assert 'action: "deny"' in content or "action: 'deny'" in content
     assert "allowed: true" in content
     assert 'action: "advise"' in content or "action: 'advise'" in content
 

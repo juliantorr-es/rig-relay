@@ -507,26 +507,69 @@ class Task(
         store = self._coordination_store(ctx)
         session_id = ctx.session_dir.name if ctx.session_dir is not None else None
         reserved_paths = list(task_spec.scope.allowed_paths) if task_spec else []
+        claim_granted = False
+        paths_reserved = False
+        refusal_summary: TaskExecutionSummary | None = None
         if store is not None and session_id is not None:
-            store.claim_task(
+            claim_result = store.claim_task(
                 session_id=session_id,
                 task_id=task_id,
                 claim_kind="delegate" if task_spec is None else "fleet_child",
                 ttl_seconds=300,
                 scope={"allowed_paths": reserved_paths},
             )
-            if reserved_paths:
-                store.reserve_paths(
-                    session_id=session_id,
-                    task_id=task_id,
-                    mode="write"
-                    if task_spec and task_spec.scope.allow_write
-                    else "read",
-                    paths=reserved_paths,
-                    ttl_seconds=300,
+            if not claim_result.allowed:
+                refusal = self._build_task_result(
+                    response=(
+                        "Coordination claim refused: "
+                        f"{claim_result.conflict.recommended_resolution if claim_result.conflict and claim_result.conflict.recommended_resolution else 'serialize_or_split_scope'}"
+                    ),
+                    turns_used=0,
+                    completed=False,
+                    plan=plan,
                 )
+                refusal.warnings.append("coordination_claim_refused")
+                refusal_summary = TaskExecutionSummary(
+                    result=refusal,
+                    child_session_dir=None,
+                    child_artifact_manifest_sha256=None,
+                )
+            else:
+                claim_granted = True
+                if reserved_paths:
+                    reservation_result = store.reserve_paths(
+                        session_id=session_id,
+                        task_id=task_id,
+                        mode="write"
+                        if task_spec and task_spec.scope.allow_write
+                        else "read",
+                        paths=reserved_paths,
+                        ttl_seconds=300,
+                    )
+                    if not reservation_result.allowed:
+                        refusal = self._build_task_result(
+                            response=(
+                                "Coordination reservation refused: "
+                                f"{reservation_result.conflict.recommended_resolution if reservation_result.conflict and reservation_result.conflict.recommended_resolution else 'serialize_or_split_scope'}"
+                            ),
+                            turns_used=0,
+                            completed=False,
+                            plan=plan,
+                        )
+                        refusal.warnings.append("coordination_reservation_refused")
+                        refusal_summary = TaskExecutionSummary(
+                            result=refusal,
+                            child_session_dir=None,
+                            child_artifact_manifest_sha256=None,
+                        )
+                    else:
+                        paths_reserved = True
 
         try:
+            if refusal_summary is not None:
+                yield refusal_summary
+                return
+
             summary, tool_events = await self._collect_subagent_output(
                 ctx=ctx,
                 args=args,
@@ -565,10 +608,12 @@ class Task(
                 yield event
             yield summary
         finally:
-            if store is not None and session_id is not None and reserved_paths:
+            if store is not None and session_id is not None and paths_reserved:
                 store.release_paths(
                     session_id=session_id, task_id=task_id, paths=reserved_paths
                 )
+            if store is not None and session_id is not None and claim_granted:
+                store.release_task(session_id=session_id, task_id=task_id)
 
     async def _run_fleet_child(
         self,

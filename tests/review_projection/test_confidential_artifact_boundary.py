@@ -48,7 +48,9 @@ def test_classification_refuses_confidential_root_before_body_read(
         repo_root / ".build" / "rig-relay" / "confidential" / "secret_mechanism.py"
     )
     confidential_file.parent.mkdir(parents=True)
-    confidential_file.write_text("def secret():\n    return 'hidden'\n", encoding="utf-8")
+    confidential_file.write_text(
+        "def secret():\n    return 'hidden'\n", encoding="utf-8"
+    )
 
     manifest = InclusionManifest(
         mode=ProjectionMode.MAINTAINABILITY_REVIEW,
@@ -64,7 +66,10 @@ def test_classification_refuses_confidential_root_before_body_read(
 
     monkeypatch.setattr(classifier, "_hash_file", fail_hash)
 
-    assert classifier.classify_file(confidential_file) is FileClassification.CONFIDENTIAL_HOLDBACK
+    assert (
+        classifier.classify_file(confidential_file)
+        is FileClassification.CONFIDENTIAL_HOLDBACK
+    )
     assert not called["value"]
 
 
@@ -89,8 +94,7 @@ def test_bundle_emission_refuses_confidential_descendant_even_when_requested(
         raise AssertionError("deterministic_zip_write must not be called")
 
     monkeypatch.setattr(
-        "rig_relay.review_projection.bundle_builder.deterministic_zip_write",
-        fail_zip,
+        "rig_relay.review_projection.bundle_builder.deterministic_zip_write", fail_zip
     )
 
     with pytest.raises(

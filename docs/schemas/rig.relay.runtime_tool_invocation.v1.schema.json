@@ -31,7 +31,14 @@
         "search_replace",
         "validate",
         "runtime_exec",
-        "bash_legacy"
+        "bash_legacy",
+        "git_status",
+        "git_diff",
+        "git_log",
+        "git_branch",
+        "git_show",
+        "git_ls_files",
+        "checkpoint"
       ],
       "description": "Target tool name."
     },

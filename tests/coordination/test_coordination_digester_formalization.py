@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import concurrent.futures
 from datetime import UTC, datetime, timedelta
+import fcntl
 import json
 from pathlib import Path
 import subprocess
@@ -17,7 +18,10 @@ import threading
 
 import pytest
 
-from rig_relay.coordination.models import reset_path_salt_for_testing
+from rig_relay.coordination.models import (
+    CoordinationSession,
+    reset_path_salt_for_testing,
+)
 from rig_relay.coordination.store import CoordinationStore
 
 pytestmark = pytest.mark.concurrency
@@ -215,6 +219,37 @@ def test_concurrent_release_and_reserve_consistent_state(tmp_path: Path) -> None
     )
     if active_leases:
         assert active_leases[0].session_id in ("session-a", "session-b")
+
+
+def test_same_process_instances_wait_for_lock_release(tmp_path: Path) -> None:
+    """P0/concurrency/real-artifact"""
+    reset_path_salt_for_testing()
+    store_a = _make_store(tmp_path)
+    store_b = _make_store(tmp_path)
+    lock_fd = (store_a.root / ".digester.lock").open("r+b")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+
+        completed = threading.Event()
+
+        def register_session() -> None:
+            store_b.register_session(
+                CoordinationSession(session_id="session-b", status="running")
+            )
+            completed.set()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(register_session)
+            assert not completed.wait(0.2), (
+                "A second store instance should wait until the lock is released"
+            )
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            future.result(timeout=5)
+    finally:
+        lock_fd.close()
+
+    assert completed.is_set()
+    assert (store_b.root / "sessions" / "session-b.json").is_file()
 
 
 def test_subprocess_reserve_paths_one_winner(tmp_path: Path) -> None:

@@ -19,6 +19,7 @@ Privacy boundary:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -30,12 +31,10 @@ def _build_search_replace_content(old_str: str, new_str: str) -> str:
     return f"<<<<<<< SEARCH\n{old_str}\n=======\n{new_str}\n>>>>>>> REPLACE"
 
 
-async def _invoke_search_replace(
-    file_path: str,
-    old_str: str,
-    new_str: str,
+async def _invoke_tool(
+    tool_name_str: str,
+    args: dict[str, Any],
     *,
-    expected_before_sha256: str | None = None,
     session_id: str = "opencode-bridge",
     directory: str = "",
     worktree: str | None = None,
@@ -54,22 +53,23 @@ async def _invoke_search_replace(
     repo_root = Path(directory) if directory else Path.cwd()
     worktree_path = Path(worktree) if worktree else None
 
-    content = _build_search_replace_content(old_str, new_str)
-    payload: dict[str, Any] = {"file_path": file_path, "content": content}
-    if expected_before_sha256:
-        payload["expected_before_sha256"] = expected_before_sha256
+    # Wrap the original tool name and args in runtime_exec payload format
+    payload = {"tool_name": tool_name_str, **args}
 
-    allow_main_repo = worktree_path is None
+    payload_digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    intent_id = f"opencode-{tool_name_str}-{payload_digest[:16]}"
 
     intent = RuntimeToolIntent(
-        intent_id=f"opencode-{file_path}-{hash(content) & 0xFFFFFFFF:08x}",
-        tool_name=RuntimeToolName.SEARCH_REPLACE,
+        intent_id=intent_id,
+        tool_name=RuntimeToolName.RUNTIME_EXEC,
         payload=payload,
-        allow_main_repo_mutation=allow_main_repo,
+        allow_main_repo_mutation=worktree_path is None,
         agent_id="opencode-custom-tool",
     )
 
-    task_id = f"bridge-{hash(content) & 0xFFFFFFFF:08x}"
+    task_id = f"bridge-{payload_digest[16:32]}"
     ctx = RuntimeContext(
         session_id=session_id,
         task_id=task_id,
@@ -82,10 +82,25 @@ async def _invoke_search_replace(
     )
     resolution = RuntimeContextResolution(status="resolved", context=ctx)
 
-    runner = RuntimeToolExecutionRunner()
-    result = await runner.execute_search_replace(intent, resolution)
+    from rig_relay.governance.dirty_guard import get_guard
 
-    return {
+    guard = get_guard()
+    guard.capture(repo_root)
+    if tool_name_str == "checkpoint":
+        include_paths = args.get("include_paths", [])
+        for p in include_paths:
+            try:
+                rel_p = Path(p).resolve().relative_to(repo_root.resolve()).as_posix()
+            except ValueError:
+                rel_p = Path(p).as_posix()
+            guard.dirty_snapshots.pop(rel_p, None)
+            guard.touched_files.add(rel_p)
+
+    runner = RuntimeToolExecutionRunner()
+    result = await runner.execute_runtime_exec(intent, resolution)
+
+    response: dict[str, Any] = {
+        "schema_version": result.schema_version,
         "status": result.status.value,
         "intent_id": result.intent_id,
         "tool_name": result.tool_name,
@@ -100,6 +115,36 @@ async def _invoke_search_replace(
         "refusal_reason": result.refusal_reason,
         "warnings": result.warnings,
     }
+    if result.git_summary is not None:
+        response["git_summary"] = result.git_summary.model_dump(mode="json")
+
+    return response
+
+
+async def _invoke_search_replace(
+    file_path: str,
+    old_str: str,
+    new_str: str,
+    *,
+    expected_before_sha256: str | None = None,
+    session_id: str = "opencode-bridge",
+    directory: str = "",
+    worktree: str | None = None,
+) -> dict[str, Any]:
+    """Legacy entry point wrapper for backwards compatibility."""
+    args: dict[str, Any] = {
+        "file_path": file_path,
+        "content": _build_search_replace_content(old_str, new_str),
+    }
+    if expected_before_sha256 is not None:
+        args["expected_before_sha256"] = expected_before_sha256
+    return await _invoke_tool(
+        tool_name_str="search_replace",
+        args=args,
+        session_id=session_id,
+        directory=directory,
+        worktree=worktree,
+    )
 
 
 def main() -> None:
@@ -116,35 +161,45 @@ def main() -> None:
         sys.stdout.write(json.dumps(error_result) + "\n")
         sys.exit(1)
 
-    file_path = request.get("filePath", "")
-    old_str = request.get("oldStr", "")
-    new_str = request.get("newStr", "")
-
-    if not file_path:
-        error_result = {
-            "status": "failed",
-            "error_kind": "invalid_payload",
-            "refusal_reason": "Missing required field: filePath",
+    tool_name_str = request.get("tool_name") or request.get("toolName")
+    if tool_name_str:
+        args = request.get("args") or {}
+    else:
+        # Legacy search_replace format
+        file_path = request.get("filePath", "")
+        old_str = request.get("oldStr", "")
+        new_str = request.get("newStr", "")
+        if not file_path:
+            error_result = {
+                "status": "failed",
+                "error_kind": "invalid_payload",
+                "refusal_reason": "Missing required field: filePath or tool_name",
+            }
+            sys.stdout.write(json.dumps(error_result) + "\n")
+            sys.exit(1)
+        if not old_str and not new_str:
+            error_result = {
+                "status": "failed",
+                "error_kind": "invalid_payload",
+                "refusal_reason": (
+                    "At least one of oldStr or newStr must be non-empty"
+                ),
+            }
+            sys.stdout.write(json.dumps(error_result) + "\n")
+            sys.exit(1)
+        tool_name_str = "search_replace"
+        args = {
+            "file_path": file_path,
+            "content": _build_search_replace_content(old_str, new_str),
         }
-        sys.stdout.write(json.dumps(error_result) + "\n")
-        sys.exit(1)
-
-    if not old_str and not new_str:
-        error_result = {
-            "status": "failed",
-            "error_kind": "invalid_payload",
-            "refusal_reason": ("At least one of oldStr or newStr must be non-empty"),
-        }
-        sys.stdout.write(json.dumps(error_result) + "\n")
-        sys.exit(1)
+        if "expectedBeforeSha256" in request:
+            args["expected_before_sha256"] = request["expectedBeforeSha256"]
 
     try:
         result = asyncio.run(
-            _invoke_search_replace(
-                file_path=file_path,
-                old_str=old_str,
-                new_str=new_str,
-                expected_before_sha256=request.get("expectedBeforeSha256"),
+            _invoke_tool(
+                tool_name_str=tool_name_str,
+                args=args,
                 session_id=request.get("sessionId", "opencode-bridge"),
                 directory=request.get("directory", ""),
                 worktree=request.get("worktree"),

@@ -31,10 +31,10 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class SessionRuntime:
-    """Session lifecycle runtime.
+    """Extracted session lifecycle operations and runtime state snapshot.
 
-    Owns core session lifecycle: clean_message_history,
-    fill_missing_tool_responses, reset_session, messages_for_fork.
+    Phase 3: absorbs SessionLifecycleMixin (clean_message_history,
+    fill_missing_tool_responses, reset_session, messages_for_fork).
     """
 
     agent_loop: Any

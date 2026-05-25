@@ -1,27 +1,6 @@
-/**
- * OpenCode custom tool: rig_search_replace
- *
- * Stage A transport-only adapter that delegates search-replace mutations
- * to the Rig Relay RuntimeToolExecutionRunner via a Python subprocess bridge.
- *
- * Privacy boundary:
- *   Replacement content necessarily crosses the transport as transient tool
- *   input. This wrapper never persists, logs, or emits raw content outside the
- *   governed Rig invocation path. The returned result is content-light -
- *   receipt/envelope identifiers, status, and timing only.
- *
- * Governance:
- *   This wrapper owns zero policy. It does not determine mutation legality,
- *   construct receipts, implement redaction, classify paths, or evaluate
- *   dirty-guard policy. All governance is owned by Rig's RuntimeToolExecutionRunner
- *   and ToolRuntime.
- */
-
 import { execFileSync } from "node:child_process";
-
 import { tool, type ToolResult } from "@opencode-ai/plugin";
 
-/** Content-light result returned to OpenCode. */
 interface BridgeResult {
   status: string;
   intent_id?: string;
@@ -36,22 +15,19 @@ interface BridgeResult {
   error_kind?: string;
   refusal_reason?: string;
   warnings?: string[];
+  git_summary?: Record<string, any> | null;
 }
 
 async function invokeBridge(
-  filePath: string,
-  oldStr: string,
-  newStr: string,
-  expectedBeforeSha256: string | undefined,
+  toolName: string,
+  args: Record<string, any>,
   sessionID: string,
   directory: string,
   worktree: string | undefined,
 ): Promise<BridgeResult> {
   const request = {
-    filePath,
-    oldStr,
-    newStr,
-    expectedBeforeSha256,
+    tool_name: toolName,
+    args,
     sessionId: sessionID,
     directory,
     worktree,
@@ -97,33 +73,25 @@ async function invokeBridge(
 }
 
 export default tool({
-  description: "Replace text in a file using Rig's hardened SEARCH/REPLACE tool.",
+  description: "Show various types of Git objects (commits, files at specific refs).",
   args: {
-    filePath: tool.schema
-      .string()
-      .describe("Path to the file to modify, relative to the workspace root."),
-    oldStr: tool.schema.string().describe("The exact text to find and replace."),
-    newStr: tool.schema.string().describe("The replacement text."),
-    expectedBeforeSha256: tool.schema
-      .string()
-      .optional()
-      .describe(
-        "Optional SHA-256 hex of the file bytes before the edit. If provided, the edit is refused if the current file hash does not match.",
-      ),
+    ref: tool.schema.string().describe("The revision/commit reference to show (e.g. HEAD, commit hash, branch name)."),
+    paths: tool.schema.array(tool.schema.string()).optional().default([]).describe("Optional list of specific paths within the ref to show."),
   },
   async execute(args, context) {
     const directory = context.worktree || context.directory || process.cwd();
     const result = await invokeBridge(
-      args.filePath,
-      args.oldStr,
-      args.newStr,
-      args.expectedBeforeSha256,
+      "git_show",
+      {
+        ref: args.ref,
+        paths: args.paths,
+      },
       context.sessionID || "opencode-bridge",
       directory,
       context.worktree || undefined,
     );
     return {
-      title: result.status === "completed" ? "rig_search_replace completed" : "rig_search_replace result",
+      title: result.status === "completed" ? "rig_git_show completed" : "rig_git_show result",
       output: JSON.stringify(result),
       metadata: result,
     } satisfies ToolResult;

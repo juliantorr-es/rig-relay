@@ -114,7 +114,7 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
     args dict appropriate for the target tool:
       - git_branch: takes show_current: bool
       - git_status: no extra args
-      - git_diff/git_log/git_show: take ref/path
+      - git_diff/git_log/git_show: take ref/paths
       - git_ls_files: no extra args
     """
     if not tokens or tokens[0] != "git":
@@ -124,20 +124,55 @@ def _reroute_git(command: str, tokens: list[str]) -> dict[str, Any] | None:
     subcmd = tokens[1]
 
     if subcmd == "status":
-        return {"_tool_name": "git_status"}
+        porcelain = "--porcelain=v1" in tokens or "--porcelain" in tokens
+        short = "--short" in tokens or "-s" in tokens or porcelain
+        branch = "--branch" in tokens or "-b" in tokens
+        return {"_tool_name": "git_status", "short": short, "branch": branch, "porcelain": porcelain}
     if subcmd == "diff":
-        # Collect paths from remaining tokens, skipping flags
-        paths = [t for t in tokens[2:] if not t.startswith("-")]
-        return {"_tool_name": "git_diff", "path": paths[0] if paths else "."}
+        paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
+        cached = "--cached" in tokens
+        stat = "--stat" in tokens
+        return {"_tool_name": "git_diff", "paths": paths, "cached": cached, "stat": stat}
     if subcmd == "log":
-        return {"_tool_name": "git_log", "path": "."}
+        paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
+        max_count = 20
+        oneline = "--oneline" in tokens
+        for i, tok in enumerate(tokens[2:], 2):
+            if tok.startswith("-n") and len(tok) > 2:
+                try:
+                    max_count = int(tok[2:])
+                except ValueError:
+                    pass
+            elif tok in {"-n", "--max-count"} and i + 1 < len(tokens):
+                try:
+                    max_count = int(tokens[i + 1])
+                except ValueError:
+                    pass
+        return {"_tool_name": "git_log", "paths": paths, "max_count": max_count, "oneline": oneline}
     if subcmd == "branch":
-        return {"_tool_name": "git_branch", "show_current": True}
+        show_current = "--show-current" in tokens or len(tokens) == 2
+        return {"_tool_name": "git_branch", "show_current": show_current}
     if subcmd == "show":
-        ref = tokens[2] if len(tokens) > 2 and not tokens[2].startswith("-") else "HEAD"
-        return {"_tool_name": "git_show", "ref": ref}
+        ref = "HEAD"
+        paths = []
+        found_ref = False
+        for tok in tokens[2:]:
+            if tok.startswith("-"):
+                continue
+            if tok == "--":
+                continue
+            if not found_ref:
+                ref = tok
+                found_ref = True
+            else:
+                paths.append(tok)
+        return {"_tool_name": "git_show", "ref": ref, "paths": paths}
     if subcmd in ("ls-files", "ls_files"):
-        return {"_tool_name": "git_ls_files"}
+        others = "--others" in tokens or "-o" in tokens
+        modified = "--modified" in tokens or "-m" in tokens
+        deleted = "--deleted" in tokens or "-d" in tokens
+        paths = [t for t in tokens[2:] if not t.startswith("-") and t != "--"]
+        return {"_tool_name": "git_ls_files", "paths": paths, "others": others, "modified": modified, "deleted": deleted}
 
     return None
 
@@ -243,23 +278,38 @@ async def try_reroute(
         try:
             mgr = getattr(ctx, "tool_manager", None)
             if mgr is None:
+                events.append(
+                    ToolStreamEvent(
+                        tool_name="bash",
+                        message=(
+                            f"\u21aa Reroute to {actual_tool} unavailable: "
+                            "tool_manager not available. Continuing with bash."
+                        ),
+                        tool_call_id=ctx.tool_call_id if ctx else "",
+                    )
+                )
                 meta = BashRerouteMetadata(
                     was_rerouted=False,
-                    raw_bash_skipped=True,
+                    raw_bash_skipped=False,
                     original_command_category=_category_from_builder(builder),
                     original_command_hash=hashlib.sha256(command.encode()).hexdigest(),
                     rerouted_tool_name=actual_tool,
                     reroute_reason=description,
                     permission_decision="not_checked",
                     safety_class="risky_reroute",
-                    final_outcome="refused_reroute",
+                    final_outcome="not_rerouted",
                     refusal_reason="tool_manager not available",
                     matched_pattern=tokens[0],
                 )
-                return False, None, [], meta
+                return False, None, events, meta
 
-            tool_cls = mgr.get(actual_tool)
-            if tool_cls is None:
+            tool_cls_or_inst = None
+            try:
+                tool_cls_or_inst = mgr.get(actual_tool)
+            except Exception:
+                pass
+
+            if tool_cls_or_inst is None:
                 meta = BashRerouteMetadata(
                     was_rerouted=False,
                     raw_bash_skipped=True,
@@ -275,15 +325,23 @@ async def try_reroute(
                 )
                 return False, None, [], meta
 
-            # ── Build args model and instantiate tool ──────────
-            args_model_cls, _ = tool_cls._get_type_hints()
-            args = args_model_cls(**args_dict)
+            if isinstance(tool_cls_or_inst, type):
+                tool_cls = tool_cls_or_inst
+                _cfg_cls = tool_cls._get_tool_config_class()
+                _st_cls = tool_cls._get_tool_state_class()
+                tool_instance = tool_cls(
+                    config_getter=lambda c=_cfg_cls: c(), state=_st_cls()
+                )
+            else:
+                tool_instance = tool_cls_or_inst
+                tool_cls = tool_instance.__class__
 
-            _cfg_cls = tool_cls._get_tool_config_class()
-            _st_cls = tool_cls._get_tool_state_class()
-            tool_instance = tool_cls(
-                config_getter=lambda c=_cfg_cls: c(), state=_st_cls()
-            )
+            # ── Build args model and instantiate tool ──────────
+            if hasattr(tool_cls, "_get_type_hints"):
+                args_model_cls, _ = tool_cls._get_type_hints()
+            else:
+                args_model_cls, _ = tool_cls._get_tool_args_results()
+            args = args_model_cls(**args_dict)
 
             # ── Permission check ────────────────────────────────
             # The rerouted tool must pass its own permission check,

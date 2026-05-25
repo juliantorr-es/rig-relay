@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rig_relay.core._agent_models import ToolDecision, ToolExecutionResponse
 from rig_relay.core.guard import get_guard
@@ -263,17 +263,14 @@ class GovernanceRuntime:
         self.session_rules.append(rule)
 
     def set_tool_permission(
-        self,
-        tool_name: str,
-        permission: ToolPermission,
-        save_permanently: bool = False,
+        self, tool_name: str, permission: ToolPermission, save_permanently: bool = False
     ) -> None:
         if save_permanently:
             from rig_relay.core.config import VibeConfig
 
-            VibeConfig.save_updates(
-                {"tools": {tool_name: {"permission": permission.value}}}
-            )
+            VibeConfig.save_updates({
+                "tools": {tool_name: {"permission": permission.value}}
+            })
         if self.config is None:
             return
         tools = getattr(self.config, "tools", {}) or {}
@@ -281,9 +278,7 @@ class GovernanceRuntime:
             tools[tool_name] = {}
         tools[tool_name]["permission"] = permission.value
 
-    def is_permission_covered(
-        self, tool_name: str, rp: RequiredPermission
-    ) -> bool:
+    def is_permission_covered(self, tool_name: str, rp: RequiredPermission) -> bool:
         from rig_relay.core.tools.utils import wildcard_match
 
         return any(
@@ -310,8 +305,7 @@ class GovernanceRuntime:
                 )
             if save_permanently and self.config is not None:
                 self.config.add_tool_allowlist_patterns(
-                    tool_name,
-                    [rp.session_pattern for rp in required_permissions],
+                    tool_name, [rp.session_pattern for rp in required_permissions]
                 )
         else:
             self.set_tool_permission(

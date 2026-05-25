@@ -334,6 +334,7 @@ markers = [
   "migration: test being relocated during test layout canonicalization",
   "quarantine: quarantined test, runs only in dedicated quarantine job",
   "sabotage: corruption/sabotage injection tests for runtime hardening",
+  "concurrency: tests covering contention, lock ordering, or multi-session progress",
   "real_artifact: tests using real file artifacts (no mocking)",
   "substrate: storage, cache, or infrastructure substrate coverage",
 ]

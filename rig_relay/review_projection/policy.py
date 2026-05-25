@@ -17,11 +17,13 @@ class PolicyEngine:
         if self.local_rules_path and self.local_rules_path.is_file():
             try:
                 data = json.loads(self.local_rules_path.read_text("utf-8"))
-                self.policy = ReviewProjectionPolicy.model_validate(data.get("policy", {}))
+                self.policy = ReviewProjectionPolicy.model_validate(
+                    data.get("policy", {})
+                )
                 self.confidential_paths = data.get("confidential_paths", [])
             except Exception:
                 # Fail closed if rules file exists but is unreadable/invalid
-                self.confidential_paths = ["*"] # Deny all
+                self.confidential_paths = ["*"]  # Deny all
         else:
             # Default safe policy
             self.policy.confidential_categories = [
@@ -41,12 +43,12 @@ class PolicyEngine:
         try:
             rel = path.resolve().relative_to(repo_root.resolve())
         except ValueError:
-            return True # Outside repo root -> fail closed
-            
+            return True  # Outside repo root -> fail closed
+
         rel_str = str(rel)
         if self.confidential_paths == ["*"]:
             return True
-            
+
         for cpath in self.confidential_paths:
             if rel_str.startswith(cpath) or cpath in rel_str:
                 return True

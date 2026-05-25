@@ -1,8 +1,8 @@
 """TelemetryEvidenceService — unified telemetry evidence emission.
 
-Owning service for observation-consent capture, tool-call-finished
-telemetry, reasoning traces, and artifact emission. All dependencies
-passed via __init__ with no MRO-based attribute resolution.
+Step 2 of AgentLoop mixin refactor. Merges ToolResponseMixin and
+TelemetryMixin into a single service with explicit constructor
+dependencies. No MRO-based self.* access.
 
 Tool response telemetry is wired via the ToolExecutionContext callback.
 Session lifecycle telemetry calls this service directly.

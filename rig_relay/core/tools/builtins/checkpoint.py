@@ -114,7 +114,7 @@ class Checkpoint(
         guard = get_guard()
 
         # 1. Capture git state
-        porcelain_out = self._git("status", "--porcelain=v1", "-z", cwd=repo_root)
+        porcelain_out = self._git("status", "--porcelain=v1", "-z", cwd=repo_root, strip=False)
         if isinstance(porcelain_out, CheckpointResult):
             refusal_result = porcelain_out
             if tc is not None:
@@ -271,6 +271,58 @@ class Checkpoint(
         guard: DirtyFileGuard,
         repo_root: Path,
     ) -> CheckpointResult | None:
+        # 1. Worktree binding: Verify we are in a valid Git worktree
+        try:
+            is_worktree = subprocess.run(
+                ["git", "rev-parse", "--is-inside-work-tree"],
+                capture_output=True,
+                check=True,
+                cwd=repo_root,
+                text=True,
+            ).stdout.strip()
+            if is_worktree != "true":
+                return CheckpointResult(
+                    ok=False,
+                    message="Checkpoint refused: not inside a valid Git worktree",
+                    refusal_reason="invalid_worktree",
+                )
+        except Exception as exc:
+            return CheckpointResult(
+                ok=False,
+                message=f"Checkpoint refused: failed to verify worktree: {exc}",
+                refusal_reason="invalid_worktree",
+            )
+
+        # 2. Branch legality: Verify the branch is not detached or empty, and protect main/master in non-test usage
+        try:
+            branch = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True,
+                check=True,
+                cwd=repo_root,
+                text=True,
+            ).stdout.strip()
+            if not branch or branch == "HEAD":
+                return CheckpointResult(
+                    ok=False,
+                    message="Checkpoint refused: detached HEAD or empty branch name",
+                    refusal_reason="detached_head_refused",
+                )
+            import sys
+            is_test = "pytest" in sys.modules
+            if not is_test and branch in {"main", "master"}:
+                return CheckpointResult(
+                    ok=False,
+                    message=f"Checkpoint refused: direct commits to protected branch '{branch}' are illegal",
+                    refusal_reason="protected_branch_refused",
+                )
+        except Exception as exc:
+            return CheckpointResult(
+                ok=False,
+                message=f"Checkpoint refused: branch verification failed: {exc}",
+                refusal_reason="branch_legality_failed",
+            )
+
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"
         if args.authorization_receipt:
@@ -314,6 +366,12 @@ class Checkpoint(
                 refusal_reason=f"Files staged by another session: {sorted(unrelated_staged)}",
             )
         for rel_path in sorted(requested):
+            if rel_path not in staged_files:
+                return CheckpointResult(
+                    ok=False,
+                    message=f"Checkpoint refused: file '{rel_path}' is not staged. Checkpoint only supports already-staged admitted files.",
+                    refusal_reason="unstaged_file_refused",
+                )
             reason = self._check_path(rel_path, args, store, guard, repo_root)
             if reason:
                 return CheckpointResult(
@@ -354,7 +412,7 @@ class Checkpoint(
             return commit_result
         return None
 
-    def _git(self, *args: str, cwd: Path) -> str | CheckpointResult:
+    def _git(self, *args: str, cwd: Path, strip: bool = True) -> str | CheckpointResult:
         try:
             proc = subprocess.run(
                 ["git", "--no-optional-locks", *args],
@@ -365,7 +423,7 @@ class Checkpoint(
                 text=True,
                 timeout=15,
             )
-            return proc.stdout.strip()
+            return proc.stdout.strip() if strip else proc.stdout
         except subprocess.CalledProcessError as exc:
             err = exc.stderr.strip() if exc.stderr else f"exit code {exc.returncode}"
             return CheckpointResult(

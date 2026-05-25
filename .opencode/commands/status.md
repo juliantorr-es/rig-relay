@@ -8,14 +8,9 @@ Report current repo state, active branch, short HEAD, dirty files, and any obvio
 Treat pre-existing changes as user-owned.
 Do not edit files.
 
-Current repo state:
+To obtain repository state, use the governed custom tools:
+- Call `rig_git_status` to get the working tree status.
+- Call `rig_git_branch` to check the current branch.
+- Call `rig_git_log` with `max_count: 1` or `rig_git_show` with `ref: "HEAD"` to check HEAD.
 
-!git status --short --branch
-
-Branch:
-
-!git branch --show-current
-
-HEAD:
-
-!git rev-parse --short HEAD
+Do not run raw git status, git branch, or git log shell commands.
