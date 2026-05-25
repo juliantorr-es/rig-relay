@@ -19,6 +19,7 @@ from rig_relay.digestion.identity import (
     derive_checkout_identity_candidate,
     derive_repository_identity_candidate,
     derive_worktree_identity_candidate,
+    resolve_git_common_dir,
 )
 from rig_relay.digestion.instruction_scanner import discover_instructions
 from rig_relay.digestion.intake import IntakeResult, RepositoryIntakeService
@@ -33,6 +34,14 @@ from rig_relay.digestion.models import (
     MissionProposalInput,
     OpenedRepository,
     TopologyEntry,
+)
+from rig_relay.digestion.registration import RepositoryRegistrationService
+from rig_relay.digestion.registration_models import (
+    RegisteredRepository,
+    SourceCheckoutRecord,
+    WorkspacePreparationPlan,
+    generate_checkout_id,
+    generate_stable_repository_id,
 )
 from rig_relay.digestion.telemetry_projection import build_telemetry_projection
 from rig_relay.digestion.topology_mapper import map_topology
@@ -50,10 +59,14 @@ __all__ = [
     "LocalRepositoryOperatingPicture",
     "MissionProposalInput",
     "OpenedRepository",
+    "RegisteredRepository",
     "RepositoryIdentityCandidate",
     "RepositoryIntakeService",
+    "RepositoryRegistrationService",
     "RigApplicationPaths",
+    "SourceCheckoutRecord",
     "TopologyEntry",
+    "WorkspacePreparationPlan",
     "WorktreeIdentity",
     "build_telemetry_projection",
     "compute_dirty_state_digest",
@@ -64,6 +77,9 @@ __all__ = [
     "detect_ecosystems",
     "detect_validation_candidates",
     "discover_instructions",
+    "generate_checkout_id",
+    "generate_stable_repository_id",
     "map_topology",
     "propose_mission",
+    "resolve_git_common_dir",
 ]

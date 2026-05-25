@@ -524,6 +524,77 @@ class CockpitAPI:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    def register_repository(self) -> dict:
+        """Register the previewed repository as a durable app-owned record.
+
+        Creates a RegisteredRepository and SourceCheckoutRecord under
+        Application Support. Idempotent — re-registering the same
+        checkout returns the existing record.
+
+        Requires that choose_local_repository() was called first.
+        """
+        if self._opened_repo is None:
+            return {
+                "status": "error",
+                "message": "No repository previewed. Open a repository first.",
+            }
+
+        try:
+            from rig_relay.digestion.app_paths import RigApplicationPaths
+            from rig_relay.digestion.registration import RepositoryRegistrationService
+
+            app_paths = RigApplicationPaths.for_production()
+            service = RepositoryRegistrationService(app_paths)
+            registered = service.register_repository(self._opened_repo)
+
+            return {
+                "status": "registered",
+                "repository_id": registered.repository_id,
+                "repository_label": registered.repository_label,
+                "is_github_backed": registered.is_github_backed,
+                "is_local_only": registered.is_local_only,
+                "registered_at": registered.registered_at,
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def plan_workspace(self) -> dict:
+        """Produce a workspace preparation plan. No workspace is created yet.
+
+        Returns provider eligibility, proposed branch, base SHA, and
+        warnings. Slice 1C consumes and revalidates this plan before
+        provisioning.
+
+        Requires that choose_local_repository() was called first.
+        """
+        if self._opened_repo is None:
+            return {
+                "status": "error",
+                "message": "No repository previewed. Open a repository first.",
+            }
+
+        try:
+            from rig_relay.digestion.app_paths import RigApplicationPaths
+            from rig_relay.digestion.registration import RepositoryRegistrationService
+
+            app_paths = RigApplicationPaths.for_production()
+            service = RepositoryRegistrationService(app_paths)
+            plan = service.plan_workspace(self._opened_repo)
+
+            return {
+                "status": "planned",
+                "plan_id": plan.plan_id,
+                "provider_eligibility": plan.provider_eligibility,
+                "admitted_base_sha": plan.admitted_base_sha,
+                "proposed_managed_branch": plan.proposed_managed_branch,
+                "proposed_worktree_location": plan.proposed_worktree_location,
+                "source_checkout_is_dirty": plan.source_checkout_is_dirty,
+                "warnings": plan.warnings,
+                "digest": plan.digest,
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
     def send_chat_message(
         self, text: str, client_message_id: str | None = None
     ) -> dict:

@@ -790,7 +790,7 @@ class Validate(
 
     def _check_preparation_binding(
         self, args: ValidateArgs, cwd: str
-    ) -> tuple[str | None, bool | None, ValidateResult | None]:
+    ) -> tuple[str | None, bool | None, tuple[str, str, str, str] | None]:
         """Check worktree/index delta for preparation-bound validation.
 
         Returns (prepared_digest, worktree_matched, refusal_result).
@@ -803,12 +803,16 @@ class Validate(
 
             receipt = load_preparation_receipt(args.preparation_receipt_sha256)
             if receipt is None:
-                refusal = self._refuse(
-                    args,
-                    error_kind="preparation_receipt_missing",
-                    reason="Preparation receipt not found. Run prepare_checkpoint again.",
+                return (
+                    None,
+                    None,
+                    (
+                        "refused",
+                        "preparation_receipt_missing",
+                        "Preparation receipt not found. Run prepare_checkpoint again.",
+                        "",
+                    ),
                 )
-                return None, None, refusal
 
             prepared_digest: str | None = None
 
@@ -820,7 +824,7 @@ class Validate(
             import subprocess as _sp
 
             proc = _sp.run(
-                ["git", "diff", "--name-only"] + expected_paths,
+                ["git", "diff", "--name-only"],
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -828,31 +832,51 @@ class Validate(
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 changed = [p for p in proc.stdout.strip().splitlines() if p]
+                prepared_changed = [p for p in changed if p in expected_paths]
+                if prepared_changed:
+                    visible = min(len(prepared_changed), self._MAX_CHANGED_PATHS_SHOWN)
+                    extra = (
+                        f" and {len(prepared_changed) - self._MAX_CHANGED_PATHS_SHOWN} more"
+                        if len(prepared_changed) > self._MAX_CHANGED_PATHS_SHOWN
+                        else ""
+                    )
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "worktree_changed_after_preparation",
+                            (
+                                f"Prepared paths have unstaged changes since preparation: "
+                                f"{', '.join(prepared_changed[:visible])}" + extra
+                            ),
+                            "Review unstaged changes. Revert to match prepared index or run "
+                            "prepare_checkpoint again with updated expected hashes.",
+                        ),
+                    )
                 visible = min(len(changed), self._MAX_CHANGED_PATHS_SHOWN)
                 extra = (
                     f" and {len(changed) - self._MAX_CHANGED_PATHS_SHOWN} more"
                     if len(changed) > self._MAX_CHANGED_PATHS_SHOWN
                     else ""
                 )
-                refusal = ValidateResult(
-                    status="refused",
-                    profile=args.profile,
-                    error_kind="worktree_changed_after_preparation",
-                    refusal_reason=(
-                        "Prepared paths have unstaged changes since preparation: "
-                        f"{', '.join(changed[:visible])}" + extra
-                    ),
-                    suggested_next_action=(
-                        "Review the unstaged changes. Either revert the "
-                        "working-tree edits to match the prepared index, or run "
-                        "prepare_checkpoint again with updated expected hashes "
-                        "for the changed files."
+                return (
+                    None,
+                    None,
+                    (
+                        "refused",
+                        "unprepared_worktree_changes_present",
+                        (
+                            f"Unprepared worktree changes exist: "
+                            f"{', '.join(changed[:visible])}"
+                            + extra
+                            + ". Broad validators like pytest/pyright can observe these files. "
+                            "Revert or commit unrelated changes before bound validation."
+                        ),
+                        "Revert or stage unrelated changes before bound validation, "
+                        "or run unbound validation if the changes are known-safe.",
                     ),
                 )
-                refusal = refusal.model_copy(
-                    update={"retryable": _validate_retryable(refusal)}
-                )
-                return None, None, refusal
 
             return prepared_digest, True, None
         except Exception:
@@ -900,11 +924,22 @@ class Validate(
         before_git_state = await _collect_git_state(run_context.cwd)
 
         # ── Bound validation: verify prepared paths match index ───
-        prepared_digest_val, worktree_matched_val, binding_refusal = (
+        prepared_digest_val, worktree_matched_val, refusal = (  # type: ignore[misc]
             self._check_preparation_binding(args, run_context.cwd)
         )
-        if binding_refusal is not None:
-            return binding_refusal
+        if refusal is not None:
+            refusal_result = ValidateResult(
+                status=refusal[0],
+                profile=args.profile,
+                error_kind=refusal[1],
+                refusal_reason=refusal[2],
+                suggested_next_action=refusal[3],
+                prepared_index_tree_digest=prepared_digest_val,
+                worktree_matched_prepared_index=False,
+            )
+            return refusal_result.model_copy(
+                update={"retryable": _validate_retryable(refusal_result)}
+            )
 
         policy_reason = _check_dirty_policy(
             before_git_state, args.expected_dirty_policy, normalized_paths

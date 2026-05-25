@@ -198,8 +198,20 @@ class AgentLoop(
         self._session_rules: list[ApprovedRule] = []
         self._approval_lock = asyncio.Lock()
 
-        self._governance_runtime = GovernanceRuntime(config=config)
+        self._governance_runtime = GovernanceRuntime(config=self.config)
         self._governance_runtime.session_rules = self._session_rules
+
+        # Wire governance evidence persistence for mutation-capable operations.
+        from rig_relay.evidence.receipt_store import FilesystemReceiptStore
+        from rig_relay.evidence.governance_decision_evidence import (
+            GovernanceDecisionEvidence,
+        )
+        governance_store = FilesystemReceiptStore(
+            self._workspace_root / ".build" / "rig-relay" / "governance"
+        )
+        self._governance_runtime.evidence = GovernanceDecisionEvidence(
+            store=governance_store
+        )
 
         self._init_telemetry_and_guard(
             config, entrypoint_metadata, is_subagent, hook_config_result

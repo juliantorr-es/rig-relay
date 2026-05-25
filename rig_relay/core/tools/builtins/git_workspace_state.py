@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
+from pathlib import Path
 import subprocess
 from typing import ClassVar
 
@@ -54,6 +55,12 @@ class GitWorkspaceStateConfig(BaseToolConfig):
 
 class GitWorkspaceStateArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    preparation_receipt_sha256: str | None = Field(
+        default=None,
+        description="Optional SHA256 of a preparation receipt. When provided, the tool "
+        "loads the receipt and reports preparation_receipt_status and "
+        "current_index_tree_digest.",
+    )
 
 
 class GitWorkspaceStateResult(BaseModel):
@@ -66,9 +73,11 @@ class GitWorkspaceStateResult(BaseModel):
     ahead_count: int | None = None
     behind_count: int | None = None
     primary_blocker: str | None = None
-    local_git_checkpoint_precheck: str  # git_preconditions_blocked, preparation_required, prepared_index_detected, prepared_index_changed, git_preconditions_satisfied, no_changes
+    local_git_checkpoint_precheck: str  # git_preconditions_blocked, preparation_required, prepared_index_valid, prepared_index_stale, git_preconditions_satisfied, no_changes
     preparation_required: bool = False
-    prepared_index_tree_digest: str | None = None
+    current_index_tree_digest: str | None = None
+    preparation_receipt_status: str = "not_evaluated"  # absent, valid_index_match, stale_index_mismatch, invalid, not_evaluated
+    validation_binding_status: str = "not_evaluated"  # absent, valid_prepared_index_match, stale, not_required, not_evaluated
     checkpoint_authorization_evaluated: bool = False
     staged_paths: list[str] = Field(default_factory=list)
     unstaged_paths: list[str] = Field(default_factory=list)
@@ -117,7 +126,7 @@ class GitWorkspaceState(
     async def run(
         self, args: GitWorkspaceStateArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | GitWorkspaceStateResult, None]:
-        del args, ctx
+        del ctx
 
         is_inside = _run_is_inside_work_tree()
         if not is_inside:
@@ -144,7 +153,7 @@ class GitWorkspaceState(
             return
 
         parsed = _parse_status_v2(raw)
-        result = _build_result(parsed)
+        result = _build_result(parsed, args)
         yield result
 
 
@@ -288,7 +297,9 @@ def _compute_local_checkpoint_precheck(
     return "git_preconditions_satisfied"
 
 
-def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
+def _build_result(
+    parsed: _StatusV2Parsed, args: GitWorkspaceStateArgs
+) -> GitWorkspaceStateResult:
     repository_state = _compute_repository_state(parsed)
 
     staged_set = set(parsed.staged_paths)
@@ -335,6 +346,107 @@ def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
         has_conflicts=bool(parsed.conflicted_paths),
     )
 
+    # ── Preparation receipt awareness ─────────────────────────────────
+    current_digest: str | None = None
+    preparation_receipt_status = "not_evaluated"
+    validation_binding_status = "not_evaluated"
+
+    if parsed.staged_paths:
+        try:
+            from rig_relay.core.git_index_operations import compute_index_tree_digest
+
+            current_digest = compute_index_tree_digest(Path.cwd())
+        except Exception:
+            current_digest = None
+
+    if args.preparation_receipt_sha256:
+        preparation_receipt_status = "absent"
+        try:
+            from rig_relay.governance.auth_receipts import load_preparation_receipt
+
+            receipt = load_preparation_receipt(args.preparation_receipt_sha256)
+            if receipt is None:
+                preparation_receipt_status = "absent"
+            else:
+                expected_digest = receipt.get("post_index_tree_digest")
+                if expected_digest is None:
+                    preparation_receipt_status = "invalid"
+                elif current_digest is None:
+                    preparation_receipt_status = "invalid"
+                elif current_digest != expected_digest:
+                    preparation_receipt_status = "stale_index_mismatch"
+                else:
+                    preparation_receipt_status = "valid_index_match"
+        except Exception:
+            preparation_receipt_status = "invalid"
+    elif args.preparation_receipt_sha256 is None and current_digest is not None:
+        preparation_receipt_status = "not_evaluated"
+
+    # ── Auto-resolve preparation receipt if not manually provided ────
+    if (
+        args.preparation_receipt_sha256 is None
+        and parsed.branch
+        and current_digest is not None
+    ):
+        try:
+            from rig_relay.governance.receipt_store import (
+                resolve_best_preparation_receipt,
+            )
+
+            auto_status, auto_receipt = resolve_best_preparation_receipt(
+                branch=parsed.branch,
+                worktree_root=str(Path.cwd().resolve()),
+                current_index_tree_digest=current_digest,
+            )
+            if auto_status not in ("absent", "not_evaluated"):
+                preparation_receipt_status = auto_status
+                # Update precheck based on auto-resolved status
+                if auto_status == "valid_index_match":
+                    local_git_checkpoint_precheck = "prepared_index_valid"
+                elif auto_status == "stale_index_mismatch":
+                    local_git_checkpoint_precheck = "prepared_index_stale"
+                elif auto_status == "ambiguous":
+                    local_git_checkpoint_precheck = "git_preconditions_blocked"
+                    if not checkpoint_blockers:
+                        checkpoint_blockers.append("ambiguous_preparation_receipts")
+        except Exception:
+            pass
+
+    # ── Map receipt status to precheck states ──────────────────────────
+    _status_to_precheck: dict[str, str] = {
+        "valid_index_match": "prepared_index_valid",
+        "stale_index_mismatch": "prepared_index_stale",
+    }
+    if preparation_receipt_status in _status_to_precheck:
+        if not checkpoint_blockers:
+            local_git_checkpoint_precheck = _status_to_precheck[
+                preparation_receipt_status
+            ]
+
+    # ── Override suggested action based on preparation receipt status ──
+    _prep_suggestions: dict[str, str] = {
+        "valid_index_match": (
+            "Prepared index is intact. Run bound validation "
+            "(validate with preparation_receipt_sha256), then checkpoint."
+        ),
+        "stale_index_mismatch": (
+            "Prepared index has changed since preparation. "
+            "Re-inspect changes and create a new prepare_checkpoint request "
+            "with updated expected file-state hashes."
+        ),
+        "absent": (
+            "No active preparation receipt found. "
+            "Run prepare_checkpoint with admitted paths and expected hashes."
+        ),
+        "ambiguous": (
+            "Multiple active preparation receipts found. "
+            "Resolve the ambiguity by verifying which receipt matches "
+            "the current prepared state."
+        ),
+    }
+    if preparation_receipt_status in _prep_suggestions:
+        suggested_next_action = _prep_suggestions[preparation_receipt_status]
+
     return GitWorkspaceStateResult(
         repository_state=repository_state,
         branch=parsed.branch,
@@ -345,7 +457,9 @@ def _build_result(parsed: _StatusV2Parsed) -> GitWorkspaceStateResult:
         primary_blocker=checkpoint_blockers[0] if checkpoint_blockers else None,
         local_git_checkpoint_precheck=local_git_checkpoint_precheck,
         preparation_required=preparation_required,
-        prepared_index_tree_digest=None,
+        current_index_tree_digest=current_digest,
+        preparation_receipt_status=preparation_receipt_status,
+        validation_binding_status=validation_binding_status,
         checkpoint_authorization_evaluated=False,
         staged_paths=parsed.staged_paths,
         unstaged_paths=parsed.unstaged_paths,

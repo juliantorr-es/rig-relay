@@ -167,6 +167,7 @@ MISSION_SCOPED_AUTO = AgentProfile(
             "git_diff": {"permission": "always"},
             "git_ls_files": {"permission": "always"},
             "checkpoint": {"permission": "always"},
+            "prepare_checkpoint": {"permission": "always"},
         },
     },
 )
@@ -190,6 +191,7 @@ AUTO_APPROVE = AgentProfile(
             "git_diff": {"permission": "always"},
             "git_ls_files": {"permission": "always"},
             "checkpoint": {"permission": "always"},
+            "prepare_checkpoint": {"permission": "always"},
         },
     },
 )

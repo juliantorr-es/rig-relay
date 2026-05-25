@@ -222,6 +222,25 @@ def resolve_git_porcelain_v2(path: Path) -> str:
         return ""
 
 
+def resolve_git_common_dir(path: Path) -> str | None:
+    """Resolve the Git common directory for worktree correlation.
+
+    Returns a SHA256 digest of the resolved common-dir path.
+    Used to distinguish primary checkouts from linked worktrees
+    and to correlate worktrees sharing the same repository.
+
+    Returns None if not in a git repo.
+    """
+    try:
+        raw = _git_readonly(path, "rev-parse", "--git-common-dir")
+        if not raw:
+            return None
+        resolved = (path / raw).resolve()
+        return _digest_path(resolved)
+    except _GitError:
+        return None
+
+
 def parse_dirty_state_from_porcelain(porcelain_output: str) -> DirtyState:
     """Parse dirty file counts from git porcelain v2 output.
 
