@@ -139,3 +139,86 @@ def get_remote_head_sha(branch: str, repo_root: Path) -> str:
     except Exception:
         pass
     return ""
+
+
+def persist_pre_push_intent(intent: dict, campaign_id: str, root: Path) -> Path:
+    """Persist a pre-push intent record BEFORE remote mutation.
+
+    Writes to ``pre_push_intents.v1.jsonl`` — a dedicated pre-effect
+    ledger distinct from the terminal ``private_push_receipts.v1.jsonl``.
+    Recovery uses this ledger to reload the expected predecessor state
+    and verify that the remote action was authorized.
+    """
+    ledger_dir = root / ".rig" / "relay" / "campaigns" / campaign_id
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+    ledger_path = ledger_dir / "pre_push_intents.v1.jsonl"
+    with open(ledger_path, "a") as f:
+        f.write(json.dumps(intent, sort_keys=True, separators=(",", ":")) + "\n")
+    return ledger_path
+
+
+def load_latest_pre_push_intent(campaign_id: str, root: Path) -> dict | None:
+    """Reload the most recent pre-push intent record.
+
+    Returns ``None`` if no intent has been persisted.
+    """
+    ledger_path = (
+        root
+        / ".rig"
+        / "relay"
+        / "campaigns"
+        / campaign_id
+        / "pre_push_intents.v1.jsonl"
+    )
+    if not ledger_path.exists():
+        return None
+    latest: dict | None = None
+    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            try:
+                latest = json.loads(line)
+            except json.JSONDecodeError:
+                pass
+    return latest
+
+
+def inspect_remote_branch(remote_url: str, branch: str) -> str | None:
+    """Inspect the remote destination branch HEAD via ``git ls-remote``.
+
+    Returns the SHA of the remote branch or ``None`` if the branch
+    does not exist or the command fails.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", remote_url, f"refs/heads/{branch}"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            return None
+        output = result.stdout.strip()
+        if not output:
+            return None
+        # Output format: <sha>\trefs/heads/<branch>
+        return output.split()[0] if output else None
+    except Exception:
+        return None
+
+
+def classify_push_recovery_state(
+    remote_sha: str | None, expected_predecessor: str | None, checkpoint_sha: str
+) -> str:
+    """Classify the remote state for push recovery.
+
+    Returns one of: ``"absent"``, ``"at_predecessor"``,
+    ``"at_checkpoint"``, or ``"divergent"``.
+    """
+    if remote_sha is None:
+        return "absent"
+    if expected_predecessor is not None and remote_sha == expected_predecessor:
+        return "at_predecessor"
+    if remote_sha == checkpoint_sha:
+        return "at_checkpoint"
+    return "divergent"

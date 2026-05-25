@@ -1,0 +1,75 @@
+{
+  "schema_version": "rig.relay.mission_report.v1",
+  "generated_at": "2026-05-24T02:00:00Z",
+  "mission_title": "Mutation Proposal Compute-and-Persist Substrate v1",
+  "branch": "feature/persistent-confidential-campaign-runtime-v1",
+  "head_before": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "head_after": "00abf3f3c02c4c63a2d15b582aa4fc50a1347a2c",
+  "dirty_state_before": "Steward plugin modified by parallel lane (preserved); Stage A through GovComposer artifacts untracked",
+  "dirty_state_after": {
+    "this_mission_modified": [
+      "rig_relay/core/tools/builtins/search_replace.py",
+      "pyproject.toml"
+    ],
+    "this_mission_created": [
+      "tests/runtime/test_search_replace_proposal.py",
+      "docs/json/roadmaps/mutation_proposal_substrate_v1_mission_report.v1.json"
+    ],
+    "pre_existing_modified": ".opencode/plugins/rig-roadmap-steward.ts (parallel lane — untouched)"
+  },
+  "files_changed": 2,
+  "files_created": 2,
+  "files_deleted": 0,
+  "tests_run": 22,
+  "tests_intentionally_skipped": "No tests skipped. 13 existing bridge tests + 9 new proposal tests all pass.",
+  "test_classifications": {
+    "integration_real_artifact": "test_proposal_computes_candidate_without_mutating, test_proposal_persists_patch_proposal_artifact",
+    "telemetry_redaction_contract": "test_proposal_result_is_content_light, test_proposal_has_no_raw_content_field",
+    "adversarial_sabotage": "test_proposal_refused_for_malformed_blocks, test_proposal_refused_for_nonexistent_file, test_proposal_refused_for_path_escape, test_proposal_refused_for_stale_hash_on_dirty_file",
+    "substrate_parity": "test_existing_search_replace_execution_still_fail_closed"
+  },
+  "evidence_artifacts": [
+    "docs/json/roadmaps/mutation_proposal_substrate_v1_mission_report.v1.json"
+  ],
+  "schema_validation_results": "Prior Stage A.3, GovComposer v1 blocker, and Stage A.3 outcome matrix all validate. New proposal tests pass schema validation. No new schemas created — reused existing SearchReplaceProposalResult and PatchProposal models.",
+  "telemetry_and_redaction_implications": "SearchReplaceProposalResult is content-light by construction: no 'content' field, no 'changed_files' field. Only hashes, block counts, status, error_kind, proposal_id, duration_ms. Test verifies no SEARCH/REPLACE markers or raw text in result. PatchProposal artifact is also content-light (touch_paths, before_hash, artifact_refs — no raw diffs). Local review diff is not yet generated (deferred).",
+  "dependency_changes": "No new dependencies. Reused existing SearchReplace (with _apply_blocks pure computation), PatchProposal model, PatchWorkflowStore, dirty guard, and path safety infrastructure.",
+  "completed_work": [
+    "Implemented SearchReplace.compute_proposal() — non-mutating proposal generation method that computes candidate content entirely in memory using existing _apply_blocks() pure function",
+    "Added SearchReplaceProposalResult model — content-light result with hashes, block counts, status, error_kind, proposal_id (no 'content' or 'changed_files' fields)",
+    "Integrated PatchProposal persistence via PatchWorkflowStore — proposals are saved as JSON to .fleet/patch-proposals/ with status='pending' when coordination_root is provided",
+    "Integrated baseline capture and dirty-guard checking — proposals refuse for stale hashes on dirty files, protected files without expected_before_sha256",
+    "Integrated path safety — proposals refuse for workspace escape, nonexistent files",
+    "9 targeted tests: compute candidate without mutation, persist PatchProposal, content-light enforcement, malformed blocks refusal, nonexistent file refusal, path escape refusal, stale hash refusal, substrate parity",
+    "13 existing bridge tests remain passing (no regression)",
+    "Zero permissive callbacks added — proposal path is independent of the runtime/OpenCode execution path",
+    "Runtime dispatch, OpenCode bridge, ToolRuntime, and MUTATION_PROPOSAL mode mapping remain unchanged",
+    "Non-mutating proof: file unchanged after proposal; block computation via _apply_blocks() is pure (no I/O); after-hash computed from in-memory bytes not disk",
+    "PatchProposal persistence proof: proposals saved to .fleet/patch-proposals/ as valid JSON with status=pending",
+    "Baseline and dirty-guard proof: stale hash refusal on dirty files; protected file refusal without expected_before_sha256",
+    "Path safety proof: workspace escape refused; nonexistent file refused",
+    "Content-light proof: SearchReplaceProposalResult has no 'content' field and no 'changed_files' field; test verifies no SEARCH/REPLACE markers or raw text in serialized result"
+  ],
+  "intentionally_deferred_work": [
+    "MUTATION_PROPOSAL runtime routing — proposal admission policy does not yet exist. RuntimeToolExecutionRunner, OpenCode bridge, and tool_runtime_adapter execution-mode mapping remain unchanged.",
+    "Governance Composer proposal-admission policy — needed before proposals can be requested through the runtime path",
+    "Execution admission (signed action envelopes, profile unlock, approval) — separate concern deferred to post-composer",
+    "Local review diff artifact generation — PatchProposalArtifactRef infrastructure exists but diff computation is not yet wired",
+    "OpenCode bridge proposal routing — bridge routes through existing MUTATION_EXECUTION path, no change needed until proposal admission exists",
+    "Stage B built-in mutation denial",
+    "Stage C additional wrappers",
+    "Steward handoff correlation"
+  ],
+  "discovered_out_of_scope_risks": [
+    "after_hash computation uses in-memory sha256_file_bytes(candidate_bytes) — this works but differs from the existing _build_search_replace_result which reads sha256_file_bytes(file_path.read_bytes()) from disk after write. Both are valid hashes, just computed from different sources.",
+    "PatchProposal persistence requires coordination_root — in tests this is a temp dir; in production it would be .build/rig-relay/coordination/ or similar. The bridge does not currently provide this path.",
+    "The compute_proposal method lives on the SearchReplace tool class — this is appropriate because it reuses SearchReplace._apply_blocks(), _read_file(), _parse_search_replace_blocks(), and guard infrastructure. It could be extracted to a separate proposal module in the future."
+  ],
+  "remaining_seams": [
+    "Proposal admission policy must be designed before runtime routing is wired — currently no policy says 'proposal generation is allowed' (separate from 'execution is allowed')",
+    "MUTATION_PROPOSAL gate semantics must be defined — currently identical to MUTATION_EXECUTION except skipping Gate 1.7",
+    "RuntimeToolExecutionRunner and tool_runtime_adapter mode mapping remain unchanged — SEARCH_REPLACE still maps to MUTATION_EXECUTION (fail-closed)",
+    "OpenCode bridge still routes through existing execution path — no change needed until proposal admission exists",
+    "After-hash is computed from in-memory bytes — this is correct for proposals but different from the post-write disk read used by _build_search_replace_result. Both produce valid SHA-256 hashes of the same content."
+  ]
+}

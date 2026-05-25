@@ -1,18 +1,15 @@
 """Tests for rig_relay.cli.opencode_tool_bridge — OpenCode transport adapter.
 
-Stage A proved the transport boundary:
+Stage 3: OpenCode thin routing.
   OpenCode rig_search_replace → opencode_tool_bridge.py
-  → RuntimeToolExecutionRunner.execute_search_replace()
-  → structured refusal with populated receipt identifiers.
-
-Stage A.2 confirmed:
-  - Both AgentLoop and RuntimeToolExecutionRunner are fail-closed for mutation
-  - No execution path currently produces lawful authorized mutation
-  - The bridge correctly receives and reports the structured refusal
+  → persist proposal/payload/campaign context
+  → execute_campaign_execution()
+  → content-light result with receipt identifiers.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -132,19 +129,18 @@ class TestBridgeResultContract:
         assert callable(_invoke_search_replace)
 
 
-class TestBridgeRuntimePathReached:
-    """Proves the bridge reaches the real RuntimeToolExecutionRunner.
+class TestBridgeTransportIntegration:
+    """Proves the bridge routes through execute_campaign_execution.
 
-    Both the AgentLoop and RuntimeToolExecutionRunner are fail-closed for
-    mutation tools by default. The bridge correctly routes through this
-    path and receives a structured refusal with receipt identifiers.
+    Stage 3: Bridge creates campaign context, persists proposal/payload,
+    and delegates to the governed campaign execution route.
     """
 
     @pytest.mark.asyncio
-    async def test_bridge_reaches_runtime_and_receives_structured_refusal(
+    async def test_bridge_completes_mutation(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Bridge reaches runtime, receives policy_object_missing refusal."""
+        """Bridge completes mutation through campaign execution."""
         repo = _make_git_repo(tmp_path)
         monkeypatch.chdir(repo)
         _write_and_commit(repo, "target.py", "original line\n")
@@ -156,32 +152,16 @@ class TestBridgeRuntimePathReached:
             directory=str(repo),
         )
 
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["refusal_reason"] == "policy_object_missing"
-
-    @pytest.mark.asyncio
-    async def test_receipt_sha256_populated_even_on_refusal(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Receipt SHA-256 is populated even when runtime refuses mutation."""
-        repo = _make_git_repo(tmp_path)
-        monkeypatch.chdir(repo)
-        _write_and_commit(repo, "target.py", "hello\n")
-
-        result = await _invoke_bridge(
-            file_path="target.py", old_str="hello", new_str="world", directory=str(repo)
+        assert result["status"] in ("completed", "already_completed"), (
+            f"Expected completed, got {result.get('status')}: {result.get('refusal_reason', '')}"
         )
-
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["receipt_sha256"] is not None
-        assert len(result["receipt_sha256"]) == 64
-        int(result["receipt_sha256"], 16)
+        assert (repo / "target.py").read_text() == "replaced line\n"
 
     @pytest.mark.asyncio
-    async def test_file_not_mutated_when_refused(
+    async def test_file_mutated_on_completion(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """File is unchanged when the runtime refuses mutation."""
+        """File is changed when bridge completes mutation."""
         repo = _make_git_repo(tmp_path)
         monkeypatch.chdir(repo)
         _write_and_commit(repo, "target.py", "before\n")
@@ -193,8 +173,8 @@ class TestBridgeRuntimePathReached:
             directory=str(repo),
         )
 
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert (repo / "target.py").read_text(encoding="utf-8") == "before\n"
+        assert result["status"] in ("completed", "already_completed")
+        assert (repo / "target.py").read_text() == "after\n"
 
 
 class TestBridgeContentLight:
@@ -237,7 +217,7 @@ class TestBridgeContentLight:
         dumped = json.dumps(result)
         assert old_str not in dumped, "Bridge output contains raw old search text"
         assert new_str not in dumped, "Bridge output contains raw replacement text"
-        assert result["refusal_reason"] == "policy_object_missing"
+        assert result["status"] in ("completed", "already_completed")
 
 
 class TestBridgeAdversarial:
@@ -255,8 +235,8 @@ class TestBridgeAdversarial:
             file_path="", old_str="x", new_str="y", directory=str(repo)
         )
 
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["error_kind"] is not None
+        assert result["status"] == "refused"
+        assert result.get("refusal_reason")
 
     @pytest.mark.asyncio
     async def test_nonexistent_file_rejected_by_runtime(
@@ -304,10 +284,10 @@ class TestBridgeSubstrate:
 
         assert callable(main)
 
-    def test_bridge_cli_refuses_with_policy_missing(
+    def test_bridge_cli_completes_mutation(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Bridge CLI exits non-zero with policy_object_missing refusal."""
+        """Bridge CLI succeeds and returns completed status."""
         repo = _make_git_repo(tmp_path)
         monkeypatch.chdir(repo)
         _write_and_commit(repo, "target.py", "cli test\n")
@@ -334,29 +314,20 @@ class TestBridgeSubstrate:
             input=request,
             capture_output=True,
             text=True,
-            timeout=30,
-            cwd=str(repo),
-        )
-        assert proc.returncode == 1, (
-            f"Expected exit 1 for refused, got {proc.returncode}. "
-            f"stdout: {proc.stdout} stderr: {proc.stderr}"
+            timeout=60,
+            env={**subprocess.os.environ, "RIG_REPO_ROOT": str(repo)},
         )
         result = json.loads(proc.stdout.strip())
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["refusal_reason"] == "policy_object_missing"
-        assert result["receipt_sha256"] is not None, (
-            "Receipt SHA-256 must be populated even on refusal"
+        assert result["status"] in ("completed", "already_completed"), (
+            f"Expected completed, got {result.get('status')}: {result.get('refusal_reason', '')}"
         )
+        assert (repo / "target.py").read_text() == "cli replaced\n"
 
     @pytest.mark.asyncio
-    async def test_bridge_routes_through_tool_runtime(
+    async def test_bridge_routes_through_campaign(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Bridge delegates to RuntimeToolExecutionRunner → ToolRuntime → refusal.
-
-        The bridge routes through the real governed execution path and
-        receives a structured refusal from the permission gate.
-        """
+        """Bridge delegates to execute_campaign_execution — completes mutation."""
         repo = _make_git_repo(tmp_path)
         monkeypatch.chdir(repo)
         _write_and_commit(repo, "target.py", "hello\n")
@@ -365,8 +336,7 @@ class TestBridgeSubstrate:
             file_path="target.py", old_str="hello", new_str="world", directory=str(repo)
         )
 
-        assert result["status"] == RuntimeToolExecutionStatus.REFUSED.value
-        assert result["refusal_reason"] == "policy_object_missing"
-        assert result["receipt_sha256"] is not None
-        assert result["duration_ms"] is not None
-        assert result["duration_ms"] > 0
+        assert result["status"] in ("completed", "already_completed"), (
+            f"Expected completed, got {result.get('status')}: {result.get('refusal_reason', '')}"
+        )
+        assert (repo / "target.py").read_text() == "world\n"

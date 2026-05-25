@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 import os
@@ -25,7 +24,6 @@ from rig_relay.core.tools.base import (
     BaseToolConfig,
     BaseToolState,
     InvokeContext,
-    ToolError,
     ToolPermission,
 )
 from rig_relay.core.tools.determinism import (
@@ -484,8 +482,15 @@ class WriteFile(
 
         # ── Atomic write ──
         try:
-            await self._write_file(args, file_path)
-
+            await self._atomic_write_text(
+                file_path=file_path,
+                content=args.content,
+                encoding=args.content_encoding,
+            )
+        except OSError:
+            raise
+        except Exception:
+            raise
             after_sha256 = sha256_file_bytes(file_path.read_bytes())
             assert after_sha256 is not None  # file was just written
             after_bytes = file_path.stat().st_size
@@ -584,9 +589,136 @@ class WriteFile(
                     pass
             raise
 
-    async def _write_file(self, args: WriteFileArgs, file_path: Path) -> None:
-        """Write content atomically using same-directory temp file + os.replace()."""
+
+@dataclass(slots=True)
+class ApplyCandidateResult:
+    """Content-light result of applying a verified candidate mutation."""
+
+    operation_id: str = ""
+    canonical_path_identity: str = ""
+    actual_after_sha256: str | None = None
+    path_lock_acquired: bool = False
+    refusal_reason: str | None = None
+
+
+async def apply_verified_candidate(
+    *,
+    authority_root: Path,
+    coordination_lock_root: Path,
+    canonical_path_identity: str,
+    operational_file_path: Path,
+    expected_before_sha256: str,
+    candidate_content: bytes,
+    candidate_after_sha256: str,
+) -> ApplyCandidateResult:
+    """Guarded compare-and-write for an already-admitted candidate.
+
+    Acquires a per-canonical-path lock (stored under
+    ``coordination_lock_root``, NOT adjacent to source files),
+    verifies the dirty guard, confirms the current file hash equals
+    ``expected_before_sha256``, writes atomically via temp+rename,
+    and verifies the resulting hash equals ``candidate_after_sha256``.
+
+    Returns a content-light ``ApplyCandidateResult``. Never contains
+    raw source text, replacement content, or mutation payload bodies.
+    """
+    import hashlib
+    import os
+    import tempfile
+
+    from rig_relay.governance.dirty_guard import get_guard
+    from rig_relay.governance.dirty_guard import get_guard
+
+    resolved = operational_file_path.resolve()
+    try:
+        resolved.relative_to(authority_root.resolve())
+    except ValueError:
+        return ApplyCandidateResult(
+            canonical_path_identity=canonical_path_identity,
+            refusal_reason=(
+                f"operational path {resolved} is not under "
+                f"authority root {authority_root}"
+            ),
+        )
+
+    sha_prefix = "sha256:"
+    expected = (
+        expected_before_sha256[len(sha_prefix) :]
+        if expected_before_sha256.startswith(sha_prefix)
+        else expected_before_sha256
+    )
+    candidate = (
+        candidate_after_sha256[len(sha_prefix) :]
+        if candidate_after_sha256.startswith(sha_prefix)
+        else candidate_after_sha256
+    )
+
+    # Per-canonical-path lock — stored in coordination custody
+    lock_dir = coordination_lock_root / "path-locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock_name = hashlib.sha256(canonical_path_identity.encode("utf-8")).hexdigest()[:32]
+    lock_path = lock_dir / f"{lock_name}.lock"
+
+    fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT)
+    import fcntl
+
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    try:
+        guard = get_guard()
+        guard_check = guard.check_write_file(
+            resolved, allow_overwrite_protected=True, expected_before_sha256=expected
+        )
+        if not guard_check.allowed:
+            return ApplyCandidateResult(
+                canonical_path_identity=canonical_path_identity,
+                path_lock_acquired=True,
+                refusal_reason=(guard_check.reason or "dirty_guard_refused"),
+            )
+
+        current_bytes = resolved.read_bytes()
+        current_hash = hashlib.sha256(current_bytes).hexdigest()
+        if current_hash != expected:
+            return ApplyCandidateResult(
+                canonical_path_identity=canonical_path_identity,
+                path_lock_acquired=True,
+                refusal_reason=(
+                    f"expected hash {expected[:16]}..., got {current_hash[:16]}..."
+                ),
+            )
+
+        # Atomic write
+        fd_w, temp_str = tempfile.mkstemp(
+            dir=str(resolved.parent), prefix="." + resolved.name + "."
+        )
+        Path(temp_str)
         try:
-            await asyncio.to_thread(self._atomic_write_text, file_path, args.content)
-        except Exception as e:
-            raise ToolError(f"Error writing {file_path}: {e}") from e
+            os.write(fd_w, candidate_content)
+            os.fsync(fd_w)
+        finally:
+            os.close(fd_w)
+        os.replace(temp_str, str(resolved))
+
+        result_bytes = resolved.read_bytes()
+        result_hash = hashlib.sha256(result_bytes).hexdigest()
+        if result_hash != candidate:
+            return ApplyCandidateResult(
+                canonical_path_identity=canonical_path_identity,
+                path_lock_acquired=True,
+                refusal_reason=(
+                    f"after-write hash mismatch: "
+                    f"expected {candidate[:16]}..., "
+                    f"got {result_hash[:16]}..."
+                ),
+            )
+
+        return ApplyCandidateResult(
+            operation_id=hashlib.sha256(
+                f"{canonical_path_identity}:{expected}:{result_hash}".encode()
+            ).hexdigest()[:16],
+            canonical_path_identity=canonical_path_identity,
+            actual_after_sha256=f"{sha_prefix}{result_hash}",
+            path_lock_acquired=True,
+        )
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)

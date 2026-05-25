@@ -94,6 +94,10 @@ def to_execution_result(
         execution_status = RuntimeToolExecutionStatus.COMPLETED
     elif status_source == "success":
         execution_status = RuntimeToolExecutionStatus.COMPLETED
+    elif status_source == "pending_proposal_created":
+        execution_status = RuntimeToolExecutionStatus.COMPLETED
+    elif status_source == "pending_proposal_replayed":
+        execution_status = RuntimeToolExecutionStatus.COMPLETED
     elif status_source == "refused":
         execution_status = RuntimeToolExecutionStatus.REFUSED
     elif status_source == "blocked":

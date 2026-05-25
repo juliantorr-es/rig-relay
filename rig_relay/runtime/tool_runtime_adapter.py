@@ -19,6 +19,17 @@ from rig_relay.runtime.tool_invocation_adapter import (
 _MUTATION_TOOLS: frozenset[str] = frozenset({"search_replace", "write_file"})
 _SHELL_TOOLS: frozenset[str] = frozenset({"bash"})
 _READ_ONLY_TOOLS: frozenset[str] = frozenset({"validate"})
+_NON_WORKSPACE_MUTATING_PROPOSAL_TOOLS: frozenset[str] = frozenset({
+    "search_replace_proposal"
+})
+_COORDINATION_STATE_MUTATION_TOOLS: frozenset[str] = frozenset({
+    "create_pending_search_replace_proposal"
+})
+_ADMITTED_NON_EXECUTION_TOOLS: frozenset[str] = (
+    _READ_ONLY_TOOLS
+    | _NON_WORKSPACE_MUTATING_PROPOSAL_TOOLS
+    | _COORDINATION_STATE_MUTATION_TOOLS
+)
 
 
 @dataclass(frozen=True)
@@ -88,6 +99,10 @@ class RuntimeToolRuntimeAdapter:
                 return "validate"
             case RuntimeToolName.SEARCH_REPLACE:
                 return "search_replace"
+            case RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+                return "search_replace_proposal"
+            case RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+                return "create_pending_search_replace_proposal"
             case RuntimeToolName.WRITE_FILE:
                 return "write_file"
             case RuntimeToolName.BASH_LEGACY:
@@ -98,6 +113,10 @@ class RuntimeToolRuntimeAdapter:
     def _execution_mode(self, tool_name: RuntimeToolName) -> ToolRuntimeExecutionMode:
         if tool_name == RuntimeToolName.VALIDATE:
             return ToolRuntimeExecutionMode.READ_ONLY
+        if tool_name == RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+            return ToolRuntimeExecutionMode.MUTATION_PROPOSAL
+        if tool_name == RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+            return ToolRuntimeExecutionMode.MUTATION_PROPOSAL
         if tool_name in {RuntimeToolName.SEARCH_REPLACE, RuntimeToolName.WRITE_FILE}:
             return ToolRuntimeExecutionMode.MUTATION_EXECUTION
         if tool_name == RuntimeToolName.BASH_LEGACY:
@@ -107,6 +126,10 @@ class RuntimeToolRuntimeAdapter:
     def _mutation_class(self, tool_name: RuntimeToolName) -> str:
         if tool_name == RuntimeToolName.VALIDATE:
             return "read_only"
+        if tool_name == RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+            return "read_only"
+        if tool_name == RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+            return "coordination_state_mutation"
         if tool_name == RuntimeToolName.BASH_LEGACY:
             return "shell"
         return "filesystem_mutation"
@@ -114,36 +137,50 @@ class RuntimeToolRuntimeAdapter:
     def _determinism_class(self, tool_name: RuntimeToolName) -> str:
         if tool_name == RuntimeToolName.VALIDATE:
             return "deterministic"
+        if tool_name == RuntimeToolName.SEARCH_REPLACE_PROPOSAL:
+            return "deterministic"
+        if tool_name == RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL:
+            return "deterministic"
         if tool_name == RuntimeToolName.BASH_LEGACY:
             return "non_deterministic"
         return "deterministic_with_io"
 
     def _approval_required(self, tool_name: RuntimeToolName) -> bool:
-        return tool_name != RuntimeToolName.VALIDATE
+        return tool_name not in {
+            RuntimeToolName.VALIDATE,
+            RuntimeToolName.SEARCH_REPLACE_PROPOSAL,
+            RuntimeToolName.CREATE_PENDING_SEARCH_REPLACE_PROPOSAL,
+        }
 
     def _patch_proposal_required(self, tool_name: RuntimeToolName) -> bool:
         return tool_name in {RuntimeToolName.SEARCH_REPLACE, RuntimeToolName.WRITE_FILE}
 
     def build_policy(self) -> ToolRuntimePolicy:
-        """Build a ToolRuntimePolicy that enforces read/mutation separation.
+        """Build a static admission policy for the runtime adapter path.
 
-        Read-only tools (validate) are allowed. Mutation tools
-        (search_replace, write_file) and shell tools (bash) are
-        denied with ``policy_object_missing`` because the runtime
-        path has no governance/approval wired.
+        Genuinely read-only tools (validate) and proven non-workspace-mutating
+        proposal-computation tools (search_replace_proposal) are admitted.
+        Direct mutation execution (search_replace, write_file) and shell tools
+        (bash) remain refused with ``policy_object_missing`` because the
+        runtime path has no governance/approval wired for workspace mutation.
+
+        This is a bounded static admission policy, not the completed general
+        Governance Composer. Pending proposal persistence (durable
+        coordination-store write) and execution authorization remain separate
+        governed actions deferred to future slices.
         """
 
         async def _permission_decision(
             tool_name: str, args_dict: dict, call_id: str
         ) -> tuple[bool, str]:
-            if tool_name in _READ_ONLY_TOOLS:
+            if tool_name in _ADMITTED_NON_EXECUTION_TOOLS:
                 return True, ""
             return False, "policy_object_missing"
 
         async def _approval_request(
             tool_name: str, args_dict: dict, call_id: str
         ) -> tuple[bool, str]:
-            if tool_name in _READ_ONLY_TOOLS:
+            if tool_name in _ADMITTED_NON_EXECUTION_TOOLS:
                 return True, ""
             return False, "policy_object_missing"
 

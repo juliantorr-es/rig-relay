@@ -69,6 +69,7 @@ class CampaignCheckpointReceipt(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    schema_version: str = "rig.relay.campaign_checkpoint_receipt.v1"
     receipt_id: str = Field(min_length=1)
     campaign_id: str = Field(min_length=1)
     checkpoint_sequence: int = Field(ge=0)
@@ -81,6 +82,7 @@ class CampaignCheckpointReceipt(BaseModel):
     files_committed: list[str] = Field(default_factory=list)
     validation_status: str = Field(default="")
     event_hash: str = Field(default="")
+    recovery_reason: str | None = None
 
 
 class CampaignPushReceipt(BaseModel):
@@ -88,6 +90,7 @@ class CampaignPushReceipt(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    schema_version: str = "rig.relay.campaign_push_receipt.v1"
     receipt_id: str = Field(min_length=1)
     campaign_id: str = Field(min_length=1)
     push_sequence: int = Field(ge=0)
@@ -101,6 +104,8 @@ class CampaignPushReceipt(BaseModel):
     force_pushed: bool = False
     tags_pushed: bool = False
     manifest_digest: str = Field(min_length=1)
+    recovery_reason: str | None = None
+    expected_predecessor: str | None = None
 
 
 class CampaignState(BaseModel):

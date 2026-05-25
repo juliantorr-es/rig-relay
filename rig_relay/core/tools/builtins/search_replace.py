@@ -12,8 +12,6 @@ from typing import ClassVar, NamedTuple, final
 import anyio
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from rig_relay.coordination.patch_proposal import PatchProposal
-from rig_relay.coordination.patch_workflow import PatchWorkflowStore
 from rig_relay.coordination.store import CoordinationStore
 from rig_relay.core.guard import get_guard
 from rig_relay.core.rewind.manager import FileSnapshot
@@ -183,9 +181,8 @@ class SearchReplaceResult(BaseModel):
 class SearchReplaceProposalResult(BaseModel):
     """Content-light result of a non-mutating proposal computation.
 
-    Contains no raw file content, old/new text, SEARCH/REPLACE markers,
-    diffs, or secrets. Only metadata: hashes, block counts, status,
-    and an optional reference to a persisted PatchProposal artifact.
+    Contains no raw file content, SEARCH/REPLACE markers, diffs, or
+    secrets. Only metadata: hashes, block counts, and status.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -203,7 +200,6 @@ class SearchReplaceProposalResult(BaseModel):
     after_bytes: int = 0
     error_kind: str | None = None
     refusal_reason: str | None = None
-    proposal_id: str | None = None
     duration_ms: float | None = None
 
 
@@ -435,6 +431,180 @@ class SearchReplace(
             failed_block_count=total_block_count - block_result.applied,
             total_block_count=total_block_count,
         )
+
+    async def compute_proposal(
+        self, args: SearchReplaceArgs, ctx: InvokeContext | None = None
+    ) -> SearchReplaceProposalResult:
+        """Compute a non-mutating search_replace candidate.
+
+        Reads the target file through safe path containment, captures
+        baseline hash, validates dirty-state via the existing guard,
+        parses SEARCH/REPLACE blocks, and computes the candidate
+        after-state entirely in memory using _apply_blocks().
+
+        Does NOT write to the active workspace file and does NOT
+        persist any PatchProposal artifact. Proposal creation and
+        persistence is owned by the patch workflow/gating boundary
+        (rig_relay/coordination/).
+
+        The returned result is content-light: no raw file content,
+        SEARCH/REPLACE markers, or patch text — only hashes, block
+        counts, status, and duration.
+        """
+        start = time.monotonic()
+
+        pre = await self._prepare_proposal_input(args, start)
+        if isinstance(pre, SearchReplaceProposalResult):
+            return pre
+
+        file_path, before_hash, after_hash, block_result, repo_file_key = pre
+        total_block_count = len(self._parse_search_replace_blocks(args.content))
+        duration_ms = (time.monotonic() - start) * 1000
+
+        if block_result.errors:
+            error_kind = _classify_block_errors(block_result.errors)
+            return SearchReplaceProposalResult(
+                file=str(file_path),
+                status="refused",
+                blocks_applied=block_result.applied,
+                failed_block_count=total_block_count - block_result.applied,
+                total_block_count=total_block_count,
+                warnings=block_result.warnings,
+                before_file_sha256={repo_file_key: before_hash},
+                after_file_sha256={repo_file_key: before_hash},
+                error_kind=error_kind,
+                refusal_reason="SEARCH/REPLACE blocks failed:\n"
+                + "\n\n".join(block_result.errors),
+                duration_ms=duration_ms,
+            )
+
+        return SearchReplaceProposalResult(
+            file=str(file_path),
+            status="proposal_computed",
+            blocks_applied=block_result.applied,
+            failed_block_count=total_block_count - block_result.applied,
+            total_block_count=total_block_count,
+            warnings=block_result.warnings,
+            before_file_sha256={repo_file_key: before_hash},
+            after_file_sha256={repo_file_key: after_hash},
+            after_bytes=len(block_result.content.encode("utf-8")),
+            before_bytes=len(
+                self.get_file_snapshot_for_path(str(file_path)).content or b""
+            ),
+            duration_ms=duration_ms,
+        )
+
+    async def _prepare_proposal_input(
+        self, args: SearchReplaceArgs, start: float
+    ) -> tuple[Path, str, str, BlockApplyResult, str] | SearchReplaceProposalResult:
+        """Validate input and prepare for proposal computation.
+
+        Returns a tuple of (file_path, before_hash, after_hash,
+        block_result, repo_file_key) on success, or a refusal
+        SearchReplaceProposalResult on failure.
+        """
+        file_path = Path(args.file_path).resolve()
+        try:
+            file_path = require_path_within_workdir(file_path)
+        except (ValueError, OSError, ToolError) as exc:
+            return SearchReplaceProposalResult(
+                file=str(file_path),
+                status="refused",
+                error_kind="path_refused",
+                refusal_reason=str(exc),
+                duration_ms=(time.monotonic() - start) * 1000,
+            )
+
+        repo_file_key = self._repo_file_key(file_path)
+        snapshot_bytes = self.get_file_snapshot_for_path(str(file_path)).content
+        before_hash: str | None = (
+            sha256_file_bytes(snapshot_bytes) if snapshot_bytes else None
+        )
+        if not snapshot_bytes or before_hash is None:
+            return SearchReplaceProposalResult(
+                file=str(file_path),
+                status="refused",
+                error_kind="baseline_capture_failed",
+                refusal_reason=(
+                    "File snapshot content is None"
+                    if not snapshot_bytes
+                    else "Failed to compute before hash of target file"
+                ),
+                duration_ms=(time.monotonic() - start) * 1000,
+            )
+
+        guard = get_guard()
+        guard_result = guard.check_search_replace(
+            file_path, expected_before_sha256=args.expected_before_sha256
+        )
+        if not guard_result.allowed:
+            reason = guard_result.reason or "protected_file"
+            return SearchReplaceProposalResult(
+                file=str(file_path),
+                status="refused",
+                error_kind=reason,
+                refusal_reason=(
+                    "File is protected and expected_before_sha256 is missing "
+                    "or does not match current file bytes."
+                ),
+                before_file_sha256={repo_file_key: before_hash},
+                after_file_sha256={repo_file_key: before_hash},
+                before_bytes=len(snapshot_bytes),
+                after_bytes=len(snapshot_bytes),
+                duration_ms=(time.monotonic() - start) * 1000,
+            )
+
+        try:
+            decoded = await self._read_file(file_path)
+            blocks = self._parse_search_replace_blocks(args.content)
+        except (OSError, ValueError, ToolError) as exc:
+            error_kind = (
+                "block_parse_failed"
+                if isinstance(exc, ValueError)
+                else "file_read_failed"
+            )
+            return SearchReplaceProposalResult(
+                file=str(file_path),
+                status="refused",
+                error_kind=error_kind,
+                refusal_reason=str(exc),
+                before_file_sha256={repo_file_key: before_hash},
+                after_file_sha256={repo_file_key: before_hash},
+                before_bytes=len(snapshot_bytes),
+                after_bytes=len(snapshot_bytes),
+                duration_ms=(time.monotonic() - start) * 1000,
+            )
+
+        block_result = self._apply_blocks(
+            decoded.text,
+            blocks,
+            file_path,
+            self.config.fuzzy_threshold,
+            allow_multiple=args.allow_multiple,
+            expected_replacements=args.expected_replacements,
+        )
+
+        after_hash = before_hash
+        if not block_result.errors:
+            candidate_bytes = block_result.content.encode("utf-8")
+            ah = sha256_file_bytes(candidate_bytes)
+            if ah is None:
+                return SearchReplaceProposalResult(
+                    file=str(file_path),
+                    status="refused",
+                    error_kind="hash_computation_failed",
+                    refusal_reason=(
+                        "Failed to compute after hash of candidate content"
+                    ),
+                    before_file_sha256={repo_file_key: before_hash},
+                    after_file_sha256={},
+                    before_bytes=len(snapshot_bytes),
+                    after_bytes=len(candidate_bytes),
+                    duration_ms=(time.monotonic() - start) * 1000,
+                )
+            after_hash = ah
+
+        return (file_path, before_hash, after_hash, block_result, repo_file_key)
 
     async def _apply_search_replace(
         self,
@@ -1047,6 +1217,27 @@ class SearchReplace(
             result = result[:max_chars] + "\n...(diff truncated)"
 
         return result.rstrip()
+
+    @final
+    @staticmethod
+    def recompute_candidate(
+        mutation_content: str, original_content: str, file_path: Path
+    ) -> tuple[str, BlockApplyResult]:
+        """Public boundary for recomputing a candidate from payload content.
+
+        Uses the canonical search/replace parsing and application logic.
+        Returns (candidate_text, apply_result).
+        """
+        blocks = SearchReplace._parse_search_replace_blocks(mutation_content)
+        result = SearchReplace._apply_blocks(
+            original_content,
+            blocks,
+            file_path,
+            fuzzy_threshold=0.9,
+            allow_multiple=True,
+            expected_replacements=None,
+        )
+        return result.content, result
 
     @final
     @staticmethod

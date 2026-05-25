@@ -690,6 +690,8 @@ class ToolRuntime:
         expanded_args = self._expand_args(request.tool_args)
         expanded_args["_tool_runtime_name"] = tn
         expanded_args["_tool_runtime_call_id"] = cid
+        expanded_args["worktree_path"] = request.worktree_path
+        expanded_args["repo_root"] = request.workspace_root
         tool_events: list[Any] = []
         result_model = None
         start_time = asyncio.get_event_loop().time()

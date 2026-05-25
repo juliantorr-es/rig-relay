@@ -6,6 +6,7 @@ canonical Checkpoint tool. Does NOT implement independent git add/commit.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 from pathlib import Path
@@ -32,7 +33,7 @@ def issue_campaign_checkpoint_receipt(
     within approved scope.
     """
     receipt = {
-        "schema": "rig.relay.step_up_authorization_receipt.v1",
+        "schema_version": "rig.relay.step_up_authorization_receipt.v1",
         "action": "checkpoint.commit",
         "action_scope": {
             "campaign_id": extension.campaign_id,
@@ -45,7 +46,7 @@ def issue_campaign_checkpoint_receipt(
         "user_verified": True,
         "method": "campaign_manifest_authorized",
         "issued_at": int(time.time()),
-        "expires_at": int(time.time()) + 3600,
+        "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
         "receipt_id": hashlib.sha256(
             json.dumps(
                 {
@@ -107,3 +108,51 @@ def validate_campaign_checkpoint_request(
         return "checkpoint on main/master is prohibited"
 
     return None
+
+
+def persist_checkpoint_authorization_receipt(
+    auth_receipt: dict, campaign_id: str, root: Path
+) -> Path:
+    """Persist a checkpoint authorization receipt BEFORE commit.
+
+    Writes to ``checkpoint_authorization_receipts.v1.jsonl``, a
+    dedicated pre-commit ledger distinct from the terminal
+    ``checkpoint_receipts.v1.jsonl``.  Recovery uses this ledger to
+    reload the exact authorization receipt whose digest is embedded
+    in the checkpoint commit trailer.
+    """
+    ledger_dir = root / ".rig" / "relay" / "campaigns" / campaign_id
+    ledger_dir.mkdir(parents=True, exist_ok=True)
+    ledger_path = ledger_dir / "checkpoint_authorization_receipts.v1.jsonl"
+    record = {**auth_receipt, "outcome": "authorized", "commit_sha": ""}
+    with open(ledger_path, "a") as f:
+        f.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+    return ledger_path
+
+
+def load_latest_checkpoint_authorization_receipt(
+    campaign_id: str, root: Path
+) -> dict | None:
+    """Reload the most recent checkpoint authorization receipt.
+
+    Returns ``None`` if no authorization receipt has been persisted.
+    """
+    ledger_path = (
+        root
+        / ".rig"
+        / "relay"
+        / "campaigns"
+        / campaign_id
+        / "checkpoint_authorization_receipts.v1.jsonl"
+    )
+    if not ledger_path.exists():
+        return None
+    latest: dict | None = None
+    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            try:
+                latest = json.loads(line)
+            except json.JSONDecodeError:
+                pass
+    return latest
