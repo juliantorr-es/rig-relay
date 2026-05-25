@@ -169,6 +169,11 @@ def generate_validation_receipt(
     mission_id: str | None = None,
     claim_id: str | None = None,
     authority_provenance_sha256: str | None = None,
+    ignored_disposable_exclusion_categories: list[str] | None = None,
+    ignored_observable_candidate_count: int = 0,
+    ignored_disposable_count: int = 0,
+    unknown_ignored_count: int = 0,
+    observable_input_policy_version: str = "1.0",
 ) -> dict[str, Any]:
     """Generate a durable validation receipt bound to a preparation receipt."""
     from datetime import datetime
@@ -187,6 +192,12 @@ def generate_validation_receipt(
         "untracked_observation_status": untracked_observation_status,
         "observed_worktree_policy": observed_worktree_policy,
         "exclusion_categories": exclusion_categories or [],
+        "ignored_disposable_exclusion_categories": ignored_disposable_exclusion_categories
+        or [],
+        "ignored_observable_candidate_count": ignored_observable_candidate_count,
+        "ignored_disposable_count": ignored_disposable_count,
+        "unknown_ignored_count": unknown_ignored_count,
+        "observable_input_policy_version": observable_input_policy_version,
         "branch": branch,
         "worktree_root": worktree_root,
         "session_id": session_id,

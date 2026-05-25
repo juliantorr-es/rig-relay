@@ -164,6 +164,10 @@ class _ValidateProfileExecutionContext:
     scheduler_warnings: list[str]
     prepared_digest: str | None = None
     worktree_matched: bool | None = None
+    ignored_candidates: int = 0
+    ignored_observable_count: int = 0
+    ignored_disposable_count: int = 0
+    ignored_unknown_count: int = 0
 
 
 @dataclass(slots=True)
@@ -789,7 +793,7 @@ class Validate(
                 prepared.run.scheduler_store.release_lock(prepared.cache_key)
 
     def _check_preparation_binding(
-        self, args: ValidateArgs, cwd: str
+        self, args: ValidateArgs, cwd: str, out_ignored: dict[str, int] | None = None
     ) -> tuple[str | None, bool | None, tuple[str, str, str, str] | None]:
         """Check worktree/index delta for preparation-bound validation.
 
@@ -878,6 +882,12 @@ class Validate(
                     ),
                 )
 
+            # ── Tracking variables for ignored-file classification ──
+            _ignored_candidates = 0
+            _ignored_observable_count = 0
+            _ignored_disposable_count = 0
+            _ignored_unknown_count = 0
+
             # Check untracked files that may be observable by broad validators
             untracked_proc = _sp.run(
                 ["git", "ls-files", "--others", "--exclude-standard"],
@@ -922,6 +932,121 @@ class Validate(
                             "Remove, stage, or explicitly exclude untracked files before bound validation.",
                         ),
                     )
+
+            # ── Check ignored files that may be observable by broad validators ──
+            ignored_proc = _sp.run(
+                ["git", "ls-files", "--others", "--ignored", "--exclude-standard"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=str(cwd),
+            )
+            if ignored_proc.returncode == 0 and ignored_proc.stdout.strip():
+                ignored = [p for p in ignored_proc.stdout.strip().splitlines() if p]
+                # Classify ignored paths
+                _disposable_prefixes = (
+                    ".venv/",
+                    "node_modules/",
+                    "__pycache__/",
+                    ".pytest_cache/",
+                    ".mypy_cache/",
+                    ".ruff_cache/",
+                    ".tox/",
+                    ".eggs/",
+                    "build/",
+                    "dist/",
+                )
+                _observable_extensions = (
+                    ".py",
+                    ".ts",
+                    ".tsx",
+                    ".js",
+                    ".jsx",
+                    ".json",
+                    ".toml",
+                    ".yaml",
+                    ".yml",
+                    ".env",
+                    ".cfg",
+                    ".ini",
+                    ".sql",
+                    ".sh",
+                    ".bash",
+                )
+                disposable: list[str] = []
+                observable: list[str] = []
+                unknown: list[str] = []
+                for path in ignored:
+                    is_disposable = any(
+                        path.startswith(prefix) for prefix in _disposable_prefixes
+                    )
+                    if is_disposable:
+                        disposable.append(path)
+                    elif path.endswith(_observable_extensions):
+                        observable.append(path)
+                    else:
+                        unknown.append(path)
+
+                _MAX_IGNORED_SHOWN = 5
+                if observable:
+                    _ignored_observable_count = len(observable)
+                    shown = min(len(observable), _MAX_IGNORED_SHOWN)
+                    extra = (
+                        f" and {len(observable) - _MAX_IGNORED_SHOWN} more"
+                        if len(observable) > _MAX_IGNORED_SHOWN
+                        else ""
+                    )
+                    return (
+                        prepared_digest,
+                        None,
+                        (
+                            "refused",
+                            "ignored_observable_inputs_present",
+                            (
+                                f"Ignored files that validators can observe exist: "
+                                f"{', '.join(observable[:shown])}"
+                                + extra
+                                + ". These files are gitignored but may be imported "
+                                "or read during validation."
+                            ),
+                            "Remove, explicitly admit, or git-add these files before bound validation.",
+                        ),
+                    )
+                if unknown:
+                    _ignored_unknown_count = len(unknown)
+                    shown = min(len(unknown), _MAX_IGNORED_SHOWN)
+                    extra = (
+                        f" and {len(unknown) - _MAX_IGNORED_SHOWN} more"
+                        if len(unknown) > _MAX_IGNORED_SHOWN
+                        else ""
+                    )
+                    return (
+                        prepared_digest,
+                        None,
+                        (
+                            "refused",
+                            "unknown_ignored_inputs_present",
+                            (
+                                f"Unknown ignored files exist: "
+                                f"{', '.join(unknown[:shown])}"
+                                + extra
+                                + ". These files may be observed during validation. "
+                                "Classify or remove them before bound validation."
+                            ),
+                            "Classify, remove, or explicitly admit these files before bound validation.",
+                        ),
+                    )
+                # Only disposable ignored files — record in result
+                if disposable:
+                    _ignored_disposable_count = len(disposable)
+                    _ignored_candidates = len(disposable)
+
+            # ── Store classification data for receipt generation ──
+            if out_ignored is not None:
+                out_ignored["ignored_candidates"] = _ignored_candidates
+                out_ignored["ignored_observable_count"] = _ignored_observable_count
+                out_ignored["ignored_disposable_count"] = _ignored_disposable_count
+                out_ignored["ignored_unknown_count"] = _ignored_unknown_count
 
             return prepared_digest, True, None
         except Exception:
@@ -969,8 +1094,11 @@ class Validate(
         before_git_state = await _collect_git_state(run_context.cwd)
 
         # ── Bound validation: verify prepared paths match index ───
+        ignored_cls: dict[str, int] = {}
         prepared_digest_val, worktree_matched_val, refusal = (  # type: ignore[misc]
-            self._check_preparation_binding(args, run_context.cwd)
+            self._check_preparation_binding(
+                args, run_context.cwd, out_ignored=ignored_cls
+            )
         )
         if refusal is not None:
             refusal_result = ValidateResult(
@@ -1037,6 +1165,10 @@ class Validate(
             scheduler_warnings=run_context.scheduler_warnings,
             prepared_digest=prepared_digest_val,
             worktree_matched=worktree_matched_val,
+            ignored_candidates=ignored_cls.get("ignored_candidates", 0),
+            ignored_observable_count=ignored_cls.get("ignored_observable_count", 0),
+            ignored_disposable_count=ignored_cls.get("ignored_disposable_count", 0),
+            ignored_unknown_count=ignored_cls.get("ignored_unknown_count", 0),
         )
 
     async def _execute_validate_profile_run(
@@ -1092,7 +1224,26 @@ class Validate(
                         else overall_result.status
                     ),
                     worktree_matched_prepared_index=run.worktree_matched,
-                    untracked_observation_status="not_evaluated",
+                    untracked_observation_status=(
+                        "classified_disposable_only"
+                        if run.ignored_candidates == 0
+                        else f"classified_{run.ignored_candidates}_disposable_excluded"
+                    ),
+                    observed_worktree_policy=(
+                        "tracked_and_non_ignored_untracked_and_ignored_classified_v1"
+                    ),
+                    exclusion_categories=[
+                        "venv",
+                        "node_modules",
+                        "pycache",
+                        "pytest_cache",
+                        "mypy_cache",
+                        "ruff_cache",
+                        "tox",
+                        "eggs",
+                        "build",
+                        "dist",
+                    ],
                     branch=(run.before_git_state.branch if run.before_git_state else "")
                     or "",
                     worktree_root=run.cwd,

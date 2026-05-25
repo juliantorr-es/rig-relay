@@ -67,6 +67,7 @@ class InvokeContext:
     subprocess_runner: Any | None = field(default=None)
     trace_recorder: Any | None = field(default=None)
     tool_runtime: Any | None = field(default=None)
+    workspace_root: Path | None = field(default=None)
 
 
 class ToolError(Exception):

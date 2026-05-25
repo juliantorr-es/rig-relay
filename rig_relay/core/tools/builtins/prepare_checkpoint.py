@@ -110,7 +110,9 @@ class PrepareCheckpoint(
     ) -> AsyncGenerator[ToolStreamEvent | PrepareCheckpointResult, None]:
         from rig_relay.coordination.store import CoordinationStore
 
-        worktree_root = Path.cwd()
+        worktree_root = (
+            ctx.workspace_root.resolve() if ctx and ctx.workspace_root else Path.cwd()
+        )
 
         mission_auth = (
             getattr(ctx.tool_runtime, "_mission_authority", None) if ctx else None
@@ -253,7 +255,22 @@ class PrepareCheckpoint(
                 if persisted is not None:
                     receipt_sha256 = receipt["receipt_sha256"]
             except Exception:
-                pass  # Best-effort persistence; continue to return result
+                yield PrepareCheckpointResult(
+                    ok=False,
+                    receipt_sha256=None,
+                    pre_index_tree_digest=prep.pre_index_tree_digest,
+                    post_index_tree_digest=prep.post_index_tree_digest,
+                    prepared_paths=prep.prepared_paths,
+                    index_mutation_performed=prep.index_mutation_performed,
+                    refusal_reason="receipt_persistence_failed",
+                    error_kind="receipt_persistence_failed",
+                    suggested_next_action=(
+                        "Preparation receipt could not be persisted. "
+                        "The index may already be staged. Inspect git status "
+                        "and re-prepare if needed before checkpoint."
+                    ),
+                )
+                return
 
         result.receipt_sha256 = receipt_sha256
 

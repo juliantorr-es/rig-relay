@@ -165,6 +165,7 @@ class CockpitAPI:
         self._provider_windows: dict[str, Any] = {}
         self._runtime_config: dict[str, Any] | None = None
         self._opened_repo: Any = None
+        self._opened_checkout_id: str | None = None
 
         if mode == "fixture":
             self._agent_loop = None
@@ -545,7 +546,9 @@ class CockpitAPI:
 
             app_paths = RigApplicationPaths.for_production()
             service = RepositoryRegistrationService(app_paths)
-            registered = service.register_repository(self._opened_repo)
+            result = service.register_repository(self._opened_repo)
+            registered = result.repository
+            self._opened_checkout_id = result.source_checkout.checkout_id
 
             return {
                 "status": "registered",
@@ -573,13 +576,19 @@ class CockpitAPI:
                 "message": "No repository previewed. Open a repository first.",
             }
 
+        if self._opened_checkout_id is None:
+            return {
+                "status": "error",
+                "message": "Repository must be registered first. Use Register Repository.",
+            }
+
         try:
             from rig_relay.digestion.app_paths import RigApplicationPaths
             from rig_relay.digestion.registration import RepositoryRegistrationService
 
             app_paths = RigApplicationPaths.for_production()
             service = RepositoryRegistrationService(app_paths)
-            plan = service.plan_workspace(self._opened_repo)
+            plan = service.plan_workspace(self._opened_repo, self._opened_checkout_id)
 
             return {
                 "status": "planned",

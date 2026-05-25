@@ -160,7 +160,11 @@ class Checkpoint(
 
         tc = self._get_tc(ctx)
         store = CoordinationStore(self.config.store_root)
-        repo_root = Path.cwd().resolve()
+        repo_root = (
+            ctx.workspace_root.resolve()
+            if ctx and ctx.workspace_root
+            else Path.cwd().resolve()
+        )
         guard = get_guard()
         self._receipt_digest: str | None = None
 
@@ -596,6 +600,15 @@ class Checkpoint(
             )
             if result is not None:
                 return result
+
+        # ── Step 2.6: In autonomous mode, preparation receipts are mandatory ─
+        if not args.preparation_receipt_sha256:
+            return CheckpointResult(
+                ok=False,
+                message="Checkpoint refused: preparation receipt required for autonomous checkpoint",
+                refusal_reason="preparation_receipt_required",
+                error_kind="preparation_receipt_required",
+            )
 
         # Authorization gate for checkpoint commits
         action = "checkpoint.commit"

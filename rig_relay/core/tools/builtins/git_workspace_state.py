@@ -77,7 +77,7 @@ class GitWorkspaceStateResult(BaseModel):
     preparation_required: bool = False
     current_index_tree_digest: str | None = None
     preparation_receipt_status: str = "not_evaluated"  # absent, valid_index_match, stale_index_mismatch, invalid, not_evaluated
-    validation_binding_status: str = "not_evaluated"  # absent, valid_prepared_index_match, stale, not_required, not_evaluated
+    validation_binding_status: str = "not_evaluated"  # absent, valid_prepared_index_match, stale, not_required, not_evaluated, blocked_by_ignored_observable_input, blocked_by_untracked_observable_input, blocked_by_tracked_divergence
     checkpoint_authorization_evaluated: bool = False
     staged_paths: list[str] = Field(default_factory=list)
     unstaged_paths: list[str] = Field(default_factory=list)
@@ -433,7 +433,30 @@ def _build_result(
                 best = validation_receipts[0]
                 v_digest = best.get("prepared_index_tree_digest")
                 v_outcome = best.get("validation_outcome", "")
-                if v_outcome == "passed" and v_digest == current_digest:
+
+                # Check if validation was blocked by ignored inputs
+                ignored_obs = best.get("ignored_observable_candidate_count", 0)
+                unknown_ign = best.get("unknown_ignored_count", 0)
+                tracked_ok = best.get("tracked_divergence_status", "clean")
+
+                if ignored_obs > 0:
+                    validation_binding_status = "blocked_by_ignored_observable_input"
+                    suggested_next_action = (
+                        f"{ignored_obs} ignored observable input(s) exist. "
+                        "Remove, admit, or explicitly exclude them before bound validation."
+                    )
+                elif unknown_ign > 0:
+                    validation_binding_status = "blocked_by_ignored_observable_input"
+                    suggested_next_action = (
+                        f"{unknown_ign} unknown ignored file(s) exist. "
+                        "Classify or remove them before bound validation."
+                    )
+                elif (
+                    not tracked_ok
+                    or best.get("worktree_matched_prepared_index") is not True
+                ):
+                    validation_binding_status = "blocked_by_tracked_divergence"
+                elif v_outcome == "passed" and v_digest == current_digest:
                     validation_binding_status = "valid_prepared_index_match"
                     local_git_checkpoint_precheck = "checkpoint_candidate"
                     suggested_next_action = (
@@ -464,6 +487,10 @@ def _build_result(
         "valid_index_match": (
             "Prepared index is intact. Run bound validation "
             "(validate with preparation_receipt_sha256), then checkpoint."
+        ),
+        "blocked_by_ignored_observable_input": (
+            "Ignored files that validators can observe exist. "
+            "Remove, admit, or explicitly exclude them before bound validation."
         ),
         "stale_index_mismatch": (
             "Prepared index has changed since preparation. "

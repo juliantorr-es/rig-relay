@@ -7,6 +7,7 @@ Registration is idempotent; workspace planning produces only a plan.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
@@ -34,6 +35,14 @@ if TYPE_CHECKING:
     pass
 
 
+@dataclass(frozen=True)
+class RegistrationResult:
+    """Result of repository registration — repository and source checkout records."""
+
+    repository: RegisteredRepository
+    source_checkout: SourceCheckoutRecord
+
+
 class RepositoryRegistrationService:
     """Durable repository registration and workspace planning.
 
@@ -45,7 +54,7 @@ class RepositoryRegistrationService:
     def __init__(self, app_paths: RigApplicationPaths) -> None:
         self._app_paths = app_paths
 
-    def register_repository(self, intake_result: IntakeResult) -> RegisteredRepository:
+    def register_repository(self, intake_result: IntakeResult) -> RegistrationResult:
         """Register a repository from a preview intake result.
 
         Creates a durable RegisteredRepository and SourceCheckoutRecord
@@ -61,7 +70,7 @@ class RepositoryRegistrationService:
             intake_result: The preview intake result from RepositoryIntakeService.
 
         Returns:
-            The registered repository record.
+            A RegistrationResult with the repository and source checkout records.
         """
         repo = intake_result.repository
         picture = intake_result.operating_picture
@@ -94,7 +103,9 @@ class RepositoryRegistrationService:
                         )
                         repo_record.last_updated_at = now
                         self._save_repository(repo_record)
-                        return repo_record
+                        return RegistrationResult(
+                            repository=repo_record, source_checkout=c
+                        )
         else:
             # Local-only: search by correlation signals for rediscovery
             repo_id = ""  # placeholder
@@ -114,7 +125,9 @@ class RepositoryRegistrationService:
                         )
                         repo_record.last_updated_at = now
                         self._save_repository(repo_record)
-                        return repo_record
+                        return RegistrationResult(
+                            repository=repo_record, source_checkout=c
+                        )
 
         # No existing matching checkout found — create or update records
         if repo_record is None:
@@ -162,7 +175,7 @@ class RepositoryRegistrationService:
             raise RuntimeError(
                 f"Failed to load repository record for {repo_id} after saving"
             )
-        return result
+        return RegistrationResult(repository=result, source_checkout=checkout)
 
     def find_repository_by_correlation(
         self, path_digest: str, common_dir_digest: str | None
@@ -189,7 +202,7 @@ class RepositoryRegistrationService:
         return None
 
     def plan_workspace(
-        self, intake_result: IntakeResult, registered_checkout_id: str | None = None
+        self, intake_result: IntakeResult, source_checkout_id: str
     ) -> WorkspacePreparationPlan:
         """Produce a workspace preparation plan bound to registered state.
 
@@ -199,8 +212,8 @@ class RepositoryRegistrationService:
 
         Args:
             intake_result: The preview intake result.
-            registered_checkout_id: Optional known checkout ID. If None,
-                correlation search is performed from intake data.
+            source_checkout_id: Required checkout ID from registration.
+                Plan identity is derived exclusively from the registered checkout.
 
         Returns:
             A WorkspacePreparationPlan — no files are created, no git commands run.
@@ -227,73 +240,51 @@ class RepositoryRegistrationService:
                 ],
             )
 
-        # Resolve registered state
-        github_backed = is_github_backed(repo.remotes)
-        remote_digest = identity.remote_identity_digest
+        # Compute path digest from current intake for staleness check
         path_digest = identity.worktree_root_digest or _digest_text(str(repo.root_path))
-        git_root = resolve_git_worktree_root(Path(repo.root_path))
-        common_dir_digest = resolve_git_common_dir(git_root) if git_root else None
 
-        # Find or compute repository identity
-        checkout_record: SourceCheckoutRecord | None = None
-        repo_record: RegisteredRepository | None = None
-
-        if github_backed:
-            repo_id = generate_stable_repository_id(True, remote_digest)
-            repo_record = self._load_repository(repo_id)
-            if repo_record is not None and registered_checkout_id:
-                checkout_record = self._load_checkout(repo_id, registered_checkout_id)
-        else:
-            # Local-only: search by correlation signals
-            repo_record = self.find_repository_by_correlation(
-                path_digest, common_dir_digest
-            )
-            if repo_record is not None:
-                repo_id = repo_record.repository_id
-                if registered_checkout_id:
-                    checkout_record = self._load_checkout(
-                        repo_id, registered_checkout_id
-                    )
-
-        # Require registration before planning
-        if repo_record is None:
-            github_id = (
-                generate_stable_repository_id(True, remote_digest)
-                if github_backed
-                else ""
-            )
+        # Load the registered checkout
+        checkout_record = self._load_checkout_from_any_repo(source_checkout_id)
+        if checkout_record is None:
             return WorkspacePreparationPlan(
                 plan_id=plan_id,
-                repository_id=github_id if github_backed else "",
-                checkout_id="",
+                repository_id="",
+                checkout_id=source_checkout_id,
+                provider_eligibility="repository_registration_required",
+                branch_prefix="rig-mission",
+                generated_at=now,
+                warnings=["Source checkout not found. Register this checkout first."],
+            )
+
+        repo_id = checkout_record.repository_id
+        repo_record = self._load_repository(repo_id)
+        if repo_record is None:
+            return WorkspacePreparationPlan(
+                plan_id=plan_id,
+                repository_id=repo_id,
+                checkout_id=source_checkout_id,
                 provider_eligibility="repository_registration_required",
                 branch_prefix="rig-mission",
                 generated_at=now,
                 warnings=[
-                    "Repository must be registered before workspace planning. "
-                    "Use Register Repository first."
+                    "Registered repository not found. Re-register the repository."
                 ],
             )
 
-        repo_id = repo_record.repository_id
-
-        # If no specific checkout found from registration, use the first one
-        if checkout_record is None:
-            checkouts = self._list_checkouts(repo_id)
-            if checkouts:
-                checkout_record = checkouts[0]
-            else:
-                return WorkspacePreparationPlan(
-                    plan_id=plan_id,
-                    repository_id=repo_id,
-                    checkout_id="",
-                    provider_eligibility="repository_registration_required",
-                    branch_prefix="rig-mission",
-                    generated_at=now,
-                    warnings=[
-                        "No source checkout record found. Register this checkout first."
-                    ],
-                )
+        # Verify path digest match — guard against stale/moved checkouts
+        if checkout_record.last_observed_path_digest != path_digest:
+            return WorkspacePreparationPlan(
+                plan_id=plan_id,
+                repository_id=repo_id,
+                checkout_id=source_checkout_id,
+                provider_eligibility="stale_checkout_reference",
+                branch_prefix="rig-mission",
+                generated_at=now,
+                warnings=[
+                    "The current checkout path does not match the registered checkout. "
+                    "Re-register this checkout before planning."
+                ],
+            )
 
         # Git-backed repos: propose a managed worktree
         base_sha = repo.head_sha
@@ -408,6 +399,19 @@ class RepositoryRegistrationService:
             return SourceCheckoutRecord.model_validate(json.loads(path.read_text()))
         except Exception:
             return None
+
+    def _load_checkout_from_any_repo(
+        self, checkout_id: str
+    ) -> SourceCheckoutRecord | None:
+        """Load a checkout record from any repository directory."""
+        repos_root = self._app_paths.support_root / "repositories"
+        if not repos_root.is_dir():
+            return None
+        for repo_dir in repos_root.iterdir():
+            record = self._load_checkout(repo_dir.name, checkout_id)
+            if record is not None:
+                return record
+        return None
 
     def _save_repository(self, record: RegisteredRepository) -> None:
         path = self._repository_record_path(record.repository_id)

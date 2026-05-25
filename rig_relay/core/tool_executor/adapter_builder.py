@@ -97,6 +97,7 @@ class ToolRuntimeAdapterBuilder:
                     else None
                 ),
                 tool_runtime=loop._tool_runtime,
+                workspace_root=self._session_ctx.workspace_root,
             ),
             **args_dict,
         ):
