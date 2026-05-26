@@ -1,0 +1,103 @@
+{
+  "schema_version": "rig.relay.lane_l0_publication_verification.v1",
+  "audit_id": "audit_lane_l0_publication_verification_20260526",
+  "audit_kind": "publication_verification",
+  "supersedes": "docs/json/audits/context_engine/lane_l0_promotion_audit.v1.json (partial — pyproject.toml exclusion claim only; promotion audit preserved as immutable pre-promotion evidence)",
+  "lane": "L0",
+  "mission": "Context Engine and Developer Knowledge Assembly Corridor",
+
+  "published_sha": "52713fae5d3b63c7d2b9a2a7fd21dd580853e986",
+  "remote_predecessor": "6a41d09681327a2da6c8e68d4fa7f92f887e934a",
+  "published_branch": "main",
+  "published_at": "2026-05-26T23:15:00Z",
+
+  "implementation_boundary_published": "ProjectContextAssemblyService — provenance-bound project understanding, public-safe PublishableProjectProfileCandidate, private DeveloperCorpusIndex entries, and SanitizedContextPacket outputs from fixture-compatible intake and investigation inputs.",
+
+  "actual_promoted_file_set": {
+    "total_files": 17,
+    "includes_pyproject_toml": true,
+    "pyproject_toml_contents": "Five L0-specific ruff per-file-ignores for context_engine modules only. No parallel-lane (J0, M0, N0) pyproject.toml changes included.",
+    "files": [
+      "docs/schemas/rig.relay.project_understanding.v1.schema.json",
+      "docs/schemas/rig.relay.publishable_project_profile_candidate.v1.schema.json",
+      "docs/schemas/rig.relay.developer_corpus_index.v1.schema.json",
+      "docs/schemas/rig.relay.sanitized_context_packet.v1.schema.json",
+      "rig_relay/context_engine/__init__.py",
+      "rig_relay/context_engine/provenance.py",
+      "rig_relay/context_engine/models.py",
+      "rig_relay/context_engine/fixtures.py",
+      "rig_relay/context_engine/extractor.py",
+      "rig_relay/context_engine/redaction.py",
+      "rig_relay/context_engine/context_packet.py",
+      "rig_relay/context_engine/gridline_projection.py",
+      "rig_relay/context_engine/assembler.py",
+      "tests/context_engine/test_context_engine.py",
+      "docs/json/lane_l/lane_l0_project_context_assembly_final_report.v1.json",
+      "docs/json/audits/context_engine/lane_l0_promotion_audit.v1.json",
+      "pyproject.toml"
+    ]
+  },
+
+  "audit_contradiction_correction": {
+    "pre_promotion_audit_claim": "docs/json/audits/context_engine/lane_l0_promotion_audit.v1.json stated that pyproject.toml was excluded_from_promotion_set: true. The reasoning cited a concurrent parallel-lane change (rig_relay/integrations/github_provider/_developer_workspace.py per-file-ignore).",
+    "actual_published_reality": "The published commit 52713fae includes pyproject.toml with exactly five L0-specific PLR per-file-ignores. The parallel-lane _developer_workspace.py per-file-ignore was not present in the published file. The publication commit message accurately acknowledges the inclusion ('1 config: pyproject.toml (L0 ruff per-file-ignores only; parallel lane pyproject.toml changes excluded)').",
+    "supersession": "The pre-promotion audit's pyproject.toml exclusion statement is inaccurate relative to the actual promoted commit. It is superseded for publication truth by this verification artifact.",
+    "pre_promotion_audit_preserved": "The pre-promotion audit is preserved without modification as immutable evidence of the pre-promotion plan. Its other claims (fixture-backed J0/K0, E0 consumption, public/private safeguards, deterministic context proof, candidate_local status) remain accurate."
+  },
+
+  "pyproject_toml_plr_ignores": {
+    "count": 5,
+    "entries": [
+      "rig_relay/context_engine/assembler.py = [PLR]",
+      "rig_relay/context_engine/context_packet.py = [PLR]",
+      "rig_relay/context_engine/extractor.py = [PLR]",
+      "rig_relay/context_engine/gridline_projection.py = [PLR]",
+      "rig_relay/context_engine/redaction.py = [PLR]"
+    ],
+    "deferred_code_quality_debt": true,
+    "debt_note": "These five PLR ignores suppress Ruff pylint rules (too-many-branches, too-many-arguments, too-many-returns, etc.) that are standard tolerance across the Rig Relay codebase. They do not block the narrow released service boundary. A future quality/simplification pass may reduce method complexity and remove individual ignores.",
+    "not_a_blocker": true
+  },
+
+  "dependency_boundary_truth_at_publication_time": {
+    "J0_repository_intake": {
+      "status": "fixture_backed",
+      "live_consumption_deferred": true
+    },
+    "K0_investigation_evidence": {
+      "status": "fixture_backed",
+      "live_consumption_deferred": true,
+      "remote_published": "5381bdbcf169724b5000dc03bb60e405ef74c769"
+    },
+    "E0_frontend_contracts": {
+      "status": "consumed_from_published",
+      "real_consumption": true
+    },
+    "M0_local_inference": {
+      "status": "live_integration_deferred",
+      "remote_published": "6a41d09681327a2da6c8e68d4fa7f92f887e934a"
+    }
+  },
+
+  "no_implementation_change_in_this_correction": {
+    "implementation": false,
+    "schema": false,
+    "test": false,
+    "configuration": false,
+    "cross_lane_source": false,
+    "only_new_file": "docs/json/audits/context_engine/lane_l0_publication_verification.v1.json"
+  },
+
+  "freeze_declaration": {
+    "status": "frozen_pending_integration",
+    "freeze_identifier": "lane_l_project_context_assembly_and_publishable_profile_candidate_boundary_released_live_intake_operator_and_publication_integration_deferred_frozen_pending_gridline_integration",
+    "freeze_effective": "2026-05-26T23:15:00Z",
+    "freeze_condition": "Published at 52713fae on remote main. Implementation boundary verified on remote. Publication truth reconciled. Deferred seams documented. No blocking defects inside released boundary.",
+    "reopen_only_for": [
+      "Concrete defect inside the released ProjectContextAssemblyService boundary",
+      "Named integration milestone that consumes or extends L0 (e.g., E0 static compiler consuming PublishableProjectProfileCandidate, desktop Gridline integration, or J0/K0 live intake wiring)"
+    ]
+  },
+
+  "generated_at": "2026-05-26T23:15:00Z"
+}
