@@ -10,10 +10,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import hashlib
 import json
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.recovery.models import AdmittedToolEntry, CanonicalToolSurfaceManifest
+
+if TYPE_CHECKING:
+    from rig_relay.recovery.evidence_ledger import EvidenceLedger
 
 
 class ConstraintFeatureStatus(BaseModel):
@@ -27,7 +31,12 @@ class ConstraintFeatureStatus(BaseModel):
 
 
 class ConstraintCompilationReceipt(BaseModel):
-    """Receipt for one constraint compilation run."""
+    """Receipt for one constraint compilation run.
+
+    Carries per-tool canonical runtime-schema digests so execution
+    can prove the schema submitted to the runtime is the one the
+    receipt records. No raw schemas — only deterministic hashes.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -42,6 +51,7 @@ class ConstraintCompilationReceipt(BaseModel):
     tools_proposal_only: int = 0
     feature_statuses: list[ConstraintFeatureStatus] = Field(default_factory=list)
     constraint_artifact_digest: str = ""
+    tool_schema_digests: dict[str, str] = Field(default_factory=dict)
     receipt_digest: str = Field(default="", pattern=r"^sha256:[a-f0-9]{64}$")
 
 
@@ -105,6 +115,7 @@ def compile_constraints(
     tools_refused = 0
     tools_proposal_only = 0
     feature_statuses: list[ConstraintFeatureStatus] = []
+    tool_schema_digests: dict[str, str] = {}
 
     for entry in manifest.admitted_tools:
         tool_schema = _build_safe_schema(entry, feature_statuses)
@@ -118,6 +129,11 @@ def compile_constraints(
             "raw_shell_refuse",
         }:
             tools_proposal_only += 1
+
+        runtime_schema = _build_runtime_enforcement_schema(entry)
+        tool_schema_digests[entry.canonical_name] = _compute_runtime_schema_digest(
+            runtime_schema
+        )
 
     artifact = {
         "tools": [
@@ -142,6 +158,7 @@ def compile_constraints(
         tools_proposal_only=tools_proposal_only,
         feature_statuses=feature_statuses,
         constraint_artifact_digest=artifact_digest,
+        tool_schema_digests=tool_schema_digests,
     )
 
     receipt.receipt_digest = _compute_receipt_digest(receipt)
@@ -176,6 +193,36 @@ def _build_safe_schema(
     return safe
 
 
+def _build_runtime_enforcement_schema(entry: AdmittedToolEntry) -> dict[str, object]:
+    """Build the runtime-submitted enforcement JSON Schema for one tool.
+
+    This is the canonical schema that _build_constrained_prompt_schema
+    constructs — the exact JSON sent in Ollama's response_format.
+    The compiler records its digest so execution can verify binding.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "tool": {"type": "string", "const": entry.canonical_name},
+            "arguments": {
+                "type": "object",
+                "properties": {
+                    field: {"type": "string"} for field in entry.arg_field_names
+                },
+                "required": list(entry.arg_field_names),
+                "additionalProperties": False,
+            },
+        },
+        "required": ["tool", "arguments"],
+        "additionalProperties": False,
+    }
+
+
+def _compute_runtime_schema_digest(schema: dict[str, object]) -> str:
+    payload = json.dumps(schema, sort_keys=True, separators=(",", ":"))
+    return _sha256(payload)
+
+
 def _compute_receipt_digest(receipt: ConstraintCompilationReceipt) -> str:
     data = {
         "schema_version": receipt.schema_version,
@@ -188,6 +235,7 @@ def _compute_receipt_digest(receipt: ConstraintCompilationReceipt) -> str:
         "tools_refused_unsupported_features": receipt.tools_refused_unsupported_features,
         "tools_proposal_only": receipt.tools_proposal_only,
         "constraint_artifact_digest": receipt.constraint_artifact_digest,
+        "tool_schema_digests": receipt.tool_schema_digests,
     }
     payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
@@ -197,3 +245,83 @@ def _sha256(data: str | bytes) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")
     return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
+def persist_constraint_compilation_receipt(
+    receipt: ConstraintCompilationReceipt, ledger: EvidenceLedger
+) -> str:
+    """Persist a compilation receipt as content-light canonical evidence."
+
+    Validates the receipt schema (rejects if receipt_digest is empty or
+    tool_schema_digests are missing). Appends through the EvidenceLedger
+    with integrity binding. Returns the event_digest.
+
+    This is the durability boundary: after persistence, the receipt is
+    authoritative for native enforcement. Execution must load the canonical
+    receipt from the ledger, not accept an in-memory object.
+    """
+    if not receipt.receipt_digest:
+        raise ValueError("Cannot persist compilation receipt with empty receipt_digest")
+    if not receipt.tool_schema_digests:
+        raise ValueError(
+            "Cannot persist compilation receipt without tool_schema_digests"
+        )
+
+    event: dict[str, Any] = {
+        "schema_version": "rig.relay.tool_constraint_compilation_receipt.v1",
+        "compilation_id": receipt.compilation_id,
+        "created_at": receipt.created_at,
+        "manifest_digest": receipt.manifest_digest,
+        "target_profile": receipt.target_profile,
+        "tools_total": receipt.tools_total,
+        "tools_fully_representable": receipt.tools_fully_representable,
+        "tools_refused_unsupported_features": receipt.tools_refused_unsupported_features,
+        "tools_proposal_only": receipt.tools_proposal_only,
+        "tool_schema_digests": dict(receipt.tool_schema_digests),
+        "constraint_artifact_digest": receipt.constraint_artifact_digest,
+        "receipt_digest": receipt.receipt_digest,
+    }
+
+    return ledger.append_event(event)
+
+
+def load_canonical_constraint_receipt(
+    ledger: EvidenceLedger,
+) -> ConstraintCompilationReceipt | None:
+    """Load the canonical compilation receipt from durable evidence.
+
+    Reads the last schema-valid receipt from the ledger. Returns None
+    if no receipt has been persisted or the ledger is unavailable.
+
+    The returned receipt carries its tool_schema_digests, receipt_digest,
+    and manifest_digest — all integrity-verified by the ledger.
+    """
+    events = ledger.load_events()
+    if not events:
+        return None
+
+    for event in reversed(events):
+        if event.get("schema_version") != (
+            "rig.relay.tool_constraint_compilation_receipt.v1"
+        ):
+            continue
+        try:
+            return ConstraintCompilationReceipt(
+                compilation_id=event["compilation_id"],
+                created_at=event.get("created_at", ""),
+                manifest_digest=event["manifest_digest"],
+                target_profile=event["target_profile"],
+                tools_total=event.get("tools_total", 0),
+                tools_fully_representable=event.get("tools_fully_representable", 0),
+                tools_refused_unsupported_features=event.get(
+                    "tools_refused_unsupported_features", 0
+                ),
+                tools_proposal_only=event.get("tools_proposal_only", 0),
+                tool_schema_digests=event.get("tool_schema_digests", {}),
+                constraint_artifact_digest=event.get("constraint_artifact_digest", ""),
+                receipt_digest=event["receipt_digest"],
+            )
+        except Exception:
+            continue
+
+    return None

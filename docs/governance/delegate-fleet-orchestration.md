@@ -65,6 +65,8 @@ The **reviewer/orchestrator** is the responsible parent agent. It:
 6. Updates the work queue (mark completed, advance dependencies, add new items).
 7. Decides next action: continue dispatching, request human review, or propose push.
 
+When two or more read-side or application-service boundaries are published and frozen, the next authorized work SHOULD preferentially be a named integration milestone that exposes those boundaries through the desktop Gridline Interface or an approved static publication surface. The reviewer MUST NOT continue opening isolated substrate expansion missions solely because adjacent backend opportunities remain available when the product can already consume released boundaries.
+
 The reviewer **does not edit files directly**. It **does not run arbitrary shell commands**.
 It orchestrates through typed artifacts only.
 
@@ -160,6 +162,18 @@ Human oversight is the authority boundary:
   presents the evidence.
 - The reviewer never bypasses Git policy or dirty-file guard.
 
+### Release Boundary Declaration
+
+Every child result and parent convergence report MUST clearly distinguish:
+
+1. The released boundary.
+2. The stated consumer purpose.
+3. Deferred seams.
+4. Blocking defects that make the released boundary unsafe or false.
+5. Freeze status.
+
+The report MUST NOT describe a deferred seam as a blocker unless the seam invalidates the released boundary. The report MUST NOT declare a lane released while its tracked audit or canonical status artifact still says `candidate_local` or `blocked_release`.
+
 ### Validation Stages
 
 Work items pass through validation stages:
@@ -169,6 +183,12 @@ Work items pass through validation stages:
 3. **Queue validation**: Dependencies, item status, and parallelism policy are checked.
 4. **Execution validation**: Child runs validation commands on completion.
 5. **Convergence validation**: Parent aggregates child results and decides next action.
+
+### Boundary-Scoped Review Rule
+
+When reviewing a lane completion claim, reject the claim only for defects that falsify the explicitly released boundary, its stated consumer purpose, its canonical evidence contract, or its publication truth.
+Do not demand new upstream contracts, downstream integrations, stronger capability classes, UI wiring, transport replacement, or new query/report features unless the lane explicitly claims them or their absence makes the released boundary unsafe.
+When a worthwhile issue is outside the claimed boundary, record it as a deferred integration requirement and allow the lane to close if its narrow release is truthful.
 
 ### Pending Work Queue
 

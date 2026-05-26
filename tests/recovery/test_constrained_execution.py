@@ -11,6 +11,7 @@ from rig_relay.recovery.constrained_execution import (
     execute_constrained_recovery,
 )
 from rig_relay.recovery.constraint_compiler import ConstraintCompilationReceipt
+from rig_relay.recovery.evidence_ledger import EvidenceLedger
 from rig_relay.recovery.models import CanonicalToolSurfaceManifest
 
 
@@ -70,6 +71,11 @@ def _make_constraint_receipt() -> ConstraintCompilationReceipt:
         tools_total=3,
         tools_fully_representable=3,
         constraint_artifact_digest=_sha256("test-artifact"),
+        tool_schema_digests={
+            "read_file": "sha256:f56995d814dcfa04d98b3f918206163fa37f4ea8c4f56076445a4cbffb21f21e",
+            "write_file": "sha256:d73bc6b63e0f10b521bc84303472f48140d1eafe58114058bc18c9cc5ab64e7a",
+            "search_replace": "sha256:f520e35db507566e5c7f1b1af991fe043cb9819fd1c6a4b3b3e9cddc28d85b69",
+        },
         receipt_digest=_sha256("comp-receipt"),
     )
 
@@ -291,3 +297,245 @@ def test_evidence_ledger_integrity_after_execution(tmp_path: Path) -> None:
 
     count = ledger.count_events()
     assert count == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.provider
+async def test_native_schema_enforcement_falsification_proof() -> None:
+    """Prove native JSON Schema enforcement (not merely cooperation).
+
+    Sends a schema with const='read_file' but prompts the model to
+    generate a write_file call. If enforcement is real, the runtime
+    grammar-level constraint forces the output to respect const.
+
+    Also verifies that additionalProperties:false and required fields
+    are enforced even when the prompt asks for a different shape.
+    """
+    try:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=5.0) as c:
+            r = await c.get("http://localhost:11434/api/tags")
+            if r.status_code != 200:
+                pytest.skip("Ollama not reachable")
+    except Exception:
+        pytest.skip("Ollama not reachable")
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "tool": {"type": "string", "const": "read_file"},
+            "arguments": {
+                "type": "object",
+                "properties": {"file_path": {"type": "string"}},
+                "required": ["file_path"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["tool", "arguments"],
+        "additionalProperties": False,
+    }
+
+    payload = {
+        "model": "qwen2.5:0.5b",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a tool call generator. Output valid JSON only.",
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Generate a tool call for write_file tool, which writes "
+                    "content to a file at a specified path. Output valid JSON only."
+                ),
+            },
+        ],
+        "max_tokens": 100,
+        "temperature": 0.0,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "recovery", "schema": schema, "strict": True},
+        },
+        "stream": False,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            "http://localhost:11434/v1/chat/completions", json=payload
+        )
+
+    body = r.json()
+    content = body["choices"][0]["message"]["content"]
+    parsed = json.loads(content)
+
+    assert parsed["tool"] == "read_file", (
+        f"Enforcement failure: prompt asked for write_file, schema const "
+        f"requires read_file, but output tool is {parsed.get('tool')!r}"
+    )
+
+    extra_keys = [k for k in parsed if k not in ("tool", "arguments")]
+    assert len(extra_keys) == 0, (
+        f"additionalProperties failure: schema forbids extra keys, "
+        f"but output has {extra_keys}"
+    )
+
+    assert "file_path" in parsed.get("arguments", {}), (
+        "required field failure: schema requires file_path in arguments"
+    )
+
+
+@pytest.mark.asyncio
+async def test_refuse_when_canonical_receipt_not_in_ledger(tmp_path: Path) -> None:
+    from rig_relay.recovery.constraint_compiler import (
+        persist_constraint_compilation_receipt,
+    )
+
+    ledger = EvidenceLedger(tmp_path / "receipts.jsonl")
+    _ = persist_constraint_compilation_receipt(_CONSTRAINT_RECEIPT, ledger)
+
+    request = ConstrainedExecutionRequest(
+        execution_id="test-no-canonical",
+        manifest_digest=_MANIFEST.manifest_digest,
+        constraint_receipt_digest="sha256:" + ("ff" * 32),
+        target_tool_name="read_file",
+        endpoint_url="http://localhost:11434",
+        runtime_kind="ollama",
+        model_name="qwen2.5:0.5b",
+    )
+
+    result = await execute_constrained_recovery(
+        request,
+        _MANIFEST,
+        _CONSTRAINT_RECEIPT,
+        constraint_receipt_ledger_path=tmp_path / "nonexistent.jsonl",
+        runtime_available=True,
+    )
+
+    assert result.execution_status == "refused"
+    assert result.refusal_code == "canonical_compilation_receipt_not_found"
+
+
+@pytest.mark.asyncio
+async def test_refuse_when_supplied_receipt_differs_from_canonical(
+    tmp_path: Path,
+) -> None:
+    from rig_relay.recovery.constraint_compiler import (
+        persist_constraint_compilation_receipt,
+    )
+
+    ledger = EvidenceLedger(tmp_path / "receipts.jsonl")
+    persisted_event_id = persist_constraint_compilation_receipt(
+        _CONSTRAINT_RECEIPT, ledger
+    )
+    assert persisted_event_id
+
+    modified_receipt = ConstraintCompilationReceipt(
+        compilation_id="comp_different",
+        manifest_digest=_MANIFEST.manifest_digest,
+        target_profile="json_schema_safe",
+        tools_total=3,
+        tools_fully_representable=3,
+        constraint_artifact_digest=_sha256("different-artifact"),
+        tool_schema_digests={"read_file": _sha256("different-schema")},
+        receipt_digest=_sha256("different-receipt"),
+    )
+
+    request = ConstrainedExecutionRequest(
+        execution_id="test-mismatch",
+        manifest_digest=_MANIFEST.manifest_digest,
+        constraint_receipt_digest=modified_receipt.receipt_digest,
+        target_tool_name="read_file",
+        endpoint_url="http://localhost:11434",
+        runtime_kind="ollama",
+        model_name="qwen2.5:0.5b",
+    )
+
+    result = await execute_constrained_recovery(
+        request,
+        _MANIFEST,
+        modified_receipt,
+        constraint_receipt_ledger_path=tmp_path / "receipts.jsonl",
+        runtime_available=True,
+    )
+
+    assert result.execution_status == "refused"
+    assert "does not match" in (result.execution_error or "")
+
+
+def test_evidence_ledger_supports_receipt_persistence(tmp_path: Path) -> None:
+    from rig_relay.recovery.constraint_compiler import (
+        load_canonical_constraint_receipt,
+        persist_constraint_compilation_receipt,
+    )
+
+    ledger = EvidenceLedger(tmp_path / "receipts.jsonl")
+
+    event_digest = persist_constraint_compilation_receipt(_CONSTRAINT_RECEIPT, ledger)
+    assert event_digest.startswith("sha256:")
+
+    loaded = load_canonical_constraint_receipt(ledger)
+    assert loaded is not None
+    assert loaded.receipt_digest == _CONSTRAINT_RECEIPT.receipt_digest
+    assert loaded.tool_schema_digests == _CONSTRAINT_RECEIPT.tool_schema_digests
+    assert loaded.manifest_digest == _CONSTRAINT_RECEIPT.manifest_digest
+
+
+def test_empty_ledger_returns_none(tmp_path: Path) -> None:
+    from rig_relay.recovery.constraint_compiler import load_canonical_constraint_receipt
+
+    ledger = EvidenceLedger(tmp_path / "empty.jsonl")
+    result = load_canonical_constraint_receipt(ledger)
+    assert result is None
+
+
+def test_receipt_persistence_rejects_missing_tool_schema_digests(
+    tmp_path: Path,
+) -> None:
+    from rig_relay.recovery.constraint_compiler import (
+        persist_constraint_compilation_receipt,
+    )
+
+    receipt = ConstraintCompilationReceipt(
+        compilation_id="comp-no-schemas",
+        manifest_digest=_MANIFEST.manifest_digest,
+        target_profile="json_schema_safe",
+        tools_total=1,
+        constraint_artifact_digest=_sha256("test"),
+        receipt_digest=_sha256("test-receipt"),
+    )
+
+    ledger = EvidenceLedger(tmp_path / "receipts.jsonl")
+    with pytest.raises(ValueError, match="tool_schema_digests"):
+        persist_constraint_compilation_receipt(receipt, ledger)
+
+
+def test_receipt_persistence_rejects_empty_digest(tmp_path: Path) -> None:
+    from rig_relay.recovery.constraint_compiler import (
+        persist_constraint_compilation_receipt,
+    )
+
+    receipt = ConstraintCompilationReceipt(
+        compilation_id="comp-no-digest",
+        manifest_digest=_MANIFEST.manifest_digest,
+        target_profile="json_schema_safe",
+        tools_total=1,
+        tool_schema_digests={"read_file": _sha256("s")},
+        constraint_artifact_digest=_sha256("test"),
+        receipt_digest=_sha256("temp"),  # valid pattern, cleared below
+    )
+    receipt.receipt_digest = ""
+
+    ledger = EvidenceLedger(tmp_path / "receipts.jsonl")
+    with pytest.raises(ValueError, match="empty receipt_digest"):
+        persist_constraint_compilation_receipt(receipt, ledger)
+
+
+def test_corrupt_ledger_line_does_not_load_receipt(tmp_path: Path) -> None:
+    from rig_relay.recovery.constraint_compiler import load_canonical_constraint_receipt
+
+    ledger = EvidenceLedger(tmp_path / "corrupt.jsonl")
+    ledger.append_event({"garbage": True, "schema_version": "wrong"})
+
+    result = load_canonical_constraint_receipt(ledger)
+    assert result is None

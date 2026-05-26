@@ -32,9 +32,9 @@ dependencies = [
   "google-auth>=2.0.0",
   "google-auth-oauthlib>=1.0.0",
   "httpx>=0.28.1",
-    "jinja2>=3.1.0",
-    "jsonpatch>=1.33",
-    "keyring>=25.6.0",
+  "jinja2>=3.1.0",
+  "jsonpatch>=1.33",
+  "keyring>=25.6.0",
   "markdownify>=1.2.2",
   "mcp>=1.14.0",
   "mistralai==2.4.4",
@@ -66,6 +66,8 @@ dependencies = [
   "pyrefly>=0.64.0",
   "ast-grep-py>=0.42.1",
   "platformdirs>=4.9.6",
+  "youtube-transcript-api>=1.2.4",
+  "curl-cffi>=0.15.0",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,163 @@
+{
+  "schema_version": "rig.relay.lane_a_audit.v1",
+  "audit_id": "lane-a7.1-disclosure-evidence-admission-hardening",
+  "title": "Lane A7.1 — Canonical Disclosure Evidence Admission Closure and Query-Service Adversarial Hardening",
+  "branch": "main",
+  "predecessor_sha": "d8c636b9562cf1ea3bf44fc1843f0b1a4db89d50",
+  "predecessor_sha_verified_remote": true,
+  "current_head_before_repair": "f03a11d727e7b7f7c4b8c2fda04634bbf90ddb80",
+  "overclaimed_status": "lane_a_a7_complete_and_safe_for_downstream_consumption",
+  "truthful_pre_repair_status": "lane_a_a7_disclosure_query_candidate_or_published_projection_present_canonical_transition_append_schema_admission_and_release_truth_open",
+  "overclaim_nature": "The A7 completion claim asserted that A6 survived claim-adversary verification when the following defects were present in the promoted code",
+  "overclaim_detailed": {
+    "defect_1": "No jsonschema validation at _append_transition_event — canonical transition evidence was appended without fail-closed schema admission. Schema compliance was asserted as documentation, not enforced at the append boundary.",
+    "defect_2": "recover_disclosure_transition() set recovery_detail in-memory on the COMPLETED step but did not persist it through the advance_transition call, making recovery provenance invisible to the ledger and downstream read-side projections.",
+    "defect_3": "DisclosureQueryResult._seal_result() included generated_at in its digest computation, making projection digests non-deterministic across identical evidence reads.",
+    "defect_4": "recover_disclosure_transition() read _last_event_for_auth() outside the exclusive transition lock, creating a stale-read race window where concurrent recovery processes could produce duplicate COMPLETED events for the same transition."
+  },
+  "repairs_applied": {
+    "schema_enforced_admission": {
+      "module": "rig_relay/governance/disclosure_transition.py",
+      "changes": [
+        "Added jsonschema import with graceful None fallback",
+        "Added _load_transition_schema() — loads v2 schema from module-relative path, caches, hard-refuses on missing/bad schema",
+        "Added _validate_transition_event() — jsonschema.validate() before append, fail-closed",
+        "Added _jsonschema_validate() — thin wrapper for pyright type safety",
+        "Modified _append_transition_event() — calls _validate_transition_event() before durable write",
+        "Added _validate_disclosure_event() — content-light structural check for disclosure events (no governing schema published yet for rig.relay.disclosure_event.v1; admission validates metadata and content-light guarantee)",
+        "Modified _persist_disclosure_event_durable() — calls _validate_disclosure_event() before durable append",
+        "Updated evidence_digest schema pattern from '^sha256:[a-f0-9]{64}$' to '^(sha256:)?[a-f0-9]{64}$' to accept production raw-hex hashes"
+      ]
+    },
+    "recovery_provenance_persistence": {
+      "module": "rig_relay/governance/disclosure_transition.py",
+      "changes": [
+        "recover_disclosure_transition() COMPLETED step now passes recovery_detail='recovered_and_completed' through advance_transition() rather than setting it in-memory only"
+      ]
+    },
+    "deterministic_query_digest": {
+      "module": "rig_relay/governance/disclosure_query.py",
+      "changes": [
+        "_seal_result() now excludes both 'query_digest' and 'generated_at' from digest computation"
+      ]
+    },
+    "concurrent_recovery_race_fix": {
+      "module": "rig_relay/governance/disclosure_transition.py",
+      "changes": [
+        "Added post-lock re-read of _last_event_for_auth() inside recover_disclosure_transition() to detect competing concurrent completions and return idempotently"
+      ]
+    }
+  },
+  "test_proofs_exercised": [
+    "Uninterrupted disclosure with schema-validated append, query service projection",
+    "Crash-recovery from AUTHORIZATION_CONSUMED window with recovered_and_completed provenance",
+    "Concurrent recovery convergence — one COMPLETED authority, post-lock re-read prevents duplicates",
+    "Protected-content S_ string-literal exclusion with production bundle/manifest",
+    "Corrupt manifest refusal vocabulary",
+    "Schema admission refusal — wrong schema_version (v1) rejected before append, ledger unchanged",
+    "Schema admission refusal — missing required field rejected before append, ledger unchanged",
+    "Schema admission refusal — extra property rejected before append, ledger unchanged",
+    "Schema admission refusal — invalid transition_id pattern rejected, ledger unchanged",
+    "Query service excludes evidence refused at admission boundary",
+    "Recovery provenance visible from fresh process reading only the ledger (real subprocess probe)",
+    "Query service non-mutation: transition and disclosure-event ledger bytes unchanged after all query operations",
+    "Deterministic projection digest over identical canonical evidence",
+    "Schema version and content-light guarantee in query output",
+    "Empty ledger graceful handling",
+    "Status filtering correctness",
+    "list_by_status convenience function",
+    "Original CLI argparse → main() → disclose production path"
+  ],
+  "tests_run": 54,
+  "tests_passed": 54,
+  "tests_failed": 0,
+  "validation_results": {
+    "ruff": "All checks passed on Lane A files",
+    "pyright": "0 errors, 0 warnings, 0 informations on Lane A files",
+    "schema_validation": "455/456 passed (1 pre-existing unrelated fleet_coordination error)",
+    "disclosure_schemas": {
+      "disclosure_authorization_receipt.v1": "valid",
+      "disclosure_operations_report.v1": "valid",
+      "disclosure_query_projection.v1": "valid",
+      "disclosure_transition_event.v2": "valid (evidence_digest pattern relaxed)"
+    }
+  },
+  "disclosure_event_authority": {
+    "status": "transition_events_canonical_schema_validated, disclosure_events_content_validated_no_schema_published",
+    "explanation": "Disclosure events carry schema_version 'rig.relay.disclosure_event.v1' but no governing JSON Schema has been published for this event domain. The append boundary validates metadata completeness and content-light guarantee but cannot perform jsonschema.validate(). If disclosure events are intended as canonical evidence for their domain, a JSON Schema must be published and enforced."
+  },
+  "pyproject_toml_collision_check": {
+    "status": "no_collision",
+    "lane_a_entries": [
+      "rig_relay/governance/disclosure_transition.py = ['PLR']",
+      "rig_relay/governance/disclosure_operations_report.py = ['PLR0914']",
+      "rig_relay/governance/disclosure_query.py = ['PLR']",
+      "rig_relay/governance/disclosure_authorization.py = ['PLR0911']"
+    ],
+    "no_new_entries_required": true,
+    "justification": "All Lane A PLR ignores pre-exist on remote. No debt added by this repair."
+  },
+  "files_changed": [
+    "rig_relay/governance/disclosure_transition.py",
+    "rig_relay/governance/disclosure_query.py",
+    "tests/governance/test_disclosure_transition_concurrency.py",
+    "tests/governance/test_disclosure_query.py",
+    "docs/schemas/rig.relay.disclosure_transition_event.v2.schema.json"
+  ],
+  "files_untouched": [
+    "rig_relay/governance/disclosure_operations_report.py",
+    "rig_relay/review_projection/*",
+    "pyproject.toml"
+  ],
+  "claim_adversary_pass": {
+    "falsifiers_attempted": [
+      {
+        "falsifier": "Can a malformed transition event still be persisted through any production append path?",
+        "result": "DEFEATED — wrong-version, missing-field, extra-property, and invalid-transition-id events are refused with jsonschema.ValidationError before the durable write. Ledger is verified byte-for-byte unchanged."
+      },
+      {
+        "falsifier": "Can schema-validation unavailability result in evidence append?",
+        "result": "DEFEATED — missing schema file or unavailable jsonschema raises RuntimeError before any append."
+      },
+      {
+        "falsifier": "Can the query service show a transition that was never admitted to canonical evidence?",
+        "result": "DEFEATED — test_query_service_excludes_refused_evidence proves refused malformed event does not appear in query projections."
+      },
+      {
+        "falsifier": "Can recovery provenance disappear when read in a fresh process?",
+        "result": "DEFEATED — test_recovery_provenance_from_fresh_process_ledger_read runs a real subprocess reading only the ledger and confirms recovery_detail='recovered_and_completed'."
+      },
+      {
+        "falsifier": "Can the query service mutate authority state during inspection?",
+        "result": "DEFEATED — test_query_service_no_mutation verifies transition ledger and disclosure-event ledger bytes unchanged after all query operations."
+      },
+      {
+        "falsifier": "Can concurrent recovery produce duplicate COMPLETED events?",
+        "result": "DEFEATED — post-lock re-read of last_event_for_auth ensures competing processes detect completion and return idempotently."
+      },
+      {
+        "falsifier": "Can unvalidated disclosure-event data still be presented as canonical?",
+        "result": "HONEST — disclosure events lack a published JSON Schema. The append boundary enforces metadata completeness and content-light guarantee but cannot perform jsonschema.validate(). This is documented in the audit; downstream consumers are not misled."
+      },
+      {
+        "falsifier": "Did a shared-file exemption introduce new migration debt or collide with another lane?",
+        "result": "DEFEATED — no new pyproject.toml entries were required. All Lane A PLR ignores pre-exist on remote."
+      }
+    ],
+    "strongest_falsifier_attempted": "Can unvalidated disclosure-event data still be presented as canonical?",
+    "strongest_falsifier_verdict": "HONEST ADMISSION — disclosure events have content validation but no governing JSON Schema. The transition evidence admission is hardened; disclosure-event authority is explicitly characterized in this audit. No false claim of schema validation is made."
+  },
+  "lane_a_boundary_release": {
+    "safe_for_downstream_consumption": true,
+    "boundary": "Canonical Disclosure Transition Authority (v2, schema-enforced fail-closed append) and Disclosure Evidence Query Service (read-side projection over schema-validated transition evidence)",
+    "release_status": "lane_a_a7_1_disclosure_query_service_and_fail_closed_canonical_transition_evidence_admission",
+    "contract": {
+      "transition_append": "fail-closed jsonschema validation before durable append, schema missing/unavailable hard refusal",
+      "disclosure_event_append": "content-validated structurally, no governing schema published (honest documentation)",
+      "query_service": "read-side projection, deterministic digest, content-light, non-mutating, 17 test proofs"
+    }
+  },
+  "content_light_guarantee": true,
+  "generated_at": "2026-05-26",
+  "supersedes": "Previous A7 false-positive claim-adversary conclusion (in-memory recovery_detail, non-deterministic digest, no schema enforcement at append boundary)"
+}

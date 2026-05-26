@@ -21,6 +21,11 @@
       "type": "string",
       "enum": ["executed", "runtime_unavailable", "refused", "failed"]
     },
+    "enforced_schema_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "constraint_receipt_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "receipt_loaded_from_durable_evidence": { "type": "boolean" },
+    "emission_source_kind": { "type": "string" },
     "emission_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
     "emission_byte_count": { "type": "integer", "minimum": 0 },
     "output_token_count": { "type": "integer", "minimum": 0 },

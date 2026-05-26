@@ -28,6 +28,18 @@ It exists so the harness can run a governed mission without requiring a full ADR
 - `created_at`
 - `schema_version`
 
+## Release Boundary Contract
+
+Every mission envelope MUST also declare:
+
+- `released_boundary`
+- `stated_consumer_purpose`
+- `deferred_seams`
+- `blocking_defects`
+- `freeze_status`
+
+The envelope MUST distinguish a narrow released boundary from broader future integration work. Deferred upstream, downstream, UI, transport, or cross-lane work does not keep the mission open unless it makes the declared boundary unsafe or false.
+
 ## Governance Reference
 
 The envelope may carry optional governance metadata:

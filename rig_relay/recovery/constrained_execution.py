@@ -4,6 +4,10 @@ Sends recovery-oriented constrained-generation requests through an actual
 configured local model runtime, captures emitted candidate output as canonical
 evidence, and evaluates through the D0/D1A recovery substrate.
 
+The enforced runtime schema is digest-bound to the canonical
+ConstraintCompilationReceipt and tool-surface manifest. Every captured
+emission event carries receipt, schema, and manifest binding digests.
+
 Content-light: never persists raw prompts, completions, or secrets.
 Mutation emissions are always proposal-only; never directly executable.
 """
@@ -89,6 +93,13 @@ class ConstrainedExecutionResult(BaseModel):
     execution_id: str
     execution_status: str  # executed | runtime_unavailable | refused | failed
     execution_error: str = ""
+    emission_source_kind: str = (
+        ""  # captured_local_model | curated_adversarial | fixture | runtime_unavailable
+    )
+    enforced_schema_digest: str = ""
+    constraint_receipt_digest: str = ""
+    manifest_digest: str = ""
+    receipt_loaded_from_durable_evidence: bool = False
     emission_sha256: str = ""
     emission_byte_count: int = 0
     output_token_count: int = 0
@@ -232,6 +243,7 @@ async def execute_constrained_recovery(
     constraint_receipt: ConstraintCompilationReceipt,
     *,
     ledger_path: Path | None = None,
+    constraint_receipt_ledger_path: Path | None = None,
     runtime_available: bool = True,
 ) -> ConstrainedExecutionResult:
     """Execute a constrained recovery call against a local model runtime.
@@ -240,15 +252,37 @@ async def execute_constrained_recovery(
     emission as canonical evidence, and evaluates it through the D0/D1A
     recovery pipeline.
 
-    The runtime is called via the Lane C-owned execution_client (import-only,
-    no modification). The recovery corridor owns all evidence, admission,
-    handoff, and reporting.
+    When constraint_receipt_ledger_path is provided, the canonical
+    ConstraintCompilationReceipt is loaded from durable evidence and its
+    integrity is verified before runtime invocation. The passed
+    constraint_receipt must match the loaded canonical receipt's digest.
+    Without a ledger path, the in-memory receipt is used directly (for
+    testing or when the durable receipt path is not yet available).
+
+    The runtime is called via the Lane D-owned _call_local_runtime() temporary
+    adapter (direct httpx transport, not a Lane C provider boundary). The
+    recovery corridor owns all evidence, admission, handoff, and reporting.
+
+    The enforced schema is verified against the canonical
+    ConstraintCompilationReceipt before invocation. Execution is refused if
+    the runtime-submitted schema digest does not match the receipt's
+    per-tool record.
     """
     exec_id = request.execution_id
     endpoint_hash = _sha256_hex(request.endpoint_url.encode())
     disposition = _build_enforcement_disposition(
         exec_id, request.runtime_kind, endpoint_hash, request.model_name
     )
+
+    receipt_from_durable = False
+    if constraint_receipt_ledger_path is not None:
+        canonical_result = _load_canonical_or_refuse(
+            request, disposition, constraint_receipt_ledger_path, constraint_receipt
+        )
+        if isinstance(canonical_result, ConstrainedExecutionResult):
+            return canonical_result
+        constraint_receipt = canonical_result
+        receipt_from_durable = True
 
     if not runtime_available:
         return _runtime_unavailable_result(request, disposition, ledger_path)
@@ -264,9 +298,18 @@ async def execute_constrained_recovery(
     if tool_entry is None:
         return _tool_not_in_manifest_result(request, disposition, ledger_path)
 
-    safe_schema = _build_constrained_prompt_schema(
+    safe_schema, enforced_schema_digest = _build_constrained_prompt_schema(
         manifest, constraint_receipt, request.target_tool_name
     )
+
+    _verify_schema_digest = enforced_schema_digest
+    receipt_digest_for_tool = constraint_receipt.tool_schema_digests.get(
+        request.target_tool_name, ""
+    )
+    if receipt_digest_for_tool and _verify_schema_digest != receipt_digest_for_tool:
+        return _receipt_binding_refused_result(
+            request, disposition, _verify_schema_digest, receipt_digest_for_tool
+        )
 
     messages = _build_messages(safe_schema, request.target_tool_name)
 
@@ -281,16 +324,58 @@ async def execute_constrained_recovery(
             constraint_schema=safe_schema,
         )
     except Exception as exc:
-        return _execution_failed_result(request, disposition, str(exc), ledger_path)
+        exec_result = {"status": "exception", "error_class": str(exc)}
 
     if exec_result.get("status") != "executed":
         return _execution_failed_result(
-            request, disposition, exec_result.get("error_class", ""), ledger_path
+            request,
+            disposition,
+            exec_result.get("error_class", "runtime_error"),
+            ledger_path,
         )
 
     return _handle_successful_execution(
-        request, manifest, exec_result, disposition, ledger_path
+        request,
+        manifest,
+        constraint_receipt,
+        exec_result,
+        disposition,
+        enforced_schema_digest,
+        receipt_from_durable,
+        ledger_path,
     )
+
+
+def _load_canonical_or_refuse(
+    request: ConstrainedExecutionRequest,
+    disposition: ConstraintEnforcementDisposition,
+    receipt_ledger_path: Path,
+    supplied_receipt: ConstraintCompilationReceipt,
+) -> ConstraintCompilationReceipt | ConstrainedExecutionResult:
+    from rig_relay.recovery.constraint_compiler import load_canonical_constraint_receipt
+
+    receipt_ledger = EvidenceLedger(receipt_ledger_path)
+    canonical = load_canonical_constraint_receipt(receipt_ledger)
+    if canonical is None:
+        disposition.enforcement_truth_note = (
+            "Execution refused: no canonical compilation receipt "
+            "found in durable evidence"
+        )
+        disposition.json_schema_enforcement_exercised = False
+        return _receipt_not_found_result(request, disposition)
+    if canonical.receipt_digest != supplied_receipt.receipt_digest:
+        disposition.enforcement_truth_note = (
+            "Execution refused: supplied receipt digest does not match "
+            "canonical durable receipt"
+        )
+        disposition.json_schema_enforcement_exercised = False
+        return _receipt_binding_refused_result(
+            request,
+            disposition,
+            supplied_receipt.receipt_digest,
+            canonical.receipt_digest,
+        )
+    return canonical
 
 
 def _build_messages(
@@ -315,8 +400,11 @@ def _build_messages(
 def _handle_successful_execution(
     request: ConstrainedExecutionRequest,
     manifest: CanonicalToolSurfaceManifest,
+    constraint_receipt: ConstraintCompilationReceipt,
     exec_result: dict[str, Any],
     disposition: ConstraintEnforcementDisposition,
+    enforced_schema_digest: str,
+    receipt_from_durable: bool,
     ledger_path: Path | None,
 ) -> ConstrainedExecutionResult:
     exec_id = request.execution_id
@@ -355,6 +443,7 @@ def _handle_successful_execution(
         EvidenceLedger(ledger_path).append_event(eval_event)
 
     handoff = _build_handoff_from_evaluation(eval_event, manifest.manifest_digest)
+    disposition.json_schema_enforcement_exercised = True
     disposition.enforcement_truth_note = (
         "json_schema enforcement exercised via response_format with strict=true; "
         "compiled constraint schema bound as native grammar on Ollama 0.23.1"
@@ -363,6 +452,11 @@ def _handle_successful_execution(
     return ConstrainedExecutionResult(
         execution_id=exec_id,
         execution_status="executed",
+        emission_source_kind=request.emission_source_kind,
+        enforced_schema_digest=enforced_schema_digest,
+        constraint_receipt_digest=constraint_receipt.receipt_digest,
+        manifest_digest=manifest.manifest_digest,
+        receipt_loaded_from_durable_evidence=receipt_from_durable,
         emission_sha256=emission_sha256,
         emission_byte_count=exec_result.get("completion_byte_count", 0),
         output_token_count=exec_result.get("output_token_count", 0),
@@ -397,16 +491,11 @@ def _build_enforcement_disposition(
         json_object_enforcement_available=True,
         json_object_enforcement_exercised=False,
         json_schema_enforcement_available=True,
-        json_schema_enforcement_exercised=True,
+        json_schema_enforcement_exercised=False,
         grammar_enforcement_available=False,
         grammar_enforcement_exercised=False,
         enforced_mechanism="response_format_json_schema",
-        enforcement_truth_note=(
-            "json_schema enforcement exercised via OpenAI-compatible "
-            "response_format with strict=true on Ollama 0.23.1. "
-            "Compiled recovery constraint schema bound as native grammar. "
-            "No GBNF/grammar-level enforcement available."
-        ),
+        enforcement_truth_note="",
     )
 
 
@@ -414,18 +503,28 @@ def _build_constrained_prompt_schema(
     manifest: CanonicalToolSurfaceManifest,
     constraint_receipt: ConstraintCompilationReceipt,
     target_tool_name: str,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
+    """Build the runtime-enforced JSON Schema and compute its digest.
+
+    Returns (schema, digest) where digest is the SHA256 of the exact JSON
+    Schema submitted to the runtime. The caller must verify this digest
+    against constraint_receipt.tool_schema_digests before invocation.
+
+    The digest is the authority bridge between the canonical compilation
+    receipt and the actual enforcement mechanism.
+    """
     entry = next(
         (e for e in manifest.admitted_tools if e.canonical_name == target_tool_name),
         None,
     )
     if entry is None:
-        return {
+        empty: dict[str, Any] = {
             "type": "object",
             "properties": {},
             "required": [],
             "additionalProperties": False,
         }
+        return empty, _compute_schema_digest(empty)
 
     safe: dict[str, Any] = {
         "type": "object",
@@ -443,7 +542,12 @@ def _build_constrained_prompt_schema(
         "required": ["tool", "arguments"],
         "additionalProperties": False,
     }
-    return safe
+    return safe, _compute_schema_digest(safe)
+
+
+def _compute_schema_digest(schema: dict[str, Any]) -> str:
+    payload = json.dumps(schema, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 
 
 def _build_system_prompt(safe_schema: dict[str, Any], target_tool_name: str) -> str:
@@ -567,6 +671,7 @@ def _runtime_unavailable_result(
         execution_id=request.execution_id,
         execution_status="runtime_unavailable",
         execution_error="No local inference endpoint configured or reachable",
+        emission_source_kind="runtime_unavailable",
         constraint_enforcement_disposition=disposition,
         evidence_ledger_path=str(ledger_path) if ledger_path else "",
         evidence_event_count=1 if ledger_path else 0,
@@ -594,10 +699,86 @@ def _tool_not_in_manifest_result(
         execution_id=request.execution_id,
         execution_status="refused",
         execution_error=f"Tool {request.target_tool_name} not in manifest",
+        emission_source_kind=request.emission_source_kind,
         handoff_kind=h.handoff_kind,
         handoff_digest=_handoff_digest(h),
         refusal_code=refusal_code,
         refusal_reason=f"Tool {request.target_tool_name} not in manifest",
+        constraint_enforcement_disposition=disposition,
+    )
+
+
+def _receipt_binding_refused_result(
+    request: ConstrainedExecutionRequest,
+    disposition: ConstraintEnforcementDisposition,
+    enforced_digest: str,
+    receipt_digest: str,
+) -> ConstrainedExecutionResult:
+    refusal_code = "constraint_schema_receipt_mismatch"
+    h = build_refusal_handoff(
+        receipt_sha256=_NULL_SHA256,
+        manifest_digest=request.manifest_digest,
+        refusal_code=refusal_code,
+        reason=(
+            f"Enforced schema digest {enforced_digest[:20]}... does not match "
+            f"receipt record {receipt_digest[:20]}..."
+        ),
+        correlation_id=request.execution_id,
+    )
+    disposition.enforcement_truth_note = (
+        "Execution refused: enforced schema digest does not match "
+        "canonical constraint compilation receipt"
+    )
+    disposition.json_schema_enforcement_exercised = False
+    return ConstrainedExecutionResult(
+        execution_id=request.execution_id,
+        execution_status="refused",
+        execution_error=(
+            f"Enforced schema digest does not match receipt for "
+            f"tool {request.target_tool_name}"
+        ),
+        emission_source_kind=request.emission_source_kind,
+        enforced_schema_digest=enforced_digest,
+        constraint_receipt_digest=request.constraint_receipt_digest,
+        handoff_kind=h.handoff_kind,
+        handoff_digest=_handoff_digest(h),
+        refusal_code=refusal_code,
+        refusal_reason=(
+            f"Enforced schema digest does not match receipt for "
+            f"tool {request.target_tool_name}"
+        ),
+        constraint_enforcement_disposition=disposition,
+    )
+
+
+def _receipt_not_found_result(
+    request: ConstrainedExecutionRequest, disposition: ConstraintEnforcementDisposition
+) -> ConstrainedExecutionResult:
+    refusal_code = "canonical_compilation_receipt_not_found"
+    h = build_refusal_handoff(
+        receipt_sha256=_NULL_SHA256,
+        manifest_digest=request.manifest_digest,
+        refusal_code=refusal_code,
+        reason=(
+            "No canonical compilation receipt found in durable evidence. "
+            "Persist the receipt through persist_constraint_compilation_receipt() "
+            "before constrained execution."
+        ),
+        correlation_id=request.execution_id,
+    )
+    disposition.enforcement_truth_note = (
+        "Execution refused: canonical compilation receipt not found in durable evidence"
+    )
+    return ConstrainedExecutionResult(
+        execution_id=request.execution_id,
+        execution_status="refused",
+        execution_error="Canonical compilation receipt not found in durable evidence",
+        emission_source_kind=request.emission_source_kind,
+        constraint_receipt_digest=request.constraint_receipt_digest,
+        handoff_kind=h.handoff_kind,
+        handoff_digest=_handoff_digest(h),
+        refusal_code=refusal_code,
+        refusal_reason=("Canonical compilation receipt not found in durable evidence"),
         constraint_enforcement_disposition=disposition,
     )
 
@@ -610,6 +791,7 @@ def _execution_failed_result(
 ) -> ConstrainedExecutionResult:
     disposition.enforcement_truth_note = f"Execution failed: {error}"
     disposition.json_object_enforcement_exercised = False
+    disposition.json_schema_enforcement_exercised = False
 
     if ledger_path is not None:
         event = {
@@ -630,6 +812,7 @@ def _execution_failed_result(
         execution_id=request.execution_id,
         execution_status="failed",
         execution_error=error,
+        emission_source_kind="execution_failed",
         constraint_enforcement_disposition=disposition,
         evidence_ledger_path=str(ledger_path) if ledger_path else "",
         evidence_event_count=1 if ledger_path else 0,
@@ -672,6 +855,7 @@ def _malformed_emission_result(
         execution_id=request.execution_id,
         execution_status="refused",
         execution_error="Model emission was not valid JSON",
+        emission_source_kind=request.emission_source_kind,
         emission_sha256=emission_sha256,
         emission_byte_count=len(raw_content.encode()),
         handoff_kind=h.handoff_kind,
@@ -835,10 +1019,131 @@ def build_d2_operations_projection(
     return projection
 
 
+def build_captured_emission_event(
+    result: ConstrainedExecutionResult, *, event_id: str, model_name_hash: str = ""
+) -> dict[str, Any]:
+    """Build a content-light captured-emission event from an execution result.
+
+    Compliant with rig.relay.lane_d2_captured_emission_event.v1 schema.
+    Never contains raw prompts, completions, or secrets.
+    """
+    disp = result.constraint_enforcement_disposition
+    event: dict[str, Any] = {
+        "schema_version": "rig.relay.lane_d2_captured_emission_event.v1",
+        "event_id": event_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "execution_id": result.execution_id,
+        "execution_status": result.execution_status,
+        "enforced_schema_digest": result.enforced_schema_digest,
+        "constraint_receipt_digest": result.constraint_receipt_digest,
+        "manifest_digest": result.manifest_digest,
+        "receipt_loaded_from_durable_evidence": result.receipt_loaded_from_durable_evidence,
+        "emission_source_kind": result.emission_source_kind,
+        "emission_sha256": result.emission_sha256,
+        "emission_byte_count": result.emission_byte_count,
+        "output_token_count": result.output_token_count,
+        "input_token_count": result.input_token_count,
+        "latency_ms": result.latency_ms,
+        "admission_decision": result.admission_decision,
+        "handoff_kind": result.handoff_kind,
+        "handoff_digest": result.handoff_digest,
+        "proposal_only": result.proposal_only,
+        "mutation_class": result.mutation_class,
+        "selected_canonical_tool": result.selected_canonical_tool,
+        "refusal_code": result.refusal_code,
+        "runtime_kind": disp.runtime_kind if disp else "",
+        "model_name_hash": model_name_hash,
+        "json_schema_enforcement_available": (
+            disp.json_schema_enforcement_available if disp else False
+        ),
+        "json_schema_enforcement_exercised": (
+            disp.json_schema_enforcement_exercised if disp else False
+        ),
+        "enforced_mechanism": disp.enforced_mechanism if disp else "",
+    }
+    event["event_digest"] = _sha256_event(event)
+    return event
+
+
+def _sha256_event(event: dict[str, Any]) -> str:
+    data = {k: v for k, v in event.items() if k != "event_digest"}
+    payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
+
+
+def validate_captured_emission_event(event: dict[str, Any]) -> None:
+    """Validate a captured-emission event against its JSON Schema.
+
+    Raises ValueError with specific diagnostic on failure.
+    """
+    required = {
+        "schema_version",
+        "event_id",
+        "created_at",
+        "execution_id",
+        "execution_status",
+    }
+    for key in required:
+        if key not in event:
+            raise ValueError(f"Captured emission event missing required field: {key}")
+
+    if event["schema_version"] != "rig.relay.lane_d2_captured_emission_event.v1":
+        raise ValueError(f"Invalid schema_version: {event['schema_version']}")
+
+    valid_statuses = {"executed", "runtime_unavailable", "refused", "failed"}
+    if event.get("execution_status") not in valid_statuses:
+        raise ValueError(f"Invalid execution_status: {event.get('execution_status')}")
+
+    _sha256_len = 71  # "sha256:" + 64 hex chars
+    for field in ("emission_sha256", "handoff_digest", "event_digest"):
+        val = event.get(field, "")
+        if val and not (val.startswith("sha256:") and len(val) == _sha256_len):
+            raise ValueError(f"Invalid sha256 digest for {field}: {val[:40]}...")
+
+    for int_field in (
+        "emission_byte_count",
+        "output_token_count",
+        "input_token_count",
+        "latency_ms",
+    ):
+        val = event.get(int_field, 0)
+        if not isinstance(val, int) or val < 0:
+            raise ValueError(f"Invalid {int_field}: {val}")
+
+    for bool_field in (
+        "proposal_only",
+        "json_schema_enforcement_available",
+        "json_schema_enforcement_exercised",
+    ):
+        val = event.get(bool_field)
+        if val is not None and not isinstance(val, bool):
+            raise ValueError(f"Invalid {bool_field}: {val}")
+
+
+def build_captured_emission_corpus(
+    results: list[ConstrainedExecutionResult], *, model_name_hash: str = ""
+) -> list[dict[str, Any]]:
+    """Build schema-validated captured-emission corpus from execution results.
+
+    Each event is validated before inclusion.
+    """
+    events: list[dict[str, Any]] = []
+    for i, result in enumerate(results):
+        event = build_captured_emission_event(
+            result, event_id=f"corpus-{i:02d}", model_name_hash=model_name_hash
+        )
+        validate_captured_emission_event(event)
+        events.append(event)
+    return events
+
+
 __all__ = [
     "ConstrainedExecutionRequest",
     "ConstrainedExecutionResult",
     "ConstraintEnforcementDisposition",
+    "build_captured_emission_corpus",
+    "build_captured_emission_event",
     "build_d2_operations_projection",
     "execute_constrained_recovery",
+    "validate_captured_emission_event",
 ]

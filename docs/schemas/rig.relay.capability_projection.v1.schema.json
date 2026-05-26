@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.capability_projection.v1.schema.json",
+  "title": "Capability Projection v1",
+  "description": "Deterministic capability projection from constraint capability dispositions. Content-light: counts, hashes, classifications only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "created_at",
+    "disposition_count"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.capability_projection.v1" },
+    "projection_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "disposition_count": { "type": "integer", "minimum": 0 },
+    "enforcement_classes_demonstrated": { "type": "object" },
+    "total_captured_local_proof_runs": { "type": "integer", "minimum": 0 },
+    "total_curated_fixture_runs": { "type": "integer", "minimum": 0 },
+    "proposal_only_mutation_preserved_count": { "type": "integer", "minimum": 0 },
+    "runtimes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["disposition_id", "runtime_kind", "highest_class"],
+        "properties": {
+          "disposition_id": { "type": "string" },
+          "runtime_kind": { "type": "string" },
+          "model_name_hash": { "type": "string" },
+          "highest_class": { "type": "string" },
+          "json_schema_demonstrated": { "type": "boolean" },
+          "grammar_demonstrated": { "type": "boolean" },
+          "captured_proof_count": { "type": "integer", "minimum": 0 },
+          "proposal_only_preserved": { "type": "boolean" }
+        }
+      }
+    },
+    "projection_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

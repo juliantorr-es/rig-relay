@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.capability_admission_decision.v1.schema.json",
+  "title": "Capability Admission Decision v1",
+  "description": "Answer to 'can this runtime satisfy this constraint requirement?' Content-light: decisions, references, classifications only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "decision_id",
+    "requested_enforcement_class",
+    "runtime_capable"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.capability_admission_decision.v1" },
+    "decision_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "requested_enforcement_class": {
+      "type": "string",
+      "enum": ["unsupported", "json_object_formatting_only", "native_json_schema", "native_grammar_gbnf"]
+    },
+    "runtime_capable": { "type": "boolean" },
+    "reason": { "type": "string" },
+    "evidence_disposition_digest": { "type": "string" },
+    "evidence_events_referenced": { "type": "array", "items": { "type": "string" } },
+    "evidence_from_captured_local_model": { "type": "boolean" },
+    "stronger_mechanism_unavailable": { "type": "boolean" },
+    "recommendation": { "type": "string" }
+  }
+}

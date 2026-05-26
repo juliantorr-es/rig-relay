@@ -10,6 +10,25 @@ Read [PROJECT.md](PROJECT.md) after this file. `PROJECT.md` is the canonical pro
 
 Before any agent reports completion, publication, or a green milestone, it MUST run a short claim-adversary pass against the exact status it intends to publish. Treat every noun and adjective in that status as an assertion to falsify. At minimum, attack authority ownership, production-boundary realism, crash/retry or duplicate-effect safety when relevant, canonical evidence reconstruction, remote publication truth, and lane-boundary release safety. If any falsifier succeeds, downgrade the claim or repair the seam before reporting.
 
+## Lane Closure, Freeze, and Deferred-Seam Doctrine
+
+A lane is complete when its explicitly declared boundary is published, production-proven for its stated consumer purpose, reconstructable from governing evidence, and free of defects inside that boundary. Deferred upstream, downstream, cross-lane, UI, transport, or broader capability gaps do not keep the lane open unless they make the released boundary unsafe or its stated claim false.
+
+Before a lane reports completion, it MUST declare the released boundary, the stated consumer purpose, the blocking defects, the deferred seams, and the freeze condition. A claim-adversary pass is boundary-scoped: it attacks the released boundary and its stated consumer purpose only. It MUST NOT expand a lane by requiring unrelated seams unless they invalidate the current claim or make the boundary unsafe to consume.
+
+Once the boundary is remotely verified and survives a final boundary-scoped claim-adversary pass, the lane is frozen pending a named integration milestone. Frozen lanes may reopen only for a concrete defect inside the released boundary, a named integration milestone that consumes or extends it, or a user-directed architectural revision.
+
+## Lane Status Vocabulary
+
+Use only these release dispositions:
+
+- `candidate_local`: implementation exists locally but is not published.
+- `published_narrow_release`: the declared boundary is remotely published and safe for its stated purpose; deferred seams remain.
+- `blocked_release`: a specific defect inside the declared boundary prevents safe publication or consumption.
+- `frozen_pending_integration`: the narrow boundary is published and verified; no further isolated lane work is authorized until a named integration milestone consumes or extends it.
+
+Do not use status identifiers that imply global closure, complete authority, or finished end-to-end integration when the release is intentionally narrow.
+
 ## Multiple parallel agents
 
 Multiple agents often work on Rig Relay concurrently. There is no active git worktree mechanism — all agents share the same working tree. When you encounter a file that another agent has modified (dirty file), **never discard their changes**. Preserve all pre-existing modifications exactly. Dirty does not mean forbidden: if the mission needs to touch the file, make your changes **additive** or narrowly scoped to the bug/dead-code seam, and leave unrelated lane work intact. Do not remove, rewrite, or reformat code from other lanes unless the user explicitly asks for a coordinated rewrite. If your required edit would remove or conflict with existing modifications, stop and report the conflict.

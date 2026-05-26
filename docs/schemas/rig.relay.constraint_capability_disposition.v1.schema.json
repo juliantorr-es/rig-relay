@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.constraint_capability_disposition.v1.schema.json",
+  "title": "Constraint Capability Disposition v1",
+  "description": "Snapshot of a runtime's demonstrated constraint enforcement capability. Content-light: runtime metadata, hashes, classifications only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "disposition_id",
+    "runtime_kind",
+    "highest_enforcement_class_demonstrated"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.constraint_capability_disposition.v1" },
+    "disposition_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "runtime_kind": { "type": "string" },
+    "runtime_endpoint_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "model_name_hash": { "type": "string" },
+    "enforced_mechanism": { "type": "string" },
+    "highest_enforcement_class_demonstrated": {
+      "type": "string",
+      "enum": ["unsupported", "json_object_formatting_only", "native_json_schema", "native_grammar_gbnf"]
+    },
+    "json_object_formatting_demonstrated": { "type": "boolean" },
+    "json_schema_enforcement_demonstrated": { "type": "boolean" },
+    "grammar_enforcement_demonstrated": { "type": "boolean" },
+    "evidence_from_captured_local_model": { "type": "boolean" },
+    "proof_event_ids": { "type": "array", "items": { "type": "string" } },
+    "proof_run_count": { "type": "integer", "minimum": 0 },
+    "curated_fixture_run_count": { "type": "integer", "minimum": 0 },
+    "proposal_only_mutation_preserved": { "type": "boolean" },
+    "constraint_receipt_digest": { "type": "string" },
+    "manifest_digest": { "type": "string" }
+  }
+}

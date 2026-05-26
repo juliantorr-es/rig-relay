@@ -33,6 +33,10 @@
         }
       }
     },
+    "tool_schema_digests": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+    },
     "constraint_artifact_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
     "receipt_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
   }

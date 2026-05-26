@@ -77,6 +77,18 @@ Before launching a follow-up mission, the reviewer MUST:
 2. Check for failures, conflicts, or blocked paths.
 3. Decide: clean → propose manual push / next sprint; blocked → launch one bounded fix mission.
 
+### Boundary-Scoped Closure
+
+A child mission closes when its explicitly declared boundary is published, production-proven for its stated consumer purpose, reconstructable from governing evidence, and free of defects inside that boundary. Deferred upstream, downstream, cross-lane, UI, transport, or broader capability gaps do not keep the child open unless they make the released boundary unsafe or false.
+
+The reviewer MUST distinguish:
+
+- `candidate_local` from `published_narrow_release`;
+- `published_narrow_release` from `frozen_pending_integration`;
+- blocked release defects from deferred integration seams.
+
+A claim-adversary pass for a child mission is boundary-scoped. It attacks the released boundary and its stated consumer purpose only. The reviewer MUST NOT require unrelated seams, stronger future architecture, or broader integration as a condition of closing a truthful narrow release.
+
 ### Reviewer Never Bypasses Git Policy
 
 - The reviewer never pushes, merges, rebases, resets, cleans, stashes, or bypasses checkpoint policy.
@@ -194,6 +206,9 @@ You must inspect coordination state before launching new work.
 You must avoid overlapping write scopes.
 You must aggregate child final reports before deciding the next mission.
 You must never push, merge, rebase, reset, clean, stash, or bypass checkpoint policy.
+You must prioritize product-facing integration once safe narrow releases exist.
+You must not keep reopening a lane merely because a stronger architecture is discoverable.
+You must distinguish released, deferred, blocked, and frozen states.
 ```
 
 ## Bootstrap Implementation Status

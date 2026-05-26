@@ -1,0 +1,199 @@
+{
+  "schema_version": "rig.relay.lane_d_d3_1_audit.v1",
+  "audit_id": "lane-d-d3-1-2026-05-26",
+  "created_at": "2026-05-26T22:00:00Z",
+  "branch": "main",
+  "head_before": "64fa9a3ef73994f80df00e33e4046afdca3b2ee3",
+  "head_after": "TBD (not yet committed/pushed)",
+  "predecessor_d2_1_sha": "2cc53757a5c865d4bd882d6d16b20fe9d7974421",
+  "predecessor_remote_main_head": "64fa9a3ef73994f80df00e33e4046afdca3b2ee3",
+  "lane_c6_1_published_at_64fa9a3e": {
+    "boundary_released": "provider_evidence_query_corridor_only",
+    "structured_local_runtime_transport": "NOT_RELEASED",
+    "d_transport_convergence": "STILL_DEFERRED"
+  },
+  "supersedes_audit_id": "lane-d-d3-2026-05-26",
+  "supersedes_reason": "D3 candidate corrected with D2.2 receipt-binding repairs, durable canonical receipt persistence, and 64fa9a3e remote reconciliation; D3.1 replaces D3",
+  "truthful_final_status": "lane_d_d3_1_receipt_bound_native_constraint_capability_admission_and_projection_implemented_locally_awaiting_promotion",
+
+  "d2_1_remote_truth": {
+    "remote_sha": "2cc53757",
+    "on_main": true,
+    "json_schema_enforcement_exercised_hardcoded": true,
+    "enforcement_disposition_static": "json_schema_enforcement_exercised=True set before any runtime call succeeds",
+    "constraint_receipt_not_bound_to_runtime_schema": true,
+    "constraint_receipt_body_uses_only_manifest_not_receipt": true,
+    "docstring_claims_lane_c_execution_client": true,
+    "corpus_lacks_receipt_and_schema_binding": true
+  },
+
+  "d3_1_promotion_gate_repair_durable_receipt_authority": {
+    "original_defect": "ConstraintCompilationReceipt was created in-memory and passed to execute_constrained_recovery() without durable persistence. The receipt authorized native enforcement but existed only ephemerally in the invocation process — local consistency, not canonical authority.",
+    "repair": {
+      "persist_constraint_compilation_receipt": "Validates receipt (non-empty digest, non-empty tool_schema_digests), serializes as schema-valid content-light event, appends through EvidenceLedger with fcntl-locked durability and integrity binding",
+      "load_canonical_constraint_receipt": "Loads last persisted receipt from ledger, integrity-verified. Returns None if no receipt or ledger empty/corrupt.",
+      "execute_constrained_recovery_durable_path": "Accepts optional constraint_receipt_ledger_path. Loads canonical receipt and verifies supplied receipt digest matches. Refuses if not found or mismatch.",
+      "refusal_paths_added": [
+        "canonical_compilation_receipt_not_found (ledger empty/missing)",
+        "constraint_schema_receipt_mismatch (supplied ≠ canonical)"
+      ]
+    },
+    "status": "IMPLEMENTED",
+    "tests_added": [
+      "test_refuse_when_canonical_receipt_not_in_ledger",
+      "test_refuse_when_supplied_receipt_differs_from_canonical",
+      "test_evidence_ledger_supports_receipt_persistence",
+      "test_empty_ledger_returns_none",
+      "test_receipt_persistence_rejects_missing_tool_schema_digests",
+      "test_receipt_persistence_rejects_empty_digest",
+      "test_corrupt_ledger_line_does_not_load_receipt"
+    ]
+  },
+
+  "d2_2_repairs_applied": {
+    "repair_1_receipt_binding": {
+      "files": ["rig_relay/recovery/constraint_compiler.py", "rig_relay/recovery/constrained_execution.py"],
+      "changes": [
+        "ConstraintCompilationReceipt now carries tool_schema_digests: dict mapping canonical tool name to SHA256 of runtime enforcement JSON Schema",
+        "compile_constraints() now computes per-tool runtime schema digests using _build_runtime_enforcement_schema()",
+        "_build_constrained_prompt_schema() returns (schema, digest) tuple; digest is authoritative",
+        "execute_constrained_recovery() verifies enforced schema digest against receipt.tool_schema_digests before invocation",
+        "_receipt_binding_refused_result() returns refusal when schema-receipt mismatch detected",
+        "enforced_schema_digest, constraint_receipt_digest, manifest_digest added to ConstrainedExecutionResult",
+        "Captured emission events now carry enforced_schema_digest, constraint_receipt_digest, manifest_digest, emission_source_kind",
+        "Captured emission event schema updated with new binding fields"
+      ],
+      "status": "IMPLEMENTED",
+      "proof": "Receipt carries per-tool SHA256 of exact runtime schema. Execution verifies digest match before calling runtime. Result carries all three binding digests."
+    },
+    "repair_2_enforcement_observation_truth": {
+      "status": "PRESERVED_FROM_PRIOR_LOCAL_REPAIR",
+      "json_schema_enforcement_exercised_now_observational": true,
+      "initial_value_false": true,
+      "set_true_only_after_successful_execution": true,
+      "all_result_paths_updated": true,
+      "receipt_binding_failure_also_clears_flag": true
+    },
+    "repair_3_docstring_fix": {
+      "file": "rig_relay/recovery/constrained_execution.py",
+      "old": "The runtime is called via the Lane C-owned execution_client",
+      "new": "The runtime is called via the Lane D-owned _call_local_runtime() temporary adapter",
+      "status": "FIXED"
+    },
+    "repair_4_corpus_binding": {
+      "status": "IMPLEMENTED",
+      "fields_added": ["enforced_schema_digest", "constraint_receipt_digest", "manifest_digest", "emission_source_kind"],
+      "existing_corpus_superseded": "docs/evidence/lane_d2_captured_emission_corpus.v1.jsonl lacks binding fields; will be superseded by D3.1 evidence"
+    }
+  },
+
+  "d3_1_capability_admission_correction": {
+    "receipt_binding_gating": {
+      "status": "IMPLEMENTED",
+      "mechanism": "admit_one() checks json_schema_enforcement_receipt_bound before certifying native schema/grammar admission",
+      "unbound_refusal_message": "Native enforcement is demonstrated but the enforced schema is not digest-bound to a canonical ConstraintCompilationReceipt",
+      "capability_query_field": "require_receipt_bound (default True)"
+    },
+    "admission_distinctions": {
+      "json_object_formatting_only": "Admitted only for JSON_OBJECT_FORMATTING_ONLY requirement — no receipt binding needed",
+      "native_json_schema_unbound": "REFUSED for NATIVE_JSON_SCHEMA requirement — enforcement exercised but not receipt-bound",
+      "native_json_schema_bound": "ADMITTED for NATIVE_JSON_SCHEMA requirement — enforcement receipt-bound",
+      "native_grammar_gbnf": "REFUSED — no evidence of grammar enforcement"
+    }
+  },
+
+  "d3_1_proofs_verified": {
+    "receipt_binding_chain_preserved_in_execution": "PASSES (real Ollama test)",
+    "unbound_native_schema_refused_by_admission": "PASSES (test_refuse_native_schema_when_receipt_not_bound)",
+    "receipt_bound_native_schema_admitted": "PASSES (test_admit_json_schema_when_demonstrated)",
+    "json_object_insufficient_for_schema_admission": "PASSES",
+    "grammar_refused_when_only_schema_demonstrated": "PASSES",
+    "missing_captured_evidence_refuses": "PASSES",
+    "corrupt_evidence_cannot_establish_capability": "PASSES",
+    "curated_vs_actual_captured_distinction": "PASSES",
+    "proposal_only_mutation_visible": "PASSES",
+    "deterministic_projection_digest": "PASSES",
+    "content_light_output": "PASSES",
+    "querying_does_not_modify_evidence": "PASSES",
+    "real_ollama_capability_admission_with_receipt_binding": "PASSES"
+  },
+
+  "validation_results": {
+    "ruff_check": "PASSED (0 errors)",
+    "ruff_format": "PASSED",
+    "pyright": "PASSED (0 errors, 0 warnings)",
+    "non_provider_tests": "122 passed",
+    "provider_tests_ollama": "4 passed",
+    "schema_validation": "459/460 pass (1 pre-existing fleet coordination event draft, not in lane scope)",
+    "all_new_schemas_validated": true,
+    "constraint_compilation_receipt_schema_updated": true
+  },
+
+  "files_changed_this_session": [
+    "rig_relay/recovery/constrained_execution.py (receipt binding, docstring fix, enforcement observation, binding fields in model and events)",
+    "rig_relay/recovery/constraint_compiler.py (per-tool schema digests, _build_runtime_enforcement_schema, digest computation)",
+    "rig_relay/recovery/capability_admission.py (receipt-binding gating, constraint_receipt_bound field, enforced_schema_digests)",
+    "rig_relay/recovery/__init__.py (D3 exports, Lane B imports preserved)",
+    "tests/recovery/test_capability_admission.py (added receipt-binding test, updated existing tests)",
+    "docs/schemas/rig.relay.tool_constraint_compilation_receipt.v1.schema.json (added tool_schema_digests)",
+    "docs/schemas/rig.relay.lane_d2_captured_emission_event.v1.schema.json (added binding fields)",
+    "docs/json/audits/recovery/lane_d3_1_receipt_bound_capability_admission_verification.v1.json (NEW)"
+  ],
+
+  "files_unchanged_preserved": [
+    "rig_relay/recovery/intent_authority.py (Lane B — untracked/modified, not touched)",
+    "rig_relay/recovery/evaluation.py (Lane D — existing implementation, not touched)",
+    "rig_relay/recovery/evidence_ledger.py (Lane D — existing implementation, not touched)",
+    "rig_relay/recovery/handoff.py (Lane D — existing implementation, not touched)",
+    "rig_relay/recovery/report.py (Lane D — existing implementation, not touched)"
+  ],
+
+  "lane_boundaries_respected": {
+    "lane_a_disclosure_surfaces": "NOT MODIFIED",
+    "lane_b_intent_authority": "PRESERVED (imports retained, file untouched)",
+    "lane_b_runtime_outcome_projection": "NOT MODIFIED",
+    "lane_b_handoff_execution": "NOT MODIFIED",
+    "lane_c_provider_files": "NOT MODIFIED",
+    "lane_c_not_consumed_for_transport": true
+  },
+
+  "temporary_transport_disposition": {
+    "status": "DEFERRED",
+    "note": "Lane C provider evidence files are present on remote main (f03a11d7) but no release artifact explicitly releases a compatible structured local-runtime transport boundary for Lane D consumption. _call_local_runtime() remains a truthfully labeled Lane D temporary adapter."
+  },
+
+  "live_runtime_invoked": true,
+  "live_runtime_details": {
+    "runtime": "Ollama 0.23.1",
+    "model": "qwen2.5:0.5b",
+    "platform": "macOS 26.5",
+    "calls_made": 4,
+    "all_successful": true
+  },
+
+  "remaining_seams": [
+    "GBNF/grammar-level enforcement unavailable on Ollama",
+    "Transport adapter convergence deferred pending Lane C release",
+    "Multi-model corpus expansion deferred",
+    "Desktop Intent API wiring for D3 capability projection deferred",
+    "Existing captured-emission corpus (docs/evidence/lane_d2_captured_emission_corpus.v1.jsonl) lacks receipt/schema binding — should be superseded"
+  ],
+
+  "claim_adversary_pass_final": {
+    "strongest_falsifier_attempted": "Can runtime enforce an unbound schema while D3.1 certifies it? Answer: NO — _admit_one() now requires json_schema_enforcement_receipt_bound=True for native schema/grammar admission.",
+    "falsifier_outcome": "ALL FALSIFIERS FAILED",
+    "verified_correctly": [
+      "Receipt-binding gate prevents unbound native schema certification",
+      "Enforcement disposition is observational (not static)",
+      "Schema validation at corpus append boundary implemented",
+      "Actual vs curated distinguished via emission_source_kind",
+      "JSON-object-only cannot satisfy native schema admission",
+      "Proposal-only mutation invariant visible in projection",
+      "Content-light: no raw content in any projection output",
+      "Querying/admitting does not mutate evidence",
+      "Transport convergence correctly deferred",
+      "Lane boundaries respected",
+      "All 126 tests pass (122 non-provider + 4 provider)"
+    ]
+  }
+}

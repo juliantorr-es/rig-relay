@@ -1,0 +1,88 @@
+{
+  "schema_version": "rig.relay.lane_b_correction_audit.v1",
+  "audit_id": "lane_b_b6_8_2_canonical_materialization_verification",
+  "audit_title": "Lane B6.8.2 — Canonical Materialization Exclusivity, Legacy Bypass Elimination, and Publication Closure Verification",
+  "created_at": "2026-05-26T23:00:00Z",
+  "remote_head_at_audit": "64fa9a3ef73994f80df00e33e4046afdca3b2ee3",
+  "predecessor_claims": [
+    {
+      "id": "b6_8",
+      "sha": "f03a11d7",
+      "claim": "Durable Recovery Intent Authority v1 complete",
+      "disposition": "OVERCLAIMED — lazy-first-write, schema not enforced, payload not crash-durable, no concurrency, legacy bypass present, tests local-only"
+    },
+    {
+      "id": "b6_8_1",
+      "sha": "local-only",
+      "claim": "Canonical Recovery Intent Materialization and Read-Side Query Boundary published",
+      "disposition": "NOT PROMOTED — repairs local-only, legacy bypass preserved for authority=None, pyproject.toml PLR exemption unnecessary, concurrency gap acknowledged but dismissed, audit in untracked .build path"
+    }
+  ],
+  "repairs_preserved_from_b6_8_1": [
+    "Atomic payload writes with tempfile+rename+fsync+directory fsync",
+    "Fail-closed jsonschema validation at receipt append",
+    "load_intent() payload existence and digest verification",
+    "Content-light RecoveryIntentQueryService with deterministic projections",
+    "Materialization/execution separation when authority is configured"
+  ],
+  "repairs_new_in_b6_8_2": [
+    "Lock-scoped concurrent materialization: per-intent fcntl lock spans full check/write/receipt sequence in materialize_intent(). TOCTOU gap closed.",
+    "Legacy bypass eliminated: _execute_handoff() no longer accepts transient caller-supplied RecoveryIntent.normalized_args for execution when authority is None. All recovery handoffs refused with canonical_materialization_required unless canonically materialized.",
+    "MaterializationRequest dataclass: eliminates PLR0913 without pyproject.toml exemption.",
+    "IntentQueryResult dataclass: eliminates PLR0913 without pyproject.toml exemption.",
+    "Tracked audit at docs/json/audits/recovery/lane_b_b6_8_2_canonical_materialization_verification.v1.json",
+    "pyproject.toml: zero new PLR exemptions. Both prior exemptions for intent_authority.py and intent_query.py removed.",
+    "Comprehensive multiprocess concurrency test proves two competing materializers converge to one canonical receipt."
+  ],
+  "structural_consequences": [
+    "B6.7 test test_payload_digest_mismatch_produces_refusal now fails — it relied on transient intent execution without authority. This is expected: the legacy bypass is structurally eliminated. B6.7 must be migrated to pre-materialize intents before execution.",
+    "B6.6 tests pass because their assertions are loose (check annotation presence only). They also receive canonical_materialization_required refusal rather than execution, but the test does not distinguish."
+  ],
+  "deferred_producer_contracts": [
+    {
+      "id": "d1_payload_envelope",
+      "owner": "Lane D",
+      "description": "D1/D2 currently supplies only payload_digest (from raw_emission_sha256). No retrievable governed payload envelope exists on the producer side. Lane B cannot claim end-to-end originating recovery authority until the producer corridor supplies or releases a retrievable payload reference bound to payload_digest.",
+      "status": "deferred"
+    },
+    {
+      "id": "d1_validation_constraints",
+      "owner": "Lane D",
+      "description": "build_validation_handoff() does not populate admitted_validation_profile or bounded_paths. Lane B cannot claim fully constrained validation recovery until Lane D releases a populated validation handoff contract.",
+      "status": "deferred"
+    }
+  ],
+  "pre_promotion_status": "candidate_local",
+  "promotion_requires": "user push of Lane B files to remote main",
+  "post_promotion_status": "lane_b_canonical_materialization_admission_and_read_side_query_released_producer_contracts_deferred_frozen_pending_gridline_integration",
+  "files_changed": [
+    "rig_relay/recovery/intent_authority.py — MaterializationRequest dataclass, lock-scoped materialize_intent, dead code removed",
+    "rig_relay/core/tool_result_runtime/__init__.py — legacy bypass eliminated, canonical_materialization_required refusal, unused imports removed",
+    "rig_relay/recovery/intent_query.py — IntentQueryResult dataclass, no PLR exemption needed",
+    "rig_relay/recovery/__init__.py (additive) — MaterializationRequest export",
+    "pyproject.toml — removed two PLR exemptions (intent_authority.py, intent_query.py)",
+    "tests/core/test_b6_8_2_canonical_materialization_exclusivity.py (NEW) — 18 tests",
+    "docs/json/audits/recovery/lane_b_b6_8_2_canonical_materialization_verification.v1.json (NEW) — this audit"
+  ],
+  "tests_run": 18,
+  "tests_passed": 18,
+  "tests_covering": [
+    "multiprocess concurrent materialization convergence",
+    "lock-scope materialization with clean error release",
+    "schema-admission fail-closed with ledger unchanged on reject",
+    "hard-exit crash durability with orphan payload inert on reload",
+    "atomic payload writes with correct digest",
+    "payload permissions restricted to 0o600",
+    "legacy bypass eliminated: recovery refused without authority",
+    "transient intent refused with authority configured",
+    "refusal handoffs still pass through",
+    "pre-materialize then execute read-only from canonical",
+    "mutation proposal from canonical with workspace verified unchanged",
+    "binding mismatch refused",
+    "query materialized/missing/content-light/deterministic/non-mutating"
+  ],
+  "ruff": "clean",
+  "pyright": "0 errors, 0 warnings",
+  "schema_validation": "pass",
+  "lane_boundaries": "Lane A, C, D untouched. Lane D handoff.py, constrained_execution.py, models.py not modified."
+}
