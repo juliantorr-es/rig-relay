@@ -317,16 +317,16 @@ class ToolResultRuntime:
 
         return msg
 
-    def handle_recovery_handoff(self, handoff: Any) -> LLMMessage:
-        """Admit a recovery handoff and produce the model-visible outcome.
+    async def handle_recovery_handoff(self, handoff: Any) -> LLMMessage:
+        """Admit a recovery handoff and route to the governed execution boundary.
 
-        Reads the handoff kind to determine the admission path:
-        - read_only: normal tool outcome with auto_execute_read_only decision
-        - validation: normal tool outcome with auto_execute_validation decision
-        - mutation_proposal_only: proposal-only outcome (never direct execution)
-        - refusal: typed refusal outcome with projection evidence
+        - read_only: routes through ToolRuntime.execute_one() → handle_tool_response()
+        - validation: routes through ToolRuntime.execute_one() → handle_tool_response()
+        - mutation_proposal_only: routes through ToolRuntime.execute_one()
+          with execution_mode=MUTATION_PROPOSAL (never direct execution)
+        - refusal: typed refusal outcome with projection evidence (no execution)
 
-        Returns the appended LLMMessage.
+        Returns the appended LLMMessage produced by the downstream routing.
         """
         from rig_relay.recovery.handoff import (
             RecoveryHandoffMutationProposal,
@@ -350,54 +350,94 @@ class ToolResultRuntime:
 
         match kind:
             case "read_only":
-                return self._admit_read_only_handoff(handoff, corr_id)
+                return await self._execute_handoff(
+                    handoff, corr_id, execution_mode="read_only"
+                )
             case "validation":
-                return self._admit_validation_handoff(handoff, corr_id)
+                return await self._execute_handoff(
+                    handoff, corr_id, execution_mode="read_only"
+                )
             case "mutation_proposal_only":
-                return self._admit_mutation_proposal_handoff(handoff, corr_id)
+                return await self._execute_handoff(
+                    handoff, corr_id, execution_mode="mutation_proposal"
+                )
             case "refusal":
                 return self._admit_refusal_handoff(handoff, corr_id)
             case _:
                 return self._admit_unknown_handoff(handoff, corr_id)
 
-    def _admit_read_only_handoff(self, handoff: Any, correlation_id: str) -> LLMMessage:
-        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
-        outcome = _build_handoff_outcome(
-            tool_name=tool_name,
-            handoff_kind="read_only",
-            decision="auto_execute_read_only",
-            correlation_id=correlation_id,
-        )
-        return self._append_handoff_message(
-            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
+    async def _execute_handoff(
+        self, handoff: Any, correlation_id: str, *, execution_mode: str = "read_only"
+    ) -> LLMMessage:
+        """Route a handoff through the governed ToolRuntime.execute_one() boundary.
+
+        Constructs a ToolRuntimeRequest, executes through the real production
+        ToolRuntime, then passes the result through handle_tool_response()
+        for canonical annotation, projection, and message appending.
+        """
+        import uuid
+
+        from rig_relay.core.tool_runtime_models import (
+            ToolRuntimeExecutionMode,
+            ToolRuntimeRequest,
         )
 
-    def _admit_validation_handoff(
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        call_id: str = correlation_id or f"handoff-{uuid.uuid4().hex[:12]}"
+        loop = self._loop
+
+        tool_runtime = getattr(loop, "_tool_runtime", None)
+        if tool_runtime is None:
+            return self._admit_tool_runtime_unavailable(handoff, correlation_id)
+
+        mode = (
+            ToolRuntimeExecutionMode.MUTATION_PROPOSAL
+            if execution_mode == "mutation_proposal"
+            else ToolRuntimeExecutionMode.READ_ONLY
+        )
+
+        request = ToolRuntimeRequest(
+            tool_name=tool_name,
+            tool_call_id=call_id,
+            correlation_id=correlation_id,
+            session_id=getattr(loop, "session_id", ""),
+            execution_mode=mode,
+        )
+
+        result = await tool_runtime.execute_one(request)
+
+        tc = _HandoffToolCall(tool_name=tool_name, call_id=call_id)
+        text = f"[recovery handoff] {tool_name}"
+        status: str = (
+            "failure"
+            if result.status.value in {"failed", "refused", "timed_out"}
+            else "success"
+        )
+
+        self.handle_tool_response(
+            tool_call=tc,  # type: ignore[arg-type]
+            text=text,
+            status=status,  # type: ignore[arg-type]
+            runtime_result=result,
+        )
+        msg = loop.messages[-1]
+        return msg  # type: ignore[return-value]
+
+    def _admit_tool_runtime_unavailable(
         self, handoff: Any, correlation_id: str
     ) -> LLMMessage:
         tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
         outcome = _build_handoff_outcome(
             tool_name=tool_name,
-            handoff_kind="validation",
-            decision="auto_execute_validation",
+            handoff_kind="degraded",
+            decision="refused",
             correlation_id=correlation_id,
+            refusal_code="tool_runtime_unavailable",
+            error_kind="recovery_refusal",
         )
+        prefix = "<tool_error>recovery_handoff: ToolRuntime unavailable</tool_error>"
         return self._append_handoff_message(
-            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
-        )
-
-    def _admit_mutation_proposal_handoff(
-        self, handoff: Any, correlation_id: str
-    ) -> LLMMessage:
-        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
-        outcome = _build_handoff_outcome(
-            tool_name=tool_name,
-            handoff_kind="mutation_proposal_only",
-            decision="proposal_only_mutation",
-            correlation_id=correlation_id,
-        )
-        return self._append_handoff_message(
-            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
+            tool_name, outcome, correlation_id, prefix=prefix
         )
 
     def _admit_refusal_handoff(self, handoff: Any, correlation_id: str) -> LLMMessage:
@@ -468,6 +508,20 @@ class ToolResultRuntime:
             )
         except Exception:
             pass
+
+
+class _HandoffToolCall:
+    """Lightweight ResolvedToolCall stand-in for handoff execution routing.
+
+    Provides the minimal interface needed by handle_tool_response():
+    .tool_name and .call_id.
+    """
+
+    def __init__(self, tool_name: str, call_id: str) -> None:
+        self.tool_name = tool_name
+        self.call_id = call_id
+        self.args_dict: dict[str, object] = {}
+        self.tool_class = None
 
 
 def _classify_failure_kind(error: str) -> str:
