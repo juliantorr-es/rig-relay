@@ -185,8 +185,10 @@ async def test_cwd_defaults_to_current_directory(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_environment_has_noninteractive_flags(bash):
+    config = BashToolConfig(restrict_raw_shell=False)
+    tool = Bash(config_getter=lambda: config, state=BaseToolState())
     result = await collect_result(
-        bash.run(BashArgs(command="echo $CI $NONINTERACTIVE $NO_TTY"))
+        tool.run(BashArgs(command="echo $CI $NONINTERACTIVE $NO_TTY"))
     )
     parts = result.stdout.strip().split()
     assert "true" in parts

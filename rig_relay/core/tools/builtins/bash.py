@@ -66,6 +66,46 @@ def _get_base_env() -> dict[str, str]:
     return sanitize_env_for_subprocess()
 
 
+# Environment variables that must be stripped for scoped (restricted)
+# execution to prevent indirect code execution through plugins,
+# configuration, or path injection.
+_SCOPED_ENV_BLOCKLIST: frozenset[str] = frozenset({
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "PYTHONSTARTUP",
+    "PYTEST_ADDOPTS",
+    "PYTEST_PLUGINS",
+    "COVERAGE_PROCESS_START",
+    "VIRTUAL_ENV",
+    "GIT_CONFIG",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_EXEC_PATH",
+    "GIT_EXTERNAL_DIFF",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    "GIT_COMMON_DIR",
+})
+
+
+def _get_scoped_env() -> dict[str, str]:
+    """Build a hardened environment for scoped (restrict_raw_shell=True) execution.
+
+    Starts from the base safe environment and additionally strips
+    environment variables that could inject code through plugins,
+    configuration, import paths, or executable resolution.
+    """
+    env = _get_base_env()
+    for key in _SCOPED_ENV_BLOCKLIST:
+        env.pop(key, None)
+    return env
+
+
 # Sensitive paths that should never be read via bash cat/head/etc.
 _SENSITIVE_READ_PATTERNS: list[str] = [
     str(Path.home() / ".rig" / "relay" / "identity"),
@@ -1008,6 +1048,128 @@ class Bash(
         finally:
             await kill_async_subprocess(proc)
 
+    @final
+    async def _run_direct_exec(
+        self,
+        command: str,
+        argv: list[str],
+        cwd: str | None,
+        timeout: int,
+        max_stdout: int,
+        max_stderr: int,
+        start: float,
+    ) -> BashResult:
+        """Execute via create_subprocess_exec with explicit argv.
+
+        No shell interpretation — the program and arguments are passed
+        directly to the OS process launcher. Used only in restricted
+        scoped execution (restrict_raw_shell=True) after grammar
+        containment and argv parsing have validated the intent.
+        """
+        if not argv:
+            return BashResult(
+                command=command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="failure",
+                duration_ms=(time.perf_counter() - start) * 1000,
+                error_kind="internal_error",
+                refusal_reason="Empty argv after parsing.",
+            )
+
+        program = argv[0]
+        program_args = argv[1:]
+        kwargs: dict[Literal["start_new_session"], bool] = (
+            {} if is_windows() else {"start_new_session": True}
+        )
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                program,
+                *program_args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                stdin=asyncio.subprocess.DEVNULL,
+                env=_get_scoped_env(),
+                cwd=cwd,
+                **kwargs,
+            )
+        except FileNotFoundError:
+            elapsed = (time.perf_counter() - start) * 1000
+            return BashResult(
+                command=command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="failure",
+                duration_ms=elapsed,
+                error_kind="executable_not_found",
+                refusal_reason=f"Executable not found: {program}",
+            )
+        except PermissionError:
+            elapsed = (time.perf_counter() - start) * 1000
+            return BashResult(
+                command=command,
+                stdout="",
+                stderr="",
+                returncode=-1,
+                status="failure",
+                duration_ms=elapsed,
+                error_kind="executable_not_executable",
+                refusal_reason=f"Executable not executable: {program}",
+            )
+
+        try:
+            try:
+                raw_stdout, raw_stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout
+                )
+            except TimeoutError:
+                await kill_async_subprocess(proc)
+                elapsed = (time.perf_counter() - start) * 1000
+                return self._build_timeout_result(
+                    command=command,
+                    duration_ms=elapsed,
+                    timeout=timeout,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                )
+
+            encoding = _get_subprocess_encoding()
+            total_stdout_bytes = len(raw_stdout) if raw_stdout else 0
+            total_stderr_bytes = len(raw_stderr) if raw_stderr else 0
+
+            stdout_str = (
+                raw_stdout.decode(encoding, errors="replace")[:max_stdout]
+                if raw_stdout
+                else ""
+            )
+            stderr_str = (
+                raw_stderr.decode(encoding, errors="replace")[:max_stderr]
+                if raw_stderr
+                else ""
+            )
+
+            stdout_truncated = total_stdout_bytes > max_stdout
+            stderr_truncated = total_stderr_bytes > max_stderr
+            returncode = proc.returncode or 0
+            elapsed = (time.perf_counter() - start) * 1000
+
+            return self._build_result(
+                command=command,
+                stdout=stdout_str,
+                stderr=stderr_str,
+                returncode=returncode,
+                duration_ms=elapsed,
+                stdout_bytes=total_stdout_bytes,
+                stderr_bytes=total_stderr_bytes,
+                stdout_truncated=stdout_truncated,
+                stderr_truncated=stderr_truncated,
+            )
+        finally:
+            await kill_async_subprocess(proc)
+
     async def _run_supervised(
         self,
         subprocess_runner: Any,
@@ -1191,6 +1353,8 @@ class Bash(
             else self.config.max_output_bytes
         )
 
+        is_strict = getattr(self.config, "restrict_raw_shell", False)
+
         # ── Try supervised subprocess path ─────────────────
         subprocess_runner = getattr(ctx, "subprocess_runner", None) if ctx else None
         if subprocess_runner is not None:
@@ -1233,6 +1397,90 @@ class Bash(
                 )
                 return
 
+        # ── Two-path execution airlock ──────────────────────
+        if is_strict:
+            # Scoped execution: direct argv launch, no shell interpretation.
+            # Use shlex to parse the command into program + arguments,
+            # then launch via create_subprocess_exec with a hardened
+            # scoped environment.
+            import shlex
+
+            try:
+                parsed_argv = shlex.split(args.command)
+            except ValueError:
+                elapsed = (time.perf_counter() - start) * 1000
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="refused",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="refused",
+                    refusal_reason="Could not parse command arguments safely.",
+                    reroute=reroute_meta,
+                )
+                return
+
+            if not parsed_argv:
+                elapsed = (time.perf_counter() - start) * 1000
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="refused",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="refused",
+                    refusal_reason="Empty command after parsing.",
+                    reroute=reroute_meta,
+                )
+                return
+
+            try:
+                result = await self._run_direct_exec(
+                    command=args.command,
+                    argv=parsed_argv,
+                    cwd=args.cwd,
+                    timeout=timeout,
+                    max_stdout=max_stdout_cap,
+                    max_stderr=max_stderr_cap,
+                    start=start,
+                )
+                result.reroute = reroute_meta
+                yield result
+            except (ToolError, asyncio.CancelledError):
+                raise
+            except Exception as exc:
+                elapsed = (time.perf_counter() - start) * 1000
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="failure",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="internal_error",
+                    refusal_reason=str(exc),
+                    reroute=reroute_meta,
+                )
+            return
+
+        # ── Diagnostic mode: shell execution path ────────────
+        # Only reachable when restrict_raw_shell=False,
+        # behind the explicit unsafe-profile admission gate.
         try:
             result = await self._run_subprocess(
                 command=args.command,
