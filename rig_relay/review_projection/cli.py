@@ -247,6 +247,7 @@ def _run_disclose_authorization(
         is_disclosure_class_prohibited,
         load_manifest_json,
         verify_manifest_binding,
+        verify_manifest_integrity,
         verify_policy_version,
         verify_selector_disclosable,
         mark_selector_disclosed,
@@ -295,6 +296,12 @@ def _run_disclose_authorization(
 
         # Verify policy version
         ok, err = verify_policy_version(manifest)
+        if not ok:
+            print(f"REFUSED: {err}")
+            return
+
+        # Verify manifest self-integrity (digest must match computed)
+        ok, err = verify_manifest_integrity(manifest)
         if not ok:
             print(f"REFUSED: {err}")
             return

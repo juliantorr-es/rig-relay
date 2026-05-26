@@ -32,6 +32,7 @@ from rig_relay.review_projection.protected_content import (
     ManifestSelector,
     build_default_manifest,
     classify_content_kind,
+    compute_manifest_digest,
     compute_selector_digest,
     is_disclosure_class_prohibited,
     load_manifest_json,
@@ -39,6 +40,7 @@ from rig_relay.review_projection.protected_content import (
     mark_selector_disclosed,
     seal_manifest,
     verify_manifest_binding,
+    verify_manifest_integrity,
     verify_policy_version,
     verify_selector_disclosable,
     write_manifest_json,
@@ -519,7 +521,373 @@ def test_disclose_refuses_on_missing_manifest(tmp_path, monkeypatch):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Residual scanner still works
+# P4.1: Manifest integrity verification
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_verify_manifest_integrity_valid():
+    manifest = build_default_manifest("p", EVIDENCE_DIGEST, "s", "t")
+    ok, err = verify_manifest_integrity(manifest)
+    assert ok is True
+    assert err is None
+
+
+def test_verify_manifest_integrity_tampered_count():
+    manifest = build_default_manifest("p", EVIDENCE_DIGEST, "s", "t")
+    manifest.count_retained_projected = 999  # mutate after seal
+    ok, err = verify_manifest_integrity(manifest)
+    assert ok is False
+    assert "integrity failure" in (err or "").lower()
+
+
+def test_verify_manifest_integrity_tampered_selectors():
+    manifest = build_default_manifest("p", EVIDENCE_DIGEST, "s", "t")
+    manifest.selectors.append(
+        ManifestSelector(
+            selector_id="evil:path_identity:0",
+            selector_digest=compute_selector_digest("evil"),
+            content_kind=ContentKind.SOURCE_IDENTIFIER.value,
+            disclosure_class=DisclosureClass.PATH_IDENTITY.value,
+        )
+    )
+    ok, err = verify_manifest_integrity(manifest)
+    assert ok is False
+    assert "integrity failure" in (err or "").lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.1: Real bundle manifest integrity round-trip
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_manifest_integrity_roundtrip(tmp_path):
+    """Manifest written by BundleBuilder must round-trip with
+    loaded.manifest_digest == compute_manifest_digest(loaded).
+    """
+    builder = BundleBuilder(tmp_path)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="p")
+    crosswalk.mappings = {
+        "original_func_name": "FN_001",
+        "original_class_name": "CLASS_001",
+    }
+    receipt = DisclosureReceipt(
+        projection_id="p",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("p", files, manifest, crosswalk, receipt)
+
+    mpath = tmp_path / "protected_content_manifest_p.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    assert loaded.manifest_digest == compute_manifest_digest(loaded)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.1: Live selector emission from real crosswalk
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_manifest_contains_real_selectors(tmp_path):
+    """Selectors are populated from real pseudonymized crosswalk identities."""
+    builder = BundleBuilder(tmp_path)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="p")
+    crosswalk.mappings = {
+        "original_func": "FN_001",
+        "original_class": "CLASS_002",
+        "helper_var": "VAR_003",
+    }
+    receipt = DisclosureReceipt(
+        projection_id="p",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("p", files, manifest, crosswalk, receipt)
+
+    mpath = tmp_path / "protected_content_manifest_p.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    assert len(loaded.selectors) == 3
+
+    # Selector IDs use index-based format; pseudonyms in digests
+    selector_digests = {s.selector_digest for s in loaded.selectors}
+    assert len(selector_digests) == 3
+
+    # No raw original names in serialized manifest
+    serialized = json.dumps(loaded.model_dump(), sort_keys=True)
+    assert "original_func" not in serialized
+    assert "original_class" not in serialized
+    assert "helper_var" not in serialized
+
+
+def test_manifest_selectors_stable_ordering(tmp_path):
+    """Pseudonymized identities produce deterministic selectors."""
+    crosswalk = LocalCrosswalk(projection_id="p")
+    crosswalk.mappings = {"z_func": "FN_Z", "a_func": "FN_A"}
+    receipt = DisclosureReceipt(
+        projection_id="p",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "pass"}
+
+    manifests = []
+    for i in range(3):
+        b = BundleBuilder(tmp_path / f"run{i}")
+        m = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+        cw = LocalCrosswalk(projection_id=f"p{i}")
+        cw.mappings = dict(crosswalk.mappings)
+        r = receipt.model_copy()
+        r.projection_id = f"p{i}"
+        b.write_bundle(f"p{i}", files, m, cw, r)
+        loaded = load_manifest_json(
+            str(tmp_path / f"run{i}" / f"protected_content_manifest_p{i}.json")
+        )
+        assert loaded is not None
+        manifests.append(loaded)
+
+    # Selector digests must be deterministic across runs
+    for a, b in zip(manifests[0].selectors, manifests[1].selectors, strict=True):
+        assert a.selector_id == b.selector_id
+        assert a.selector_digest == b.selector_digest
+        assert a.content_kind == b.content_kind
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.1: Selector consumption through real CLI path
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
+    """A selector from a real manifest can be consumed through the CLI path."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    # Build a real bundle with crosswalk
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"secret_function": "FN_001"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    # Load the real manifest and get a real selector
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    assert len(loaded.selectors) == 1
+    real_selector = loaded.selectors[0]
+    assert loaded.selectors[0].content_kind == ContentKind.SOURCE_IDENTIFIER.value
+
+    # Issue a governance disclosure authorization
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.COMMIT_BODY.value,
+    )
+    assert auth_result.authorization_id
+
+    # Consume the selector through the CLI disclosure path
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="other_approved_recipient",
+            provider_or_channel="test-channel",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=real_selector.selector_digest,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" not in output
+    assert (
+        "authorization consumed" in output.lower()
+        or "Disclosure authorization" in output
+    )
+
+    # Reload manifest — selector should be marked disclosed
+    reloaded = load_manifest_json(str(mpath))
+    assert reloaded is not None
+    assert reloaded.selectors[0].disclosed is True
+
+    # Second attempt for same selector is refused
+    captured2 = io.StringIO()
+    with contextlib.redirect_stdout(captured2):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="other_approved_recipient",
+            provider_or_channel="test-channel",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=real_selector.selector_digest,
+        )
+    output2 = captured2.getvalue()
+    assert (
+        "already disclosed" in output2.lower() or "already consumed" in output2.lower()
+    )
+
+
+def test_tampered_manifest_refused_in_disclosure(tmp_path, monkeypatch):
+    """Disclosure refuses when manifest integrity is broken even if bundle_digest
+    and policy_version are unchanged.
+    """
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    # Build a real bundle
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def hello(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    zip_hash = receipt.candidate_zip_sha256 or EVIDENCE_DIGEST
+
+    # Tamper the manifest: mutate a field while preserving bundle_digest and policy_version
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    loaded.count_retained_projected = 99999  # tampered
+    loaded.count_hash_evidence_only = 88888
+    # DO NOT reseal — keep the stale manifest_digest
+    write_manifest_json(loaded, str(mpath))
+
+    # Issue authorization
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=zip_hash, disclosure_class=DisclosureClass.COMMIT_BODY.value
+    )
+
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=zip_hash,
+            recipient_class="other_approved_recipient",
+            provider_or_channel="test",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" in output
+    assert "integrity failure" in output.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Residual scanner still works (regression check)
 # ═══════════════════════════════════════════════════════════════════════
 
 

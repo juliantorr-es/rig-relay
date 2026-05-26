@@ -14,6 +14,8 @@ from rig_relay.review_projection.models import (
 from rig_relay.review_projection.protected_content import (
     ContentKind,
     build_default_manifest,
+    build_selector_entries,
+    seal_manifest,
     write_manifest_json,
 )
 
@@ -125,6 +127,20 @@ class BundleBuilder:
         manifest.count_retained_projected = len(files_content)
         manifest.total_items = len(files_content)
         manifest.content_kinds_present = [ContentKind.BUNDLE_METADATA.value]
+
+        # Populate selectors from pseudonymized crosswalk identities (never originals)
+        pseudonymized = sorted(set(crosswalk.mappings.values()))
+        if pseudonymized:
+            selectors = build_selector_entries(
+                pseudonymized_names=pseudonymized,
+                content_kind=ContentKind.SOURCE_IDENTIFIER.value,
+                disclosure_class="commit_body",
+            )
+            manifest.selectors = selectors
+
+        # Seal after all final fields and selectors are populated
+        seal_manifest(manifest)
+
         manifest_path = (
             self.output_dir / f"protected_content_manifest_{projection_id}.json"
         )

@@ -297,6 +297,26 @@ def verify_policy_version(
     return True, None
 
 
+def verify_manifest_integrity(
+    manifest: ProtectedContentManifest,
+) -> tuple[bool, str | None]:
+    """Verify manifest self-integrity: stored digest matches computed digest.
+
+    A tampered manifest that preserved bundle_digest and policy_version
+    cannot pass this check because the field mutations will change the
+    computed digest.
+    """
+    stored = manifest.manifest_digest
+    computed = compute_manifest_digest(manifest)
+    if stored != computed:
+        return False, (
+            f"Manifest integrity failure: stored digest "
+            f"{stored[:16]}... does not match computed digest "
+            f"{computed[:16]}... Manifest may be tampered or stale."
+        )
+    return True, None
+
+
 def verify_selector_disclosable(
     manifest: ProtectedContentManifest, selector_digest: str
 ) -> tuple[bool, str | None]:
@@ -352,6 +372,7 @@ __all__ = [
     "mark_selector_disclosed",
     "seal_manifest",
     "verify_manifest_binding",
+    "verify_manifest_integrity",
     "verify_policy_version",
     "verify_selector_disclosable",
     "write_manifest_json",
