@@ -169,53 +169,54 @@ CODEX_PROFILE = ProviderAdapterProfile(
 CURSOR_PROFILE = ProviderAdapterProfile(
     provider_id="cursor",
     provider_name="Cursor",
-    provider_description="Cursor IDE with MCP integration support.",
-    verified_integration_surfaces=[
-        IntegrationSurface.MCP_CLIENT,
-        IntegrationSurface.IDE_CLIENT,
-    ],
+    provider_description="Cursor IDE. MCP integration documentation not independently verified.",
+    verified_integration_surfaces=[IntegrationSurface.IDE_CLIENT],
     can_act_as_a2a_client=False,
     can_act_as_a2a_server=False,
-    can_consume_mcp_tools=True,
+    can_consume_mcp_tools=False,
     can_expose_mcp_tools=False,
-    supported_authentication=[AuthenticationModel.API_KEY],
-    streaming_supported=True,
-    cancellation_supported=True,
+    supported_authentication=[AuthenticationModel.UNKNOWN],
+    streaming_supported=False,
+    cancellation_supported=False,
     artifact_exchange_supported=False,
     local_mutation_risk=True,
     requires_user_configuration=True,
-    required_config_keys=["api_key"],
-    assigned_trust_tier="external_provider_adapter",
-    admitted_rig_capabilities=_mcp_bridge_caps(),
-    adapter_status=AdapterStatus.PROPOSAL_ONLY,
+    required_config_keys=[],
+    assigned_trust_tier="external_unauthenticated",
+    admitted_rig_capabilities=["discovery_only"],
+    adapter_status=AdapterStatus.TRANSPORT_UNVERIFIED,
     status_note=(
-        "MCP verified. Cursor can consume Rig Relay MCP tools. IDE "
-        "integration surface is documented but not directly bridged here."
+        "Official MCP documentation not independently verified during "
+        "this audit. IDE_CLIENT surface retained (Cursor is an IDE). "
+        "Downgraded to transport_unverified pending authoritative docs."
     ),
 )
 
 ANTIGRAVITY_PROFILE = ProviderAdapterProfile(
     provider_id="antigravity",
     provider_name="Antigravity",
-    provider_description="Antigravity IDE. MCP integration with Rig Relay's tiered tool exposure.",
-    verified_integration_surfaces=[IntegrationSurface.MCP_CLIENT],
+    provider_description="Antigravity IDE. Official MCP documentation not independently verified.",
+    verified_integration_surfaces=[IntegrationSurface.IDE_CLIENT],
     can_act_as_a2a_client=False,
     can_act_as_a2a_server=False,
-    can_consume_mcp_tools=True,
+    can_consume_mcp_tools=False,
     can_expose_mcp_tools=False,
-    supported_authentication=[AuthenticationModel.API_KEY],
-    streaming_supported=True,
-    cancellation_supported=True,
+    supported_authentication=[AuthenticationModel.UNKNOWN],
+    streaming_supported=False,
+    cancellation_supported=False,
     artifact_exchange_supported=False,
     local_mutation_risk=True,
     requires_user_configuration=True,
-    required_config_keys=["api_key"],
-    assigned_trust_tier="external_provider_adapter",
-    admitted_rig_capabilities=_mcp_bridge_caps(),
-    adapter_status=AdapterStatus.PROPOSAL_ONLY,
+    required_config_keys=[],
+    assigned_trust_tier="external_unauthenticated",
+    admitted_rig_capabilities=["discovery_only"],
+    adapter_status=AdapterStatus.TRANSPORT_UNVERIFIED,
     status_note=(
-        "MCP verified. Rig Relay's MCP server already targets Antigravity. "
-        "Tiered tool exposure in place. No verified A2A endpoint."
+        "Official MCP documentation not independently verified during "
+        "this audit. IDE_CLIENT surface retained. Rig Relay's MCP server "
+        "already targets Antigravity for tiered tool exposure, but this "
+        "does not constitute verified Antigravity MCP documentation. "
+        "Downgraded to transport_unverified pending authoritative docs."
     ),
 )
 

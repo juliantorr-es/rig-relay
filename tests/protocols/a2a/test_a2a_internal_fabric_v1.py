@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import json
 import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -406,3 +407,88 @@ class TestConcurrentSafety:
         fabric.send_message(t1.task_id, "msg-t1-2")
         assert fabric.get_messages("t1") == ["msg-t1-1", "msg-t1-2"]
         assert fabric.get_messages("t2") == ["msg-t2-1"]
+
+
+class TestAuthorityBoundary:
+    """Prove events are canonical authority, snapshot is projection."""
+
+    def test_corrupted_snapshot_cannot_silently_alter_outcome(self, fabric_dir):
+        """Deleting the snapshot does not change canonical task outcome."""
+        f1 = A2AInternalFabric(root=fabric_dir)
+        task = f1.create_task(agent_id="a1", task_id="auth-test")
+        f1.submit_task(task.task_id)
+        f1.start_task(task.task_id)
+        f1.complete_task(task.task_id)
+
+        # Delete the snapshot — only events remain
+        snapshot_path = fabric_dir / "tasks" / "auth-test.json"
+        snapshot_path.unlink()
+
+        # Reload — events are canonical, status must still be COMPLETED
+        f2 = A2AInternalFabric(root=fabric_dir)
+        reloaded = f2.get_task("auth-test")
+        assert reloaded is not None
+        assert reloaded.status == A2ATaskStatus.COMPLETED
+        assert reloaded.seq == 4
+
+    def test_snapshot_disagreeing_with_events_detected(self, fabric_dir):
+        """Integrity check detects snapshot/event disagreement."""
+        f1 = A2AInternalFabric(root=fabric_dir)
+        task = f1.create_task(agent_id="a1", task_id="snap-test")
+        f1.submit_task(task.task_id)
+        f1.start_task(task.task_id)
+
+        # Corrupt the snapshot to claim FAILED while events say RUNNING
+        snapshot_path = fabric_dir / "tasks" / "snap-test.json"
+        snap = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        snap["status"] = "failed"
+        snapshot_path.write_text(json.dumps(snap, sort_keys=True), encoding="utf-8")
+
+        f2 = A2AInternalFabric(root=fabric_dir)
+        consistent, detail = f2.check_integrity("snap-test")
+        assert not consistent
+        assert "mismatch" in detail
+
+    def test_reload_reconstructs_from_events_not_snapshot(self, fabric_dir):
+        """On reload, status comes from events — ignoring corrupted snap."""
+        f1 = A2AInternalFabric(root=fabric_dir)
+        task = f1.create_task(agent_id="a1", task_id="from-events")
+        f1.submit_task(task.task_id)
+        f1.start_task(task.task_id)
+        f1.complete_task(task.task_id)
+
+        # Corrupt snapshot status
+        snapshot_path = fabric_dir / "tasks" / "from-events.json"
+        snap = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        snap["status"] = "created"
+        snapshot_path.write_text(json.dumps(snap, sort_keys=True), encoding="utf-8")
+
+        f2 = A2AInternalFabric(root=fabric_dir)
+        reloaded = f2.get_task("from-events")
+        assert reloaded is not None
+        # Events say COMPLETED — snapshot's "created" is ignored
+        assert reloaded.status == A2ATaskStatus.COMPLETED
+
+    def test_integrity_passes_when_consistent(self, fabric):
+        """Fresh tasks pass integrity check."""
+        task = fabric.create_task(agent_id="a1")
+        fabric.submit_task(task.task_id)
+        fabric.start_task(task.task_id)
+        fabric.complete_task(task.task_id)
+
+        consistent, detail = fabric.check_integrity(task.task_id)
+        assert consistent
+        assert "verified" in detail
+
+    def test_terminal_state_immutable_under_replay(self, fabric):
+        """Event replay cannot resurrect a cancelled task."""
+        task = fabric.create_task(agent_id="a1")
+        fabric.submit_task(task.task_id)
+        fabric.start_task(task.task_id)
+        fabric.cancel_task(task.task_id)
+
+        reconstructed = fabric.replay_task_state(task.task_id)
+        assert reconstructed is not None
+        assert reconstructed.status == A2ATaskStatus.CANCELLED
+        # Terminal states have no outgoing transitions
+        assert len(reconstructed.events) == 4

@@ -169,82 +169,107 @@ class A2AInternalFabric:
             f.flush()
 
     def _reload_all(self) -> None:
-        """Load all persisted tasks into memory."""
+        """Load all tasks from durable storage.
+
+        Scans both the tasks/ snapshots and events/ directories.
+        A task with events but no snapshot is still loadable — the
+        snapshot is a non-authoritative projection; events are canonical.
+        """
         self._tasks.clear()
         tasks_dir = self.root / "tasks"
-        if not tasks_dir.exists():
-            return
-        for task_file in tasks_dir.glob("*.json"):
+        events_dir = self.root / "events"
+
+        task_ids: set[str] = set()
+
+        if tasks_dir.exists():
+            for task_file in tasks_dir.glob("*.json"):
+                task_ids.add(task_file.stem)
+
+        if events_dir.exists():
+            for event_file in events_dir.glob("*.jsonl"):
+                task_ids.add(event_file.stem)
+
+        for task_id in sorted(task_ids):
             try:
-                data = json.loads(task_file.read_text(encoding="utf-8"))
-                task_id = data["task_id"]
-                state = InternalA2ATaskState(
-                    task_id=task_id,
-                    agent_id=data.get("agent_id", ""),
-                    trust_tier=TrustTier(
-                        data.get("trust_tier", "internal_governed_agent")
-                    ),
-                    status=A2ATaskStatus(data.get("status", "created")),
-                    description=data.get("description", ""),
-                    trace_id=data.get("trace_id", ""),
-                    seq=data.get("seq", 0),
-                    coordination_task_claim_id=data.get(
-                        "coordination_task_claim_id", ""
-                    ),
-                    coordination_path_reservation_ids=data.get(
-                        "coordination_path_reservation_ids", []
-                    ),
-                )
-                for ref_data in data.get("artifact_refs", []):
-                    state.artifact_refs.append(
-                        A2AArtifactRef(
-                            artifact_id=ref_data["artifact_id"],
-                            artifact_kind=ref_data["artifact_kind"],
-                            content_hash=ref_data.get("content_hash", ""),
-                            description=ref_data.get("description", ""),
-                            generated_at=ref_data.get("generated_at", ""),
-                        )
-                    )
-                gb_data = data.get("governance_binding")
-                if gb_data is not None:
-                    state.governance_binding = A2AGovernanceBinding.model_validate(
-                        gb_data
-                    )
-
-                # Replay events from event log
-                events_path = self._events_path(task_id)
-                if events_path.exists():
-                    for line in (
-                        events_path.read_text(encoding="utf-8").strip().split("\n")
-                    ):
-                        if not line.strip():
-                            continue
-                        evt = json.loads(line)
-                        state.events.append(
-                            A2ATaskLifecycleEvent(
-                                event_type=A2ATaskStatus(evt["event_type"]),
-                                timestamp=evt.get("timestamp", ""),
-                                metadata_hash=evt.get("metadata_hash", ""),
-                                task_id=evt.get("task_id", task_id),
-                                trace_id=evt.get("trace_id", ""),
-                                seq=evt.get("seq", 0),
-                            )
-                        )
-
-                # Replay messages from message log
-                msgs_path = self._messages_path(task_id)
-                if msgs_path.exists():
-                    for line in (
-                        msgs_path.read_text(encoding="utf-8").strip().split("\n")
-                    ):
-                        if not line.strip():
-                            continue
-                        msg = json.loads(line)
-                        state.messages.append(msg.get("message", ""))
-
-                self._tasks[task_id] = state
+                self._load_one_task(task_id)
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue
+
+    def _load_one_task(self, task_id: str) -> None:
+        """Load a single task from durable storage.
+
+        Base metadata (agent_id, description, etc.) comes from the
+        snapshot if available. Status and seq are derived exclusively
+        from event replay — the events.jsonl is canonical authority.
+        """
+        task_path = self._task_path(task_id)
+        events_path = self._events_path(task_id)
+
+        if task_path.exists():
+            try:
+                data = json.loads(task_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, FileNotFoundError):
+                data = {}
+        else:
+            data = {}
+
+        state = InternalA2ATaskState(
+            task_id=task_id,
+            agent_id=data.get("agent_id", ""),
+            trust_tier=TrustTier(data.get("trust_tier", "internal_governed_agent")),
+            status=A2ATaskStatus.CREATED,
+            description=data.get("description", ""),
+            trace_id=data.get("trace_id", ""),
+            seq=0,
+            coordination_task_claim_id=data.get("coordination_task_claim_id", ""),
+            coordination_path_reservation_ids=data.get(
+                "coordination_path_reservation_ids", []
+            ),
+        )
+
+        if events_path.exists():
+            for line in events_path.read_text(encoding="utf-8").strip().split("\n"):
+                if not line.strip():
+                    continue
+                evt = json.loads(line)
+                event_type = A2ATaskStatus(evt["event_type"])
+                state.events.append(
+                    A2ATaskLifecycleEvent(
+                        event_type=event_type,
+                        timestamp=evt.get("timestamp", ""),
+                        metadata_hash=evt.get("metadata_hash", ""),
+                        task_id=evt.get("task_id", task_id),
+                        trace_id=evt.get("trace_id", ""),
+                        seq=evt.get("seq", len(state.events) + 1),
+                    )
+                )
+                state.status = event_type
+                state.seq = evt.get("seq", state.seq)
+
+        for ref_data in data.get("artifact_refs", []):
+            state.artifact_refs.append(
+                A2AArtifactRef(
+                    artifact_id=ref_data["artifact_id"],
+                    artifact_kind=ref_data["artifact_kind"],
+                    content_hash=ref_data.get("content_hash", ""),
+                    description=ref_data.get("description", ""),
+                    generated_at=ref_data.get("generated_at", ""),
+                )
+            )
+
+        gb_data = data.get("governance_binding")
+        if gb_data is not None:
+            state.governance_binding = A2AGovernanceBinding.model_validate(gb_data)
+
+        msgs_path = self._messages_path(task_id)
+        if msgs_path.exists():
+            for line in msgs_path.read_text(encoding="utf-8").strip().split("\n"):
+                if not line.strip():
+                    continue
+                msg = json.loads(line)
+                state.messages.append(msg.get("message", ""))
+
+        self._tasks[task_id] = state
 
     def create_task(
         self,
@@ -423,7 +448,13 @@ class A2AInternalFabric:
     def _transition(
         self, task_id: str, new_status: A2ATaskStatus, trace_id: str = ""
     ) -> InternalA2ATaskState:
-        """Execute a state transition under lock and persist."""
+        """Execute a state transition under lock and persist.
+
+        The append-only events.jsonl is the canonical state authority.
+        The task snapshot JSON is a non-authoritative projection derived
+        from events — it can be rebuilt from the event log at any time.
+        Events are written first; the snapshot follows.
+        """
         _VALID = {
             A2ATaskStatus.CREATED: {A2ATaskStatus.SUBMITTED},
             A2ATaskStatus.SUBMITTED: {A2ATaskStatus.RUNNING, A2ATaskStatus.CANCELLED},
@@ -465,22 +496,23 @@ class A2AInternalFabric:
                 seq=state.seq,
             )
             state.events.append(event)
-            self._persist_task(state)
+
+            # Write event first — canonical authority
             self._append_event(state, event)
+            # Snapshot is a non-authoritative projection derived from events
+            self._persist_task(state)
         finally:
             self._release_lock()
         return state
 
     def replay_task_state(self, task_id: str) -> InternalA2ATaskState | None:
-        """Reconstruct task state from durable events.
+        """Reconstruct task state from durable events only.
 
-        Useful for verification and integrity checking. Returns None
-        if the task does not exist.
+        The events.jsonl is the sole canonical state authority.
+        Returns None if the task does not exist or has no events.
         """
         self._acquire_lock()
         try:
-            if task_id not in self._tasks:
-                return None
             return self._reconstruct_from_events(task_id)
         finally:
             self._release_lock()
@@ -488,8 +520,15 @@ class A2AInternalFabric:
     def _reconstruct_from_events(self, task_id: str) -> InternalA2ATaskState | None:
         """Rebuild task state purely from the event log.
 
-        This is the integrity verification path: if the task file
-        is corrupted, the event log is the source of truth.
+        The event log is the canonical state authority. This
+        reconstruction uses only the events.jsonl and the snapshot
+        for non-state metadata (agent_id, description, artifact refs,
+        governance binding). Status and seq are derived exclusively
+        from event replay.
+
+        If the snapshot JSON is corrupted or missing, base metadata
+        defaults to empty values — the event replay still produces
+        correct status and seq.
         """
         task_path = self._task_path(task_id)
         events_path = self._events_path(task_id)
@@ -511,6 +550,7 @@ class A2AInternalFabric:
             status=A2ATaskStatus.CREATED,
             description=base_data.get("description", ""),
             trace_id=base_data.get("trace_id", ""),
+            seq=0,
         )
 
         for line in events_path.read_text(encoding="utf-8").strip().split("\n"):
@@ -531,7 +571,6 @@ class A2AInternalFabric:
             state.status = event_type
             state.seq = evt.get("seq", state.seq)
 
-        # Replay artifact refs from base data
         for ref_data in base_data.get("artifact_refs", []):
             state.artifact_refs.append(
                 A2AArtifactRef(
@@ -544,6 +583,62 @@ class A2AInternalFabric:
             )
 
         return state
+
+    def check_integrity(self, task_id: str) -> tuple[bool, str]:
+        """Verify that task snapshot agrees with canonical event log.
+
+        Replays events to derive expected state, then compares with
+        the snapshot. Returns (consistent: bool, detail: str).
+        """
+        snapshot_path = self._task_path(task_id)
+        events_path = self._events_path(task_id)
+
+        if not events_path.exists():
+            return False, f"No event log for task {task_id}"
+
+        reconstructed = self._reconstruct_from_events(task_id)
+        if reconstructed is None:
+            return False, f"Failed to reconstruct {task_id} from events"
+
+        result = self._verify_snapshot_matches_events(
+            task_id, snapshot_path, reconstructed
+        )
+        return result
+
+    def _verify_snapshot_matches_events(
+        self, task_id: str, snapshot_path: Path, reconstructed: InternalA2ATaskState
+    ) -> tuple[bool, str]:
+        """Compare snapshot state against events-reconstructed state."""
+        if not snapshot_path.exists():
+            return True, (
+                f"Task {task_id}: snapshot missing, "
+                f"reconstructed status={reconstructed.status.value} seq={reconstructed.seq}"
+            )
+
+        try:
+            snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, FileNotFoundError):
+            return False, f"Task {task_id}: snapshot corrupted, cannot verify"
+
+        snap_status = snapshot.get("status", "")
+        snap_seq = snapshot.get("seq", -1)
+
+        if snap_status != reconstructed.status.value:
+            return False, (
+                f"Task {task_id}: status mismatch — "
+                f"snapshot={snap_status}, events={reconstructed.status.value}"
+            )
+
+        if snap_seq != reconstructed.seq:
+            return False, (
+                f"Task {task_id}: seq mismatch — "
+                f"snapshot={snap_seq}, events={reconstructed.seq}"
+            )
+
+        return True, (
+            f"Task {task_id}: integrity verified — "
+            f"status={reconstructed.status.value} seq={reconstructed.seq}"
+        )
 
     def get_events(self, task_id: str) -> list[A2ATaskLifecycleEvent]:
         """Return all lifecycle events for a task."""
