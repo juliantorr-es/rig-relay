@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.remote_action_authorization_receipt.v1.schema.json",
+  "title": "Remote Action Authorization Receipt v1",
+  "description": "Generic, durable, schema-governed authorization receipt for external remote actions. Binds authorization to a specific request digest, action class, provider, target identity, expected prior remote evidence, and single-use semantics. Suitable for GitHub user profiles, repository creation, issue mutations, Actions mutations, Pages configuration, and later comparable provider actions. Lane A owns this generic authority substrate; Lane B consumes it for GitHub-specific remote mutation authorization.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "action_class",
+    "provider",
+    "request_digest",
+    "issued_at",
+    "expires_at",
+    "one_time",
+    "mutation_risk",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.remote_action_authorization_receipt.v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "description": "Stable authorization identifier — used as the persistent file key."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of receipt creation."
+    },
+    "action_class": {
+      "type": "string",
+      "enum": [
+        "github_user_profile_update",
+        "github_repository_create",
+        "github_issue_create",
+        "github_issue_comment",
+        "github_issue_close",
+        "github_actions_rerun",
+        "github_actions_dispatch",
+        "github_pages_configure",
+        "github_pages_publish",
+        "github_pages_cancel_deployment"
+      ],
+      "description": "Remote action class. Additional provider actions may be added by the owning authority."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Provider or remote-system class (e.g., 'github')."
+    },
+    "target_identity": {
+      "type": "string",
+      "description": "Bounded target identity (repository name, user login, issue number, workflow ID)."
+    },
+    "requested_actor": {
+      "type": "string",
+      "description": "Identity of the requesting actor under existing conventions."
+    },
+    "producer_identity": {
+      "type": "string",
+      "description": "Identity of the evidence or authorization producer."
+    },
+    "request_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the canonical proposed request payload. Binds authorization to the exact request — a different payload must not be authorized."
+    },
+    "prior_evidence_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the remote evidence the request was planned against. Empty for creation actions. Freshness-required actions refuse on mismatch."
+    },
+    "permission_scope_summary": {
+      "type": "string",
+      "description": "Human-readable summary of the granted permission scope."
+    },
+    "mutation_risk": {
+      "type": "string",
+      "enum": [
+        "destructive",
+        "mutating",
+        "configuration",
+        "deployment",
+        "repository_creation"
+      ],
+      "description": "Explicit remote mutation risk classification."
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Documented purpose for this authorization."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of issuance."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which the receipt is invalid."
+    },
+    "one_time": {
+      "type": "boolean",
+      "description": "True for single-use receipts, False for bounded-use."
+    },
+    "max_uses": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum uses for bounded-use receipts (ignored when one_time=True)."
+    },
+    "use_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current use count for bounded-use receipts."
+    },
+    "consumed": {
+      "type": "boolean",
+      "description": "True when a one-time receipt has been consumed."
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Integrity digest covering all receipt data (excluding this field)."
+    }
+  },
+  "additionalProperties": false
+}

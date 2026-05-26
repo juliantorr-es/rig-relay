@@ -316,6 +316,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/governance/disclosure_authorization.py" = ["PLR0911"]
 "rig_relay/governance/lane_lifecycle.py" = ["PLR0911", "PLR0912", "PLR0913"]
 "rig_relay/governance/revocation_authority.py" = ["PLR0911"]
+"rig_relay/governance/remote_action_authorization.py" = ["PLR0911", "PLR0912", "PLR0913"]
 "scripts/rig_opencode_idle_steward.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
