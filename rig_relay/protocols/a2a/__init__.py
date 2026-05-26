@@ -24,6 +24,12 @@ from rig_relay.protocols.a2a._canonical import (
     dump_canonical_json,
     verify_digest,
 )
+from rig_relay.protocols.a2a._gateway import (
+    A2AGateway,
+    GatewayConfig,
+    gateway_admit_mutation,
+    refusal_response,
+)
 from rig_relay.protocols.a2a._governance_bindings import (
     A2AAgentCardExtensions,
     A2AGovernanceBinding,
@@ -32,12 +38,6 @@ from rig_relay.protocols.a2a._governance_bindings import (
     ExecutionRisk,
     MutationIntent,
     RefusalReason,
-)
-from rig_relay.protocols.a2a._gateway import (
-    A2AGateway,
-    GatewayConfig,
-    gateway_admit_mutation,
-    refusal_response,
 )
 from rig_relay.protocols.a2a._identity import (
     A2ALocalIdentity,
@@ -90,8 +90,8 @@ __all__ = [
     "A2AArtifactKind",
     "A2AArtifactRef",
     "A2ADelegationReceipt",
-    "A2AGovernanceBinding",
     "A2AGateway",
+    "A2AGovernanceBinding",
     "A2AInternalFabric",
     "A2ALocalIdentity",
     "A2ASecurityScheme",
