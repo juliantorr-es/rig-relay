@@ -38,6 +38,7 @@
         "integration_accepted",
         "integration_refused_stale_base",
         "claim_released",
+        "claim_release_refused",
         "work_parked"
       ],
       "description": "Kind of fleet claim lifecycle event."
@@ -56,12 +57,20 @@
     },
     "claimed_paths": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Repo-relative POSIX paths claimed in this event."
     },
     "prior_sha256": {
-      "type": ["object", "null"],
-      "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
       "description": "Path-to-SHA256 mapping at claim acquisition time."
     },
     "timestamp": {
@@ -76,10 +85,13 @@
     },
     "event_digest": {
       "type": "string",
-      "description": "SHA-256 hex digest of this event's canonical JSON line."
+      "description": "SHA-256 hex digest of this event\"s canonical JSON line."
     },
     "reason": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Refusal reason, integration note, or parked blocker context."
     }
   },
