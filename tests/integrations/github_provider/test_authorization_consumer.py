@@ -2,14 +2,13 @@
 
 Uses Lane A's remote_action_authorization to issue/validate/consume receipts,
 then proves the full fake-endpoint mutation corridor for profile update,
-repo create, and pages configure. Tests all refusal paths."""
+repo create, and pages configure. Tests all refusal paths.
+"""
 
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock
 
-import httpx
 import pytest
 import respx
 
@@ -19,24 +18,15 @@ from rig_relay.governance.remote_action_authorization import (
 )
 from rig_relay.integrations.github_provider._authorization_consumer import (
     ConsumerOutcome,
-    ConsumerResult,
     GitHubAuthorizationConsumer,
     compute_request_digest,
 )
-from rig_relay.integrations.github_provider._user_adapter import GitHubUserAdapter
-from rig_relay.integrations.github_provider._user_models import (
-    GitHubProfileChangeProposal,
-    GitHubUserProfile,
-)
+from rig_relay.integrations.github_provider._pages_adapter import GitHubPagesAdapter
 from rig_relay.integrations.github_provider._repo_bootstrap import (
-    BootstrapPlan,
-    BootstrapResult,
     GitHubBootstrapAdapter,
 )
-from rig_relay.integrations.github_provider._pages_adapter import (
-    GitHubPagesAdapter,
-    PagesPublicationResult,
-)
+from rig_relay.integrations.github_provider._user_adapter import GitHubUserAdapter
+from rig_relay.integrations.github_provider._user_models import GitHubUserProfile
 
 GITHUB_API_BASE = "https://api.github.com"
 
@@ -293,7 +283,7 @@ async def test_profile_update_refuses_wrong_action():
     adapter = GitHubUserAdapter(user_token="token")
     proposal = adapter.propose_profile_change(profile, {"name": "New"})
 
-    patch_payload = {f: v for f, v in proposal.after_values.items() if v is not None}
+    _patch_payload = {f: v for f, v in proposal.after_values.items() if v is not None}
 
     # Issue a receipt for repo_create, not profile_update — but use repo payload
     issue_result = GitHubAuthorizationConsumer.issue_authorization(
@@ -372,7 +362,7 @@ async def test_repo_create_refuses_wrong_digest():
     issue_result = GitHubAuthorizationConsumer.issue_authorization(
         operation_kind="repo_create",
         request_payload=wrong_payload,
-        target_identity=f"user/my-repo",
+        target_identity="user/my-repo",
     )
 
     result = await adapter.create_repository(

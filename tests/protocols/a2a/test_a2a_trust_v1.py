@@ -9,6 +9,8 @@ import jsonschema
 import pytest
 
 from rig_relay.protocols.a2a._trust import (
+    MUTATION_CAPABILITIES,
+    PUBLIC_CAPABILITIES,
     AgentTrustProfile,
     CapabilityClass,
     TrustTier,
@@ -17,8 +19,6 @@ from rig_relay.protocols.a2a._trust import (
     capability_admitted,
     mutation_capability_admitted,
     public_capability_subset,
-    PUBLIC_CAPABILITIES,
-    MUTATION_CAPABILITIES,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

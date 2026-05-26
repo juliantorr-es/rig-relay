@@ -14,10 +14,10 @@ from pathlib import Path
 import pytest
 
 from rig_relay.governance.lane_lifecycle import (
+    TERMINAL_STATES,
     LaneLifecycleEventKind,
     LaneLifecycleState,
     LaneTransitionOutcome,
-    TERMINAL_STATES,
     _ledger_path,
     _store_root,
     current_state,
@@ -277,9 +277,9 @@ def test_current_state_none_on_empty_lane():
 def test_emitted_event_validates_against_schema():
     """Real emitted events must conform to the canonical lane lifecycle schema."""
     import json
-    import jsonschema
-
     import os
+
+    import jsonschema
 
     schema_path = (
         Path(os.path.dirname(__file__)).parent.parent
@@ -309,9 +309,9 @@ def test_emitted_event_validates_against_schema():
 def test_readiness_event_without_proof_rejected_by_schema():
     """Schema enforces proof_bundle_sha256 requirement on ready_requested."""
     import json
-    import jsonschema
-
     import os
+
+    import jsonschema
 
     schema_path = (
         Path(os.path.dirname(__file__)).parent.parent

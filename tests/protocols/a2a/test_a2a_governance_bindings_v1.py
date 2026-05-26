@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import jsonschema
+from pydantic import ValidationError
 import pytest
 
 from rig_relay.protocols.a2a._governance_bindings import (
@@ -70,7 +71,7 @@ class TestGovernanceBindingModel:
         ]
 
     def test_binding_rejects_extra_fields(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             A2AGovernanceBinding(unknown_field="bad")  # type: ignore[call-arg]
 
 

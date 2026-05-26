@@ -9,15 +9,12 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from rig_relay.desktop.github_truth_projection import (
+    _STATUS_LABELS,
     CIStateProjection,
     GitHubConnectionProjection,
-    OperatorDashboardProjection,
     PublicationStatusProjection,
     RepositoryProjection,
-    _STATUS_LABELS,
     assert_projection_content_light,
     build_operator_dashboard,
 )

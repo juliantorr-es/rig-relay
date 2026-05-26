@@ -9,30 +9,19 @@ stable evidence identities, and confidential error handling.
 from __future__ import annotations
 
 import json
-import time
 from unittest.mock import MagicMock
 
 import httpx
 import pytest
 import respx
 
-from rig_relay.integrations.github_provider._redaction import (
-    assert_no_raw_github_token,
-    scan_for_tokens,
-)
+from rig_relay.integrations.github_provider._redaction import scan_for_tokens
 from rig_relay.integrations.github_provider._truth_adapter import (
     GitHubTruthAdapter,
     GitHubTruthAdapterError,
-    _GitHubHttpClient,
 )
 from rig_relay.integrations.github_provider._truth_models import (
-    GitHubCIStatusEvidence,
-    GitHubCommitPresence,
     GitHubCommitRelationship,
-    GitHubCompareResult,
-    GitHubInstallationAccess,
-    GitHubPublicationVerification,
-    GitHubRemoteRefObservation,
     GitHubTokenStatus,
     GitHubTruthErrorKind,
     GitHubVerificationStatus,
@@ -592,7 +581,8 @@ async def test_publication_accepted_with_follow_on(
     respx_mock: respx.MockRouter, fake_token_manager
 ):
     """Simulate the exact scenario from the last wave: accepted head present
-    but main has a follow-on commit (opencode.json + findings)."""
+    but main has a follow-on commit (opencode.json + findings).
+    """
     accepted_sha = "a" * 40  # The coordinator-gate commit
     follow_on_sha = "b" * 40  # The deliberate follow-on config commit
 

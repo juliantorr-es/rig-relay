@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import httpx
 import pytest
 import respx
 
@@ -13,8 +12,6 @@ from rig_relay.integrations.github_provider._user_adapter import (
     GitHubUserAdapterError,
 )
 from rig_relay.integrations.github_provider._user_models import (
-    GitHubProfileChangeProposal,
-    GitHubProfileChangeResult,
     GitHubUserErrorKind,
     GitHubUserProfile,
 )

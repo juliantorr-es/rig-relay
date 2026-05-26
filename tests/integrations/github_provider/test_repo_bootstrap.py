@@ -7,8 +7,6 @@ import respx
 
 from rig_relay.integrations.github_provider._repo_bootstrap import (
     BootstrapErrorKind,
-    BootstrapPlan,
-    BootstrapResult,
     GitHubBootstrapAdapter,
     RepoPurpose,
 )

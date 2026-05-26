@@ -16,19 +16,18 @@ from pathlib import Path
 import pytest
 
 from rig_relay.governance.remote_action_authorization import (
+    FRESHNESS_REQUIRED_ACTIONS,
+    NO_PRIOR_EVIDENCE_ACTIONS,
+    SUPPORTED_ACTION_CLASSES,
     RemoteActionAuthorizationReceipt,
     RemoteActionClass,
     RemoteActionOutcome,
-    RemoteActionResult,
     RemoteMutationRisk,
-    SUPPORTED_ACTION_CLASSES,
-    FRESHNESS_REQUIRED_ACTIONS,
-    NO_PRIOR_EVIDENCE_ACTIONS,
+    _rea_receipt_path,
+    _rea_store_root,
     consume_remote_action_authorization,
     issue_remote_action_authorization,
     validate_remote_action_authorization,
-    _rea_store_root,
-    _rea_receipt_path,
 )
 
 
@@ -486,8 +485,9 @@ def test_receipt_integrity_roundtrip():
 
 
 def test_receipt_schema_validation():
-    import jsonschema
     import os
+
+    import jsonschema
 
     schema_path = (
         Path(os.path.dirname(__file__)).parent.parent
