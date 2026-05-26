@@ -25,6 +25,12 @@ from rig_relay.core.types import (
     Role,
     StrToolChoice,
 )
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    InvocationRefusalClass,
+    ProviderClass,
+    build_invocation_outcome,
+)
 
 
 class GeminiMapper:
@@ -82,6 +88,8 @@ class GeminiAdapter(APIAdapter):
 
     def __init__(self) -> None:
         self._mapper = GeminiMapper()
+        self._last_model_name: str = ""
+        self._last_streaming: bool = False
 
     def _build_generation_config(
         self, temperature: float, max_tokens: int | None, thinking: str
@@ -89,7 +97,6 @@ class GeminiAdapter(APIAdapter):
         config: dict[str, Any] = {"temperature": temperature}
         if max_tokens is not None:
             config["maxOutputTokens"] = max_tokens
-        # TODO: map thinking modes to Gemini thinkingConfig when available
         return config
 
     def prepare_request(
@@ -106,6 +113,8 @@ class GeminiAdapter(APIAdapter):
         api_key: str | None = None,
         thinking: str = "off",
     ) -> PreparedRequest:
+        self._last_model_name = model_name
+        self._last_streaming = enable_streaming
         merged_messages = merge_consecutive_user_messages(messages)
         system_instruction, contents = self._mapper.prepare_contents(merged_messages)
 
@@ -167,21 +176,73 @@ class GeminiAdapter(APIAdapter):
             return f"Gemini error {code}: {message}"
         return None
 
+    def _build_outcome(
+        self,
+        provider: ProviderConfig,
+        outcome_class: InvocationOutcomeClass,
+        refusal_class: InvocationRefusalClass | None = None,
+        outcome_summary: str = "",
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        total_tokens: int | None = None,
+    ) -> Any:
+        api_style = getattr(provider, "api_style", "gemini")
+        return build_invocation_outcome(
+            requested_provider_id=provider.name,
+            requested_model_id=self._last_model_name,
+            provider_class=ProviderClass.DIRECT_INFERENCE,
+            api_style=api_style,
+            outcome_class=outcome_class,
+            streaming=self._last_streaming,
+            refusal_class=refusal_class,
+            outcome_summary=outcome_summary,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            usage_verified=input_tokens is not None,
+            safety_refusal_verified=(
+                outcome_class
+                in {InvocationOutcomeClass.SAFETY_BLOCK, InvocationOutcomeClass.REFUSAL}
+            ),
+            actual_provider_verified=None,
+            actual_model_verified=None,
+            streaming_terminal_usage_verified=(
+                self._last_streaming and input_tokens is not None
+            ),
+            gateway_provenance_verified=None,
+        )
+
     def parse_response(
         self, data: dict[str, Any], provider: ProviderConfig
     ) -> LLMChunk:
         error_msg = self._check_error(data)
         if error_msg is not None:
+            outcome = self._build_outcome(
+                provider,
+                outcome_class=InvocationOutcomeClass.ERROR,
+                refusal_class=InvocationRefusalClass.AUTH_FAILURE
+                if "API key" in error_msg
+                else InvocationRefusalClass.PROVIDER_ERROR,
+                outcome_summary=error_msg,
+            )
             return LLMChunk(
                 message=LLMMessage(role=Role.assistant, content=error_msg),
                 usage=LLMUsage(prompt_tokens=0, completion_tokens=0),
+                invocation_outcome=outcome,
             )
 
         safety_refusal = self._check_safety_refusal(data)
         if safety_refusal is not None:
+            outcome = self._build_outcome(
+                provider,
+                outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
+                refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
+                outcome_summary=safety_refusal,
+            )
             return LLMChunk(
                 message=LLMMessage(role=Role.assistant, content=safety_refusal),
                 usage=LLMUsage(prompt_tokens=0, completion_tokens=0),
+                invocation_outcome=outcome,
             )
 
         candidates = data.get("candidates", [])
@@ -194,12 +255,27 @@ class GeminiAdapter(APIAdapter):
         text_content = "".join(text_parts) if text_parts else None
 
         usage_meta = data.get("usageMetadata", {})
+        prompt_tokens = usage_meta.get("promptTokenCount", 0)
+        completion_tokens = usage_meta.get("candidatesTokenCount", 0)
+        total_tok = usage_meta.get("totalTokenCount", 0)
+        has_usage = "promptTokenCount" in usage_meta
+
         usage = LLMUsage(
-            prompt_tokens=usage_meta.get("promptTokenCount", 0),
-            completion_tokens=usage_meta.get("candidatesTokenCount", 0),
+            prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
         )
+
+        outcome = None
+        if has_usage:
+            outcome = self._build_outcome(
+                provider,
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                input_tokens=prompt_tokens or None,
+                output_tokens=completion_tokens or None,
+                total_tokens=total_tok or None,
+            )
 
         return LLMChunk(
             message=LLMMessage(role=Role.assistant, content=text_content or ""),
             usage=usage,
+            invocation_outcome=outcome,
         )

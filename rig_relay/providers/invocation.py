@@ -7,7 +7,7 @@ Does NOT persist data — produces a typed value only.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -251,6 +251,7 @@ class InvocationEvidenceCapability:
     """Read-only capability summary for invocation evidence per provider.
 
     Describes what evidence fields a provider adapter is verified to produce.
+    Distinguishes contract representability from live-emission proof.
     No network calls, no secrets, no inference, no persistence.
     """
 
@@ -266,12 +267,18 @@ class InvocationEvidenceCapability:
     actual_model_verified: bool
     gateway_provenance_verified: bool
     response_id_verified: bool
-    notes: list[str]
+    # P1.2 live emission flags
+    live_non_streaming_outcome: bool = False
+    live_streaming_outcome: bool = False
+    live_provider_identity_preserved: bool = False
+    live_cache_evidence_preserved: bool = False
+    live_safety_classification: bool = False
+    notes: list[str] = field(default_factory=list)
 
 
 # Honest adapter-by-adapter evidence capability registry.
 # Only marks True what is proven by boundary tests.
-_ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
+_ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, Any]] = {
     "openai": {
         "usage_verified": True,
         "usage_streaming_final_verified": True,
@@ -279,13 +286,19 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "cache_creation_verified": False,
         "safety_refusal_verified": False,
         "actual_provider_verified": False,
-        "actual_model_verified": False,
+        "actual_model_verified": True,
         "gateway_provenance_verified": False,
         "response_id_verified": True,
+        "live_non_streaming_outcome": True,
+        "live_streaming_outcome": True,
+        "live_provider_identity_preserved": True,
+        "live_cache_evidence_preserved": False,
+        "live_safety_classification": False,
         "notes": [
-            "OpenAI responses include 'id' field usable as provider_response_id",
+            "live non-streaming + streaming outcome emission via OpenAIAdapter",
+            "provider identity preserved from config (OpenAI/DeepSeek distinguished)",
+            "model ID and response ID extracted where available",
             "cache tokens not parsed from usage response",
-            "safety refusals handled as HTTP errors only",
         ],
     },
     "anthropic": {
@@ -298,9 +311,15 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "actual_model_verified": True,
         "gateway_provenance_verified": False,
         "response_id_verified": True,
+        "live_non_streaming_outcome": True,
+        "live_streaming_outcome": True,
+        "live_provider_identity_preserved": True,
+        "live_cache_evidence_preserved": True,
+        "live_safety_classification": False,
         "notes": [
-            "cache_read_input_tokens and cache_creation_input_tokens preserved",
-            "model ID available from response 'model' field",
+            "cache_read_input_tokens and cache_creation_input_tokens preserved as named fields",
+            "live outcomes emitted for both non-streaming and streaming (terminal message_delta)",
+            "model ID available from response",
         ],
     },
     "gemini": {
@@ -313,7 +332,16 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "actual_model_verified": False,
         "gateway_provenance_verified": False,
         "response_id_verified": False,
-        "notes": ["safety refusal detected in-band via finishReason/reasonFeedback"],
+        "live_non_streaming_outcome": True,
+        "live_streaming_outcome": True,
+        "live_provider_identity_preserved": True,
+        "live_cache_evidence_preserved": False,
+        "live_safety_classification": True,
+        "notes": [
+            "safety refusal detected in-band via finishReason/promptFeedback",
+            "live outcomes with typed safety classification",
+            "streaming terminal usage emitted when usageMetadata present in SSE event",
+        ],
     },
     "openrouter": {
         "usage_verified": True,
@@ -325,9 +353,15 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "actual_model_verified": False,
         "gateway_provenance_verified": False,
         "response_id_verified": True,
+        "live_non_streaming_outcome": True,
+        "live_streaming_outcome": True,
+        "live_provider_identity_preserved": True,
+        "live_cache_evidence_preserved": False,
+        "live_safety_classification": False,
         "notes": [
-            "routed gateway — downstream provider/model provenance not yet extracted",
-            "uses OpenAI-compatible adapter; gateway metadata not parsed",
+            "routed gateway — provider class preserved as ROUTED_GATEWAY",
+            "downstream provider/model provenance NOT yet extracted",
+            "identity preserved: OpenRouter ≠ OpenAI in invocation outcomes",
         ],
     },
     "deepseek": {
@@ -340,7 +374,15 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "actual_model_verified": False,
         "gateway_provenance_verified": False,
         "response_id_verified": True,
-        "notes": ["OpenAI-compatible adapter; model ID from response usable"],
+        "live_non_streaming_outcome": True,
+        "live_streaming_outcome": True,
+        "live_provider_identity_preserved": True,
+        "live_cache_evidence_preserved": False,
+        "live_safety_classification": False,
+        "notes": [
+            "DeepSeek identity preserved despite OpenAI-compatible transport",
+            "live outcomes distinguish DeepSeek from OpenAI in provider_id",
+        ],
     },
     "local_inference": {
         "usage_verified": False,
@@ -352,7 +394,12 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, bool | list[str]]] = {
         "actual_model_verified": False,
         "gateway_provenance_verified": False,
         "response_id_verified": False,
-        "notes": ["local inference — evidence varies by runtime; not yet verified"],
+        "live_non_streaming_outcome": False,
+        "live_streaming_outcome": False,
+        "live_provider_identity_preserved": False,
+        "live_cache_evidence_preserved": False,
+        "live_safety_classification": False,
+        "notes": ["local inference — not yet wired for live outcome emission"],
     },
 }
 
@@ -404,6 +451,19 @@ def invocation_evidence_capabilities() -> list[InvocationEvidenceCapability]:
                     caps.get("gateway_provenance_verified", False)
                 ),
                 response_id_verified=bool(caps.get("response_id_verified", False)),
+                live_non_streaming_outcome=bool(
+                    caps.get("live_non_streaming_outcome", False)
+                ),
+                live_streaming_outcome=bool(caps.get("live_streaming_outcome", False)),
+                live_provider_identity_preserved=bool(
+                    caps.get("live_provider_identity_preserved", False)
+                ),
+                live_cache_evidence_preserved=bool(
+                    caps.get("live_cache_evidence_preserved", False)
+                ),
+                live_safety_classification=bool(
+                    caps.get("live_safety_classification", False)
+                ),
                 notes=notes,
             )
         )

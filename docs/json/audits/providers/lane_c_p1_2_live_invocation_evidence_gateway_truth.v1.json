@@ -1,0 +1,98 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-c-p1-2-live-invocation-evidence-gateway-truth",
+  "document_type": "audit",
+  "title": "Lane C P1.2: Live Provider Invocation Evidence Emission and Routed-Gateway Provenance Honesty",
+  "summary": "Wired the P1.1 normalized ProviderInvocationOutcome contract into live adapter execution for Gemini, Anthropic, and OpenAI-compatible (OpenAI/DeepSeek/OpenRouter) adapters. Fixed a P1.1 partial defect where Anthropic streaming handlers were not updated to use named cache token fields. Extended LLMChunk with optional invocation_outcome field (non-breaking). Gemini now emits live outcomes with typed safety classification for errors and safety blocks. Anthropic preserves cache evidence as named fields in both streaming and non-streaming paths. OpenAIAdapter preserves provider identity from config, distinguishing DeepSeek (DIRECT_INFERENCE) from OpenRouter (ROUTED_GATEWAY) from OpenAI (DIRECT_INFERENCE). Updated invocation-evidence capability inspection with live-emission flags. 140 tests pass; all predecessor regressions clean.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "source_commit": "423b2e2e",
+  "owners": ["lane-c"],
+  "tags": ["provider", "invocation", "evidence", "live-emission", "gateway", "gemini", "anthropic", "openrouter"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/audits/providers/lane_c_p1_2_live_invocation_evidence_gateway_truth.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {"block_id":"h1-1","type":"heading","level":1,"content":"Lane C P1.2: Live Provider Invocation Evidence Emission and Routed-Gateway Provenance Honesty","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"meta-1","type":"paragraph","content":"Final status: lane_c_p1_2_live_invocation_evidence_gateway_truth_proven","disclosure":{"level":"standard"}},
+    {"block_id":"h2-baseline","type":"heading","level":2,"content":"Baseline and Predecessor State","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-baseline","type":"table","columns":["Field","Value"],"rows":[
+      ["Published GitHub main SHA","806934b5 (Relax OpenCode permissions)"],
+      ["P1 checkpoint","fd8b79fa (lane-c-p1: provider capability spine + Gemini adapter)"],
+      ["P1.1 checkpoint","423b2e2e (lane-c-p1.1: invocation evidence contract)"],
+      ["Local HEAD","3b07f65f (Lane A P2)"],
+      ["Dirty files preserved","bridge_server.py, projection.py, evidence/*, storage_audit.py, operational/* (Lanes A/B)"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-gap","type":"heading","level":2,"content":"Source-Level Wiring Gap Confirmed and Closed","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-gap","type":"table","columns":["Gap","Confirmed","Disposition"],"rows":[
+      ["LLMChunk had no invocation_outcome field","CONFIRMED AND CLOSED","Added optional invocation_outcome: ProviderInvocationOutcome | None = Field(default=None, exclude=True)"],
+      ["Gemini adapter parsed usage/safety but emitted no outcome","CONFIRMED AND CLOSED","GeminiAdapter wired: builds outcomes for SUCCESS, SAFETY_BLOCK, ERROR paths"],
+      ["Anthropic adapter-level streaming handlers NOT updated by P1.1","CONFIRMED AND CLOSED","Fixed _parse_message_start to emit named cache fields; wired outcomes in _parse_message_delta and parse_response"],
+      ["OpenAI-compatible adapter collapsed OpenAI/DeepSeek/OpenRouter identity","CONFIRMED AND CLOSED","OpenAIAdapter stores _last_provider_name from config; _provider_class_for_name() maps OpenRouter→ROUTED_GATEWAY"],
+      ["No live emission flags in invocation capability registry","CONFIRMED AND CLOSED","Added 5 live-emission flags to InvocationEvidenceCapability"],
+      ["OpenRouter downstream provenance unavailable","CONFIRMED AND PARKED","OpenRouter uses OpenAI-compatible protocol; gateway metadata not in response body. Parked: requires response header parsing or separate generation-detail call"],
+      ["Streaming terminal usage for Gemini depends on SSE usageMetadata event","CONFIRMED","Streaming outcome only emitted when 'promptTokenCount' key present — honest unavailability for intermediate chunks"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-wired","type":"heading","level":2,"content":"Adapters Wired for Live Emission","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-wired","type":"table","columns":["Adapter","Non-Streaming","Streaming","Identity Preserved","Cache Evidence","Safety Classification","Notes"],"rows":[
+      ["Gemini","YES","YES (terminal SSE usage)","YES (google/direct_inference)","N/A","YES (SAFETY_BLOCK, AUTH_FAILURE, PROVIDER_ERROR)","API errors typed by error message content"],
+      ["Anthropic","YES","YES (message_delta terminal)","YES (anthropic/direct_inference)","YES (named cache fields)","NO (no in-band safety)","Cache tokens preserved as named fields in both paths"],
+      ["OpenAI-compatible (OpenAI)","YES","YES","YES (openai/direct_inference)","NO","NO","Model ID and response ID extracted from response"],
+      ["OpenAI-compatible (DeepSeek)","YES","YES","YES (deepseek/direct_inference)","NO","NO","DeepSeek identity preserved despite OpenAI-compatible transport"],
+      ["OpenAI-compatible (OpenRouter)","YES","YES","YES (openrouter/routed_gateway)","NO","NO","ROUTED_GATEWAY class; downstream provenance unavailable"],
+      ["Local inference","NO","NO","NO","NO","NO","Not wired — deferred"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-p1.1-fix","type":"heading","level":2,"content":"P1.1 Streaming Defect Repaired","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"p-fix","type":"paragraph","content":"P1.1 updated AnthropicMapper.parse_response and AnthropicMapper._handle_message_start to use named cache fields, but the AnthropicAdapter has its own separate streaming event handlers (_parse_message_start at line 548, _parse_message_delta at line 652) that were NOT updated. These adapter-level handlers continued summing cache tokens into prompt_tokens. P1.2 fixed both adapter-level handlers to emit cache_read_tokens and cache_creation_tokens as named LLMUsage fields and wired invocation outcomes at the terminal streaming event."},
+    {"block_id":"h2-live-flags","type":"heading","level":2,"content":"Invocation Evidence Capability: Live Emission Flags","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-flags","type":"table","columns":["Flag","Gemini","Anthropic","OpenAI","DeepSeek","OpenRouter","Local"],"rows":[
+      ["live_non_streaming_outcome","true","true","true","true","true","false"],
+      ["live_streaming_outcome","true","true","true","true","true","false"],
+      ["live_provider_identity_preserved","true","true","true","true","true","false"],
+      ["live_cache_evidence_preserved","false","true","false","false","false","false"],
+      ["live_safety_classification","true","false","false","false","false","false"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-ouput","type":"heading","level":2,"content":"OpenRouter Provenance Disposition","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"p-or","type":"paragraph","content":"OpenRouter is executed through the OpenAI-compatible adapter. Its response shape is compatible with /chat/completions but does not include downstream provider/model metadata in the standard response body. OpenRouter may expose this via x-provider response headers or a generation-detail endpoint, but extracting it would require: (1) response header access at the adapter level (not currently passed through), or (2) a separate read call after completion. Both require coordination with GenericBackend and would add complexity without proven value. Decision: preserve OpenRouter as ROUTED_GATEWAY with honest unavailable provenance (GatewayProvenanceSource.UNAVAILABLE). Park extraction for a future slice that can prove safe, read-only, optional, non-routing provenance retrieval."},
+    {"block_id":"h2-preservation","type":"heading","level":2,"content":"Provider Identity Preservation Proofs","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-id","type":"table","columns":["Test","Invariant Proved"],"rows":[
+      ["test_deepseek_not_openai","DeepSeek emits provider_id='deepseek', class=DIRECT_INFERENCE despite api_style='openai'"],
+      ["test_openrouter_is_gateway","OpenRouter emits provider_id='openrouter', class=ROUTED_GATEWAY"],
+      ["test_openrouter_not_openai","OpenAI class (DIRECT_INFERENCE) ≠ OpenRouter class (ROUTED_GATEWAY)"],
+      ["test_streaming_flag_preserved","Streaming vs non-streaming recorded truthfully in outcome"],
+      ["test_gemini_safety_block_maps_to_safety_outcome","Gemini safety blocks typed as SAFETY_BLOCK"],
+      ["test_gemini_error_maps_to_error_outcome","Gemini auth errors typed as ERROR + AUTH_FAILURE"],
+      ["test_local_inference_unverified","Local inference marked as not-yet-wired for live emission"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-gates","type":"heading","level":2,"content":"Validation Gates","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-gates","type":"table","columns":["Gate","Result"],"rows":[
+      ["uv run ruff check","All passed"],
+      ["uv run pyright","0 errors"],
+      ["All predecessor tests (P1 + P1.1 + existing)","140 passed, 0 failed"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-deferred","type":"heading","level":2,"content":"Intentionally Deferred","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-deferred","type":"table","columns":["Item","Reason"],"rows":[
+      ["OpenRouter downstream provenance extraction","Requires response header parsing or separate API call — not yet implemented"],
+      ["OpenAI Responses adapter wiring","Not modified in P1.2 — existing contract sufficient; deferred"],
+      ["Reasoning adapter, Vertex-Anthropic, Mistral wiring","Not modified — low incremental value without active tests"],
+      ["Invocation outcome persistence","Lane B owns operational persistence"],
+      ["All routing, cost, fallback, gateway execution work","Deferred"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-files","type":"heading","level":2,"content":"Files Changed","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"table-files","type":"table","columns":["File","Action"],"rows":[
+      ["rig_relay/core/types.py","+ invocation_outcome field on LLMChunk (non-breaking)"],
+      ["rig_relay/core/llm/backend/gemini.py","+ _build_outcome, wired into parse_response for all paths"],
+      ["rig_relay/core/llm/backend/anthropic.py","Fixed streaming cache fields; wired outcomes for non-streaming + streaming"],
+      ["rig_relay/core/llm/backend/generic.py","+ provider identity preservation in OpenAIAdapter; + _provider_class_for_name"],
+      ["rig_relay/providers/invocation.py","+ 5 live-emission flags on InvocationEvidenceCapability; updated registry data"],
+      ["tests/providers/test_invocation_evidence.py","Updated local_inference test for new notes text"]
+    ],"disclosure":{"level":"standard"}},
+    {"block_id":"h2-status","type":"heading","level":2,"content":"Final Status","disclosure":{"level":"standard","initially_visible":true}},
+    {"block_id":"p-status","type":"paragraph","content":"lane_c_p1_2_live_invocation_evidence_gateway_truth_proven — Live invocation evidence emitted by Gemini, Anthropic, and OpenAI-compatible adapters. P1.1 streaming defect repaired. Provider identity preserved across OpenAI-compatible transport — DeepSeek stays DeepSeek, OpenRouter stays ROUTED_GATEWAY. OpenRouter downstream provenance honestly unavailable. 140 tests pass. No cross-lane violations. Publication pending user action.","disclosure":{"level":"standard"}}
+  ],
+  "references": ["docs/json/audits/providers/lane_c_p1_1_provider_invocation_usage_truth_contract.v1.json","docs/json/audits/providers/lane_c_p1_provider_capability_gemini_closure.v1.json"],
+  "related_documents": ["docs/json/audits/provider-boundary-adapter-contract-map.v1.json"],
+  "provenance":{"source_files":[],"implementation_commit":"pending checkpoint"},
+  "disclosure":{"default_level":"standard","available_levels":["summary","standard","detailed","exhaustive"],"render_strategy":"linear","show_table_of_contents":true}
+}

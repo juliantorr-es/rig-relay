@@ -347,6 +347,7 @@ class LLMChunk(BaseModel):
     message: LLMMessage
     usage: LLMUsage | None = None
     correlation_id: str | None = None
+    invocation_outcome: Any | None = Field(default=None, exclude=True)
 
     def __add__(self, other: LLMChunk) -> LLMChunk:
         if self.usage is None and other.usage is None:
@@ -357,6 +358,7 @@ class LLMChunk(BaseModel):
             message=self.message + other.message,
             usage=new_usage,
             correlation_id=other.correlation_id or self.correlation_id,
+            invocation_outcome=other.invocation_outcome or self.invocation_outcome,
         )
 
 

@@ -222,7 +222,7 @@ class TestInvocationEvidenceCapabilityInspection:
         assert cap.usage_verified is False
         assert cap.cache_read_verified is False
         assert cap.provider_class == ProviderClass.LOCAL_SERVER
-        assert "not yet verified" in " ".join(cap.notes).lower()
+        assert "not yet wired" in " ".join(cap.notes).lower()
 
     def test_lookup_nonexistent_provider(self):
         cap = get_invocation_evidence_capability("nonexistent")

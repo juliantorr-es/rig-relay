@@ -17,6 +17,11 @@ from rig_relay.core.types import (
     StrToolChoice,
     ToolCall,
 )
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    ProviderClass,
+    build_invocation_outcome,
+)
 
 
 class AnthropicMapper:
@@ -331,6 +336,9 @@ class AnthropicAdapter(APIAdapter):
     def __init__(self) -> None:
         self._mapper = AnthropicMapper()
         self._current_index: int = 0
+        self._last_model_name: str = ""
+        self._last_streaming: bool = False
+        self._message_start_usage: LLMUsage | None = None
 
     @staticmethod
     def _has_thinking_content(messages: list[dict[str, Any]]) -> bool:
@@ -485,6 +493,9 @@ class AnthropicAdapter(APIAdapter):
         api_key: str | None = None,
         thinking: str = "off",
     ) -> PreparedRequest:
+        self._last_model_name = model_name
+        self._last_streaming = enable_streaming
+        self._message_start_usage = None
         system_prompt, converted_messages = self._mapper.prepare_messages(messages)
         converted_tools = self._mapper.prepare_tools(tools)
         converted_tool_choice = self._mapper.prepare_tool_choice(tool_choice)
@@ -519,7 +530,31 @@ class AnthropicAdapter(APIAdapter):
         event_type = data.get("type")
         if event_type in STREAMING_EVENT_TYPES:
             return self._parse_streaming_event(data)
-        return self._mapper.parse_response(data)
+        chunk = self._mapper.parse_response(data)
+        if chunk.usage is not None and (
+            chunk.usage.prompt_tokens > 0 or chunk.usage.completion_tokens > 0
+        ):
+            crt = chunk.usage.cache_read_tokens or None
+            cct = chunk.usage.cache_creation_tokens or None
+            outcome = build_invocation_outcome(
+                requested_provider_id="anthropic",
+                requested_model_id=self._last_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="anthropic",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=False,
+                input_tokens=chunk.usage.prompt_tokens or None,
+                output_tokens=chunk.usage.completion_tokens or None,
+                cache_read_tokens=crt,
+                cache_creation_tokens=cct,
+                usage_verified=True,
+                cache_read_verified=crt is not None,
+                cache_creation_verified=cct is not None,
+            )
+            return LLMChunk(
+                message=chunk.message, usage=chunk.usage, invocation_outcome=outcome
+            )
+        return chunk
 
     def _parse_streaming_event(self, data: dict[str, Any]) -> LLMChunk:
         event_type = data.get("type", "")
@@ -550,14 +585,15 @@ class AnthropicAdapter(APIAdapter):
         usage_data = message.get("usage", {})
         if not usage_data:
             return LLMChunk(message=LLMMessage(role=Role.assistant, content=None))
-        total_input_tokens = (
-            usage_data.get("input_tokens", 0)
-            + usage_data.get("cache_creation_input_tokens", 0)
-            + usage_data.get("cache_read_input_tokens", 0)
+        self._message_start_usage = LLMUsage(
+            prompt_tokens=usage_data.get("input_tokens", 0),
+            completion_tokens=0,
+            cache_read_tokens=usage_data.get("cache_read_input_tokens", 0),
+            cache_creation_tokens=usage_data.get("cache_creation_input_tokens", 0),
         )
         return LLMChunk(
             message=LLMMessage(role=Role.assistant, content=None),
-            usage=LLMUsage(prompt_tokens=total_input_tokens, completion_tokens=0),
+            usage=self._message_start_usage,
         )
 
     def _parse_content_block_start(self, data: dict[str, Any]) -> LLMChunk | None:
@@ -640,9 +676,30 @@ class AnthropicAdapter(APIAdapter):
         usage_data = data.get("usage", {})
         if not usage_data:
             return LLMChunk(message=LLMMessage(role=Role.assistant, content=None))
-        return LLMChunk(
+        output_tokens = usage_data.get("output_tokens", 0)
+        chunk = LLMChunk(
             message=LLMMessage(role=Role.assistant, content=None),
-            usage=LLMUsage(
-                prompt_tokens=0, completion_tokens=usage_data.get("output_tokens", 0)
-            ),
+            usage=LLMUsage(prompt_tokens=0, completion_tokens=output_tokens),
         )
+        if self._message_start_usage is not None:
+            outcome = build_invocation_outcome(
+                requested_provider_id="anthropic",
+                requested_model_id=self._last_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="anthropic",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=True,
+                input_tokens=self._message_start_usage.prompt_tokens,
+                output_tokens=output_tokens or None,
+                cache_read_tokens=self._message_start_usage.cache_read_tokens or None,
+                cache_creation_tokens=self._message_start_usage.cache_creation_tokens
+                or None,
+                usage_verified=True,
+                cache_read_verified=True,
+                cache_creation_verified=True,
+                streaming_terminal_usage_verified=True,
+            )
+            chunk = LLMChunk(
+                message=chunk.message, usage=chunk.usage, invocation_outcome=outcome
+            )
+        return chunk

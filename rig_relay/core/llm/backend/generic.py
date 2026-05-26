@@ -25,6 +25,11 @@ from rig_relay.core.types import (
 )
 from rig_relay.core.utils import async_generator_retry, async_retry
 from rig_relay.core.utils.http import build_ssl_context
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    build_invocation_outcome,
+)
+from rig_relay.providers.models import ProviderClass
 
 if TYPE_CHECKING:
     from rig_relay.core.config import ModelConfig, ProviderConfig
@@ -32,6 +37,11 @@ if TYPE_CHECKING:
 
 class OpenAIAdapter(APIAdapter):
     endpoint: ClassVar[str] = "/chat/completions"
+
+    def __init__(self) -> None:
+        self._last_model_name: str = ""
+        self._last_streaming: bool = False
+        self._last_provider_name: str = ""
 
     def build_payload(
         self,
@@ -95,6 +105,9 @@ class OpenAIAdapter(APIAdapter):
         api_key: str | None = None,
         thinking: str = "off",
     ) -> PreparedRequest:
+        self._last_model_name = model_name
+        self._last_streaming = enable_streaming
+        self._last_provider_name = provider.name
         merged_messages = merge_consecutive_user_messages(messages)
         field_name = provider.reasoning_field_name
         converted_messages = [
@@ -159,12 +172,41 @@ class OpenAIAdapter(APIAdapter):
             message = LLMMessage(role=Role.assistant, content="")
 
         usage_data = data.get("usage") or {}
+        has_usage = "prompt_tokens" in usage_data or "completion_tokens" in usage_data
         usage = LLMUsage(
             prompt_tokens=usage_data.get("prompt_tokens", 0),
             completion_tokens=usage_data.get("completion_tokens", 0),
         )
 
-        return LLMChunk(message=message, usage=usage)
+        outcome = None
+        if has_usage:
+            provider_name = self._last_provider_name or provider.name
+            provider_class = _provider_class_for_name(provider_name)
+            api_style = getattr(provider, "api_style", "openai")
+            response_id: str | None = data.get("id")
+            model_id: str | None = data.get("model")
+            outcome = build_invocation_outcome(
+                requested_provider_id=provider_name,
+                requested_model_id=self._last_model_name,
+                provider_class=provider_class,
+                api_style=api_style,
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=self._last_streaming,
+                input_tokens=usage.prompt_tokens or None,
+                output_tokens=usage.completion_tokens or None,
+                actual_model_id=model_id
+                if model_id and model_id != self._last_model_name
+                else None,
+                actual_model_verified=model_id is not None,
+                provider_response_id=response_id,
+                usage_verified=True,
+                streaming_terminal_usage_verified=self._last_streaming,
+                actual_provider_verified=None,
+                safety_refusal_verified=None,
+                gateway_provenance_verified=None,
+            )
+
+        return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)
 
 
 _ADAPTERS: dict[str, APIAdapter] = {
@@ -173,6 +215,12 @@ _ADAPTERS: dict[str, APIAdapter] = {
     "gemini": GeminiAdapter(),
     "reasoning": ReasoningAdapter(),
 }
+
+
+def _provider_class_for_name(name: str) -> ProviderClass:
+    if name == "openrouter":
+        return ProviderClass.ROUTED_GATEWAY
+    return ProviderClass.DIRECT_INFERENCE
 
 
 def _get_adapter(api_style: str) -> APIAdapter:
