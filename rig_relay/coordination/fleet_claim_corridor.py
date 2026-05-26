@@ -119,12 +119,12 @@ class FleetClaimEvent(BaseModel):
     event_sequence: int = 0
     event_digest: str
     reason: str | None = None
-    prior_event_digest: str | None = None
     expires_at: str | None = None
     conflicting_path: str | None = None
     conflicting_mission_id: str | None = None
     conflicting_lane_id: str | None = None
     conflicting_agent_id: str | None = None
+    prior_event_digest: str | None = None
 
 
 class FleetClaimState(StrEnum):
@@ -498,7 +498,12 @@ class FleetClaimProtocol:
         return evt
 
     def acquire_claim(
-        self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
+        self,
+        paths: list[str],
+        mission_id: str,
+        lane_id: str,
+        agent_id: str,
+        ttl_minutes: int = 120,
     ) -> FleetClaimResult:
         refusal = self._validate_paths(paths)
         if refusal is not None:
@@ -539,6 +544,11 @@ class FleetClaimProtocol:
                     base_sha256[p] = file_sha256(rp)
 
             now = _now_iso()
+            from datetime import UTC, datetime, timedelta
+
+            expires = (
+                datetime.now(tz=UTC) + timedelta(minutes=ttl_minutes)
+            ).isoformat()
             event = FleetClaimEvent(
                 event_id="",
                 event_kind=FleetClaimEventKind.CLAIM_ACQUIRED,
@@ -549,6 +559,7 @@ class FleetClaimProtocol:
                 prior_sha256=base_sha256 if base_sha256 else None,
                 timestamp=now,
                 event_digest="",
+                expires_at=expires,
             )
 
             def _xattr_acquire() -> None:
@@ -684,6 +695,7 @@ class FleetClaimProtocol:
                 lane_id=evt.lane_id,
                 agent_id=evt.agent_id,
                 acquired_at=evt.timestamp,
+                expires_at=evt.expires_at,
                 base_sha256=base,
             )
         return result

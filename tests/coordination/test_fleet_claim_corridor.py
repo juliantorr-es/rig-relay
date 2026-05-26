@@ -1,16 +1,23 @@
 from __future__ import annotations
 
+import ast
+import inspect
 import multiprocessing
+import time
 from pathlib import Path
 
 import pytest
 
 from rig_relay.coordination.fleet_claim_corridor import (
+    FleetClaimEvent,
     FleetClaimEventKind,
+    FleetClaimInfo,
     FleetClaimLedger,
     FleetClaimProtocol,
     FleetClaimState,
     FleetClaimXattr,
+    _now_iso,
+    _sha256_event_payload,
     file_sha256,
 )
 
@@ -114,6 +121,36 @@ def _digest_chain_proto_worker(
     )
     result_queue.put((r.event.event_sequence, r.event.event_digest, r.event.prior_event_digest))
 
+
+
+
+def _raw_append_worker(ledger_path_str: str, event_kind_str: str, mission_id: str, lane_id: str, agent_id: str, claimed_paths: list, result_queue) -> None:
+    ledger_path = Path(ledger_path_str)
+    ledger = FleetClaimLedger(ledger_path)
+    event = FleetClaimEvent(event_id="", event_kind=FleetClaimEventKind(event_kind_str), mission_id=mission_id, lane_id=lane_id, agent_id=agent_id, claimed_paths=claimed_paths, timestamp=_now_iso(), event_digest="")
+    result = ledger.append(event)
+    result_queue.put((result.event_sequence, result.event_digest))
+
+
+def _sha256_lock_holder(ledger_path_str: str, ready_event, release_event) -> None:
+    import fcntl
+    lock_path = Path(ledger_path_str).parent / "coordination_events.v1.lock"
+    fd = open(str(lock_path), "r+b")
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    ready_event.set()
+    release_event.wait(timeout=30)
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    fd.close()
+
+
+def _acquire_blocking_worker(ledger_path_str: str, repo_root_str: str, path: str, mission_id: str, lane_id: str, agent_id: str, result_queue) -> None:
+    ledger_path = Path(ledger_path_str)
+    repo_root = Path(repo_root_str)
+    ledger = FleetClaimLedger(ledger_path)
+    proto = FleetClaimProtocol(ledger, repo_root)
+    result = proto.acquire_claim(paths=[path], mission_id=mission_id, lane_id=lane_id, agent_id=agent_id)
+    ev = result.event
+    result_queue.put((result.acquired, ev.event_kind.value if ev is not None else None, ev.prior_sha256 if ev is not None else None))
 
 
 @pytest.fixture
@@ -614,33 +651,25 @@ class TestFleetClaimCorridorLocking:
         )
 
         ledger = FleetClaimLedger(ledger_path)
-        proto = FleetClaimProtocol(ledger, tmp_path)
-
-        # Acquire a blocker file to hold the transition lock
-        blocker = tmp_path / "blocker.txt"
-        blocker.write_text("blocker")
-        proto.acquire_claim(
-            paths=["blocker.txt"], mission_id="m_block", lane_id="l_block", agent_id="a_block"
-        )
 
         q: multiprocessing.Queue = multiprocessing.Queue()
         ready = multiprocessing.Event()
 
-        p = multiprocessing.Process(
-            target=_hash_proof_worker,
-            args=(str(ledger_path), str(tmp_path), "hash_proof.txt", ready, q),
-        )
-        p.start()
-        ready.wait(timeout=10)
+        # Hold the transition lock directly so the subprocess blocks
+        ledger._acquire_transition_lock()
+        try:
+            p = multiprocessing.Process(
+                target=_hash_proof_worker,
+                args=(str(ledger_path), str(tmp_path), "hash_proof.txt", ready, q),
+            )
+            p.start()
+            ready.wait(timeout=10)
 
-        # Mutate file while subprocess blocked on lock
-        fpath.write_text("mutated content during lock hold")
-        mutated_hash = file_sha256(fpath)
-
-        # Release the blocker so subprocess can proceed
-        proto.release_claim(
-            paths=["blocker.txt"], mission_id="m_block", lane_id="l_block", agent_id="a_block"
-        )
+            # Mutate file while subprocess is blocked on lock
+            fpath.write_text("mutated content during lock hold")
+            mutated_hash = file_sha256(fpath)
+        finally:
+            ledger._release_transition_lock()
 
         p.join(timeout=30)
         acquired, prior = q.get(timeout=10)
@@ -652,3 +681,65 @@ class TestFleetClaimCorridorLocking:
             f"Expected {mutated_hash[:16]}..., got {prior.get('hash_proof.txt', 'N/A')[:16]}..."
         )
 
+
+    # ── C0.1 acceptance proofs ────────────────────────────────────────────
+
+    
+
+    
+    
+    
+
+    
+
+
+    # ── C0.1 proofs ─────────────────────────────
+
+    def test_stale_xattr_does_not_override_ledger_after_reacquisition(self, tmp_path: Path) -> None:
+        fpath = tmp_path / "sp.txt"; fpath.write_text("v1")
+        lp = tmp_path / ".rig/relay/fleet/coordination_events.v1.jsonl"
+        l = FleetClaimLedger(lp); p = FleetClaimProtocol(l, tmp_path)
+        p.acquire_claim(paths=["sp.txt"], mission_id="ma", lane_id="la", agent_id="aa")
+        p.release_claim(paths=["sp.txt"], mission_id="ma", lane_id="la", agent_id="aa")
+        p.acquire_claim(paths=["sp.txt"], mission_id="mb", lane_id="lb", agent_id="ab")
+        si = FleetClaimInfo(mission_id="ma", lane_id="la", agent_id="aa", acquired_at="2020-01-01T00:00:00+00:00", base_sha256={})
+        FleetClaimXattr.write_claim(fpath, si)
+        sc = p.scan_claims(); assert "sp.txt" in sc; assert sc["sp.txt"].lane_id == "lb"
+        p.mirror_to_xattrs()
+        xa = FleetClaimXattr.read_claim(fpath); assert xa is not None; assert xa.lane_id == "lb"
+
+    
+    def test_prior_sha256_call_is_lexically_inside_transition_lock(self) -> None:
+        import textwrap
+        source = textwrap.dedent(inspect.getsource(FleetClaimProtocol.acquire_claim))
+        tree = ast.parse(source); func_def = tree.body[0]
+        try_node = next(n for n in ast.walk(func_def) if isinstance(n, ast.Try))
+        lock_found = any("acquire_transition_lock" in ast.unparse(n) for s in func_def.body[:func_def.body.index(try_node)] for n in ast.walk(s) if isinstance(n, ast.Call))
+        release_found = any("release_transition_lock" in ast.unparse(n) for s in try_node.finalbody for n in ast.walk(s) if isinstance(n, ast.Call))
+        assert lock_found; assert release_found
+        ts = min(s.lineno for s in try_node.body if hasattr(s, "lineno"))
+        te = max(getattr(s, "end_lineno", s.lineno) for s in try_node.body)
+        sc = [n for n in ast.walk(func_def) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "file_sha256"]
+        assert len(sc) > 0
+        for c in sc: assert ts <= c.lineno <= te
+        cl = [n.lineno for n in ast.walk(func_def) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "find_active_claim"]
+        sl = [c.lineno for c in sc]
+        if cl and sl: assert max(cl) < min(sl)
+
+    
+    def test_public_append_contention_burst(self, tmp_path: Path) -> None:
+        fc = 3; ac = 3; total = fc + ac
+        for i in range(fc): (tmp_path / f"b{i}.txt").write_text(f"c{i}")
+        lp = tmp_path / ".rig/relay/fleet/coordination_events.v1.jsonl"
+        q = multiprocessing.Queue(); procs = []
+        for i in range(fc): procs.append(multiprocessing.Process(target=_acquire_worker, args=(str(lp), str(tmp_path), f"b{i}.txt", f"m{i}", f"l{i}", f"a{i}", q)))
+        for i in range(ac): procs.append(multiprocessing.Process(target=_raw_append_worker, args=(str(lp), FleetClaimEventKind.INTEGRATION_REFUSED_STALE_BASE.value, f"mp{i}", f"lp{i}", f"ap{i}", [f"p{i}.txt"], q)))
+        import random; random.shuffle(procs)
+        for p in procs: p.start()
+        for p in procs: p.join(timeout=60)
+        [q.get(timeout=10) for _ in range(total)]
+        ledger = FleetClaimLedger(lp); events = ledger.read_all()
+        assert len(events) == total
+        seqs = [e.event_sequence for e in events]; assert len(set(seqs)) == total; assert sorted(seqs) == list(range(1, total+1))
+        for e in events:
+            assert e.event_digest == _sha256_event_payload(e.model_dump(exclude={"event_id","event_digest"}))
