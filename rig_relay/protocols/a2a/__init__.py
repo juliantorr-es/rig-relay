@@ -33,6 +33,12 @@ from rig_relay.protocols.a2a._governance_bindings import (
     MutationIntent,
     RefusalReason,
 )
+from rig_relay.protocols.a2a._gateway import (
+    A2AGateway,
+    GatewayConfig,
+    gateway_admit_mutation,
+    refusal_response,
+)
 from rig_relay.protocols.a2a._identity import (
     A2ALocalIdentity,
     A2ASecurityScheme,
@@ -85,6 +91,7 @@ __all__ = [
     "A2AArtifactRef",
     "A2ADelegationReceipt",
     "A2AGovernanceBinding",
+    "A2AGateway",
     "A2AInternalFabric",
     "A2ALocalIdentity",
     "A2ASecurityScheme",
@@ -97,6 +104,7 @@ __all__ = [
     "CapabilityClass",
     "ConfidentialityTier",
     "ExecutionRisk",
+    "GatewayConfig",
     "InternalA2ATaskState",
     "MutationIntent",
     "RefusalReason",
@@ -118,8 +126,10 @@ __all__ = [
     "content_integrity_chain",
     "delegation_allowed_by_governance",
     "dump_canonical_json",
+    "gateway_admit_mutation",
     "mutation_capability_admitted",
     "public_capability_subset",
+    "refusal_response",
     "send_local_task_message",
     "serve_agent_card",
     "serve_agent_card_json",
