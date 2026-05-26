@@ -199,10 +199,12 @@ class TestBashRuntimeRestrictRawShellEnforcement:
 
     @pytest.mark.asyncio
     async def test_allows_pytest_with_restrict(self, restricted_bash: Bash) -> None:
+        """pytest is repo-code-executing — refused without governed validation route."""
         result = await collect_result(
             restricted_bash.run(BashArgs(command="pytest --version"))
         )
-        assert result.status == "success"
+        assert result.status == "refused"
+        assert "repository_code_execution" in (result.error_kind or "")
 
     @pytest.mark.asyncio
     async def test_allows_ruff_check_with_restrict(self, restricted_bash: Bash) -> None:
@@ -212,20 +214,15 @@ class TestBashRuntimeRestrictRawShellEnforcement:
         assert result.status == "success"
 
     @pytest.mark.asyncio
-    async def test_allows_pyright_with_restrict(self, restricted_bash: Bash) -> None:
-        result = await collect_result(
-            restricted_bash.run(BashArgs(command="pyright --version"))
-        )
-        assert result.status == "success"
-
-    @pytest.mark.asyncio
     async def test_allows_python_m_pytest_with_restrict(
         self, restricted_bash: Bash
     ) -> None:
+        """python -m pytest is repo-code-executing — refused without governed route."""
         result = await collect_result(
             restricted_bash.run(BashArgs(command="python -m pytest --version"))
         )
-        assert result.status == "success"
+        assert result.status == "refused"
+        assert "repository_code_execution" in (result.error_kind or "")
 
     @pytest.mark.asyncio
     async def test_restricted_bash_still_blocks_destructive_git(

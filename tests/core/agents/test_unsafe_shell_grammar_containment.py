@@ -351,10 +351,12 @@ class TestAllowedCommandsAreSafeAlone:
 class TestValidationCommandsStillAllowed:
     @pytest.mark.asyncio
     async def test_pytest_simple(self, restricted_bash: Bash) -> None:
+        """pytest is repo-code-executing — refused without governed validation route."""
         result = await collect_result(
             restricted_bash.run(BashArgs(command="pytest --version"))
         )
-        assert result.status == "success"
+        assert result.status == "refused"
+        assert "repository_code_execution" in (result.error_kind or "")
 
     @pytest.mark.asyncio
     async def test_pyright_simple(self, restricted_bash: Bash) -> None:

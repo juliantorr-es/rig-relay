@@ -332,6 +332,10 @@ class BashResult(BaseModel):
     supervisor_result_envelope_sha256: str | None = None
     supervisor_result_classification: str | None = None
     reroute: BashRerouteMetadata | None = None
+    # Execution risk classification applied at the scoped-mission boundary.
+    # Values: bounded_utility, repository_code_executing, static_analysis,
+    # governed_tool_reroute, or diagnostic_raw_shell.
+    execution_risk: str | None = None
 
 
 class BashReceipt(BaseModel):
@@ -462,6 +466,26 @@ class Bash(
     # ── Shell Grammar Containment ────────────────────────────────────────
     # Scoped missions must refuse any command that chains, redirects,
     # substitutes, wraps, or delegates beyond a single safe executable.
+
+    # Execution risk categories for scoped-mission classification.
+    # Only BOUNDED_UTILITY may execute via direct exec without governed
+    # containment. REPOSITORY_CODE_EXECUTING requires a governed native
+    # validation route; without one it must fail closed.
+    EXECUTION_RISK_BOUNDED_UTILITY: ClassVar[str] = "bounded_utility"
+    EXECUTION_RISK_REPOSITORY_CODE: ClassVar[str] = "repository_code_executing"
+    EXECUTION_RISK_STATIC_ANALYSIS: ClassVar[str] = "static_analysis"
+    EXECUTION_RISK_GOVERNED_REROUTE: ClassVar[str] = "governed_tool_reroute"
+    EXECUTION_RISK_DIAGNOSTIC_SHELL: ClassVar[str] = "diagnostic_raw_shell"
+
+    # Commands that, when invoked, execute repository-controlled Python code.
+    # This includes any form of pytest or python invocation that may load
+    # conftest.py, plugins, fixtures, or test modules from the workspace.
+    _REPOSITORY_CODE_EXECUTING_COMMANDS: ClassVar[frozenset[str]] = frozenset({
+        "pytest",
+        "pytest3",
+        "python",
+        "python3",
+    })
 
     _SHELL_WRAPPER_COMMANDS: ClassVar[frozenset[str]] = frozenset({
         "sh",
@@ -670,6 +694,72 @@ class Bash(
             "mission. Use governed file tools for reads or edits, or the "
             "validation tool for approved tests and static checks."
         )
+
+    @classmethod
+    def _is_repository_code_executing(cls, command: str) -> bool:
+        """Determine whether *command* executes repository-controlled code.
+
+        Recognises pytest (any invocation), python -m pytest, python3 -m pytest,
+        and uv run pytest. Returns True for any form that loads workspace
+        plugins, conftest.py, fixtures, or test modules.
+        """
+        import shlex
+
+        try:
+            tokens = shlex.split(command)
+        except ValueError:
+            return False
+        if not tokens:
+            return False
+
+        root = tokens[0]
+
+        # Direct pytest / pytest3
+        if root in ("pytest", "pytest3"):
+            return True
+
+        # python -m pytest / python3 -m pytest
+        if root in ("python", "python3") and len(tokens) >= 3:
+            if tokens[1] == "-m" and tokens[2] == "pytest":
+                return True
+
+        # uv run pytest
+        if root == "uv" and len(tokens) >= 3:
+            if tokens[1] == "run" and tokens[2] in ("pytest", "pytest3"):
+                return True
+            # uv run python -m pytest
+            if (
+                tokens[1] == "run"
+                and tokens[2] in ("python", "python3")
+                and len(tokens) >= 5
+                and tokens[3] == "-m"
+                and tokens[4] == "pytest"
+            ):
+                return True
+
+        return False
+
+    @classmethod
+    def _classify_execution_risk(cls, command: str) -> str:
+        """Classify the execution risk of a command admitted by grammar containment.
+
+        Returns one of the EXECUTION_RISK_* categories.
+
+        This is the canonical authority for distinguishing repository-code-
+        executing validation from bounded utilities and static analysis.
+        It must be applied before direct execution and before reroute fallback.
+        """
+        # Check for repository-code execution first — highest risk
+        if cls._is_repository_code_executing(command):
+            return cls.EXECUTION_RISK_REPOSITORY_CODE
+
+        # Validation-equivalent commands that are not repo-code-executing
+        # are static analysis (ruff check, pyright)
+        if cls._matches_validate_reroute(command):
+            return cls.EXECUTION_RISK_STATIC_ANALYSIS
+
+        # Everything else admitted by grammar containment is a bounded utility
+        return cls.EXECUTION_RISK_BOUNDED_UTILITY
 
     @staticmethod
     def _matches_validate_reroute(command: str) -> bool:
@@ -1256,6 +1346,7 @@ class Bash(
                 status="success",
                 duration_ms=(time.perf_counter() - start) * 1000,
                 reroute=reroute_meta,
+                execution_risk=Bash.EXECUTION_RISK_GOVERNED_REROUTE,
             )
             for event in events:
                 yield event
@@ -1399,6 +1490,40 @@ class Bash(
 
         # ── Two-path execution airlock ──────────────────────
         if is_strict:
+            # ── Execution-risk classification ─────────────────
+            # Before direct execution, classify the risk profile.
+            # Repository-code-executing validation (pytest etc.) must
+            # fail closed when no governed native validation route
+            # is available. Only bounded utilities may proceed to direct exec.
+            execution_risk = Bash._classify_execution_risk(args.command)
+            if execution_risk == Bash.EXECUTION_RISK_REPOSITORY_CODE:
+                elapsed = (time.perf_counter() - start) * 1000
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="refused",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="repository_code_execution_requires_governed_validation",
+                    refusal_reason=(
+                        "Pytest and equivalent repository-code-executing validation "
+                        "commands are not available through unsandboxed strict Bash "
+                        "execution. This command loads and executes repository-controlled "
+                        "Python code (plugins, conftest.py, fixtures, tests) and cannot "
+                        "be launched without a governed native validation authority. "
+                        "Use the native Validate tool or explicitly enable diagnostic "
+                        "mode for manual developer investigation."
+                    ),
+                    execution_risk=execution_risk,
+                    reroute=reroute_meta,
+                )
+                return
+
             # Scoped execution: direct argv launch, no shell interpretation.
             # Use shlex to parse the command into program + arguments,
             # then launch via create_subprocess_exec with a hardened
@@ -1456,6 +1581,7 @@ class Bash(
                     start=start,
                 )
                 result.reroute = reroute_meta
+                result.execution_risk = execution_risk
                 yield result
             except (ToolError, asyncio.CancelledError):
                 raise

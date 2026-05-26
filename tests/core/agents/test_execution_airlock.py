@@ -271,10 +271,12 @@ class TestDiagnosticModeStillUsesShell:
 class TestValidationDirectExec:
     @pytest.mark.asyncio
     async def test_pytest_version_via_direct_exec(self, strict_bash: Bash) -> None:
+        """pytest is repo-code-executing — refused without governed route."""
         result = await collect_result(
             strict_bash.run(BashArgs(command="pytest --version"))
         )
-        assert result.status == "success"
+        assert result.status == "refused"
+        assert "repository_code_execution" in (result.error_kind or "")
 
     @pytest.mark.asyncio
     async def test_pyright_version_via_direct_exec(self, strict_bash: Bash) -> None:
