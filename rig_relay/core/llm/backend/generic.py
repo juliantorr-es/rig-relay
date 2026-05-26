@@ -339,7 +339,6 @@ class GenericBackend:
         self._owns_client = client is None
         self._provider = provider
         self._timeout = timeout
-        self._adapter = _get_adapter(getattr(provider, "api_style", "openai"))
 
     async def __aenter__(self) -> GenericBackend:
         if self._client is None:
@@ -388,7 +387,8 @@ class GenericBackend:
             else None
         )
 
-        adapter = self._adapter
+        # Per-invocation adapter (isolation from concurrent calls)
+        adapter = _get_adapter(getattr(self._provider, "api_style", "openai"))
 
         req = adapter.prepare_request(
             model_name=model.name,
@@ -457,7 +457,8 @@ class GenericBackend:
             else None
         )
 
-        adapter = self._adapter
+        # Per-invocation adapter (isolation from concurrent streams)
+        adapter = _get_adapter(getattr(self._provider, "api_style", "openai"))
 
         req = adapter.prepare_request(
             model_name=model.name,

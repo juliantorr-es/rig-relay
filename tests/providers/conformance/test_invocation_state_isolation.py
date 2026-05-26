@@ -166,3 +166,131 @@ async def test_concurrent_streaming_isolation(respx_mock: respx.MockRouter):
     assert or_d["gateway_provenance"]["downstream_provider"] == "google"
     assert oai_d["requested_provider_id"] == "openai"
     assert oai_d["gateway_provenance"] is None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Same-backend concurrent isolation (the real P1.4.2 gate)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_same_backend_concurrent_non_streaming(respx_mock: respx.MockRouter):
+    """Two concurrent calls through SAME GenericBackend use distinct adapter state."""
+    respx_mock.post(f"{OR_BASE}/chat/completions").mock(
+        side_effect=[
+            httpx.Response(
+                200,
+                json={
+                    "id": "gen-or-1",
+                    "model": "openai/gpt-4o",
+                    "choices": [{"message": {"role": "assistant", "content": "A"}}],
+                    "usage": {
+                        "prompt_tokens": 100,
+                        "completion_tokens": 50,
+                        "cost": 0.001,
+                        "prompt_tokens_details": {"cached_tokens": 10},
+                    },
+                },
+                headers={"x-provider": "Anthropic"},
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "id": "gen-or-2",
+                    "model": "anthropic/claude-sonnet",
+                    "choices": [{"message": {"role": "assistant", "content": "B"}}],
+                    "usage": {
+                        "prompt_tokens": 200,
+                        "completion_tokens": 100,
+                        "cost": 0.002,
+                        "completion_tokens_details": {"reasoning_tokens": 50},
+                    },
+                },
+                headers={"x-provider": "OpenAI"},
+            ),
+        ]
+    )
+
+    async with GenericBackend(provider=_or_provider()) as be:
+        a, b = await asyncio.gather(
+            be.complete(
+                model=OR_MODEL, messages=[LLMMessage(role=Role.user, content="A")]
+            ),
+            be.complete(
+                model=ModelConfig(
+                    name="anthropic/claude-sonnet",
+                    provider="openrouter",
+                    alias="cs",
+                    thinking="off",
+                ),
+                messages=[LLMMessage(role=Role.user, content="B")],
+            ),
+        )
+
+    a_d = a.invocation_outcome.to_dict()
+    b_d = b.invocation_outcome.to_dict()
+
+    assert a_d["provider_response_id"] == "gen-or-1"
+    assert a_d["cache_read_tokens"] == 10
+    assert a_d["gateway_provenance"]["downstream_provider"] == "anthropic"
+
+    assert b_d["provider_response_id"] == "gen-or-2"
+    assert b_d["reasoning_tokens"] == 50
+    assert b_d["gateway_provenance"]["downstream_provider"] == "openai"
+
+
+@pytest.mark.asyncio
+async def test_same_backend_concurrent_streaming(respx_mock: respx.MockRouter):
+    """Two interleaved streams through SAME backend retain distinct evidence."""
+    sse_a = (
+        'data: {"choices":[{"delta":{"content":"A"},"index":0}]}\n\n'
+        'data: {"choices":[{"delta":{},"index":0}],"usage":{"prompt_tokens":11,"completion_tokens":22},"id":"gen-s1"}\n\n'
+        "data: [DONE]\n\n"
+    )
+    sse_b = (
+        'data: {"choices":[{"delta":{"content":"B"},"index":0}]}\n\n'
+        'data: {"choices":[{"delta":{},"index":0}],"usage":{"prompt_tokens":33,"completion_tokens":44},"id":"gen-s2"}\n\n'
+        "data: [DONE]\n\n"
+    )
+    respx_mock.post(f"{OR_BASE}/chat/completions").mock(
+        side_effect=[
+            httpx.Response(
+                200,
+                content=sse_a,
+                headers={"content-type": "text/event-stream", "x-provider": "Google"},
+            ),
+            httpx.Response(
+                200,
+                content=sse_b,
+                headers={
+                    "content-type": "text/event-stream",
+                    "x-provider": "Anthropic",
+                },
+            ),
+        ]
+    )
+
+    async with GenericBackend(provider=_or_provider()) as be:
+
+        async def _drain(model_name, alias):
+            chunks = []
+            async for c in be.complete_streaming(
+                model=ModelConfig(
+                    name=model_name, provider="openrouter", alias=alias, thinking="off"
+                ),
+                messages=[LLMMessage(role=Role.user, content="H")],
+            ):
+                chunks.append(c)
+            return chunks
+
+        a_chunks, b_chunks = await asyncio.gather(
+            _drain("openai/gpt-4o", "g4o"), _drain("anthropic/claude", "cl")
+        )
+
+    a_d = a_chunks[-1].invocation_outcome.to_dict()
+    b_d = b_chunks[-1].invocation_outcome.to_dict()
+
+    assert a_d["provider_response_id"] == "gen-s1"
+    assert a_d["gateway_provenance"]["downstream_provider"] == "google"
+    assert b_d["provider_response_id"] == "gen-s2"
+    assert b_d["gateway_provenance"]["downstream_provider"] == "anthropic"

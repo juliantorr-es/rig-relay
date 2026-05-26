@@ -123,7 +123,7 @@ async def _execute_test_completion(
                     "total_tokens": 8,
                 },
             },
-            "DIRECT_INFERENCE",
+            "direct_inference",
             id="openai",
         ),
         pytest.param(
@@ -142,7 +142,7 @@ async def _execute_test_completion(
                     "total_tokens": 6,
                 },
             },
-            "DIRECT_INFERENCE",
+            "direct_inference",
             id="deepseek",
         ),
         pytest.param(
@@ -161,7 +161,7 @@ async def _execute_test_completion(
                     "total_tokens": 8,
                 },
             },
-            "ROUTED_GATEWAY",
+            "routed_gateway",
             id="openrouter",
         ),
     ],
@@ -176,9 +176,7 @@ async def test_non_streaming_outcome_emits(
 
     with respx.mock(base_url=provider_cfg.api_base, assert_all_called=False) as mock:
         mock.post("/chat/completions").mock(
-            return_value=httpx.Response(
-                200, json=response_body, headers=response_headers or {}
-            )
+            return_value=httpx.Response(200, json=response_body, headers={})
         )
         backend = GenericBackend(provider=provider_cfg)
         result = await backend.complete(
@@ -288,7 +286,7 @@ async def test_openrouter_gateway_provenance_from_headers() -> None:
 
     outcome = result.invocation_outcome
     assert outcome is not None
-    assert outcome.provider_class.value == "ROUTED_GATEWAY"
+    assert outcome.provider_class.value == "routed_gateway"
     assert outcome.gateway_provenance is not None
     assert outcome.gateway_provenance.downstream_provider == "openai"
     assert outcome.gateway_provenance.downstream_model == "gpt-4o"
@@ -322,7 +320,7 @@ async def test_openrouter_identity_preserved() -> None:
     outcome = result.invocation_outcome
     assert outcome is not None
     assert outcome.requested_provider_id == "openrouter"
-    assert outcome.provider_class.value == "ROUTED_GATEWAY"
+    assert outcome.provider_class.value == "routed_gateway"
     assert outcome.api_style == "openai"
 
 
@@ -355,7 +353,7 @@ async def test_deepseek_identity_preserved() -> None:
     outcome = result.invocation_outcome
     assert outcome is not None
     assert outcome.requested_provider_id == "deepseek"
-    assert outcome.provider_class.value == "DIRECT_INFERENCE"
+    assert outcome.provider_class.value == "direct_inference"
 
 
 @pytest.mark.asyncio

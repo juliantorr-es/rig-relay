@@ -44,12 +44,18 @@ class OpenRouterGenerationEvidence:
     audit_total_cost: float | None = None
 
     def has_any_evidence(self) -> bool:
-        return any([
-            self.native_tokens_prompt,
-            self.native_tokens_completion,
-            self.total_cost,
-            self.downstream_provider,
-        ])
+        return any(
+            v is not None
+            for v in [
+                self.native_tokens_prompt,
+                self.native_tokens_completion,
+                self.native_tokens_cached,
+                self.native_tokens_reasoning,
+                self.total_cost,
+                self.upstream_cost,
+                self.downstream_provider,
+            ]
+        )
 
     def set_skipped(self, reason: str) -> None:
         self.enrichment_success = False
@@ -128,22 +134,24 @@ def _parse_generation_data(
     """Map safe generation metadata fields into content-light evidence."""
     gen_data = data.get("data", data)
 
-    if provider := gen_data.get("provider_name"):
+    if (provider := gen_data.get("provider_name")) is not None:
         evidence.downstream_provider = str(provider)
-    if model := gen_data.get("model"):
+    if (model := gen_data.get("model")) is not None:
         evidence.downstream_model = str(model)
-    if pts := gen_data.get("native_tokens_prompt"):
-        evidence.native_tokens_prompt = int(pts)
-    if cts := gen_data.get("native_tokens_completion"):
-        evidence.native_tokens_completion = int(cts)
-    if ctd := gen_data.get("native_tokens_cached"):
-        evidence.native_tokens_cached = int(ctd)
-    if rts := gen_data.get("native_tokens_reasoning"):
-        evidence.native_tokens_reasoning = int(rts)
-    if cost := gen_data.get("total_cost"):
+    if "native_tokens_prompt" in gen_data:
+        evidence.native_tokens_prompt = int(gen_data["native_tokens_prompt"])
+    if "native_tokens_completion" in gen_data:
+        evidence.native_tokens_completion = int(gen_data["native_tokens_completion"])
+    if "native_tokens_cached" in gen_data:
+        evidence.native_tokens_cached = int(gen_data["native_tokens_cached"])
+    if "native_tokens_reasoning" in gen_data:
+        evidence.native_tokens_reasoning = int(gen_data["native_tokens_reasoning"])
+    if "total_cost" in gen_data:
+        cost = gen_data["total_cost"]
         if isinstance(cost, (int, float)):
             evidence.total_cost = float(cost)
-    if up := gen_data.get("upstream_inference_cost"):
+    if "upstream_inference_cost" in gen_data:
+        up = gen_data["upstream_inference_cost"]
         if isinstance(up, (int, float)):
             evidence.upstream_cost = float(up)
     if "streamed" in gen_data:
@@ -202,9 +210,7 @@ def compute_discrepancy(
     for inline_name, audit_name, inline_val, audit_val in comparisons:
         if inline_val is not None and audit_val is not None and inline_val != audit_val:
             result["discrepancy_detected"] = True
-            result["discrepancy_fields"].append(
-                f"{inline_name}/{audit_name}: inline={inline_val} vs audit={audit_val}"
-            )
+            result["discrepancy_fields"].append(f"{inline_name}/{audit_name}")
 
     return result
 
