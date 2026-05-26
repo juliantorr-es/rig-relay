@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from enum import StrEnum
+import hashlib
+import json
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -63,6 +65,9 @@ class AgentToolOutcome(BaseModel):
     degraded_capabilities: list[str] = Field(default_factory=list)
     mutation_disposition: str = "not_applicable"
     cache_hit: bool = False
+    answer_kind: str | None = None
+    git_summary_hash: str | None = None
+    investigation_outcome: str | None = None
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -169,6 +174,27 @@ def _collect_tool_event_warnings(result: ToolRuntimeResult) -> list[str]:
     return warnings
 
 
+def _derive_answer_kind(result: ToolRuntimeResult) -> str:
+    match result.status:
+        case (
+            ToolRuntimeStatus.REFUSED
+            | ToolRuntimeStatus.SKIPPED
+            | ToolRuntimeStatus.APPROVAL_REQUIRED
+        ):
+            return "refused"
+        case ToolRuntimeStatus.FAILED | ToolRuntimeStatus.TIMED_OUT:
+            return "execution_failure"
+        case _:
+            investigation = getattr(result, "investigation_outcome", None)
+            if investigation == "no_match":
+                return "negative_no_match"
+            if investigation in {"incomplete", "stale_context"}:
+                return "degraded"
+            if result.status == ToolRuntimeStatus.DEGRADED:
+                return "degraded"
+            return "positive"
+
+
 def derive_agent_outcome(
     result: ToolRuntimeResult, mutation_class: ToolMutationClass | type | None = None
 ) -> AgentToolOutcome:
@@ -241,6 +267,23 @@ def derive_agent_outcome(
         outcome.authority_decision = "not_evaluated_under_mission_authority"
         outcome.authority_source = "none"
 
+    # ── Answer kind classification ─────────────────────────────────────
+    outcome.answer_kind = _derive_answer_kind(result)
+
+    # ── Git summary preservation ───────────────────────────────────────
+    git_summary = getattr(result, "git_summary", None)
+    if isinstance(git_summary, dict):
+        gs_json = json.dumps(git_summary, sort_keys=True, default=str)
+        outcome.git_summary_hash = (
+            f"sha256:{hashlib.sha256(gs_json.encode('utf-8')).hexdigest()}"
+        )
+
+    # ── Investigation outcome passthrough ──────────────────────────────
+    outcome.investigation_outcome = (
+        getattr(result, "investigation_outcome", None) or None
+    )
+
+    # ── Warnings ──────────────────────────────────────────────────────
     if outcome.mutation_disposition == MutationDisposition.UNKNOWN.value:
         outcome.warnings.append(
             "Runtime cannot establish mutation outcome. "

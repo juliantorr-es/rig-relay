@@ -94,6 +94,25 @@
         "unknown"
       ]
     },
+    "answer_kind": {
+      "type": "string",
+      "description": "Explicit classification of the tool answer for the model: positive, negative_no_match, degraded, refused, execution_failure. A refused tool is distinct from a failed execution; a no_match is a valid negative investigation result.",
+      "enum": [
+        "positive",
+        "negative_no_match",
+        "degraded",
+        "refused",
+        "execution_failure"
+      ]
+    },
+    "git_summary_hash": {
+      "type": "string",
+      "description": "SHA256 hash of a bounded git summary when available. Preserves bounded metadata reference without expanding raw output inline."
+    },
+    "investigation_outcome": {
+      "type": "string",
+      "description": "Investigation-specific outcome when the tool is a read-only investigation: no_match, match_found, incomplete, stale_context."
+    },
     "cache_hit": {
       "type": "boolean"
     },

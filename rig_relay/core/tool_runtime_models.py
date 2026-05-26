@@ -185,6 +185,10 @@ class ToolRuntimeResult(BaseModel):
     mission_id: str | None = None
     matched_rule_kind: str | None = None
 
+    # ── Investigation semantics ────────────────────────────────────
+    git_summary: dict[str, Any] | None = None
+    investigation_outcome: str | None = None
+
     def to_debug_dict(self) -> dict[str, Any]:
         """JSON-safe debug snapshot. Excludes large tool output bodies."""
         result: dict[str, Any] = {
