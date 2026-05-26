@@ -29,6 +29,7 @@ from rig_relay.providers.invocation import (
     GatewayProvenance,
     GatewayProvenanceSource,
     InvocationOutcomeClass,
+    UsageEvidenceSource,
     build_invocation_outcome,
 )
 from rig_relay.providers.models import ProviderClass
@@ -189,6 +190,39 @@ class OpenAIAdapter(APIAdapter):
             response_id: str | None = data.get("id")
             model_id: str | None = data.get("model")
 
+            # ── OpenRouter rich inline usage ──────────────────────
+            cache_tokens: int | None = None
+            reasoning_tokens: int | None = None
+            total_cost: float | None = None
+            upstream_cost: float | None = None
+            cache_verified: bool | None = None
+            reasoning_verified: bool | None = None
+            cost_verified: bool | None = None
+            evidence_source: str | None = None
+
+            if provider_class == ProviderClass.ROUTED_GATEWAY:
+                evidence_source = UsageEvidenceSource.INLINE_RESPONSE.value
+                prompt_details = usage_data.get("prompt_tokens_details", {}) or {}
+                completion_details = (
+                    usage_data.get("completion_tokens_details", {}) or {}
+                )
+                if "cached_tokens" in prompt_details:
+                    cache_tokens = int(prompt_details["cached_tokens"])
+                    cache_verified = True
+                if "reasoning_tokens" in completion_details:
+                    reasoning_tokens = int(completion_details["reasoning_tokens"])
+                    reasoning_verified = True
+                if "cost" in usage_data:
+                    cost_value = usage_data["cost"]
+                    if isinstance(cost_value, (int, float)):
+                        total_cost = float(cost_value)
+                        cost_verified = True
+                # Upstream cost in usage_data (OpenRouter passes this when available)
+                if "cost_details" in usage_data:
+                    cd = usage_data["cost_details"] or {}
+                    if "upstream_inference_cost" in cd:
+                        upstream_cost = float(cd["upstream_inference_cost"])
+
             # Gateway provenance from response headers (OpenRouter)
             gateway_prov: GatewayProvenance | None = None
             gw_prov_verified: bool | None = None
@@ -208,6 +242,10 @@ class OpenAIAdapter(APIAdapter):
                         provenance_source=GatewayProvenanceSource.RESPONSE_HEADER,
                     )
                     gw_prov_verified = True
+                    if evidence_source is not None:
+                        evidence_source = (
+                            UsageEvidenceSource.RESPONSE_HEADER_PLUS_INLINE_USAGE.value
+                        )
                 else:
                     gateway_prov = GatewayProvenance(
                         provenance_source=GatewayProvenanceSource.UNAVAILABLE
@@ -223,17 +261,33 @@ class OpenAIAdapter(APIAdapter):
                 streaming=self._last_streaming,
                 input_tokens=usage.prompt_tokens or None,
                 output_tokens=usage.completion_tokens or None,
+                total_tokens=(
+                    int(usage_data["total_tokens"])
+                    if "total_tokens" in usage_data
+                    else None
+                ),
                 actual_model_id=model_id
                 if model_id and model_id != self._last_model_name
                 else None,
                 actual_model_verified=model_id is not None,
                 provider_response_id=response_id,
+                provider_generation_id=response_id
+                if provider_class == ProviderClass.ROUTED_GATEWAY
+                else None,
                 gateway_provenance=gateway_prov,
                 gateway_provenance_verified=gw_prov_verified,
                 usage_verified=True,
                 streaming_terminal_usage_verified=self._last_streaming,
                 actual_provider_verified=None,
                 safety_refusal_verified=None,
+                cache_read_tokens=cache_tokens,
+                cache_read_verified=cache_verified,
+                reasoning_tokens=reasoning_tokens,
+                reasoning_tokens_verified=reasoning_verified,
+                gateway_total_cost=total_cost,
+                gateway_upstream_cost=upstream_cost,
+                gateway_cost_verified=cost_verified,
+                usage_evidence_source=evidence_source,
             )
 
         return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)
@@ -348,6 +402,13 @@ class GenericBackend:
             thinking=model.thinking,
         )
 
+        # ── Capture request-scoped adapter state (isolation) ─────────
+        _req_model_name: str = getattr(adapter, "_last_model_name", model.name)
+        _req_streaming: bool = getattr(adapter, "_last_streaming", False)
+        _req_provider_name: str = getattr(
+            adapter, "_last_provider_name", self._provider.name
+        )
+
         headers = req.headers
         if extra_headers:
             headers.update(extra_headers)
@@ -426,7 +487,9 @@ class GenericBackend:
         url = f"{base}{req.endpoint}"
 
         try:
-            async for res_data in self._make_streaming_request(url, req.body, headers):
+            async for res_data in self._make_streaming_request(
+                url, req.body, headers, adapter=adapter
+            ):
                 yield adapter.parse_response(res_data, self._provider)
 
         except httpx.HTTPStatusError as e:
@@ -470,7 +533,11 @@ class GenericBackend:
 
     @async_generator_retry(tries=3)
     async def _make_streaming_request(
-        self, url: str, data: bytes, headers: dict[str, str]
+        self,
+        url: str,
+        data: bytes,
+        headers: dict[str, str],
+        adapter: APIAdapter | None = None,
     ) -> AsyncGenerator[dict[str, Any]]:
         client = self._get_client()
         async with client.stream(
@@ -479,6 +546,10 @@ class GenericBackend:
             if not response.is_success:
                 await response.aread()
             response.raise_for_status()
+            # Capture response headers for provenance (OpenRouter gateway x-provider etc.)
+            # Apply to adapter immediately so parse_response has them during streaming
+            if adapter is not None and hasattr(adapter, "_last_response_headers"):
+                adapter._last_response_headers = dict(response.headers.items())
             async for line in response.aiter_lines():
                 if line.strip() == "":
                     continue

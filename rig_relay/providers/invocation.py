@@ -45,7 +45,18 @@ class GatewayProvenanceSource(StrEnum):
 
     RESPONSE_BODY = "response_body"
     RESPONSE_HEADER = "response_header"
+    GENERATION_METADATA_LOOKUP = "generation_metadata_lookup"
     UNKNOWN = "unknown"
+    UNAVAILABLE = "unavailable"
+
+
+class UsageEvidenceSource(StrEnum):
+    """Where usage evidence was obtained."""
+
+    INLINE_RESPONSE = "inline_response"
+    GENERATION_METADATA_LOOKUP = "generation_metadata_lookup"
+    RESPONSE_HEADER_PLUS_INLINE_USAGE = "response_header_plus_inline_usage"
+    BOTH_INLINE_AND_METADATA = "both_inline_and_metadata"
     UNAVAILABLE = "unavailable"
 
 
@@ -103,6 +114,26 @@ class ProviderInvocationOutcome:
 
     # Provider-side response tracking (where safe)
     provider_response_id: str | None = None
+    provider_generation_id: str | None = None
+
+    # Reasoning token evidence (content-light count only)
+    reasoning_tokens: int | None = None
+
+    # Gateway cost evidence (OpenRouter)
+    gateway_total_cost: float | None = None
+    gateway_upstream_cost: float | None = None
+
+    # Gateway native token evidence (OpenRouter generation metadata)
+    gateway_native_tokens_prompt: int | None = None
+    gateway_native_tokens_completion: int | None = None
+    gateway_native_tokens_cached: int | None = None
+    gateway_native_tokens_reasoning: int | None = None
+
+    # Evidence source classification
+    usage_evidence_source: str | None = None
+
+    # Discrepancy marker
+    usage_discrepancy_detected: bool | None = None
 
     # Safe content hashes (never raw text)
     output_content_sha256: str | None = None
@@ -119,6 +150,9 @@ class ProviderInvocationOutcome:
     actual_model_verified: bool | None = None
     streaming_terminal_usage_verified: bool | None = None
     gateway_provenance_verified: bool | None = None
+    reasoning_tokens_verified: bool | None = None
+    gateway_cost_verified: bool | None = None
+    gateway_native_usage_verified: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -159,6 +193,19 @@ class ProviderInvocationOutcome:
             "actual_model_verified": self.actual_model_verified,
             "streaming_terminal_usage_verified": self.streaming_terminal_usage_verified,
             "gateway_provenance_verified": self.gateway_provenance_verified,
+            "provider_generation_id": self.provider_generation_id,
+            "reasoning_tokens": self.reasoning_tokens,
+            "gateway_total_cost": self.gateway_total_cost,
+            "gateway_upstream_cost": self.gateway_upstream_cost,
+            "gateway_native_tokens_prompt": self.gateway_native_tokens_prompt,
+            "gateway_native_tokens_completion": self.gateway_native_tokens_completion,
+            "gateway_native_tokens_cached": self.gateway_native_tokens_cached,
+            "gateway_native_tokens_reasoning": self.gateway_native_tokens_reasoning,
+            "usage_evidence_source": self.usage_evidence_source,
+            "usage_discrepancy_detected": self.usage_discrepancy_detected,
+            "reasoning_tokens_verified": self.reasoning_tokens_verified,
+            "gateway_cost_verified": self.gateway_cost_verified,
+            "gateway_native_usage_verified": self.gateway_native_usage_verified,
         }
         return result
 
@@ -215,6 +262,19 @@ def build_invocation_outcome(
     actual_model_verified: bool | None = None,
     streaming_terminal_usage_verified: bool | None = None,
     gateway_provenance_verified: bool | None = None,
+    provider_generation_id: str | None = None,
+    reasoning_tokens: int | None = None,
+    gateway_total_cost: float | None = None,
+    gateway_upstream_cost: float | None = None,
+    gateway_native_tokens_prompt: int | None = None,
+    gateway_native_tokens_completion: int | None = None,
+    gateway_native_tokens_cached: int | None = None,
+    gateway_native_tokens_reasoning: int | None = None,
+    usage_evidence_source: str | None = None,
+    usage_discrepancy_detected: bool | None = None,
+    reasoning_tokens_verified: bool | None = None,
+    gateway_cost_verified: bool | None = None,
+    gateway_native_usage_verified: bool | None = None,
 ) -> ProviderInvocationOutcome:
     """Construct a ProviderInvocationOutcome with content-light enforcement."""
     return ProviderInvocationOutcome(
@@ -243,6 +303,19 @@ def build_invocation_outcome(
         actual_model_verified=actual_model_verified,
         streaming_terminal_usage_verified=streaming_terminal_usage_verified,
         gateway_provenance_verified=gateway_provenance_verified,
+        provider_generation_id=provider_generation_id,
+        reasoning_tokens=reasoning_tokens,
+        gateway_total_cost=gateway_total_cost,
+        gateway_upstream_cost=gateway_upstream_cost,
+        gateway_native_tokens_prompt=gateway_native_tokens_prompt,
+        gateway_native_tokens_completion=gateway_native_tokens_completion,
+        gateway_native_tokens_cached=gateway_native_tokens_cached,
+        gateway_native_tokens_reasoning=gateway_native_tokens_reasoning,
+        usage_evidence_source=usage_evidence_source,
+        usage_discrepancy_detected=usage_discrepancy_detected,
+        reasoning_tokens_verified=reasoning_tokens_verified,
+        gateway_cost_verified=gateway_cost_verified,
+        gateway_native_usage_verified=gateway_native_usage_verified,
     )
 
 
@@ -346,22 +419,24 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, Any]] = {
     "openrouter": {
         "usage_verified": True,
         "usage_streaming_final_verified": True,
-        "cache_read_verified": False,
+        "cache_read_verified": True,
         "cache_creation_verified": False,
         "safety_refusal_verified": False,
         "actual_provider_verified": False,
         "actual_model_verified": False,
-        "gateway_provenance_verified": False,
+        "gateway_provenance_verified": True,
         "response_id_verified": True,
         "live_non_streaming_outcome": True,
         "live_streaming_outcome": True,
         "live_provider_identity_preserved": True,
-        "live_cache_evidence_preserved": False,
+        "live_cache_evidence_preserved": True,
         "live_safety_classification": False,
         "notes": [
             "routed gateway — provider class preserved as ROUTED_GATEWAY",
-            "provenance extraction from response headers (x-provider) for non-streaming",
-            "streaming provenance unavailable (SSE headers not accessible)",
+            "gateway provenance from response headers (x-provider, x-provider-model)",
+            "inline rich usage: cached tokens, reasoning tokens, cost, upstream_cost",
+            "provider_generation_id mapped from response 'id' field",
+            "streaming provenance via response headers preserved at transport boundary",
         ],
     },
     "deepseek": {
@@ -567,5 +642,9 @@ def _api_style_for_evidence(provider_id: str) -> str:
         "gemini": "gemini",
         "openrouter": "openai",
         "deepseek": "openai",
-        "local_inference": "openai",
+        "reasoning": "openai",
+        "mistral": "mistral",
+        "vertex-anthropic": "vertex-anthropic",
+        "openai-responses": "openai-responses",
+        "local_inference": "local_inference",
     }.get(provider_id, "openai")
