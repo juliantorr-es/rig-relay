@@ -126,9 +126,8 @@ class BundleBuilder:
         )
         manifest.count_retained_projected = len(files_content)
         manifest.total_items = len(files_content)
-        manifest.content_kinds_present = [ContentKind.BUNDLE_METADATA.value]
 
-        # Populate selectors from pseudonymized crosswalk identities (never originals)
+        # Populate selectors from pseudonymized crosswalk identities
         pseudonymized = sorted(set(crosswalk.mappings.values()))
         if pseudonymized:
             selectors = build_selector_entries(
@@ -137,6 +136,24 @@ class BundleBuilder:
                 disclosure_class="commit_body",
             )
             manifest.selectors = selectors
+
+        # Truthful accounting: counts must reflect observed items
+        selector_count = len(manifest.selectors)
+        manifest.count_pseudonymized_disclosable = selector_count
+        manifest.total_items = (
+            manifest.count_retained_projected
+            + manifest.count_pseudonymized_disclosable
+            + manifest.count_hash_evidence_only
+            + manifest.count_prohibited
+        )
+        manifest.content_kinds_present = (
+            sorted({
+                ContentKind.BUNDLE_METADATA.value,
+                ContentKind.SOURCE_IDENTIFIER.value,
+            })
+            if pseudonymized
+            else [ContentKind.BUNDLE_METADATA.value]
+        )
 
         # Seal after all final fields and selectors are populated
         seal_manifest(manifest)

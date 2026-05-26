@@ -50,7 +50,7 @@ def _issue_receipt_in_dir(workdir: Path) -> tuple[str, str]:
         _os.chdir(str(workdir))
         result = issue_disclosure_authorization(
             evidence_digest=EVIDENCE_DIGEST,
-            disclosure_class=DisclosureClass.COMMIT_PATCH.value,
+            disclosure_class=DisclosureClass.BRANCH_ENUMERATION.value,
             actor_identity="test-actor",
             producer_identity="test-producer",
             purpose="testing disclosure CLI",

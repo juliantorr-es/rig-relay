@@ -325,12 +325,24 @@ def _run_disclose_authorization(
         recipient_class, DisclosureClass.METADATA_DISCLOSURE.value
     )
 
-    # 2a. If selector_digest provided, verify it is disclosable
+    # 2a. If selector_digest provided, verify it is disclosable AND
+    # resolve the manifest selector's required disclosure class
     selector_disclosed = False
+    selector_manifest_class: str | None = None
     if selector_digest and manifest is not None:
         ok, err = verify_selector_disclosable(manifest, selector_digest)
         if not ok:
             print(f"REFUSED: {err}")
+            return
+
+        # Resolve the selector's required disclosure class from manifest
+        for sel in manifest.selectors:
+            if sel.selector_digest == selector_digest:
+                selector_manifest_class = sel.disclosure_class
+                break
+
+        if selector_manifest_class is None:
+            print("REFUSED: Selector found but missing disclosure_class in manifest.")
             return
         selector_disclosed = True
 
@@ -351,7 +363,10 @@ def _run_disclose_authorization(
         return
 
     consume_result = consume_disclosure_authorization(
-        authorization_id, current_evidence_digest=candidate_zip_hash
+        authorization_id,
+        current_evidence_digest=candidate_zip_hash,
+        current_disclosure_class=disclosure_class,
+        current_selector_digest=selector_digest,
     )
 
     if consume_result.outcome != DisclosureOutcome.CONSUMED:
@@ -422,7 +437,7 @@ def _run_disclose_authorization(
         "outcome": "authorized",
     }
     if manifest is not None:
-        event["manifest_digest"] = manifest.manifest_digest
+        event["manifest_digest_before"] = manifest.manifest_digest
     if selector_digest:
         event["selector_digest"] = selector_digest
     if selector_disclosed and manifest is not None:
@@ -436,6 +451,9 @@ def _run_disclose_authorization(
             ):
                 write_manifest_json(manifest, str(mp))
                 break
+        event["manifest_digest_after"] = manifest.manifest_digest
+    if manifest is not None:
+        event["manifest_digest"] = manifest.manifest_digest
     with open(disclosure_ledger_path, "a") as lf:
         lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
 

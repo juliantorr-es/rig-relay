@@ -702,14 +702,14 @@ def test_manifest_selectors_stable_ordering(tmp_path):
 
 
 def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
-    """A selector from a real manifest can be consumed through the CLI path."""
+    """A selector from a real manifest can be consumed through the CLI path
+    when ALL class/selector bindings match."""
     _clean_gov_store()
     monkeypatch.chdir(tmp_path)
 
     output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
     output_dir.mkdir(parents=True)
 
-    # Build a real bundle with crosswalk
     builder = BundleBuilder(output_dir)
     manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
     crosswalk = LocalCrosswalk(projection_id="test")
@@ -735,15 +735,14 @@ def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
     files = {"src.py": "def FN_001(): pass"}
     builder.write_bundle("test", files, manifest, crosswalk, receipt)
 
-    # Load the real manifest and get a real selector
     mpath = output_dir / "protected_content_manifest_test.json"
     loaded = load_manifest_json(str(mpath))
     assert loaded is not None
     assert len(loaded.selectors) == 1
     real_selector = loaded.selectors[0]
-    assert loaded.selectors[0].content_kind == ContentKind.SOURCE_IDENTIFIER.value
+    assert real_selector.disclosure_class == "commit_body"
 
-    # Issue a governance disclosure authorization
+    # Issue authorization: matching class, matching selector
     from rig_relay.governance.disclosure_authorization import (
         DisclosureClass,
         issue_disclosure_authorization,
@@ -757,10 +756,117 @@ def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
     auth_result = issue_disclosure_authorization(
         evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
         disclosure_class=DisclosureClass.COMMIT_BODY.value,
+        requested_selector=real_selector.selector_digest,
     )
     assert auth_result.authorization_id
 
-    # Consume the selector through the CLI disclosure path
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    # Use recipient class that maps to commit_body
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="private_repository_reviewer_access",
+            provider_or_channel="test-channel",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=real_selector.selector_digest,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" not in output
+    assert "Disclosure authorization" in output
+
+    # Reload — selector marked disclosed
+    reloaded = load_manifest_json(str(mpath))
+    assert reloaded is not None
+    assert reloaded.selectors[0].disclosed is True
+
+    # Second attempt refused (already consumed/selector disclosed)
+    captured2 = io.StringIO()
+    with contextlib.redirect_stdout(captured2):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="private_repository_reviewer_access",
+            provider_or_channel="test-channel",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=real_selector.selector_digest,
+        )
+    output2 = captured2.getvalue()
+    assert (
+        "already consumed" in output2.lower() or "already disclosed" in output2.lower()
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.2: Class mismatch refusal — selector class ≠ operation class
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_cross_class_disclosure_refused(tmp_path, monkeypatch):
+    """commit_body selector cannot be disclosed through metadata_disclosure operation."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"func": "FN_001"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    real_selector = loaded.selectors[0]
+
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    # Authorization: commit_body class with matching selector
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.COMMIT_BODY.value,
+        requested_selector=real_selector.selector_digest,
+    )
+
+    # Attempt: other_approved_recipient → metadata_disclosure (WRONG CLASS)
     import contextlib
     import io
 
@@ -771,7 +877,7 @@ def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
         _run_disclose_authorization(
             candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
             recipient_class="other_approved_recipient",
-            provider_or_channel="test-channel",
+            provider_or_channel="test",
             purpose="test",
             retention="30d",
             training_use="never",
@@ -779,34 +885,331 @@ def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
             selector_digest=real_selector.selector_digest,
         )
     output = captured.getvalue()
-    assert "REFUSED" not in output
+    assert "REFUSED" in output
     assert (
-        "authorization consumed" in output.lower()
-        or "Disclosure authorization" in output
+        "class mismatch" in output.lower() or "selector unauthorized" in output.lower()
     )
 
-    # Reload manifest — selector should be marked disclosed
+    # Selector remains undisclosed
     reloaded = load_manifest_json(str(mpath))
     assert reloaded is not None
-    assert reloaded.selectors[0].disclosed is True
+    assert reloaded.selectors[0].disclosed is False
 
-    # Second attempt for same selector is refused
-    captured2 = io.StringIO()
-    with contextlib.redirect_stdout(captured2):
+    # Authorization was NOT consumed
+    from rig_relay.governance.disclosure_authorization import check_disclosure_replay
+
+    replay = check_disclosure_replay(
+        auth_result.authorization_id,
+        current_evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+    )
+    assert replay.is_authorized, "Authorization must not have been consumed"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.2: Wrong selector refusal
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_wrong_selector_refused(tmp_path, monkeypatch):
+    """Authorization bound to selector A cannot disclose selector B."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"a_func": "FN_A", "b_func": "FN_B"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_A(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    assert len(loaded.selectors) >= 1
+
+    selector_a = loaded.selectors[0]
+    # selector_b doesn't exist in a bundle with one pseudonym
+
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    # Issue authorization bound to a DIFFERENT selector
+    fake_selector = compute_selector_digest("commit_body:nonexistent")
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.COMMIT_BODY.value,
+        requested_selector=fake_selector,
+    )
+
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    # Attempt to disclose selector_a with authorization bound to fake_selector
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
         _run_disclose_authorization(
             candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
-            recipient_class="other_approved_recipient",
-            provider_or_channel="test-channel",
+            recipient_class="private_repository_reviewer_access",
+            provider_or_channel="test",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=selector_a.selector_digest,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" in output
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.2: Unscoped/Scoped fail-closed
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_scoped_receipt_cannot_do_unscoped_disclosure(tmp_path, monkeypatch):
+    """Selector-bound receipt cannot authorize whole-bundle disclosure."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"func": "FN_001"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    # Issue a selector-bound authorization
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.COMMIT_BODY.value,
+        requested_selector=compute_selector_digest("commit_body:FN_001"),
+    )
+
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    # Attempt unscoped disclosure (no selector_digest)
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="private_repository_reviewer_access",
+            provider_or_channel="test",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=None,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" in output
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.2: Manifest accounting truth
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_manifest_accounting_invariant(tmp_path):
+    """count_pseudonymized_disclosable reflects live selectors."""
+    builder = BundleBuilder(tmp_path)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="p")
+    crosswalk.mappings = {"a": "FN_1", "b": "CLASS_1", "c": "VAR_1"}
+    receipt = DisclosureReceipt(
+        projection_id="p",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "pass"}
+    builder.write_bundle("p", files, manifest, crosswalk, receipt)
+
+    loaded = load_manifest_json(str(tmp_path / "protected_content_manifest_p.json"))
+    assert loaded is not None
+    assert loaded.count_pseudonymized_disclosable == 3
+    assert (
+        loaded.total_items
+        == loaded.count_retained_projected
+        + loaded.count_pseudonymized_disclosable
+        + loaded.count_hash_evidence_only
+        + loaded.count_prohibited
+    )
+    assert "source_identifier" in loaded.content_kinds_present
+    assert "bundle_metadata" in loaded.content_kinds_present
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# P4.2: Transition digest integrity
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_disclosure_event_records_before_after_digests(tmp_path, monkeypatch):
+    """Disclosure event records manifest_digest_before and manifest_digest_after."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"func": "FN_001"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    digest_before = loaded.manifest_digest
+    real_selector = loaded.selectors[0]
+
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.COMMIT_BODY.value,
+        requested_selector=real_selector.selector_digest,
+    )
+
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="private_repository_reviewer_access",
+            provider_or_channel="test",
             purpose="test",
             retention="30d",
             training_use="never",
             authorization_id=auth_result.authorization_id,
             selector_digest=real_selector.selector_digest,
         )
-    output2 = captured2.getvalue()
-    assert (
-        "already disclosed" in output2.lower() or "already consumed" in output2.lower()
+
+    # Reload manifest — digest should have changed
+    reloaded = load_manifest_json(str(mpath))
+    assert reloaded is not None
+    digest_after = reloaded.manifest_digest
+    assert digest_before != digest_after
+
+    # Read the governance disclosure event
+    event_path = (
+        tmp_path / ".build" / "rig-relay" / "governance" / "disclosure_events.v1.jsonl"
     )
+    assert event_path.exists()
+    events = [json.loads(l) for l in event_path.read_text().splitlines() if l.strip()]
+    assert len(events) == 1
+    event = events[0]
+    assert "manifest_digest_before" in event
+    assert "manifest_digest_after" in event
+    assert event["manifest_digest_before"] == digest_before
+    assert event["manifest_digest_after"] == digest_after
 
 
 def test_tampered_manifest_refused_in_disclosure(tmp_path, monkeypatch):

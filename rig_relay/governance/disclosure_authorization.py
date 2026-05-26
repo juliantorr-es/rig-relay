@@ -99,6 +99,9 @@ class DisclosureOutcome(StrEnum):
     CONSUMED = auto()
     EVIDENCE_MISMATCH = auto()
     UNSUPPORTED_CLASS = auto()
+    CLASS_MISMATCH = auto()
+    SELECTOR_MISMATCH = auto()
+    SELECTOR_UNAUTHORIZED = auto()
     NOT_FOUND = auto()
     CORRUPT = auto()
     ALREADY_CONSUMED = auto()
@@ -237,16 +240,24 @@ def issue_disclosure_authorization(
 
 
 def validate_disclosure_authorization(
-    authorization_id: str, *, current_evidence_digest: str | None = None
+    authorization_id: str,
+    *,
+    current_evidence_digest: str | None = None,
+    current_disclosure_class: str | None = None,
+    current_selector_digest: str | None = None,
 ) -> DisclosureResult:
     """Validate a disclosure authorization receipt against current evidence.
 
-    Checks integrity, expiry, consumption, evidence freshness, and
-    disclosure class validity.
+    Checks integrity, expiry, consumption, evidence freshness,
+    disclosure class validity, and optional class/selector scope binding.
 
     Args:
         authorization_id: Stable authorization identifier (not receipt_sha256).
         current_evidence_digest: Current evidence digest for freshness check.
+        current_disclosure_class: If provided, receipt's class must match.
+        current_selector_digest: If provided, must match receipt's
+            requested_selector. Fail-closed: a scoped receipt cannot
+            authorize unscoped disclosure, and vice versa.
 
     Returns:
         DisclosureResult with validation outcome.
@@ -271,7 +282,7 @@ def validate_disclosure_authorization(
             error_detail=detail,
         )
 
-    # Expiry check — combine parsing and comparison
+    # Expiry check
     try:
         expires = datetime.fromisoformat(receipt.expires_at)
         expired = datetime.now(UTC) >= expires
@@ -289,7 +300,7 @@ def validate_disclosure_authorization(
             error_detail=f"Receipt expired at {receipt.expires_at}",
         )
 
-    # Consumption check — consolidate into single return path
+    # Consumption check
     consumed = (receipt.one_time and receipt.consumed) or (
         not receipt.one_time and receipt.use_count >= receipt.max_uses
     )
@@ -306,7 +317,7 @@ def validate_disclosure_authorization(
             error_detail=detail,
         )
 
-    # Evidence freshness and class validity checks
+    # Evidence freshness
     valid_classes = {c.value for c in DisclosureClass}
     if current_evidence_digest and receipt.evidence_digest != current_evidence_digest:
         return DisclosureResult(
@@ -327,6 +338,63 @@ def validate_disclosure_authorization(
             error_detail=f"Unsupported disclosure class: {receipt.disclosure_class}",
         )
 
+    # P4.2: Disclosure class and selector scope binding.
+    # Only enforced when the caller provides disclosure context parameters.
+    if current_disclosure_class or current_selector_digest:
+        # Class binding
+        if (
+            current_disclosure_class
+            and receipt.disclosure_class != current_disclosure_class
+        ):
+            return DisclosureResult(
+                outcome=DisclosureOutcome.CLASS_MISMATCH,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail=(
+                    f"Disclosure class mismatch: receipt authorized for "
+                    f"'{receipt.disclosure_class}', requested "
+                    f"'{current_disclosure_class}'"
+                ),
+            )
+
+        # Selector scope binding (fail-closed)
+        receipt_has_selector = bool(receipt.requested_selector)
+        request_has_selector = bool(current_selector_digest)
+
+        if receipt_has_selector and not request_has_selector:
+            return DisclosureResult(
+                outcome=DisclosureOutcome.SELECTOR_UNAUTHORIZED,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail=(
+                    f"Selector-bound receipt cannot authorize unscoped disclosure. "
+                    f"Receipt is bound to selector "
+                    f"{receipt.requested_selector[:16]}..."
+                ),
+            )
+        if request_has_selector and not receipt_has_selector:
+            return DisclosureResult(
+                outcome=DisclosureOutcome.SELECTOR_UNAUTHORIZED,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail=(
+                    "Unscoped receipt cannot authorize selector-level disclosure. "
+                    "Issue a new receipt with requested_selector."
+                ),
+            )
+        if request_has_selector and receipt_has_selector:
+            if receipt.requested_selector != current_selector_digest:
+                return DisclosureResult(
+                    outcome=DisclosureOutcome.SELECTOR_MISMATCH,
+                    authorization_id=receipt.authorization_id,
+                    receipt=receipt,
+                    error_detail=(
+                        f"Selector mismatch: receipt bound to "
+                        f"{receipt.requested_selector[:16]}..., "
+                        f"requested {current_selector_digest[:16]}..."
+                    ),
+                )
+
     return DisclosureResult(
         outcome=DisclosureOutcome.VALID,
         authorization_id=receipt.authorization_id,
@@ -338,22 +406,33 @@ def validate_disclosure_authorization(
 
 
 def consume_disclosure_authorization(
-    authorization_id: str, *, current_evidence_digest: str | None = None
+    authorization_id: str,
+    *,
+    current_evidence_digest: str | None = None,
+    current_disclosure_class: str | None = None,
+    current_selector_digest: str | None = None,
 ) -> DisclosureResult:
     """Validate and consume a disclosure authorization receipt.
 
-    First validates, then marks as consumed (atomically: the receipt
-    is re-loaded after persist to verify consumption).
+    First validates (with optional class/selector scope), then marks
+    as consumed (atomically: the receipt is re-loaded after persist
+    to verify consumption).
 
     Args:
         authorization_id: Stable authorization identifier.
         current_evidence_digest: Current evidence digest for freshness.
+        current_disclosure_class: If provided, receipt's class must match.
+        current_selector_digest: If provided, must match receipt's
+            requested_selector (fail-closed).
 
     Returns:
-        DisclosureResult with outcome. Only VALID signals a consumed use.
+        DisclosureResult with outcome. Only CONSUMED signals success.
     """
     valid = validate_disclosure_authorization(
-        authorization_id, current_evidence_digest=current_evidence_digest
+        authorization_id,
+        current_evidence_digest=current_evidence_digest,
+        current_disclosure_class=current_disclosure_class,
+        current_selector_digest=current_selector_digest,
     )
     if not valid.is_authorized:
         return valid
