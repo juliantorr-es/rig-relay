@@ -19,6 +19,7 @@ from rig_relay.core.types import (
 )
 from rig_relay.providers.invocation import (
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     ProviderClass,
     build_invocation_outcome,
 )
@@ -245,21 +246,23 @@ class ReasoningAdapter(APIAdapter):
             response_id: str | None = data.get("id")
             model_id: str | None = data.get("model")
             outcome = build_invocation_outcome(
-                requested_provider_id=provider_name,
-                requested_model_id=self._last_model_name,
-                provider_class=ProviderClass.DIRECT_INFERENCE,
-                api_style=getattr(provider, "api_style", "reasoning"),
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=self._last_streaming,
-                input_tokens=usage.prompt_tokens or None,
-                output_tokens=usage.completion_tokens or None,
-                actual_model_id=model_id
-                if model_id and model_id != self._last_model_name
-                else None,
-                actual_model_verified=model_id is not None,
-                provider_response_id=response_id,
-                usage_verified=True,
-                streaming_terminal_usage_verified=self._last_streaming,
+                InvocationOutcomeInput(
+                    requested_provider_id=provider_name,
+                    requested_model_id=self._last_model_name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style=getattr(provider, "api_style", "reasoning"),
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=self._last_streaming,
+                    input_tokens=usage.prompt_tokens or None,
+                    output_tokens=usage.completion_tokens or None,
+                    actual_model_id=model_id
+                    if model_id and model_id != self._last_model_name
+                    else None,
+                    actual_model_verified=model_id is not None,
+                    provider_response_id=response_id,
+                    usage_verified=True,
+                    streaming_terminal_usage_verified=self._last_streaming,
+                )
             )
 
         return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)

@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.disclosure_query_projection.v1.schema.json",
+  "title": "Disclosure Query Projection v1",
+  "description": "Content-light read-side projection of disclosure transitions from canonical evidence. Provides typed projections for desktop/Gridline consumption, governed agents, and accessibility surfaces. Never contains raw source code, comments, docstrings, string literals, secrets, file-system paths beyond stable identifiers, or unbounded error strings.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "query_digest",
+    "generated_at",
+    "filter",
+    "transitions",
+    "total_count",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.disclosure_query_projection.v1"
+    },
+    "query_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest of this query result (excluding this field)."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of query generation."
+    },
+    "filter": {
+      "type": "object",
+      "required": ["include_terminated"],
+      "properties": {
+        "transition_id": {
+          "type": ["string", "null"],
+          "description": "Exact transition identifier filter."
+        },
+        "authorization_id": {
+          "type": ["string", "null"],
+          "description": "Authorization identifier filter."
+        },
+        "evidence_digest": {
+          "type": ["string", "null"],
+          "description": "Evidence digest filter."
+        },
+        "status": {
+          "type": ["string", "null"],
+          "description": "TransitionStatus filter."
+        },
+        "include_terminated": {
+          "type": "boolean",
+          "description": "Include terminal transitions (completed, refused, corrupt, conflict)."
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "transition_id",
+          "authorization_id",
+          "evidence_digest",
+          "projection_id",
+          "status",
+          "recipient_class",
+          "provider_or_channel",
+          "transition_digest",
+          "created_at",
+          "sequence"
+        ],
+        "properties": {
+          "transition_id": {
+            "type": "string",
+            "description": "Stable transition identifier (dzt_...)."
+          },
+          "authorization_id": {
+            "type": "string",
+            "description": "Governance disclosure authorization identifier."
+          },
+          "evidence_digest": {
+            "type": "string",
+            "description": "SHA256 digest of the evidence bundle."
+          },
+          "projection_id": {
+            "type": "string",
+            "description": "Projection identifier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "prepared",
+              "authorization_consumed",
+              "projection_receipt_persisted",
+              "manifest_applied",
+              "disclosure_event_recorded",
+              "completed",
+              "recovery_required",
+              "refused",
+              "conflict",
+              "corrupt"
+            ],
+            "description": "Current transition status."
+          },
+          "recipient_class": {
+            "type": "string",
+            "description": "Class of disclosure recipient."
+          },
+          "provider_or_channel": {
+            "type": "string",
+            "description": "Provider or channel for disclosure."
+          },
+          "purpose": {
+            "type": ["string", "null"],
+            "description": "Disclosure purpose or review context."
+          },
+          "retention_assertion": {
+            "type": ["string", "null"],
+            "description": "User-asserted retention policy."
+          },
+          "training_use_assertion": {
+            "type": ["string", "null"],
+            "description": "User-asserted training-use policy."
+          },
+          "transition_digest": {
+            "type": "string",
+            "description": "SHA256 digest of this transition event."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "ISO 8601 UTC creation timestamp."
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonic sequence number within this transition chain."
+          },
+          "recovery_provenance": {
+            "oneOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": ["is_recovered", "uninterrupted"],
+                "properties": {
+                  "is_recovered": {"type": "boolean"},
+                  "recovery_detail": {"type": ["string", "null"]},
+                  "uninterrupted": {"type": "boolean"},
+                  "last_durable_status_before_recovery": {"type": ["string", "null"]}
+                }
+              }
+            ],
+            "description": "Recovery provenance, present only when recovery detail exists."
+          },
+          "content_disposition": {
+            "oneOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": [
+                  "disclosure_class",
+                  "selector_present",
+                  "includes_hash_only_protection",
+                  "prohibited_class_blocked"
+                ],
+                "properties": {
+                  "disclosure_class": {"type": "string"},
+                  "selector_present": {"type": "boolean"},
+                  "selector_digest": {"type": ["string", "null"]},
+                  "selector_required_class": {"type": ["string", "null"]},
+                  "includes_hash_only_protection": {"type": "boolean"},
+                  "prohibited_class_blocked": {"type": "boolean"}
+                }
+              }
+            ],
+            "description": "Protected-content disclosure disposition."
+          },
+          "artifact_integrity": {
+            "oneOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": [
+                  "manifest_image",
+                  "manifest_verified",
+                  "chain_valid"
+                ],
+                "properties": {
+                  "receipt_identity": {"type": ["string", "null"]},
+                  "receipt_bound": {"type": "boolean"},
+                  "receipt_digest": {"type": ["string", "null"]},
+                  "event_identity": {"type": ["string", "null"]},
+                  "event_durable": {"type": "boolean"},
+                  "manifest_image": {
+                    "type": "string",
+                    "enum": ["precondition", "post_image", "unknown"]
+                  },
+                  "manifest_verified": {"type": "boolean"},
+                  "corruption_detail": {"type": ["string", "null"]},
+                  "chain_valid": {"type": "boolean"}
+                }
+              }
+            ],
+            "description": "Artifact-integrity disposition."
+          }
+        }
+      }
+    },
+    "total_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of transitions matching the filter."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Always true: this projection is content-light."
+    }
+  }
+}

@@ -22,6 +22,7 @@ from rig_relay.core.types import (
 )
 from rig_relay.providers.invocation import (
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     ProviderClass,
     build_invocation_outcome,
 )
@@ -386,26 +387,30 @@ class _OpenAIResponsesStreamParser:
                 else None
             )
             outcome = build_invocation_outcome(
-                requested_provider_id=self._adapter_provider_name,
-                requested_model_id=self._adapter_model_name,
-                provider_class=ProviderClass.DIRECT_INFERENCE,
-                api_style="openai-responses",
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=True,
-                input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
-                output_tokens=usage.completion_tokens
-                if usage.completion_tokens
-                else None,
-                total_tokens=total,
-                cache_read_tokens=cached,
-                cache_read_verified=cache_ok,
-                reasoning_tokens=reasoning,
-                reasoning_tokens_verified=reason_ok,
-                actual_model_id=model if model != self._adapter_model_name else None,
-                actual_model_verified=model is not None,
-                provider_response_id=response_id,
-                usage_verified=True,
-                streaming_terminal_usage_verified=True,
+                InvocationOutcomeInput(
+                    requested_provider_id=self._adapter_provider_name,
+                    requested_model_id=self._adapter_model_name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style="openai-responses",
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=True,
+                    input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
+                    output_tokens=usage.completion_tokens
+                    if usage.completion_tokens
+                    else None,
+                    total_tokens=total,
+                    cache_read_tokens=cached,
+                    cache_read_verified=cache_ok,
+                    reasoning_tokens=reasoning,
+                    reasoning_tokens_verified=reason_ok,
+                    actual_model_id=model
+                    if model != self._adapter_model_name
+                    else None,
+                    actual_model_verified=model is not None,
+                    provider_response_id=response_id,
+                    usage_verified=True,
+                    streaming_terminal_usage_verified=True,
+                )
             )
         return LLMChunk(
             message=LLMMessage(
@@ -456,7 +461,7 @@ class _OpenAIResponsesStreamParser:
 
 
 def _extract_responses_usage_detail(
-    usage_data: dict[str, Any], field: str
+    usage_data: dict[str, Any] | _ResponsesUsageData, field: str
 ) -> tuple[int | None, bool | None]:
     """Extract cached or reasoning token detail from Responses usage."""
     if field == "cached_tokens":
@@ -717,26 +722,28 @@ class OpenAIResponsesAdapter(APIAdapter):
                 else None
             )
             outcome = build_invocation_outcome(
-                requested_provider_id=self._last_provider_name,
-                requested_model_id=self._last_model_name,
-                provider_class=ProviderClass.DIRECT_INFERENCE,
-                api_style="openai-responses",
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=False,
-                input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
-                output_tokens=usage.completion_tokens
-                if usage.completion_tokens
-                else None,
-                total_tokens=total,
-                cache_read_tokens=cached,
-                cache_read_verified=cache_ok,
-                reasoning_tokens=reasoning,
-                reasoning_tokens_verified=reason_ok,
-                actual_model_id=model if model != self._last_model_name else None,
-                actual_model_verified=model is not None,
-                provider_response_id=response_id,
-                usage_verified=True,
-                streaming_terminal_usage_verified=False,
+                InvocationOutcomeInput(
+                    requested_provider_id=self._last_provider_name,
+                    requested_model_id=self._last_model_name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style="openai-responses",
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=False,
+                    input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
+                    output_tokens=usage.completion_tokens
+                    if usage.completion_tokens
+                    else None,
+                    total_tokens=total,
+                    cache_read_tokens=cached,
+                    cache_read_verified=cache_ok,
+                    reasoning_tokens=reasoning,
+                    reasoning_tokens_verified=reason_ok,
+                    actual_model_id=model if model != self._last_model_name else None,
+                    actual_model_verified=model is not None,
+                    provider_response_id=response_id,
+                    usage_verified=True,
+                    streaming_terminal_usage_verified=False,
+                )
             )
             return LLMChunk(
                 message=self._parse_output_items(output),

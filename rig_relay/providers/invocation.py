@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
 from rig_relay.providers.models import ProviderClass
 
 
@@ -235,87 +237,104 @@ def assert_content_light(value: dict[str, Any]) -> list[str]:
     return violations
 
 
+class InvocationOutcomeInput(BaseModel):
+    """Input parameters for building a ProviderInvocationOutcome.
+
+    Groups all builder arguments into a single typed model
+    to comply with PLR0913 (too-many-arguments) without
+    weakening provider outcome semantics or content-light guarantees.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    requested_provider_id: str = ""
+    requested_model_id: str = ""
+    provider_class: ProviderClass = ProviderClass.DIRECT_INFERENCE
+    api_style: str = "openai"
+    outcome_class: InvocationOutcomeClass = InvocationOutcomeClass.UNKNOWN
+    streaming: bool = False
+    refusal_class: InvocationRefusalClass | None = None
+    outcome_summary: str = ""
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_creation_tokens: int | None = None
+    actual_provider_id: str | None = None
+    actual_model_id: str | None = None
+    provider_response_id: str | None = None
+    gateway_provenance: GatewayProvenance | None = None
+    usage_verified: bool | None = None
+    cache_read_verified: bool | None = None
+    cache_creation_verified: bool | None = None
+    safety_refusal_verified: bool | None = None
+    actual_provider_verified: bool | None = None
+    actual_model_verified: bool | None = None
+    streaming_terminal_usage_verified: bool | None = None
+    gateway_provenance_verified: bool | None = None
+    provider_generation_id: str | None = None
+    reasoning_tokens: int | None = None
+    gateway_total_cost: float | None = None
+    gateway_upstream_cost: float | None = None
+    gateway_native_tokens_prompt: int | None = None
+    gateway_native_tokens_completion: int | None = None
+    gateway_native_tokens_cached: int | None = None
+    gateway_native_tokens_reasoning: int | None = None
+    usage_evidence_source: str | None = None
+    usage_discrepancy_detected: bool | None = None
+    reasoning_tokens_verified: bool | None = None
+    gateway_cost_verified: bool | None = None
+    gateway_native_usage_verified: bool | None = None
+
+
 def build_invocation_outcome(
-    *,
-    requested_provider_id: str,
-    requested_model_id: str,
-    provider_class: ProviderClass,
-    api_style: str,
-    outcome_class: InvocationOutcomeClass,
-    streaming: bool = False,
-    refusal_class: InvocationRefusalClass | None = None,
-    outcome_summary: str = "",
-    input_tokens: int | None = None,
-    output_tokens: int | None = None,
-    total_tokens: int | None = None,
-    cache_read_tokens: int | None = None,
-    cache_creation_tokens: int | None = None,
-    actual_provider_id: str | None = None,
-    actual_model_id: str | None = None,
-    provider_response_id: str | None = None,
-    gateway_provenance: GatewayProvenance | None = None,
-    usage_verified: bool | None = None,
-    cache_read_verified: bool | None = None,
-    cache_creation_verified: bool | None = None,
-    safety_refusal_verified: bool | None = None,
-    actual_provider_verified: bool | None = None,
-    actual_model_verified: bool | None = None,
-    streaming_terminal_usage_verified: bool | None = None,
-    gateway_provenance_verified: bool | None = None,
-    provider_generation_id: str | None = None,
-    reasoning_tokens: int | None = None,
-    gateway_total_cost: float | None = None,
-    gateway_upstream_cost: float | None = None,
-    gateway_native_tokens_prompt: int | None = None,
-    gateway_native_tokens_completion: int | None = None,
-    gateway_native_tokens_cached: int | None = None,
-    gateway_native_tokens_reasoning: int | None = None,
-    usage_evidence_source: str | None = None,
-    usage_discrepancy_detected: bool | None = None,
-    reasoning_tokens_verified: bool | None = None,
-    gateway_cost_verified: bool | None = None,
-    gateway_native_usage_verified: bool | None = None,
+    params: InvocationOutcomeInput,
 ) -> ProviderInvocationOutcome:
-    """Construct a ProviderInvocationOutcome with content-light enforcement."""
+    """Construct a ProviderInvocationOutcome with content-light enforcement.
+
+    Accepts a single InvocationOutcomeInput model to comply with
+    PLR0913 (too-many-arguments) while preserving all provider outcome
+    semantics.
+    """
     return ProviderInvocationOutcome(
-        requested_provider_id=requested_provider_id,
-        requested_model_id=requested_model_id,
-        actual_provider_id=actual_provider_id,
-        actual_model_id=actual_model_id,
-        provider_class=provider_class,
-        api_style=api_style,
-        outcome_class=outcome_class,
-        refusal_class=refusal_class,
-        outcome_summary=outcome_summary,
-        streaming=streaming,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        total_tokens=total_tokens,
-        cache_read_tokens=cache_read_tokens,
-        cache_creation_tokens=cache_creation_tokens,
-        provider_response_id=provider_response_id,
-        gateway_provenance=gateway_provenance,
-        usage_verified=usage_verified,
-        cache_read_verified=cache_read_verified,
-        cache_creation_verified=cache_creation_verified,
-        safety_refusal_verified=safety_refusal_verified,
-        actual_provider_verified=actual_provider_verified,
-        actual_model_verified=actual_model_verified,
-        streaming_terminal_usage_verified=streaming_terminal_usage_verified,
-        gateway_provenance_verified=gateway_provenance_verified,
-        provider_generation_id=provider_generation_id,
-        reasoning_tokens=reasoning_tokens,
-        gateway_total_cost=gateway_total_cost,
-        gateway_upstream_cost=gateway_upstream_cost,
-        gateway_native_tokens_prompt=gateway_native_tokens_prompt,
-        gateway_native_tokens_completion=gateway_native_tokens_completion,
-        gateway_native_tokens_cached=gateway_native_tokens_cached,
-        gateway_native_tokens_reasoning=gateway_native_tokens_reasoning,
-        usage_evidence_source=usage_evidence_source,
-        usage_discrepancy_detected=usage_discrepancy_detected,
-        reasoning_tokens_verified=reasoning_tokens_verified,
-        gateway_cost_verified=gateway_cost_verified,
-        gateway_native_usage_verified=gateway_native_usage_verified,
+        requested_provider_id=params.requested_provider_id,
+        requested_model_id=params.requested_model_id,
+        actual_provider_id=params.actual_provider_id,
+        actual_model_id=params.actual_model_id,
+        provider_class=params.provider_class,
+        api_style=params.api_style,
+        outcome_class=params.outcome_class,
+        refusal_class=params.refusal_class,
+        outcome_summary=params.outcome_summary,
+        streaming=params.streaming,
+        input_tokens=params.input_tokens,
+        output_tokens=params.output_tokens,
+        total_tokens=params.total_tokens,
+        cache_read_tokens=params.cache_read_tokens,
+        cache_creation_tokens=params.cache_creation_tokens,
+        provider_response_id=params.provider_response_id,
+        gateway_provenance=params.gateway_provenance,
+        usage_verified=params.usage_verified,
+        cache_read_verified=params.cache_read_verified,
+        cache_creation_verified=params.cache_creation_verified,
+        safety_refusal_verified=params.safety_refusal_verified,
+        actual_provider_verified=params.actual_provider_verified,
+        actual_model_verified=params.actual_model_verified,
+        streaming_terminal_usage_verified=params.streaming_terminal_usage_verified,
+        gateway_provenance_verified=params.gateway_provenance_verified,
+        provider_generation_id=params.provider_generation_id,
+        reasoning_tokens=params.reasoning_tokens,
+        gateway_total_cost=params.gateway_total_cost,
+        gateway_upstream_cost=params.gateway_upstream_cost,
+        gateway_native_tokens_prompt=params.gateway_native_tokens_prompt,
+        gateway_native_tokens_completion=params.gateway_native_tokens_completion,
+        gateway_native_tokens_cached=params.gateway_native_tokens_cached,
+        gateway_native_tokens_reasoning=params.gateway_native_tokens_reasoning,
+        usage_evidence_source=params.usage_evidence_source,
+        usage_discrepancy_detected=params.usage_discrepancy_detected,
+        reasoning_tokens_verified=params.reasoning_tokens_verified,
+        gateway_cost_verified=params.gateway_cost_verified,
+        gateway_native_usage_verified=params.gateway_native_usage_verified,
     )
 
 
@@ -519,7 +538,7 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, Any]] = {
     "openai-responses": {
         "usage_verified": True,
         "usage_streaming_final_verified": True,
-        "cache_read_verified": False,
+        "cache_read_verified": True,
         "cache_creation_verified": False,
         "safety_refusal_verified": False,
         "actual_provider_verified": False,
@@ -529,10 +548,12 @@ _ADAPTER_INVOCATION_EVIDENCE: dict[str, dict[str, Any]] = {
         "live_non_streaming_outcome": True,
         "live_streaming_outcome": True,
         "live_provider_identity_preserved": True,
-        "live_cache_evidence_preserved": False,
+        "live_cache_evidence_preserved": True,
         "live_safety_classification": False,
         "notes": [
             "OpenAIResponsesAdapter wired, api_style='openai-responses'",
+            "cached_tokens extracted from input_tokens_details in non-streaming and terminal streaming paths",
+            "reasoning_tokens extracted from output_tokens_details",
             "distinct from chat completions adapter",
         ],
     },

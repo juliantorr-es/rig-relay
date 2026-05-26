@@ -703,7 +703,8 @@ def test_manifest_selectors_stable_ordering(tmp_path):
 
 def test_selector_from_real_manifest_disclosed(tmp_path, monkeypatch):
     """A selector from a real manifest can be consumed through the CLI path
-    when ALL class/selector bindings match."""
+    when ALL class/selector bindings match.
+    """
     _clean_gov_store()
     monkeypatch.chdir(tmp_path)
 
@@ -1296,7 +1297,8 @@ def test_tampered_manifest_refused_in_disclosure(tmp_path, monkeypatch):
 
 def test_selector_class_bypass_closed(tmp_path, monkeypatch):
     """A commit_body selector with metadata_disclosure receipt and
-    metadata operation is refused before consumption."""
+    metadata operation is refused before consumption.
+    """
     _clean_gov_store()
     monkeypatch.chdir(tmp_path)
 

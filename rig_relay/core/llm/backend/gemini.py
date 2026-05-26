@@ -27,6 +27,7 @@ from rig_relay.core.types import (
 )
 from rig_relay.providers.invocation import (
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     InvocationRefusalClass,
     ProviderClass,
     build_invocation_outcome,
@@ -188,28 +189,33 @@ class GeminiAdapter(APIAdapter):
     ) -> Any:
         api_style = getattr(provider, "api_style", "gemini")
         return build_invocation_outcome(
-            requested_provider_id=provider.name,
-            requested_model_id=self._last_model_name,
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style=api_style,
-            outcome_class=outcome_class,
-            streaming=self._last_streaming,
-            refusal_class=refusal_class,
-            outcome_summary=outcome_summary,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            total_tokens=total_tokens,
-            usage_verified=input_tokens is not None,
-            safety_refusal_verified=(
-                outcome_class
-                in {InvocationOutcomeClass.SAFETY_BLOCK, InvocationOutcomeClass.REFUSAL}
-            ),
-            actual_provider_verified=None,
-            actual_model_verified=None,
-            streaming_terminal_usage_verified=(
-                self._last_streaming and input_tokens is not None
-            ),
-            gateway_provenance_verified=None,
+            InvocationOutcomeInput(
+                requested_provider_id=provider.name,
+                requested_model_id=self._last_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style=api_style,
+                outcome_class=outcome_class,
+                streaming=self._last_streaming,
+                refusal_class=refusal_class,
+                outcome_summary=outcome_summary,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                usage_verified=input_tokens is not None,
+                safety_refusal_verified=(
+                    outcome_class
+                    in {
+                        InvocationOutcomeClass.SAFETY_BLOCK,
+                        InvocationOutcomeClass.REFUSAL,
+                    }
+                ),
+                actual_provider_verified=None,
+                actual_model_verified=None,
+                streaming_terminal_usage_verified=(
+                    self._last_streaming and input_tokens is not None
+                ),
+                gateway_provenance_verified=None,
+            )
         )
 
     def parse_response(

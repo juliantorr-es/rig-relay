@@ -29,6 +29,7 @@ from rig_relay.providers.invocation import (
     GatewayProvenance,
     GatewayProvenanceSource,
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     ProviderInvocationOutcome,
     UsageEvidenceSource,
     build_invocation_outcome,
@@ -199,37 +200,41 @@ class OpenAIAdapter(APIAdapter):
             )
 
             outcome = build_invocation_outcome(
-                requested_provider_id=provider_name,
-                requested_model_id=self._last_model_name,
-                provider_class=provider_class,
-                api_style=api_style,
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=self._last_streaming,
-                input_tokens=usage.prompt_tokens or None,
-                output_tokens=usage.completion_tokens or None,
-                total_tokens=int(usage_data["total_tokens"])
-                if "total_tokens" in usage_data
-                else None,
-                actual_model_id=model_id
-                if model_id and model_id != self._last_model_name
-                else None,
-                actual_model_verified=model_id is not None,
-                provider_response_id=response_id,
-                provider_generation_id=response_id if is_routed else None,
-                usage_verified=True,
-                streaming_terminal_usage_verified=self._last_streaming,
-                actual_provider_verified=None,
-                safety_refusal_verified=None,
-                cache_read_tokens=evidence.get("cache_read_tokens"),
-                cache_read_verified=evidence.get("cache_read_verified"),
-                reasoning_tokens=evidence.get("reasoning_tokens"),
-                reasoning_tokens_verified=evidence.get("reasoning_tokens_verified"),
-                gateway_total_cost=evidence.get("gateway_total_cost"),
-                gateway_upstream_cost=evidence.get("gateway_upstream_cost"),
-                gateway_cost_verified=evidence.get("gateway_cost_verified"),
-                usage_evidence_source=evidence.get("usage_evidence_source"),
-                gateway_provenance=evidence.get("gateway_provenance"),
-                gateway_provenance_verified=evidence.get("gateway_provenance_verified"),
+                InvocationOutcomeInput(
+                    requested_provider_id=provider_name,
+                    requested_model_id=self._last_model_name,
+                    provider_class=provider_class,
+                    api_style=api_style,
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=self._last_streaming,
+                    input_tokens=usage.prompt_tokens or None,
+                    output_tokens=usage.completion_tokens or None,
+                    total_tokens=int(usage_data["total_tokens"])
+                    if "total_tokens" in usage_data
+                    else None,
+                    actual_model_id=model_id
+                    if model_id and model_id != self._last_model_name
+                    else None,
+                    actual_model_verified=model_id is not None,
+                    provider_response_id=response_id,
+                    provider_generation_id=response_id if is_routed else None,
+                    usage_verified=True,
+                    streaming_terminal_usage_verified=self._last_streaming,
+                    actual_provider_verified=None,
+                    safety_refusal_verified=None,
+                    cache_read_tokens=evidence.get("cache_read_tokens"),
+                    cache_read_verified=evidence.get("cache_read_verified"),
+                    reasoning_tokens=evidence.get("reasoning_tokens"),
+                    reasoning_tokens_verified=evidence.get("reasoning_tokens_verified"),
+                    gateway_total_cost=evidence.get("gateway_total_cost"),
+                    gateway_upstream_cost=evidence.get("gateway_upstream_cost"),
+                    gateway_cost_verified=evidence.get("gateway_cost_verified"),
+                    usage_evidence_source=evidence.get("usage_evidence_source"),
+                    gateway_provenance=evidence.get("gateway_provenance"),
+                    gateway_provenance_verified=evidence.get(
+                        "gateway_provenance_verified"
+                    ),
+                )
             )
 
         return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)

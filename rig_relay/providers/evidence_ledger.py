@@ -9,13 +9,13 @@ Writes to .build/rig-relay/providers/provider_evidence_events.v1.jsonl
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import fcntl
 import hashlib
 import json
 import os
-import uuid as _uuid
-from datetime import datetime, timezone
 from pathlib import Path
+import uuid as _uuid
 
 from rig_relay.providers.invocation import (
     ProviderInvocationOutcome,
@@ -25,6 +25,69 @@ from rig_relay.providers.invocation import (
 LEDGER_DIR = Path(".build/rig-relay/providers")
 LEDGER_FILE = "provider_evidence_events.v1.jsonl"
 SCHEMA_VERSION = "rig.relay.provider_invocation_evidence_event.v1"
+_SCHEMA_REL_PATH = (
+    "docs/schemas/rig.relay.provider_invocation_evidence_event.v1.schema.json"
+)
+_schema_cache: dict | None = None
+
+
+def _resolve_schema_path() -> Path:
+    p = Path(_SCHEMA_REL_PATH)
+    if p.exists():
+        return p
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    return repo_root / _SCHEMA_REL_PATH
+
+
+def _load_schema() -> dict:
+    """Load the provider evidence schema, cached after first call.
+
+    Raises FileNotFoundError if the schema file is missing.
+    """
+    global _schema_cache
+    cached = _schema_cache
+    if cached is not None:
+        return cached
+    _schema_cache = json.loads(_resolve_schema_path().read_text("utf-8"))
+    return _schema_cache  # type: ignore[return-value]
+
+
+class SchemaValidationUnavailableError(RuntimeError):
+    """Raised when canonical schema validation cannot be performed."""
+
+
+def _validate_event_against_schema(event: dict) -> None:
+    """Validate an event against the canonical provider evidence schema.
+
+    Fail-closed: refuses persistence on any unavailability of the
+    validation apparatus. No event enters the canonical ledger without
+    passing schema validation.
+
+    Raises:
+        SchemaValidationUnavailableError: jsonschema library missing or
+            schema file absent.
+        ValueError: event failed schema validation.
+    """
+    try:
+        import jsonschema
+    except ImportError:
+        raise SchemaValidationUnavailableError(
+            "Cannot validate provider evidence events: jsonschema is not installed"
+        ) from None
+
+    try:
+        schema = _load_schema()
+    except FileNotFoundError:
+        raise SchemaValidationUnavailableError(
+            "Cannot validate provider evidence events: schema file not found"
+        ) from None
+
+    try:
+        jsonschema.validate(event, schema)
+    except jsonschema.ValidationError as e:
+        raise ValueError(
+            f"Provider evidence event failed schema validation: {e.message}"
+        ) from e
 
 
 def _ledger_path() -> Path:
@@ -56,7 +119,7 @@ def persist_provider_event(
         raise ValueError(f"Content-light violations in provider event: {violations}")
 
     event_id = _uuid.uuid4().hex
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     event = {
         "schema_version": SCHEMA_VERSION,
         "event_id": event_id,
@@ -69,6 +132,9 @@ def persist_provider_event(
         "content_light": True,
     }
     event["event_digest"] = _compute_event_digest(event)
+
+    # Schema validation at append boundary
+    _validate_event_against_schema(event)
 
     path = _ledger_path()
     line = json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n"
@@ -105,6 +171,7 @@ def load_provider_events() -> list[dict]:
 __all__ = [
     "LEDGER_DIR",
     "LEDGER_FILE",
+    "SchemaValidationUnavailableError",
     "load_provider_events",
     "persist_provider_event",
 ]

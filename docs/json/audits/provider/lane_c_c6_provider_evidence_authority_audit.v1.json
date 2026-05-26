@@ -1,0 +1,129 @@
+{
+  "schema_version": "rig.relay.provider_corridor_audit.v1",
+  "audit_id": "lane_c6_provider_evidence_authority_closure",
+  "created_at": "2026-05-26T20:19:31.587141+00:00",
+  "lane": "C",
+  "mission": "C6 \u2014 Provider Evidence Authority Closure",
+  "corridor": "provider_outcome_evidence",
+  "corridor_owner": "Lane C",
+  "remote_head_at_start": "5bc0b605",
+  "remote_head_current": "d8c636b9",
+  "remote_head_predecessors_verified": [
+    "99c3d7c4",
+    "532561a3",
+    "d2ca4fe4"
+  ],
+  "lane_c5_checkpoints_on_remote": [
+    "04044029",
+    "770b4973"
+  ],
+  "local_head": "d8c636b9",
+  "b6_collision_on_lane_c_files": "none",
+  "production_tests_passed": true,
+  "test_results_summary": {
+    "invocation_evidence_tests": 28,
+    "ledger_and_operations_tests": 18,
+    "total": 46,
+    "backend_emission_to_report": 3,
+    "fail_closed_schema_validation": 4
+  },
+  "schema": {
+    "path": "docs/schemas/rig.relay.provider_invocation_evidence_event.v1.schema.json",
+    "digest": "sha256:69818ffb156991954f77fd77248c4fd540fbcccf0947e0692209be630501decb",
+    "draft": "draft-07",
+    "validated": true
+  },
+  "evidence_ledger": {
+    "path": ".build/rig-relay/providers/provider_evidence_events.v1.jsonl",
+    "schema_version": "rig.relay.provider_invocation_evidence_event.v1",
+    "locking": "fcntl.LOCK_EX",
+    "durability": "os.fsync",
+    "content_light": true,
+    "append_boundary_validation": "fail-closed",
+    "fail_closed_behavior": {
+      "schema_valid": "event passes validation and is persisted",
+      "schema_invalid": "persist_provider_event raises ValueError, ledger unchanged",
+      "schema_file_missing": "persist_provider_event raises SchemaValidationUnavailableError, ledger unchanged",
+      "jsonschema_unavailable": "persist_provider_event raises SchemaValidationUnavailableError, ledger unchanged",
+      "no_fallback_path": "no event enters canonical ledger without passing schema validation"
+    }
+  },
+  "source_boundary_hashes": {
+    "rig_relay/providers/invocation.py": "sha256:f549a4651200fc693cb4ce330d06e8cc12ea7917e4465fd703f59b77d95ddb72",
+    "rig_relay/providers/evidence_ledger.py": "sha256:f818470b8b64a4d8f483a3a8fb9ec3eff22fe38a396b6b5e1de142a865b777a4",
+    "rig_relay/providers/operations.py": "sha256:2739bad93f7871b75168020fd45496c9368213df5d0349f758378ad29d0197a0",
+    "rig_relay/core/llm/backend/generic.py": "sha256:fc6c24b3659e23b73ffd69827b07879c706999445a57c2db4b1ea7cc0e073592",
+    "rig_relay/core/llm/backend/openai_responses.py": "sha256:072ca7118e8b1dbd6b3284b6fa3e61a2d557d111056504d76b0408a78105b3ee"
+  },
+  "plr_waiver_status": "removed",
+  "plr_waiver_removed_from": "pyproject.toml line 262 (rig_relay/providers/invocation.py)",
+  "plr_waiver_resolution": "Refactored build_invocation_outcome to accept single InvocationOutcomeInput Pydantic model (1 arg vs 38). All 8 caller files updated.",
+  "capability_registry": {
+    "file": "rig_relay/providers/invocation.py",
+    "openai_responses_cache_read_verified": true,
+    "openai_responses_live_cache_evidence_preserved": true,
+    "updated": true
+  },
+  "provider_boundaries_exercised": {
+    "non_streaming_enrichment": "generic.py OpenAIAdapter.parse_response \u2192 build_invocation_outcome \u2192 persist_provider_event \u2192 report",
+    "streaming_terminal_enrichment": "generic.py complete_streaming \u2192 last chunk with invocation_outcome \u2192 persist \u2192 report",
+    "openai_responses_cached_tokens": "openai_responses.py _extract_responses_usage_detail",
+    "openai_responses_reasoning_tokens": "openai_responses.py _extract_responses_usage_detail",
+    "absent_field_behavior": "Proven via test_backend_absent_token_details_produce_null_fields \u2014 null fields, not normalized",
+    "discrepancy_detection": "usage_discrepancy_detected flag",
+    "content_light_ledger": "assert_content_light gate + fcntl-flocked append-only JSONL",
+    "integrity_verification": "Event digests + duplicate detection",
+    "deterministic_report": "generate_operations_report from canonical ledger",
+    "production_backend_to_report_non_streaming": "test_non_streaming_backend_emission_to_report \u2014 real GenericBackend.complete() with respx HTTP mock, full corridor exercised",
+    "production_backend_to_report_terminal_streaming": "test_terminal_streaming_backend_emission_to_report \u2014 real GenericBackend.complete_streaming() with respx mock, full corridor exercised",
+    "fail_closed_schema_validation": "4 tests through persist_provider_event: valid, invalid, missing schema, missing jsonschema \u2014 all proven fail-closed"
+  },
+  "deferred": {
+    "broader_telemetry_sink_convergence": "Deferred \u2014 Lane B TelemetryEvidenceService runtime outcome projection",
+    "runtime_outcome_integration": "Deferred \u2014 Lane B owns runtime outcome projection corridor",
+    "disclosure_surface_integration": "Deferred \u2014 Lane A",
+    "fleet_coordination": "Deferred \u2014 shared mechanism"
+  },
+  "cross_domain_collision_avoided": true,
+  "lane_c_releases_boundary": false,
+  "lane_c_boundary_release": "NOT YET RELEASED \u2014 pending user promotion to remote main and GitHub-app verification",
+  "final_status": "candidate_validated_locally_pending_promotion",
+  "final_status_identifier": "lane_c_c6_provider_evidence_authority_candidate_validated_locally_pending_promotion",
+  "plr_waiver_promotion": "removal already published on remote main via A6 (d8c636b9) \u2014 pyproject.toml not in Lane C promotion set",
+  "fresh_session_verification": {
+    "verified_at": "2026-05-26T14:30:00+00:00",
+    "session": "fresh Lane C OpenCode session",
+    "remote_head_verified": "d8c636b9",
+    "local_head": "d8c636b9",
+    "local_remote_match": true,
+    "all_c5_b6_a6_d2_commits_are_ancestors": true,
+    "c6_capabilities_absent_from_remote": [
+      "InvocationOutcomeInput class",
+      "operations.py module",
+      "ProviderOperationsReport",
+      "provider evidence event schema",
+      "append-boundary schema validation (_validate_event_against_schema)",
+      "SchemaValidationUnavailableError",
+      "backend-emission-to-report tests"
+    ],
+    "plr_waiver_already_removed_on_remote": true,
+    "test_suite_pass": "46/46 passed",
+    "pyright": "0 errors, 0 warnings",
+    "ruff_check": "all clean",
+    "ruff_format": "12 files unchanged",
+    "schema_draft_07_valid": true,
+    "adversarial_falsification_attempted": {
+      "strongest": "production append-boundary bypass via extra property injection",
+      "result": "falsification failed \u2014 schema validation correctly rejected event, ledger unchanged"
+    },
+    "foreign_lane_collisions": "none \u2014 post-C5 remote commits (A6, B6.7, D2.1) touched zero Lane C files",
+    "cross_coupling_to_lane_b_telemetry": "none verified",
+    "validation_commands": [
+      "uv run pytest tests/providers/test_invocation_evidence.py tests/providers/test_evidence_ledger_and_operations.py -v",
+      "uv run pyright [12 Lane C files]",
+      "uv run ruff check --fix [12 Lane C files]",
+      "uv run ruff format [12 Lane C files]",
+      "uv run python scripts/rig_relay_validate_schemas.py"
+    ]
+  }
+}

@@ -36,11 +36,14 @@ if TYPE_CHECKING:
 
 
 class ToolResultRuntime:
-    __slots__ = ("_loop", "_evidence")
+    __slots__ = ("_loop", "_evidence", "_intent_authority")
 
-    def __init__(self, loop: AgentLoop, *, evidence: Any = None) -> None:
+    def __init__(
+        self, loop: AgentLoop, *, evidence: Any = None, intent_authority: Any = None
+    ) -> None:
         self._loop = loop
         self._evidence = evidence
+        self._intent_authority = intent_authority
 
     def handle_tool_response(
         self,
@@ -382,12 +385,17 @@ class ToolResultRuntime:
     ) -> LLMMessage:
         """Route a handoff through the governed ToolRuntime.execute_one() boundary.
 
-        When *intent* (RecoveryIntent) is supplied, materialises the recovered
-        payload: extracts normalized_args, digest-verifies against
-        handoff.payload_digest, and populates ToolRuntimeRequest.tool_args.
+        Canonical path: loads the materialized intent from DurableRecoveryIntentAuthority
+        using handoff.(recovery_receipt_sha256, payload_digest) as the composite key.
+        The canonical payload was persisted before (or at first) execution; no caller
+        can substitute arguments after first materialization.
+
+        Legacy path: when no canonical intent exists and *intent* (RecoveryIntent) is
+        supplied transiently, digest-verifies it against handoff.payload_digest,
+        materializes it lazily as the first-write authority, then executes.
 
         For validation handoffs, propagates admitted_validation_profile and
-        bounded_paths into the tool args.
+        bounded_paths from either the canonical receipt or the handoff model.
         """
         import hashlib as _hashlib
         import json as _json
@@ -401,22 +409,122 @@ class ToolResultRuntime:
         tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
         call_id: str = correlation_id or f"handoff-{uuid.uuid4().hex[:12]}"
         loop = self._loop
+        authority = getattr(self, "_intent_authority", None)
 
-        # ── Recover and digest-verify payload first ────────────────
+        receipt_sha: str = getattr(handoff, "recovery_receipt_sha256", "") or ""
+        handoff_payload_digest: str = getattr(handoff, "payload_digest", "") or ""
+        handoff_manifest: str = getattr(handoff, "manifest_digest", "") or ""
+
         tool_args: dict[str, Any] = {}
-        if intent is not None and hasattr(intent, "normalized_args"):
-            tool_args = dict(getattr(intent, "normalized_args", {}) or {})
-            payload_digest: str = getattr(handoff, "payload_digest", "") or ""
-            if payload_digest and tool_args:
-                raw = _json.dumps(tool_args, sort_keys=True, separators=(",", ":"))
-                computed = f"sha256:{_hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
-                if computed != payload_digest:
-                    return self._admit_payload_mismatch(
-                        handoff, correlation_id, payload_digest, computed
+        authority_source: str = "transient_caller"
+
+        # ── Path 1: Canonical intent already materialized ──────
+        if authority is not None and receipt_sha and handoff_payload_digest:
+            canonical = authority.load_intent(receipt_sha, handoff_payload_digest)
+            if canonical is not None:
+                # Validate bindings: manifest and tool must match
+                canonical_manifest = canonical.get("manifest_digest", "")
+                canonical_tool = canonical.get("canonical_tool_name", "")
+                if (
+                    canonical_manifest
+                    and handoff_manifest
+                    and canonical_manifest != handoff_manifest
+                ):
+                    return self._admit_binding_mismatch(
+                        handoff,
+                        correlation_id,
+                        "manifest_digest",
+                        canonical_manifest,
+                        handoff_manifest,
+                    )
+                if canonical_tool and canonical_tool != tool_name:
+                    return self._admit_binding_mismatch(
+                        handoff,
+                        correlation_id,
+                        "canonical_tool_name",
+                        canonical_tool,
+                        tool_name,
                     )
 
-        # ── Propagate validation constraints ───────────────────────
-        if tool_name == "validate":
+                intent_id = canonical.get("intent_id", "")
+                payload = authority.retrieve_payload(intent_id, handoff_payload_digest)
+                if payload is None:
+                    return self._admit_payload_not_recoverable(handoff, correlation_id)
+
+                tool_args = dict(payload)
+                authority_source = "canonical_intent_authority"
+
+                # Propagate validation constraints from canonical receipt
+                if canonical.get("validation_profile"):
+                    tool_args.setdefault("profile", canonical["validation_profile"])
+                if canonical.get("bounded_paths"):
+                    tool_args.setdefault("paths", list(canonical["bounded_paths"]))
+
+        # ── Path 2: No canonical intent — try caller-supplied ────
+        if not tool_args and intent is not None and hasattr(intent, "normalized_args"):
+            tool_args = dict(getattr(intent, "normalized_args", {}) or {})
+            if handoff_payload_digest and tool_args:
+                raw = _json.dumps(tool_args, sort_keys=True, separators=(",", ":"))
+                computed = f"sha256:{_hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+                if computed != handoff_payload_digest:
+                    return self._admit_payload_mismatch(
+                        handoff, correlation_id, handoff_payload_digest, computed
+                    )
+
+                # ── Lazy-first-write materialization ──────────
+                if authority is not None and receipt_sha:
+                    try:
+                        authority.materialize_intent(
+                            recovery_receipt_sha256=receipt_sha,
+                            payload_digest=computed,
+                            manifest_digest=handoff_manifest,
+                            canonical_tool_name=tool_name,
+                            normalized_args=tool_args,
+                            execution_class=execution_mode,
+                            correlation_id=correlation_id,
+                            validation_profile=getattr(
+                                handoff, "admitted_validation_profile", None
+                            ),
+                            bounded_paths=list(
+                                getattr(handoff, "bounded_paths", []) or []
+                            ),
+                            mutation_class=(
+                                getattr(intent, "mutation_class", None)
+                                if hasattr(intent, "mutation_class")
+                                else None
+                            ),
+                            materialization_kind="lazy_first_write",
+                        )
+                        authority_source = "lazy_first_write"
+                    except ValueError:
+                        # Concurrent materialization happened — fall through
+                        # to re-read from canonical path
+                        canonical2 = authority.load_intent(
+                            receipt_sha, handoff_payload_digest
+                        )
+                        if canonical2 is not None:
+                            intent_id = canonical2.get("intent_id", "")
+                            payload = authority.retrieve_payload(
+                                intent_id, handoff_payload_digest
+                            )
+                            if payload is not None:
+                                raw2 = _json.dumps(
+                                    payload, sort_keys=True, separators=(",", ":")
+                                )
+                                computed2 = f"sha256:{_hashlib.sha256(raw2.encode('utf-8')).hexdigest()}"
+                                if computed2 == handoff_payload_digest:
+                                    tool_args = dict(payload)
+                                    authority_source = "canonical_intent_authority"
+                                else:
+                                    return self._admit_payload_mismatch(
+                                        handoff,
+                                        correlation_id,
+                                        handoff_payload_digest,
+                                        computed2,
+                                    )
+
+        # ── Propagate validation constraints from handoff model ──
+        if tool_name == "validate" and not tool_args.get("profile"):
             profile: str | None = getattr(handoff, "admitted_validation_profile", None)
             if profile:
                 tool_args.setdefault("profile", profile)
@@ -424,17 +532,10 @@ class ToolResultRuntime:
             if bounded:
                 tool_args.setdefault("paths", bounded)
 
+        # ── Route to ToolRuntime ──────────────────────────────
         tool_runtime = getattr(loop, "_tool_runtime", None)
         if tool_runtime is None:
             return self._admit_tool_runtime_unavailable(handoff, correlation_id)
-
-        if tool_name == "validate":
-            profile: str | None = getattr(handoff, "admitted_validation_profile", None)
-            if profile:
-                tool_args.setdefault("profile", profile)
-            bounded: list[str] = list(getattr(handoff, "bounded_paths", []) or [])
-            if bounded:
-                tool_args.setdefault("paths", bounded)
 
         mode = (
             ToolRuntimeExecutionMode.MUTATION_PROPOSAL
@@ -504,6 +605,52 @@ class ToolResultRuntime:
             error_kind="recovery_refusal",
         )
         prefix = "<tool_error>recovery_handoff: ToolRuntime unavailable</tool_error>"
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=prefix
+        )
+
+    def _admit_binding_mismatch(
+        self,
+        handoff: Any,
+        correlation_id: str,
+        field_name: str,
+        canonical_value: str,
+        handoff_value: str,
+    ) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="refused",
+            decision="refused",
+            correlation_id=correlation_id,
+            refusal_code="intent_handoff_binding_mismatch",
+            error_kind="recovery_refusal",
+        )
+        prefix = (
+            f"<tool_error>recovery_refused: binding_mismatch "
+            f"({field_name}: canonical {canonical_value[:16]}..."
+            f" != handoff {handoff_value[:16]}...)</tool_error>"
+        )
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=prefix
+        )
+
+    def _admit_payload_not_recoverable(
+        self, handoff: Any, correlation_id: str
+    ) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="degraded",
+            decision="refused",
+            correlation_id=correlation_id,
+            refusal_code="canonical_payload_not_recoverable",
+            error_kind="recovery_refusal",
+        )
+        prefix = (
+            "<tool_error>recovery_refused: canonical_payload_not_recoverable "
+            "(intent receipt exists but payload not retrievable)</tool_error>"
+        )
         return self._append_handoff_message(
             tool_name, outcome, correlation_id, prefix=prefix
         )

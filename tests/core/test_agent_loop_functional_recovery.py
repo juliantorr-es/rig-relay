@@ -1325,9 +1325,9 @@ async def test_admitted_mission_agent_loop_causally_prepares_validates_and_check
     digests. Verifies commit contents, receipt trailers, dirty-file
     preservation, and governance evidence persistence.
     """
+    import hashlib
     import json
     import subprocess
-    import hashlib
 
     # ── 1. Set up real Git repo on a permissible task branch ──────
     subprocess.run(["git", "init", "-b", "main"], capture_output=True)
@@ -1350,12 +1350,10 @@ async def test_admitted_mission_agent_loop_causally_prepares_validates_and_check
     from rig_relay.core.agents.models import BuiltinAgentName
     from rig_relay.core.types import (
         FunctionCall,
-        LLMChunk,
         LLMMessage,
         Role,
         ToolCall,
         ToolCallEvent,
-        ToolResultEvent,
     )
     from tests.conftest import build_test_agent_loop, build_test_vibe_config
     from tests.mock.utils import mock_llm_chunk
@@ -1571,7 +1569,6 @@ async def test_admitted_mission_agent_loop_causally_prepares_validates_and_check
     backend = CausalBackend(Path.cwd())
 
     # ── 3. Establish mission authority ──
-    from rig_relay.coordination.models import CoordinationTaskClaim
     from rig_relay.coordination.store import CoordinationStore
 
     coord_store = CoordinationStore(

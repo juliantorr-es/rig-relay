@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.recovery_intent_authority.v1.schema.json",
+  "title": "Recovery Intent Authority Receipt",
+  "description": "Content-light canonical receipt binding a materialized recovery intent. Persisted before or at first execution. The handoff's (recovery_receipt_sha256, payload_digest) composite key identifies the canonical intent. No raw tool arguments, file content, or secrets appear in this receipt.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "intent_id",
+    "recovery_receipt_sha256",
+    "payload_digest",
+    "manifest_digest",
+    "canonical_tool_name",
+    "execution_class",
+    "content_light",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.recovery_intent_authority.v1"
+    },
+    "intent_id": {
+      "type": "string",
+      "description": "Deterministic intent identifier: SHA256(recovery_receipt_sha256 || payload_digest)"
+    },
+    "recovery_receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "D0 recovery receipt digest"
+    },
+    "payload_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the canonical normalized_args"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Tool surface manifest digest"
+    },
+    "canonical_tool_name": {
+      "type": "string",
+      "description": "The tool to execute with this payload"
+    },
+    "execution_class": {
+      "type": "string",
+      "enum": ["read_only", "validation", "mutation_proposal"],
+      "description": "Recovery execution class"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Runtime correlation identity"
+    },
+    "validation_profile": {
+      "type": ["string", "null"],
+      "description": "Admitted validation profile (validation handoffs only)"
+    },
+    "bounded_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Bounded paths for validation (validation handoffs only)"
+    },
+    "mutation_class": {
+      "type": ["string", "null"],
+      "description": "Mutation class (mutation handoffs only)"
+    },
+    "materialization_kind": {
+      "type": "string",
+      "enum": ["lazy_first_write", "pre_handoff", "reconstituted"],
+      "description": "How this intent was materialized"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "event_digest": {
+      "type": "string",
+      "description": "Self-validating SHA256 of the receipt event"
+    }
+  }
+}

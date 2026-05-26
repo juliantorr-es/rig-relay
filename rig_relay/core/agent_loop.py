@@ -17,7 +17,6 @@ from rig_relay.core.agents.models import AgentProfile, BuiltinAgentName
 from rig_relay.core.config import VibeConfig
 from rig_relay.core.hooks.models import HookConfigResult
 from rig_relay.core.llm.backend.factory import BACKEND_FACTORY
-from rig_relay.core.llm.format import FailedToolCall
 from rig_relay.core.llm.types import BackendLike
 from rig_relay.core.session.session_migration import migrate_sessions_entrypoint
 from rig_relay.core.system_prompt import get_universal_system_prompt
@@ -50,7 +49,7 @@ from rig_relay.core.types import (
     UserInputCallback,
     UserMessageEvent,
 )
-from rig_relay.core.utils import TOOL_ERROR_TAG, get_server_url_from_api_base
+from rig_relay.core.utils import get_server_url_from_api_base
 
 try:
     from rig_relay.core.teleport.teleport import TeleportService as _TeleportService

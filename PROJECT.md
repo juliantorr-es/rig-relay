@@ -1,0 +1,37 @@
+# Rig Relay Operating Instructions
+
+This file is the canonical project instruction bundle for Rig Relay.
+
+[PRIMARY AXIOM] Move fast, close seams, and bias toward material architectural convergence. Govern proportionally. Subsystems MUST operate symbiotically. Rig Relay is a desktop application; you are building a main-bridge UI, not a text adventure.
+
+[MANDATORY] Symbiotic Convergence & The Tachikoma Rule: Execute ambitious, atomic implementation slices. Agents operate in symbiotic parallel and coordinate asynchronously via shared state. A lane owning a live integration boundary MUST explicitly publish and release that boundary before another lane wires new capability through it. Live integrations MUST NOT silently collide.
+
+[FORBIDDEN] Terminal Product Workflows: Rig Relay is a native desktop application. Application-domain behavior MUST NEVER be implemented or preserved as terminal workflows or CLI entry points. Legacy CLI product logic is migration debt: extract it into typed internal application services, wire to the desktop frontend and governed agent tools, and obliterate the CLI path. Terminal scripts are scaffolding, not a second control room.
+
+[INVARIANT] Application Service Authority: All product actions MUST enter through typed internal application services. These services exclusively own validation, authorization, state transitions, and evidence emission. The desktop frontend and governed agent tools are peer callers; neither may bypass domain authority.
+
+[CRITICAL] Migration Debt Closure: When migrating legacy workflows, the owning lane MUST extract the domain logic, wire the required callers, delete the obsolete entry point entirely, and add structural tests proving the deleted path does not regrow.
+
+[DIRECTIVE] Convergent Passes (Equivalent Exchange): Every implementation pass MUST close its identified seam AND land the next adjacent production capability enabled by that repair. Consuming full passes on narrow status corrections or helper-only proofs is FORBIDDEN.
+
+[DIRECTIVE] Claim-Adversary Pass: Before a lane reports completion, publication, or milestone success, it MUST run a short hostile review against the exact status it intends to publish. Treat every noun and adjective in that status as an assertion to falsify. At minimum, attack authority ownership, production-boundary realism, crash/retry or duplicate-effect safety when relevant, canonical evidence reconstruction, remote publication truth, and lane-boundary release safety. If any falsifier succeeds, downgrade the claim or repair the seam before reporting.
+
+[ABSOLUTE] Canonical Evidence & Event Authority: Schema-validated evidence artifacts are the absolute authority for governed transitions, telemetry, and machine-to-machine boundaries. Append-only ledgers are immutable. Derived projections and UI state are disposable and MUST be reconstructable from canonical evidence. If a governed decision is not recorded in its canonical evidence domain, it did not happen.
+
+[STANDARD] Projection-to-Desktop & Gridline Interface: Canonical projections exist to feed the Gridline Interface, governed agents, tests, and accessibility surfaces. Do NOT treat terminal reports or command-line exports as the intended product interface.
+
+[MANDATORY] External Reconnaissance: Agents MUST research primary external sources when a mission depends on changing external facts, platform APIs, privacy requirements, or the adoption of new dependencies. Routine internal refactoring DOES NOT require research detours.
+
+[SYSTEM] Bridge Memory & Symbolic Atlas: Rig Relay maintains a governed architectural memory system. Canonical production code uses precise domain identifiers. Major boundaries and schemas MAY receive distinctive sci-fi/mecha lore aliases in the semantic atlas to maximize context compression, provided they deterministically resolve back to canonical domain identifiers.
+
+- Structural facts MUST be strictly derived from source using AST/tree-based indexing. Agents MUST NOT manually assert structural facts.
+- Semantic claims and coordination updates MUST be recorded as typed, append-only events with explicit authority statuses.
+- Lock-free projection: parallel lanes MUST write partitioned, mission-owned event streams. Agents MUST NOT concurrently mutate a shared monolithic graph file. Read-side graph projections are disposable derived artifacts.
+
+[CRITICAL] Anti-Deadlock & Actionable Governance: If blocked by a rigid gate or transient failure outside immediate scope, agents MUST NOT deadlock. Document the blockage, park the fragment, and pivot immediately to adjacent value. Rejections MUST provide an actionable path forward.
+
+[ABSOLUTE] Remote Source of Truth: Verify current implementations exclusively via remote reads from the canonical repository main branch. Relying on stale local assumptions, agent memory, or overconfident summaries is STRICTLY FORBIDDEN. Milestone claims MUST truthfully reflect remote publication state.
+
+[INVARIANT] Substrate Testing Doctrine: Tests are real substrate. Cosplay testing is FORBIDDEN. Acceptance tests MUST exercise the exact production boundary claimed. Helper derivations, fake persistence, simulated concurrency, and local-only commits DO NOT justify closure. NO MOCKS. NO STUBS. NO GHOSTS. Mocks are permitted ONLY at true external OS/network boundaries.
+
+[DIRECTIVE] Continuity & Opportunism (The 5-Minute Rule): If a high-value, low-risk fix takes less time to execute than to document, execute it immediately. If it threatens the convergence path, park it. Do not let tangents derail the active mission.

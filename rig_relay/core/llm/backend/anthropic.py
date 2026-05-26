@@ -19,6 +19,7 @@ from rig_relay.core.types import (
 )
 from rig_relay.providers.invocation import (
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     ProviderClass,
     build_invocation_outcome,
 )
@@ -539,19 +540,21 @@ class AnthropicAdapter(APIAdapter):
             crt = chunk.usage.cache_read_tokens or None
             cct = chunk.usage.cache_creation_tokens or None
             outcome = build_invocation_outcome(
-                requested_provider_id=self._last_provider_name,
-                requested_model_id=self._last_model_name,
-                provider_class=ProviderClass.DIRECT_INFERENCE,
-                api_style="anthropic",
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=False,
-                input_tokens=chunk.usage.prompt_tokens or None,
-                output_tokens=chunk.usage.completion_tokens or None,
-                cache_read_tokens=crt,
-                cache_creation_tokens=cct,
-                usage_verified=True,
-                cache_read_verified=crt is not None,
-                cache_creation_verified=cct is not None,
+                InvocationOutcomeInput(
+                    requested_provider_id=self._last_provider_name,
+                    requested_model_id=self._last_model_name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style="anthropic",
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=False,
+                    input_tokens=chunk.usage.prompt_tokens or None,
+                    output_tokens=chunk.usage.completion_tokens or None,
+                    cache_read_tokens=crt,
+                    cache_creation_tokens=cct,
+                    usage_verified=True,
+                    cache_read_verified=crt is not None,
+                    cache_creation_verified=cct is not None,
+                )
             )
             return LLMChunk(
                 message=chunk.message, usage=chunk.usage, invocation_outcome=outcome
@@ -685,21 +688,24 @@ class AnthropicAdapter(APIAdapter):
         )
         if self._message_start_usage is not None:
             outcome = build_invocation_outcome(
-                requested_provider_id=self._last_provider_name,
-                requested_model_id=self._last_model_name,
-                provider_class=ProviderClass.DIRECT_INFERENCE,
-                api_style="anthropic",
-                outcome_class=InvocationOutcomeClass.SUCCESS,
-                streaming=True,
-                input_tokens=self._message_start_usage.prompt_tokens,
-                output_tokens=output_tokens or None,
-                cache_read_tokens=self._message_start_usage.cache_read_tokens or None,
-                cache_creation_tokens=self._message_start_usage.cache_creation_tokens
-                or None,
-                usage_verified=True,
-                cache_read_verified=True,
-                cache_creation_verified=True,
-                streaming_terminal_usage_verified=True,
+                InvocationOutcomeInput(
+                    requested_provider_id=self._last_provider_name,
+                    requested_model_id=self._last_model_name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style="anthropic",
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=True,
+                    input_tokens=self._message_start_usage.prompt_tokens,
+                    output_tokens=output_tokens or None,
+                    cache_read_tokens=self._message_start_usage.cache_read_tokens
+                    or None,
+                    cache_creation_tokens=self._message_start_usage.cache_creation_tokens
+                    or None,
+                    usage_verified=True,
+                    cache_read_verified=True,
+                    cache_creation_verified=True,
+                    streaming_terminal_usage_verified=True,
+                )
             )
             chunk = LLMChunk(
                 message=chunk.message, usage=chunk.usage, invocation_outcome=outcome

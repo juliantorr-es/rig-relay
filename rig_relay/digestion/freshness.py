@@ -7,8 +7,8 @@ change. Repository identity remains stable across these changes.
 
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime
+import hashlib
 from pathlib import Path
 
 
@@ -18,8 +18,8 @@ def compute_freshness(
     dirty_state_digest: str | None,
     manifest_paths: list[str],
     instruction_paths: list[str],
-    previous_freshness: "DigestionFreshness | None" = None,
-) -> "DigestionFreshness":
+    previous_freshness: DigestionFreshness | None = None,
+) -> DigestionFreshness:
     """Compute freshness markers for the current digestion.
 
     Compares current state against a previous digestion to detect

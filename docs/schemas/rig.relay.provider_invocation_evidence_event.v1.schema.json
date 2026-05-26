@@ -1,0 +1,211 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://rig-relay.local/schemas/rig.relay.provider_invocation_evidence_event.v1.schema.json",
+    "title": "Provider Invocation Evidence Event",
+    "description": "Append-only content-light canonical evidence event for a single provider invocation. Never stores raw prompts, completions, provider payloads, secrets, or API keys.",
+    "type": "object",
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "const": "rig.relay.provider_invocation_evidence_event.v1"
+        },
+        "event_id": {
+            "type": "string",
+            "description": "Unique event identifier (UUID hex)"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 UTC timestamp of event creation"
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Owning session identifier"
+        },
+        "turn_id": {
+            "type": "string",
+            "description": "Turn within the session"
+        },
+        "correlation_id": {
+            "type": "string",
+            "description": "Cross-session correlation identifier"
+        },
+        "outcome": {
+            "type": "object",
+            "description": "Normalized provider invocation outcome (content-light: hashes, counts, classifications only)",
+            "properties": {
+                "schema_version": {
+                    "type": "string",
+                    "const": "rig.relay.invocation_outcome.v1"
+                },
+                "requested_provider_id": {
+                    "type": "string"
+                },
+                "requested_model_id": {
+                    "type": "string"
+                },
+                "actual_provider_id": {
+                    "type": ["string", "null"]
+                },
+                "actual_model_id": {
+                    "type": ["string", "null"]
+                },
+                "provider_class": {
+                    "type": "string",
+                    "enum": ["direct_inference", "routed_gateway", "local_server"]
+                },
+                "api_style": {
+                    "type": "string"
+                },
+                "outcome_class": {
+                    "type": "string",
+                    "enum": ["success", "refusal", "safety_block", "error", "timeout", "cancelled", "unknown"]
+                },
+                "refusal_class": {
+                    "type": ["string", "null"],
+                    "enum": ["provider_safety", "provider_policy", "capability_unsupported", "rate_limited", "auth_failure", "malformed_request", "provider_error", "network_error", "unknown", null]
+                },
+                "outcome_summary": {
+                    "type": "string"
+                },
+                "streaming": {
+                    "type": "boolean"
+                },
+                "latency_ms": {
+                    "type": ["number", "null"]
+                },
+                "input_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "output_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "total_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "cache_read_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "cache_creation_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "gateway_provenance": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "downstream_provider": {
+                            "type": ["string", "null"]
+                        },
+                        "downstream_model": {
+                            "type": ["string", "null"]
+                        },
+                        "provenance_source": {
+                            "type": "string",
+                            "enum": ["response_body", "response_header", "generation_metadata_lookup", "unknown", "unavailable"]
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "provider_response_id": {
+                    "type": ["string", "null"]
+                },
+                "provider_generation_id": {
+                    "type": ["string", "null"]
+                },
+                "reasoning_tokens": {
+                    "type": ["integer", "null"]
+                },
+                "gateway_total_cost": {
+                    "type": ["number", "null"]
+                },
+                "gateway_upstream_cost": {
+                    "type": ["number", "null"]
+                },
+                "gateway_native_tokens_prompt": {
+                    "type": ["integer", "null"]
+                },
+                "gateway_native_tokens_completion": {
+                    "type": ["integer", "null"]
+                },
+                "gateway_native_tokens_cached": {
+                    "type": ["integer", "null"]
+                },
+                "gateway_native_tokens_reasoning": {
+                    "type": ["integer", "null"]
+                },
+                "usage_evidence_source": {
+                    "type": ["string", "null"],
+                    "enum": ["inline_response", "generation_metadata_lookup", "response_header_plus_inline_usage", "both_inline_and_metadata", "unavailable", null]
+                },
+                "usage_discrepancy_detected": {
+                    "type": ["boolean", "null"]
+                },
+                "output_content_sha256": {
+                    "type": ["string", "null"]
+                },
+                "content_light": {
+                    "type": "boolean"
+                },
+                "usage_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "cache_read_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "cache_creation_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "safety_refusal_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "actual_provider_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "actual_model_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "streaming_terminal_usage_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "gateway_provenance_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "reasoning_tokens_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "gateway_cost_verified": {
+                    "type": ["boolean", "null"]
+                },
+                "gateway_native_usage_verified": {
+                    "type": ["boolean", "null"]
+                }
+            },
+            "required": [
+                "schema_version",
+                "requested_provider_id",
+                "requested_model_id",
+                "provider_class",
+                "api_style",
+                "outcome_class",
+                "streaming",
+                "content_light"
+            ],
+            "additionalProperties": false
+        },
+        "event_digest": {
+            "type": "string",
+            "description": "SHA256 digest of the canonical event (sha256:hex)"
+        },
+        "content_light": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "schema_version",
+        "event_id",
+        "created_at",
+        "outcome",
+        "event_digest",
+        "content_light"
+    ],
+    "additionalProperties": false
+}

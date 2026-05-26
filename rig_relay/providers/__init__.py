@@ -21,6 +21,7 @@ from rig_relay.providers.invocation import (
     GatewayProvenanceSource,
     InvocationEvidenceCapability,
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     InvocationRefusalClass,
     ProviderInvocationOutcome,
     assert_content_light,
@@ -52,6 +53,10 @@ from rig_relay.providers.onboarding import (
     provider_onboarding_save_key,
     provider_status,
 )
+from rig_relay.providers.operations import (
+    ProviderOperationsReport,
+    generate_operations_report,
+)
 from rig_relay.providers.registry import (
     PROVIDER_REGISTRY,
     ProviderInfo,
@@ -68,6 +73,7 @@ __all__ = [
     "GatewayProvenanceSource",
     "InvocationEvidenceCapability",
     "InvocationOutcomeClass",
+    "InvocationOutcomeInput",
     "InvocationRefusalClass",
     "KeySource",
     "MacKeychainProviderKeyStore",
@@ -79,12 +85,14 @@ __all__ = [
     "ProviderInvocationOutcome",
     "ProviderKeyStore",
     "ProviderOnboardingResult",
+    "ProviderOperationsReport",
     "ProviderStatus",
     "ProviderStatusSummary",
     "assert_content_light",
     "build_invocation_outcome",
     "check_provider_status",
     "compute_provider_capabilities",
+    "generate_operations_report",
     "get_invocation_evidence_capability",
     "get_key_store",
     "get_provider_capability",

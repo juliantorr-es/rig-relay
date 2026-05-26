@@ -36,6 +36,10 @@ from rig_relay.recovery.handoff import (
     build_refusal_handoff,
     build_validation_handoff,
 )
+from rig_relay.recovery.intent_authority import (
+    DurableRecoveryIntentAuthority,
+    GovernedPayloadStore,
+)
 from rig_relay.recovery.models import (
     AdmittedToolEntry,
     CanonicalToolSurfaceManifest,
@@ -65,7 +69,9 @@ __all__ = [
     "ConstraintCompilationReceipt",
     "ConstraintEnforcementDisposition",
     "ConstraintFeatureStatus",
+    "DurableRecoveryIntentAuthority",
     "EvidenceLedger",
+    "GovernedPayloadStore",
     "RawRecoveryInput",
     "RecoveryAdmissionDecision",
     "RecoveryAdmissionResult",

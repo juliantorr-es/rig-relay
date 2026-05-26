@@ -18,6 +18,7 @@ from rig_relay.providers.invocation import (
     GatewayProvenance,
     GatewayProvenanceSource,
     InvocationOutcomeClass,
+    InvocationOutcomeInput,
     InvocationRefusalClass,
     assert_content_light,
     build_invocation_outcome,
@@ -30,11 +31,13 @@ from rig_relay.providers.models import ProviderClass
 class TestInvocationOutcomeModel:
     def test_build_minimal_outcome(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         assert outcome.requested_provider_id == "openai"
         assert outcome.requested_model_id == "gpt-4o"
@@ -44,20 +47,22 @@ class TestInvocationOutcomeModel:
 
     def test_outcome_with_full_usage(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="anthropic",
-            requested_model_id="claude-sonnet-4-20250514",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="anthropic",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            input_tokens=150,
-            output_tokens=80,
-            cache_read_tokens=120,
-            cache_creation_tokens=10,
-            usage_verified=True,
-            cache_read_verified=True,
-            cache_creation_verified=True,
-            actual_model_verified=True,
-            actual_model_id="claude-sonnet-4-20250514",
+            InvocationOutcomeInput(
+                requested_provider_id="anthropic",
+                requested_model_id="claude-sonnet-4-20250514",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="anthropic",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                input_tokens=150,
+                output_tokens=80,
+                cache_read_tokens=120,
+                cache_creation_tokens=10,
+                usage_verified=True,
+                cache_read_verified=True,
+                cache_creation_verified=True,
+                actual_model_verified=True,
+                actual_model_id="claude-sonnet-4-20250514",
+            )
         )
         assert outcome.input_tokens == 150
         assert outcome.output_tokens == 80
@@ -67,14 +72,16 @@ class TestInvocationOutcomeModel:
 
     def test_outcome_with_refusal(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="gemini",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
-            refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
-            outcome_summary="SAFETY_BLOCK: OTHER",
-            safety_refusal_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="gemini",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
+                refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
+                outcome_summary="SAFETY_BLOCK: OTHER",
+                safety_refusal_verified=True,
+            )
         )
         assert outcome.outcome_class == InvocationOutcomeClass.SAFETY_BLOCK
         assert outcome.refusal_class == InvocationRefusalClass.PROVIDER_SAFETY
@@ -82,13 +89,15 @@ class TestInvocationOutcomeModel:
 
     def test_to_dict_contains_all_keys(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            streaming=True,
-            usage_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=True,
+                usage_verified=True,
+            )
         )
         d = outcome.to_dict()
         assert d["requested_provider_id"] == "openai"
@@ -101,11 +110,13 @@ class TestInvocationOutcomeModel:
 
     def test_unavailable_fields_are_none(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         assert outcome.cache_read_tokens is None
         assert outcome.cache_creation_tokens is None
@@ -116,11 +127,13 @@ class TestInvocationOutcomeModel:
 class TestContentLightGuarantee:
     def test_no_api_key_in_serialized_outcome(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         serialized = str(outcome.to_dict())
         assert "sk-" not in serialized.lower()
@@ -135,25 +148,29 @@ class TestContentLightGuarantee:
 
     def test_clean_outcome_passes_content_light(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="gemini",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="gemini",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         violations = assert_content_light(outcome.to_dict())
         assert len(violations) == 0
 
     def test_refusal_outcome_no_secrets(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="gemini",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
-            refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
-            outcome_summary="Blocked by safety filter",
-            safety_refusal_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="gemini",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
+                refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
+                outcome_summary="Blocked by safety filter",
+                safety_refusal_verified=True,
+            )
         )
         d = outcome.to_dict()
         violations = assert_content_light(d)
@@ -172,6 +189,20 @@ class TestInvocationEvidenceCapabilityInspection:
         assert "openrouter" in provider_ids
         assert "deepseek" in provider_ids
         assert "local_inference" in provider_ids
+        assert "openai-responses" in provider_ids
+
+    def test_openai_responses_cache_evidence_truth(self):
+        cap = get_invocation_evidence_capability("openai-responses")
+        assert cap is not None
+        assert cap.cache_read_verified is True, (
+            "C5 production code extracts cached_tokens from input_tokens_details"
+        )
+        assert cap.live_cache_evidence_preserved is True, (
+            "C5 production code preserves cache evidence in streaming and non-streaming"
+        )
+        assert cap.usage_verified is True
+        assert cap.api_style == "openai-responses"
+        assert cap.provider_class == ProviderClass.DIRECT_INFERENCE
 
     def test_no_network_call(self):
         caps1 = invocation_evidence_capabilities()
@@ -248,13 +279,15 @@ class TestGatewayProvenance:
             provenance_source=GatewayProvenanceSource.RESPONSE_BODY,
         )
         outcome = build_invocation_outcome(
-            requested_provider_id="openrouter",
-            requested_model_id="openai/gpt-4o",
-            provider_class=ProviderClass.ROUTED_GATEWAY,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            gateway_provenance=gp,
-            gateway_provenance_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="openrouter",
+                requested_model_id="openai/gpt-4o",
+                provider_class=ProviderClass.ROUTED_GATEWAY,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                gateway_provenance=gp,
+                gateway_provenance_verified=True,
+            )
         )
         assert outcome.gateway_provenance is not None
         assert outcome.gateway_provenance.downstream_provider == "openai"
@@ -266,14 +299,16 @@ class TestGeminiOutcomeMapping:
 
     def test_gemini_safety_block_maps_to_safety_outcome(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="google",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
-            refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
-            outcome_summary="SAFETY_BLOCK: OTHER",
-            safety_refusal_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="google",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.SAFETY_BLOCK,
+                refusal_class=InvocationRefusalClass.PROVIDER_SAFETY,
+                outcome_summary="SAFETY_BLOCK: OTHER",
+                safety_refusal_verified=True,
+            )
         )
         assert outcome.outcome_class == InvocationOutcomeClass.SAFETY_BLOCK
         d = outcome.to_dict()
@@ -281,15 +316,17 @@ class TestGeminiOutcomeMapping:
 
     def test_gemini_success_with_usage(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="google",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            input_tokens=10,
-            output_tokens=8,
-            total_tokens=18,
-            usage_verified=True,
+            InvocationOutcomeInput(
+                requested_provider_id="google",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                input_tokens=10,
+                output_tokens=8,
+                total_tokens=18,
+                usage_verified=True,
+            )
         )
         assert outcome.input_tokens == 10
         assert outcome.output_tokens == 8
@@ -297,13 +334,15 @@ class TestGeminiOutcomeMapping:
 
     def test_gemini_error_maps_to_error_outcome(self):
         outcome = build_invocation_outcome(
-            requested_provider_id="google",
-            requested_model_id="gemini-2.0-flash",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="gemini",
-            outcome_class=InvocationOutcomeClass.ERROR,
-            refusal_class=InvocationRefusalClass.AUTH_FAILURE,
-            outcome_summary="Gemini error 400: API key not valid",
+            InvocationOutcomeInput(
+                requested_provider_id="google",
+                requested_model_id="gemini-2.0-flash",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="gemini",
+                outcome_class=InvocationOutcomeClass.ERROR,
+                refusal_class=InvocationRefusalClass.AUTH_FAILURE,
+                outcome_summary="Gemini error 400: API key not valid",
+            )
         )
         assert outcome.outcome_class == InvocationOutcomeClass.ERROR
         assert outcome.refusal_class == InvocationRefusalClass.AUTH_FAILURE
@@ -314,11 +353,13 @@ class TestProviderIdentityPreservation:
 
     def test_deepseek_not_openai(self):
         deepseek = build_invocation_outcome(
-            requested_provider_id="deepseek",
-            requested_model_id="deepseek-v4-pro",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="deepseek",
+                requested_model_id="deepseek-v4-pro",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         assert deepseek.requested_provider_id == "deepseek"
         assert deepseek.provider_class == ProviderClass.DIRECT_INFERENCE
@@ -327,31 +368,37 @@ class TestProviderIdentityPreservation:
 
     def test_openrouter_is_gateway(self):
         openrouter = build_invocation_outcome(
-            requested_provider_id="openrouter",
-            requested_model_id="openai/gpt-4o",
-            provider_class=ProviderClass.ROUTED_GATEWAY,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
+            InvocationOutcomeInput(
+                requested_provider_id="openrouter",
+                requested_model_id="openai/gpt-4o",
+                provider_class=ProviderClass.ROUTED_GATEWAY,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+            )
         )
         assert openrouter.requested_provider_id == "openrouter"
         assert openrouter.provider_class == ProviderClass.ROUTED_GATEWAY
 
     def test_streaming_flag_preserved(self):
         streaming = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            streaming=True,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=True,
+            )
         )
         non_streaming = build_invocation_outcome(
-            requested_provider_id="openai",
-            requested_model_id="gpt-4o",
-            provider_class=ProviderClass.DIRECT_INFERENCE,
-            api_style="openai",
-            outcome_class=InvocationOutcomeClass.SUCCESS,
-            streaming=False,
+            InvocationOutcomeInput(
+                requested_provider_id="openai",
+                requested_model_id="gpt-4o",
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=False,
+            )
         )
         assert streaming.streaming is True
         assert non_streaming.streaming is False

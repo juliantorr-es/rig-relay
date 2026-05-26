@@ -196,8 +196,8 @@ def test_legacy_result_without_new_fields_is_safe():
 
 def test_receipt_chain_resolves_correlation_identity():
     """Write receipt-candidate events with correlation identity, build receipts,
-    and prove the receipt references an event that carries the same correlation context."""
-
+    and prove the receipt references an event that carries the same correlation context.
+    """
     session_id = "receipt-correlation-test"
     turn_id = "turn-uuid-receipt-test"
     corr_id = _new_correlation_id()
@@ -293,7 +293,6 @@ def test_receipt_chain_resolves_correlation_identity():
 
 def test_observability_schema_validates_correlated_event():
     """Validates a correlated observability event against the canonical schema."""
-
     session_id = "schema-validation-test"
     corr_id = _new_correlation_id()
     cause_id = _new_causation_id()
@@ -330,8 +329,8 @@ def test_observability_schema_validates_correlated_event():
 
 def test_observability_schema_allows_legacy_events():
     """Validates a legacy observability event (no correlation fields) against the schema."""
+    from datetime import UTC, datetime
     from uuid import uuid4
-    from datetime import datetime, UTC
 
     schema_path = (
         Path(__file__).resolve().parent.parent.parent
@@ -358,7 +357,6 @@ def test_observability_schema_allows_legacy_events():
 
 def test_degradation_marker_schema_validates():
     """Validates the degradation marker against its schema."""
-
     was_enabled = is_telemetry_enabled()
     try:
         set_telemetry_enabled(False)

@@ -2,9 +2,17 @@
 
 Conventions for AI agents and humans contributing to **Rig Relay** — a Python 3.12+ CLI coding assistant managed with `uv`.
 
+## Project Instruction Bundle
+
+Read [PROJECT.md](PROJECT.md) after this file. `PROJECT.md` is the canonical product/instruction bundle for desktop-bridge behavior, integration boundaries, and migration debt. This file remains the repo discipline guide for agent workflow, dirty-file handling, and git policy.
+
+## Claim Calibration
+
+Before any agent reports completion, publication, or a green milestone, it MUST run a short claim-adversary pass against the exact status it intends to publish. Treat every noun and adjective in that status as an assertion to falsify. At minimum, attack authority ownership, production-boundary realism, crash/retry or duplicate-effect safety when relevant, canonical evidence reconstruction, remote publication truth, and lane-boundary release safety. If any falsifier succeeds, downgrade the claim or repair the seam before reporting.
+
 ## Multiple parallel agents
 
-Multiple agents often work on Rig Relay concurrently. There is no active git worktree mechanism — all agents share the same working tree. When you encounter a file that another agent has modified (dirty file), **never discard their changes**. Preserve all pre-existing modifications exactly. If you must edit the same file, make your changes **additive** — add new code; do not remove, rewrite, or reformat code from other lanes. If your required edit would remove or conflict with existing modifications, stop and report the conflict.
+Multiple agents often work on Rig Relay concurrently. There is no active git worktree mechanism — all agents share the same working tree. When you encounter a file that another agent has modified (dirty file), **never discard their changes**. Preserve all pre-existing modifications exactly. Dirty does not mean forbidden: if the mission needs to touch the file, make your changes **additive** or narrowly scoped to the bug/dead-code seam, and leave unrelated lane work intact. Do not remove, rewrite, or reformat code from other lanes unless the user explicitly asks for a coordinated rewrite. If your required edit would remove or conflict with existing modifications, stop and report the conflict.
 
 ## Project layout
 
@@ -186,6 +194,7 @@ All built-in tools must pass through security guards. When adding a new tool or 
   - Read it first. Identify existing modified regions.
   - Apply only the mission-required delta. Preserve unrelated edits exactly.
   - Make changes **additive** whenever possible — add new code; avoid removing or rewriting code from parallel lanes.
+  - If the work is a bug fix or dead-code deletion, it is acceptable to touch only the broken or dead region on a dirty file as long as the change remains narrow and does not erase other lanes' work.
   - Prefer `search_replace` with targeted SEARCH/REPLACE blocks over `write_file`.
   - For `write_file` on a protected file, set `allow_overwrite_protected=true` and provide `expected_before_sha256`.
   - For `search_replace` on a protected file, provide `expected_before_sha256`.

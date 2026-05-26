@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from rig_relay.operational.analytics import OperationalAnalytics, HAS_DUCKDB
-from rig_relay.operational.refinement import analyze_refinement_candidates
 import pytest
 
+from rig_relay.operational.analytics import HAS_DUCKDB, OperationalAnalytics
+from rig_relay.operational.refinement import analyze_refinement_candidates
 
 pytestmark = [pytest.mark.skipif(not HAS_DUCKDB, reason="DuckDB not available")]
 
