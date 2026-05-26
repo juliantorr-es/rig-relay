@@ -1647,3 +1647,421 @@ def test_s4_s3_typed_failures_still_fire_before_lifecycle(tmp_path):
         )
     finally:
         os.chdir(original_cwd)
+
+
+# ── S5: Lifecycle Ledger Concurrency, Integrity, and Recovery ────────────
+
+from rig_relay.governance.receipt_store import (
+    LifecycleLoadOutcome,
+    load_lifecycle_events,
+)
+
+
+def _mp_consume_worker(args: tuple[str, str]) -> int:
+    """Module-level worker for concurrent consumption test."""
+    sha, worktree = args
+    os.chdir(worktree)
+    from rig_relay.governance.receipt_store import (
+        PreparationLifecycleEvent,
+        PreparationLifecycleEventKind,
+        append_lifecycle_event,
+    )
+
+    e = PreparationLifecycleEvent(
+        event_kind=PreparationLifecycleEventKind.CONSUMED,
+        preparation_receipt_sha256=sha,
+        branch="task/feature",
+        worktree_root=worktree,
+        producer="concurrent_test",
+    )
+    rid = append_lifecycle_event(e)
+    return 1 if rid else 0
+
+
+def _mp_consume_worker_multi(args: tuple[str, int, str]) -> None:
+    """Module-level worker for concurrent multi-receipt test."""
+    sha, idx, worktree = args
+    os.chdir(worktree)
+    from rig_relay.governance.receipt_store import (
+        PreparationLifecycleEvent,
+        PreparationLifecycleEventKind,
+        append_lifecycle_event,
+    )
+
+    e = PreparationLifecycleEvent(
+        event_kind=PreparationLifecycleEventKind.CONSUMED,
+        preparation_receipt_sha256=sha,
+        branch="task/feature",
+        worktree_root=worktree,
+        producer=f"concurrent_test_{idx}",
+    )
+    append_lifecycle_event(e)
+
+
+@pytest.mark.adversarial
+def test_s5_append_events_form_valid_chain(tmp_path):
+    """Two sequential appends form a valid predecessor chain."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-a" * 12, "dummy-digest", ["f.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        e1 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        rid1 = append_lifecycle_event(e1)
+        assert rid1 is not None
+
+        e2 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.SUPERSEDED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        rid2 = append_lifecycle_event(e2)
+        assert rid2 is not None
+
+        result = load_lifecycle_events(receipt_sha)
+        assert result.outcome == LifecycleLoadOutcome.OK, (
+            f"Expected OK chain, got {result.outcome}: {result.error_detail}"
+        )
+        assert len(result.events) == 2
+        assert result.events[1].verify_chain(result.events[0]), (
+            "Second event must chain to first"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_corrupt_ledger_json_fails_closed(tmp_path):
+    """Malformed JSON in ledger produces CORRUPT_LEDGER, not empty result."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-b" * 12, "dummy-digest", ["f.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Append a valid consumed event
+        e1 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(e1)
+
+        # Then corrupt the ledger by appending garbage
+        ledger = Path(".build/rig-relay/desktop/preparation-receipts/lifecycle.jsonl")
+        with open(ledger, "a") as f:
+            f.write("garbage not json\n")
+
+        result = load_lifecycle_events(receipt_sha)
+        assert result.outcome == LifecycleLoadOutcome.CORRUPT_LEDGER, (
+            f"Expected CORRUPT_LEDGER, got {result.outcome}: {result.error_detail}"
+        )
+        # S5: corrupt ledger MUST NOT return OK — receipt must not appear ACTIVE
+        assert not result.is_ok
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_broken_chain_fails_closed(tmp_path):
+    """Event with mismatched prior_event_digest produces BROKEN_CHAIN."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-c" * 12, "dummy-digest", ["f.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        e1 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(e1)
+
+        # Manually append a second event with wrong prior_event_digest
+        e2 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.SUPERSEDED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+            prior_event_digest="sha256:wrong",
+        )
+        e2.seal()
+        ledger = Path(".build/rig-relay/desktop/preparation-receipts/lifecycle.jsonl")
+        with open(ledger, "a") as f:
+            f.write(e2.model_dump_json() + "\n")
+
+        result = load_lifecycle_events(receipt_sha)
+        assert result.outcome == LifecycleLoadOutcome.BROKEN_CHAIN, (
+            f"Expected BROKEN_CHAIN, got {result.outcome}: {result.error_detail}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_ledger_integrity_fails_closed(tmp_path):
+    """Event with tampered content (bad integrity_digest) fails closed."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-d" * 12, "dummy-digest", ["f.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        e1 = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        e1.seal()
+        # Tamper: flip a bit in the integrity digest
+        e1.integrity_digest = "sha256:" + "ff" * 32
+        ledger = Path(".build/rig-relay/desktop/preparation-receipts/lifecycle.jsonl")
+        with open(ledger, "a") as f:
+            f.write(e1.model_dump_json() + "\n")
+
+        result = load_lifecycle_events(receipt_sha)
+        assert result.outcome == LifecycleLoadOutcome.INTEGRITY_MISMATCH, (
+            f"Expected INTEGRITY_MISMATCH, got {result.outcome}: {result.error_detail}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_concurrent_consumption_only_one_succeeds(tmp_path):
+    """Two concurrent consumption attempts produce only one CONSUMED event."""
+    import multiprocessing
+
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-e" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+        repo_str = str(repo)
+
+        with multiprocessing.Pool(2) as pool:
+            args = [(receipt_sha, repo_str) for _ in range(2)]
+            pool.map(_mp_consume_worker, args)
+
+        result = load_lifecycle_events(receipt_sha)
+        assert result.outcome == LifecycleLoadOutcome.OK, (
+            f"Expected OK, got {result.outcome}: {result.error_detail}"
+        )
+        assert len(result.events) >= 1, "Should have at least one CONSUMED event"
+        assert result.events[0].event_kind == PreparationLifecycleEventKind.CONSUMED
+        for i in range(1, len(result.events)):
+            assert result.events[i].verify_chain(result.events[i - 1]), (
+                f"Chain broken at event {i}"
+            )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_concurrent_appends_produce_intact_chains_for_different_receipts(tmp_path):
+    """Concurrent appends for different receipts each get valid independent chains."""
+    import multiprocessing
+
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        r1 = _make_receipt(repo, "s5-f1" * 11, "dummy-a", ["fa.py"])
+        r2 = _make_receipt(repo, "s5-f2" * 11, "dummy-b", ["fb.py"])
+        sha1, sha2 = r1["receipt_sha256"], r2["receipt_sha256"]
+        repo_str = str(repo)
+
+        with multiprocessing.Pool(4) as pool:
+            args = [(sha1, i, repo_str) for i in range(2)] + [
+                (sha2, i, repo_str) for i in range(2, 4)
+            ]
+            pool.map(_mp_consume_worker_multi, args)
+
+        for sha in (sha1, sha2):
+            result = load_lifecycle_events(sha)
+            assert result.outcome == LifecycleLoadOutcome.OK, (
+                f"Expected OK for {sha[:20]}, got {result.outcome}"
+            )
+            assert len(result.events) >= 1
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_recovery_accepts_structured_trailer(tmp_path):
+    """Recovery accepts a commit with correct structured trailer."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-g" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Create a commit with the correct trailer
+        message = (
+            f"checkpoint(test): s5 recovery test\n\n"
+            f"Rig-Preparation-Receipt-SHA256: {receipt_sha}\n"
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", message],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        recovered = Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=receipt_sha, branch="task/feature", repo_root=repo
+        )
+        assert recovered is True, "S5: recovery must succeed with structured trailer"
+        assert (
+            get_lifecycle_status(receipt_sha) == PreparationLifecycleEventKind.CONSUMED
+        ), "S5: receipt must be CONSUMED after recovery"
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_recovery_refuses_commit_without_correct_trailer(tmp_path):
+    """Recovery refuses commits containing a coincidental hash without the trailer."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-h" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Commit with the hash in prose, NOT as a structured trailer
+        fake_message = (
+            f"checkpoint(test): regular commit\n\n"
+            f"Details: used receipt {receipt_sha} for tracking.\n"
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", fake_message],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        recovered = Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=receipt_sha, branch="task/feature", repo_root=repo
+        )
+        assert recovered is False, (
+            "S5: recovery MUST NOT accept a coincidental hash in commit prose "
+            "without a structured Rig-Preparation-Receipt-SHA256 trailer"
+        )
+        assert (
+            get_lifecycle_status(receipt_sha) == PreparationLifecycleEventKind.ACTIVE
+        ), "Receipt should remain ACTIVE — no recovery evidence"
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_recovery_idempotent_does_not_append_second_event(tmp_path):
+    """Recovery is idempotent — does not append duplicate if already CONSUMED."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-i" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Append consumed directly
+        e = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(e)
+
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        recovered = Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=receipt_sha, branch="task/feature", repo_root=repo
+        )
+        assert recovered is False, (
+            "S5: recovery must be idempotent — should not append when already CONSUMED"
+        )
+        result = load_lifecycle_events(receipt_sha)
+        assert len(result.events) == 1, (
+            f"S5: should have exactly 1 event, got {len(result.events)}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s5_s3_typed_failures_still_work_after_hardening(tmp_path):
+    """S3 typed receipt failures remain intact after lifecycle authority hardening."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s5-j" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Corrupt the receipt file
+        receipt_path = (
+            Path(".build/rig-relay/desktop/preparation-receipts")
+            / f"{receipt_sha}.json"
+        )
+        receipt_path.write_text("invalid {{{", encoding="utf-8")
+
+        tool = _new_validate_tool()
+        prepared_digest, worktree_matched, refusal = _check_binding(
+            tool, receipt_sha, str(repo)
+        )
+        assert refusal is not None
+        assert refusal[1] == "preparation_receipt_corrupt", (
+            f"S5: S3 typed failure must still fire before lifecycle: got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)

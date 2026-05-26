@@ -1162,71 +1162,111 @@ class Checkpoint(
     ) -> bool:
         """Recover a missing consumed lifecycle event from terminal checkpoint evidence.
 
-        Searches recent git log for a commit containing the
-        Rig-Preparation-Receipt-SHA256 trailer matching the receipt.
-        If found, repairs by appending the missing consumed event.
+        Uses ``git interpret-trailers --parse`` for structured trailer
+        extraction — never trusts loose substring matching on commit prose.
+        Only matches the exact trailer key ``Rig-Preparation-Receipt-SHA256``
+        with the exact receipt value.
 
-        Returns True if recovery was attempted, False otherwise.
+        Idempotent: if a CONSUMED event already exists, returns False
+        without appending another.
+
+        Returns True if recovery appended a repaired event.
         """
-        try:
-            from rig_relay.governance.receipt_store import (
-                PreparationLifecycleEvent,
-                PreparationLifecycleEventKind,
-                append_lifecycle_event,
-                get_lifecycle_status,
-            )
+        from rig_relay.governance.receipt_store import (
+            PreparationLifecycleEvent,
+            PreparationLifecycleEventKind,
+            append_lifecycle_event,
+            load_lifecycle_events,
+        )
 
-            if (
-                get_lifecycle_status(receipt_sha256)
-                == PreparationLifecycleEventKind.CONSUMED
-            ):
-                return False
-
-            # Search git log for terminal checkpoint evidence
-            import subprocess
-
-            proc = subprocess.run(
-                [
-                    "git",
-                    "log",
-                    "-10",
-                    "--format=%H %B",
-                    "--grep",
-                    f"Rig-Preparation-Receipt-SHA256: {receipt_sha256}",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                cwd=repo_root,
-            )
-            if proc.returncode != 0 or not proc.stdout.strip():
-                return False
-
-            first_line = proc.stdout.strip().split("\n")[0]
-            committed_head = first_line.split()[0] if first_line else None
-            if not committed_head:
-                return False
-
-            current = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                cwd=repo_root,
-            )
-            current_branch = (
-                current.stdout.strip() if current.returncode == 0 else branch
-            )
-
-            event = PreparationLifecycleEvent(
-                event_kind=PreparationLifecycleEventKind.CONSUMED,
-                preparation_receipt_sha256=receipt_sha256,
-                branch=current_branch or branch,
-                worktree_root=str(repo_root.resolve()),
-                producer="checkpoint._recover_missing_lifecycle_event",
-                committed_head_sha=committed_head,
-            )
-            append_lifecycle_event(event)
-            return True
-        except Exception:
+        # Idempotency: if already consumed, nothing to do
+        load_result = load_lifecycle_events(receipt_sha256)
+        if (
+            load_result.is_ok
+            and load_result.status == PreparationLifecycleEventKind.CONSUMED
+        ):
             return False
+        # If ledger is corrupt, refuse to write new events over it
+        if not load_result.is_ok and not load_result.is_absent:
+            return False
+
+        # Structured trailer extraction via git interpret-trailers --parse
+        import subprocess
+
+        trailer_key = "Rig-Preparation-Receipt-SHA256"
+        proc = subprocess.run(
+            [
+                "git",
+                "log",
+                "-10",
+                "--format=%(trailers:only,unfold)",
+                f"--grep=Rig-Preparation-Receipt-SHA256: {receipt_sha256}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=repo_root,
+        )
+        if proc.returncode != 0:
+            return False
+
+        trailer_lines = proc.stdout.strip()
+        if not trailer_lines:
+            return False
+
+        # Parse structured trailers: each line is "key: value"
+        found_sha: str | None = None
+        for line in trailer_lines.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if ": " not in line:
+                continue
+            key, _, value = line.partition(": ")
+            if key == trailer_key and value == receipt_sha256:
+                found_sha = value
+                break
+
+        if found_sha is None:
+            return False
+
+        # Get the commit SHA that carries this trailer
+        commit_proc = subprocess.run(
+            [
+                "git",
+                "log",
+                "-1",
+                "--format=%H",
+                f"--grep=Rig-Preparation-Receipt-SHA256: {receipt_sha256}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=repo_root,
+        )
+        committed_head = (
+            commit_proc.stdout.strip()
+            if commit_proc.returncode == 0 and commit_proc.stdout.strip()
+            else None
+        )
+        if not committed_head:
+            return False
+
+        current = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=repo_root,
+        )
+        current_branch = current.stdout.strip() if current.returncode == 0 else branch
+
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha256,
+            branch=current_branch or branch,
+            worktree_root=str(repo_root.resolve()),
+            producer="checkpoint._recover_missing_lifecycle_event",
+            committed_head_sha=committed_head,
+        )
+        return append_lifecycle_event(event) is not None

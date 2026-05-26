@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum, auto
+import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
+import threading
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -443,10 +446,64 @@ def find_active_validation_receipts(
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# ── Immutable Preparation Receipt Lifecycle Events (S4) ───────────────
+# ── Immutable Preparation Receipt Lifecycle Events (S4/S5) ────────────
 # ═══════════════════════════════════════════════════════════════════════
 
 _LIFECYCLE_SCHEMA_VERSION = "rig.relay.preparation_lifecycle_event.v1"
+
+# ── Lock infrastructure ───────────────────────────────────────────────
+
+_lifecycle_thread_lock = threading.Lock()
+_lifecycle_lock_fd: int | None = None
+
+
+def _acquire_lifecycle_lock() -> None:
+    global _lifecycle_lock_fd
+    _lifecycle_thread_lock.acquire()
+    lock_path = _store_root() / "lifecycle.jsonl.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.touch(exist_ok=True)
+    if _lifecycle_lock_fd is None:
+        _lifecycle_lock_fd = os.open(str(lock_path), os.O_RDWR)
+    fcntl.flock(_lifecycle_lock_fd, fcntl.LOCK_EX)
+
+
+def _release_lifecycle_lock() -> None:
+    global _lifecycle_lock_fd
+    if _lifecycle_lock_fd is not None:
+        fcntl.flock(_lifecycle_lock_fd, fcntl.LOCK_UN)
+    _lifecycle_thread_lock.release()
+
+
+# ── Typed lifecycle load outcomes (S5) ────────────────────────────────
+
+
+class LifecycleLoadOutcome(StrEnum):
+    ABSENT = auto()
+    OK = auto()
+    CORRUPT_LEDGER = auto()
+    INVALID_EVENT = auto()
+    INTEGRITY_MISMATCH = auto()
+    BROKEN_CHAIN = auto()
+
+
+@dataclass(slots=True)
+class LifecycleLoadResult:
+    outcome: LifecycleLoadOutcome
+    events: list[Any] = field(default_factory=list)
+    status: PreparationLifecycleEventKind | None = None
+    error_detail: str = ""
+
+    @property
+    def is_ok(self) -> bool:
+        return self.outcome == LifecycleLoadOutcome.OK
+
+    @property
+    def is_absent(self) -> bool:
+        return self.outcome == LifecycleLoadOutcome.ABSENT
+
+
+# ── Event model ───────────────────────────────────────────────────────
 
 
 class PreparationLifecycleEventKind(StrEnum):
@@ -469,6 +526,7 @@ class PreparationLifecycleEvent(BaseModel):
     producer: str = ""
     committed_head_sha: str | None = None
     superseded_by_receipt_sha256: str | None = None
+    prior_event_digest: str | None = None
     integrity_digest: str = ""
 
     def recompute_integrity(self) -> str:
@@ -480,58 +538,215 @@ class PreparationLifecycleEvent(BaseModel):
     def seal(self) -> None:
         self.integrity_digest = self.recompute_integrity()
 
+    def verify_integrity(self) -> bool:
+        return self.integrity_digest == self.recompute_integrity()
+
+    def verify_chain(self, prior: PreparationLifecycleEvent | None) -> bool:
+        if prior is None:
+            return self.prior_event_digest is None
+        return self.prior_event_digest == prior.integrity_digest
+
+
+# ── Ledger path ───────────────────────────────────────────────────────
+
 
 def _lifecycle_ledger_path() -> Path:
     return _store_root() / "lifecycle.jsonl"
 
 
-def append_lifecycle_event(event: PreparationLifecycleEvent) -> str | None:
-    """Append an immutable lifecycle event to the canonical JSONL ledger.
+# ── Append with lock, chain, flush, fsync (S5) ────────────────────────
 
-    Returns the event_id on success, None on failure.
-    The event is sealed with an integrity digest before writing.
+
+def append_lifecycle_event(event: PreparationLifecycleEvent) -> str | None:
+    """Append an immutable lifecycle event under stable lock, flush, and fsync.
+
+    * Acquires in-process thread lock + fcntl exclusive lock
+    * Assigns prior_event_digest from the last event for this receipt
+    * Seals integrity_digest
+    * Appends to lifecycle.jsonl
+    * Flushes and fsyncs the write
+    * Verifies the written byte count
+
+    Returns event.event_id on durable success, None on failure.
     """
-    event.seal()
-    ledger = _lifecycle_ledger_path()
     try:
+        _acquire_lifecycle_lock()
+    except Exception:
+        return None
+
+    try:
+        if not event.event_id:
+            event.event_id = secrets.token_hex(16)
+
+        # ── Chain: bind prior digest for this receipt ──
+        prior = _last_event_for_receipt(event.preparation_receipt_sha256)
+        if prior is not None:
+            event.prior_event_digest = prior.integrity_digest
+
+        event.seal()
+
+        ledger = _lifecycle_ledger_path()
         ledger.parent.mkdir(parents=True, exist_ok=True)
-        line = event.model_dump_json() + "\n"
-        with open(ledger, "a") as f:
-            f.write(line)
+
+        line_bytes = (event.model_dump_json() + "\n").encode("utf-8")
+        with open(ledger, "ab") as f:
+            pos_before = f.tell()
+            f.write(line_bytes)
+            f.flush()
+            os.fsync(f.fileno())
+            pos_after = f.tell()
+            expected = len(line_bytes)
+            actual = pos_after - pos_before
+            if actual != expected:
+                from rig_relay.core.logger import logger
+
+                logger.error(
+                    "Lifecycle write size mismatch: expected=%d actual=%d",
+                    expected,
+                    actual,
+                )
+                return None
+
         return event.event_id
     except OSError:
         return None
+    finally:
+        _release_lifecycle_lock()
+
+
+# ── Read helpers (pre-lock) ───────────────────────────────────────────
+
+
+def _last_event_for_receipt(receipt_sha256: str) -> PreparationLifecycleEvent | None:
+    """Return the last lifecycle event for a receipt (called under lock)."""
+    ledger = _lifecycle_ledger_path()
+    if not ledger.is_file():
+        return None
+    last: PreparationLifecycleEvent | None = None
+    try:
+        with open(ledger, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj: dict[str, Any] = json.loads(line)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if obj.get("preparation_receipt_sha256") != receipt_sha256:
+                    continue
+                try:
+                    event = PreparationLifecycleEvent.model_validate(obj)
+                except Exception:
+                    continue
+                if not event.verify_integrity():
+                    continue
+                last = event
+    except OSError:
+        pass
+    return last
+
+
+# ── Typed lifecycle load (S5) ─────────────────────────────────────────
+
+
+def load_lifecycle_events(preparation_receipt_sha256: str) -> LifecycleLoadResult:
+    """Load all lifecycle events for a preparation receipt with typed outcomes.
+
+    Fail-closed: corrupt JSON, invalid model, integrity failure, or broken
+    chain produces a typed failure outcome. A corrupt ledger is NOT an empty
+    ledger — it must not cause a terminal receipt to appear ACTIVE.
+    """
+    ledger = _lifecycle_ledger_path()
+    if not ledger.exists():
+        return LifecycleLoadResult(
+            outcome=LifecycleLoadOutcome.ABSENT,
+            status=PreparationLifecycleEventKind.ACTIVE,
+        )
+
+    from rig_relay.core.logger import logger
+
+    events: list[PreparationLifecycleEvent] = []
+    try:
+        with open(ledger, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj: dict[str, Any] = json.loads(line)
+                except (json.JSONDecodeError, TypeError) as exc:
+                    logger.warning("Corrupt lifecycle ledger JSON: %s", exc)
+                    return LifecycleLoadResult(
+                        outcome=LifecycleLoadOutcome.CORRUPT_LEDGER,
+                        error_detail=f"Malformed JSON in lifecycle ledger: {exc}",
+                    )
+
+                try:
+                    event = PreparationLifecycleEvent.model_validate(obj)
+                except Exception as exc:
+                    logger.warning("Invalid lifecycle event in ledger: %s", exc)
+                    return LifecycleLoadResult(
+                        outcome=LifecycleLoadOutcome.INVALID_EVENT,
+                        error_detail=f"Invalid lifecycle event model: {exc}",
+                    )
+
+                if not event.verify_integrity():
+                    logger.warning(
+                        "Lifecycle event integrity mismatch: %s", event.event_id
+                    )
+                    return LifecycleLoadResult(
+                        outcome=LifecycleLoadOutcome.INTEGRITY_MISMATCH,
+                        error_detail=(
+                            f"Lifecycle event {event.event_id} integrity "
+                            f"digest mismatch"
+                        ),
+                    )
+
+                if event.preparation_receipt_sha256 != preparation_receipt_sha256:
+                    continue
+
+                # Chain verification: prior_event_digest must match
+                # the previous event's integrity_digest
+                if events:
+                    expected_prior = events[-1].integrity_digest
+                    if event.prior_event_digest != expected_prior:
+                        logger.warning(
+                            "Broken lifecycle chain: event %s expects prior "
+                            "%s but got %s",
+                            event.event_id,
+                            expected_prior,
+                            event.prior_event_digest,
+                        )
+                        return LifecycleLoadResult(
+                            outcome=LifecycleLoadOutcome.BROKEN_CHAIN,
+                            error_detail=(
+                                f"Lifecycle chain broken at event {event.event_id}"
+                            ),
+                        )
+
+                events.append(event)
+    except OSError as exc:
+        logger.warning("Cannot read lifecycle ledger: %s", exc)
+        return LifecycleLoadResult(
+            outcome=LifecycleLoadOutcome.CORRUPT_LEDGER,
+            error_detail=f"OS error reading lifecycle ledger: {exc}",
+        )
+
+    status = events[-1].event_kind if events else PreparationLifecycleEventKind.ACTIVE
+    return LifecycleLoadResult(
+        outcome=LifecycleLoadOutcome.OK, events=events, status=status
+    )
 
 
 def read_lifecycle_events(
     preparation_receipt_sha256: str,
 ) -> list[PreparationLifecycleEvent]:
-    """Read all lifecycle events for a preparation receipt.
-
-    Returns events in append order (oldest first).
-    Malformed lines are silently skipped.
-    """
-    ledger = _lifecycle_ledger_path()
-    if not ledger.exists():
-        return []
-    events: list[PreparationLifecycleEvent] = []
-    with open(ledger) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj: dict[str, Any] = json.loads(line)
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if obj.get("preparation_receipt_sha256") != preparation_receipt_sha256:
-                continue
-            try:
-                event = PreparationLifecycleEvent.model_validate(obj)
-            except Exception:
-                continue
-            events.append(event)
-    return events
+    """Backward-compatible read — returns events for OK loads, empty list otherwise."""
+    result = load_lifecycle_events(preparation_receipt_sha256)
+    if result.is_ok:
+        return result.events
+    return []
 
 
 def get_lifecycle_status(
@@ -539,17 +754,20 @@ def get_lifecycle_status(
 ) -> PreparationLifecycleEventKind:
     """Determine the current lifecycle status of a preparation receipt.
 
-    Returns the most-recent terminal lifecycle event kind, or ACTIVE
-    if no lifecycle event has been recorded.
-
-    Terminal events are CONSUMED, SUPERSEDED, and REVOKED.
-    Multiple events may exist (e.g., superseded then later revoked);
-    the last event in the ledger determines the outcome.
+    Returns ACTIVE when the ledger is absent or contains no events.
+    Returns the most-recent event kind when the ledger is OK.
+    Returns ACTIVE for corrupt ledgers (callers should check
+    load_lifecycle_events directly for typed outcomes in governed paths).
     """
-    events = read_lifecycle_events(preparation_receipt_sha256)
-    if not events:
+    result = load_lifecycle_events(preparation_receipt_sha256)
+    if result.is_ok and result.status is not None:
+        return result.status
+    if result.is_absent:
         return PreparationLifecycleEventKind.ACTIVE
-    return events[-1].event_kind
+    return PreparationLifecycleEventKind.ACTIVE
+
+
+# ── Scope-based receipt search ────────────────────────────────────────
 
 
 def find_active_receipts_by_scope(
@@ -581,11 +799,9 @@ def find_active_receipts_by_scope(
         ):
             continue
 
-        # Same branch binding
         if receipt.get("branch") != branch:
             continue
 
-        # Same worktree
         receipt_wt = receipt.get("worktree_root", "")
         if receipt_wt:
             try:
@@ -597,7 +813,6 @@ def find_active_receipts_by_scope(
                 if str(receipt_wt) != str(worktree_root):
                     continue
 
-        # Skip receipts whose scope is completely disjoint
         receipt_paths = set(receipt.get("prepared_paths", []) or [])
         if not isinstance(receipt_paths, set):
             try:
@@ -607,7 +822,6 @@ def find_active_receipts_by_scope(
         if not path_set.intersection(receipt_paths):
             continue
 
-        # S3 integrity check via recomputed digest
         stored = receipt.get("receipt_sha256", "")
         recomputed = _recompute_receipt_digest(receipt)
         if not stored or stored != recomputed:
@@ -624,6 +838,8 @@ def cr_lifecycle_ledger_path() -> Path:
 
 
 __all__ = [
+    "LifecycleLoadOutcome",
+    "LifecycleLoadResult",
     "PreparationLifecycleEvent",
     "PreparationLifecycleEventKind",
     "PreparationLoadOutcome",
@@ -635,6 +851,7 @@ __all__ = [
     "find_active_validation_receipts",
     "generate_validation_receipt",
     "get_lifecycle_status",
+    "load_lifecycle_events",
     "load_preparation_receipt",
     "load_preparation_receipt_typed",
     "load_validation_receipt",
