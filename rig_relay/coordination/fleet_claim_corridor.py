@@ -57,7 +57,6 @@ if _libc_path is not None:
 
 
 def _setxattr(path: bytes, name: bytes, value: bytes, flags: int = 0) -> None:
-    """Raise OSError on failure."""
     if _libc is None:
         raise OSError("libc not available for xattr operations")
     rc = _libc.setxattr(path, name, value, len(value), 0, flags)
@@ -67,7 +66,6 @@ def _setxattr(path: bytes, name: bytes, value: bytes, flags: int = 0) -> None:
 
 
 def _getxattr(path: bytes, name: bytes) -> bytes:
-    """Return xattr value bytes, or raise OSError."""
     if _libc is None:
         raise OSError("libc not available for xattr operations")
     buf = ctypes.create_string_buffer(_XATTR_MAXSIZE)
@@ -79,7 +77,6 @@ def _getxattr(path: bytes, name: bytes) -> bytes:
 
 
 def _removexattr(path: bytes, name: bytes) -> None:
-    """Remove xattr, or raise OSError."""
     if _libc is None:
         raise OSError("libc not available for xattr operations")
     rc = _libc.removexattr(path, name, 0)
@@ -119,11 +116,6 @@ class FleetClaimEvent(BaseModel):
     event_sequence: int = 0
     event_digest: str
     reason: str | None = None
-    expires_at: str | None = None
-    conflicting_path: str | None = None
-    conflicting_mission_id: str | None = None
-    conflicting_lane_id: str | None = None
-    conflicting_agent_id: str | None = None
     prior_event_digest: str | None = None
 
 
@@ -133,6 +125,7 @@ class FleetClaimState(StrEnum):
     TESTS_RUNNING = "tests_running"
     READY_FOR_INTEGRATION = "ready_for_integration"
     BLOCKED = "blocked"
+    PARKED = "parked"
     RELEASED = "released"
 
 
@@ -142,7 +135,6 @@ class FleetClaimInfo(BaseModel):
     agent_id: str
     mode: str = "exclusive_write"
     acquired_at: str
-    expires_at: str | None = None
     base_sha256: dict[str, str]
 
 
@@ -173,7 +165,6 @@ def _sha256_event_payload(payload: dict[str, Any]) -> str:
 
 # ── FleetClaimLedger ───────────────────────────────────────────────────────
 
-
 _OWNERSHIP_CHANGING_KINDS: frozenset[FleetClaimEventKind] = frozenset({
     FleetClaimEventKind.CLAIM_ACQUIRED,
     FleetClaimEventKind.CLAIM_RELEASED,
@@ -184,6 +175,9 @@ class FleetClaimLedger:
     """Append-only JSONL coordination ledger. Canonical authority.
 
     Location: .rig/relay/fleet/coordination_events.v1.jsonl relative to repo root.
+
+    All transition appends must go through a FleetClaimProtocol locked
+    operation.  The ledger does not expose a public unguarded append path.
     """
 
     def __init__(self, ledger_path: Path) -> None:
@@ -211,7 +205,8 @@ class FleetClaimLedger:
                     try:
                         parsed = json.loads(line)
                         seq = parsed.get("event_sequence", 0) or 0
-                        max_seq = max(max_seq, seq)
+                        if seq > max_seq:
+                            max_seq = seq
                     except json.JSONDecodeError:
                         pass
         except OSError:
@@ -227,12 +222,6 @@ class FleetClaimLedger:
         self._thread_lock.release()
 
     def _append_under_lock(self, event: FleetClaimEvent) -> FleetClaimEvent:
-        """Append event under an already-held transition lock.
-
-        Caller must hold self._thread_lock and fcntl.flock.
-        Sequence allocation, digest computation, append, flush, and fsync
-        are all serialized here.
-        """
         if event.event_sequence == 0:
             event.event_sequence = self._next_sequence()
         if not event.event_digest:
@@ -260,13 +249,6 @@ class FleetClaimLedger:
                 )
         return event
 
-    def append(self, event: FleetClaimEvent) -> FleetClaimEvent:
-        self._acquire_transition_lock()
-        try:
-            return self._append_under_lock(event)
-        finally:
-            self._release_transition_lock()
-
     def read_all(self) -> list[FleetClaimEvent]:
         events: list[FleetClaimEvent] = []
         if not self._path.is_file():
@@ -287,19 +269,6 @@ class FleetClaimLedger:
         return events
 
     def _fold_claims(self) -> dict[str, FleetClaimEvent]:
-        """Canonical event-fold reducer. Returns {path: active_claim_event}.
-
-        Processes events in event_sequence order. CLAIM_ACQUIRED sets the
-        active owner. CLAIM_RELEASED removes ownership only when the release
-        event's authority (mission_id, lane_id, agent_id) matches the current
-        active owner — a mismatched release event is treated as an
-        unauthorized observation and does NOT erase ownership.
-
-        All other event kinds (EDIT_STARTED, TESTS_COMPLETED,
-        READY_FOR_INTEGRATION, INTEGRATION_REFUSED_STALE_BASE,
-        WORK_PARKED, etc.) are non-ownership-changing and are skipped
-        during ownership replay.
-        """
         events = self.read_all()
         events.sort(key=lambda e: e.event_sequence)
         active: dict[str, FleetClaimEvent] = {}
@@ -332,12 +301,7 @@ class FleetClaimLedger:
 class FleetClaimXattr:
     """Mirror active claim state onto filesystem objects via macOS xattrs.
 
-    Uses ctypes to call macOS xattr syscalls through libc. No dependency on
-    ``os.setxattr`` (which may be missing from some Python builds on macOS).
-
     XATTRS ARE PROJECTIONS, NOT AUTHORITY.
-    The JSONL ledger is canonical. xattrs provide local ergonomics only.
-    Missing, truncated, or unreadable xattrs must never invalidate ledger state.
     """
 
     XATTR_CLAIM = "com.rigrelay.fleet.claim.v1"
@@ -346,9 +310,7 @@ class FleetClaimXattr:
 
     @staticmethod
     def write_claim(path: Path, info: FleetClaimInfo) -> None:
-        payload = dump_canonical_json(info.model_dump(exclude_none=True)).encode(
-            "utf-8"
-        )
+        payload = dump_canonical_json(info.model_dump(exclude_none=True)).encode("utf-8")
         try:
             _setxattr(
                 str(path).encode("utf-8"),
@@ -483,18 +445,17 @@ class FleetClaimProtocol:
         mission_id: str,
         lane_id: str,
         agent_id: str,
-        ttl_minutes: int = 120,
     ) -> FleetClaimResult:
         refusal = self._validate_paths(paths)
         if refusal is not None:
             return FleetClaimResult(acquired=False, reason=refusal)
 
-        resolved: dict[str, Path] = {}
-        for p in paths:
-            resolved[p] = self._resolve(p)
-
         self._ledger._acquire_transition_lock()
         try:
+            resolved: dict[str, Path] = {}
+            for p in paths:
+                resolved[p] = self._resolve(p)
+
             for p in paths:
                 active = self._ledger.find_active_claim(p)
                 if active is not None:
@@ -522,11 +483,6 @@ class FleetClaimProtocol:
                     base_sha256[p] = file_sha256(rp)
 
             now = _now_iso()
-            from datetime import UTC, datetime, timedelta
-
-            expires = (
-                datetime.now(tz=UTC) + timedelta(minutes=ttl_minutes)
-            ).isoformat()
             event = FleetClaimEvent(
                 event_id="",
                 event_kind=FleetClaimEventKind.CLAIM_ACQUIRED,
@@ -537,7 +493,6 @@ class FleetClaimProtocol:
                 prior_sha256=base_sha256 if base_sha256 else None,
                 timestamp=now,
                 event_digest="",
-                expires_at=expires,
             )
 
             def _xattr_acquire() -> None:
@@ -546,7 +501,6 @@ class FleetClaimProtocol:
                     lane_id=lane_id,
                     agent_id=agent_id,
                     acquired_at=now,
-                    expires_at=expires,
                     base_sha256=base_sha256,
                 )
                 for p in paths:
@@ -575,57 +529,44 @@ class FleetClaimProtocol:
         self._ledger._acquire_transition_lock()
         try:
             active_claims = self._ledger.active_claims()
-            now = _now_iso()
             for p in paths:
                 active = active_claims.get(p)
-                if active is None:
-                    refusal_event = FleetClaimEvent(
-                        event_id="",
-                        event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
-                        mission_id=mission_id,
-                        lane_id=lane_id,
-                        agent_id=agent_id,
-                        claimed_paths=[p],
-                        timestamp=now,
-                        event_digest="",
-                        conflicting_path=p,
-                        reason=f"Release refused: path={p} has no active claim",
-                    )
-                    self._emit_locked(refusal_event)
-                    return FleetClaimResult(
-                        acquired=False, event=refusal_event, reason=refusal_event.reason
-                    )
-
-                if (
-                    active.mission_id != mission_id
-                    or active.lane_id != lane_id
-                    or active.agent_id != agent_id
-                ):
-                    now = _now_iso()
-                    refusal_event = FleetClaimEvent(
-                        event_id="",
-                        event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
-                        mission_id=mission_id,
-                        lane_id=lane_id,
-                        agent_id=agent_id,
-                        claimed_paths=[p],
-                        timestamp=now,
-                        event_digest="",
-                        conflicting_path=p,
-                        conflicting_mission_id=active.mission_id,
-                        conflicting_lane_id=active.lane_id,
-                        conflicting_agent_id=active.agent_id,
-                        reason=(
-                            f"Release refused: path {p} owned by "
-                            f"lane={active.lane_id} mission={active.mission_id} "
-                            f"agent={active.agent_id}, not by "
-                            f"lane={lane_id} mission={mission_id} agent={agent_id}"
-                        ),
-                    )
-                    self._emit_locked(refusal_event)
-                    return FleetClaimResult(
-                        acquired=False, event=refusal_event, reason=refusal_event.reason
-                    )
+                if active is not None:
+                    if (
+                        active.mission_id != mission_id
+                        or active.lane_id != lane_id
+                        or active.agent_id != agent_id
+                    ):
+                        now = _now_iso()
+                        refusal_event = FleetClaimEvent(
+                            event_id="",
+                            event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
+                            mission_id=mission_id,
+                            lane_id=lane_id,
+                            agent_id=agent_id,
+                            claimed_paths=list(paths),
+                            timestamp=now,
+                            event_digest="",
+                            reason=(
+                                f"Release refused: path {p} actively claimed by "
+                                f"lane={active.lane_id} mission={active.mission_id} "
+                                f"agent={active.agent_id}, not by "
+                                f"lane={lane_id} mission={mission_id} agent={agent_id}"
+                            ),
+                        )
+                        self._emit_locked(refusal_event)
+                        return FleetClaimResult(
+                            acquired=False,
+                            event=refusal_event,
+                            reason=refusal_event.reason,
+                            conflicting_claim=FleetClaimInfo(
+                                mission_id=active.mission_id,
+                                lane_id=active.lane_id,
+                                agent_id=active.agent_id,
+                                acquired_at=active.timestamp,
+                                base_sha256=active.prior_sha256 or {},
+                            ),
+                        )
 
             now = _now_iso()
             release_notes = [f"Released to state={new_state.value}"]
@@ -678,25 +619,17 @@ class FleetClaimProtocol:
         return result
 
     def scan_claims(self) -> dict[str, FleetClaimInfo]:
-        """Return active claims derived entirely from the canonical ledger fold.
-
-        Xattrs are not consulted for authority. Stale or missing xattrs are
-        projection-only noise. mirror_to_xattrs() may repair projections.
-        """
         result: dict[str, FleetClaimInfo] = {}
         active_claims = self._ledger.active_claims()
         for p, evt in active_claims.items():
-            rp = self._resolve(p)
-            if rp.is_file():
-                base = evt.prior_sha256 or {}
-                result[p] = FleetClaimInfo(
-                    mission_id=evt.mission_id,
-                    lane_id=evt.lane_id,
-                    agent_id=evt.agent_id,
-                    acquired_at=evt.timestamp,
-                    expires_at=evt.expires_at,
-                    base_sha256=base,
-                )
+            base = evt.prior_sha256 or {}
+            result[p] = FleetClaimInfo(
+                mission_id=evt.mission_id,
+                lane_id=evt.lane_id,
+                agent_id=evt.agent_id,
+                acquired_at=evt.timestamp,
+                base_sha256=base,
+            )
         return result
 
     def mirror_to_xattrs(self) -> None:
@@ -710,49 +643,32 @@ class FleetClaimProtocol:
         self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
     ) -> FleetClaimResult:
         return self._record_lifecycle(
-            paths=paths,
-            mission_id=mission_id,
-            lane_id=lane_id,
-            agent_id=agent_id,
-            event_kind=FleetClaimEventKind.EDIT_STARTED,
-            new_state=FleetClaimState.EDITING,
+            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id,
+            event_kind=FleetClaimEventKind.EDIT_STARTED, new_state=FleetClaimState.EDITING,
         )
 
     def record_tests_completed(
         self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
     ) -> FleetClaimResult:
         return self._record_lifecycle(
-            paths=paths,
-            mission_id=mission_id,
-            lane_id=lane_id,
-            agent_id=agent_id,
-            event_kind=FleetClaimEventKind.TESTS_COMPLETED,
-            new_state=FleetClaimState.TESTS_RUNNING,
+            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id,
+            event_kind=FleetClaimEventKind.TESTS_COMPLETED, new_state=FleetClaimState.TESTS_RUNNING,
         )
 
     def record_ready_for_integration(
         self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
     ) -> FleetClaimResult:
         return self._record_lifecycle(
-            paths=paths,
-            mission_id=mission_id,
-            lane_id=lane_id,
-            agent_id=agent_id,
-            event_kind=FleetClaimEventKind.READY_FOR_INTEGRATION,
-            new_state=FleetClaimState.READY_FOR_INTEGRATION,
+            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id,
+            event_kind=FleetClaimEventKind.READY_FOR_INTEGRATION, new_state=FleetClaimState.READY_FOR_INTEGRATION,
         )
 
     def record_work_parked(
         self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
     ) -> FleetClaimResult:
         return self._record_lifecycle(
-            paths=paths,
-            mission_id=mission_id,
-            lane_id=lane_id,
-            agent_id=agent_id,
-            event_kind=FleetClaimEventKind.WORK_PARKED,
-            new_state=None,
-            clear_xattrs=True,
+            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id,
+            event_kind=FleetClaimEventKind.WORK_PARKED, new_state=FleetClaimState.PARKED,
         )
 
     def record_integration_refused_stale_base(
@@ -764,15 +680,22 @@ class FleetClaimProtocol:
 
         self._ledger._acquire_transition_lock()
         try:
+            for p in paths:
+                active = self._ledger.find_active_claim(p)
+                if active is None:
+                    return FleetClaimResult(acquired=False, reason=f"No active claim for path={p}")
+                if active.lane_id != lane_id:
+                    return FleetClaimResult(
+                        acquired=False,
+                        reason=f"Stale-base integration check refused: path={p} owned by lane={active.lane_id}, not lane={lane_id}",
+                    )
+
             stale_result = self.check_stale_base(
-                paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
+                paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id,
             )
             stale_paths = [p for p, s in stale_result.items() if s]
             if not stale_paths:
-                return FleetClaimResult(
-                    acquired=True,
-                    reason="base not stale — integration refused only when base has changed",
-                )
+                return FleetClaimResult(acquired=True, reason="base not stale")
 
             now = _now_iso()
             event = FleetClaimEvent(
@@ -799,7 +722,6 @@ class FleetClaimProtocol:
         agent_id: str,
         event_kind: FleetClaimEventKind,
         new_state: FleetClaimState | None = None,
-        clear_xattrs: bool = False,
     ) -> FleetClaimResult:
         refusal = self._validate_paths(paths)
         if refusal is not None:
@@ -823,9 +745,7 @@ class FleetClaimProtocol:
                         reason=f"Cannot record {event_kind.value}: path={p} has no active claim",
                     )
                     self._emit_locked(refusal_event)
-                    return FleetClaimResult(
-                        acquired=False, event=refusal_event, reason=refusal_event.reason
-                    )
+                    return FleetClaimResult(acquired=False, event=refusal_event, reason=refusal_event.reason)
                 if active.lane_id != lane_id:
                     now = _now_iso()
                     refusal_event = FleetClaimEvent(
@@ -840,9 +760,7 @@ class FleetClaimProtocol:
                         reason=f"Cannot record {event_kind.value}: path={p} owned by lane={active.lane_id}, not lane={lane_id}",
                     )
                     self._emit_locked(refusal_event)
-                    return FleetClaimResult(
-                        acquired=False, event=refusal_event, reason=refusal_event.reason
-                    )
+                    return FleetClaimResult(acquired=False, event=refusal_event, reason=refusal_event.reason)
 
             now = _now_iso()
             event = FleetClaimEvent(
@@ -861,9 +779,7 @@ class FleetClaimProtocol:
                     rp = self._resolve(p)
                     if not rp.is_file():
                         continue
-                    if clear_xattrs:
-                        FleetClaimXattr.clear_claim_xattrs(rp)
-                    elif new_state is not None:
+                    if new_state is not None:
                         FleetClaimXattr.write_state(rp, new_state)
 
             self._emit_locked(event, xattr_fn=_xattr_lifecycle)
