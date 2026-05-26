@@ -1,0 +1,181 @@
+{
+  "schema_version": "rig.relay.lane_k0_final_report.v1",
+  "mission_id": "lane-k0-repository-operator-session-service",
+  "branch": "main",
+  "head_before": "b7d093759e6db07c5c8c3ee38a094f09533dc966",
+  "head_after": "b7d093759e6db07c5c8c3ee38a094f09533dc966",
+  "remote_head": "b7d093759e6db07c5c8c3ee38a094f09533dc966",
+  "k0_absent_remotely": true,
+  "dirty_state_before": {
+    "note": "Pre-existing files modified by other lanes (E, C, etc.). K0 touched none of these.",
+    "modified": [
+      "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/ContentView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/RigRelayApp.swift",
+      "pyproject.toml",
+      "rig_relay/desktop/intents.py",
+      "rig_relay/desktop/projection.py",
+      "rig_relay/integrations/github_provider/__init__.py"
+    ],
+    "k0_files_added": [
+      "rig_relay/operator/__init__.py",
+      "rig_relay/operator/models.py",
+      "rig_relay/operator/session.py",
+      "rig_relay/operator/projection.py",
+      "tests/operator/__init__.py",
+      "tests/operator/test_session.py",
+      "docs/schemas/rig.relay.operator_session_projection.v1.schema.json",
+      "docs/json/audits/operator/lane_k0_agent_loop_operator_session_final_report.v1.json"
+    ]
+  },
+  "dirty_state_after": {
+    "note": "Pre-existing dirty files preserved. Only K0 package/schema/test/audit files added."
+  },
+  "files_changed": [],
+  "files_created": [
+    "rig_relay/operator/__init__.py",
+    "rig_relay/operator/models.py",
+    "rig_relay/operator/session.py",
+    "rig_relay/operator/projection.py",
+    "tests/operator/__init__.py",
+    "tests/operator/test_session.py",
+    "docs/schemas/rig.relay.operator_session_projection.v1.schema.json",
+    "docs/json/audits/operator/lane_k0_agent_loop_operator_session_final_report.v1.json"
+  ],
+  "files_deleted": [],
+  "promotion_set": [
+    "rig_relay/operator/__init__.py",
+    "rig_relay/operator/models.py",
+    "rig_relay/operator/session.py",
+    "rig_relay/operator/projection.py",
+    "tests/operator/__init__.py",
+    "tests/operator/test_session.py",
+    "docs/schemas/rig.relay.operator_session_projection.v1.schema.json",
+    "docs/json/audits/operator/lane_k0_agent_loop_operator_session_final_report.v1.json"
+  ],
+  "promotion_set_excludes": "No pyproject.toml, AGENTS.md, PROJECT.md, prompts, frozen-lane code (A/B/C/D/E), or foreign integration-lane code included.",
+  "tests_run": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "provider": 1,
+    "provider_test_proves_integration_without_requiring_credentials": true
+  },
+  "test_classifications": {
+    "session_lifecycle": 5,
+    "investigation_guardrails": 2,
+    "investigation_behavior": 2,
+    "projection": 7,
+    "evidence_digest": 1,
+    "phase_mapping": 1,
+    "proposal_recording": 2,
+    "workspace_digest": 1,
+    "production_agent_loop": 1,
+    "schema_validation": 1
+  },
+  "evidence_artifacts": [
+    {
+      "kind": "operator_session_projection_schema",
+      "path": "docs/schemas/rig.relay.operator_session_projection.v1.schema.json",
+      "validation": "passed"
+    },
+    {
+      "kind": "lane_k0_final_report",
+      "path": "docs/json/audits/operator/lane_k0_agent_loop_operator_session_final_report.v1.json"
+    }
+  ],
+  "schema_validation_results": {
+    "operator_session_projection_schema": "passed",
+    "existing_schemas": "472 passed, 1 failed (fleet_coordination_event pre-existing and unchanged)"
+  },
+  "content_light_verification": {
+    "proposal_description": "Generic block message only; never includes event.skip_reason which could contain file paths",
+    "error_message": "Hashed exception identity only (error_hash=sha256[:16]); raw exception text never enters projection",
+    "tool_summary": "Counts and tool names only; no file contents, paths, stdout, or model outputs",
+    "pending_decisions": "Scope + generic description truncated to 80 chars; no file paths",
+    "blocked_capabilities": "Status labels and hashed error identifiers only",
+    "evidence_digest": "Deterministic; uses tool counts, status, proposal IDs, and workspace digest; no timestamps or execution-order metadata",
+    "projection_timestamps": "created_at from session creation time; updated_at is volatile per-projection but not part of evidence digest",
+    "test_projection_content_light": "Verified no Hello, World!, def hello, api_key, or token appears in projection output"
+  },
+  "dependency_changes": [],
+  "completed_work": [
+    "RepositoryOperatorSessionService: typed application service that wraps real AgentLoop for repository investigation sessions",
+    "OperatorSession model: session identity, workspace digest, purpose, status lifecycle, tool activities, refusal/proposal-needed dispositions",
+    "OperatorSessionProjection model: content-light projection for Gridline with 17 fields; never includes raw file contents, paths, prompts, or model outputs",
+    "OperatorSessionProjector: builds content-light projections from session state; declares 6 deferred cross-lane integrations",
+    "ProposalResult model: refusal/proposal-needed disposition artifact; does NOT claim to be a governed proposal — only records that a proposal would be required",
+    "AgentLoop integration: creates plan-profile AgentLoop with workspace_root from imported repository (fixture-backed IntakeResult contract)",
+    "Investigation flow: async generator yielding content-light projection snapshots as AgentLoop executes tool calls",
+    "Backend failure surface: INFERENCE_NEEDED when no model configured; FAILED with hashed error identity when API fails",
+    "Tool activity tracking: ToolResultEvents produce ToolActivity records with call/success/failure/refusal counts; no raw tool output",
+    "Refusal-to-disposition pipeline: skipped mutation tools produce ProposalResult with BLOCKED_BY_PERMISSION disposition and generic description",
+    "Content-safe proposal descriptions: generic message only; event.skip_reason (which could contain file paths) is never exposed",
+    "Content-safe error messages: hashed exception identity (sha256[:16]) only; raw exception text stays in logger",
+    "Evidence digest: deterministic SHA256 from tool counts, status, proposal IDs, and workspace digest; excludes volatile timestamps",
+    "Deferred integration declarations: 6 explicitly declared (B recovery, M0 local inference, J0 GitHub publication, L0 project-profile, governed proposal creation, live workspace integration)"
+  ],
+  "truthful_boundary_clarification": {
+    "proposal_claim_reviewed": "K0 does NOT create real governed proposal artifacts through the authoritative proposal boundary (PatchGatingService, ProposalWorkflowStore, CouncilGate). ProposalResult records are in-memory refusal dispositions only.",
+    "why_not_real_proposals": "The plan profile sets write_file/search_replace permission=never, which causes ToolRuntime to refuse mutation calls with REFUSED status. K0 records these refusals as ProposalResult with BLOCKED_BY_PERMISSION disposition. This is a refusal-disposition record, not a real governed proposal.",
+    "what_would_be_needed": "Real governed proposal creation would require: setting patch_proposal_mode=True on the agent profile OR invoking the PatchGatingService directly, producing PatchProposal artifacts through ProposalWorkflowStore, and generating council-reviewed proposal receipts. All deferred to K/L integration pass."
+  },
+  "intentionally_deferred_work": [
+    "Governed proposal creation: real proposal artifacts through authoritative proposal boundary deferred to K/L integration pass",
+    "Recovery/materialization integration: Lane B canonical materialization boundary not remotely published",
+    "Local inference: M0 local inference product orchestration not released",
+    "GitHub publication: J0 GitHub/publication authority not released",
+    "Project-profile compilation: L0 context assembly not consumed by K0",
+    "Live imported-workspace integration: J0 contract not released; fixture-backed IntakeResult used",
+    "Desktop bridge wiring: K0 service callable but not yet wired into cockpit adapter or intent dispatch",
+    "Worktree isolation: investigation runs on imported workspace directly; managed worktree provisioning deferred",
+    "Multi-session concurrency: in-memory session store; no cross-session coordination",
+    "Session expiration: sessions remain in memory after closure; GC deferred",
+    "MCP/connector tools: only built-in tools used",
+    "Custom operator profiles: only plan profile used"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "desktop_bridge_wiring: K0 service is callable from desktop bridge code but not yet wired",
+    "governed_proposal_attachment: refusal dispositions exist; real proposal creation through PatchGatingService deferred",
+    "l0_project_profile_integration: investigation evidence available for downstream consumption",
+    "live_imported_workspace: fixture-backed IntakeResult contract; J0 live contract deferred"
+  ],
+  "released_boundary": "RepositoryOperatorSessionService: real AgentLoop repository investigation through hardened read-only tools, with content-light operator projections and typed refusal/proposal-needed dispositions. Does NOT create governed proposal artifacts.",
+  "stated_consumer_purpose": "Desktop cockpit and downstream integration lanes (L0, N0) can open operator investigation sessions against fixture-compatible workspace contracts, receive content-light Gridline projections, and consume typed refusal/proposal-needed dispositions without direct workspace mutation.",
+  "blocking_defects": [],
+  "deferred_seams": [
+    "lane_b_recovery_materialization: not remotely published; represented as deferred",
+    "m0_local_inference: not released; inference-needed state surfaced when no provider configured",
+    "j0_github_publication: not released; publication-bootstrap investigation produces findings/dispositions only",
+    "l0_project_profile: not consumed by K0; investigation evidence available for downstream consumption",
+    "governed_proposal_creation: real PatchGatingService/ProposalWorkflowStore proposals deferred to K/L integration pass",
+    "live_imported_workspace: J0 contract not released; K0 uses fixture-backed IntakeResult contract"
+  ],
+  "freeze_status": "pending_promotion",
+  "pre_promotion_status": "lane_k_repository_operator_agentloop_investigation_and_proposal_disposition_boundary_candidate_local_pending_promotion",
+  "promotion_authorization": "User must push and verify K0 files on GitHub remote before declaring published_narrow_release and freezing.",
+  "post_promotion_freeze_target": "lane_k_repository_operator_agentloop_investigation_and_proposal_disposition_boundary_published_narrow_release_frozen_pending_l0_n0_integration",
+  "claim_adversary_results": {
+    "workspace_escape": "NOT FALSIFIED: workspace_root from IntakeResult, plan profile blocks all writes via permission=never",
+    "raw_shell_bypass": "NOT FALSIFIED: no approval callback wired; bash blocked by runtime governance",
+    "mutation_without_record": "NOT FALSIFIED: write_file/search_replace permission=never → ToolRuntime REFUSED → ProposalResult with BLOCKED_BY_PERMISSION disposition recorded",
+    "real_proposal_overclaim": "FALSIFIED IN PRIOR REPORT: K0 does NOT create real governed proposal artifacts. ProposalResult is an in-memory refusal disposition, not a PatchGatingService/ProposalWorkflowStore proposal. Corrected in this report.",
+    "private_content_leak_via_skip_reason": "FALSIFIED IN PRIOR IMPLEMENTATION: event.skip_reason could leak file paths into proposal descriptions. Fixed: generic description only.",
+    "private_content_leak_via_error_message": "FALSIFIED IN PRIOR IMPLEMENTATION: raw exception text could leak file paths. Fixed: hashed error identity only.",
+    "deferred_dependency_misrepresentation": "NOT FALSIFIED: all 6 deferred integrations explicitly declared",
+    "invented_investigation_results": "NOT FALSIFIED: tool_summary populated only from real ToolResultEvent stream",
+    "lane_authority_boundary_violation": "NOT FALSIFIED: zero edits to A/B/C/D/E/digestion/AgentLoop files",
+    "provider_test_no_external_authority_claim": "NOT FALSIFIED: test handles both success and backend-failure; no claim of external-provider authority"
+  },
+  "strongest_falsifier_in_prior_report": "Claimed 'governed proposal paths' but K0 only records refusal dispositions; no real PatchGatingService/ProposalWorkflowStore artifacts created. Narrowed boundary to truthful investigation + proposal-needed/refusal disposition.",
+  "created_at": "2026-05-26T22:30:00Z",
+  "updated_at": "2026-05-26T23:00:00Z",
+  "validation_commands": [
+    "uv run ruff check --fix rig_relay/operator/ tests/operator/",
+    "uv run ruff format rig_relay/operator/ tests/operator/",
+    "uv run pyright rig_relay/operator/ tests/operator/",
+    "uv run pytest tests/operator/test_session.py -x -v",
+    "uv run python scripts/rig_relay_validate_schemas.py"
+  ]
+}

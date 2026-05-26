@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.operator_session_projection.v1.schema.json",
+  "title": "Operator Session Projection",
+  "description": "Content-light projection of a repository operator investigation session for Gridline rendering.",
+  "type": "object",
+  "required": [
+    "session_id",
+    "repository_label",
+    "purpose",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "session_id": { "type": "string" },
+    "repository_label": { "type": "string" },
+    "purpose": { "type": "string" },
+    "status": { "type": "string" },
+    "phase": { "type": "string" },
+    "tool_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tool_name",
+          "call_count",
+          "success_count",
+          "failure_count",
+          "refusal_count"
+        ],
+        "properties": {
+          "tool_name": { "type": "string" },
+          "call_count": { "type": "integer" },
+          "success_count": { "type": "integer" },
+          "failure_count": { "type": "integer" },
+          "refusal_count": { "type": "integer" },
+          "last_call_at": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "proposal_count": { "type": "integer" },
+    "proposal_dispositions": {
+      "type": "object",
+      "additionalProperties": { "type": "integer" }
+    },
+    "refusal_count": { "type": "integer" },
+    "pending_decisions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocked_capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "deferred_integrations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recovery_materialization_available": { "type": "boolean" },
+    "evidence_integrity": { "type": "string" },
+    "error_message": { "type": ["string", "null"] },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  }
+}
