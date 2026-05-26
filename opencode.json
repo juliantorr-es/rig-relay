@@ -14,16 +14,28 @@
   "lsp": true,
   "formatter": {
     "ruff": {
-      "command": ["uv", "run", "ruff", "format", "$FILE"],
-      "extensions": [".py", ".pyi"]
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "$FILE"
+      ],
+      "extensions": [
+        ".py",
+        ".pyi"
+      ]
     }
   },
   "watcher": {
-    "ignore": [".build/**", "dist/**", "sdist/**", ".venv/**", "node_modules/**", ".git/**"]
+    "ignore": [
+      "**"
+    ]
   },
   "compaction": {
     "auto": true,
     "prune": true,
     "reserved": 12000
-  }
+  },
+  "snapshot": false
 }
