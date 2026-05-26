@@ -157,15 +157,11 @@ class AnthropicMapper:
                 )
 
         usage_data = data.get("usage", {})
-        # Total input tokens = input_tokens + cache_creation + cache_read
-        total_input_tokens = (
-            usage_data.get("input_tokens", 0)
-            + usage_data.get("cache_creation_input_tokens", 0)
-            + usage_data.get("cache_read_input_tokens", 0)
-        )
         usage = LLMUsage(
-            prompt_tokens=total_input_tokens,
+            prompt_tokens=usage_data.get("input_tokens", 0),
             completion_tokens=usage_data.get("output_tokens", 0),
+            cache_read_tokens=usage_data.get("cache_read_input_tokens", 0),
+            cache_creation_tokens=usage_data.get("cache_creation_input_tokens", 0),
         )
 
         return LLMChunk(
@@ -290,15 +286,14 @@ class AnthropicMapper:
         usage_data = message.get("usage", {})
         if not usage_data:
             return None, current_index
-        # Total input tokens = input_tokens + cache_creation + cache_read
-        total_input_tokens = (
-            usage_data.get("input_tokens", 0)
-            + usage_data.get("cache_creation_input_tokens", 0)
-            + usage_data.get("cache_read_input_tokens", 0)
-        )
         chunk = LLMChunk(
             message=LLMMessage(role=Role.assistant),
-            usage=LLMUsage(prompt_tokens=total_input_tokens, completion_tokens=0),
+            usage=LLMUsage(
+                prompt_tokens=usage_data.get("input_tokens", 0),
+                completion_tokens=0,
+                cache_read_tokens=usage_data.get("cache_read_input_tokens", 0),
+                cache_creation_tokens=usage_data.get("cache_creation_input_tokens", 0),
+            ),
         )
         return chunk, current_index
 

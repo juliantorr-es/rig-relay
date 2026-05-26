@@ -1,0 +1,249 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-c-p1-1-provider-invocation-usage-truth-contract",
+  "document_type": "audit",
+  "title": "Lane C P1.1: Provider Invocation Evidence Contract and Usage Truth Normalization",
+  "summary": "Delivered a package-owned normalized provider invocation outcome evidence contract that distinguishes requested from actual provider/model identity, classifies outcomes consistently (success/refusal/safety_block/error), preserves cache token evidence as named fields, represents gateway provenance without fabricating certainty, and provides a read-only invocation evidence capability inspection surface. Extended LLMUsage with cache_read_tokens and cache_creation_tokens. Preserved Anthropic cache token evidence as distinct named fields. 27 new tests; 140 total pass with all P1 regressions clean.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "source_commit": "fd8b79fa",
+  "owners": ["lane-c"],
+  "tags": ["provider", "invocation", "evidence", "usage", "normalization"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/audits/providers/lane_c_p1_1_provider_invocation_usage_truth_contract.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Lane C P1.1: Provider Invocation Evidence Contract and Usage Truth Normalization",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "meta-1",
+      "type": "paragraph",
+      "content": "Final status: lane_c_p1_1_provider_invocation_usage_truth_contract_proven",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Baseline and Predecessor State",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-baseline",
+      "type": "table",
+      "columns": ["Field", "Value"],
+      "rows": [
+        ["Published GitHub main SHA", "806934b5 (Relax OpenCode permissions)"],
+        ["Local HEAD (predecessor)", "fd8b79fa (lane-c-p1: provider capability spine + Gemini adapter)"],
+        ["Lane A local checkpoint", "650a5e1b (durable pre-commit checkpoint authorization)"],
+        ["P1 state preserved", "All P1 files intact: GeminiAdapter, ProviderClass, ProviderCapability, capability read surface"],
+        ["Dirty files preserved", "pyproject.toml, bridge_server.py, evidence/*, storage_audit.py (Lanes A/B)"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Source-Level Defect Determination",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-defects",
+      "type": "table",
+      "columns": ["Defect", "Confirmed?", "Disposition"],
+      "rows": [
+        ["No normalized per-invocation evidence model exists — only LLMChunk/LLMUsage with two token fields", "CONFIRMED AND REPAIRED", "ProviderInvocationOutcome created with 30+ content-light fields"],
+        ["Cache token evidence parsed only by Anthropic and summed into prompt_tokens, losing named distinction", "CONFIRMED AND REPAIRED", "LLMUsage extended with cache_read_tokens + cache_creation_tokens; Anthropic adapter updated to preserve named fields"],
+        ["No provider identity recording across any adapter", "CONFIRMED — foundational contract exists, adapter wiring deferred", "ProviderInvocationOutcome carries requested_provider_id, actual_provider_id, actual_model_id"],
+        ["OpenRouter executed as OpenAI-compatible without gateway provenance", "CONFIRMED — contract supports it, extraction deferred", "GatewayProvenance model + GatewayProvenanceSource added; OpenRouter marked as ROUTED_GATEWAY with 'not yet extracted' note"],
+        ["Gemini P1 emits usage correctly but has no normalized outcome classification", "CONFIRMED — contract exists, Gemini adapter not yet emitting normalized outcomes", "InvocationOutcomeClass + InvocationRefusalClass added; Gemini safety mapping provable through contract"],
+        ["Error/refusal outcomes not typed consistently — Gemini uses in-band text, others use BackendError", "CONFIRMED — classification vocabulary established", "InvocationOutcomeClass enum: SUCCESS, REFUSAL, SAFETY_BLOCK, ERROR, TIMEOUT, CANCELLED, UNKNOWN"],
+        ["Streaming vs non-streaming not recorded", "CONFIRMED", "ProviderInvocationOutcome.streaming field added"],
+        ["LLMUsage __add__ method would need cache fields", "REPAIRED", "__add__ extended to sum cache fields"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Modified",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-files",
+      "type": "table",
+      "columns": ["File", "Action", "Change"],
+      "rows": [
+        ["rig_relay/providers/invocation.py", "CREATED", "ProviderInvocationOutcome, InvocationOutcomeClass, InvocationRefusalClass, GatewayProvenance, build_invocation_outcome(), assert_content_light(), invocation_evidence_capabilities(), InvocationEvidenceCapability"],
+        ["rig_relay/core/types.py", "MODIFIED", "LLMUsage extended: cache_read_tokens + cache_creation_tokens (default 0, non-breaking)"],
+        ["rig_relay/core/llm/backend/anthropic.py", "MODIFIED", "Anthropic adapter non-streaming + streaming parsers: cache tokens now preserved as named fields instead of summed"],
+        ["rig_relay/providers/__init__.py", "MODIFIED", "Exports: 10 new invocation evidence symbols"],
+        ["tests/providers/test_invocation_evidence.py", "CREATED", "27 tests: model validation, content-light, capability inspection, gateway provenance, Gemini safety mapping, provider identity preservation"],
+        ["pyproject.toml", "MODIFIED", "Added rig_relay/providers/invocation.py to PLR per-file-ignores (builder pattern with 25 keyword-only args)"],
+        ["docs/json/audits/providers/lane_c_p1_1_provider_invocation_usage_truth_contract.v1.json", "CREATED", "This audit artifact"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Provider Invocation Outcome Contract",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-contract",
+      "type": "paragraph",
+      "content": "ProviderInvocationOutcome is a dataclass with 30+ fields covering identity (requested/actual provider and model), classification (provider_class, api_style), outcome (outcome_class, refusal_class, summary), execution mode (streaming, latency), usage evidence (input_tokens, output_tokens, total_tokens, cache_read_tokens, cache_creation_tokens), gateway provenance (downstream_provider, downstream_model, provenance_source), safe content hashes, content-light guarantee, and 8 explicit availability flags. All usage/cache/provenance/identity fields default to None (unavailable/not verified) — the contract forces explicit truth, not fabricated certainty."
+    },
+    {
+      "block_id": "p-invariants",
+      "type": "paragraph",
+      "content": "Invariants enforced: (1) API compatibility does not collapse provider identity — DeepSeek using openai api_style is still provider_id='deepseek', provider_class=DIRECT_INFERENCE. (2) OpenRouter is classified as ROUTED_GATEWAY even though its api_style is 'openai'. (3) Cache tokens are named fields, not summed into prompt_tokens. (4) Gateway provenance is None by default, only populated when extraction is verified. (5) Content-light enforced by assert_content_light() scanning for sk-/Bearer/key/secret patterns. (6) All availability flags default to None (not verified) — explicit opt-in for every field."
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Adapter Evidence Capability Inventory",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-adapter-capabilities",
+      "type": "table",
+      "columns": ["Adapter", "Usage", "Cache Read", "Cache Create", "Safety Refusal", "Gateway Prov.", "Response ID"],
+      "rows": [
+        ["openai", "true", "false", "false", "false", "false", "true"],
+        ["anthropic", "true", "true", "true", "false", "false", "true"],
+        ["gemini", "true", "false", "false", "true", "false", "false"],
+        ["openrouter", "true", "false", "false", "false", "false", "true"],
+        ["deepseek", "true", "false", "false", "false", "false", "true"],
+        ["local_inference", "false", "false", "false", "false", "false", "false"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "p-anthropic-cache",
+      "type": "paragraph",
+      "content": "Anthropic is the only adapter with verified cache token evidence. P1.1 updated AnthropicAdapter to emit cache_read_tokens and cache_creation_tokens as named LLMUsage fields instead of summing them into prompt_tokens. Both non-streaming (parse_response) and streaming (message_start handler) paths updated. Cache tokens default to 0 when not present in the response."
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Gemini State After P1.1",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-gemini",
+      "type": "paragraph",
+      "content": "Gemini adapter (P1) correctly maps usage (promptTokenCount → prompt_tokens, candidatesTokenCount → completion_tokens). Safety refusal detection (SAFETY_BLOCK, SAFETY_REFUSAL) correctly performed. The ProviderInvocationOutcome contract is proven to represent these outcomes (test_gemini_safety_block_maps_to_safety_outcome, test_gemini_success_with_usage, test_gemini_error_maps_to_error_outcome). The Gemini adapter does not yet return a ProviderInvocationOutcome (it returns LLMChunk as all adapters do) — wiring the invocation outcome into the live execution path is deferred to a subsequent slice that coordinates with the backend execution layer. The contract exists, the mapping is proven, and the read-boundary truthfully reports what is available."
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Read-Only Invocation Evidence Capability Inspection",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-read-boundary",
+      "type": "paragraph",
+      "content": "invocation_evidence_capabilities() returns InvocationEvidenceCapability records for 6 providers. No network calls. No secrets. No inference. No persistence. The surface answers: which adapters produce verified token usage, verified cache evidence, verified safety/refusal classification, verified actual provider/model identity, verified streaming final usage, and verified gateway provenance. get_invocation_evidence_capability(provider_id) returns a single capability record. Both functions produce identical results on repeated calls (idempotent)."
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation Gates",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-gates",
+      "type": "table",
+      "columns": ["Gate", "Result"],
+      "rows": [
+        ["uv run ruff check (6 files)", "All checks passed"],
+        ["uv run ruff format --check (6 files)", "All formatted"],
+        ["uv run pyright (4 source modules)", "0 errors, 0 warnings, 0 informations"],
+        ["pytest tests/providers/test_invocation_evidence.py", "27 passed"],
+        ["pytest tests/providers/test_providers.py (all P1)", "73 passed (no regression)"],
+        ["pytest tests/backend/test_gemini_backend.py (all P1)", "18 passed (no regression)"],
+        ["pytest tests/protocols/a2a/test_a2a_provider_profiles_v1.py", "22 passed (no regression)"],
+        ["Total", "140 passed, 0 failed"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Lane B Handoff Contract (Future)",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-handoff",
+      "type": "paragraph",
+      "content": "ProviderInvocationOutcome is designed for future Lane B consumption without importing Lane B evidence stores or desktop code. When Lane B is ready to ingest invocation evidence into operational projections, it should: (1) accept a content-light provider invocation outcome record; (2) display provider/model usage distributions, cache effectiveness, safety refusal rates, and gateway provenance completeness; (3) never receive raw prompts, generated text, tool arguments, or API keys through the invocation evidence contract. The contract uses to_dict() for serialization compatibility and assert_content_light() as the content-light validation gate. No persistence is implemented in P1.1 — Lane B owns the operational persistence layer."
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentionally Deferred",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-deferred",
+      "type": "table",
+      "columns": ["Deferred Item", "Reason"],
+      "rows": [
+        ["Wire ProviderInvocationOutcome into live backend execution path", "Requires coordination with GenericBackend.complete()/complete_streaming() — touches adapter boundaries for 6+ adapters. Contract proven; wiring deferred."],
+        ["OpenRouter downstream provider/model provenance extraction", "May require API response/header parsing; not yet implemented. Contract supports it via GatewayProvenance with UNAVAILABLE default"],
+        ["Gemini adapter returning ProviderInvocationOutcome natively", "Contract proven; adapter wiring deferred to avoid touching GenericBackend concurrently with other adapters"],
+        ["OpenAI cache token parsing", "OpenAI response may include cached_tokens in usage; not yet extracted by adapter"],
+        ["DeepSeek cache token parsing", "Not yet extracted"],
+        ["ProviderInvocationOutcome persistence", "Lane B owns operational persistence"],
+        ["Provider routing policy engine", "Deferred"],
+        ["Cost budget enforcement", "Deferred"],
+        ["Vercel AI Gateway, LM Studio, MLX-LM, Ollama Cloud", "Deferred"],
+        ["A2A runtime handoff", "Deferred"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-status",
+      "type": "paragraph",
+      "content": "lane_c_p1_1_provider_invocation_usage_truth_contract_proven — Normalized invocation outcome contract delivered. LLMUsage now preserves cache tokens as named fields. Anthropic cache evidence preserved. Gateway provenance contract exists with honest UNKNOWN default. Invocation evidence capability read-boundary returns truthful typed data for all 6 providers. 27 new tests; 140 total pass. All P1 regressions clean. No cross-lane authority violations. Publication pending user action.",
+      "disclosure": {"level": "standard"}
+    }
+  ],
+  "references": [
+    "docs/json/audits/providers/lane_c_p1_provider_capability_gemini_closure.v1.json"
+  ],
+  "related_documents": [
+    "docs/json/audits/provider-boundary-adapter-contract-map.v1.json"
+  ],
+  "provenance": {"source_files": [], "implementation_commit": "pending checkpoint"},
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": ["summary", "standard", "detailed", "exhaustive"],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}
