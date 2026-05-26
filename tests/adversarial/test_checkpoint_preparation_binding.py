@@ -2658,7 +2658,6 @@ def test_s5_s3_typed_failures_still_work_after_hardening(tmp_path):
         receipt = _make_receipt(repo, "s5-j" * 12, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
 
-        # Corrupt the receipt file
         receipt_path = (
             Path(".build/rig-relay/desktop/preparation-receipts")
             / f"{receipt_sha}.json"
@@ -2672,6 +2671,349 @@ def test_s5_s3_typed_failures_still_work_after_hardening(tmp_path):
         assert refusal is not None
         assert refusal[1] == "preparation_receipt_corrupt", (
             f"S5: S3 typed failure must still fire before lifecycle: got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+# ── A5.1: Contaminated Shared-Checkout Concurrency Acceptance ───────────
+
+
+def _a51_contend_worker(args_tuple: tuple) -> dict:
+    sha, worktree, path, sentinel_content, worker_id = args_tuple
+    import subprocess as _sp
+
+    os.chdir(worktree)
+    if not acquire_transition_lock(sha):
+        return {"worker": worker_id, "accepted": False, "outcome": "lock_failed"}
+
+    try:
+        reconciled = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=Path(worktree),
+            worktree_root=worktree,
+        )
+        if not reconciled.is_active:
+            release_transition_lock(sha)
+            return {
+                "worker": worker_id,
+                "accepted": False,
+                "outcome": reconciled.outcome,
+            }
+
+        parent, _ = get_head_sha(Path(worktree))
+        branch, _ = get_current_branch(Path(worktree))
+        if parent is None or branch is None:
+            release_transition_lock(sha)
+            return {"worker": worker_id, "accepted": False, "outcome": "no_head"}
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=Path(worktree),
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=[path],
+            preparation_receipt_sha256=sha,
+            commit_message=f"checkpoint(a51-test-{worker_id}): concurrent acceptance",
+        )
+
+        if txn.is_accepted:
+            from rig_relay.governance.receipt_store import (
+                PreparationLifecycleEvent,
+                PreparationLifecycleEventKind,
+                append_lifecycle_event,
+            )
+
+            event = PreparationLifecycleEvent(
+                event_kind=PreparationLifecycleEventKind.CONSUMED,
+                preparation_receipt_sha256=sha,
+                branch=branch,
+                worktree_root=worktree,
+                producer=f"a51_test_{worker_id}",
+                committed_head_sha=txn.new_commit_sha,
+            )
+            append_lifecycle_event(event)
+
+            tree_proc = _sp.run(
+                ["git", "ls-tree", txn.new_commit_sha],
+                capture_output=True,
+                text=True,
+                cwd=worktree,
+            )
+            tree_files = [l.split()[-1] for l in tree_proc.stdout.strip().splitlines()]
+            sentinel_leaked = sentinel_content in tree_files
+
+            return {
+                "worker": worker_id,
+                "accepted": True,
+                "outcome": "accepted",
+                "commit_sha": txn.new_commit_sha,
+                "sentinel_leaked": sentinel_leaked,
+            }
+
+        return {
+            "worker": worker_id,
+            "accepted": False,
+            "outcome": txn.ref_outcome,
+            "error": txn.error_detail,
+        }
+    finally:
+        release_transition_lock(sha)
+
+
+@pytest.mark.adversarial
+def test_a51_contaminated_checkout_no_foreign_leakage(tmp_path):
+    """Contaminated checkout: foreign sentinels never enter accepted commit."""
+    repo = _init_repo(tmp_path)
+
+    _stage_file(repo, "lane_a.py", "# Lane A original")
+    subprocess.run(
+        ["git", "commit", "-m", "baseline"], cwd=repo, check=True, capture_output=True
+    )
+
+    (repo / "lane_b_result.py").write_text("# LANE_B_SENTINEL\n")
+    (repo / "lane_c_bash.sh").write_text("#!/bin/bash\n# LANE_C_SENTINEL\n")
+    subprocess.run(
+        ["git", "add", "lane_c_bash.sh"], cwd=repo, check=True, capture_output=True
+    )
+    (repo / "lane_b_dirty.py").write_text("# LANE_B_SENTINEL dirty\n")
+    (repo / "untracked.log").write_text("# LANE_C_SENTINEL untracked\n")
+
+    _stage_file(repo, "lane_a.py", "# Lane A updated")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a51-x" * 11, post_digest, ["lane_a.py"])
+        sha = receipt["receipt_sha256"]
+
+        parent, _ = get_head_sha(repo)
+        branch, _ = get_current_branch(repo)
+        assert parent and branch
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=["lane_a.py"],
+            preparation_receipt_sha256=sha,
+            commit_message="checkpoint(a51): contaminated checkout acceptance",
+        )
+        assert txn.is_accepted, f"Transaction failed: {txn.error_detail}"
+        assert txn.new_commit_sha is not None
+
+        tree_proc = subprocess.run(
+            ["git", "ls-tree", "-r", txn.new_commit_sha],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        tree_files = [
+            line.split()[-1] for line in tree_proc.stdout.strip().splitlines()
+        ]
+        assert "lane_a.py" in tree_files
+        for forbidden in (
+            "lane_b_result.py",
+            "lane_c_bash.sh",
+            "lane_b_dirty.py",
+            "untracked.log",
+        ):
+            assert forbidden not in tree_files, f"{forbidden} leaked into tree"
+
+        for filename, sentinel in [
+            ("lane_b_result.py", "LANE_B_SENTINEL"),
+            ("lane_c_bash.sh", "LANE_C_SENTINEL"),
+            ("lane_b_dirty.py", "LANE_B_SENTINEL"),
+            ("untracked.log", "LANE_C_SENTINEL"),
+        ]:
+            assert sentinel in (repo / filename).read_text(), (
+                f"Sentinel missing from {filename}"
+            )
+
+        diff_proc = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        assert "lane_c_bash.sh" in diff_proc.stdout.strip().splitlines(), (
+            "Foreign staged must remain in ambient index"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a51_concurrent_overlapping_receipts_one_winner(tmp_path):
+    """Two concurrent checkpoints on overlapping paths — at most one accepted."""
+    import multiprocessing
+
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "shared.py", "# baseline shared")
+    subprocess.run(
+        ["git", "commit", "-m", "baseline"], cwd=repo, check=True, capture_output=True
+    )
+
+    (repo / "foreign.py").write_text("# FOREIGN_SENTINEL")
+    subprocess.run(
+        ["git", "add", "foreign.py"], cwd=repo, check=True, capture_output=True
+    )
+
+    _stage_file(repo, "shared.py", "# receipt 1 content")
+    post_digest_1 = compute_index_tree_digest(repo)
+    assert post_digest_1 is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        r1 = _make_receipt(repo, "a51-y1" * 10, post_digest_1, ["shared.py"])
+        r2 = _make_receipt(repo, "a51-y2" * 10, post_digest_1, ["shared.py"])
+        sha1, sha2 = r1["receipt_sha256"], r2["receipt_sha256"]
+        repo_str = str(repo)
+
+        with multiprocessing.Pool(2) as pool:
+            results = pool.map(
+                _a51_contend_worker,
+                [
+                    (sha1, repo_str, "shared.py", "FOREIGN_SENTINEL", 1),
+                    (sha2, repo_str, "shared.py", "FOREIGN_SENTINEL", 2),
+                ],
+            )
+
+        winners = [r for r in results if r.get("accepted")]
+        losers = [r for r in results if not r.get("accepted")]
+
+        assert len(winners) >= 1, f"At least one worker must win, got {len(winners)}"
+        for w in winners:
+            assert not w.get("sentinel_leaked", True), (
+                f"Worker {w['worker']}: sentinel leaked"
+            )
+
+        for l in losers:
+            outcome = str(l.get("outcome", ""))
+            assert outcome in (
+                "stale_parent",
+                "consumed_consistent",
+                "terminal_committed_repairable",
+            ), f"Loser must have typed outcome, got {outcome}"
+
+        winner_sha = winners[0].get("commit_sha")
+        if winner_sha:
+            tree_proc = subprocess.run(
+                ["git", "ls-tree", winner_sha], capture_output=True, text=True, cwd=repo
+            )
+            tree_files = [
+                line.split()[-1] for line in tree_proc.stdout.strip().splitlines()
+            ]
+            assert "foreign.py" not in tree_files, "Foreign sentinel leaked into tree"
+
+        assert "FOREIGN_SENTINEL" in (repo / "foreign.py").read_text()
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a51_crash_race_recovery_one_accepted_transition(tmp_path):
+    """Crash after CAS, before CONSUMED — recovery repairs single transition."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "shared.py", "# baseline")
+    subprocess.run(
+        ["git", "commit", "-m", "baseline"], cwd=repo, check=True, capture_output=True
+    )
+
+    (repo / "foreign.txt").write_text("# FOREIGN_STAGED")
+    subprocess.run(
+        ["git", "add", "foreign.txt"], cwd=repo, check=True, capture_output=True
+    )
+
+    _stage_file(repo, "shared.py", "# updated")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        r1 = _make_receipt(repo, "a51-z1" * 10, post_digest, ["shared.py"])
+        r2 = _make_receipt(repo, "a51-z2" * 10, post_digest, ["shared.py"])
+        sha1, sha2 = r1["receipt_sha256"], r2["receipt_sha256"]
+
+        parent, _ = get_head_sha(repo)
+        branch, _ = get_current_branch(repo)
+        assert parent and branch
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=["shared.py"],
+            preparation_receipt_sha256=sha1,
+            commit_message="checkpoint(a51): crash race winner",
+        )
+        assert txn.is_accepted, f"Winner failed: {txn.error_detail}"
+        assert txn.new_commit_sha is not None
+
+        assert get_lifecycle_status(sha1) == PreparationLifecycleEventKind.ACTIVE, (
+            "Simulated crash: lifecycle not CONSUMED"
+        )
+
+        parent_after, _ = get_head_sha(repo)
+        branch_after, _ = get_current_branch(repo)
+        assert parent_after != parent, "Parent should have advanced"
+
+        txn2 = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch_after,
+            parent_sha=parent,
+            authorized_paths=["shared.py"],
+            preparation_receipt_sha256=sha2,
+            commit_message="checkpoint(a51): crash race loser",
+        )
+        assert not txn2.is_accepted, "Loser must NOT be accepted"
+        assert txn2.ref_outcome == RefAdvanceOutcome.STALE_PARENT
+        assert txn2.new_commit_sha is not None
+        assert not is_commit_reachable(txn2.new_commit_sha, branch_after, repo)
+
+        reconciled = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha1,
+            branch=branch_after,
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert (
+            reconciled.outcome == ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE
+        ), f"Expected TERMINAL_COMMITTED_REPAIRABLE, got {reconciled.outcome}"
+
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        repaired = Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=sha1, branch=branch_after, repo_root=repo
+        )
+        assert repaired is True, "Recovery should repair missing CONSUMED"
+
+        reconciled2 = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha1,
+            branch=branch_after,
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert reconciled2.outcome == ReconciliationOutcome.CONSUMED_CONSISTENT
+
+        assert get_lifecycle_status(sha2) == PreparationLifecycleEventKind.ACTIVE, (
+            "Loser must not be CONSUMED"
+        )
+
+        assert "FOREIGN_STAGED" in (repo / "foreign.txt").read_text()
+
+        diff_proc = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        assert "foreign.txt" in diff_proc.stdout.strip().splitlines(), (
+            "Foreign staged must remain after crash race"
         )
     finally:
         os.chdir(original_cwd)
