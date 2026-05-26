@@ -129,31 +129,40 @@ class BundleBuilder:
 
         # Populate selectors from pseudonymized crosswalk identities
         pseudonymized = sorted(set(crosswalk.mappings.values()))
-        if pseudonymized:
+        source_identifiers = [p for p in pseudonymized if not p.startswith("STR_")]
+        string_literals = [p for p in pseudonymized if p.startswith("STR_")]
+
+        if source_identifiers:
             selectors = build_selector_entries(
-                pseudonymized_names=pseudonymized,
+                pseudonymized_names=source_identifiers,
                 content_kind=ContentKind.SOURCE_IDENTIFIER.value,
                 disclosure_class="commit_body",
             )
             manifest.selectors = selectors
 
+        if string_literals:
+            lit_selectors = build_selector_entries(
+                pseudonymized_names=string_literals,
+                content_kind=ContentKind.SOURCE_STRING_LITERAL.value,
+                disclosure_class="commit_body",
+            )
+            manifest.selectors.extend(lit_selectors)
+
         # Truthful accounting: counts must reflect observed items
-        selector_count = len(manifest.selectors)
-        manifest.count_pseudonymized_disclosable = selector_count
+        manifest.count_pseudonymized_disclosable = len(source_identifiers)
+        manifest.count_hash_evidence_only = len(string_literals)
         manifest.total_items = (
             manifest.count_retained_projected
             + manifest.count_pseudonymized_disclosable
             + manifest.count_hash_evidence_only
             + manifest.count_prohibited
         )
-        manifest.content_kinds_present = (
-            sorted({
-                ContentKind.BUNDLE_METADATA.value,
-                ContentKind.SOURCE_IDENTIFIER.value,
-            })
-            if pseudonymized
-            else [ContentKind.BUNDLE_METADATA.value]
-        )
+        kinds = {ContentKind.BUNDLE_METADATA.value}
+        if source_identifiers:
+            kinds.add(ContentKind.SOURCE_IDENTIFIER.value)
+        if string_literals:
+            kinds.add(ContentKind.SOURCE_STRING_LITERAL.value)
+        manifest.content_kinds_present = sorted(kinds)
 
         # Seal after all final fields and selectors are populated
         seal_manifest(manifest)

@@ -362,101 +362,180 @@ def _run_disclose_authorization(
         )
         return
 
-    consume_result = consume_disclosure_authorization(
-        authorization_id,
-        current_evidence_digest=candidate_zip_hash,
-        current_disclosure_class=disclosure_class,
-        current_selector_digest=selector_digest,
-        current_required_selector_class=selector_manifest_class,
+    # ═══════════════════════════════════════════════════════════════
+    # P4.5 / A5: Governed disclosure transition corridor
+    # Replaces the loose write sequence with a named, recoverable
+    # transaction authority.
+    # ═══════════════════════════════════════════════════════════════
+    from rig_relay.governance.disclosure_transition import (
+        TransitionStatus,
+        _acquire_transition_lock,
+        _release_transition_lock,
+        advance_transition,
+        lookup_pending_transition,
+        prepare_transition,
     )
 
-    if consume_result.outcome != DisclosureOutcome.CONSUMED:
-        outcome_map = {
-            DisclosureOutcome.EXPIRED: "Authorization receipt has expired.",
-            DisclosureOutcome.ALREADY_CONSUMED: "Authorization receipt was already consumed (replay refused).",
-            DisclosureOutcome.EVIDENCE_MISMATCH: "Authorization receipt does not match this candidate bundle.",
-            DisclosureOutcome.UNSUPPORTED_CLASS: "Disclosure class is not supported for this authorization.",
-            DisclosureOutcome.NOT_FOUND: "Authorization receipt not found.",
-            DisclosureOutcome.CORRUPT: "Authorization receipt is corrupt or tampered.",
-        }
-        detail = outcome_map.get(
-            consume_result.outcome,
-            f"Authorization failed: {consume_result.outcome.value}",
+    manifest_digest_before = manifest.manifest_digest
+
+    _acquire_transition_lock()
+    try:
+        # Check for existing transition (recovery)
+        existing = lookup_pending_transition(authorization_id, candidate_zip_hash)
+        if existing is not None:
+            if existing.status == TransitionStatus.COMPLETED:
+                print(
+                    f"Disclosure already completed for this authorization. "
+                    f"Transition: {existing.transition_id}"
+                )
+                return
+            # Resume from existing transition
+            transition = existing
+            _run_disclose_authorization
+        else:
+            # Prepare new transition
+            transition = prepare_transition(
+                authorization_id=authorization_id,
+                evidence_digest=candidate_zip_hash,
+                projection_id=projection_id,
+                disclosure_class=disclosure_class,
+                manifest_digest_before=manifest_digest_before,
+                recipient_class=recipient_class,
+                provider_or_channel=provider_or_channel,
+                purpose=purpose,
+                selector_digest=selector_digest,
+                selector_required_class=selector_manifest_class,
+            )
+
+        # Consume authorization under transition lock
+        consume_result = consume_disclosure_authorization(
+            authorization_id,
+            current_evidence_digest=candidate_zip_hash,
+            current_disclosure_class=disclosure_class,
+            current_selector_digest=selector_digest,
+            current_required_selector_class=selector_manifest_class,
         )
-        if consume_result.error_detail:
-            detail += f" ({consume_result.error_detail})"
-        print(f"REFUSED: {detail}")
-        return
 
-    auth_receipt_hash = (
-        consume_result.receipt.receipt_sha256 if consume_result.receipt else ""
-    )
+        if consume_result.outcome != DisclosureOutcome.CONSUMED:
+            outcome_map: dict = {
+                DisclosureOutcome.EXPIRED: "Authorization receipt has expired.",
+                DisclosureOutcome.ALREADY_CONSUMED: "Authorization receipt was already consumed (replay refused).",
+                DisclosureOutcome.EVIDENCE_MISMATCH: "Authorization receipt does not match this candidate bundle.",
+                DisclosureOutcome.UNSUPPORTED_CLASS: "Disclosure class is not supported for this authorization.",
+                DisclosureOutcome.CLASS_MISMATCH: "Disclosure class mismatch.",
+                DisclosureOutcome.SELECTOR_MISMATCH: "Selector mismatch.",
+                DisclosureOutcome.SELECTOR_UNAUTHORIZED: "Selector unauthorized.",
+                DisclosureOutcome.SELECTOR_REQUIRED_CLASS_MISMATCH: "Selector required class mismatch.",
+                DisclosureOutcome.NOT_FOUND: "Authorization receipt not found.",
+                DisclosureOutcome.CORRUPT: "Authorization receipt is corrupt or tampered.",
+            }
+            detail = outcome_map.get(
+                consume_result.outcome,
+                f"Authorization failed: {consume_result.outcome.value}",
+            )
+            if consume_result.error_detail:
+                detail += f" ({consume_result.error_detail})"
+            print(f"REFUSED: {detail}")
+            advance_transition(
+                transition, TransitionStatus.REFUSED, recovery_detail=detail
+            )
+            return
 
-    # 4. Build authorization receipt (review projection model)
-    auth_id = f"dza_{_uuid.uuid4().hex[:16]}"
-    now = _datetime.datetime.now(_datetime.UTC).isoformat() + "Z"
+        transition = advance_transition(
+            transition, TransitionStatus.AUTHORIZATION_CONSUMED
+        )
 
-    receipt = DisclosureAuthorizationReceipt(
-        authorization_id=auth_id,
-        projection_id=projection_id,
-        candidate_zip_sha256=candidate_zip_hash,
-        compilation_receipt_sha256=compilation_receipt_sha256,
-        recipient_class=DisclosureTarget(recipient_class),
-        provider_or_channel=provider_or_channel,
-        purpose_or_context=purpose,
-        retention_assertion=retention,
-        training_use_assertion=training_use,
-        is_transmission_authorized=False,
-        approved_by="governance_disclosure_authorization",
-        approved_at=now,
-        authorization_receipt_sha256=auth_receipt_hash,
-    )
+        auth_receipt_hash = (
+            consume_result.receipt.receipt_sha256 if consume_result.receipt else ""
+        )
 
-    # 5. Write receipt
-    receipt_path = output_dir / f"disclosure_authorization_{auth_id}.json"
-    receipt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
+        # 4. Build authorization receipt (review projection model)
+        auth_id = f"dza_{_uuid.uuid4().hex[:16]}"
+        now = _datetime.datetime.now(_datetime.UTC).isoformat() + "Z"
 
-    # 6. Append to disclosure authorization ledger (review projection model)
-    ledger_path = output_dir / "disclosure_authorization_ledger.jsonl"
-    with open(ledger_path, "a") as lf:
-        lf.write(receipt.model_dump_json() + "\n")
+        receipt = DisclosureAuthorizationReceipt(
+            authorization_id=auth_id,
+            projection_id=projection_id,
+            candidate_zip_sha256=candidate_zip_hash,
+            compilation_receipt_sha256=compilation_receipt_sha256,
+            recipient_class=DisclosureTarget(recipient_class),
+            provider_or_channel=provider_or_channel,
+            purpose_or_context=purpose,
+            retention_assertion=retention,
+            training_use_assertion=training_use,
+            is_transmission_authorized=False,
+            approved_by="governance_disclosure_authorization",
+            approved_at=now,
+            authorization_receipt_sha256=auth_receipt_hash,
+        )
 
-    # 7. Append content-light disclosure event to governance ledger
-    disclosure_ledger_dir = Path(".build/rig-relay/governance")
-    disclosure_ledger_dir.mkdir(parents=True, exist_ok=True)
-    disclosure_ledger_path = disclosure_ledger_dir / "disclosure_events.v1.jsonl"
-    event: dict = {
-        "schema_version": "rig.relay.disclosure_event.v1",
-        "event_id": _uuid.uuid4().hex,
-        "authorization_id": authorization_id,
-        "authorization_receipt_sha256": auth_receipt_hash,
-        "evidence_digest": candidate_zip_hash,
-        "disclosure_class": disclosure_class,
-        "recipient_class": recipient_class,
-        "projection_id": projection_id,
-        "created_at": now,
-        "outcome": "authorized",
-    }
-    if manifest is not None:
-        event["manifest_digest_before"] = manifest.manifest_digest
-    if selector_digest:
-        event["selector_digest"] = selector_digest
-    if selector_disclosed and manifest is not None:
-        event["selector_disclosed"] = True
-        mark_selector_disclosed(manifest, selector_digest or "")
-        # Update manifest on disk
-        for mp in sorted(output_dir.glob("protected_content_manifest_*.json")):
-            if (
-                load_manifest_json(str(mp)) is not None
-                and load_manifest_json(str(mp)).bundle_digest == candidate_zip_hash  # type: ignore[union-attr]
-            ):
-                write_manifest_json(manifest, str(mp))
-                break
-        event["manifest_digest_after"] = manifest.manifest_digest
-    if manifest is not None:
-        event["manifest_digest"] = manifest.manifest_digest
-    with open(disclosure_ledger_path, "a") as lf:
-        lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
+        # 5. Write receipt
+        receipt_path = output_dir / f"disclosure_authorization_{auth_id}.json"
+        receipt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
+
+        # 6. Append to disclosure authorization ledger (review projection model)
+        ledger_path = output_dir / "disclosure_authorization_ledger.jsonl"
+        with open(ledger_path, "a") as lf:
+            lf.write(receipt.model_dump_json() + "\n")
+
+        transition = advance_transition(
+            transition,
+            TransitionStatus.PROJECTION_RECEIPT_PERSISTED,
+            downstream_receipt_path=str(receipt_path),
+        )
+
+        # 7. Append content-light disclosure event to governance ledger
+        disclosure_ledger_dir = Path(".build/rig-relay/governance")
+        disclosure_ledger_dir.mkdir(parents=True, exist_ok=True)
+        disclosure_ledger_path = disclosure_ledger_dir / "disclosure_events.v1.jsonl"
+        event: dict = {
+            "schema_version": "rig.relay.disclosure_event.v1",
+            "event_id": _uuid.uuid4().hex,
+            "authorization_id": authorization_id,
+            "authorization_receipt_sha256": auth_receipt_hash,
+            "evidence_digest": candidate_zip_hash,
+            "disclosure_class": disclosure_class,
+            "recipient_class": recipient_class,
+            "projection_id": projection_id,
+            "created_at": now,
+            "outcome": "authorized",
+            "transition_id": transition.transition_id,
+        }
+        if manifest is not None:
+            event["manifest_digest_before"] = manifest_digest_before
+        if selector_digest:
+            event["selector_digest"] = selector_digest
+        if selector_disclosed and manifest is not None:
+            event["selector_disclosed"] = True
+            mark_selector_disclosed(manifest, selector_digest or "")
+            # Update manifest on disk
+            for mp in sorted(output_dir.glob("protected_content_manifest_*.json")):
+                if (
+                    load_manifest_json(str(mp)) is not None
+                    and load_manifest_json(str(mp)).bundle_digest == candidate_zip_hash  # type: ignore[union-attr]
+                ):
+                    write_manifest_json(manifest, str(mp))
+                    break
+            event["manifest_digest_after"] = manifest.manifest_digest
+        if manifest is not None:
+            event["manifest_digest"] = manifest.manifest_digest
+
+        downstream_event_id = event["event_id"]
+        with open(disclosure_ledger_path, "a") as lf:
+            lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
+
+        transition = advance_transition(
+            transition,
+            TransitionStatus.DISCLOSURE_EVENT_RECORDED,
+            downstream_event_id=downstream_event_id,
+            manifest_digest_after=event.get("manifest_digest_after"),
+        )
+
+        # Terminal
+        advance_transition(transition, TransitionStatus.COMPLETED)
+
+    finally:
+        _release_transition_lock()
 
     print(f"Disclosure authorization consumed and recorded: {auth_id}")
     print(f"Authorization receipt digest: {auth_receipt_hash}")
