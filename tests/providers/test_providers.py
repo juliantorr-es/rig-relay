@@ -520,3 +520,201 @@ class TestRedactionIntegration:
         assert safe.get("api_key") == "[REDACTED]"
         assert safe.get("key_fingerprint") == "sha256:abc123"
         assert "sk-should-be-redacted" not in str(safe)
+
+
+class TestProviderClassification:
+    """ProviderClass distinguishes provider architectural role from API style."""
+
+    def test_all_known_providers_have_class(self):
+        from rig_relay.providers.models import (
+            Provider,
+            ProviderClass,
+            provider_class_for,
+        )
+
+        for provider in Provider:
+            pv_class = provider_class_for(provider)
+            assert isinstance(pv_class, ProviderClass)
+            assert pv_class.value != ""
+
+    def test_direct_providers_are_not_gateways(self):
+        from rig_relay.providers.models import (
+            Provider,
+            ProviderClass,
+            provider_class_for,
+        )
+
+        direct_providers = {
+            Provider.OPENAI,
+            Provider.ANTHROPIC,
+            Provider.GOOGLE,
+            Provider.DEEPSEEK,
+        }
+        for provider in direct_providers:
+            assert provider_class_for(provider) == ProviderClass.DIRECT_INFERENCE
+
+    def test_openrouter_is_gateway_not_direct(self):
+        from rig_relay.providers.models import (
+            Provider,
+            ProviderClass,
+            provider_class_for,
+        )
+
+        assert provider_class_for(Provider.OPENROUTER) == ProviderClass.ROUTED_GATEWAY
+        assert provider_class_for(Provider.OPENROUTER) != ProviderClass.DIRECT_INFERENCE
+
+    def test_local_inference_is_local_server(self):
+        from rig_relay.providers.models import (
+            Provider,
+            ProviderClass,
+            provider_class_for,
+        )
+
+        assert (
+            provider_class_for(Provider.LOCAL_INFERENCE) == ProviderClass.LOCAL_SERVER
+        )
+
+    def test_provider_class_via_registry(self):
+        from rig_relay.providers.registry import get_provider_class
+
+        assert get_provider_class("openai") is not None
+        assert get_provider_class("google") is not None
+        assert get_provider_class("openrouter") is not None
+        assert get_provider_class("nonexistent") is None
+
+
+class TestProviderCapabilityReadSurface:
+    """The read-only capability surface returns honest, typed data without secrets."""
+
+    def test_compute_returns_all_providers(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps = compute_provider_capabilities()
+        assert len(caps) >= 6
+        provider_ids = {c.provider_id for c in caps}
+        assert "openai" in provider_ids
+        assert "anthropic" in provider_ids
+        assert "google" in provider_ids
+        assert "openrouter" in provider_ids
+        assert "deepseek" in provider_ids
+        assert "local_inference" in provider_ids
+
+    def test_compute_returns_typed_data(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps = compute_provider_capabilities()
+        for cap in caps:
+            assert isinstance(cap.provider_id, str)
+            assert isinstance(cap.provider_class.value, str)
+            assert isinstance(cap.api_style, str)
+            assert isinstance(cap.network_egress, bool)
+            assert isinstance(cap.executable, bool)
+
+    def test_all_cloud_providers_have_network_egress(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps = compute_provider_capabilities()
+        for cap in caps:
+            if cap.provider_id in {
+                "openai",
+                "anthropic",
+                "google",
+                "openrouter",
+                "deepseek",
+            }:
+                assert cap.network_egress is True
+
+    def test_local_inference_no_network_egress(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps = compute_provider_capabilities()
+        local = next(c for c in caps if c.provider_id == "local_inference")
+        assert local.network_egress is False
+        assert local.requires_credential is False
+
+    def test_capability_records_contain_no_secrets(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps = compute_provider_capabilities()
+        for cap in caps:
+            d = cap.to_dict()
+            for v in d.values():
+                if isinstance(v, str):
+                    assert "sk-" not in v
+                    assert "Bearer" not in v
+                    assert "api_key" not in v.lower() or v == "api_key"
+
+    def test_openrouter_distinct_from_openai(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        openai_cap = get_provider_capability("openai")
+        openrouter_cap = get_provider_capability("openrouter")
+        assert openai_cap is not None
+        assert openrouter_cap is not None
+        assert openai_cap.provider_class.value != openrouter_cap.provider_class.value
+
+    def test_deepseek_uses_openai_style_but_is_direct(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        cap = get_provider_capability("deepseek")
+        assert cap is not None
+        assert cap.api_style == "openai"
+        assert cap.provider_class.value == "direct_inference"
+        assert cap.verified_thinking is True
+
+    def test_gemini_does_not_claim_unsupported_caps(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        cap = get_provider_capability("google")
+        assert cap is not None
+        assert cap.verified_tool_use is False
+        assert cap.verified_structured_output is False
+        assert cap.verified_thinking is False
+
+    def test_gemini_capability_has_honest_notes(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        cap = get_provider_capability("google")
+        assert cap is not None
+        assert len(cap.notes) > 0
+        joined = " ".join(cap.notes).lower()
+        assert "not yet implemented" in joined
+
+    def test_read_surface_performs_no_network_calls(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        # This must complete without any HTTP activity.
+        caps = compute_provider_capabilities()
+        assert len(caps) > 0
+        # Calling again must produce identical results.
+        caps2 = compute_provider_capabilities()
+        for a, b in zip(caps, caps2, strict=True):
+            assert a.to_dict() == b.to_dict()
+
+    def test_get_provider_capability_lookup(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        assert get_provider_capability("openai") is not None
+        assert get_provider_capability("google") is not None
+        assert get_provider_capability("nonexistent") is None
+
+    def test_default_model_present(self):
+        from rig_relay.providers.registry import get_provider_capability
+
+        gemini = get_provider_capability("google")
+        assert gemini is not None
+        assert gemini.default_model == "gemini-2.0-flash"
+
+    def test_configured_and_executable_flags(self):
+        from rig_relay.providers.registry import compute_provider_capabilities
+
+        caps_default = compute_provider_capabilities(configured=False)
+        for cap in caps_default:
+            assert cap.configured is False
+            assert cap.executable is False
+
+        caps_configured = compute_provider_capabilities(configured=True)
+        for cap in caps_configured:
+            assert cap.configured is True
+            if cap.adapter_available:
+                assert cap.executable is True

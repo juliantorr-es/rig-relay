@@ -476,7 +476,7 @@ DEFAULT_PROVIDERS = [
         name="google",
         api_base="https://generativelanguage.googleapis.com/v1beta",
         api_key_env_var="GOOGLE_API_KEY",
-        api_style="google",
+        api_style="gemini",
         backend=Backend.GENERIC,
     ),
     ProviderConfig(

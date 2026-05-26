@@ -7,6 +7,7 @@ keys themselves.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -21,6 +22,89 @@ class Provider(StrEnum):
     OPENROUTER = "openrouter"
     DEEPSEEK = "deepseek"
     LOCAL_INFERENCE = "local_inference"
+
+
+class ProviderClass(StrEnum):
+    """Classifier for a provider's architectural role.
+
+    Distinguishes inference providers from gateways, local runtimes,
+    and external coding harnesses. API compatibility does not imply
+    class equivalence — DeepSeek using an OpenAI-compatible protocol is
+    still a direct inference provider, not OpenAI.
+    """
+
+    DIRECT_INFERENCE = "direct_inference"
+    ROUTED_GATEWAY = "routed_gateway"
+    LOCAL_SERVER = "local_server"
+    CLOUD_OFFLOADED_LOCAL = "cloud_offloaded_local"
+    LOCAL_LIBRARY = "local_library"
+    EXTERNAL_HARNESS = "external_harness"
+    ACP_CLIENT = "acp_client"
+    A2A_PEER = "a2a_peer"
+
+
+_PROVIDER_CLASS_MAP: dict[Provider, ProviderClass] = {
+    Provider.OPENAI: ProviderClass.DIRECT_INFERENCE,
+    Provider.ANTHROPIC: ProviderClass.DIRECT_INFERENCE,
+    Provider.GOOGLE: ProviderClass.DIRECT_INFERENCE,
+    Provider.OPENROUTER: ProviderClass.ROUTED_GATEWAY,
+    Provider.DEEPSEEK: ProviderClass.DIRECT_INFERENCE,
+    Provider.LOCAL_INFERENCE: ProviderClass.LOCAL_SERVER,
+}
+
+
+def provider_class_for(provider: Provider) -> ProviderClass:
+    """Return the architectural class for a provider identity."""
+    return _PROVIDER_CLASS_MAP[provider]
+
+
+@dataclass
+class ProviderCapability:
+    """Read-only capability summary for a configured provider.
+
+    Describes what class of provider this is, whether it requires
+    network egress, what API style it uses, and which capability
+    flags are verified.
+
+    Content-light: no secrets, no raw credentials.
+    """
+
+    provider_id: str
+    provider_class: ProviderClass
+    api_style: str = "openai"
+    network_egress: bool = True
+    requires_credential: bool = True
+    credential_model: str = "api_key"
+    configured: bool = False
+    executable: bool = False
+    default_model: str | None = None
+    adapter_available: bool = False
+    verified_tool_use: bool = False
+    verified_structured_output: bool = False
+    verified_streaming: bool = False
+    verified_thinking: bool = False
+    verified_caching: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "provider_id": self.provider_id,
+            "provider_class": self.provider_class.value,
+            "api_style": self.api_style,
+            "network_egress": self.network_egress,
+            "requires_credential": self.requires_credential,
+            "credential_model": self.credential_model,
+            "configured": self.configured,
+            "executable": self.executable,
+            "default_model": self.default_model,
+            "adapter_available": self.adapter_available,
+            "verified_tool_use": self.verified_tool_use,
+            "verified_structured_output": self.verified_structured_output,
+            "verified_streaming": self.verified_streaming,
+            "verified_thinking": self.verified_thinking,
+            "verified_caching": self.verified_caching,
+            "notes": self.notes,
+        }
 
 
 class KeySource(StrEnum):

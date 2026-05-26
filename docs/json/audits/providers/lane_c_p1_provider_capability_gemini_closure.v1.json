@@ -1,0 +1,270 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-c-p1-provider-capability-gemini-closure",
+  "document_type": "audit",
+  "title": "Lane C P1: Provider Capability Spine and Gemini Inference Admission Closure",
+  "summary": "Implemented canonical provider capability classification vocabulary distinguishing direct inference providers from routed gateways, local runtimes, and external harnesses. Closed the configured-but-unresolvable Gemini inference admission gap by implementing a native Gemini adapter (GeminiAdapter + GeminiMapper) conforming to the existing APIAdapter Protocol, wired into the adapter resolution path. Added a read-only provider capability inspection surface. Delivered 31 new tests; 113 pass. Gemini now resolves through _get_adapter('gemini') without KeyError.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "source_commit": "696dad360ebbec202004227092174bc8151e7ccc",
+  "owners": ["lane-c"],
+  "tags": ["provider", "gemini", "adapter", "classification", "capability"],
+  "audience": ["contributor", "maintainer"],
+  "canonical_path": "docs/json/audits/providers/lane_c_p1_provider_capability_gemini_closure.v1.json",
+  "render": {"toc": true, "search_index": true},
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Lane C P1 Acceptance: Provider Capability Spine and Gemini Inference Admission Closure",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "meta-1",
+      "type": "paragraph",
+      "content": "Final status: lane_c_p1_provider_capability_gemini_closure_proven",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Baseline Verification",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-baseline",
+      "type": "table",
+      "columns": ["Field", "Value"],
+      "rows": [
+        ["Expected baseline SHA", "6ac6d40ba31a9bba2e6693cff8dbb2eef31520c0"],
+        ["Verified starting SHA (remote main)", "696dad360ebbec202004227092174bc8151e7ccc"],
+        ["Baseline delta", "3 commits ahead of expected (Lane A checkpoints: lane-a0 remote mutation bypass fix, OpenCode websearch enable)"],
+        ["Dirty files preserved", "docs/json/audits/github/ (untracked, Lane A work)"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Source Admission Decision",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-admission",
+      "type": "table",
+      "columns": ["Claim", "Verified", "Evidence"],
+      "rows": [
+        ["Provider configuration declares api_style='google' while _get_adapter('google') raises KeyError", "CONFIRMED", "generic.py:185 — 'google' not in _ADAPTERS, raises KeyError"],
+        ["Provider identity, protocol style, gateway role, and runtime class conflated across enums/config/adapters", "CONFIRMED AND REPAIRED", "Added ProviderClass enum, ProviderCapability dataclass, provider_class_for() mapping"],
+        ["OpenRouter treated as OpenAI-compatible direct provider despite being a routed gateway", "CONFIRMED AND REPAIRED", "ProviderClass.ROUTED_GATEWAY assigned; compute_provider_capabilities() returns gateway notes"],
+        ["MLX_LM exists as LocalRuntimeKind without registered execution backend", "CONFIRMED AND PARKED", "MLX_LM enum value exists in local_inference/models.py; no backend in registry. Intentionally deferred."],
+        ["A2A/provider profiles describe external harnesses, not inference providers", "CONFIRMED", "tests/protocols/a2a/test_a2a_provider_profiles_v1.py: all 22 pass; none claim A2A client/server"],
+        ["No persisted Lane C audit artifact on main", "CONFIRMED", "No prior docs/json/audits/providers/ directory existed"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Files Modified",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-files-created",
+      "type": "table",
+      "columns": ["File", "Purpose"],
+      "rows": [
+        ["rig_relay/core/llm/backend/gemini.py", "GeminiAdapter + GeminiMapper — native Gemini generateContent adapter"],
+        ["tests/backend/data/gemini.py", "Gemini API response fixtures"],
+        ["tests/backend/test_gemini_backend.py", "18 respx boundary tests covering resolution, streaming, errors, safety, credentials"],
+        ["docs/json/audits/providers/lane_c_p1_provider_capability_gemini_closure.v1.json", "This audit artifact"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "table-files-modified",
+      "type": "table",
+      "columns": ["File", "Change"],
+      "rows": [
+        ["rig_relay/core/llm/backend/generic.py", "Added GeminiAdapter import; added 'gemini' to _ADAPTERS dict"],
+        ["rig_relay/core/config/_settings.py", "Changed Google provider api_style from 'google' to 'gemini' (line 480)"],
+        ["rig_relay/providers/models.py", "Added ProviderClass (8 values), _PROVIDER_CLASS_MAP, provider_class_for(), ProviderCapability dataclass"],
+        ["rig_relay/providers/registry.py", "Added compute_provider_capabilities(), get_provider_capability(), get_provider_class(), _ADAPTER_VERIFIED_CAPS"],
+        ["rig_relay/providers/__init__.py", "Exported new ProviderCapability, ProviderClass, provider_class_for, compute_provider_capabilities, get_provider_capability, get_provider_class"],
+        ["tests/providers/test_providers.py", "Added TestProviderClassification (5 tests) and TestProviderCapabilityReadSurface (12 tests)"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Provider Capability Spine Implemented",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-taxonomy",
+      "type": "table",
+      "columns": ["Provider", "Class", "API Style", "Verified Streaming", "Verified Tool Use"],
+      "rows": [
+        ["openai", "direct_inference", "openai", "true", "true"],
+        ["anthropic", "direct_inference", "anthropic", "true", "true"],
+        ["google", "direct_inference", "gemini", "true", "false"],
+        ["openrouter", "routed_gateway", "openai", "true", "true"],
+        ["deepseek", "direct_inference", "openai", "true", "true"],
+        ["local_inference", "local_server", "openai", "true", "true"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "p-taxonomy",
+      "type": "paragraph",
+      "content": "ProviderClass distinguishes architectural role from API protocol style. DeepSeek using an OpenAI-compatible protocol is classified as direct_inference (not OpenAI). OpenRouter is classified as routed_gateway (not direct_inference), with a note recording that downstream provider provenance is not yet captured. A2A provider profiles remain external harness records and are not inference-provider records.",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "p-causal-proofs",
+      "type": "paragraph",
+      "content": "Causal proofs delivered by tests: (1) Anthropic direct inference ≠ Claude Code external harness — A2A provider_profiles module remains untouchable by inference models. (2) OpenAI direct inference class name ≠ Responses API style name — ProviderClass.DIRECT_INFERENCE is distinct from api_style='openai'. (3) OpenRouter gateway identity preserved despite OpenAI-compatible protocol — get_provider_class('openrouter') returns ROUTED_GATEWAY, not DIRECT_INFERENCE. (4) Ollama local runtime classified as local_server class; any future Ollama Cloud record would use cloud_offloaded_local — ProviderClass enum has the value but no execution code exists.",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Gemini Adapter Closure",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-gemini",
+      "type": "table",
+      "columns": ["Requirement", "Status", "Evidence"],
+      "rows": [
+        ["Configured Gemini selection resolves to native adapter", "PROVEN", "get_provider_for_model('gemini-2.0-flash') → api_style='gemini'; _get_adapter('gemini') → GeminiAdapter"],
+        ["Native text response translation works", "PROVEN", "test_parse_simple_text_response — 18-token response mapped to LLMChunk"],
+        ["Streaming correctly implemented", "PROVEN", "test_backend_streaming_resolves_gemini_adapter — 5 SSE chunks mapped to 5 LLMChunks"],
+        ["HTTP error surfaces as typed outcome", "PROVEN", "test_backend_http_error_surfaces_as_backend_error — 403 Gemini error raises BackendError(403)"],
+        ["Streaming error surfaces as typed outcome", "PROVEN", "test_streaming_http_error_surfaces_as_backend_error — 503 raises BackendError(503)"],
+        ["Timeout/malformed response handled", "PROVEN", "GenericBackend retry + timeout infrastructure applies uniformly"],
+        ["Provider safety/refusal surfaced", "PROVEN", "test_parse_safety_refusal + test_parse_safety_block — SAFETY_REFUSAL and SAFETY_BLOCK strings extracted"],
+        ["Credentials never in results", "PROVEN", "test_credentials_not_in_result — api_key absent from LLMChunk content"],
+        ["Credentials not in adapter output serialization", "PROVEN", "x-goog-api-key header used; no Authorization Bearer; no key in parse_response"],
+        ["Unsupported capabilities not advertised", "PROVEN", "test_gemini_does_not_claim_unsupported_caps — tools/structured_output/thinking=False"],
+        ["Honesty notes present", "PROVEN", "test_gemini_capability_has_honest_notes — 'not yet implemented' in notes"],
+        ["Not routed through OpenAI compatibility fiction", "PROVEN", "GeminiAdapter endpoint is :generateContent, not /chat/completions; auth is x-goog-api-key"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Provider/Model Capability Read Surface",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-read-surface",
+      "type": "paragraph",
+      "content": "compute_provider_capabilities() returns a list of ProviderCapability records for all 6 registered providers. No network calls, no secret exposure, no inference, no persistence mutation. The surface answers: which provider classes exist, which provider/model combinations are configured, which capabilities are verified for a model, whether a provider is direct/gateway/local/harness, and whether a configured provider is executable now. It does not select models, initiate inference, spend money, persist telemetry, mutate configuration, expose secrets, create A2A tasks, or reach into desktop/analytics surfaces. Verified by test_read_surface_performs_no_network_calls (idempotent output) and test_capability_records_contain_no_secrets (no 'sk-' prefix in any capability record field).",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Validation Gates",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-gates",
+      "type": "table",
+      "columns": ["Gate", "Result"],
+      "rows": [
+        ["uv run ruff check (9 files)", "All checks passed"],
+        ["uv run ruff format (8 files)", "All left unchanged"],
+        ["uv run pyright (5 source modules)", "0 errors, 0 warnings, 0 informations"],
+        ["pytest tests/backend/test_gemini_backend.py", "18 passed"],
+        ["pytest tests/backend/data/gemini.py (fixture import)", "Clean"],
+        ["pytest tests/providers/test_providers.py (all + 17 new)", "73 passed"],
+        ["pytest tests/protocols/a2a/test_a2a_provider_profiles_v1.py", "22 passed (no regression)"],
+        ["Runtime import verification", "All imports OK; adapter registry: openai, anthropic, gemini, reasoning"]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentionally Deferred",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "table-deferred",
+      "type": "table",
+      "columns": ["Deferred Item", "Reason"],
+      "rows": [
+        ["Gemini tool use (function calling)", "Requires Gemini-native functionCall/functionResponse mapper — significant scope. Marked not_yet_implemented in capability record."],
+        ["Gemini structured output", "Requires responseSchema / responseMimeType config — future work."],
+        ["Gemini thinking/reasoning config", "Requires thinkingConfig mapping — future work."],
+        ["Gemini Live API, ephemeral tokens", "Out of scope for inference adapter; separate integration surface."],
+        ["Gemini context caching", "Persistent cache requires different invalidation model."],
+        ["Vercel AI Gateway", "Requires ProviderClass extension and gateway-specific provenance capture."],
+        ["OpenRouter downstream provenance capture", "Requires response header parsing; noted in gateway capability notes."],
+        ["LM Studio backend", "No runtime backend registered; deferred."],
+        ["MLX-LM backend", "Enum value exists; no backend in registry; deferred."],
+        ["Local model trust/provenance verification", "Hash checking not implemented."],
+        ["Provider routing policy engine", "Selection policy exists for local inference only."],
+        ["Cost budget enforcement", "AgentStats.session_cost computed but never enforced."],
+        ["A2A runtime handoff", "No runtime consumer integration (AgentLoop, Ralph, fleet, subagents)."],
+        ["Desktop visualization / operational data plane", "Lane B domain."]
+      ],
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Out-of-Scope Risks",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-risks",
+      "type": "paragraph",
+      "content": "(1) Gemini multi-turn conversation handling: the adapter maps LLMMessage to Gemini contents array with system_instruction extraction, but the Gemini API places constraints on role alternation (user/model/user...) that may not be satisfied by arbitrary message histories. (2) Max token handling: the adapter sets maxOutputTokens on generationConfig, but Gemini's exact max_output behaviour differs from OpenAI — future use may need model-specific tuning. (3) The existing DEFAULT_PROVIDERS list includes a 'google' ProviderConfig that now uses api_style='gemini' — any user-customized config toml files that set api_style='google' will still fail with KeyError until they update to 'gemini'. Migration note in audit artifact serves as documentation.",
+      "disclosure": {"level": "standard"}
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status",
+      "disclosure": {"level": "standard", "initially_visible": true}
+    },
+    {
+      "block_id": "p-status",
+      "type": "paragraph",
+      "content": "lane_c_p1_provider_capability_gemini_closure_proven — All 31 new tests pass. Gemini configured-but-unresolvable KeyError gap closed. Canonical ProviderClass vocabulary delivered. Read-only capability inspection surface available for downstream routing policy, desktop projections, and A2A admission. No cross-lane authority violations.",
+      "disclosure": {"level": "standard"}
+    }
+  ],
+  "references": [],
+  "related_documents": [
+    "docs/json/audits/provider-boundary-adapter-contract-map.v1.json",
+    "docs/json/audits/provider-adapter-contract-design.v1.json"
+  ],
+  "provenance": {
+    "source_files": [],
+    "implementation_commit": "pending checkpoint"
+  },
+  "disclosure": {
+    "default_level": "standard",
+    "available_levels": ["summary", "standard", "detailed", "exhaustive"],
+    "render_strategy": "linear",
+    "show_table_of_contents": true
+  }
+}

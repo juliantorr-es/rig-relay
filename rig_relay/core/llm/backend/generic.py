@@ -10,6 +10,7 @@ import httpx
 
 from rig_relay.core.llm.backend.anthropic import AnthropicAdapter
 from rig_relay.core.llm.backend.base import APIAdapter, PreparedRequest
+from rig_relay.core.llm.backend.gemini import GeminiAdapter
 from rig_relay.core.llm.backend.openai_responses import OpenAIResponsesAdapter
 from rig_relay.core.llm.backend.reasoning_adapter import ReasoningAdapter
 from rig_relay.core.llm.exceptions import BackendErrorBuilder
@@ -169,6 +170,7 @@ class OpenAIAdapter(APIAdapter):
 _ADAPTERS: dict[str, APIAdapter] = {
     "openai": OpenAIAdapter(),
     "anthropic": AnthropicAdapter(),
+    "gemini": GeminiAdapter(),
     "reasoning": ReasoningAdapter(),
 }
 

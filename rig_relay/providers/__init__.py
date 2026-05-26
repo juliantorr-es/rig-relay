@@ -26,10 +26,13 @@ from rig_relay.providers.key_store import (
 from rig_relay.providers.models import (
     KeySource,
     Provider,
+    ProviderCapability,
+    ProviderClass,
     ProviderConfig,
     ProviderOnboardingResult,
     ProviderStatus,
     ProviderStatusSummary,
+    provider_class_for,
 )
 from rig_relay.providers.onboarding import (
     provider_health_check,
@@ -37,7 +40,13 @@ from rig_relay.providers.onboarding import (
     provider_onboarding_save_key,
     provider_status,
 )
-from rig_relay.providers.registry import PROVIDER_REGISTRY, ProviderInfo
+from rig_relay.providers.registry import (
+    PROVIDER_REGISTRY,
+    ProviderInfo,
+    compute_provider_capabilities,
+    get_provider_capability,
+    get_provider_class,
+)
 
 __all__ = [
     "PROVIDER_REGISTRY",
@@ -46,6 +55,8 @@ __all__ = [
     "KeySource",
     "MacKeychainProviderKeyStore",
     "Provider",
+    "ProviderCapability",
+    "ProviderClass",
     "ProviderConfig",
     "ProviderInfo",
     "ProviderKeyStore",
@@ -53,7 +64,11 @@ __all__ = [
     "ProviderStatus",
     "ProviderStatusSummary",
     "check_provider_status",
+    "compute_provider_capabilities",
     "get_key_store",
+    "get_provider_capability",
+    "get_provider_class",
+    "provider_class_for",
     "provider_health_check",
     "provider_onboarding_remove_key",
     "provider_onboarding_save_key",
