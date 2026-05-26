@@ -9,11 +9,12 @@
   ],
 
   "verified_baseline": {
-    "published_github_sha": "NOT_PUBLISHED (local HEAD fd8adc13, origin still at prior state)",
-    "local_head_sha": "fd8adc13fdb9c65d886cbb391ec49c7a516f90cd",
-    "local_head_message": "Enable websearch for all OpenCode agents",
-    "lane_a_active": true,
-    "lane_c_active": true
+    "published_github_sha": "4e18dddc92515db8dc4b47ae1ee2e07020b17c99",
+    "local_head_sha": "4e18dddc92515db8dc4b47ae1ee2e07020b17c99",
+    "commit_message": "checkpoint(lane-b4): model-visible tool outcome digestion — failed-resolution canonical outcome, artifact survival, concurrent causal binding, schema-validated annotations across 9 outcome classes",
+    "remote_verified": true,
+    "verification_method": "git show origin/main:rig_relay/core/tool_result_runtime/__init__.py",
+    "remote_contains_canonical_outcome_code": true
   },
 
   "gate_b4_0_investigation": {
@@ -56,7 +57,36 @@
   },
 
   "gate_b4_4_artifact_survival": {
-    "status": "PROVEN through existing handle_tool_response path — should_artifact_tool_result() gates artifacted output, annotation appended after bounding"
+    "status": "PROVEN — 4 substrate tests",
+    "scenarios": [
+      "Large output (200KB) preserves exactly one annotation → annotated answer_kind=degraded",
+      "Large output with embedded fake delimiters → neutralized, only 1 authoritative annotation → answer_kind=positive",
+      "Degraded outcome survives artifact bounding with correct capabilities",
+      "Outcome annotation itself is bounded (<10KB) regardless of tool output size — annotation never contains raw large payload"
+    ],
+    "substrate": "Real neutralize_reserved_delimiters + format_agent_outcome + annotate-append + schema-validate. No mock of formatting or output path."
+  },
+  "gate_b4_5_concurrent_causal_binding": {
+    "status": "PROVEN — 6 substrate tests",
+    "scenarios": [
+      "Out-of-order completions preserve per-call tool_call_id ownership",
+      "Mixed-status (positive, refused, failed) completions do not cross-wire answer_kind or mutation_disposition",
+      "Mutation-performed vs mutation-not-performed are semantically distinct",
+      "Pre-execution refused is answer_kind=refused, not execution_failure",
+      "Execution failure is answer_kind=execution_failure with non-performed mutation",
+      "Racing asyncio.gather completions produce correct per-call answer_kind binding"
+    ],
+    "substrate": "Real derive_agent_outcome + format_agent_outcome + schema validation. Async tasks through asyncio.gather. No mock of outcome derivation."
+  },
+  "gate_b4_7_publication": {
+    "status": "PROVEN — pushed to GitHub juliantorr-es/rig-relay@main",
+    "remote_sha": "4e18dddc92515db8dc4b47ae1ee2e07020b17c99",
+    "remote_verification": "git show origin/main:rig_relay/core/tool_result_runtime/__init__.py confirms canonical outcome code present",
+    "pushed_files": [
+      "rig_relay/core/tool_result_runtime/__init__.py",
+      "tests/core/test_b4_tool_outcome_digestion_and_conversation_consumption.py",
+      "docs/json/audits/core/lane_b4_model_visible_tool_outcome_digestion_conversation_consumption_failure_class_truth_closure.v1.json"
+    ]
   },
 
   "gate_b4_5_concurrent_causal_binding": {
