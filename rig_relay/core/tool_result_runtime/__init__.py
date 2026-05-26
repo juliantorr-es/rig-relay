@@ -317,14 +317,20 @@ class ToolResultRuntime:
 
         return msg
 
-    async def handle_recovery_handoff(self, handoff: Any) -> LLMMessage:
+    async def handle_recovery_handoff(
+        self, handoff: Any, *, intent: Any = None
+    ) -> LLMMessage:
         """Admit a recovery handoff and route to the governed execution boundary.
 
-        - read_only: routes through ToolRuntime.execute_one() → handle_tool_response()
-        - validation: routes through ToolRuntime.execute_one() → handle_tool_response()
-        - mutation_proposal_only: routes through ToolRuntime.execute_one()
-          with execution_mode=MUTATION_PROPOSAL (never direct execution)
+        - read_only: executes through ToolRuntime with recovered payload args
+        - validation: executes through ToolRuntime with profile and bounded paths
+        - mutation_proposal_only: routes through ToolRuntime with MUTATION_PROPOSAL
+          mode and recovered args (never direct execution)
         - refusal: typed refusal outcome with projection evidence (no execution)
+
+        When *intent* (a RecoveryIntent) is provided, the normalized_args are
+        digest-verified against handoff.payload_digest and supplied as
+        ToolRuntimeRequest.tool_args.
 
         Returns the appended LLMMessage produced by the downstream routing.
         """
@@ -351,15 +357,15 @@ class ToolResultRuntime:
         match kind:
             case "read_only":
                 return await self._execute_handoff(
-                    handoff, corr_id, execution_mode="read_only"
+                    handoff, corr_id, intent=intent, execution_mode="read_only"
                 )
             case "validation":
                 return await self._execute_handoff(
-                    handoff, corr_id, execution_mode="read_only"
+                    handoff, corr_id, intent=intent, execution_mode="read_only"
                 )
             case "mutation_proposal_only":
                 return await self._execute_handoff(
-                    handoff, corr_id, execution_mode="mutation_proposal"
+                    handoff, corr_id, intent=intent, execution_mode="mutation_proposal"
                 )
             case "refusal":
                 return self._admit_refusal_handoff(handoff, corr_id)
@@ -367,14 +373,24 @@ class ToolResultRuntime:
                 return self._admit_unknown_handoff(handoff, corr_id)
 
     async def _execute_handoff(
-        self, handoff: Any, correlation_id: str, *, execution_mode: str = "read_only"
+        self,
+        handoff: Any,
+        correlation_id: str,
+        *,
+        intent: Any = None,
+        execution_mode: str = "read_only",
     ) -> LLMMessage:
         """Route a handoff through the governed ToolRuntime.execute_one() boundary.
 
-        Constructs a ToolRuntimeRequest, executes through the real production
-        ToolRuntime, then passes the result through handle_tool_response()
-        for canonical annotation, projection, and message appending.
+        When *intent* (RecoveryIntent) is supplied, materialises the recovered
+        payload: extracts normalized_args, digest-verifies against
+        handoff.payload_digest, and populates ToolRuntimeRequest.tool_args.
+
+        For validation handoffs, propagates admitted_validation_profile and
+        bounded_paths into the tool args.
         """
+        import hashlib as _hashlib
+        import json as _json
         import uuid
 
         from rig_relay.core.tool_runtime_models import (
@@ -386,9 +402,39 @@ class ToolResultRuntime:
         call_id: str = correlation_id or f"handoff-{uuid.uuid4().hex[:12]}"
         loop = self._loop
 
+        # ── Recover and digest-verify payload first ────────────────
+        tool_args: dict[str, Any] = {}
+        if intent is not None and hasattr(intent, "normalized_args"):
+            tool_args = dict(getattr(intent, "normalized_args", {}) or {})
+            payload_digest: str = getattr(handoff, "payload_digest", "") or ""
+            if payload_digest and tool_args:
+                raw = _json.dumps(tool_args, sort_keys=True, separators=(",", ":"))
+                computed = f"sha256:{_hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+                if computed != payload_digest:
+                    return self._admit_payload_mismatch(
+                        handoff, correlation_id, payload_digest, computed
+                    )
+
+        # ── Propagate validation constraints ───────────────────────
+        if tool_name == "validate":
+            profile: str | None = getattr(handoff, "admitted_validation_profile", None)
+            if profile:
+                tool_args.setdefault("profile", profile)
+            bounded: list[str] = list(getattr(handoff, "bounded_paths", []) or [])
+            if bounded:
+                tool_args.setdefault("paths", bounded)
+
         tool_runtime = getattr(loop, "_tool_runtime", None)
         if tool_runtime is None:
             return self._admit_tool_runtime_unavailable(handoff, correlation_id)
+
+        if tool_name == "validate":
+            profile: str | None = getattr(handoff, "admitted_validation_profile", None)
+            if profile:
+                tool_args.setdefault("profile", profile)
+            bounded: list[str] = list(getattr(handoff, "bounded_paths", []) or [])
+            if bounded:
+                tool_args.setdefault("paths", bounded)
 
         mode = (
             ToolRuntimeExecutionMode.MUTATION_PROPOSAL
@@ -398,6 +444,7 @@ class ToolResultRuntime:
 
         request = ToolRuntimeRequest(
             tool_name=tool_name,
+            tool_args=tool_args,
             tool_call_id=call_id,
             correlation_id=correlation_id,
             session_id=getattr(loop, "session_id", ""),
@@ -422,6 +469,27 @@ class ToolResultRuntime:
         )
         msg = loop.messages[-1]
         return msg  # type: ignore[return-value]
+
+    def _admit_payload_mismatch(
+        self, handoff: Any, correlation_id: str, expected: str, computed: str
+    ) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="refused",
+            decision="refused",
+            correlation_id=correlation_id,
+            refusal_code="payload_digest_mismatch",
+            error_kind="recovery_refusal",
+        )
+        prefix = (
+            f"<tool_error>recovery_refused: payload_digest_mismatch "
+            f"(expected {expected[:16]}... != computed {computed[:16]}...)"
+            f"</tool_error>"
+        )
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=prefix
+        )
 
     def _admit_tool_runtime_unavailable(
         self, handoff: Any, correlation_id: str
