@@ -127,7 +127,9 @@ class BundleBuilder:
         manifest.count_retained_projected = len(files_content)
         manifest.total_items = len(files_content)
 
-        # Populate selectors from pseudonymized crosswalk identities
+        # Populate selectors from pseudonymized crosswalk identities.
+        # SOURCE_IDENTIFIER (non-STR_) → PSEUDONYMIZED_DISCLOSABLE selectors.
+        # STRING_LITERAL (STR_) → HASH_EVIDENCE_ONLY, NO disclosable selectors.
         pseudonymized = sorted(set(crosswalk.mappings.values()))
         source_identifiers = [p for p in pseudonymized if not p.startswith("STR_")]
         string_literals = [p for p in pseudonymized if p.startswith("STR_")]
@@ -140,15 +142,9 @@ class BundleBuilder:
             )
             manifest.selectors = selectors
 
-        if string_literals:
-            lit_selectors = build_selector_entries(
-                pseudonymized_names=string_literals,
-                content_kind=ContentKind.SOURCE_STRING_LITERAL.value,
-                disclosure_class="commit_body",
-            )
-            manifest.selectors.extend(lit_selectors)
+        # NO selectors for string literals — they are HASH_EVIDENCE_ONLY
 
-        # Truthful accounting: counts must reflect observed items
+        # Truthful accounting
         manifest.count_pseudonymized_disclosable = len(source_identifiers)
         manifest.count_hash_evidence_only = len(string_literals)
         manifest.total_items = (

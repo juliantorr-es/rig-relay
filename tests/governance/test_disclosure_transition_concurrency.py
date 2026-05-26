@@ -10,35 +10,30 @@ from __future__ import annotations
 import multiprocessing
 import os
 import shutil
-import time
-
-import pytest
 
 from rig_relay.governance.disclosure_authorization import (
     DisclosureClass,
     DisclosureOutcome,
-    _store_root as _gov_store_root,
     _load_receipt,
+    _store_root as _gov_store_root,
     consume_disclosure_authorization,
     issue_disclosure_authorization,
 )
 from rig_relay.governance.disclosure_transition import (
     TransitionStatus,
     _acquire_transition_lock,
-    _append_transition_event,
-    _read_transition_events,
+    _find_transition_chain,
     _release_transition_lock,
-    _transition_ledger_path,
     _transition_store_root,
     prepare_transition,
 )
+from rig_relay.review_projection.bundle_builder import BundleBuilder
 from rig_relay.review_projection.models import (
     BundleManifest,
     DisclosureReceipt,
     LocalCrosswalk,
     ProjectionMode,
 )
-from rig_relay.review_projection.bundle_builder import BundleBuilder
 from rig_relay.review_projection.protected_content import load_manifest_json
 
 EVIDENCE_DIGEST = (
@@ -168,7 +163,7 @@ def test_prepare_transition_persists_event(tmp_path):
     assert t.status == TransitionStatus.PREPARED
     assert t.transition_digest
 
-    events = _read_transition_events(t.transition_id)
+    events = _find_transition_chain(t.transition_id)
     assert len(events) == 1
     assert events[0]["status"] == "prepared"
 
@@ -242,7 +237,7 @@ def test_persists_transition_events(tmp_path):
     finally:
         _release_transition_lock()
 
-    events = _read_transition_events(t.transition_id)
+    events = _find_transition_chain(t.transition_id)
     assert len(events) >= 1
     assert events[0]["status"] == "prepared"
 
@@ -297,5 +292,5 @@ def test_transition_recovery_after_prepared(tmp_path):
     finally:
         _release_transition_lock()
 
-    events = _read_transition_events(t.transition_id)
+    events = _find_transition_chain(t.transition_id)
     assert len(events) >= 1

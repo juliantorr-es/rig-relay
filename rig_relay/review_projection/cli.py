@@ -246,11 +246,11 @@ def _run_disclose_authorization(
     from rig_relay.review_projection.protected_content import (
         is_disclosure_class_prohibited,
         load_manifest_json,
+        mark_selector_disclosed,
         verify_manifest_binding,
         verify_manifest_integrity,
         verify_policy_version,
         verify_selector_disclosable,
-        mark_selector_disclosed,
         write_manifest_json,
     )
 
@@ -389,9 +389,7 @@ def _run_disclose_authorization(
                     f"Transition: {existing.transition_id}"
                 )
                 return
-            # Resume from existing transition
             transition = existing
-            _run_disclose_authorization
         else:
             # Prepare new transition
             transition = prepare_transition(
@@ -481,7 +479,7 @@ def _run_disclose_authorization(
         transition = advance_transition(
             transition,
             TransitionStatus.PROJECTION_RECEIPT_PERSISTED,
-            downstream_receipt_path=str(receipt_path),
+            downstream_receipt_digest=str(receipt_path),
         )
 
         # 7. Append content-light disclosure event to governance ledger
@@ -519,6 +517,13 @@ def _run_disclose_authorization(
             event["manifest_digest_after"] = manifest.manifest_digest
         if manifest is not None:
             event["manifest_digest"] = manifest.manifest_digest
+
+        # Record manifest mutation as a transition state
+        transition = advance_transition(
+            transition,
+            TransitionStatus.MANIFEST_APPLIED,
+            manifest_digest_after=event.get("manifest_digest_after"),
+        )
 
         downstream_event_id = event["event_id"]
         with open(disclosure_ledger_path, "a") as lf:
