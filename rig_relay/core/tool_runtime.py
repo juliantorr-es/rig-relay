@@ -1205,6 +1205,11 @@ class ToolRuntime:
                 ]
             recorder.end_span(trace_span, status=end_status, attributes=end_attrs)
 
+        # ── 10. Producer-to-digestion wiring (Lane B2) ────────────────
+        inv_outcome = self._derive_investigation_outcome(result_model)
+        gs = self._extract_git_summary(tn, result_model)
+
+        # ── 11. Return completed/degraded result ───────────────────
         return ToolRuntimeResult(
             status=status,
             tool_name=tn,
@@ -1235,7 +1240,72 @@ class ToolRuntime:
             ),
             supervisor_result_envelope_sha256=supervisor_result_sha256,
             supervisor_result_classification=supervisor_result_classification,
+            investigation_outcome=inv_outcome,
+            git_summary=gs,
         )
+
+    @staticmethod
+    def _derive_investigation_outcome(result_model: Any) -> str | None:
+        match_count = getattr(result_model, "match_count", None)
+        if isinstance(match_count, int) and match_count == 0:
+            return "no_match"
+        query_outcome = getattr(result_model, "query_outcome", None)
+        if isinstance(query_outcome, str) and query_outcome == "no_match":
+            return "no_match"
+        matches_returned = getattr(result_model, "matches_returned", None)
+        if isinstance(matches_returned, int) and matches_returned == 0:
+            qo = getattr(result_model, "query_outcome", "")
+            if qo == "no_match":
+                return "no_match"
+        verdict = getattr(result_model, "verdict", None)
+        if verdict == "pass":
+            return "no_match"
+        was_truncated = getattr(result_model, "was_truncated", None)
+        truncation_triggered = getattr(result_model, "truncation_triggered", None)
+        truncated_stdout = getattr(result_model, "truncated_stdout", None)
+        truncated_stderr = getattr(result_model, "truncated_stderr", None)
+        if (
+            was_truncated
+            or truncation_triggered
+            or truncated_stdout
+            or truncated_stderr
+        ):
+            return "incomplete"
+        context_stale = getattr(result_model, "context_stale", None)
+        context_incomplete = getattr(result_model, "context_incomplete", None)
+        if context_stale or context_incomplete:
+            return "stale_context"
+        return None
+
+    @staticmethod
+    def _extract_git_summary(
+        tool_name: str, result_model: Any
+    ) -> dict[str, Any] | None:
+        branch = getattr(result_model, "branch", None)
+        head_sha = getattr(result_model, "head_sha", None)
+        if branch is None and head_sha is None:
+            return None
+        summary: dict[str, Any] = {"tool": tool_name}
+        if branch is not None:
+            summary["branch"] = branch
+        if head_sha is not None:
+            summary["head"] = head_sha
+        repo_state = getattr(result_model, "repository_state", None)
+        if repo_state is not None:
+            summary["repository_state"] = repo_state
+        dirty_count = getattr(result_model, "dirty_file_count", None)
+        if isinstance(dirty_count, int):
+            summary["dirty_file_count"] = dirty_count
+        staged = getattr(result_model, "staged_count", None)
+        if isinstance(staged, int):
+            summary["staged_count"] = staged
+        unstaged = getattr(result_model, "unstaged_count", None)
+        if isinstance(unstaged, int):
+            summary["unstaged_count"] = unstaged
+        upstream = getattr(result_model, "upstream", None)
+        if upstream is not None:
+            summary["upstream"] = upstream
+        return summary
 
     @staticmethod
     async def _default_invoke_tool(

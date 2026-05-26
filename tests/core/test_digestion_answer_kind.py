@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 import json
 from typing import Any
 
+import pytest
+
 from rig_relay.core.telemetry.tool_contract import ToolMutationClass
+from rig_relay.core.tool_runtime import ToolRuntime
 from rig_relay.core.tool_runtime_models import (
     RefusalCode,
+    ToolRuntimeExecutionMode,
     ToolRuntimeRefusal,
+    ToolRuntimeRequest,
     ToolRuntimeResult,
     ToolRuntimeStatus,
 )
@@ -16,6 +22,8 @@ from rig_relay.core.tools._agent_outcome import (
     format_agent_outcome,
     neutralize_reserved_delimiters,
 )
+from rig_relay.core.tools.builtins.git_workspace_state import GitWorkspaceStateResult
+from rig_relay.core.tools.builtins.grep import GrepResult
 
 
 def _make_result(
@@ -358,3 +366,200 @@ def test_every_tool_runtime_status_maps_to_valid_answer_kind():
             "degraded",
             "negative_no_match",
         }, f"status={status} produced unknown answer_kind={outcome.answer_kind}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Producer-to-digestion causal tests (Lane B2)
+#  Prove that real tool result models in the ToolRuntime.execute_one()
+#  path populate investigation_outcome and git_summary before digestion.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def _invoke_grep_no_match(args_dict: dict[str, Any]) -> AsyncGenerator[Any, None]:
+    yield GrepResult(matches="", match_count=0, was_truncated=False)
+
+
+async def _invoke_grep_with_matches(
+    args_dict: dict[str, Any],
+) -> AsyncGenerator[Any, None]:
+    yield GrepResult(matches="file.py:10:def foo()", match_count=1, was_truncated=False)
+
+
+async def _invoke_grep_truncated(
+    args_dict: dict[str, Any],
+) -> AsyncGenerator[Any, None]:
+    yield GrepResult(matches="", match_count=5, was_truncated=True)
+
+
+async def _invoke_git_workspace_state(
+    args_dict: dict[str, Any],
+) -> AsyncGenerator[Any, None]:
+    yield GitWorkspaceStateResult(
+        repository_state="dirty",
+        branch="main",
+        head_sha="abc123def456",
+        staged_count=2,
+        unstaged_count=1,
+        dirty_file_count=3,
+        untracked_count=0,
+        conflicted_count=0,
+        local_git_checkpoint_precheck="git_preconditions_satisfied",
+    )
+
+
+async def _permission_always(
+    tool_name: str, args_dict: dict[str, Any], call_id: str
+) -> tuple[bool, str]:
+    return True, ""
+
+
+async def _approval_always(
+    tool_name: str, args_dict: dict[str, Any], call_id: str
+) -> tuple[bool, str]:
+    return True, ""
+
+
+def _runtime(**overrides: Any) -> ToolRuntime:
+    kwargs: dict[str, Any] = dict(
+        invoke_tool=_invoke_grep_no_match,
+        cache_check=lambda t, a: (False, None),
+        cache_store=lambda t, a, r: None,
+        permission_decision=_permission_always,
+        approval_request=_approval_always,
+        patch_gate_check=lambda tc, ti: None,
+        expand_args=lambda a: a,
+        receipt_build=lambda tn, rm: None,
+        receipt_capture=lambda s, tn, r: None,
+        context_observe=lambda *a, **kw: None,
+        stats_delta=lambda k, d: None,
+    )
+    kwargs.update(overrides)
+    return ToolRuntime(**kwargs)
+
+
+def _grep_request() -> ToolRuntimeRequest:
+    return ToolRuntimeRequest(
+        tool_name="grep",
+        tool_args={"pattern": "no_such_pattern"},
+        tool_call_id="call_grep",
+        execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+    )
+
+
+def _git_ws_request() -> ToolRuntimeRequest:
+    return ToolRuntimeRequest(
+        tool_name="git_workspace_state",
+        tool_args={},
+        tool_call_id="call_git_ws",
+        execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+    )
+
+
+@pytest.mark.asyncio
+async def test_grep_no_match_sets_investigation_outcome():
+    runtime = _runtime(invoke_tool=_invoke_grep_no_match)
+    result = await runtime.execute_one(_grep_request())
+    assert result.investigation_outcome == "no_match"
+    assert result.status == ToolRuntimeStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_grep_no_match_reaches_negative_no_match_through_digestion():
+    runtime = _runtime(invoke_tool=_invoke_grep_no_match)
+    result = await runtime.execute_one(_grep_request())
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.answer_kind == "negative_no_match"
+    assert outcome.status == "completed"
+    assert outcome.investigation_outcome == "no_match"
+
+
+@pytest.mark.asyncio
+async def test_grep_with_matches_does_not_set_investigation_outcome():
+    runtime = _runtime(invoke_tool=_invoke_grep_with_matches)
+    result = await runtime.execute_one(_grep_request())
+    assert result.investigation_outcome is None
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.answer_kind == "positive"
+
+
+@pytest.mark.asyncio
+async def test_grep_truncated_sets_incomplete_investigation_outcome():
+    runtime = _runtime(invoke_tool=_invoke_grep_truncated)
+    result = await runtime.execute_one(_grep_request())
+    assert result.investigation_outcome == "incomplete"
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.investigation_outcome == "incomplete"
+    # answer_kind is "positive" for incomplete (truncation is a degradation, not a failure)
+    assert outcome.answer_kind not in ("execution_failure", "refused")
+
+
+@pytest.mark.asyncio
+async def test_git_workspace_state_produces_git_summary():
+    runtime = _runtime(invoke_tool=_invoke_git_workspace_state)
+    result = await runtime.execute_one(_git_ws_request())
+    assert result.git_summary is not None
+    assert result.git_summary["tool"] == "git_workspace_state"
+    assert result.git_summary["branch"] == "main"
+    assert result.git_summary["head"] == "abc123def456"
+    assert result.git_summary["dirty_file_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_git_summary_reaches_outcome_through_digestion():
+    runtime = _runtime(invoke_tool=_invoke_git_workspace_state)
+    result = await runtime.execute_one(_git_ws_request())
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.git_summary_hash is not None
+    assert outcome.git_summary_hash.startswith("sha256:")
+    assert outcome.answer_kind == "positive"
+
+
+@pytest.mark.asyncio
+async def test_no_match_result_does_not_look_like_failure_through_digestion():
+    runtime = _runtime(invoke_tool=_invoke_grep_no_match)
+    result = await runtime.execute_one(_grep_request())
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.answer_kind == "negative_no_match"
+    assert outcome.status == "completed"
+    assert outcome.answer_kind not in ("execution_failure", "refused")
+    assert outcome.error_kind is None
+    assert outcome.status != "failed"
+
+
+@pytest.mark.asyncio
+async def test_no_match_survives_formatting():
+    runtime = _runtime(invoke_tool=_invoke_grep_no_match)
+    result = await runtime.execute_one(_grep_request())
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    formatted = format_agent_outcome(outcome)
+    assert "negative_no_match" in formatted
+    assert "completed" in formatted
+    assert "failed" not in formatted
+
+
+@pytest.mark.asyncio
+async def test_git_summary_hash_is_deterministic_through_runtime():
+    runtime = _runtime(invoke_tool=_invoke_git_workspace_state)
+    r1 = await runtime.execute_one(_git_ws_request())
+    r2 = await runtime.execute_one(_git_ws_request())
+    o1 = derive_agent_outcome(r1, ToolMutationClass.READ_ONLY)
+    o2 = derive_agent_outcome(r2, ToolMutationClass.READ_ONLY)
+    assert o1.git_summary_hash == o2.git_summary_hash
+
+
+@pytest.mark.asyncio
+async def test_degraded_truncated_does_not_look_like_failure():
+    runtime = _runtime(invoke_tool=_invoke_grep_truncated)
+    result = await runtime.execute_one(_grep_request())
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.investigation_outcome == "incomplete"
+    assert outcome.answer_kind not in ("execution_failure", "refused")
+
+
+@pytest.mark.asyncio
+async def test_investigation_outcome_none_by_default():
+    runtime = _runtime(invoke_tool=_invoke_grep_with_matches)
+    result = await runtime.execute_one(_grep_request())
+    assert result.investigation_outcome is None
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.investigation_outcome is None
