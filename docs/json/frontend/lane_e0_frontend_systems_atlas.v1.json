@@ -1,0 +1,121 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "page_id": "lane_e0_frontend_systems_atlas",
+  "title": "Lane E0: Frontend Systems Atlas and Dual Static-Site Surface Architecture",
+  "route": "/frontend/systems-atlas",
+  "layout": "default",
+  "source_artifact_paths": [
+    "rig_relay/frontend/atlas.py",
+    "rig_relay/frontend/surfaces.py",
+    "rig_relay/frontend/contract.py",
+    "docs/schemas/rig.relay.frontend_design_principle.v1.schema.json",
+    "docs/schemas/rig.relay.frontend_surface_specification.v1.schema.json",
+    "docs/schemas/rig.relay.publication_projection.v1.schema.json"
+  ],
+  "public_safety_status": "public_safe",
+  "generated_at": "2026-05-26T13:52:00Z",
+  "sections": [
+    {
+      "kind": "hero_status",
+      "title": "Lane E0 — Frontend Systems Atlas",
+      "status_label": "Published",
+      "status_class": "ok",
+      "summary": "Establishes the first governed frontend architecture foundation for Rig Relay: a transcript-grounded Frontend Systems Atlas, a three-surface architecture model (Gridline Interface, Project Page, Portfolio Site), and a typed surface specification contract for future compiler and desktop projection consumers."
+    },
+    {
+      "kind": "card_grid",
+      "title": "Implemented Artifacts",
+      "cards": [
+        {
+          "title": "Frontend Systems Atlas (atlas.py)",
+          "body_html": "<p>Transcript-grounded design principle ingestion model. Accepts Pixelgrid UI transcripts (or any design-research corpus) and extracts structured, traceable frontend design principles with provenance, visual/interaction grammar, and explicit applicability to all three Rig Relay surfaces. <strong>No principle is promoted to canonical product truth until implemented and proven.</strong></p><p>Key models: AtlasPrinciple, AtlasDigestResult, VisualGrammarImplication, InteractionGrammarImplication, SurfaceApplicability.</p><p><a href='https://github.com/juliantorr-es/rig-relay/blob/main/rig_relay/frontend/atlas.py'>Source</a></p>",
+          "status": "ok",
+          "source_ref": "rig_relay/frontend/atlas.py"
+        },
+        {
+          "title": "Three-Surface Architecture Model (surfaces.py)",
+          "body_html": "<p>Typed architecture model defining three distinct application surfaces: <strong>Gridline Interface</strong> (native desktop, live, internal-only), <strong>Per-Repository Project Page</strong> (static, public-safe, single-project evidence portal), and <strong>Developer Repository Portfolio Site</strong> (static, public-safe, cross-project case study site).</p><p>Key models: SurfaceSpecification, ThreeSurfaceArchitecture, FrontendSurfaceKind, RequiredSection. Includes shared vs distinct element classification.</p><p><a href='https://github.com/juliantorr-es/rig-relay/blob/main/rig_relay/frontend/surfaces.py'>Source</a></p>",
+          "status": "ok",
+          "source_ref": "rig_relay/frontend/surfaces.py"
+        },
+        {
+          "title": "Surface Specification Contract (contract.py)",
+          "body_html": "<p>Compiler-facing typed contract making the three-surface distinction machine-legible. Defines distinct projection roots, reader goals, publication safety rules, and content-light enforcement. Provides sample project-page and portfolio-site projections with deterministic digests. <strong>Not a mock UI or design document — a typed boundary for future implementation.</strong></p><p>Key models: SurfaceSpecificationContract, ProjectPagePublicationProjection, PortfolioSitePublicationProjection, PublicationSurfaceKind.</p><p><a href='https://github.com/juliantorr-es/rig-relay/blob/main/rig_relay/frontend/contract.py'>Source</a></p>",
+          "status": "ok",
+          "source_ref": "rig_relay/frontend/contract.py"
+        },
+        {
+          "title": "Three JSON Schemas",
+          "body_html": "<p><ul><li><code>rig.relay.frontend_design_principle.v1</code> — Schema for transcript-derived frontend design principles with source provenance</li><li><code>rig.relay.frontend_surface_specification.v1</code> — Schema for the compiler-facing surface specification contract</li><li><code>rig.relay.publication_projection.v1</code> — Schema for dual publication projection with conditional required sections per surface</li></ul></p>",
+          "status": "ok",
+          "source_ref": "docs/schemas/"
+        }
+      ]
+    },
+    {
+      "kind": "callout",
+      "heading": "Three Surface Distinction",
+      "body_html": "<p>The architecture explicitly prevents collapsing project-page and portfolio-site into one generic site generator. Project page answers 'what is true about this system?' Portfolio site answers 'what does building this system demonstrate about the developer?' They share design tokens, rendering primitives, and evidence cards but have distinct reader goals, navigation, projection inputs, and publication policies.</p>",
+      "callout_class": "info"
+    },
+    {
+      "kind": "definition_list",
+      "heading": "Shared vs Distinct Elements",
+      "items": [
+        {"term": "Shared (all three surfaces)", "definition": "design tokens, capability badges, accessibility rules"},
+        {"term": "Shared (two static surfaces)", "definition": "typography rhythm scale, content-light evidence cards, timeline primitives, static rendering primitives, evidence-status vocabulary"},
+        {"term": "Distinct per surface", "definition": "reader goals, projection source roots, navigation and information architecture, disclosure defaults, privacy and publication policy, static vs live rendering, project branding vs developer identity, canonical evidence exposure rules"}
+      ]
+    },
+    {
+      "kind": "definition_list",
+      "heading": "Publication Safety Rules",
+      "items": [
+        {"term": "No raw secrets or tokens", "definition": "All projections are content-light — SHA256 hashes only for content-derived references"},
+        {"term": "No private repository contents", "definition": "Public static surfaces consume deliberately publishable projections, never live evidence"},
+        {"term": "All claims traceable", "definition": "Every public status claim traces to published evidence or is marked as narrative/planned"},
+        {"term": "Distinct projection roots", "definition": "Per-project and portfolio surfaces compile from different root projection contracts"},
+        {"term": "Desktop live ≠ public static", "definition": "Gridline consumes live internal projections; public surfaces consume deliberately publishable projections"}
+      ]
+    },
+    {
+      "kind": "table",
+      "caption": "Transcript Corpus Status (as of E0 publication)",
+      "headers": ["Metric", "Value"],
+      "rows": [
+        ["Total videos targeted", "184"],
+        ["Transcripts successfully fetched", "44 (24%)"],
+        ["Remaining / blocked", "140 (76%)"],
+        ["Block reason", "YouTube IP ban (CAPTCHA-level)"],
+        ["Transcript corpus location", ".build/pixelgridui-transcripts/"],
+        ["Transcripts processed in E0 pass", "0 — atlas pipeline modeled, corpus ready for digestion"],
+        ["Pixelgrid-derived principles evidenced", "None. Fabrication is forbidden. Truthful status."]
+      ]
+    },
+    {
+      "kind": "callout",
+      "heading": "Transcript Ingestion Readiness",
+      "body_html": "<p>The atlas digestion pipeline is fully implemented (<code>AtlasDigestResult</code>, <code>AtlasPrinciple</code>, <code>compute_atlas_digest_id</code>, <code>principle_is_traceable</code>) and schema-backed. As soon as transcript digestion begins, each extracted principle carries source identity, transcript SHA256, visual/interaction grammar implications, and explicit surface applicability. <strong>However, no actual Pixelgrid UI transcripts have been processed into design principles in this E0 pass.</strong> The corpus of 44 transcripts is available at <code>.build/pixelgridui-transcripts/</code> and is structurally ready for ingestion in a follow-on lane.</p>",
+      "callout_class": "warn"
+    },
+    {
+      "kind": "definition_list",
+      "heading": "Lane Ownership Boundaries",
+      "items": [
+        {"term": "Lane E owns", "definition": "rig_relay/frontend/ (atlas, surfaces, contract), docs/schemas/rig.relay.frontend_*.v1.schema.json, docs/schemas/rig.relay.publication_projection.v1.schema.json, tests/frontend/, this architecture document"},
+        {"term": "Lane E does NOT own", "definition": "Desktop runtime wiring (desktop/), site renderer implementation (site_renderer/, docs_renderer/), AgentLoop, telemetry sinks, provider backends, recovery authority (recovery/), disclosure authority (governance/), coordination infrastructure (coordination/), any other lane's domain files"},
+        {"term": "Other lanes not modified", "definition": "No files from Lane A (disclosure), B (recovery), C (provider), D (capability admission) were modified. Lane E inspected released read-side contracts as future UI inputs only."}
+      ]
+    },
+    {
+      "kind": "definition_list",
+      "heading": "Deferred Seams",
+      "items": [
+        {"term": "Transcript digestion execution", "definition": "Pipeline modeled; actual digestion of 44 transcripts deferred to follow-on lane. 140 more transcripts blocked by YouTube IP ban."},
+        {"term": "Static compiler implementation", "definition": "Contract defined; compiler implementation that consumes SurfaceSpecificationContract and PublicationProjection deferred."},
+        {"term": "Desktop Gridline wiring", "definition": "Gridline specification defined; wiring frontend/surfaces into desktop/projection.py deferred until released boundaries exist."},
+        {"term": "GitHub Pages renderer expansion", "definition": "Dual-surface model ready; existing site_renderer/docs_renderer expansion deferred."}
+      ]
+    }
+  ]
+}

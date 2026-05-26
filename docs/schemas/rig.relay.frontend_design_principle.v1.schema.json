@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.frontend_design_principle.v1.schema.json",
+  "title": "Rig Relay Frontend Design Principle v1",
+  "description": "Transcript-grounded frontend design principle extracted by the Frontend Systems Atlas. Each principle carries source provenance, visual/interaction grammar implications, and explicit applicability to Rig Relay's three frontend surfaces.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "principle_id",
+    "source",
+    "principle_kind",
+    "principle_statement",
+    "surface_applicability",
+    "principle_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.frontend_design_principle.v1"
+    },
+    "principle_id": {
+      "type": "string",
+      "description": "Unique identifier for this principle within the Atlas"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_kind", "channel_or_author", "video_id", "transcript_sha256"],
+      "properties": {
+        "source_kind": {
+          "type": "string",
+          "enum": ["youtube_transcript", "design_doc", "reference_implementation", "research_paper", "manual_audit", "user_feedback"]
+        },
+        "channel_or_author": {
+          "type": "string",
+          "default": "Pixelgrid UI"
+        },
+        "video_id": {
+          "type": "string"
+        },
+        "video_title": {
+          "type": ["string", "null"]
+        },
+        "transcript_file": {
+          "type": "string"
+        },
+        "transcript_sha256": {
+          "type": "string"
+        },
+        "retrieval_date": {
+          "type": "string"
+        }
+      }
+    },
+    "principle_kind": {
+      "type": "string",
+      "enum": [
+        "visual_grammar",
+        "interaction_grammar",
+        "component_primitive",
+        "token_system",
+        "layout_strategy",
+        "typography_rhythm",
+        "motion_pattern",
+        "accessibility_rule",
+        "information_architecture",
+        "content_presentation",
+        "native_surface"
+      ]
+    },
+    "principle_statement": {
+      "type": "string",
+      "description": "The reusable frontend principle being taught"
+    },
+    "visual_grammar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spacing": {"type": "array", "items": {"type": "string"}},
+        "typography": {"type": "array", "items": {"type": "string"}},
+        "hierarchy": {"type": "array", "items": {"type": "string"}},
+        "grid": {"type": "array", "items": {"type": "string"}},
+        "density": {"type": "array", "items": {"type": "string"}},
+        "surface_layering": {"type": "array", "items": {"type": "string"}},
+        "iconography": {"type": "array", "items": {"type": "string"}},
+        "color_semantics": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "interaction_grammar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "progressive_disclosure": {"type": "array", "items": {"type": "string"}},
+        "selection": {"type": "array", "items": {"type": "string"}},
+        "filters": {"type": "array", "items": {"type": "string"}},
+        "navigation": {"type": "array", "items": {"type": "string"}},
+        "contextual_actions": {"type": "array", "items": {"type": "string"}},
+        "loading_states": {"type": "array", "items": {"type": "string"}},
+        "error_states": {"type": "array", "items": {"type": "string"}},
+        "refusal_states": {"type": "array", "items": {"type": "string"}},
+        "motion_interaction": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "component_implications": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "token_implications": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "projection_implications": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "schema_implications": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "surface_applicability": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "applicable", "implementation_class"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": ["gridline", "project_page", "portfolio_site"]
+          },
+          "applicable": {
+            "type": "boolean"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "tension_notes": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "implementation_class": {
+            "type": "string",
+            "enum": ["now", "later", "reference"]
+          }
+        }
+      }
+    },
+    "tension_with_rig_relay_requirements": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Any tension with Rig Relay requirements such as evidence authority, content-light rendering, accessibility, static compilation, or native desktop behavior"
+    },
+    "extracted_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "principle_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest of the principle's canonical fields"
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.frontend_surface_specification.v1.schema.json",
+  "title": "Rig Relay Frontend Surface Specification Contract v1",
+  "description": "Compiler-facing contract that makes the three-surface distinction (Gridline, Project Page, Portfolio Site) machine-legible. Defines required sections, read goals, projection inputs, privacy rules, and publication policies per surface. Not a mock UI or design document — a typed, deterministic, content-light specification for future compiler and desktop projection consumers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_id",
+    "surfaces",
+    "distinct_projection_roots",
+    "distinct_reader_goals",
+    "publication_safety_rules",
+    "content_light_rules",
+    "deterministic_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.frontend_surface_specification_contract.v1"
+    },
+    "contract_id": {
+      "type": "string",
+      "description": "Deterministic contract identifier derived from surface kinds and privacy classes"
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gridline", "project_page", "portfolio_site"],
+      "properties": {
+        "gridline": {
+          "$ref": "#/definitions/surface_specification"
+        },
+        "project_page": {
+          "$ref": "#/definitions/surface_specification"
+        },
+        "portfolio_site": {
+          "$ref": "#/definitions/surface_specification"
+        }
+      }
+    },
+    "distinct_projection_roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gridline", "project_page", "portfolio_site"],
+      "properties": {
+        "gridline": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Live internal projection keys the desktop consumes"
+        },
+        "project_page": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Publicly publishable projection keys for a single project's evidence portal"
+        },
+        "portfolio_site": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Publicly publishable projection keys for a developer's cross-project portfolio"
+        }
+      }
+    },
+    "distinct_reader_goals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gridline", "project_page", "portfolio_site"],
+      "properties": {
+        "gridline": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "project_page": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "portfolio_site": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "shared_rendering_primitives": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Primitives shared across surfaces: design tokens, evidence cards, timelines, badges"
+    },
+    "publication_safety_rules": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Rules enforced on all public-facing static publication output"
+    },
+    "content_light_rules": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Content-light enforcement rules for all projections"
+    },
+    "deterministic_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest of the contract for stable compilation identity"
+    },
+    "generated_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+  "definitions": {
+    "surface_specification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface_kind",
+        "reader_goals",
+        "privacy_class",
+        "static_or_live",
+        "publication_safe",
+        "can_expose_canonical_evidence"
+      ],
+      "properties": {
+        "surface_kind": {
+          "type": "string",
+          "enum": ["gridline", "project_page", "portfolio_site"]
+        },
+        "reader_goals": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "required_sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["section_id", "title", "purpose", "required"],
+            "properties": {
+              "section_id": {"type": "string"},
+              "title": {"type": "string"},
+              "purpose": {"type": "string"},
+              "required": {"type": "boolean"},
+              "projection_input_key": {"type": "string"}
+            }
+          }
+        },
+        "privacy_class": {
+          "type": "string",
+          "enum": ["public_safe", "content_light", "internal_only"]
+        },
+        "static_or_live": {
+          "type": "string",
+          "enum": ["live", "static"]
+        },
+        "publication_safe": {
+          "type": "boolean"
+        },
+        "can_expose_canonical_evidence": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "projection_source_roots": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.publication_projection.v1.schema.json",
+  "title": "Rig Relay Publication Projection v1",
+  "description": "Content-light dual publication projection contract. Distinguishes project-page output (single repository evidence portal) from portfolio-site output (developer-level cross-project case study site). Both are public-safe, static, and consume deliberately publishable projections — never raw evidence, secrets, or internal-only artifacts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publication_surface",
+    "projection_id",
+    "content_light_guarantee",
+    "privacy_class",
+    "projection_digest"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "publication_surface": {"const": "project_page"}
+        }
+      },
+      "then": {
+        "required": ["project_identity", "status_overview", "accomplishments", "released_boundaries", "mission_timeline"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "publication_surface": {"const": "portfolio_site"}
+        }
+      },
+      "then": {
+        "required": ["developer_identity", "project_catalogue", "case_studies"]
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_projection.v1"
+    },
+    "publication_surface": {
+      "type": "string",
+      "enum": ["project_page", "portfolio_site"],
+      "description": "Which publication surface this projection targets — determines required sections"
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Unique identifier for this projection instance"
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Projection must guarantee content-light compliance — no raw evidence, secrets, or internal-only artifacts"
+    },
+    "privacy_class": {
+      "type": "string",
+      "const": "public_safe",
+      "description": "All publication projections must be public_safe"
+    },
+    "projection_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest for stable compilation identity"
+    },
+    "generated_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "project_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_name"],
+      "properties": {
+        "project_name": {"type": "string"},
+        "tagline": {"type": "string"},
+        "current_milestone": {"type": "string"},
+        "product_identity_blurb": {"type": "string"}
+      },
+      "description": "[project_page only] Project purpose and identity"
+    },
+    "status_overview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implemented_count", "planned_count", "overall_status"],
+      "properties": {
+        "implemented_count": {"type": "integer", "minimum": 0},
+        "planned_count": {"type": "integer", "minimum": 0},
+        "overall_status": {"type": "string"},
+        "evidence_backed": {"type": "boolean"}
+      },
+      "description": "[project_page only] Evidence-backed implementation status"
+    },
+    "accomplishments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "receipt_ref": {"type": "string"}
+            }
+          }
+        },
+        "total_receipts_referenced": {"type": "integer", "minimum": 0}
+      },
+      "description": "[project_page only] Evidence-backed accomplishments"
+    },
+    "released_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "boundary_name": {"type": "string"},
+              "release_status": {"type": "string"},
+              "consuming_surfaces": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "description": "[project_page only] Published architectural boundaries and their consuming surfaces"
+    },
+    "mission_timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mission_id": {"type": "string"},
+              "title": {"type": "string"},
+              "status": {"type": "string"},
+              "completed_at": {"type": ["string", "null"]}
+            }
+          }
+        }
+      },
+      "description": "[project_page only] Mission/lane timeline with completion status"
+    },
+    "architecture_overview": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[project_page only] System architecture overview"
+    },
+    "capability_views": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "[project_page only] Provider, runtime, and governance capability status"
+    },
+    "audit_proofs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "[project_page only] Browseable audit artifact references"
+    },
+    "changelog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      },
+      "description": "[project_page only] Checkpoint commit progression"
+    },
+    "screenshots_demos": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "[project_page only] Screenshot/demo references"
+    },
+    "developer_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["developer_name"],
+      "properties": {
+        "developer_name": {"type": "string"},
+        "engineering_thesis": {"type": "string"},
+        "public_contact": {"type": "string"}
+      },
+      "description": "[portfolio_site only] Developer-level identity and engineering thesis"
+    },
+    "project_catalogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["project_name", "project_url", "status", "description"],
+            "properties": {
+              "project_name": {"type": "string"},
+              "project_url": {"type": "string"},
+              "status": {"type": "string"},
+              "description": {"type": "string"},
+              "featured": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "description": "[portfolio_site only] Featured systems and project inventory"
+    },
+    "case_studies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "studies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["study_id", "title", "source_project", "summary"],
+            "properties": {
+              "study_id": {"type": "string"},
+              "title": {"type": "string"},
+              "source_project": {"type": "string"},
+              "summary": {"type": "string"},
+              "evidence_references": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "description": "[portfolio_site only] Evidence-backed case studies"
+    },
+    "technology_capability_map": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "string"}},
+      "description": "[portfolio_site only] Technology stack and engineering capabilities"
+    },
+    "engineering_milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "milestone": {"type": "string"},
+          "status": {"type": "string"},
+          "date": {"type": "string"}
+        }
+      },
+      "description": "[portfolio_site only] Milestones and proof-backed achievements"
+    },
+    "screenshots_demonstrations": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "[portfolio_site only] Screenshot/demo references"
+    }
+  }
+}
