@@ -1090,20 +1090,48 @@ def reconcile_receipt_evidence(
         )
 
     # ── Normal reconciliation ──
+    # A5: verify terminal commit is reachable from current branch tip
+    from rig_relay.governance.checkpoint_transaction import is_commit_reachable
+
     if not lifecycle_consumed and terminal_count == 0:
-        # Clean state: nothing consumed, no terminal evidence
         return ReconciliationResult(
             outcome=ReconciliationOutcome.ACTIVE,
             preparation_receipt_sha256=preparation_receipt_sha256,
             lifecycle_status=PreparationLifecycleEventKind.ACTIVE,
         )
 
-    if lifecycle_consumed and terminal_count == 1:
+    if lifecycle_consumed and terminal_count >= 1:
         committed_head: str | None = (
             terminal_result["committed_head"]
             if isinstance(terminal_result["committed_head"], str)
             else None
         )
+        if committed_head is None:
+            return ReconciliationResult(
+                outcome=ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
+                error_detail="Lifecycle CONSUMED but no terminal commit identified",
+            )
+        if not is_commit_reachable(committed_head, branch, repo_root):
+            return ReconciliationResult(
+                outcome=ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
+                terminal_commit_sha=committed_head,
+                error_detail=(
+                    f"Lifecycle CONSUMED but terminal commit "
+                    f"{committed_head[:12]} is not reachable from {branch}"
+                ),
+            )
+        if terminal_count > 1:
+            return ReconciliationResult(
+                outcome=ReconciliationOutcome.DUPLICATE_TERMINAL,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
+                terminal_commit_sha=committed_head,
+                error_detail=f"Found {terminal_count} terminal commits",
+            )
         return ReconciliationResult(
             outcome=ReconciliationOutcome.CONSUMED_CONSISTENT,
             preparation_receipt_sha256=preparation_receipt_sha256,
@@ -1131,7 +1159,6 @@ def reconcile_receipt_evidence(
                 terminal_commit_sha=committed_head,
                 error_detail=f"Found {terminal_count} terminal commits",
             )
-
         return ReconciliationResult(
             outcome=ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE,
             preparation_receipt_sha256=preparation_receipt_sha256,
@@ -1142,16 +1169,11 @@ def reconcile_receipt_evidence(
         )
 
     if lifecycle_consumed and terminal_count == 0:
-        # Lifecycle says CONSUMED but no terminal git evidence —
-        # inconsistent: cannot verify consumption
         return ReconciliationResult(
             outcome=ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL,
             preparation_receipt_sha256=preparation_receipt_sha256,
             lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
-            error_detail=(
-                "Lifecycle claims CONSUMED but no git commit carries "
-                "the terminal trailer"
-            ),
+            error_detail="Lifecycle claims CONSUMED but no git commit carries the trailer",
         )
 
     if terminal_count > 1:

@@ -1980,6 +1980,237 @@ def test_a4_s3_corrupt_receipt_still_fires_before_reconciliation(tmp_path):
         os.chdir(original_cwd)
 
 
+# ── A5: Isolated Git Transaction Index and Compare-and-Swap ──────────────────
+
+from rig_relay.governance.checkpoint_transaction import (
+    RefAdvanceOutcome,
+    advance_branch_cas,
+    create_commit_object,
+    execute_isolated_checkpoint_transaction,
+    get_current_branch,
+    get_head_sha,
+    initialize_isolated_index,
+    is_commit_reachable,
+    write_tree_from_isolated_index,
+)
+
+
+@pytest.mark.adversarial
+def test_a5_isolated_index_does_not_capture_foreign_staged(tmp_path):
+    """Foreign staged changes are excluded from the isolated index."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "lane_a.py", "# Lane A content")
+    subprocess.run(
+        ["git", "commit", "-m", "initial"], cwd=repo, check=True, capture_output=True
+    )
+    # Create and stage foreign.txt AFTER initial commit — not in parent tree
+    Path(repo / "foreign.txt").write_text("# foreign staged")
+    subprocess.run(
+        ["git", "add", "foreign.txt"], cwd=repo, check=True, capture_output=True
+    )
+    # Update lane_a.py and stage
+    _stage_file(repo, "lane_a.py", "# updated Lane A")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a5-a" * 12, post_digest, ["lane_a.py"])
+        sha = receipt["receipt_sha256"]
+
+        parent, _ = get_head_sha(repo)
+        assert parent is not None
+        branch, _ = get_current_branch(repo)
+        assert branch is not None
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=["lane_a.py"],
+            preparation_receipt_sha256=sha,
+            commit_message="checkpoint(test): isolated index proof",
+        )
+        assert txn.is_accepted, f"Transaction failed: {txn.error_detail}"
+        assert txn.new_commit_sha is not None
+
+        # Verify: foreign.txt is NOT in the committed tree
+        proc = subprocess.run(
+            ["git", "ls-tree", txn.new_commit_sha],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        tree_files = [line.split()[-1] for line in proc.stdout.strip().splitlines()]
+        assert "lane_a.py" in tree_files, f"Missing lane_a.py in tree: {tree_files}"
+        assert "foreign.txt" not in tree_files, "Foreign staged file leaked into tree"
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a5_cas_refuses_when_branch_advanced(tmp_path):
+    """CAS ref update refuses when parent doesn't match."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    subprocess.run(
+        ["git", "commit", "-m", "initial"], cwd=repo, check=True, capture_output=True
+    )
+    # Advance branch externally
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "foreign advance"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    original_head, _ = get_head_sha(repo)
+
+    # Try to CAS with stale parent (the initial commit, not current HEAD)
+    stale_parent = subprocess.run(
+        ["git", "rev-parse", "HEAD~1"], capture_output=True, text=True, cwd=repo
+    ).stdout.strip()
+
+    result = advance_branch_cas("task/feature", original_head, stale_parent, repo)
+    assert result == RefAdvanceOutcome.STALE_PARENT, (
+        f"Expected STALE_PARENT, got {result}"
+    )
+    # Verify branch did NOT move
+    current_head, _ = get_head_sha(repo)
+    assert current_head == original_head, "Branch must not move on CAS rejection"
+
+
+@pytest.mark.adversarial
+def test_a5_transaction_commits_only_authorized_paths(tmp_path):
+    """Transaction commits exactly authorized paths, no foreign untracked."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "authorized.py", "# auth")
+    Path(repo / "foreign_untracked.py").write_text("# foreign")
+    subprocess.run(
+        ["git", "commit", "-m", "base"], cwd=repo, check=True, capture_output=True
+    )
+    _stage_file(repo, "authorized.py", "# updated auth")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a5-c" * 12, post_digest, ["authorized.py"])
+        sha = receipt["receipt_sha256"]
+
+        parent, _ = get_head_sha(repo)
+        branch, _ = get_current_branch(repo)
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=["authorized.py"],
+            preparation_receipt_sha256=sha,
+            commit_message="checkpoint(test): authorized only",
+        )
+        assert txn.is_accepted, f"Transaction failed: {txn.error_detail}"
+
+        proc = subprocess.run(
+            ["git", "ls-tree", txn.new_commit_sha],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        tree_files = [line.split()[-1] for line in proc.stdout.strip().splitlines()]
+        assert "authorized.py" in tree_files
+        assert "foreign_untracked.py" not in tree_files, (
+            "Untracked foreign file leaked into checkpoint tree"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a5_orphaned_commit_not_treated_as_terminal(tmp_path):
+    """An orphaned commit object (CAS rejected) is not reachable and not terminal."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# v1")
+    subprocess.run(
+        ["git", "commit", "-m", "base"], cwd=repo, check=True, capture_output=True
+    )
+    parent, _ = get_head_sha(repo)
+    branch, _ = get_current_branch(repo)
+
+    # Create a commit object directly (orphaned)
+    tree_sha, _ = write_tree_from_isolated_index(
+        initialize_isolated_index(parent, repo)[0], repo
+    )
+    commit_sha, _ = create_commit_object(
+        tree_sha, parent, "orphan commit", "sha256:deadbeef", repo
+    )
+    assert commit_sha is not None
+
+    # Advance branch externally
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", "external advance"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Orphaned commit is NOT reachable
+    assert not is_commit_reachable(commit_sha, branch, repo), (
+        "Orphaned commit must not be reachable after CAS rejection"
+    )
+
+
+@pytest.mark.adversarial
+def test_a5_ambient_index_untouched_by_transaction(tmp_path):
+    """The ambient Git index is unchanged after a checkpoint transaction."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# v1")
+    subprocess.run(
+        ["git", "commit", "-m", "base"], cwd=repo, check=True, capture_output=True
+    )
+    # Stage a foreign file in ambient index
+    Path(repo / "foreign.txt").write_text("# foreign")
+    subprocess.run(
+        ["git", "add", "foreign.txt"], cwd=repo, check=True, capture_output=True
+    )
+    _stage_file(repo, "file.py", "# v2")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a5-e" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+        parent, _ = get_head_sha(repo)
+        branch, _ = get_current_branch(repo)
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo,
+            branch=branch,
+            parent_sha=parent,
+            authorized_paths=["file.py"],
+            preparation_receipt_sha256=sha,
+            commit_message="checkpoint(test): ambient untouched",
+        )
+        assert txn.is_accepted, f"Transaction failed: {txn.error_detail}"
+
+        # Ambient index still has foreign.txt staged
+        diff_proc = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+        staged = diff_proc.stdout.strip().splitlines()
+        assert "foreign.txt" in staged, (
+            "Foreign staged file must remain in ambient index after checkpoint"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
 # ── S5: Lifecycle Ledger Concurrency, Integrity, and Recovery ────────────
 
 from rig_relay.governance.receipt_store import (

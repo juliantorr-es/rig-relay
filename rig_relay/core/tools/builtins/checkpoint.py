@@ -318,28 +318,95 @@ class Checkpoint(
         pre_commit_head = self._git_rev_parse("HEAD", cwd=repo_root)
         branch = self._git_rev_parse("--abbrev-ref", "HEAD", cwd=repo_root)
 
-        # 4. Stage and commit
-        if refusal := self._stage_and_commit(
-            requested, args, repo_root, self._receipt_digest
-        ):
+        # 4. Build commit message (same format for trailers)
+        subject = (
+            args.message
+            if args.message.startswith("checkpoint(")
+            else f"checkpoint({args.task_id or 'unknown'}): {args.message}"
+        )
+        body_lines = [""]
+        if args.session_id:
+            body_lines.append(f"Session: {args.session_id}")
+        if args.task_id:
+            body_lines.append(f"Task: {args.task_id}")
+        body_lines.append("Files:")
+        for path in sorted(requested):
+            body_lines.append(f"- {path}")
+        if self._receipt_digest:
+            body_lines.append(
+                f"Rig-Authorization-Receipt-SHA256: {self._receipt_digest}"
+            )
+        if args.preparation_receipt_sha256:
+            body_lines.append(
+                f"Rig-Preparation-Receipt-SHA256: {args.preparation_receipt_sha256}"
+            )
+        if args.validation_receipt_sha256:
+            body_lines.append(
+                f"Rig-Validation-Receipt-SHA256: {args.validation_receipt_sha256}"
+            )
+        if args.validation_summary:
+            body_lines.append("Validation:")
+            for cmd in args.validation_summary:
+                body_lines.append(f"- {cmd}")
+        full_message = subject + "\n" + "\n".join(body_lines)
+
+        # A5: Execute isolated checkpoint transaction
+        from rig_relay.governance.checkpoint_transaction import (
+            RefAdvanceOutcome,
+            execute_isolated_checkpoint_transaction,
+        )
+
+        txn = execute_isolated_checkpoint_transaction(
+            repo_root=repo_root,
+            branch=branch,
+            parent_sha=pre_commit_head,
+            authorized_paths=sorted(requested),
+            preparation_receipt_sha256=args.preparation_receipt_sha256 or "",
+            commit_message=full_message,
+        )
+
+        if not txn.is_accepted:
+            match txn.ref_outcome:
+                case RefAdvanceOutcome.STALE_PARENT:
+                    error_kind = "branch_advance_stale_parent"
+                    msg = (
+                        "Branch advanced since checkpoint preparation. "
+                        "The expected parent commit no longer matches."
+                    )
+                case RefAdvanceOutcome.REF_NOT_FOUND:
+                    error_kind = "branch_ref_not_found"
+                    msg = "Branch reference not found."
+                case RefAdvanceOutcome.DETACHED_HEAD:
+                    error_kind = "detached_head_refused"
+                    msg = "Detached HEAD — cannot advance branch."
+                case _:
+                    error_kind = "commit_transaction_failed"
+                    msg = f"Transaction failed: {txn.error_detail}"
+            refusal_result = CheckpointResult(
+                ok=False,
+                message=msg,
+                refusal_reason=error_kind,
+                error_kind=error_kind,
+                suggested_next_action="Run prepare_checkpoint again.",
+            )
             if tc is not None:
                 tc.emit_governance_gate_decision(
                     gate="checkpoint",
                     decision="blocked",
-                    reason=refusal.refusal_reason or "commit_failed",
+                    reason=refusal_result.refusal_reason or "commit_failed",
                     tool_name="checkpoint",
                     severity="warning",
                     mutation_intent=True,
                 )
-            self._emit_checkpoint_refused(args, refusal)
+            self._emit_checkpoint_refused(args, refusal_result)
             self._release_if_locked(args.preparation_receipt_sha256)
-            yield refusal
+            yield refusal_result
             return
 
-        # 5. Capture post-commit state
-        post_commit_head = self._git_rev_parse("HEAD", cwd=repo_root)
+        post_commit_head = txn.new_commit_sha
+        assert post_commit_head is not None
 
-        # 6. Build result and artifact
+        # 5. Build result and artifact
         artifact = self._build_artifact(
             session_id=args.session_id or "",
             task_id=args.task_id or "",
