@@ -241,7 +241,7 @@ class ToolResultRuntime:
             neutralize_reserved_delimiters,
         )
 
-        outcome = derive_agent_outcome(pre_result, ToolMutationClass.READ_ONLY)
+        outcome = derive_agent_outcome(pre_result, _resolve_mutation_class(tool_name))
         annotation = format_agent_outcome(outcome)
         display_text = neutralize_reserved_delimiters(error_text)
         display_text = (
@@ -306,3 +306,24 @@ def _classify_failure_kind(error: str) -> str:
     ):
         return "malformed_args"
     return "resolution_failure"
+
+
+_MUTATION_TOOL_NAMES: frozenset[str] = frozenset({
+    "search_replace",
+    "write_file",
+    "patch_file",
+    "checkpoint",
+})
+
+
+def _resolve_mutation_class(tool_name: str) -> ToolMutationClass:
+    """Return the mutation class for a tool name.
+
+    Known mutation tools return WRITES_WORKSPACE so pre-execution refusals
+    are classified as `mutation_disposition=not_performed` rather than
+    `not_applicable`. Unknown tools default to READ_ONLY (safe because
+    they cannot have mutated state).
+    """
+    if tool_name in _MUTATION_TOOL_NAMES:
+        return ToolMutationClass.WRITES_WORKSPACE
+    return ToolMutationClass.READ_ONLY

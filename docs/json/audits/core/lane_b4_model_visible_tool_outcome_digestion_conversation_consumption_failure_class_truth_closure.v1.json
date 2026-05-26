@@ -57,40 +57,13 @@
   },
 
   "gate_b4_4_artifact_survival": {
-    "status": "PROVEN — 4 substrate tests",
-    "scenarios": [
-      "Large output (200KB) preserves exactly one annotation → annotated answer_kind=degraded",
-      "Large output with embedded fake delimiters → neutralized, only 1 authoritative annotation → answer_kind=positive",
-      "Degraded outcome survives artifact bounding with correct capabilities",
-      "Outcome annotation itself is bounded (<10KB) regardless of tool output size — annotation never contains raw large payload"
-    ],
-    "substrate": "Real neutralize_reserved_delimiters + format_agent_outcome + annotate-append + schema-validate. No mock of formatting or output path."
+    "status": "SYNTHETIC_ONLY — current tests append outcome strings to large Python strings but never invoke ToolResultRuntime.handle_tool_response, should_artifact_tool_result, or the evidence artifact writer. Cosplay proof.",
+    "real_substrate_needed": true
   },
   "gate_b4_5_concurrent_causal_binding": {
-    "status": "PROVEN — 6 substrate tests",
-    "scenarios": [
-      "Out-of-order completions preserve per-call tool_call_id ownership",
-      "Mixed-status (positive, refused, failed) completions do not cross-wire answer_kind or mutation_disposition",
-      "Mutation-performed vs mutation-not-performed are semantically distinct",
-      "Pre-execution refused is answer_kind=refused, not execution_failure",
-      "Execution failure is answer_kind=execution_failure with non-performed mutation",
-      "Racing asyncio.gather completions produce correct per-call answer_kind binding"
-    ],
-    "substrate": "Real derive_agent_outcome + format_agent_outcome + schema validation. Async tasks through asyncio.gather. No mock of outcome derivation."
-  },
-  "gate_b4_7_publication": {
-    "status": "PROVEN — pushed to GitHub juliantorr-es/rig-relay@main",
-    "remote_sha": "4e18dddc92515db8dc4b47ae1ee2e07020b17c99",
-    "remote_verification": "git show origin/main:rig_relay/core/tool_result_runtime/__init__.py confirms canonical outcome code present",
-    "pushed_files": [
-      "rig_relay/core/tool_result_runtime/__init__.py",
-      "tests/core/test_b4_tool_outcome_digestion_and_conversation_consumption.py",
-      "docs/json/audits/core/lane_b4_model_visible_tool_outcome_digestion_conversation_consumption_failure_class_truth_closure.v1.json"
-    ]
-  },
-
-  "gate_b4_5_concurrent_causal_binding": {
-    "status": "P1.2 already added correlation_id/causation_id/tool_call_id to ToolRuntimeResult and AgentToolOutcome. ToolExecutor handles per-call result delivery. Concurrency tests exist in existing suite."
+    "status": "SYNTHETIC_ONLY — current tests call derive_agent_outcome in asyncio.gather without real delivery seam. Cosplay proof. Real ToolExecutor/ToolResultRuntime delivery not exercised.",
+    "note": "P1.2 already added correlation_id/causation_id/tool_call_id to ToolRuntimeResult and AgentToolOutcome. ToolExecutor handles per-call result delivery.",
+    "real_substrate_needed": true
   },
 
   "gate_b4_6_bridge_conversation_parity": {
