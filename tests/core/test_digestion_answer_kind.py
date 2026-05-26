@@ -563,3 +563,388 @@ async def test_investigation_outcome_none_by_default():
     assert result.investigation_outcome is None
     outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
     assert outcome.investigation_outcome is None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Real Git-producer-to-digestion causal tests (Lane B3)
+#  Run real GitStatus/GitDiff/GitLog/GitShow tools against real repos
+#  and verify bounded evidence reaches digestion through ToolRuntimeResult.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_real_git_status_produces_git_summary_through_runtime(
+    tmp_path, monkeypatch
+):
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import (
+        GitStatus,
+        GitStatusArgs,
+        GitStatusResult,
+        GitToolConfig,
+    )
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitStatus(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitStatusArgs()))
+    assert isinstance(raw_result, GitStatusResult)
+    assert raw_result.branch is not None
+    assert raw_result.head_sha is not None
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    request = ToolRuntimeRequest(
+        tool_name="git_status",
+        tool_args={},
+        tool_call_id="call_gs",
+        execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+    )
+    result = await runtime.execute_one(request)
+    assert result.git_summary is not None
+    assert result.git_summary["tool"] == "git_status"
+    assert result.git_summary["branch"] == raw_result.branch
+
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.git_summary_hash is not None
+    assert outcome.answer_kind == "positive"
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_real_git_diff_no_changes_produces_bounded_evidence(
+    tmp_path, monkeypatch
+):
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import (
+        GitDiff,
+        GitDiffArgs,
+        GitDiffResult,
+        GitToolConfig,
+    )
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitDiff(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitDiffArgs()))
+    assert isinstance(raw_result, GitDiffResult)
+    assert raw_result.files_changed_count == 0
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    result = await runtime.execute_one(
+        ToolRuntimeRequest(
+            tool_name="git_diff",
+            tool_args={},
+            tool_call_id="call_gd",
+            execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+        )
+    )
+    assert result.git_summary is not None
+    assert result.git_summary["tool"] == "git_diff"
+
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.git_summary_hash is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_real_git_log_produces_bounded_evidence(tmp_path, monkeypatch):
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import (
+        GitLog,
+        GitLogArgs,
+        GitLogResult,
+        GitToolConfig,
+    )
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "initial",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitLog(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitLogArgs(max_count=5)))
+    assert isinstance(raw_result, GitLogResult)
+    assert raw_result.commits_returned >= 1
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    result = await runtime.execute_one(
+        ToolRuntimeRequest(
+            tool_name="git_log",
+            tool_args={},
+            tool_call_id="call_gl",
+            execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+        )
+    )
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.git_summary_hash is not None
+    assert outcome.answer_kind == "positive"
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_real_git_show_produces_bounded_evidence(tmp_path, monkeypatch):
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import (
+        GitShow,
+        GitShowArgs,
+        GitShowResult,
+        GitToolConfig,
+    )
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "first",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitShow(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitShowArgs(ref="HEAD")))
+    assert isinstance(raw_result, GitShowResult)
+    assert raw_result.commit_sha is not None
+    assert raw_result.subject == "first"
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    result = await runtime.execute_one(
+        ToolRuntimeRequest(
+            tool_name="git_show",
+            tool_args={"ref": "HEAD"},
+            tool_call_id="call_gsh",
+            execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+        )
+    )
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.git_summary_hash is not None
+    assert outcome.answer_kind == "positive"
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_git_diff_no_changes_is_valid_no_match(tmp_path, monkeypatch):
+    """Git diff with no changes should not be treated as a failure."""
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import (
+        GitDiff,
+        GitDiffArgs,
+        GitDiffResult,
+        GitToolConfig,
+    )
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitDiff(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitDiffArgs()))
+    assert isinstance(raw_result, GitDiffResult)
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    result = await runtime.execute_one(
+        ToolRuntimeRequest(
+            tool_name="git_diff",
+            tool_args={},
+            tool_call_id="call_nc",
+            execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+        )
+    )
+    outcome = derive_agent_outcome(result, ToolMutationClass.READ_ONLY)
+    assert outcome.status == "completed"
+    assert outcome.status != "failed"
+    assert outcome.answer_kind not in ("execution_failure", "refused")
+
+
+@pytest.mark.asyncio
+@pytest.mark.real_artifact
+async def test_git_diff_produces_branch_and_head_in_summary(tmp_path, monkeypatch):
+    """Git diff result model carries branch and head_sha so B2 git_summary triggers."""
+    import subprocess
+
+    from rig_relay.core.tools.base import BaseToolState
+    from rig_relay.core.tools.builtins.git import GitDiff, GitDiffArgs, GitToolConfig
+    from tests.mock.utils import collect_result
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "init",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(repo)
+
+    tool = GitDiff(config_getter=GitToolConfig, state=BaseToolState())
+    raw_result = await collect_result(tool.run(GitDiffArgs()))
+
+    async def _invoke(args_dict):
+        yield raw_result
+
+    runtime = _runtime(invoke_tool=_invoke)
+    result = await runtime.execute_one(
+        ToolRuntimeRequest(
+            tool_name="git_diff",
+            tool_args={},
+            tool_call_id="call_ds",
+            execution_mode=ToolRuntimeExecutionMode.READ_ONLY,
+        )
+    )
+    assert result.git_summary is not None
+    assert "branch" in result.git_summary
+    assert "head" in result.git_summary

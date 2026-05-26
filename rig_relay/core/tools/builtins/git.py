@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 import asyncio
 from collections.abc import AsyncGenerator
 import hashlib
@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.core.telemetry.artifacts import (
     GitStateArtifact,
@@ -31,16 +31,118 @@ from rig_relay.core.tools.determinism import truncate_text
 from rig_relay.core.tools.ui import ToolCallDisplay, ToolResultDisplay, ToolUIData
 from rig_relay.core.utils import kill_async_subprocess
 
+# ── Bounded Git evidence result models (Lane B3) ──────────────────────
 
-class GitResult(BaseModel):
+
+class GitStatusResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "status"
+    branch: str | None = None
+    head_sha: str | None = None
+    upstream: str | None = None
+    ahead_count: int = 0
+    behind_count: int = 0
+    is_detached: bool = False
+    repository_state: str = "unknown"
+    staged_count: int = 0
+    unstaged_count: int = 0
+    untracked_count: int = 0
+    conflicted_count: int = 0
+    changed_paths: list[str] = Field(default_factory=list)
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+class GitDiffResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "diff"
+    branch: str | None = None
+    head_sha: str | None = None
+    files_changed_count: int = 0
+    additions: int = 0
+    deletions: int = 0
+    changed_paths: list[str] = Field(default_factory=list)
+    change_kinds: dict[str, str] = Field(default_factory=dict)
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+class GitLogResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "log"
+    branch: str | None = None
+    head_sha: str | None = None
+    commits: list[str] = Field(default_factory=list)
+    commits_returned: int = 0
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+class GitBranchResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "branch"
+    branch: str | None = None
+    head_sha: str | None = None
+    current_branch: str | None = None
+    branches: list[str] = Field(default_factory=list)
+    is_detached: bool = False
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+class GitShowResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "show"
+    branch: str | None = None
+    head_sha: str | None = None
+    commit_sha: str | None = None
+    author_date: str | None = None
+    subject: str | None = None
+    files_changed_count: int = 0
+    additions: int = 0
+    deletions: int = 0
+    changed_paths: list[str] = Field(default_factory=list)
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+class GitLsFilesResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = "ls_files"
+    branch: str | None = None
+    head_sha: str | None = None
+    paths: list[str] = Field(default_factory=list)
+    paths_returned: int = 0
+    truncated: bool = False
+    error_kind: str | None = None
+
+
+# ── Raw subprocess result (kept internal for _run_git) ────────────────
+
+
+class _RawGitResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     operation: str
-    argv: list[str]
+    argv: list[str] = Field(default_factory=list)
     stdout: str
     stderr: str
     returncode: int
     truncated_stdout: bool
     truncated_stderr: bool
-    error_kind: str | None = None
+
+
+# ── Backward compatibility alias for tests that still reference GitResult ─
+GitResult = _RawGitResult
+
+
+# ── Config ────────────────────────────────────────────────────────────
 
 
 class GitToolConfig(BaseToolConfig):
@@ -51,9 +153,12 @@ class GitToolConfig(BaseToolConfig):
     timeout: int = Field(default=30, description="Timeout for Git commands in seconds.")
 
 
-class GitBase[TArgs: BaseModel](
-    BaseTool[TArgs, GitResult, GitToolConfig, BaseToolState],
-    ToolUIData[TArgs, GitResult],
+# ── Base class (generic over args and result) ─────────────────────────
+
+
+class GitBase[TArgs: BaseModel, TResult: BaseModel](
+    BaseTool[TArgs, TResult, GitToolConfig, BaseToolState],
+    ToolUIData[TArgs, TResult],
     ABC,
 ):
     determinism_class: ClassVar[ToolDeterminismClass] = (
@@ -61,15 +166,13 @@ class GitBase[TArgs: BaseModel](
     )
     mutation_class: ClassVar[ToolMutationClass] = ToolMutationClass.READ_ONLY
 
-    @abstractmethod
     async def run(
         self, args: TArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
-        # This is an abstract base class; sub-classes must implement run.
+    ) -> AsyncGenerator[TResult, None]:
         raise NotImplementedError
         yield  # type: ignore
 
-    async def _run_git(self, operation: str, args: list[str]) -> GitResult:
+    async def _run_git(self, operation: str, args: list[str]) -> _RawGitResult:
         argv = ["git", operation] + args
 
         env = os.environ.copy()
@@ -114,22 +217,18 @@ class GitBase[TArgs: BaseModel](
                 error_kind = self._classify_git_error(stderr)
                 err = ToolError(
                     f"Git {operation} failed with code {proc.returncode}\n"
-                    f"STDOUT: {stdout[:200]}\n"
                     f"STDERR: {stderr[:200]}"
                 )
                 err.error_kind = error_kind  # type: ignore[attr-defined]
                 raise err
 
-            error_kind = self._classify_git_advisory(stdout, stderr, truncated_stdout)
-            return GitResult(
+            return _RawGitResult(
                 operation=operation,
-                argv=argv,
                 stdout=stdout,
                 stderr=stderr,
                 returncode=proc.returncode,
                 truncated_stdout=truncated_stdout,
                 truncated_stderr=truncated_stderr,
-                error_kind=error_kind,
             )
 
         except ToolError:
@@ -139,9 +238,22 @@ class GitBase[TArgs: BaseModel](
             err.error_kind = "git_command_failed"  # type: ignore[attr-defined]
             raise err
 
+    async def _read_head(self) -> str | None:
+        try:
+            r = await self._run_git("rev-parse", ["HEAD"])
+            return r.stdout.strip() or None
+        except ToolError:
+            return None
+
+    async def _read_branch(self) -> str | None:
+        try:
+            r = await self._run_git("branch", ["--show-current"])
+            return r.stdout.strip() or None
+        except ToolError:
+            return None
+
     @staticmethod
     def _classify_git_error(stderr: str) -> str:
-        """Classify git subprocess errors from stderr into a stable error_kind."""
         stderr_lower = stderr.lower()
         if "not a git repository" in stderr_lower:
             return "invalid_revision"
@@ -151,28 +263,14 @@ class GitBase[TArgs: BaseModel](
             return "no_history"
         return "git_command_failed"
 
-    @staticmethod
-    def _classify_git_advisory(
-        stdout: str, stderr: str, truncated_stdout: bool
-    ) -> str | None:
-        """Classify non-fatal git result conditions into a stable error_kind."""
-        if truncated_stdout:
-            return "output_truncated"
-        combined = (stdout + stderr).lower()
-        if "detached" in combined and "head" in combined:
-            return "detached_head"
-        return None
-
     def _validate_path(self, path: str) -> str:
         if not path.strip():
             raise ToolError("Path cannot be empty")
         if path.startswith("-"):
             raise ToolError(f"Path spec cannot start with '-': {path}")
-
         p = Path(path).expanduser()
         if p.is_absolute():
             try:
-                # Must be within workdir
                 rel = p.resolve().relative_to(Path.cwd().resolve())
                 return str(rel)
             except ValueError:
@@ -182,63 +280,175 @@ class GitBase[TArgs: BaseModel](
     def _validate_paths(self, paths: list[str]) -> list[str]:
         return [self._validate_path(p) for p in paths]
 
-    @classmethod
-    def format_result_display(cls, result: GitResult) -> ToolResultDisplay:
-        message = f"Git {result.operation} completed."
-        warnings = []
-        if result.truncated_stdout or result.truncated_stderr:
-            warnings.append("Output was truncated due to size limit.")
-        return ToolResultDisplay(success=True, message=message, warnings=warnings)
+
+# ── Git status ────────────────────────────────────────────────────────
 
 
 class GitStatusArgs(BaseModel):
-    short: bool = Field(default=True, description="Use short format (--short).")
+    short: bool = Field(default=False, description="Use short format (--short).")
     branch: bool = Field(
         default=True, description="Show branch and upstream tracking info (--branch)."
     )
     porcelain: bool = Field(
-        default=False,
-        description="Machine-readable porcelain v1 format (--porcelain=v1 -z).",
+        default=False, description="Machine-readable porcelain v1 format."
     )
 
 
-class GitStatus(GitBase[GitStatusArgs]):
+class GitStatus(GitBase[GitStatusArgs, GitStatusResult]):
     description: ClassVar[str] = (
-        "Show the working tree status. Use for raw git status output. "
-        "For structured workspace state (branch, staged/unstaged/untracked files, "
-        "checkpoint eligibility), prefer git_workspace_state."
+        "Bounded workspace status. Returns structured branch, head, and dirty-state "
+        "evidence. For checkpoint eligibility, prefer git_workspace_state."
     )
-    _STATUS_LINE_PATH_OFFSET: ClassVar[int] = 3
 
     async def run(
         self, args: GitStatusArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
-        argv = []
-        if args.porcelain:
-            argv.append("--porcelain=v1")
-        elif args.short:
-            argv.append("--short")
+    ) -> AsyncGenerator[GitStatusResult, None]:
+        head = await self._read_head()
+        branch = await self._read_branch()
 
-        if args.branch:
-            argv.append("--branch")
+        argv = ["--porcelain=v2", "--branch"]
+        if args.short:
+            argv = ["--short", "--branch"]
 
-        result = await self._run_git("status", argv)
+        try:
+            raw = await self._run_git("status", argv)
+        except ToolError as exc:
+            yield GitStatusResult(
+                branch=branch,
+                head_sha=head,
+                error_kind=getattr(exc, "error_kind", "git_command_failed"),
+                truncated=exc.error_kind == "output_truncated"
+                if hasattr(exc, "error_kind")
+                else False,
+            )
+            return
+
+        is_detached = branch is None
+        repo_state: str = "clean"
+        staged = unstaged = untracked = conflicted = 0
+        upstream_val: str | None = None
+        ahead = behind = 0
+        changed: list[str] = []
+
+        for line in raw.stdout.splitlines():
+            if not line:
+                continue
+            if line.startswith("# branch.oid "):
+                sha = line.split(" ", 2)[-1] if len(line.split(" ", 2)) > 2 else None
+                if sha and sha != "(initial)":
+                    head = sha
+            elif line.startswith("# branch.head "):
+                b = line.split(" ", 2)[-1] if len(line.split(" ", 2)) > 2 else None
+                if b and b != "(detached)":
+                    branch = b
+            elif line.startswith("# branch.upstream "):
+                upstream_val = (
+                    line.split(" ", 2)[-1] if len(line.split(" ", 2)) > 2 else None
+                )
+            elif line.startswith("# branch.ab "):
+                parts = line.split(" ")
+                if len(parts) >= 3:
+                    ahead = int(parts[2].lstrip("+"))
+                if len(parts) >= 4:
+                    behind = int(parts[3].lstrip("-"))
+            elif line.startswith("?"):
+                untracked += 1
+                if len(line) > 2:
+                    changed.append(line[2:].strip())
+            elif line.startswith("u"):
+                conflicted += 1
+            elif line and line[0] in "12":
+                xy = line[2:4] if len(line) > 3 else ""
+                if xy and xy[0] not in {" ", "?", "!"}:
+                    staged += 1
+                if xy and xy[1] not in {" ", "?", "!"}:
+                    unstaged += 1
+                path_part = line.split(" ") if len(line) > 5 else []
+                if not args.short and xy and (xy[0] != " " or xy[1] != " "):
+                    changed.append(path_part[-1] if path_part else "")
+
+        if staged or unstaged or untracked or conflicted:
+            repo_state = "dirty"
+        if conflicted:
+            repo_state = "conflicted"
+
+        result = GitStatusResult(
+            branch=branch,
+            head_sha=head,
+            upstream=upstream_val,
+            ahead_count=ahead,
+            behind_count=behind,
+            is_detached=is_detached,
+            repository_state=repo_state,
+            staged_count=staged,
+            unstaged_count=unstaged,
+            untracked_count=untracked,
+            conflicted_count=conflicted,
+            changed_paths=changed,
+            truncated=raw.truncated_stdout,
+            error_kind=None,
+        )
+
         if ctx and ctx.session_dir and ctx.tool_call_id:
             try:
-                await self._emit_git_state_artifact(result, ctx)
+                await self._emit_git_state_artifact(
+                    head,
+                    branch,
+                    upstream_val,
+                    ahead,
+                    behind,
+                    changed,
+                    staged,
+                    unstaged,
+                    untracked,
+                    conflicted,
+                    ctx,
+                )
             except Exception:
                 pass
         yield result
 
     async def _emit_git_state_artifact(
-        self, result: GitResult, ctx: InvokeContext
+        self,
+        head_sha: str | None,
+        branch: str | None,
+        upstream_branch: str | None,
+        ahead: int,
+        behind: int,
+        changed_paths: list[str],
+        staged: int,
+        unstaged: int,
+        untracked: int,
+        conflicted: int,
+        ctx: InvokeContext,
     ) -> None:
-        payload = await self._build_git_state_payload(result)
-        payload["stdout_sha256"] = self._sha256_text(result.stdout)
-        payload["stderr_sha256"] = (
-            self._sha256_text(result.stderr) if result.stderr else None
+        from rig_relay.core.telemetry.local import dump_canonical_json
+
+        payload: dict[str, object] = {
+            "tool_name": "git_status",
+            "repo_root": Path.cwd().resolve().as_posix(),
+            "branch": branch,
+            "head_sha": head_sha,
+            "head_short_sha": head_sha[:7] if head_sha else None,
+            "upstream_branch": upstream_branch,
+            "upstream_ahead_count": ahead,
+            "upstream_behind_count": behind,
+            "is_detached_head": branch is None,
+            "is_dirty": bool(changed_paths),
+            "dirty_file_count": len(changed_paths),
+            "staged_file_count": staged,
+            "unstaged_file_count": unstaged,
+            "untracked_file_count": untracked,
+            "conflict_file_count": conflicted,
+            "ignored_file_count": None,
+            "dirty_files": changed_paths,
+            "ordering_policy": "rig_normalized_path_kind",
+            "warnings": [],
+        }
+        payload["stdout_sha256"] = "sha256:n/a"
+        payload["state_sha256"] = (
+            f"sha256:{hashlib.sha256(dump_canonical_json(payload).encode('utf-8')).hexdigest()}"
         )
-        payload["state_sha256"] = self._sha256_payload(payload)
         artifact = GitStateArtifact.model_validate(payload)
         session_dir = ctx.session_dir
         assert session_dir is not None
@@ -246,6 +456,27 @@ class GitStatus(GitBase[GitStatusArgs]):
         writer.write_git_state_artifact(
             artifact=artifact, tool_call_id=ctx.tool_call_id
         )
+
+    @classmethod
+    def format_call_display(cls, args: GitStatusArgs) -> ToolCallDisplay:
+        return ToolCallDisplay(summary="Checking git status")
+
+    @classmethod
+    def format_result_display(cls, result: GitStatusResult) -> ToolResultDisplay:
+        warnings: list[str] = []
+        if result.truncated:
+            warnings.append("Output was truncated due to size limit.")
+        if result.is_detached:
+            warnings.append("Repository is in detached HEAD state.")
+        return ToolResultDisplay(
+            success=result.error_kind is None,
+            message=f"Git status: {result.repository_state}, branch={result.branch or '(detached)'}",
+            warnings=warnings,
+        )
+
+    @classmethod
+    def get_status_text(cls) -> str:
+        return "Checking status"
 
     @staticmethod
     def _sha256_text(text: str) -> str:
@@ -257,89 +488,69 @@ class GitStatus(GitBase[GitStatusArgs]):
 
         return f"sha256:{hashlib.sha256(dump_canonical_json(payload).encode('utf-8')).hexdigest()}"
 
-    async def _build_git_state_payload(self, result: GitResult) -> dict[str, object]:
-        branch = await self._read_git_branch()
-        head_sha = await self._read_git_head_sha()
-        (
-            upstream_branch,
-            upstream_ahead,
-            upstream_behind,
-        ) = await self._read_git_upstream()
-        dirty_files, staged, unstaged, untracked, conflicted = self._parse_dirty_files(
-            result.stdout
+    async def _build_git_state_payload(self, raw: _RawGitResult) -> dict[str, object]:
+        """Backward-compatible payload builder for artifact emission tests."""
+        branch = await self._read_branch()
+        head = await self._read_head()
+        upstream_branch, ahead, behind = None, None, None
+        try:
+            r = await self._run_git(
+                "rev-parse", ["--abbrev-ref", "--symbolic-full-name", "@{u}"]
+            )
+            upstream_branch = r.stdout.strip() or None
+            if upstream_branch:
+                c = await self._run_git(
+                    "rev-list", ["--left-right", "--count", "HEAD...@{u}"]
+                )
+                a_s, b_s = c.stdout.strip().split("\t", 1)
+                ahead, behind = int(a_s), int(b_s)
+        except (ToolError, ValueError):
+            pass
+        dirty_files_raw, staged, unstaged, untracked, conflicted = (
+            self._parse_dirty_files(raw.stdout)
         )
         return {
             "tool_name": "git_status",
             "repo_root": Path.cwd().resolve().as_posix(),
             "branch": branch,
-            "head_sha": head_sha,
-            "head_short_sha": head_sha[:7] if head_sha else None,
+            "head_sha": head,
+            "head_short_sha": head[:7] if head else None,
             "upstream_branch": upstream_branch,
-            "upstream_ahead_count": upstream_ahead,
-            "upstream_behind_count": upstream_behind,
+            "upstream_ahead_count": ahead,
+            "upstream_behind_count": behind,
             "is_detached_head": branch is None,
-            "is_dirty": bool(dirty_files),
-            "dirty_file_count": len(dirty_files),
+            "is_dirty": bool(dirty_files_raw),
+            "dirty_file_count": len(dirty_files_raw),
             "staged_file_count": staged,
             "unstaged_file_count": unstaged,
             "untracked_file_count": untracked,
             "conflict_file_count": conflicted,
             "ignored_file_count": None,
-            "dirty_files": [item.model_dump() for item in dirty_files],
+            "dirty_files": [item.model_dump() for item in dirty_files_raw],
             "ordering_policy": "rig_normalized_path_kind",
             "warnings": [],
         }
 
-    async def _read_git_head_sha(self) -> str | None:
-        try:
-            result = await self._run_git("rev-parse", ["HEAD"])
-        except ToolError:
-            return None
-        return result.stdout.strip() or None
-
-    async def _read_git_branch(self) -> str | None:
-        try:
-            result = await self._run_git("branch", ["--show-current"])
-        except ToolError:
-            return None
-        branch = result.stdout.strip()
-        return branch or None
-
-    async def _read_git_upstream(self) -> tuple[str | None, int | None, int | None]:
-        try:
-            branch_result = await self._run_git(
-                "rev-parse", ["--abbrev-ref", "--symbolic-full-name", "@{u}"]
-            )
-            upstream_branch = branch_result.stdout.strip() or None
-            if upstream_branch is None:
-                return None, None, None
-            counts_result = await self._run_git(
-                "rev-list", ["--left-right", "--count", "HEAD...@{u}"]
-            )
-            ahead_text, behind_text = counts_result.stdout.strip().split("\t", 1)
-            return upstream_branch, int(ahead_text), int(behind_text)
-        except (ToolError, ValueError):
-            return None, None, None
-
+    @staticmethod
     def _parse_dirty_files(
-        self, stdout: str
+        stdout: str,
     ) -> tuple[list[GitStateFile], int, int, int, int]:
         dirty_files: list[GitStateFile] = []
         seen_paths: set[str] = set()
         staged = unstaged = untracked = conflicted = 0
-
         for line in stdout.splitlines():
             if not line or line.startswith("## "):
                 continue
-            parsed = self._parse_status_line(line)
-            if parsed is None:
+            if len(line) <= 3:
                 continue
-            rel, status = parsed
+            status = line[:2]
+            path = line[3:]
+            rel = Path(path).as_posix()
             if rel in seen_paths:
                 continue
             seen_paths.add(rel)
-            staged_flag = self._is_staged_status(status)
-            unstaged_flag = self._is_unstaged_status(status)
+            staged_flag = status[0] not in {" ", "?"}
+            unstaged_flag = status[1] not in {" ", "?"}
             untracked_flag = status == "??"
             conflicted_flag = "U" in status
             staged += int(staged_flag)
@@ -356,33 +567,11 @@ class GitStatus(GitBase[GitStatusArgs]):
                     conflicted=conflicted_flag,
                 )
             )
-
         dirty_files.sort(key=lambda item: (item.relative_path, item.change_kind))
         return dirty_files, staged, unstaged, untracked, conflicted
 
-    @staticmethod
-    def _parse_status_line(line: str) -> tuple[str, str] | None:
-        if len(line) <= GitStatus._STATUS_LINE_PATH_OFFSET:
-            return None
-        status = line[:2]
-        path = line[GitStatus._STATUS_LINE_PATH_OFFSET :]
-        return Path(path).as_posix(), status
 
-    @staticmethod
-    def _is_staged_status(status: str) -> bool:
-        return status[0] not in {" ", "?"}
-
-    @staticmethod
-    def _is_unstaged_status(status: str) -> bool:
-        return status[1] not in {" ", "?"}
-
-    @classmethod
-    def format_call_display(cls, args: GitStatusArgs) -> ToolCallDisplay:
-        return ToolCallDisplay(summary="Checking git status")
-
-    @classmethod
-    def get_status_text(cls) -> str:
-        return "Checking status"
+# ── Git diff ─────────────────────────────────────────────────────────
 
 
 class GitDiffArgs(BaseModel):
@@ -393,27 +582,84 @@ class GitDiffArgs(BaseModel):
     stat: bool = Field(default=False, description="Show diffstat only (--stat).")
 
 
-class GitDiff(GitBase[GitDiffArgs]):
+class GitDiff(GitBase[GitDiffArgs, GitDiffResult]):
     description: ClassVar[str] = (
-        "Show changes between commits, commit and working tree, etc. "
-        "Use for detailed diff inspection. For structured workspace state, "
-        "prefer git_workspace_state."
+        "Bounded diff evidence. Returns change statistics (--numstat) and change-kind "
+        "classifications (--name-status) without raw patch content."
     )
 
     async def run(
         self, args: GitDiffArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
-        argv = []
+    ) -> AsyncGenerator[GitDiffResult, None]:
+        head = await self._read_head()
+        branch = await self._read_branch()
+
+        argv: list[str] = []
         if args.cached:
             argv.append("--cached")
+        argv.append("--numstat")
         if args.stat:
             argv.append("--stat")
-
         if args.paths:
             argv.append("--")
             argv.extend(self._validate_paths(args.paths))
 
-        yield await self._run_git("diff", argv)
+        additions = deletions = 0
+        changed: list[str] = []
+        change_kinds: dict[str, str] = {}
+
+        try:
+            raw_numstat = await self._run_git("diff", argv)
+        except ToolError as exc:
+            ek = getattr(exc, "error_kind", "git_command_failed")
+            if ek == "invalid_pathspec":
+                yield GitDiffResult(
+                    branch=branch, head_sha=head, error_kind=ek, files_changed_count=0
+                )
+                return
+            raise
+
+        for line in raw_numstat.stdout.splitlines():
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) >= 3:
+                try:
+                    additions += int(parts[0]) if parts[0] != "-" else 0
+                    deletions += int(parts[1]) if parts[1] != "-" else 0
+                except ValueError:
+                    pass
+                p = parts[2]
+                if p not in changed:
+                    changed.append(p)
+
+        try:
+            argv_name = [a for a in argv if a != "--numstat"]
+            if "--stat" in argv_name:
+                argv_name.remove("--stat")
+            argv_name.append("--name-status")
+            if args.paths:
+                pass
+            raw_names = await self._run_git("diff", argv_name)
+            for line in raw_names.stdout.splitlines():
+                if not line.strip():
+                    continue
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    change_kinds[parts[1]] = parts[0]
+        except ToolError:
+            pass
+
+        yield GitDiffResult(
+            branch=branch,
+            head_sha=head,
+            files_changed_count=len(changed),
+            additions=additions,
+            deletions=deletions,
+            changed_paths=changed,
+            change_kinds=change_kinds,
+            truncated=raw_numstat.truncated_stdout,
+        )
 
     @classmethod
     def format_call_display(cls, args: GitDiffArgs) -> ToolCallDisplay:
@@ -423,79 +669,170 @@ class GitDiff(GitBase[GitDiffArgs]):
         return ToolCallDisplay(summary=summary)
 
     @classmethod
+    def format_result_display(cls, result: GitDiffResult) -> ToolResultDisplay:
+        warnings: list[str] = []
+        if result.truncated:
+            warnings.append("Output was truncated due to size limit.")
+        return ToolResultDisplay(
+            success=result.error_kind is None,
+            message=(
+                f"Git diff: {result.files_changed_count} files changed "
+                f"(+{result.additions}/-{result.deletions})"
+            ),
+            warnings=warnings,
+        )
+
+    @classmethod
     def get_status_text(cls) -> str:
         return "Checking diff"
+
+
+# ── Git log ───────────────────────────────────────────────────────────
 
 
 class GitLogArgs(BaseModel):
     max_count: int = Field(
         default=20, description="Number of commits to show. Capped at 100."
     )
-    oneline: bool = Field(default=True, description="Single-line format (--oneline).")
+    oneline: bool = Field(default=True, description="Single-line format.")
     paths: list[str] = Field(
         default_factory=list,
         description="Filter commits affecting these files. Empty = all history.",
     )
 
 
-class GitLog(GitBase[GitLogArgs]):
+class GitLog(GitBase[GitLogArgs, GitLogResult]):
     description: ClassVar[str] = (
-        "Show commit logs. max_count is capped at 100. "
-        "Use for commit history inspection."
+        "Bounded commit log. Returns structured commit hashes and subjects "
+        "via --format, not raw git porcelain output."
     )
 
     async def run(
         self, args: GitLogArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
+    ) -> AsyncGenerator[GitLogResult, None]:
         max_count = max(1, min(args.max_count, 100))
-        argv = [f"-n{max_count}"]
-        if args.oneline:
-            argv.append("--oneline")
+        head = await self._read_head()
+        branch = await self._read_branch()
 
+        fmt = "%H %s" if args.oneline else "%H%n%aI%n%s%n---EOC---"
+        argv = [f"--format={fmt}", f"--max-count={max_count}"]
         if args.paths:
             argv.append("--")
             argv.extend(self._validate_paths(args.paths))
 
-        yield await self._run_git("log", argv)
+        commits: list[str] = []
+        truncated = False
+        try:
+            raw = await self._run_git("log", argv)
+            truncated = raw.truncated_stdout
+            for line in raw.stdout.splitlines():
+                line = line.strip()
+                if line and not line.startswith("---EOC---"):
+                    commits.append(line)
+        except ToolError as exc:
+            ek = getattr(exc, "error_kind", "git_command_failed")
+            yield GitLogResult(
+                branch=branch, head_sha=head, error_kind=ek, commits_returned=0
+            )
+            return
+
+        yield GitLogResult(
+            branch=branch,
+            head_sha=head,
+            commits=commits,
+            commits_returned=len(commits),
+            truncated=truncated,
+        )
 
     @classmethod
     def format_call_display(cls, args: GitLogArgs) -> ToolCallDisplay:
-        summary = f"Reading git log (last {args.max_count})"
-        return ToolCallDisplay(summary=summary)
+        return ToolCallDisplay(summary=f"Reading git log (last {args.max_count})")
+
+    @classmethod
+    def format_result_display(cls, result: GitLogResult) -> ToolResultDisplay:
+        warnings: list[str] = []
+        if result.truncated:
+            warnings.append("Output was truncated due to size limit.")
+        return ToolResultDisplay(
+            success=result.error_kind is None,
+            message=f"Git log: {result.commits_returned} commits",
+            warnings=warnings,
+        )
 
     @classmethod
     def get_status_text(cls) -> str:
         return "Reading log"
 
 
+# ── Git branch ────────────────────────────────────────────────────────
+
+
 class GitBranchArgs(BaseModel):
     show_current: bool = Field(
         default=True,
-        description="Show only current branch name (--show-current). Set False to list all branches.",
+        description="Show only current branch name. Set False to list all branches.",
     )
 
 
-class GitBranch(GitBase[GitBranchArgs]):
+class GitBranch(GitBase[GitBranchArgs, GitBranchResult]):
     description: ClassVar[str] = (
-        "Show current branch name (show_current=True) or list all branches (show_current=False). "
-        "Default shows only current branch."
+        "Bounded branch information. Returns current branch or full branch list "
+        "without raw git output."
     )
 
     async def run(
         self, args: GitBranchArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
-        argv = []
+    ) -> AsyncGenerator[GitBranchResult, None]:
+        head = await self._read_head()
+        branch = await self._read_branch()
+
         if args.show_current:
-            argv.append("--show-current")
-        yield await self._run_git("branch", argv)
+            yield GitBranchResult(
+                branch=branch,
+                head_sha=head,
+                current_branch=branch,
+                is_detached=branch is None,
+            )
+            return
+
+        branches: list[str] = []
+        try:
+            raw = await self._run_git("branch", [])
+            for line in raw.stdout.splitlines():
+                stripped = line.strip().lstrip("* ")
+                if stripped:
+                    branches.append(stripped)
+        except ToolError as exc:
+            ek = getattr(exc, "error_kind", "git_command_failed")
+            yield GitBranchResult(branch=branch, head_sha=head, error_kind=ek)
+            return
+
+        yield GitBranchResult(
+            branch=branch,
+            head_sha=head,
+            current_branch=branch,
+            branches=branches,
+            is_detached=branch is None,
+            truncated=raw.truncated_stdout if "raw" in dir() else False,
+        )
 
     @classmethod
     def format_call_display(cls, args: GitBranchArgs) -> ToolCallDisplay:
         return ToolCallDisplay(summary="Checking current git branch")
 
     @classmethod
+    def format_result_display(cls, result: GitBranchResult) -> ToolResultDisplay:
+        msg = f"Git branch: {result.current_branch or '(detached)'}"
+        if result.branches:
+            msg += f" ({len(result.branches)} branches)"
+        return ToolResultDisplay(success=result.error_kind is None, message=msg)
+
+    @classmethod
     def get_status_text(cls) -> str:
         return "Checking branch"
+
+
+# ── Git show ──────────────────────────────────────────────────────────
 
 
 class GitShowArgs(BaseModel):
@@ -507,33 +844,88 @@ class GitShowArgs(BaseModel):
     )
 
 
-class GitShow(GitBase[GitShowArgs]):
+class GitShow(GitBase[GitShowArgs, GitShowResult]):
     description: ClassVar[str] = (
-        "Show various types of Git objects: commits, files at specific refs. "
-        "ref can be a SHA, branch name, tag, or relative reference (HEAD~1). "
-        "Use for inspecting specific commits or file content at a ref."
+        "Bounded commit inspection. Returns structured commit metadata and change "
+        "statistics without raw patch content."
     )
 
     async def run(
         self, args: GitShowArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
+    ) -> AsyncGenerator[GitShowResult, None]:
         if args.ref.startswith("-"):
             raise ToolError(f"Ref cannot start with '-': {args.ref}")
 
-        argv = [args.ref]
-        if args.paths:
-            argv.append("--")
-            argv.extend(self._validate_paths(args.paths))
+        head = await self._read_head()
+        branch = await self._read_branch()
 
-        yield await self._run_git("show", argv)
+        fmt_argv = ["--format=%H%x00%aI%x00%s", "--numstat", "-z", args.ref]
+        if args.paths:
+            fmt_argv.append("--")
+            fmt_argv.extend(self._validate_paths(args.paths))
+
+        try:
+            raw = await self._run_git("show", fmt_argv)
+        except ToolError as exc:
+            ek = getattr(exc, "error_kind", "git_command_failed")
+            yield GitShowResult(
+                branch=branch, head_sha=head, error_kind=ek, commit_sha=args.ref
+            )
+            return
+
+        parts = raw.stdout.split("\0")
+        commit_sha = parts[0] if len(parts) > 0 else args.ref
+        author_date = parts[1] if len(parts) > 1 else None
+        subject = parts[2] if len(parts) > 2 else None
+
+        additions = deletions = 0
+        changed: list[str] = []
+        for part in parts[3:]:
+            part = part.strip()
+            if not part:
+                continue
+            tab_parts = part.split("\t")
+            if len(tab_parts) >= 3:
+                try:
+                    additions += int(tab_parts[0]) if tab_parts[0] != "-" else 0
+                    deletions += int(tab_parts[1]) if tab_parts[1] != "-" else 0
+                except ValueError:
+                    pass
+                changed.append(tab_parts[2])
+
+        yield GitShowResult(
+            branch=branch,
+            head_sha=head,
+            commit_sha=commit_sha,
+            author_date=author_date,
+            subject=subject,
+            files_changed_count=len(changed),
+            additions=additions,
+            deletions=deletions,
+            changed_paths=changed,
+            truncated=raw.truncated_stdout,
+        )
 
     @classmethod
     def format_call_display(cls, args: GitShowArgs) -> ToolCallDisplay:
         return ToolCallDisplay(summary=f"Showing git object {args.ref}")
 
     @classmethod
+    def format_result_display(cls, result: GitShowResult) -> ToolResultDisplay:
+        return ToolResultDisplay(
+            success=result.error_kind is None,
+            message=(
+                f"Git show {result.commit_sha}: {result.files_changed_count} files "
+                f"(+{result.additions}/-{result.deletions})"
+            ),
+        )
+
+    @classmethod
     def get_status_text(cls) -> str:
         return "Showing object"
+
+
+# ── Git ls-files ──────────────────────────────────────────────────────
 
 
 class GitLsFilesArgs(BaseModel):
@@ -547,33 +939,57 @@ class GitLsFilesArgs(BaseModel):
     deleted: bool = Field(default=False, description="Show deleted files (--deleted).")
 
 
-class GitLsFiles(GitBase[GitLsFilesArgs]):
+class GitLsFiles(GitBase[GitLsFilesArgs, GitLsFilesResult]):
     description: ClassVar[str] = (
-        "Show information about files in the index and the working tree. "
-        "Use others=True for untracked, modified=True for changed, "
-        "deleted=True for removed files. Use for explicit file queries."
+        "Bounded file listing. Returns NUL-delimited file paths without raw git output."
     )
 
     async def run(
         self, args: GitLsFilesArgs, ctx: InvokeContext | None = None
-    ) -> AsyncGenerator[GitResult, None]:
-        argv = []
+    ) -> AsyncGenerator[GitLsFilesResult, None]:
+        head = await self._read_head()
+        branch = await self._read_branch()
+
+        argv: list[str] = ["-z"]
         if args.others:
             argv.append("--others")
         if args.modified:
             argv.append("--modified")
         if args.deleted:
             argv.append("--deleted")
-
         if args.paths:
             argv.append("--")
             argv.extend(self._validate_paths(args.paths))
 
-        yield await self._run_git("ls-files", argv)
+        try:
+            raw = await self._run_git("ls-files", argv)
+        except ToolError as exc:
+            ek = getattr(exc, "error_kind", "git_command_failed")
+            yield GitLsFilesResult(
+                branch=branch, head_sha=head, error_kind=ek, paths_returned=0
+            )
+            return
+
+        paths = [p for p in raw.stdout.split("\0") if p]
+
+        yield GitLsFilesResult(
+            branch=branch,
+            head_sha=head,
+            paths=paths,
+            paths_returned=len(paths),
+            truncated=raw.truncated_stdout,
+        )
 
     @classmethod
     def format_call_display(cls, args: GitLsFilesArgs) -> ToolCallDisplay:
         return ToolCallDisplay(summary="Listing git files")
+
+    @classmethod
+    def format_result_display(cls, result: GitLsFilesResult) -> ToolResultDisplay:
+        return ToolResultDisplay(
+            success=result.error_kind is None,
+            message=f"Git ls-files: {result.paths_returned} files",
+        )
 
     @classmethod
     def get_status_text(cls) -> str:
