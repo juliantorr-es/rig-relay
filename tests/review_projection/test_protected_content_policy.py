@@ -1290,6 +1290,115 @@ def test_tampered_manifest_refused_in_disclosure(tmp_path, monkeypatch):
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# P4.3: Three-way selector required-class authority
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_selector_class_bypass_closed(tmp_path, monkeypatch):
+    """A commit_body selector with metadata_disclosure receipt and
+    metadata operation is refused before consumption."""
+    _clean_gov_store()
+    monkeypatch.chdir(tmp_path)
+
+    output_dir = tmp_path / ".build" / "rig-relay" / "review_projection"
+    output_dir.mkdir(parents=True)
+
+    builder = BundleBuilder(output_dir)
+    manifest = BundleManifest(mode=ProjectionMode.MAINTAINABILITY_REVIEW)
+    crosswalk = LocalCrosswalk(projection_id="test")
+    crosswalk.mappings = {"func": "FN_001"}
+    receipt = DisclosureReceipt(
+        projection_id="test",
+        mode=ProjectionMode.MAINTAINABILITY_REVIEW,
+        created_at="now",
+        source_root_fingerprint="fp",
+        branch="main",
+        head_sha="sha",
+        public_baseline_status="none",
+        policy_version="1.0",
+        input_file_count=1,
+        classification_counts={},
+        included_path_hashes=[],
+        excluded_path_hashes={},
+        applied_rules=[],
+        crosswalk_hash="",
+        residual_scan_result="passed",
+        output_status="candidate_generated",
+    )
+    files = {"src.py": "def FN_001(): pass"}
+    builder.write_bundle("test", files, manifest, crosswalk, receipt)
+
+    mpath = output_dir / "protected_content_manifest_test.json"
+    loaded = load_manifest_json(str(mpath))
+    assert loaded is not None
+    real_selector = loaded.selectors[0]
+    digest_before = loaded.manifest_digest
+
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        issue_disclosure_authorization,
+    )
+
+    gov_dir = (
+        tmp_path / ".build" / "rig-relay" / "desktop" / "disclosure-authorizations"
+    )
+    gov_dir.mkdir(parents=True)
+
+    # Issue metadata_disclosure receipt bound to the commit_body selector
+    auth_result = issue_disclosure_authorization(
+        evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+        disclosure_class=DisclosureClass.METADATA_DISCLOSURE.value,
+        requested_selector=real_selector.selector_digest,
+    )
+
+    import contextlib
+    import io
+
+    from rig_relay.review_projection.cli import _run_disclose_authorization
+
+    # Attempt disclosure with matching metadata operation
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        _run_disclose_authorization(
+            candidate_zip_hash=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+            recipient_class="other_approved_recipient",
+            provider_or_channel="test",
+            purpose="test",
+            retention="30d",
+            training_use="never",
+            authorization_id=auth_result.authorization_id,
+            selector_digest=real_selector.selector_digest,
+        )
+    output = captured.getvalue()
+    assert "REFUSED" in output
+    assert (
+        "requires class" in output.lower()
+        or "selector_required_class" in output.lower()
+    )
+
+    # Selector remains undisclosed
+    reloaded = load_manifest_json(str(mpath))
+    assert reloaded is not None
+    assert reloaded.selectors[0].disclosed is False
+    assert reloaded.manifest_digest == digest_before
+
+    # Authorization NOT consumed
+    from rig_relay.governance.disclosure_authorization import check_disclosure_replay
+
+    replay = check_disclosure_replay(
+        auth_result.authorization_id,
+        current_evidence_digest=receipt.candidate_zip_sha256 or EVIDENCE_DIGEST,
+    )
+    assert replay.is_authorized, "Authorization must not have been consumed"
+
+    # No disclosure event written
+    event_path = (
+        tmp_path / ".build" / "rig-relay" / "governance" / "disclosure_events.v1.jsonl"
+    )
+    assert not event_path.exists() or event_path.read_text().strip() == ""
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Residual scanner still works (regression check)
 # ═══════════════════════════════════════════════════════════════════════
 

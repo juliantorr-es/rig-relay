@@ -367,6 +367,7 @@ def _run_disclose_authorization(
         current_evidence_digest=candidate_zip_hash,
         current_disclosure_class=disclosure_class,
         current_selector_digest=selector_digest,
+        current_required_selector_class=selector_manifest_class,
     )
 
     if consume_result.outcome != DisclosureOutcome.CONSUMED:

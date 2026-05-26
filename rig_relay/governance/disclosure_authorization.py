@@ -13,10 +13,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
+import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
+import tempfile
+import threading
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -102,6 +106,7 @@ class DisclosureOutcome(StrEnum):
     CLASS_MISMATCH = auto()
     SELECTOR_MISMATCH = auto()
     SELECTOR_UNAUTHORIZED = auto()
+    SELECTOR_REQUIRED_CLASS_MISMATCH = auto()
     NOT_FOUND = auto()
     CORRUPT = auto()
     ALREADY_CONSUMED = auto()
@@ -130,6 +135,59 @@ def _generate_id() -> str:
 
 def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+# ── Exclusive consumption locking ─────────────────────────────────────────────
+
+# In-process lock (per process) + cross-process file lock (per store).
+# Reuses the established Rig Relay pattern from coordination/store.py.
+_consume_lock = threading.Lock()
+_consume_lock_fd: int | None = None
+
+
+def _acquire_consume_lock() -> None:
+    global _consume_lock_fd
+    _consume_lock.acquire()
+    lock_path = _store_root() / "consume.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    _consume_lock_fd = fd
+
+
+def _release_consume_lock() -> None:
+    global _consume_lock_fd
+    if _consume_lock_fd is not None:
+        fcntl.flock(_consume_lock_fd, fcntl.LOCK_UN)
+        try:
+            os.close(_consume_lock_fd)
+        except OSError:
+            pass
+        _consume_lock_fd = None
+    _consume_lock.release()
+
+
+def _atomic_write_receipt(receipt: DisclosureAuthorizationReceipt, path: Path) -> None:
+    """Write receipt with atomic temp-file replace + fsync."""
+    data = json.dumps(receipt.model_dump(), indent=2, sort_keys=True) + "\n"
+    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".json")
+    try:
+        os.write(fd, data.encode("utf-8"))
+        os.fsync(fd)
+        os.close(fd)
+        os.replace(tmp_path, str(path))
+        # fsync parent directory for durability
+        dir_fd = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _store_root() -> Path:
@@ -245,6 +303,7 @@ def validate_disclosure_authorization(
     current_evidence_digest: str | None = None,
     current_disclosure_class: str | None = None,
     current_selector_digest: str | None = None,
+    current_required_selector_class: str | None = None,
 ) -> DisclosureResult:
     """Validate a disclosure authorization receipt against current evidence.
 
@@ -258,6 +317,9 @@ def validate_disclosure_authorization(
         current_selector_digest: If provided, must match receipt's
             requested_selector. Fail-closed: a scoped receipt cannot
             authorize unscoped disclosure, and vice versa.
+        current_required_selector_class: If provided, the manifest selector's
+            required disclosure class must equal the receipt's class and the
+            operation's class (three-way match).
 
     Returns:
         DisclosureResult with validation outcome.
@@ -395,6 +457,34 @@ def validate_disclosure_authorization(
                     ),
                 )
 
+    # P4.3: Three-way selector required-class match.
+    # When manifest selector requires a class, the receipt and operation
+    # must both authorize exactly that class.
+    if current_required_selector_class:
+        if receipt.disclosure_class != current_required_selector_class:
+            return DisclosureResult(
+                outcome=DisclosureOutcome.SELECTOR_REQUIRED_CLASS_MISMATCH,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail=(
+                    f"Selector requires class '{current_required_selector_class}' "
+                    f"but receipt authorizes '{receipt.disclosure_class}'"
+                ),
+            )
+        if (
+            current_disclosure_class
+            and current_disclosure_class != current_required_selector_class
+        ):
+            return DisclosureResult(
+                outcome=DisclosureOutcome.SELECTOR_REQUIRED_CLASS_MISMATCH,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail=(
+                    f"Selector requires class '{current_required_selector_class}' "
+                    f"but operation requests '{current_disclosure_class}'"
+                ),
+            )
+
     return DisclosureResult(
         outcome=DisclosureOutcome.VALID,
         authorization_id=receipt.authorization_id,
@@ -411,6 +501,7 @@ def consume_disclosure_authorization(
     current_evidence_digest: str | None = None,
     current_disclosure_class: str | None = None,
     current_selector_digest: str | None = None,
+    current_required_selector_class: str | None = None,
 ) -> DisclosureResult:
     """Validate and consume a disclosure authorization receipt.
 
@@ -424,6 +515,8 @@ def consume_disclosure_authorization(
         current_disclosure_class: If provided, receipt's class must match.
         current_selector_digest: If provided, must match receipt's
             requested_selector (fail-closed).
+        current_required_selector_class: If provided, manifest selector's
+            required class, receipt class, and operation class must all match.
 
     Returns:
         DisclosureResult with outcome. Only CONSUMED signals success.
@@ -433,47 +526,80 @@ def consume_disclosure_authorization(
         current_evidence_digest=current_evidence_digest,
         current_disclosure_class=current_disclosure_class,
         current_selector_digest=current_selector_digest,
+        current_required_selector_class=current_required_selector_class,
     )
     if not valid.is_authorized:
         return valid
 
-    receipt = valid.receipt
-    assert receipt is not None
+    # P4.3: Exclusive consumption under lock across threads and processes
+    _acquire_consume_lock()
+    try:
+        # Re-validate under lock to prevent race
+        receipt = _load_receipt(authorization_id)
+        if receipt is None or not receipt.verify_integrity():
+            return DisclosureResult(
+                outcome=DisclosureOutcome.CORRUPT,
+                authorization_id=authorization_id,
+                error_detail="Receipt lost or corrupted during lock acquisition",
+            )
 
-    if receipt.one_time:
-        receipt.consumed = True
-    else:
-        receipt.use_count += 1
-    receipt.seal()
-
-    path = _persist_receipt(receipt)
-    if path is None:
-        return DisclosureResult(
-            outcome=DisclosureOutcome.UNKNOWN,
-            authorization_id=receipt.authorization_id,
-            error_detail="Failed to persist consumed receipt",
+        # Re-check consumption state under lock
+        consumed = (receipt.one_time and receipt.consumed) or (
+            not receipt.one_time and receipt.use_count >= receipt.max_uses
         )
+        if consumed:
+            return DisclosureResult(
+                outcome=DisclosureOutcome.ALREADY_CONSUMED,
+                authorization_id=receipt.authorization_id,
+                receipt=receipt,
+                error_detail="Receipt already consumed (detected under lock)",
+            )
 
-    # Re-verify: ensure consumption took effect
-    reloaded = _load_receipt(receipt.authorization_id)
-    if reloaded is None or not reloaded.verify_integrity():
-        return DisclosureResult(
-            outcome=DisclosureOutcome.CORRUPT,
-            authorization_id=receipt.authorization_id,
-            error_detail="Post-consume verification failed",
+        # Re-validate scope bindings under lock
+        scope_valid = validate_disclosure_authorization(
+            authorization_id,
+            current_evidence_digest=current_evidence_digest,
+            current_disclosure_class=current_disclosure_class,
+            current_selector_digest=current_selector_digest,
+            current_required_selector_class=current_required_selector_class,
         )
-    if receipt.one_time and not reloaded.consumed:
-        return DisclosureResult(
-            outcome=DisclosureOutcome.CORRUPT,
-            authorization_id=receipt.authorization_id,
-            error_detail="Consume flag not persisted",
-        )
+        if not scope_valid.is_authorized:
+            return scope_valid
 
-    return DisclosureResult(
-        outcome=DisclosureOutcome.CONSUMED,
-        authorization_id=receipt.authorization_id,
-        receipt=reloaded,
-    )
+        # Now safe to consume
+        receipt = scope_valid.receipt
+        assert receipt is not None
+
+        if receipt.one_time:
+            receipt.consumed = True
+        else:
+            receipt.use_count += 1
+        receipt.seal()
+
+        _atomic_write_receipt(receipt, _receipt_path(receipt.authorization_id))
+
+        # Re-verify
+        reloaded = _load_receipt(receipt.authorization_id)
+        if reloaded is None or not reloaded.verify_integrity():
+            return DisclosureResult(
+                outcome=DisclosureOutcome.CORRUPT,
+                authorization_id=receipt.authorization_id,
+                error_detail="Post-consume verification failed",
+            )
+        if receipt.one_time and not reloaded.consumed:
+            return DisclosureResult(
+                outcome=DisclosureOutcome.CORRUPT,
+                authorization_id=receipt.authorization_id,
+                error_detail="Consume flag not persisted",
+            )
+
+        return DisclosureResult(
+            outcome=DisclosureOutcome.CONSUMED,
+            authorization_id=receipt.authorization_id,
+            receipt=reloaded,
+        )
+    finally:
+        _release_consume_lock()
 
 
 # ── Replay detection ─────────────────────────────────────────────────────────
