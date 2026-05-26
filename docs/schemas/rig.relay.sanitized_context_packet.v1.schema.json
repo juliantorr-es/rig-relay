@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.sanitized_context_packet.v1.schema.json",
+  "title": "Rig Relay Sanitized Context Packet v1",
+  "description": "Bounded, provenance-rich context payload suitable for AgentLoop follow-on work or local-inference assistance. Deterministic, digest-bound, content-light. Contains no raw repository contents, secrets, tokens, raw prompts, model outputs, stdout/stderr bodies, or private paths. All content-derived references use SHA256 hashes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "packet_id",
+    "project_identity_hash",
+    "token_budget",
+    "provenance_references",
+    "forbidden_content_check",
+    "privacy_class",
+    "content_light_guarantee",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.sanitized_context_packet.v1"
+    },
+    "packet_id": {
+      "type": "string",
+      "description": "Deterministic packet identifier."
+    },
+    "project_identity_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the project identity (name + URL). No raw paths."
+    },
+    "context_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Content-light structural summary for inference context.",
+      "properties": {
+        "languages": {"type": "array", "items": {"type": "string"}},
+        "frameworks": {"type": "array", "items": {"type": "string"}},
+        "test_frameworks": {"type": "array", "items": {"type": "string"}},
+        "build_systems": {"type": "array", "items": {"type": "string"}},
+        "project_type_hint": {"type": "string"},
+        "subsystem_count": {"type": "integer"},
+        "file_count": {"type": "integer"},
+        "has_documentation": {"type": "boolean"},
+        "has_tests": {"type": "boolean"},
+        "has_ci": {"type": "boolean"}
+      }
+    },
+    "token_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Token budget accounting for this packet.",
+      "required": ["total_tokens_available", "tokens_consumed", "tokens_remaining"],
+      "properties": {
+        "total_tokens_available": {"type": "integer"},
+        "tokens_consumed": {"type": "integer"},
+        "tokens_remaining": {"type": "integer"},
+        "budget_warnings": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "provenance_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ref_type": {"type": "string", "description": "structural_fact, evidence_fact, investigation_ref"},
+          "ref_id": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+          "source_digest": {"type": "string"}
+        }
+      },
+      "description": "Provenance trail for every included fact. Enables traceback to source."
+    },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items_withheld": {"type": "integer"},
+        "items_redacted": {"type": "integer"},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "forbidden_content_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "checked_fields"],
+      "properties": {
+        "passed": {"type": "boolean", "const": true},
+        "checked_fields": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Fields checked: raw_file_contents, raw_prompt_text, model_output_text, stdout_bodies, stderr_bodies, secrets, raw_private_code."
+        },
+        "checked_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "consumption_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Hints for consumers: what this packet contains and how to use it.",
+      "properties": {
+        "packet_kind": {"type": "string", "enum": ["codebase_context", "investigation_context", "approval_context"]},
+        "intended_consumer": {"type": "string", "enum": ["agent_loop", "local_inference", "council_review", "gridline"]},
+        "refresh_after_sha_change": {"type": "boolean"},
+        "stale_if_head_differs": {"type": "boolean"}
+      }
+    },
+    "privacy_class": {"type": "string", "const": "content_light"},
+    "content_light_guarantee": {"type": "boolean", "const": true},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "packet_digest": {"type": "string", "description": "SHA256 of canonical packet content."}
+  }
+}

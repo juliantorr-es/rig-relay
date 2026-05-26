@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.developer_corpus_index.v1.schema.json",
+  "title": "Rig Relay Developer Corpus Index v1",
+  "description": "Private aggregation index of approved or candidate project references for later portfolio synthesis. Does NOT produce a public developer profile — that is the portfolio site's responsibility. Contains project references with status, technology signals, and case-study eligibility. No private repository contents, raw paths, or internal-only artifacts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "corpus_id",
+    "project_references",
+    "privacy_class",
+    "content_light_guarantee",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.developer_corpus_index.v1"
+    },
+    "corpus_id": {
+      "type": "string",
+      "description": "Deterministic corpus identifier derived from developer identity."
+    },
+    "project_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_ref_id", "project_name", "profile_approval_status", "portfolio_eligible"],
+        "properties": {
+          "project_ref_id": {"type": "string"},
+          "project_name": {"type": "string"},
+          "repository_url_digest": {"type": "string"},
+          "profile_approval_status": {
+            "type": "string",
+            "enum": ["pending_developer_review", "approved", "rejected", "not_yet_generated"],
+            "description": "Status of the project's public profile candidate."
+          },
+          "portfolio_eligible": {"type": "boolean", "description": "Whether this project is eligible for portfolio inclusion."},
+          "technology_signals": {
+            "type": "object",
+            "properties": {
+              "languages": {"type": "array", "items": {"type": "string"}},
+              "frameworks": {"type": "array", "items": {"type": "string"}},
+              "protocols": {"type": "array", "items": {"type": "string"}}
+            }
+          },
+          "case_study_eligible": {"type": "boolean", "description": "Whether enough evidence exists for a case study."},
+          "released_boundary_count": {"type": "integer"},
+          "last_updated": {"type": "string", "format": "date-time"},
+          "profile_candidate_digest": {"type": "string", "description": "Digest of the latest profile candidate."}
+        }
+      }
+    },
+    "technology_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Cross-project technology aggregation for portfolio synthesis.",
+      "properties": {
+        "languages": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+        "frameworks": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+        "protocols": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}
+      }
+    },
+    "profile_ready_count": {"type": "integer", "description": "Number of projects with approved profiles."},
+    "candidate_count": {"type": "integer", "description": "Number of projects with pending candidate profiles."},
+    "total_projects_indexed": {"type": "integer"},
+    "last_updated": {"type": "string", "format": "date-time"},
+    "portfolio_synthesis_status": {
+      "type": "string",
+      "enum": ["not_started", "waiting_approvals", "ready_for_synthesis", "awaiting_case_studies"],
+      "description": "Readiness for portfolio site synthesis."
+    },
+    "privacy_class": {"type": "string", "const": "internal_only"},
+    "content_light_guarantee": {"type": "boolean", "const": true},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "corpus_digest": {"type": "string"}
+  }
+}

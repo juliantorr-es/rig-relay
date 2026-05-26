@@ -338,6 +338,12 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/governance/remote_action_authorization.py" = ["PLR0911", "PLR0912", "PLR0913"]
 "scripts/rig_opencode_idle_steward.py" = ["PLR"]
 
+"rig_relay/context_engine/assembler.py" = ["PLR"]
+"rig_relay/context_engine/context_packet.py" = ["PLR"]
+"rig_relay/context_engine/extractor.py" = ["PLR"]
+"rig_relay/context_engine/gridline_projection.py" = ["PLR"]
+"rig_relay/context_engine/redaction.py" = ["PLR"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 

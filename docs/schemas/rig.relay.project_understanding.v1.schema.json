@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.project_understanding.v1.schema.json",
+  "title": "Rig Relay Project Understanding Projection v1",
+  "description": "Private, operator-facing projection of project understanding from repository intake and investigation evidence. Contains source-derived structural facts, evidence-derived operational facts, generated semantic interpretations (marked proposed), and approved content. Never published publicly — internal-only. All content-derived references use SHA256 hashes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "project_identity",
+    "structural_facts",
+    "privacy_class",
+    "content_light_guarantee",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.project_understanding.v1"
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Deterministic projection identifier."
+    },
+    "project_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_name", "repository_url_digest", "head_sha", "branch"],
+      "properties": {
+        "project_name": {"type": "string"},
+        "repository_url_digest": {"type": "string", "description": "SHA256 of repository URL."},
+        "head_sha": {"type": "string"},
+        "branch": {"type": "string"},
+        "remotes_count": {"type": "integer"},
+        "is_github_backed": {"type": "boolean"},
+        "is_local_only": {"type": "boolean"},
+        "git_root_digest": {"type": "string"}
+      }
+    },
+    "structural_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "category", "value", "source_path", "source_kind", "extraction_method", "provenance"],
+        "properties": {
+          "fact_id": {"type": "string"},
+          "category": {"type": "string", "description": "language, framework, build_system, test_framework, etc."},
+          "value": {"type": "string"},
+          "source_path": {"type": "string", "description": "Relative path to source file (hashed in public projections)."},
+          "source_kind": {"type": "string", "description": "pyproject.toml, package.json, etc."},
+          "extraction_method": {"type": "string", "description": "parser, regex, manifest_reader, etc."},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+          "provenance": {"type": "string", "const": "source_derived"}
+        }
+      }
+    },
+    "evidence_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "category", "value", "evidence_ref", "provenance"],
+        "properties": {
+          "fact_id": {"type": "string"},
+          "category": {"type": "string"},
+          "value": {"type": "string"},
+          "evidence_ref": {"type": "string", "description": "K0 investigation evidence hash reference."},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+          "provenance": {"type": "string", "const": "evidence_derived"}
+        }
+      }
+    },
+    "generated_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "category", "narrative", "approval_status", "provenance"],
+        "properties": {
+          "claim_id": {"type": "string"},
+          "category": {"type": "string", "description": "project_description, capability_label, page_section_suggestion, etc."},
+          "narrative": {"type": "string", "description": "Generated narrative — marked proposed, not fact."},
+          "basis_facts": {"type": "array", "items": {"type": "string"}},
+          "approval_status": {"type": "string", "enum": ["proposed", "pending_review", "approved", "rejected"]},
+          "provenance": {"type": "string", "const": "generated"}
+        }
+      }
+    },
+    "approved_content": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content_id", "category", "value", "approved_at", "provenance"],
+        "properties": {
+          "content_id": {"type": "string"},
+          "category": {"type": "string"},
+          "value": {"type": "string"},
+          "approved_at": {"type": "string", "format": "date-time"},
+          "provenance": {"type": "string", "const": "approved"}
+        }
+      }
+    },
+    "technology_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "languages": {"type": "array", "items": {"type": "string"}},
+        "frameworks": {"type": "array", "items": {"type": "string"}},
+        "build_systems": {"type": "array", "items": {"type": "string"}},
+        "package_managers": {"type": "array", "items": {"type": "string"}},
+        "test_frameworks": {"type": "array", "items": {"type": "string"}},
+        "lint_tools": {"type": "array", "items": {"type": "string"}},
+        "type_checkers": {"type": "array", "items": {"type": "string"}},
+        "formatters": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "publication_assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "has_readme": {"type": "boolean"},
+        "has_license": {"type": "boolean"},
+        "has_contributing": {"type": "boolean"},
+        "has_changelog": {"type": "boolean"},
+        "has_security_policy": {"type": "boolean"},
+        "has_documentation_site": {"type": "boolean"},
+        "screenshot_count": {"type": "integer"},
+        "demo_count": {"type": "integer"},
+        "publication_ready_asset_count": {"type": "integer"}
+      }
+    },
+    "test_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "test_framework_detected": {"type": "boolean"},
+        "test_command_detected": {"type": "boolean"},
+        "ci_test_pipeline_detected": {"type": "boolean"},
+        "coverage_tool_detected": {"type": "boolean"},
+        "test_directory_detected": {"type": "boolean"}
+      }
+    },
+    "bootstrap_gaps": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Bootstrap gaps and recommendations for missing signals."
+    },
+    "withheld_items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "count": {"type": "integer"},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "categories": {"type": "array", "items": {"type": "string"}}
+      },
+      "description": "Private material count and reasons for withholding — no raw content."
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Uncertainty markers for facts that couldn't be deterministically established.",
+      "properties": {
+        "indeterminate_count": {"type": "integer"},
+        "low_confidence_count": {"type": "integer"},
+        "needs_investigation_count": {"type": "integer"}
+      }
+    },
+    "intake_dependency_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "j0_intake_boundary": {"type": "string", "description": "live or fixture"},
+        "k0_investigation_boundary": {"type": "string", "description": "live or fixture"},
+        "j0_intake_available": {"type": "boolean"},
+        "k0_investigation_available": {"type": "boolean"}
+      }
+    },
+    "privacy_class": {"type": "string", "const": "internal_only"},
+    "content_light_guarantee": {"type": "boolean", "const": true},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "projection_digest": {"type": "string"}
+  }
+}

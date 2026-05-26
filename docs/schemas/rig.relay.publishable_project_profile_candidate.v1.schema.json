@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.publishable_project_profile_candidate.v1.schema.json",
+  "title": "Rig Relay Publishable Project Profile Candidate v1",
+  "description": "Public-safe project profile candidate awaiting developer approval. Grounded in source-derived structural facts and evidence-derived operational facts. Generated interpretations are explicitly marked proposed. No private repository contents, secrets, tokens, raw prompts, model outputs, or internal-only artifacts may appear. Consumed by the E0 ProjectPagePublicationProjection surface and the future static publication compiler.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "project_identity",
+    "structural_facts_public",
+    "approval_status",
+    "privacy_class",
+    "content_light_guarantee",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publishable_project_profile_candidate.v1"
+    },
+    "candidate_id": {
+      "type": "string",
+      "description": "Deterministic candidate identifier."
+    },
+    "project_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_name"],
+      "properties": {
+        "project_name": {"type": "string"},
+        "tagline": {"type": "string", "description": "One-line project description."},
+        "current_milestone": {"type": "string"},
+        "product_identity_blurb": {"type": "string", "description": "Generated narrative — marked proposed."},
+        "blurb_approval_status": {"type": "string", "enum": ["proposed", "approved"]}
+      }
+    },
+    "status_overview": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall_status": {"type": "string", "description": "alpha, beta, stable, etc."},
+        "implemented_count": {"type": "integer"},
+        "planned_count": {"type": "integer"},
+        "evidence_backed": {"type": "boolean"}
+      }
+    },
+    "structural_facts_public": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fact_id", "category", "value"],
+        "properties": {
+          "fact_id": {"type": "string"},
+          "category": {"type": "string"},
+          "value": {"type": "string", "description": "Public-safe value — no raw paths, no secrets."},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Public-safe subset of structural facts. Source paths and extraction methods are withheld; only category/value/confidence survive."
+    },
+    "technology_capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "languages": {"type": "array", "items": {"type": "string"}},
+        "frameworks": {"type": "array", "items": {"type": "string"}},
+        "test_frameworks": {"type": "array", "items": {"type": "string"}},
+        "protocols": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "accomplishments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {"type": "string"},
+              "receipt_ref": {"type": "string", "description": "sha256: evidence reference."},
+              "status": {"type": "string", "enum": ["proven", "claimed", "proposed"]}
+            }
+          }
+        },
+        "total_receipts_referenced": {"type": "integer"}
+      }
+    },
+    "architecture_overview": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "subsystems": {"type": "string"},
+        "protocol_surfaces": {"type": "string"},
+        "component_diagram_refs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "released_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "boundary_name": {"type": "string"},
+          "release_status": {"type": "string", "enum": ["proven", "claimed", "planned"]},
+          "consuming_surfaces": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "mission_timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mission_id": {"type": "string"},
+          "title": {"type": "string"},
+          "status": {"type": "string", "enum": ["proven", "claimed", "planned"]},
+          "completed_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "generated_narrative_sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Generated semantic interpretations for page sections — all marked proposed.",
+      "properties": {
+        "project_description": {
+          "type": "object",
+          "properties": {
+            "narrative": {"type": "string"},
+            "approval_status": {"type": "string", "const": "proposed"},
+            "basis_fact_ids": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "capability_narrative": {
+          "type": "object",
+          "properties": {
+            "narrative": {"type": "string"},
+            "approval_status": {"type": "string", "const": "proposed"},
+            "basis_fact_ids": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "engineering_themes": {
+          "type": "object",
+          "properties": {
+            "narrative": {"type": "string"},
+            "approval_status": {"type": "string", "const": "proposed"},
+            "basis_fact_ids": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": ["pending_developer_review", "approved", "rejected", "superseded"],
+      "description": "Overall approval status of this candidate."
+    },
+    "redaction_log": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items_withheld": {"type": "integer"},
+        "items_redacted": {"type": "integer"},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      },
+      "description": "What was withheld or redacted and why."
+    },
+    "publication_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ready_for_publication": {"type": "boolean"},
+        "missing_sections": {"type": "array", "items": {"type": "string"}},
+        "recommendations": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "privacy_class": {"type": "string", "const": "public_safe"},
+    "content_light_guarantee": {"type": "boolean", "const": true},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "candidate_digest": {"type": "string"}
+  }
+}
