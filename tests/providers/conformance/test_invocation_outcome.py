@@ -66,38 +66,38 @@ async def _execute_test_completion(
 ) -> list[Any]:
     """Execute a completion against a stubbed endpoint. Returns chunks."""
     url = f"{provider_cfg.api_base}/chat/completions"
-    route = respx.post(url)
-
-    if stream_events:
-        body = (
-            "\n".join(f"data: {json.dumps(e)}" for e in stream_events)
-            + "\ndata: [DONE]\n"
-        )
-        route.mock(
-            return_value=httpx.Response(
-                status_code=200,
-                content=body.encode(),
-                headers={"Content-Type": "text/event-stream"},
-            )
-        )
-    else:
-        route.mock(
-            return_value=httpx.Response(
-                status_code=response_status,
-                json=response_body,
-                headers=response_headers or {},
-            )
-        )
-
     chunks: list[Any] = []
-    async with GenericBackend(provider=provider_cfg) as backend:
-        async for chunk in backend.complete_streaming(
-            model=model_cfg,
-            messages=[LLMMessage(role=Role.user, content="hello")],
-            temperature=0.0,
-            max_tokens=10,
-        ):
-            chunks.append(chunk)
+
+    async with respx.mock(assert_all_called=False) as mock:
+        if stream_events:
+            body = (
+                "\n".join(f"data: {json.dumps(e)}" for e in stream_events)
+                + "\ndata: [DONE]\n"
+            )
+            mock.post(url).mock(
+                return_value=httpx.Response(
+                    status_code=200,
+                    content=body.encode(),
+                    headers={"Content-Type": "text/event-stream"},
+                )
+            )
+        else:
+            mock.post(url).mock(
+                return_value=httpx.Response(
+                    status_code=response_status,
+                    json=response_body,
+                    headers=response_headers or {},
+                )
+            )
+
+        async with GenericBackend(provider=provider_cfg) as backend:
+            async for chunk in backend.complete_streaming(
+                model=model_cfg,
+                messages=[LLMMessage(role=Role.user, content="hello")],
+                temperature=0.0,
+                max_tokens=10,
+            ):
+                chunks.append(chunk)
     return chunks
 
 
@@ -274,15 +274,18 @@ async def test_openrouter_gateway_provenance_from_headers() -> None:
     headers = {"x-provider": "openai", "x-provider-model": "gpt-4o"}
 
     url = f"{provider_cfg.api_base}/chat/completions"
-    respx.post(url).mock(return_value=httpx.Response(200, json=body, headers=headers))
-
-    async with GenericBackend(provider=provider_cfg) as backend:
-        result = await backend.complete(
-            model=model_cfg,
-            messages=[LLMMessage(role=Role.user, content="hello")],
-            temperature=0.0,
-            max_tokens=10,
+    async with respx.mock(assert_all_called=False) as mock:
+        mock.post(url).mock(
+            return_value=httpx.Response(200, json=body, headers=headers)
         )
+
+        async with GenericBackend(provider=provider_cfg) as backend:
+            result = await backend.complete(
+                model=model_cfg,
+                messages=[LLMMessage(role=Role.user, content="hello")],
+                temperature=0.0,
+                max_tokens=10,
+            )
 
     outcome = result.invocation_outcome
     assert outcome is not None
@@ -307,15 +310,16 @@ async def test_openrouter_identity_preserved() -> None:
     }
 
     url = f"{provider_cfg.api_base}/chat/completions"
-    respx.post(url).mock(return_value=httpx.Response(200, json=body))
+    async with respx.mock(assert_all_called=False) as mock:
+        mock.post(url).mock(return_value=httpx.Response(200, json=body, headers={}))
 
-    async with GenericBackend(provider=provider_cfg) as backend:
-        result = await backend.complete(
-            model=model_cfg,
-            messages=[LLMMessage(role=Role.user, content="hello")],
-            temperature=0.0,
-            max_tokens=10,
-        )
+        async with GenericBackend(provider=provider_cfg) as backend:
+            result = await backend.complete(
+                model=model_cfg,
+                messages=[LLMMessage(role=Role.user, content="hello")],
+                temperature=0.0,
+                max_tokens=10,
+            )
 
     outcome = result.invocation_outcome
     assert outcome is not None
@@ -340,15 +344,16 @@ async def test_deepseek_identity_preserved() -> None:
     }
 
     url = f"{provider_cfg.api_base}/chat/completions"
-    respx.post(url).mock(return_value=httpx.Response(200, json=body))
+    async with respx.mock(assert_all_called=False) as mock:
+        mock.post(url).mock(return_value=httpx.Response(200, json=body, headers={}))
 
-    async with GenericBackend(provider=provider_cfg) as backend:
-        result = await backend.complete(
-            model=model_cfg,
-            messages=[LLMMessage(role=Role.user, content="hello")],
-            temperature=0.0,
-            max_tokens=10,
-        )
+        async with GenericBackend(provider=provider_cfg) as backend:
+            result = await backend.complete(
+                model=model_cfg,
+                messages=[LLMMessage(role=Role.user, content="hello")],
+                temperature=0.0,
+                max_tokens=10,
+            )
 
     outcome = result.invocation_outcome
     assert outcome is not None
@@ -390,15 +395,16 @@ async def test_no_secrets_in_outcomes() -> None:
     }
 
     url = f"{provider_cfg.api_base}/chat/completions"
-    respx.post(url).mock(return_value=httpx.Response(200, json=body))
+    async with respx.mock(assert_all_called=False) as mock:
+        mock.post(url).mock(return_value=httpx.Response(200, json=body, headers={}))
 
-    async with GenericBackend(provider=provider_cfg) as backend:
-        result = await backend.complete(
-            model=model_cfg,
-            messages=[LLMMessage(role=Role.user, content="hello")],
-            temperature=0.0,
-            max_tokens=10,
-        )
+        async with GenericBackend(provider=provider_cfg) as backend:
+            result = await backend.complete(
+                model=model_cfg,
+                messages=[LLMMessage(role=Role.user, content="hello")],
+                temperature=0.0,
+                max_tokens=10,
+            )
 
     outcome = result.invocation_outcome
     assert outcome is not None

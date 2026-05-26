@@ -29,6 +29,7 @@ from rig_relay.providers.invocation import (
     GatewayProvenance,
     GatewayProvenanceSource,
     InvocationOutcomeClass,
+    ProviderInvocationOutcome,
     UsageEvidenceSource,
     build_invocation_outcome,
 )
@@ -299,6 +300,88 @@ def _extract_openrouter_evidence(
     return result
 
 
+async def _enrich_with_generation_audit(
+    outcome: ProviderInvocationOutcome, api_key: str | None
+) -> None:
+    """Enrich a production outcome with OpenRouter generation metadata audit."""
+    from rig_relay.providers.openrouter_observer import (
+        compute_discrepancy,
+        observe_generation_metadata,
+    )
+
+    if not outcome.provider_generation_id:
+        return
+
+    gen_evidence = await observe_generation_metadata(
+        outcome.provider_generation_id, api_key=api_key
+    )
+
+    if not gen_evidence.enrichment_success:
+        outcome.usage_evidence_source = (
+            outcome.usage_evidence_source or "inline_response"
+        )
+        outcome.gateway_native_usage_verified = False
+        return
+
+    # Map audit evidence into outcome
+    outcome.gateway_native_tokens_prompt = gen_evidence.native_tokens_prompt
+    outcome.gateway_native_tokens_completion = gen_evidence.native_tokens_completion
+    outcome.gateway_native_tokens_cached = gen_evidence.native_tokens_cached
+    outcome.gateway_native_tokens_reasoning = gen_evidence.native_tokens_reasoning
+    if gen_evidence.total_cost is not None:
+        outcome.gateway_total_cost = gen_evidence.total_cost
+        outcome.gateway_cost_verified = True
+    if gen_evidence.upstream_cost is not None:
+        outcome.gateway_upstream_cost = gen_evidence.upstream_cost
+    if gen_evidence.downstream_provider:
+        if outcome.gateway_provenance is None:
+            outcome.gateway_provenance = GatewayProvenance(
+                downstream_provider=gen_evidence.downstream_provider,
+                downstream_model=gen_evidence.downstream_model,
+                provenance_source=GatewayProvenanceSource.GENERATION_METADATA_LOOKUP,
+            )
+        elif (
+            outcome.gateway_provenance.downstream_provider
+            != gen_evidence.downstream_provider
+        ):
+            outcome.usage_discrepancy_detected = True
+
+    outcome.gateway_native_usage_verified = True
+    current_source = outcome.usage_evidence_source or ""
+    if current_source == "response_header_plus_inline_usage":
+        outcome.usage_evidence_source = "both_inline_and_metadata"
+    elif "generation_metadata" not in current_source:
+        outcome.usage_evidence_source = (
+            "both_inline_and_metadata"
+            if current_source
+            else "generation_metadata_lookup"
+        )
+
+    inline_data = outcome.to_dict()
+    disc_result = compute_discrepancy(inline_data, gen_evidence)
+    if disc_result.get("discrepancy_detected"):
+        outcome.usage_discrepancy_detected = True
+
+    outcome.gateway_native_usage_verified = True
+
+    # Mark enrichment evidence source
+    current_source = outcome.usage_evidence_source or ""
+    if current_source == "response_header_plus_inline_usage":
+        outcome.usage_evidence_source = "both_inline_and_metadata"
+    elif "generation_metadata" not in current_source:
+        outcome.usage_evidence_source = (
+            "both_inline_and_metadata"
+            if current_source
+            else "generation_metadata_lookup"
+        )
+
+    # Discrepancy detection: compare inline vs audit
+    inline_data = outcome.to_dict()
+    disc_result = compute_discrepancy(inline_data, gen_evidence)
+    if disc_result.get("discrepancy_detected"):
+        outcome.usage_discrepancy_detected = True
+
+
 _ADAPTERS: dict[str, APIAdapter] = {
     "anthropic": AnthropicAdapter(),
     "gemini": GeminiAdapter(),
@@ -414,7 +497,19 @@ class GenericBackend:
             res_data, resp_headers = await self._make_request(url, req.body, headers)
             if hasattr(adapter, "_last_response_headers"):
                 adapter._last_response_headers = dict(resp_headers.items())
-            return adapter.parse_response(res_data, self._provider)
+            chunk = adapter.parse_response(res_data, self._provider)
+
+            # ── OpenRouter generation audit enrichment ──────────
+            if (
+                chunk.invocation_outcome is not None
+                and chunk.invocation_outcome.provider_class
+                == ProviderClass.ROUTED_GATEWAY
+                and chunk.invocation_outcome.provider_generation_id
+                and api_key is not None
+            ):
+                await _enrich_with_generation_audit(chunk.invocation_outcome, api_key)
+
+            return chunk
 
         except httpx.HTTPStatusError as e:
             raise BackendErrorBuilder.build_http_error(
@@ -481,10 +576,26 @@ class GenericBackend:
         url = f"{base}{req.endpoint}"
 
         try:
+            last_chunk: LLMChunk | None = None
             async for res_data in self._make_streaming_request(
                 url, req.body, headers, adapter=adapter
             ):
-                yield adapter.parse_response(res_data, self._provider)
+                if last_chunk is not None:
+                    yield last_chunk
+                last_chunk = adapter.parse_response(res_data, self._provider)
+            # Enrich terminal chunk with generation audit before yielding
+            if last_chunk is not None:
+                if (
+                    last_chunk.invocation_outcome is not None
+                    and last_chunk.invocation_outcome.provider_class
+                    == ProviderClass.ROUTED_GATEWAY
+                    and last_chunk.invocation_outcome.provider_generation_id
+                    and api_key is not None
+                ):
+                    await _enrich_with_generation_audit(
+                        last_chunk.invocation_outcome, api_key
+                    )
+                yield last_chunk
 
         except httpx.HTTPStatusError as e:
             raise BackendErrorBuilder.build_http_error(

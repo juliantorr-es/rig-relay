@@ -369,10 +369,22 @@ class _OpenAIResponsesStreamParser:
         self.reset()
         output = response_obj.get("output") or []
         usage = self._usage_from_response(response_obj.get("usage"))
+        usage_data = response_obj.get("usage") or {}  # type: ignore[assignment]
         response_id: str | None = response_obj.get("id")
         model: str | None = response_obj.get("model")
         outcome = None
         if usage.prompt_tokens or usage.completion_tokens:
+            cached, cache_ok = _extract_responses_usage_detail(
+                usage_data, "cached_tokens"
+            )
+            reasoning, reason_ok = _extract_responses_usage_detail(
+                usage_data, "reasoning_tokens"
+            )
+            total = (
+                int(usage_data["total_tokens"])
+                if "total_tokens" in usage_data
+                else None
+            )
             outcome = build_invocation_outcome(
                 requested_provider_id=self._adapter_provider_name,
                 requested_model_id=self._adapter_model_name,
@@ -384,6 +396,11 @@ class _OpenAIResponsesStreamParser:
                 output_tokens=usage.completion_tokens
                 if usage.completion_tokens
                 else None,
+                total_tokens=total,
+                cache_read_tokens=cached,
+                cache_read_verified=cache_ok,
+                reasoning_tokens=reasoning,
+                reasoning_tokens_verified=reason_ok,
                 actual_model_id=model if model != self._adapter_model_name else None,
                 actual_model_verified=model is not None,
                 provider_response_id=response_id,
@@ -436,6 +453,21 @@ class _OpenAIResponsesStreamParser:
         "response.incomplete": _on_response_terminal,
         "error": _on_error,
     }
+
+
+def _extract_responses_usage_detail(
+    usage_data: dict[str, Any], field: str
+) -> tuple[int | None, bool | None]:
+    """Extract cached or reasoning token detail from Responses usage."""
+    if field == "cached_tokens":
+        details = usage_data.get("input_tokens_details") or {}
+    elif field == "reasoning_tokens":
+        details = usage_data.get("output_tokens_details") or {}
+    else:
+        return None, None
+    if field in details:
+        return int(details[field]), True
+    return None, None
 
 
 class OpenAIResponsesAdapter(APIAdapter):
@@ -670,8 +702,20 @@ class OpenAIResponsesAdapter(APIAdapter):
             if output is None:
                 raise ValueError("OpenAI Responses response missing output")
             usage = self._stream_parser._usage_from_response(response_data.get("usage"))
+            usage_data = data.get("usage") or {}
             response_id: str | None = data.get("id")
             model: str | None = data.get("model")
+            cached, cache_ok = _extract_responses_usage_detail(
+                usage_data, "cached_tokens"
+            )
+            reasoning, reason_ok = _extract_responses_usage_detail(
+                usage_data, "reasoning_tokens"
+            )
+            total = (
+                int(usage_data["total_tokens"])
+                if "total_tokens" in usage_data
+                else None
+            )
             outcome = build_invocation_outcome(
                 requested_provider_id=self._last_provider_name,
                 requested_model_id=self._last_model_name,
@@ -683,6 +727,11 @@ class OpenAIResponsesAdapter(APIAdapter):
                 output_tokens=usage.completion_tokens
                 if usage.completion_tokens
                 else None,
+                total_tokens=total,
+                cache_read_tokens=cached,
+                cache_read_verified=cache_ok,
+                reasoning_tokens=reasoning,
+                reasoning_tokens_verified=reason_ok,
                 actual_model_id=model if model != self._last_model_name else None,
                 actual_model_verified=model is not None,
                 provider_response_id=response_id,
