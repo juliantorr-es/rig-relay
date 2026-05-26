@@ -1,0 +1,96 @@
+{
+  "schema_version": "rig.audit.lane_d0_pure_substrate.v1",
+  "audit_id": "lane-d0-deterministic-tool-intent-recovery-pure-substrate-2026-05-26",
+  "created_at": "2026-05-26T18:30:00Z",
+  "status": "lane_d_d0_deterministic_tool_intent_recovery_pure_substrate_proven_ready_for_b4_2_gated_integration",
+  "github_baseline_sha": "7a4c24cf",
+  "commit_sha": "48dde840",
+  "lane_ownership_compliance": {
+    "lane_a_files_modified": 0,
+    "lane_b_active_integration_files_modified": 0,
+    "lane_c_files_modified": 0,
+    "fleet_coordination_files_modified": 0,
+    "a2a_files_modified": 0,
+    "live_runtime_execution_files_modified": 0
+  },
+  "files_created": [
+    "rig_relay/recovery/__init__.py",
+    "rig_relay/recovery/models.py",
+    "rig_relay/recovery/alias_policy.py",
+    "rig_relay/recovery/tool_surface_manifest.py",
+    "rig_relay/recovery/transducer.py",
+    "rig_relay/recovery/admission_policy.py",
+    "rig_relay/recovery/receipt.py",
+    "docs/schemas/rig.relay.tool_surface_manifest.v1.schema.json",
+    "docs/schemas/rig.relay.tool_intent_recovery_receipt.v1.schema.json",
+    "tests/recovery/test_tool_surface_manifest.py",
+    "tests/recovery/test_alias_policy.py",
+    "tests/recovery/test_malformed_tool_call_transducer.py",
+    "tests/recovery/test_recovery_admission_policy.py",
+    "tests/recovery/test_recovery_receipt.py",
+    "tests/recovery/test_d0_real_tool_registry_substrate.py"
+  ],
+  "files_modified": 0,
+  "supported_normalization_rules": [
+    "unwrap_function_object",
+    "map_tool_to_name",
+    "map_args_to_arguments",
+    "map_parameters_to_arguments",
+    "unpack_function_dotted_keys",
+    "parse_inline_call_form",
+    "apply_explicit_alias",
+    "validate_payload_schema"
+  ],
+  "explicitly_refused_recovery_forms": [
+    "semantic_keyword_matching",
+    "substring_guessing",
+    "fuzzy_mataching",
+    "edit_distance_repair",
+    "model_confidence_inference",
+    "embedding_similarity",
+    "free_text_tool_selection",
+    "shell_command_interpretation"
+  ],
+  "admission_invariants": {
+    "zero_auto_executed_recovered_mutations": true,
+    "read_only_auto_execute": true,
+    "validation_auto_execute": true,
+    "mutation_proposal_only": true,
+    "raw_shell_refuse": true,
+    "external_side_effect_require_remote_authorization": true
+  },
+  "real_tools_exercised_in_tests": true,
+  "content_light_receipt_validated": true,
+  "manifest_digest_stable": true,
+  "test_results": {
+    "total": 63,
+    "passed": 63,
+    "failed": 0,
+    "pass_rate": "100%"
+  },
+  "static_validation": {
+    "ruff": "All checks passed",
+    "ruff_format": "14 files already formatted",
+    "pyright_production": "0 errors"
+  },
+  "schema_validation": {
+    "total": 442,
+    "passed": 441,
+    "failed": 1,
+    "failed_schema": "rig.relay.fleet_coordination_event.v1.schema.json",
+    "failed_schema_modified_in_this_wave": false,
+    "classification": "pre_existing_baseline"
+  },
+  "intentionally_deferred": {
+    "d1_integration": "Wiring into APIToolFormatHandler, runtime delivery, recovered mutation PatchProposal routing, telemetry emission",
+    "symbol_expanded_recovery": "Symbol codec integration for recovered argument expansion",
+    "d2_constraint_compiler": "Grammar-constrained generation compiler and local-model evaluation",
+    "payload_key_alias_expansion": "Tool-specific payload key aliases remain minimal; further expansion in D1"
+  },
+  "out_of_scope_risks": [
+    "Grammar-constrained generation quality degradation for Gemma native format",
+    "Provider/runtime feature discrepancies across llama.cpp, vLLM, Ollama, LM Studio",
+    "Model quality under constrained vs unconstrained generation"
+  ],
+  "recommended_next_lane_action": "Proceed to D1 after Lane B4.2 truth repair is published and verified."
+}
