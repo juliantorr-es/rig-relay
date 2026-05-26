@@ -2,7 +2,16 @@
   "schema_version": "rig.relay.lane_b4_model_visible_tool_outcome_digestion.v1",
   "audit_id": "lane_b4_model_visible_tool_outcome_digestion_conversation_consumption_failure_class_truth_closure",
   "mission": "Lane B4 — Model-Visible Tool Outcome Digestion, Conversation Consumption, and Failure-Class Truth Closure",
-  "status": "lane_b_b4_model_visible_tool_outcome_digestion_conversation_consumption_failure_class_truth_closure_proven",
+  "status": "lane_b_b4_runtime_delivery_published_artifact_concurrency_and_mutation_authority_repair_in_progress",
+  "prior_invalid_closure_corrected": true,
+  "corrected_claims": [
+    "B4.1/B4.2 audit declared closure_proven while internal gate_b4_4 and gate_b4_5 entries recorded SYNTHETIC_ONLY — canonical self-contradiction",
+    "artifact-emission tests used evidence=None so never entered real artifact path",
+    "concurrency tests used synchronous handle_tool_response in asyncio.gather without suspension points",
+    "bridge parity compared derive_agent_outcome() to itself, not real bridge surface",
+    "mutation-class authority was a hardcoded name list, not registry-derived",
+    "required gates intentionally deferred in the same artifact that claimed closure"
+  ],
   "parent_audits": [
     "P1.0-P2 operational persistence, analytics, refinement, script-authority closure",
     "P3 deferred — PostgreSQL/data-plane to follow"
@@ -116,6 +125,6 @@
     "Telemetry/evidence persistence of tool outcomes"
   ],
 
-  "final_status": "lane_b_b4_model_visible_tool_outcome_digestion_conversation_consumption_failure_class_truth_closure_proven",
+  "final_status": "lane_b_b4_runtime_delivery_published_artifact_concurrency_and_mutation_authority_repair_in_progress",
   "generated_at": "2026-05-26T00:00:00Z"
 }

@@ -241,7 +241,12 @@ class ToolResultRuntime:
             neutralize_reserved_delimiters,
         )
 
-        outcome = derive_agent_outcome(pre_result, _resolve_mutation_class(tool_name))
+        outcome = derive_agent_outcome(
+            pre_result,
+            _resolve_mutation_class(
+                tool_name, tool_manager=getattr(loop, "tool_manager", None)
+            ),
+        )
         annotation = format_agent_outcome(outcome)
         display_text = neutralize_reserved_delimiters(error_text)
         display_text = (
@@ -316,14 +321,27 @@ _MUTATION_TOOL_NAMES: frozenset[str] = frozenset({
 })
 
 
-def _resolve_mutation_class(tool_name: str) -> ToolMutationClass:
+def _resolve_mutation_class(
+    tool_name: str, tool_manager: Any = None
+) -> ToolMutationClass:
     """Return the mutation class for a tool name.
 
-    Known mutation tools return WRITES_WORKSPACE so pre-execution refusals
-    are classified as `mutation_disposition=not_performed` rather than
-    `not_applicable`. Unknown tools default to READ_ONLY (safe because
-    they cannot have mutated state).
+    Prefers canonical tool registry lookup via tool_manager.available_tools.
+    Falls back to a minimal hardcoded list for known built-in mutation tools
+    when no registry is available.
+
+    Unknown/untrusted tools default to READ_ONLY (safe — they cannot have
+    mutated state).
     """
+    if tool_manager is not None and hasattr(tool_manager, "available_tools"):
+        available = tool_manager.available_tools
+        tool_cls = available.get(tool_name)
+        if tool_cls is not None:
+            mc = getattr(tool_cls, "mutation_class", None)
+            if mc is not None:
+                if hasattr(mc, "value"):
+                    return mc
+                return ToolMutationClass(str(mc))
     if tool_name in _MUTATION_TOOL_NAMES:
         return ToolMutationClass.WRITES_WORKSPACE
     return ToolMutationClass.READ_ONLY

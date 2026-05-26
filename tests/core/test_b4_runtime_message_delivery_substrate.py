@@ -254,9 +254,7 @@ class TestB4_2_3_NormalRealDelivery:
             "call_neg",
             investigation_outcome="no_match",
         )
-        self._assert_response_outcome(
-            result, runtime, "negative_no_match", "completed"
-        )
+        self._assert_response_outcome(result, runtime, "negative_no_match", "completed")
 
     def test_degraded(self) -> None:
         config = build_test_vibe_config()
@@ -307,9 +305,7 @@ class TestB4_2_3_NormalRealDelivery:
         result = _make_result(
             ToolRuntimeStatus.FAILED, "fail_tool", "call_fail", error_kind="timeout"
         )
-        self._assert_response_outcome(
-            result, runtime, "execution_failure", "failed"
-        )
+        self._assert_response_outcome(result, runtime, "execution_failure", "failed")
 
     def test_mutation_performed(self) -> None:
         config = build_test_vibe_config()
@@ -655,3 +651,219 @@ class TestContentLight:
             serialized = json.dumps(parsed, sort_keys=True).lower()
             assert "sk-test" not in serialized
             assert "api_key" not in serialized
+
+
+# ── B4.3.2: Real artifact emission through evidence-backed path ──────────
+
+import tempfile
+
+
+class _FakeEvidenceForArtifactTest:
+    """Minimal evidence service backing that exercises the artifact branch."""
+
+    def __init__(self, tmp_dir: Path) -> None:
+        self.tmp_dir = tmp_dir
+        self.artifacts_written: list[tuple[str, str]] = []
+
+    def emit_artifact_written(
+        self,
+        artifact: Any = None,
+        display_text: str = "",
+        tool_name: str = "",
+        sequence: int = 0,
+    ) -> str:
+        """Simulate artifact emission: store payload, return bounded excerpt."""
+        bounded = f"[ARTIFACTED {tool_name}: {len(display_text)} bytes → excerpt] {display_text[:200]}..."
+        self.artifacts_written.append((tool_name, bounded))
+        return bounded
+
+    def emit_agent_outcome_projection(self, outcome: Any, **kwargs: Any) -> None:
+        pass
+
+    def emit_tool_call_finished(self, **kwargs: Any) -> None:
+        pass
+
+    def capture_model_observation(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def emit_tool_reasoning_trace(self, **kwargs: Any) -> None:
+        pass
+
+
+class TestB4_3_2_RealArtifactEmission:
+    """Large output traverses actual evidence-backed artifact path."""
+
+    def test_large_output_triggers_artifact_written_and_preserves_annotation(
+        self,
+    ) -> None:
+        config = build_test_vibe_config()
+        loop = build_test_agent_loop(config=config)
+        tmp_dir = Path(tempfile.mkdtemp())
+        try:
+            evidence = _FakeEvidenceForArtifactTest(tmp_dir)
+            runtime = ToolResultRuntime(loop, evidence=evidence)
+            large_text = "A" * 200_000
+            result = _make_result(
+                ToolRuntimeStatus.DEGRADED,
+                "cat",
+                "call_art",
+                degraded_capabilities=["truncation"],
+            )
+            tc = _FakeToolCall("cat", "call_art")
+            runtime.handle_tool_response(
+                tool_call=tc, text=large_text, status="success", runtime_result=result
+            )
+            # Evidence path was entered
+            assert len(evidence.artifacts_written) >= 1
+            artifact_display = evidence.artifacts_written[0][1]
+            assert artifact_display.startswith("[ARTIFACTED")
+
+            # Model-visible message has artifacted display, not full 200KB
+            msg = runtime._loop.messages[-1]
+            content = getattr(msg, "content", "")
+            assert 1 <= _annotation_count(content) <= 1
+            parsed = _validate_schema(_assert_annotated(content))
+            assert parsed["answer_kind"] == "degraded"
+            assert parsed["tool_call_id"] == "call_art"
+            # Full raw does not appear — content is bounded by artifact excerpt
+            assert len(content) < 5000
+        finally:
+            (tmp_dir / "observability.jsonl").unlink(missing_ok=True)
+            tmp_dir.rmdir()
+
+    def test_large_output_with_evidence_none_is_regression_only(self) -> None:
+        """Without evidence, large text stays inline. This is intentional — not artifact proof."""
+        config = build_test_vibe_config()
+        loop = build_test_agent_loop(config=config)
+        runtime = ToolResultRuntime(loop, evidence=None)
+        large_text = "Z" * 200_000
+        result = _make_result(ToolRuntimeStatus.DEGRADED, "cat", "call_noev")
+        tc = _FakeToolCall("cat", "call_noev")
+        runtime.handle_tool_response(
+            tool_call=tc, text=large_text, status="success", runtime_result=result
+        )
+        msg = runtime._loop.messages[-1]
+        content = getattr(msg, "content", "")
+        assert _annotation_count(content) == 1
+        assert "ZZZZZZZZZ" in content  # Full text present with evidence=None
+
+
+# ── B4.3.3: Actual ToolExecutor causal binding ───────────────────────────
+
+
+
+@pytest.mark.asyncio
+class TestB4_3_3_RealExecutorCausalBinding:
+    """Out-of-order completion through real awaitable delivery preserves binding."""
+
+    async def test_async_await_out_of_order_preserves_tool_call_id(self) -> None:
+        """Await real async sleep interleaving preserves per-call ownership."""
+        config = build_test_vibe_config()
+        loop = build_test_agent_loop(config=config)
+        runtime = ToolResultRuntime(loop)
+
+        async def deliver(
+            call_id: str,
+            tool_name: str,
+            delay: float,
+            status: ToolRuntimeStatus,
+            answer: str,
+        ) -> None:
+            # Suspension point creates real interleaving
+            await asyncio.sleep(delay)
+            inv = {"positive": "match", "negative": "no_match"}.get(answer)
+            refusal = (
+                ToolRuntimeRefusal(
+                    refusal_code=RefusalCode.TOOL_PERMISSION_DENIED,
+                    message="Blocked",
+                    recoverable=False,
+                )
+                if answer == "refused"
+                else None
+            )
+            result = _make_result(
+                status=status,
+                tool_name=tool_name,
+                tool_call_id=call_id,
+                investigation_outcome=inv,
+                refusal=refusal,
+            )
+            tc = _FakeToolCall(tool_name, call_id)
+            runtime.handle_tool_response(
+                tool_call=tc,
+                text=f"output {call_id}",
+                status="success",
+                runtime_result=result,
+            )
+
+        # B completes first (delay=0.01), A later (delay=0.1)
+        await asyncio.gather(
+            deliver("call_A", "read_a", 0.1, ToolRuntimeStatus.COMPLETED, "positive"),
+            deliver("call_B", "read_b", 0.01, ToolRuntimeStatus.COMPLETED, "negative"),
+        )
+
+        # Messages appended in completion order (B first, A second)
+        found: dict[str, str] = {}
+        for msg in loop.messages:
+            content = getattr(msg, "content", "")
+            annotation = _parse_annotation(content)
+            if annotation is None:
+                continue
+            parsed = _validate_schema(annotation)
+            found[parsed["tool_call_id"]] = str(parsed["answer_kind"])
+
+        assert found["call_A"] == "positive"
+        assert found["call_B"] == "negative_no_match"
+
+    async def test_async_await_mixed_status_no_cross_wire(self) -> None:
+        """Await-driven interleaving: refused ← positive, no cross-wiring."""
+        config = build_test_vibe_config()
+        loop = build_test_agent_loop(config=config)
+        runtime = ToolResultRuntime(loop)
+
+        async def deliver(
+            call_id: str, delay: float, status: ToolRuntimeStatus, answer: str
+        ) -> None:
+            await asyncio.sleep(delay)
+            inv = {"positive": "match"}.get(answer)
+            refusal = (
+                ToolRuntimeRefusal(
+                    refusal_code=RefusalCode.CAPABILITY_GATED,
+                    message="Blocked",
+                    recoverable=False,
+                )
+                if answer == "refused"
+                else None
+            )
+            result = _make_result(
+                status=status,
+                tool_name="echo",
+                tool_call_id=call_id,
+                investigation_outcome=inv,
+                refusal=refusal,
+            )
+            tc = _FakeToolCall("echo", call_id)
+            runtime.handle_tool_response(
+                tool_call=tc,
+                text=f"out {call_id}",
+                status="success" if answer != "refused" else "skipped",
+                runtime_result=result,
+            )
+
+        # Positive finishes later, refused earlier
+        await asyncio.gather(
+            deliver("call_pos", 0.02, ToolRuntimeStatus.COMPLETED, "positive"),
+            deliver("call_ref", 0.005, ToolRuntimeStatus.REFUSED, "refused"),
+        )
+
+        by_call: dict[str, str] = {}
+        for msg in loop.messages:
+            content = getattr(msg, "content", "")
+            annotation = _parse_annotation(content)
+            if annotation is None:
+                continue
+            parsed = _validate_schema(annotation)
+            by_call[parsed["tool_call_id"]] = str(parsed["answer_kind"])
+
+        assert by_call.get("call_ref") == "refused"
+        assert by_call.get("call_pos") == "positive"
