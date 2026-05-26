@@ -28,17 +28,34 @@ from rig_relay.integrations.github_provider._auth_state_store import (
     read_auth_state,
     write_auth_state,
 )
+
+# B5-B9 continuation imports
+from rig_relay.integrations.github_provider._authorization_binding import (
+    AuthorizationBinding,
+    AuthorizationManifest,
+    AuthorizationState,
+)
 from rig_relay.integrations.github_provider._capabilities import (
     evaluate_github_capability,
     get_capability,
     load_github_capability_manifest,
     validate_github_capability_manifest,
 )
+from rig_relay.integrations.github_provider._ci_diagnostics import (
+    GitHubDiagnosticAdapter,
+)
 from rig_relay.integrations.github_provider._fake_auth import (
     FakeGitHubAppAuth,
     FakeGitHubJwtSigner,
     FakeGitHubTokenEndpoint,
     is_test_token,
+)
+from rig_relay.integrations.github_provider._issue_intake import (
+    GitHubCIDiagnosticEvidence,
+    GitHubDiagnosticErrorKind,
+    GitHubIssueEvidence,
+    GitHubIssueListResult,
+    GitHubWorkflowJobEvidence,
 )
 from rig_relay.integrations.github_provider._live_adapter import run_live_read_operation
 from rig_relay.integrations.github_provider._live_auth import (
@@ -75,10 +92,25 @@ from rig_relay.integrations.github_provider._operating_picture import (
     build_github_operating_picture_from_paths,
     write_github_operating_picture,
 )
+from rig_relay.integrations.github_provider._pages_adapter import (
+    GitHubPagesAdapter,
+    PagesErrorKind,
+    PagesPublicationPlan,
+    PagesPublicationResult,
+    PagesSiteStatus,
+    PortfolioBuildManifest,
+    PortfolioGenerator,
+    PortfolioProfile,
+    ProjectCard,
+)
 from rig_relay.integrations.github_provider._permission_posture import (
     GitHubPermissionPostureError,
     build_github_permission_posture_report,
     build_github_permission_posture_report_from_paths,
+)
+from rig_relay.integrations.github_provider._project_profile import (
+    ProjectProfileProposal,
+    ProjectProfileValidationResult,
 )
 from rig_relay.integrations.github_provider._publish_pr import (
     GitHubPublishPrConfig,
@@ -94,6 +126,13 @@ from rig_relay.integrations.github_provider._redaction import (
     assert_no_raw_github_token,
     hash_identifier,
     scan_for_tokens,
+)
+from rig_relay.integrations.github_provider._repo_bootstrap import (
+    BootstrapErrorKind,
+    BootstrapPlan,
+    BootstrapResult,
+    GitHubBootstrapAdapter,
+    RepoPurpose,
 )
 from rig_relay.integrations.github_provider._security_intake import (
     GitHubSecurityIntakeCollector,
@@ -148,21 +187,41 @@ from rig_relay.integrations.github_provider._truth_models import (
     GitHubTruthErrorKind,
     GitHubVerificationStatus,
 )
+from rig_relay.integrations.github_provider._user_adapter import GitHubUserAdapter
+from rig_relay.integrations.github_provider._user_models import (
+    GitHubProfileChangeProposal,
+    GitHubProfileChangeResult,
+    GitHubUserErrorKind,
+    GitHubUserProfile,
+)
 
 __all__ = [
+    # B5-B9 continuation (Lane B GitHub account, bootstrap, diagnostics, pages, portfolio)
+    "AuthorizationBinding",
+    "AuthorizationManifest",
+    "AuthorizationState",
+    "BootstrapErrorKind",
+    "BootstrapPlan",
+    "BootstrapResult",
     "FakeGitHubAppAuth",
     "FakeGitHubJwtSigner",
     "FakeGitHubTokenEndpoint",
     "GitHubAccessLevel",
     "GitHubAuthMode",
     "GitHubAuthStatus",
+    "GitHubBootstrapAdapter",
+    "GitHubCIDiagnosticEvidence",
     "GitHubCIStatusEvidence",
     "GitHubCheckRunEvidence",
     "GitHubCommitPresence",
     "GitHubCommitRelationship",
     "GitHubCompareResult",
+    "GitHubDiagnosticAdapter",
+    "GitHubDiagnosticErrorKind",
     "GitHubGrantStatus",
     "GitHubInstallationAccess",
+    "GitHubIssueEvidence",
+    "GitHubIssueListResult",
     "GitHubLiveAuthConfig",
     "GitHubLiveAuthError",
     "GitHubLiveJwtSigner",
@@ -170,8 +229,11 @@ __all__ = [
     "GitHubLiveTokenExchanger",
     "GitHubOperatingPictureError",
     "GitHubOperationClass",
+    "GitHubPagesAdapter",
     "GitHubPermissionKind",
     "GitHubPermissionPostureError",
+    "GitHubProfileChangeProposal",
+    "GitHubProfileChangeResult",
     "GitHubProviderAuthState",
     "GitHubProviderCapability",
     "GitHubProviderCapabilityDecision",
@@ -201,8 +263,23 @@ __all__ = [
     "GitHubTruthAdapter",
     "GitHubTruthAdapterError",
     "GitHubTruthErrorKind",
+    "GitHubUserAdapter",
+    "GitHubUserErrorKind",
+    "GitHubUserProfile",
     "GitHubVerdict",
     "GitHubVerificationStatus",
+    "GitHubWorkflowJobEvidence",
+    "PagesErrorKind",
+    "PagesPublicationPlan",
+    "PagesPublicationResult",
+    "PagesSiteStatus",
+    "PortfolioBuildManifest",
+    "PortfolioGenerator",
+    "PortfolioProfile",
+    "ProjectCard",
+    "ProjectProfileProposal",
+    "ProjectProfileValidationResult",
+    "RepoPurpose",
     "assert_content_light_mapping",
     "assert_no_raw_github_token",
     "build_github_operating_picture",
