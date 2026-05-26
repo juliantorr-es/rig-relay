@@ -296,6 +296,55 @@ class Checkpoint(
         else:
             dirty_files: dict[str, str] = {}
         requested = set(self._normalize_paths(args.include_paths))
+
+        # ── Pre-extract receipt digest for recovery checks ─────────
+        if args.authorization_receipt and self._receipt_digest is None:
+            try:
+                receipt_dict = json.loads(args.authorization_receipt)
+                digest = receipt_dict.get("receipt_sha256")
+                if digest:
+                    self._receipt_digest = digest
+            except (json.JSONDecodeError, KeyError, TypeError):
+                pass
+
+        # ── Recovery: check for prior completion before preconditions ─
+        if self._receipt_digest:
+            committed_sha = self._check_commit_for_receipt_trailer(
+                repo_root, self._receipt_digest
+            )
+            has_terminal = self._has_terminal_receipt(repo_root, self._receipt_digest)
+            if has_terminal:
+                recovery_result = CheckpointResult(
+                    ok=True,
+                    commit_sha=committed_sha or "",
+                    message=(
+                        f"Checkpoint already completed for authorization "
+                        f"{self._receipt_digest[:16]}..."
+                    ),
+                    artifact_sha256=None,
+                    authorization_receipt_sha256=self._receipt_digest,
+                )
+                self._release_if_locked(args.preparation_receipt_sha256)
+                yield recovery_result
+                return
+            if committed_sha and not has_terminal:
+                self._persist_terminal_checkpoint_receipt(
+                    repo_root, self._receipt_digest, committed_sha, "recovered"
+                )
+                recovery_result = CheckpointResult(
+                    ok=True,
+                    commit_sha=committed_sha,
+                    message=(
+                        f"Recovered terminal checkpoint receipt for "
+                        f"existing commit {committed_sha[:8]}"
+                    ),
+                    artifact_sha256=None,
+                    authorization_receipt_sha256=self._receipt_digest,
+                )
+                self._release_if_locked(args.preparation_receipt_sha256)
+                yield recovery_result
+                return
+
         refusal = self._validate_preconditions(
             args, requested, dirty_files, store, guard, repo_root, ctx=ctx
         )
@@ -313,6 +362,14 @@ class Checkpoint(
             self._release_if_locked(args.preparation_receipt_sha256)
             yield refusal
             return
+
+        # ── Persist authorization receipt before commit ───────────
+        if self._receipt_digest and not self._load_latest_authorization_receipt(
+            repo_root, self._receipt_digest
+        ):
+            self._persist_authorization_receipt(
+                repo_root, args.authorization_receipt or "", self._receipt_digest
+            )
 
         # 3. Capture pre-commit state
         pre_commit_head = self._git_rev_parse("HEAD", cwd=repo_root)
@@ -471,6 +528,12 @@ class Checkpoint(
 
             release_transition_lock(args.preparation_receipt_sha256)
             self._transition_locked = False
+
+        # ── Persist terminal checkpoint receipt ─────────────────
+        if self._receipt_digest:
+            self._persist_terminal_checkpoint_receipt(
+                repo_root, self._receipt_digest, post_commit_head, "completed"
+            )
 
         yield result
 
@@ -910,13 +973,17 @@ class Checkpoint(
 
             try:
                 receipt_dict = _json.loads(args.authorization_receipt)
-                receipt_canonical = _json.dumps(
-                    receipt_dict, sort_keys=True, separators=(",", ":")
-                )
-                receipt_digest = (
-                    "sha256:"
-                    + hashlib.sha256(receipt_canonical.encode("utf-8")).hexdigest()
-                )
+                # Use receipt's own receipt_sha256 if available,
+                # otherwise compute canonical digest
+                receipt_digest = receipt_dict.get("receipt_sha256")
+                if not receipt_digest:
+                    receipt_canonical = _json.dumps(
+                        receipt_dict, sort_keys=True, separators=(",", ":")
+                    )
+                    receipt_digest = (
+                        "sha256:"
+                        + hashlib.sha256(receipt_canonical.encode("utf-8")).hexdigest()
+                    )
                 self._receipt_digest = receipt_digest
             except (_json.JSONDecodeError, KeyError, TypeError):
                 receipt_digest = None
@@ -1268,6 +1335,125 @@ class Checkpoint(
             return False, "Invalid expires_at format"
 
         return True, "Receipt valid"
+
+    # ── Durable Authorization Ledger ────────────────────────────────────
+
+    @staticmethod
+    def _auth_ledger_dir(repo_root: Path) -> Path:
+        return repo_root / ".build" / "rig-relay" / "governance"
+
+    @staticmethod
+    def _persist_authorization_receipt(
+        repo_root: Path, receipt_json: str, receipt_digest: str
+    ) -> Path:
+        """Persist authorization receipt BEFORE commit to durable ledger."""
+        ledger_dir = Checkpoint._auth_ledger_dir(repo_root)
+        ledger_dir.mkdir(parents=True, exist_ok=True)
+        ledger_path = ledger_dir / "checkpoint_authorization_receipts.v1.jsonl"
+        record = {
+            "receipt_digest": receipt_digest,
+            "receipt_json": receipt_json,
+            "outcome": "authorized",
+            "commit_sha": "",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        with open(ledger_path, "a") as f:
+            f.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        return ledger_path
+
+    @staticmethod
+    def _load_latest_authorization_receipt(
+        repo_root: Path, receipt_digest: str
+    ) -> dict | None:
+        """Load the authorization receipt matching a digest from the ledger."""
+        ledger_path = (
+            Checkpoint._auth_ledger_dir(repo_root)
+            / "checkpoint_authorization_receipts.v1.jsonl"
+        )
+        if not ledger_path.exists():
+            return None
+        for line in ledger_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if record.get("receipt_digest") == receipt_digest:
+                return record
+        return None
+
+    @staticmethod
+    def _check_commit_for_receipt_trailer(
+        repo_root: Path, receipt_digest: str
+    ) -> str | None:
+        """Return the commit SHA if HEAD carries the receipt digest trailer."""
+        trailer = f"Rig-Authorization-Receipt-SHA256: {receipt_digest}"
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "log", "--format=%H:%B", "-1"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+        if trailer in (result.stdout or ""):
+            return result.stdout.split(":", 1)[0].strip().splitlines()[0]
+        # Also check last 10 commits for the trailer (recovery: HEAD may have advanced)
+        result2 = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_root),
+                "log",
+                "-10",
+                "--format=%H",
+                f"--grep={trailer}",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result2.returncode == 0 and result2.stdout.strip():
+            return result2.stdout.strip().splitlines()[0]
+        return None
+
+    @staticmethod
+    def _persist_terminal_checkpoint_receipt(
+        repo_root: Path, receipt_digest: str, commit_sha: str, outcome: str
+    ) -> Path:
+        """Append a terminal checkpoint receipt after commit or recovery."""
+        ledger_dir = Checkpoint._auth_ledger_dir(repo_root)
+        ledger_dir.mkdir(parents=True, exist_ok=True)
+        ledger_path = ledger_dir / "checkpoint_receipts.v1.jsonl"
+        record = {
+            "receipt_digest": receipt_digest,
+            "commit_sha": commit_sha,
+            "outcome": outcome,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        with open(ledger_path, "a") as f:
+            f.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        return ledger_path
+
+    @staticmethod
+    def _has_terminal_receipt(repo_root: Path, receipt_digest: str) -> bool:
+        """Check whether a terminal receipt already exists for this authorization."""
+        ledger_path = (
+            Checkpoint._auth_ledger_dir(repo_root) / "checkpoint_receipts.v1.jsonl"
+        )
+        if not ledger_path.exists():
+            return False
+        for line in ledger_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if record.get("receipt_digest") == receipt_digest:
+                return True
+        return False
 
     def resolve_permission(self, args: CheckpointArgs) -> None:
         return None

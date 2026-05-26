@@ -1,0 +1,210 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-a-p1-checkpoint-authorization-recovery-closure",
+  "document_type": "audit",
+  "title": "Lane A P1 — Governed Checkpoint Authorization and Crash-Recovery Authority Closure",
+  "summary": "Adds durable pre-commit authorization persistence and idempotent crash recovery to the standalone Checkpoint tool. Authorization receipts are now persisted to a JSONL ledger before any Git commit. Recovery reloads from the ledger and handles committed/unterminated states without duplicate authorization or duplicate commits. All seven gates proven with real Git repos.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "owners": ["Lane A"],
+  "tags": ["checkpoint", "authorization", "recovery", "audit", "durable-persistence", "governance", "lane-a", "p1"],
+  "canonical_path": "docs/json/audits/checkpoint/lane_a_p1_checkpoint_authorization_recovery_closure.v1.json",
+  "source_commit": "806934b5492169fb395b0f3465b55955e34157f0",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Checkpoint Authorization and Crash-Recovery Authority Closure"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Anchors"
+    },
+    {
+      "block_id": "list-1",
+      "type": "list",
+      "content": "Current GitHub main SHA: 806934b5492169fb395b0f3465b55955e34157f0\nBaseline SHA (Lane A P0.1 acceptance): 696dad36\nPrior Lane A checkpoint: 655b51d2 (dispatch bypass closure)\nPrior acceptance audit: 758928d0 (published_remote_mutation_authority_bypass_acceptance_closed)"
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Exact Claimed File Ownership"
+    },
+    {
+      "block_id": "list-2",
+      "type": "list",
+      "content": "rig_relay/core/tools/builtins/checkpoint.py — added durable pre-commit authorization persistence + idempotent recovery\nrig_relay/core/tools/builtins/checkpoint.py — added _persist_authorization_receipt, _load_latest_authorization_receipt, _check_commit_for_receipt_trailer, _persist_terminal_checkpoint_receipt, _has_terminal_receipt methods\nrig_relay/core/tools/builtins/checkpoint.py — added pre-extraction of receipt_sha256 before preconditions; recovery check before _validate_preconditions\nrig_relay/core/tools/builtins/checkpoint.py — changed _receipt_digest computation to prefer receipt_sha256 from receipt JSON over re-computed digest\ntests/governance/test_checkpoint_authorization_recovery.py — new test suite (10 tests, real Git repos)\ndocs/json/audits/checkpoint/lane_a_p1_checkpoint_authorization_recovery_closure.v1.json — this acceptance artifact"
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Source-Level Initial Defect Determination"
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "The standalone Checkpoint tool validated authorization receipts in-memory but never persisted them to a durable ledger before executing the Git commit. If the process crashed between receipt validation and commit, the receipt was lost and recovery was impossible. The campaign checkpoint path (_campaign_checkpoint.py, _campaign_mutation.py) already had durable persistence and recovery, but the standalone tool lacked both. No parallel authority was needed — the existing auth_receipts.py infrastructure and JSONL ledger pattern could be reused."
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Authorization Receipt Ledger"
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Path: .build/rig-relay/governance/checkpoint_authorization_receipts.v1.jsonl. Append-only JSONL. Each record: receipt_digest, receipt_json, outcome, commit_sha, created_at. Persisted BEFORE the Git commit by _persist_authorization_receipt(). Loaded by _load_latest_authorization_receipt() for recovery."
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Terminal Checkpoint Receipt Ledger"
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "Path: .build/rig-relay/governance/checkpoint_receipts.v1.jsonl. Append-only JSONL. Each record: receipt_digest, commit_sha, outcome, created_at. Distinct from the authorization ledger. Persisted after commit by _persist_terminal_checkpoint_receipt(). Checked by _has_terminal_receipt() for re-entry idempotency."
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Commit-to-Authorization Binding Mechanism"
+    },
+    {
+      "block_id": "p-6",
+      "type": "paragraph",
+      "content": "The Git commit carries the Rig-Authorization-Receipt-SHA256 trailer in its message body. The digest value is the receipt_sha256 from the authorization receipt JSON. Recovery uses _check_commit_for_receipt_trailer() which searches the last 10 commits for the matching trailer using git log --grep."
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Recovery Decision Matrix"
+    },
+    {
+      "block_id": "list-7",
+      "type": "list",
+      "content": "State 1: No auth receipt in ledger, no commit with matching trailer → Fresh authorization, persist, commit, terminal receipt\nState 2: Auth receipt in ledger, no commit with matching trailer → Reuse existing authorization (A2), proceed to commit\nState 3: Auth receipt in ledger, commit with matching trailer exists, no terminal receipt → Recovery: append terminal receipt (outcome: recovered), no new commit (A4)\nState 4: Auth receipt in ledger, commit with matching trailer exists, terminal receipt exists → Re-entry: return existing outcome, no duplicate (A6)\nState 5: Commit without matching authorization → Refused at _validate_preconditions (A3)\nState A5: Mismatched authorization (wrong action, expired, invalid JSON) → Refused before any ledger persistence"
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Gates — Real Substrate Execution"
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": ["Gate", "Test", "Result"],
+      "rows": [
+        ["A1 — Auth before commit", "test_a1_authorization_persisted_before_commit", "PASSED"],
+        ["A2 — Restart reuses auth", "test_a2_restart_reuses_authorization", "PASSED"],
+        ["A3 — No auth refused", "test_a3_checkpoint_refuses_without_authorization_receipt", "PASSED"],
+        ["A4 — Commit exists, terminal missing", "test_a4_commit_exists_terminal_receipt_missing_emits_recovery", "PASSED"],
+        ["A5a — Invalid JSON", "test_a5a_invalid_receipt_json_refused", "PASSED"],
+        ["A5b — Expired receipt", "test_a5b_expired_receipt_refused", "PASSED"],
+        ["A5c — Wrong action", "test_a5c_wrong_action_refused", "PASSED"],
+        ["A6 — Re-entry idempotent", "test_a6_reentry_after_terminal_receipt_is_idempotent", "PASSED"],
+        ["A7a — No auth still refuses", "test_a7a_existing_checkpoint_without_authorization_still_refuses", "PASSED"],
+        ["A7b — Mission receipt validates", "test_a7b_mission_issued_receipt_validation", "PASSED"]
+      ]
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Full Regression Suite"
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "All 84 existing checkpoint/governance/campaign/recovery tests pass alongside the 10 new tests. Zero regressions."
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": ["Suite", "Tests", "Status"],
+      "rows": [
+        ["test_checkpoint_authorization_recovery.py", "10", "10 passed"],
+        ["test_checkpoint_authority_lifecycle.py", "10+", "All passed"],
+        ["test_checkpoint_fail_closed.py", "10+", "All passed"],
+        ["test_checkpoint_admission_hardening.py", "10+", "All passed"],
+        ["test_recovery_safe.py", "10+", "All passed"],
+        ["test_campaign_mutation.py", "3+", "All passed"],
+        ["test_checkpoint.py (coordination)", "10+", "All passed"],
+        ["test_checkpoint_porcelain.py", "10+", "All passed"],
+        ["TOTAL", "84", "All passed"]
+      ]
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Static Gates"
+    },
+    {
+      "block_id": "table-10",
+      "type": "table",
+      "columns": ["Gate", "Result"],
+      "rows": [
+        ["ruff check", "All checks passed"],
+        ["ruff format --check", "2 files already formatted"],
+        ["pyright", "0 errors, 0 warnings, 0 informations"]
+      ]
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Completed Work"
+    },
+    {
+      "block_id": "list-11",
+      "type": "list",
+      "content": "Durable pre-commit authorization persistence: authorization receipts are written to checkpoint_authorization_receipts.v1.jsonl before any Git commit\nDistinct authorization/terminal ledgers: checkpoint_authorization_receipts.v1.jsonl (pre-commit) vs checkpoint_receipts.v1.jsonl (post-commit/recovery)\nCommit-to-authorization binding: Rig-Authorization-Receipt-SHA256 trailer carries the receipt digest in commit messages\nIdempotent recovery: reloads from ledger, handles all four states (fresh auth, reuse, commit-without-terminal, already-terminated)\nTyped refusals: missing_receipt, invalid receipt JSON, expired receipt, action mismatch\nPre-extraction of receipt digest: recovery checks run before _validate_preconditions so committed states are detected before staging/guard failures\n10 real-Git-repo tests covering all seven acceptance gates\nReceipt digest consistency: tool now uses receipt_sha256 from receipt JSON rather than re-computing canonical digest, matching the auth_receipts generator"
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentionally Deferred Work"
+    },
+    {
+      "block_id": "list-12",
+      "type": "list",
+      "ordered": true,
+      "content": "Production credential/token-store migration — DevFileTokenStore is dev-only; separate identity-storage mission\nGitHub dispatch or other remote mutation work — completed in P0.1\nLane B operational persistence acceptance or desktop work — not touched\nProvider/Gemini/local inference work — not touched\nA2A runtime handoff — not touched\nAgentLoop or Ralph integration — not touched\nFleet coordination expansion — not touched\nTelemetry/ML analytics — not touched\nFrontend or SwiftUI implementation — not touched\nCampaign checkpoint path (cli/_steward/) — already had separate recovery; not modified\nContract-only GitHub operations (workflow_rerun, pages_publish, pages_cancel) — have capability contracts but zero executable surface; audit when tool implementations arrive"
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Discovered Out-of-Scope Risks"
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "None discovered within the checkpoint authority scope. The campaign checkpoint path (cli/_steward/_campaign_checkpoint.py) already has durable persistence and recovery. This mission unified the standalone tool with the same ledger-backed pattern without crossing Lane B or Lane C boundaries."
+    },
+    {
+      "block_id": "h2-14",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status"
+    },
+    {
+      "block_id": "p-14",
+      "type": "paragraph",
+      "content": "lane_a_p1_checkpoint_authorization_recovery_closure_proven. All seven acceptance gates proven with real Git repos. All 84 existing tests pass. All three static gates pass. The checkpoint authorization seam is closed. Lane A may now proceed to the next owned authority seam."
+    }
+  ]
+}
