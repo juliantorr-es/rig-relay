@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.tool_recovery_evaluation_event.v1.schema.json",
+  "title": "Tool Recovery Evaluation Event v1",
+  "description": "Content-light evaluation event for offline recovery corridor. Never contains raw model emission, payload content, or file mutations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "evaluation_run_id", "case_id", "tool_surface_manifest_digest",
+    "raw_emission_sha256", "payload_schema_valid", "created_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.tool_recovery_evaluation_event.v1" },
+    "evaluation_run_id": { "type": "string" },
+    "case_id": { "type": "string" },
+    "source_kind": { "enum": ["curated_adversarial", "captured_local_model", "captured_provider", "fixture"] },
+    "runtime_kind": { "type": ["string", "null"] },
+    "model_id_hash": { "type": ["string", "null"] },
+    "tool_surface_manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "raw_emission_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "recovery_receipt_sha256": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+    "selected_canonical_tool": { "type": ["string", "null"] },
+    "admission_decision": { "type": ["string", "null"] },
+    "mutation_class": { "type": ["string", "null"] },
+    "normalization_rules_applied": { "type": "array", "items": { "type": "string" } },
+    "payload_schema_valid": { "type": "boolean" },
+    "refusal_code": { "type": ["string", "null"] },
+    "candidate_count": { "type": "integer", "minimum": 0 },
+    "expected_decision": { "type": ["string", "null"] },
+    "expected_tool": { "type": ["string", "null"] },
+    "recovery_correct": { "type": ["boolean", "null"] },
+    "false_recovery": { "type": "boolean" },
+    "ambiguity_refused_correctly": { "type": ["boolean", "null"] },
+    "recovered_mutation_auto_execution_violation": { "type": "boolean" },
+    "event_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

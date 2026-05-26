@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.tool_recovery_runtime_handoff.v1.schema.json",
+  "title": "Tool Recovery Runtime Handoff v1",
+  "description": "Digest-bound integration contract between Lane D recovery and Lane B runtime delivery. Mutation handoff cannot express direct execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "handoff_kind", "recovery_receipt_sha256",
+    "manifest_digest"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.tool_recovery_runtime_handoff.v1" },
+    "handoff_kind": { "enum": ["read_only", "validation", "mutation_proposal_only", "refusal"] },
+    "recovery_receipt_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "canonical_tool_name": { "type": "string" },
+    "admission_decision": { "type": "string" },
+    "payload_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "mutation_class": { "type": "string" },
+    "patch_proposal_required": { "type": "boolean" },
+    "admitted_validation_profile": { "type": ["string", "null"] },
+    "bounded_paths": { "type": "array", "items": { "type": "string" } },
+    "refusal_code": { "type": "string" },
+    "reason": { "type": "string" },
+    "runtime_correlation_id": { "type": "string" }
+  }
+}

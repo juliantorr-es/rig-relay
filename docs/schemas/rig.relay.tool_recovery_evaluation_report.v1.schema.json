@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.tool_recovery_evaluation_report.v1.schema.json",
+  "title": "Tool Recovery Evaluation Report v1",
+  "description": "Deterministic reliability report computed from evaluation JSONL evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "report_id", "created_at", "total_cases",
+    "recovered_mutation_auto_execution_violation_count"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.tool_recovery_evaluation_report.v1" },
+    "report_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "total_cases": { "type": "integer", "minimum": 0 },
+    "source_kind_counts": { "type": "object" },
+    "canonical_valid_count": { "type": "integer", "minimum": 0 },
+    "malformed_count": { "type": "integer", "minimum": 0 },
+    "uniquely_recovered_count": { "type": "integer", "minimum": 0 },
+    "refusal_count_by_reason": { "type": "object" },
+    "false_recovery_count": { "type": "integer", "minimum": 0 },
+    "false_recovery_rate": { "type": "number" },
+    "ambiguity_refusal_correct": { "type": "integer", "minimum": 0 },
+    "read_only_auto_execute_count": { "type": "integer", "minimum": 0 },
+    "validation_auto_execute_count": { "type": "integer", "minimum": 0 },
+    "mutation_proposal_only_count": { "type": "integer", "minimum": 0 },
+    "external_side_effect_authorization_required_count": { "type": "integer", "minimum": 0 },
+    "raw_shell_refusal_count": { "type": "integer", "minimum": 0 },
+    "ambiguity_refusal_count": { "type": "integer", "minimum": 0 },
+    "unsupported_refusal_count": { "type": "integer", "minimum": 0 },
+    "recovered_mutation_auto_execution_violation_count": { "type": "integer", "minimum": 0 },
+    "normalization_rule_frequency": { "type": "object" },
+    "payload_validation_failure_count": { "type": "integer", "minimum": 0 },
+    "tool_coverage_by_canonical_name": { "type": "object" },
+    "captured_real_model_case_count": { "type": "integer", "minimum": 0 },
+    "curated_adversarial_case_count": { "type": "integer", "minimum": 0 },
+    "fixture_case_count": { "type": "integer", "minimum": 0 },
+    "report_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}
