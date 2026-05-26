@@ -803,20 +803,87 @@ class Validate(
         if not args.preparation_receipt_sha256:
             return None, None, None
         try:
-            from rig_relay.governance.auth_receipts import load_preparation_receipt
+            from rig_relay.governance.auth_receipts import (
+                load_preparation_receipt_typed,
+            )
+            from rig_relay.governance.receipt_store import PreparationLoadOutcome
 
-            receipt = load_preparation_receipt(args.preparation_receipt_sha256)
-            if receipt is None:
-                return (
-                    None,
-                    None,
-                    (
-                        "refused",
-                        "preparation_receipt_missing",
-                        "Preparation receipt not found. Run prepare_checkpoint again.",
-                        "",
-                    ),
-                )
+            load_result = load_preparation_receipt_typed(
+                args.preparation_receipt_sha256
+            )
+            match load_result.outcome:
+                case PreparationLoadOutcome.ABSENT:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_receipt_missing",
+                            "Preparation receipt not found. Run prepare_checkpoint again.",
+                            "",
+                        ),
+                    )
+                case PreparationLoadOutcome.UNREADABLE:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_receipt_unreadable",
+                            f"Preparation receipt file is unreadable: {load_result.error_detail}",
+                            "Check filesystem permissions and retry prepare_checkpoint.",
+                        ),
+                    )
+                case PreparationLoadOutcome.MALFORMED_JSON:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_receipt_corrupt",
+                            f"Preparation receipt contains malformed JSON: {load_result.error_detail}",
+                            "Run prepare_checkpoint again to create a fresh receipt.",
+                        ),
+                    )
+                case PreparationLoadOutcome.SCHEMA_INVALID:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_receipt_invalid",
+                            f"Preparation receipt schema is invalid: {load_result.error_detail}",
+                            "Run prepare_checkpoint again to create a fresh receipt.",
+                        ),
+                    )
+                case PreparationLoadOutcome.INTEGRITY_MISMATCH:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_receipt_tampered",
+                            (
+                                "Preparation receipt integrity check failed. "
+                                "The receipt content does not match its stored digest. "
+                                f"{load_result.error_detail}"
+                            ),
+                            "Run prepare_checkpoint again to create a fresh receipt with correct integrity.",
+                        ),
+                    )
+                case PreparationLoadOutcome.LOADED_VALID:
+                    receipt = load_result.receipt
+                case _:
+                    return (
+                        None,
+                        None,
+                        (
+                            "refused",
+                            "preparation_binding_error",
+                            f"Unexpected preparation receipt load outcome: {load_result.outcome}",
+                            "Run prepare_checkpoint again.",
+                        ),
+                    )
 
             prepared_digest: str | None = None
 

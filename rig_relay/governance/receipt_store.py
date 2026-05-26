@@ -1,9 +1,37 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC
+from enum import StrEnum, auto
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
+
+
+class PreparationLoadOutcome(StrEnum):
+    ABSENT = auto()
+    UNREADABLE = auto()
+    MALFORMED_JSON = auto()
+    SCHEMA_INVALID = auto()
+    INTEGRITY_MISMATCH = auto()
+    LOADED_VALID = auto()
+
+
+@dataclass(slots=True)
+class PreparationLoadResult:
+    outcome: PreparationLoadOutcome
+    receipt: dict[str, Any] | None = None
+    error_detail: str = ""
+    receipt_sha256: str = ""
+
+    @property
+    def is_valid(self) -> bool:
+        return self.outcome == PreparationLoadOutcome.LOADED_VALID
+
+    @property
+    def is_absent(self) -> bool:
+        return self.outcome == PreparationLoadOutcome.ABSENT
 
 
 def _self_dogfood_store_root() -> Path:
@@ -23,6 +51,27 @@ def _store_root() -> Path:
     return _self_dogfood_store_root()
 
 
+def _sha256_bytes(data: bytes) -> str:
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _generate_id() -> str:
+    import secrets
+
+    return secrets.token_hex(16)
+
+
+def _recompute_receipt_digest(receipt: dict[str, Any]) -> str:
+    """Recompute the canonical receipt digest from receipt fields.
+
+    Matches the generation contract: receipt_sha256 is set to ""
+    before serialization, exactly as generate_preparation_receipt does.
+    """
+    payload = {**receipt, "receipt_sha256": ""}
+    payload_data = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return _sha256_bytes(payload_data)
+
+
 def persist_preparation_receipt(receipt: dict[str, Any]) -> str | None:
     """Persist a preparation receipt. Returns file path or None."""
     root = _store_root()
@@ -37,16 +86,109 @@ def persist_preparation_receipt(receipt: dict[str, Any]) -> str | None:
         return None
 
 
-def load_preparation_receipt(receipt_sha256: str) -> dict[str, Any] | None:
-    """Load a preparation receipt by its SHA256."""
+def load_preparation_receipt_typed(receipt_sha256: str) -> PreparationLoadResult:
+    """Load a preparation receipt with typed outcome discrimination.
+
+    Distinguishes: absent, unreadable, malformed_json, schema_invalid,
+    integrity_mismatch, and loaded_valid.
+
+    A receipt whose stored receipt_sha256 does not match a recomputed
+    canonical digest yields integrity_mismatch.
+    """
+    from rig_relay.core.logger import logger
+
     root = _store_root()
     receipt_path = root / f"{receipt_sha256}.json"
+
     if not receipt_path.exists():
-        return None
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.ABSENT,
+            receipt_sha256=receipt_sha256,
+            error_detail="Receipt file does not exist",
+        )
+
     try:
-        return json.loads(receipt_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+        raw_bytes = receipt_path.read_bytes()
+    except OSError as exc:
+        logger.warning("Cannot read preparation receipt %s: %s", receipt_sha256, exc)
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.UNREADABLE,
+            receipt_sha256=receipt_sha256,
+            error_detail=f"OS error reading receipt file: {exc}",
+        )
+
+    try:
+        receipt: dict[str, Any] = json.loads(raw_bytes.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        logger.warning(
+            "Malformed JSON in preparation receipt %s: %s", receipt_sha256, exc
+        )
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.MALFORMED_JSON,
+            receipt_sha256=receipt_sha256,
+            error_detail=f"JSON decode failed: {exc}",
+        )
+
+    if not isinstance(receipt, dict):
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.SCHEMA_INVALID,
+            receipt_sha256=receipt_sha256,
+            error_detail="Receipt payload is not a JSON object",
+        )
+
+    required_keys = {"schema_version", "receipt_sha256", "created_at"}
+    missing = required_keys - receipt.keys()
+    if missing:
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.SCHEMA_INVALID,
+            receipt_sha256=receipt_sha256,
+            error_detail=f"Missing required receipt keys: {sorted(missing)}",
+        )
+
+    schema_version = receipt.get("schema_version")
+    if schema_version != "rig.relay.checkpoint_preparation_receipt.v1":
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.SCHEMA_INVALID,
+            receipt_sha256=receipt_sha256,
+            error_detail=f"Unknown schema_version: {schema_version}",
+        )
+
+    # ── Integrity: recompute canonical digest, compare with stored receipt_sha256 ──
+    stored_digest = receipt.get("receipt_sha256", "")
+    recomputed = _recompute_receipt_digest(receipt)
+    if not stored_digest or stored_digest != recomputed:
+        logger.warning(
+            "Integrity mismatch for preparation receipt %s: stored=%s recomputed=%s",
+            receipt_sha256,
+            stored_digest,
+            recomputed,
+        )
+        return PreparationLoadResult(
+            outcome=PreparationLoadOutcome.INTEGRITY_MISMATCH,
+            receipt_sha256=receipt_sha256,
+            error_detail=(
+                f"Stored receipt_sha256 ({stored_digest}) does not match "
+                f"recomputed digest ({recomputed})"
+            ),
+        )
+
+    return PreparationLoadResult(
+        outcome=PreparationLoadOutcome.LOADED_VALID,
+        receipt=receipt,
+        receipt_sha256=receipt_sha256,
+    )
+
+
+def load_preparation_receipt(receipt_sha256: str) -> dict[str, Any] | None:
+    """Load a preparation receipt by its SHA256.
+
+    Thin backward-compatible wrapper around load_preparation_receipt_typed.
+    Returns None for any non-valid outcome.
+    """
+    result = load_preparation_receipt_typed(receipt_sha256)
+    if result.is_valid:
+        return result.receipt
+    return None
 
 
 def find_active_preparation_receipts(
@@ -72,11 +214,9 @@ def find_active_preparation_receipts(
         except Exception:
             continue
 
-        # Filter by branch
         if branch is not None and receipt.get("branch") != branch:
             continue
 
-        # Filter by worktree
         if worktree_root is not None:
             receipt_wt = receipt.get("worktree_root")
             if receipt_wt is not None:
@@ -89,13 +229,11 @@ def find_active_preparation_receipts(
                     if str(receipt_wt) != str(worktree_root):
                         continue
 
-        # Filter by session/task (optional narrowing)
         if session_id is not None and receipt.get("session_id") != session_id:
             continue
         if task_id is not None and receipt.get("task_id") != task_id:
             continue
 
-        # Check expiration
         expires_at = receipt.get("expires_at")
         if expires_at is not None:
             try:
@@ -109,7 +247,6 @@ def find_active_preparation_receipts(
 
         receipts.append(receipt)
 
-    # Sort newest first
     receipts.sort(key=lambda r: r.get("created_at", ""), reverse=True)
     return receipts
 
@@ -137,16 +274,13 @@ def resolve_best_preparation_receipt(
     if not candidates:
         return ("absent", None)
 
-    # If multiple active receipts, prefer the one whose post_index_tree_digest matches current index
     if current_index_tree_digest is not None:
         for receipt in candidates:
             expected = receipt.get("post_index_tree_digest")
             if expected == current_index_tree_digest:
                 return ("valid_index_match", receipt)
-        # No match found — report stale against newest
         return ("stale_index_mismatch", candidates[0])
 
-    # No current digest available
     if len(candidates) > 1:
         return ("ambiguous", candidates[0])
     return ("valid_index_match", candidates[0])
@@ -215,18 +349,6 @@ def generate_validation_receipt(
     return receipt
 
 
-def _generate_id() -> str:
-    import secrets
-
-    return secrets.token_hex(16)
-
-
-def _sha256_bytes(data: bytes) -> str:
-    import hashlib
-
-    return "sha256:" + hashlib.sha256(data).hexdigest()
-
-
 def persist_validation_receipt(receipt: dict[str, Any]) -> str | None:
     """Persist a validation receipt. Returns file path or None."""
     root = _store_root()
@@ -273,7 +395,6 @@ def find_active_validation_receipts(
         except Exception:
             continue
 
-        # Only validation receipts
         if (
             receipt.get("schema_version")
             != "rig.relay.prepared_index_validation_receipt.v1"
@@ -321,10 +442,13 @@ def find_active_validation_receipts(
 
 
 __all__ = [
+    "PreparationLoadOutcome",
+    "PreparationLoadResult",
     "find_active_preparation_receipts",
     "find_active_validation_receipts",
     "generate_validation_receipt",
     "load_preparation_receipt",
+    "load_preparation_receipt_typed",
     "load_validation_receipt",
     "persist_preparation_receipt",
     "persist_validation_receipt",

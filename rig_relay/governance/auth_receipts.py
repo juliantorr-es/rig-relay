@@ -336,38 +336,40 @@ def generate_preparation_receipt(
 def persist_preparation_receipt(receipt: dict[str, Any]) -> str | None:
     """Persist a preparation receipt to the canonical durable ledger.
 
-    Returns the file path on success, None on failure.
+    Delegates to receipt_store.persist_preparation_receipt — the canonical
+    receipt-store authority for preparation receipt persistence.
     """
-    import json as _json
-    from pathlib import Path as _Path
+    from rig_relay.governance.receipt_store import persist_preparation_receipt as _do
 
-    try:
-        receipts_dir = _Path(".build/rig-relay/desktop/preparation-receipts")
-        receipts_dir.mkdir(parents=True, exist_ok=True)
-        receipt_path = receipts_dir / f"{receipt['receipt_sha256']}.json"
-        receipt_path.write_text(
-            _json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
-        return str(receipt_path)
-    except Exception:
-        return None
+    return _do(receipt)
 
 
 def load_preparation_receipt(receipt_sha256: str) -> dict[str, Any] | None:
-    """Load a preparation receipt from the canonical durable ledger by its SHA256."""
-    import json as _json
-    from pathlib import Path as _Path
+    """Load a preparation receipt from the canonical durable ledger by its SHA256.
 
-    try:
-        receipt_path = (
-            _Path(".build/rig-relay/desktop/preparation-receipts")
-            / f"{receipt_sha256}.json"
-        )
-        if not receipt_path.exists():
-            return None
-        return _json.loads(receipt_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    Backward-compatible wrapper around receipt_store.load_preparation_receipt_typed.
+    Returns None for any non-valid outcome (absent, unreadable, corrupt, etc.).
+    """
+    from rig_relay.governance.receipt_store import load_preparation_receipt_typed
+
+    result = load_preparation_receipt_typed(receipt_sha256)
+    if result.is_valid:
+        return result.receipt
+    return None
+
+
+def load_preparation_receipt_typed(receipt_sha256: str) -> Any:
+    """Load a preparation receipt with typed outcome discrimination.
+
+    Delegates to receipt_store.load_preparation_receipt_typed — the canonical
+    receipt-store authority for typed preparation receipt loading.
+
+    Returns PreparationLoadResult with typed outcome (ABSENT, UNREADABLE,
+    MALFORMED_JSON, SCHEMA_INVALID, INTEGRITY_MISMATCH, or LOADED_VALID).
+    """
+    from rig_relay.governance.receipt_store import load_preparation_receipt_typed as _do
+
+    return _do(receipt_sha256)
 
 
 def resolve_authorization(
@@ -408,6 +410,7 @@ __all__ = [
     "generate_preparation_receipt",
     "is_read_only_action",
     "load_preparation_receipt",
+    "load_preparation_receipt_typed",
     "mint_dev_receipt",
     "persist_preparation_receipt",
     "resolve_authorization",

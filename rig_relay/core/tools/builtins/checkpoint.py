@@ -359,7 +359,10 @@ class Checkpoint(
         Returns CheckpointResult with ok=False if verification fails.
         """
         try:
-            from rig_relay.governance.auth_receipts import load_preparation_receipt
+            from rig_relay.governance.auth_receipts import (
+                load_preparation_receipt_typed,
+            )
+            from rig_relay.governance.receipt_store import PreparationLoadOutcome
         except ImportError:
             return CheckpointResult(
                 ok=False,
@@ -372,19 +375,70 @@ class Checkpoint(
                 ),
             )
 
-        # 1. Load the receipt
-        receipt = load_preparation_receipt(receipt_sha256)
-        if receipt is None:
-            return CheckpointResult(
-                ok=False,
-                refusal_reason=f"Preparation receipt not found: {receipt_sha256}",
-                error_kind="preparation_receipt_missing",
-                suggested_next_action=(
-                    "The preparation receipt referenced by this checkpoint does not "
-                    "exist in the durable ledger. Run prepare_checkpoint again to "
-                    "create a new preparation receipt."
-                ),
-            )
+        # 1. Load the receipt with typed outcome discrimination
+        load_result = load_preparation_receipt_typed(receipt_sha256)
+        match load_result.outcome:
+            case PreparationLoadOutcome.ABSENT:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=f"Preparation receipt not found: {receipt_sha256}",
+                    error_kind="preparation_receipt_missing",
+                    suggested_next_action=(
+                        "The preparation receipt referenced by this checkpoint does not "
+                        "exist in the durable ledger. Run prepare_checkpoint again to "
+                        "create a new preparation receipt."
+                    ),
+                )
+            case PreparationLoadOutcome.UNREADABLE:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=f"Preparation receipt is unreadable: {load_result.error_detail}",
+                    error_kind="preparation_receipt_unreadable",
+                    suggested_next_action=(
+                        "Check filesystem permissions and retry prepare_checkpoint."
+                    ),
+                )
+            case PreparationLoadOutcome.MALFORMED_JSON:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=f"Preparation receipt contains malformed JSON: {load_result.error_detail}",
+                    error_kind="preparation_receipt_corrupt",
+                    suggested_next_action=(
+                        "Run prepare_checkpoint again to create a fresh receipt."
+                    ),
+                )
+            case PreparationLoadOutcome.SCHEMA_INVALID:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=f"Preparation receipt schema is invalid: {load_result.error_detail}",
+                    error_kind="preparation_receipt_invalid",
+                    suggested_next_action=(
+                        "Run prepare_checkpoint again to create a fresh receipt."
+                    ),
+                )
+            case PreparationLoadOutcome.INTEGRITY_MISMATCH:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=(
+                        "Preparation receipt integrity check failed. "
+                        "The receipt content does not match its stored digest. "
+                        f"{load_result.error_detail}"
+                    ),
+                    error_kind="preparation_receipt_tampered",
+                    suggested_next_action=(
+                        "Run prepare_checkpoint again to create a fresh receipt "
+                        "with correct integrity."
+                    ),
+                )
+            case PreparationLoadOutcome.LOADED_VALID:
+                receipt = load_result.receipt
+            case _:
+                return CheckpointResult(
+                    ok=False,
+                    refusal_reason=f"Unexpected preparation receipt load outcome: {load_result.outcome}",
+                    error_kind="preparation_binding_error",
+                    suggested_next_action="Run prepare_checkpoint again.",
+                )
 
         # 2. Verify index tree digest matches
         from rig_relay.core.git_index_operations import compute_index_tree_digest

@@ -290,9 +290,10 @@ def test_bound_validate_refuses_when_receipt_file_corrupted(tmp_path):
         os.chdir(original_cwd)
 
     assert refusal is not None, "Expected a refusal for corrupted receipt"
-    assert refusal[1] == "preparation_receipt_missing", (
-        "Corrupted receipt reported as 'missing' — "
-        "corruption and absence are indistinguishable at this layer"
+    # S3 FIXED: corrupt JSON is now distinguished from missing receipt
+    assert refusal[1] == "preparation_receipt_corrupt", (
+        "S3 FIXED: corrupt receipt must produce 'preparation_receipt_corrupt', "
+        f"got '{refusal[1]}'"
     )
 
 
@@ -341,7 +342,7 @@ def test_bound_validate_fails_closed_when_storage_unreadable(tmp_path, monkeypat
             raise OSError("Permission denied")
 
         monkeypatch.setattr(
-            "rig_relay.governance.auth_receipts.load_preparation_receipt",
+            "rig_relay.governance.receipt_store.load_preparation_receipt_typed",
             _raise_oserror,
         )
 
@@ -427,9 +428,9 @@ def test_bound_validate_refuses_when_receipt_has_malformed_paths(tmp_path):
         )
         # Corrupt the prepared_paths after generation
         receipt["prepared_paths"] = 42  # int, not list
-        receipt_data = json.dumps(
-            {k: v for k, v in receipt.items() if k != "receipt_sha256"}, sort_keys=True
-        ).encode("utf-8")
+        # Recompute digest using canonical method (receipt_sha256="" before hashing)
+        canonical = {**receipt, "receipt_sha256": ""}
+        receipt_data = json.dumps(canonical, sort_keys=True).encode("utf-8")
         receipt["receipt_sha256"] = "sha256:" + hashlib.sha256(receipt_data).hexdigest()
         persist_preparation_receipt(receipt)
         receipt_sha = receipt["receipt_sha256"]
@@ -529,7 +530,8 @@ def test_auth_receipts_and_receipt_store_produce_identical_load(tmp_path):
 
 
 @pytest.mark.adversarial
-def test_validate_uses_auth_receipts_not_receipt_store_for_prep_load(tmp_path):
+def test_s3_auth_receipts_delegates_to_receipt_store_for_typed_load(tmp_path):
+    """S3: auth_receipts.load_preparation_receipt_typed delegates to receipt_store."""
     repo = _init_repo(tmp_path)
     _stage_file(repo, "file.py", "# content")
     post_digest = compute_index_tree_digest(repo)
@@ -541,28 +543,16 @@ def test_validate_uses_auth_receipts_not_receipt_store_for_prep_load(tmp_path):
         receipt = _make_receipt(repo, "k" * 64, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
 
-        # Monkeypatch receipt_store.load_preparation_receipt to raise
-        # If validate uses receipt_store, it will crash; if it uses auth_receipts, it will work
-        import rig_relay.governance.receipt_store as rs_module
+        from rig_relay.governance.auth_receipts import load_preparation_receipt_typed
+        from rig_relay.governance.receipt_store import PreparationLoadOutcome
 
-        original_rs_load = rs_module.load_preparation_receipt
-
-        rs_module.load_preparation_receipt = lambda _sha: (_ for _ in ()).throw(
-            RuntimeError("receipt_store should not be called by validate")
+        load_result = load_preparation_receipt_typed(receipt_sha)
+        assert load_result.outcome == PreparationLoadOutcome.LOADED_VALID, (
+            f"S3: auth_receipts.load_preparation_receipt_typed should return "
+            f"LOADED_VALID through delegation. Got: {load_result.outcome}"
         )
-
-        try:
-            tool = _new_validate_tool()
-            prepared_digest, worktree_matched, refusal = _check_binding(
-                tool, receipt_sha, str(repo)
-            )
-        finally:
-            rs_module.load_preparation_receipt = original_rs_load
-
-        assert prepared_digest is not None, (
-            "Validate should use auth_receipts.load_preparation_receipt, "
-            "not receipt_store.load_preparation_receipt"
-        )
+        assert load_result.receipt is not None
+        assert load_result.receipt["receipt_sha256"] == receipt_sha
     finally:
         os.chdir(original_cwd)
 
@@ -993,3 +983,239 @@ def test_multiple_candidates_no_digest_match_returns_stale(tmp_path):
     assert matched["receipt_sha256"] == receipt2["receipt_sha256"], (
         "Expected newest receipt as mismatch candidate"
     )
+
+
+# ── S3: Canonical Receipt-Store Authority and Integrity Semantics ──────────
+
+from rig_relay.governance.receipt_store import (
+    PreparationLoadOutcome,
+    load_preparation_receipt_typed,
+)
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_loaded_valid_for_valid_receipt(tmp_path):
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s3-a" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        result = load_preparation_receipt_typed(receipt_sha)
+        assert result.outcome == PreparationLoadOutcome.LOADED_VALID, (
+            f"Expected LOADED_VALID, got {result.outcome}: {result.error_detail}"
+        )
+        assert result.receipt is not None
+        assert result.receipt["receipt_sha256"] == receipt_sha
+        assert result.receipt["post_index_tree_digest"] == post_digest
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_absent_for_nonexistent_receipt(tmp_path):
+    result = load_preparation_receipt_typed("sha256:" + "0" * 64)
+    assert result.outcome == PreparationLoadOutcome.ABSENT, (
+        f"Expected ABSENT, got {result.outcome}: {result.error_detail}"
+    )
+    assert result.receipt is None
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_unreadable_for_inaccessible_file(tmp_path):
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s3-b" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        receipt_dir = Path(".build/rig-relay/desktop/preparation-receipts")
+        receipt_path = receipt_dir / f"{receipt_sha}.json"
+        # Make the file unreadable
+        receipt_path.chmod(0o000)
+        try:
+            result = load_preparation_receipt_typed(receipt_sha)
+            assert result.outcome == PreparationLoadOutcome.UNREADABLE, (
+                f"Expected UNREADABLE, got {result.outcome}: {result.error_detail}"
+            )
+            assert result.receipt is None
+        finally:
+            receipt_path.chmod(0o644)
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_malformed_json_for_garbage_file(tmp_path):
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s3-c" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        receipt_dir = Path(".build/rig-relay/desktop/preparation-receipts")
+        receipt_path = receipt_dir / f"{receipt_sha}.json"
+        receipt_path.write_text("garbage not json", encoding="utf-8")
+
+        result = load_preparation_receipt_typed(receipt_sha)
+        assert result.outcome == PreparationLoadOutcome.MALFORMED_JSON, (
+            f"Expected MALFORMED_JSON, got {result.outcome}: {result.error_detail}"
+        )
+        assert result.receipt is None
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_schema_invalid_for_missing_keys(tmp_path):
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        # Create a receipt manually without required keys
+        receipt = {"schema_version": "wrong", "created_at": "2024-01-01T00:00:00"}
+        receipt["receipt_sha256"] = ""
+        receipt_data = json.dumps(receipt, sort_keys=True).encode("utf-8")
+        receipt["receipt_sha256"] = "sha256:" + hashlib.sha256(receipt_data).hexdigest()
+        persist_preparation_receipt(receipt)
+        receipt_sha = receipt["receipt_sha256"]
+
+        result = load_preparation_receipt_typed(receipt_sha)
+        assert result.outcome == PreparationLoadOutcome.SCHEMA_INVALID, (
+            f"Expected SCHEMA_INVALID, got {result.outcome}: {result.error_detail}"
+        )
+        assert result.receipt is None
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_load_returns_integrity_mismatch_when_content_tampered(tmp_path):
+    """Receipt content is changed but stored receipt_sha256 remains the same."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s3-d" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        receipt_dir = Path(".build/rig-relay/desktop/preparation-receipts")
+        receipt_path = receipt_dir / f"{receipt_sha}.json"
+        # Tamper: change the post_index_tree_digest but keep receipt_sha256
+        receipt["post_index_tree_digest"] = "tampered-digest-deadbeef"
+        receipt_path.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+        result = load_preparation_receipt_typed(receipt_sha)
+        assert result.outcome == PreparationLoadOutcome.INTEGRITY_MISMATCH, (
+            f"Expected INTEGRITY_MISMATCH when content is tampered "
+            f"but stored digest is unchanged. Got: {result.outcome}"
+        )
+        assert result.receipt is None
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_persist_then_typed_load_produces_valid_receipt(tmp_path):
+    """Prove persistence goes through canonical store and loads with integrity."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# prepared")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = generate_preparation_receipt(
+            mission_id="test-mission",
+            authority_provenance_sha256="sha256:" + "s3-e" * 12,
+            claim_id="test-claim",
+            session_id="test-sess",
+            task_id="test-task",
+            branch="task/feature",
+            prepared_paths=["file.py"],
+            change_kinds=["modify"],
+            expected_worktree_sha256_values=["sha256:deadbeef"],
+            pre_index_tree_digest="dummy-pre",
+            post_index_tree_digest=post_digest,
+            index_mutation_performed=True,
+            worktree_root=str(repo),
+        )
+        persisted = persist_preparation_receipt(receipt)
+        assert persisted is not None, "Persistence failed through auth_receipts"
+
+        result = load_preparation_receipt_typed(receipt["receipt_sha256"])
+        assert result.outcome == PreparationLoadOutcome.LOADED_VALID, (
+            f"Expected LOADED_VALID after persist, got {result.outcome}"
+        )
+        assert result.receipt is not None
+        assert result.receipt["post_index_tree_digest"] == post_digest
+        assert result.receipt["receipt_sha256"] == receipt["receipt_sha256"]
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s3_backward_compatible_load_returns_none_for_non_valid(tmp_path):
+    """Old load_preparation_receipt returns None for absent, corrupt, mismatched."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        # Absent
+        from rig_relay.governance.receipt_store import (
+            load_preparation_receipt as rs_load,
+        )
+
+        assert rs_load("sha256:" + "0" * 64) is None, "ABSENT should return None"
+
+        # Corrupt
+        receipt = generate_preparation_receipt(
+            mission_id="test-mission",
+            authority_provenance_sha256="sha256:" + "s3-f" * 12,
+            claim_id="test-claim",
+            session_id="test-sess",
+            task_id="test-task",
+            branch="task/feature",
+            prepared_paths=["file.py"],
+            change_kinds=["modify"],
+            expected_worktree_sha256_values=["sha256:deadbeef"],
+            pre_index_tree_digest="dummy-pre",
+            post_index_tree_digest="dummy-digest",
+            index_mutation_performed=True,
+            worktree_root=str(repo),
+        )
+        persist_preparation_receipt(receipt)
+        receipt_sha = receipt["receipt_sha256"]
+        receipt_path = (
+            Path(".build/rig-relay/desktop/preparation-receipts")
+            / f"{receipt_sha}.json"
+        )
+        receipt_path.write_text("garbage", encoding="utf-8")
+
+        assert rs_load(receipt_sha) is None, (
+            "Backward-compatible load should return None for corrupt receipts"
+        )
+    finally:
+        os.chdir(original_cwd)
