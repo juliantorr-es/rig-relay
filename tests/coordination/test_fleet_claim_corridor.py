@@ -79,31 +79,22 @@ def _lifecycle_worker(
     repo_root = Path(repo_root_str)
     ledger = FleetClaimLedger(ledger_path)
     proto = FleetClaimProtocol(ledger, repo_root)
-    result = {  # type: ignore[assignment]
-        "edit_started": proto.record_edit_started(
+    if method == "edit_started":
+        proto.record_edit_started(
             paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        ),
-        "tests_completed": proto.record_tests_completed(
+        )
+    elif method == "tests_completed":
+        proto.record_tests_completed(
             paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        ),
-        "ready_for_integration": proto.record_ready_for_integration(
+        )
+    elif method == "ready_for_integration":
+        proto.record_ready_for_integration(
             paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        ),
-        "work_parked": proto.record_work_parked(
+        )
+    else:
+        proto.record_work_parked(
             paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        ),
-    }.get(
-        method,
-        proto.acquire_claim(
-            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        ),
-    )
-    ev = result.event
-    result_queue.put((
-        result.acquired,
-        ev.event_kind.value if ev is not None else "no_event",
-        ev.event_sequence if ev is not None else 0,
-    ))
+        )
 
 
 @pytest.fixture
