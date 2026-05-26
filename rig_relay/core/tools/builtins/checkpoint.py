@@ -152,6 +152,13 @@ class Checkpoint(
             return getattr(ctx.tool_runtime, "telemetry_client", None)
         return None
 
+    def _release_if_locked(self, receipt_sha256: str | None) -> None:
+        if self._transition_locked and receipt_sha256:
+            from rig_relay.governance.receipt_store import release_transition_lock
+
+            release_transition_lock(receipt_sha256)
+            self._transition_locked = False
+
     async def run(
         self, args: CheckpointArgs, ctx: InvokeContext | None = None
     ) -> AsyncGenerator[ToolStreamEvent | CheckpointResult, None]:
@@ -167,6 +174,77 @@ class Checkpoint(
         )
         guard = get_guard()
         self._receipt_digest: str | None = None
+        self._transition_locked: bool = False
+
+        # ── A4: Acquire single-use transition lock for the preparation receipt ─
+        if args.preparation_receipt_sha256:
+            from rig_relay.governance.receipt_store import (
+                ReconciliationOutcome,
+                acquire_transition_lock,
+                reconcile_receipt_evidence,
+                release_transition_lock,
+            )
+
+            if not acquire_transition_lock(args.preparation_receipt_sha256):
+                refusal_result = CheckpointResult(
+                    ok=False,
+                    message="Checkpoint refused: cannot acquire transition lock",
+                    refusal_reason="transition_lock_unavailable",
+                )
+                yield refusal_result
+                return
+            self._transition_locked = True
+
+            # Re-verify under lock: cross-evidence reconciliation
+            branch = self._git_rev_parse("--abbrev-ref", "HEAD", cwd=repo_root) or ""
+            reconciled = reconcile_receipt_evidence(
+                preparation_receipt_sha256=args.preparation_receipt_sha256,
+                branch=branch,
+                repo_root=repo_root,
+                worktree_root=str(repo_root),
+            )
+            if not reconciled.is_active:
+                match reconciled.outcome:
+                    case ReconciliationOutcome.CONSUMED_CONSISTENT:
+                        error_kind = "preparation_receipt_consumed"
+                        msg = "This preparation receipt has already been consumed."
+                    case ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE:
+                        error_kind = "preparation_receipt_consumed"
+                        msg = (
+                            "A terminal checkpoint already consumed this "
+                            "preparation receipt (repairable lifecycle gap)."
+                        )
+                    case ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL:
+                        error_kind = "preparation_receipt_inconsistent"
+                        msg = (
+                            "Lifecycle claims CONSUMED but no terminal git "
+                            "evidence exists — inconsistent authority state."
+                        )
+                    case ReconciliationOutcome.DUPLICATE_TERMINAL:
+                        error_kind = "preparation_receipt_duplicate_terminal"
+                        msg = (
+                            "Multiple terminal commits claim the same "
+                            "preparation receipt — integrity incident."
+                        )
+                    case ReconciliationOutcome.UNRECOVERABLE_CONTRADICTION:
+                        error_kind = "preparation_receipt_contradiction"
+                        msg = f"Unrecoverable contradiction: {reconciled.error_detail}"
+                    case _:
+                        error_kind = "preparation_receipt_unavailable"
+                        msg = f"Reconciliation refused: {reconciled.outcome}"
+                refusal_result = CheckpointResult(
+                    ok=False,
+                    message=msg,
+                    refusal_reason=error_kind,
+                    error_kind=error_kind,
+                    suggested_next_action=(
+                        "Run prepare_checkpoint again to create a fresh receipt."
+                    ),
+                )
+                release_transition_lock(args.preparation_receipt_sha256)
+                self._transition_locked = False
+                yield refusal_result
+                return
 
         # 1. Capture git state
         try:
@@ -190,10 +268,9 @@ class Checkpoint(
                     mutation_intent=True,
                 )
             self._emit_checkpoint_refused(args, refusal_result)
+            self._release_if_locked(args.preparation_receipt_sha256)
             yield refusal_result
             return
-
-        # 2. Parse and validate
         if porcelain_out:
             try:
                 dirty_files = self._parse_porcelain_z(porcelain_out)
@@ -213,6 +290,7 @@ class Checkpoint(
                         mutation_intent=True,
                     )
                 self._emit_checkpoint_refused(args, refusal_result)
+                self._release_if_locked(args.preparation_receipt_sha256)
                 yield refusal_result
                 return
         else:
@@ -232,6 +310,7 @@ class Checkpoint(
                     mutation_intent=True,
                 )
             self._emit_checkpoint_refused(args, refusal)
+            self._release_if_locked(args.preparation_receipt_sha256)
             yield refusal
             return
 
@@ -253,6 +332,7 @@ class Checkpoint(
                     mutation_intent=True,
                 )
             self._emit_checkpoint_refused(args, refusal)
+            self._release_if_locked(args.preparation_receipt_sha256)
             yield refusal
             return
 
@@ -317,6 +397,13 @@ class Checkpoint(
                 repo_root=repo_root,
                 committed_head_sha=post_commit_head,
             )
+
+        # A4: Release transition lock after successful commit+consume
+        if self._transition_locked and args.preparation_receipt_sha256:
+            from rig_relay.governance.receipt_store import release_transition_lock
+
+            release_transition_lock(args.preparation_receipt_sha256)
+            self._transition_locked = False
 
         yield result
 

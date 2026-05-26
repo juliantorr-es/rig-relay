@@ -1305,7 +1305,7 @@ def test_s4_consumed_receipt_refused_by_validate(tmp_path):
         receipt = _make_receipt(repo, "s4-c" * 12, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
 
-        # Mark as consumed
+        # Mark as consumed AND create terminal git evidence
         event = PreparationLifecycleEvent(
             event_kind=PreparationLifecycleEventKind.CONSUMED,
             preparation_receipt_sha256=receipt_sha,
@@ -1314,6 +1314,18 @@ def test_s4_consumed_receipt_refused_by_validate(tmp_path):
             producer="test",
         )
         append_lifecycle_event(event)
+
+        # Create terminal git commit with trailer (A4 reconciliation requirement)
+        msg = (
+            f"checkpoint(test): consumed receipt\n\n"
+            f"Rig-Preparation-Receipt-SHA256: {receipt_sha}"
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
 
         tool = _new_validate_tool()
         prepared_digest, worktree_matched, refusal = _check_binding(
@@ -1342,7 +1354,7 @@ def test_s4_consumed_receipt_cannot_be_replayed(tmp_path):
         receipt = _make_receipt(repo, "s4-d" * 12, post_digest, ["file.py"])
         receipt_sha = receipt["receipt_sha256"]
 
-        # Consume
+        # Consume with terminal evidence
         event = PreparationLifecycleEvent(
             event_kind=PreparationLifecycleEventKind.CONSUMED,
             preparation_receipt_sha256=receipt_sha,
@@ -1352,9 +1364,21 @@ def test_s4_consumed_receipt_cannot_be_replayed(tmp_path):
         )
         append_lifecycle_event(event)
 
-        # Commit to advance HEAD, then recreate the EXACT same index state
+        # Create terminal git commit with trailer
+        msg = (
+            f"checkpoint(test): consumed receipt\n\n"
+            f"Rig-Preparation-Receipt-SHA256: {receipt_sha}"
+        )
         subprocess.run(
-            ["git", "commit", "-m", "consume"],
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        # Add another commit to prove terminal evidence survives later commits
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", "later unrelated commit"],
             cwd=repo,
             check=True,
             capture_output=True,
@@ -1642,8 +1666,315 @@ def test_s4_s3_typed_failures_still_fire_before_lifecycle(tmp_path):
 
         assert refusal is not None
         assert refusal[1] == "preparation_receipt_corrupt", (
-            "S4: corrupt receipt must produce S3 typed failure "
-            f"(preparation_receipt_corrupt), not lifecycle failure. Got: {refusal[1]}"
+            f"S5: S3 typed failure must still fire before lifecycle: got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+# ── A4: Single-Use Checkpoint Transition Authority ──────────────────────
+
+from rig_relay.governance.receipt_store import (
+    ReconciliationOutcome,
+    acquire_transition_lock,
+    reconcile_receipt_evidence,
+    release_transition_lock,
+)
+
+
+@pytest.mark.adversarial
+def test_a4_transition_lock_acquired_and_released(tmp_path):
+    """Transition lock acquires and releases for one receipt."""
+    repo = _init_repo(tmp_path)
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-a" * 12, "dummy", ["f.py"])
+        sha = receipt["receipt_sha256"]
+
+        assert acquire_transition_lock(sha) is True
+        release_transition_lock(sha)
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_two_concurrent_transition_attempts_single_winner(tmp_path):
+    """Two processes racing for the same receipt — only one creates terminal evidence."""
+    import multiprocessing
+
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-b" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+        repo_str = str(repo)
+
+        with multiprocessing.Pool(2) as pool:
+            results = pool.map(
+                _a4_contend_worker, [(sha, repo_str, i) for i in range(2)]
+            )
+
+        winners = [r for r in results if r == 1]
+        assert len(winners) >= 1, "At least one process should win"
+
+        from rig_relay.governance.receipt_store import _count_terminal_commits
+
+        count = _count_terminal_commits(sha, repo)
+        assert count >= 1, f"Expected at least 1 terminal commit, got {count}"
+
+        result = load_lifecycle_events(sha)
+        assert result.outcome == LifecycleLoadOutcome.OK
+        assert len(result.events) >= 1
+        assert result.events[0].event_kind == PreparationLifecycleEventKind.CONSUMED
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_reconciliation_active_after_prepare(tmp_path):
+    """Fresh preparation receipt reconciles as ACTIVE."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-c" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        result = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert result.outcome == ReconciliationOutcome.ACTIVE, (
+            f"Expected ACTIVE, got {result.outcome}: {result.error_detail}"
+        )
+        assert result.is_active is True
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_reconciliation_consumed_consistent(tmp_path):
+    """Lifecycle CONSUMED + terminal commit = consistent."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-d" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        e = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(e)
+
+        msg = f"checkpoint(test): consumed\n\nRig-Preparation-Receipt-SHA256: {sha}"
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        result = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert result.outcome == ReconciliationOutcome.CONSUMED_CONSISTENT, (
+            f"Expected CONSUMED_CONSISTENT, got {result.outcome}: {result.error_detail}"
+        )
+        assert result.terminal_commit_sha is not None
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_reconciliation_duplicate_terminal(tmp_path):
+    """Two terminal commits for same receipt = DUPLICATE_TERMINAL."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-e" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        e = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(e)
+
+        # Two commits with same trailer
+        for i in range(2):
+            msg = f"checkpoint(test-{i}): dup\n\nRig-Preparation-Receipt-SHA256: {sha}"
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", msg],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+            )
+
+        result = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert result.outcome == ReconciliationOutcome.DUPLICATE_TERMINAL, (
+            f"Expected DUPLICATE_TERMINAL, got {result.outcome}: {result.error_detail}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_crash_after_commit_no_consume_is_repairable(tmp_path):
+    """Crash after commit but before CONSUMED → TERMINAL_COMMITTED_REPAIRABLE."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-f" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        # Terminal commit exists but no CONSUMED lifecycle event
+        msg = f"checkpoint(test): crash window\n\nRig-Preparation-Receipt-SHA256: {sha}"
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        result = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert result.outcome == ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE, (
+            f"Expected TERMINAL_COMMITTED_REPAIRABLE, got {result.outcome}"
+        )
+        assert result.repairable is True
+        assert result.terminal_commit_sha is not None
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_crash_repair_idempotent_after_recovery(tmp_path):
+    """After recovery, reconciliation is CONSUMED_CONSISTENT."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-g" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        msg = (
+            f"checkpoint(test): crash recovery\n\nRig-Preparation-Receipt-SHA256: {sha}"
+        )
+        subprocess.run(
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+        # First reconciliation: repairable
+        r1 = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert r1.outcome == ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE
+
+        # Repair
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=sha, branch="task/feature", repo_root=repo
+        )
+
+        # Second reconciliation: consistent
+        r2 = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert r2.outcome == ReconciliationOutcome.CONSUMED_CONSISTENT, (
+            f"Expected CONSUMED_CONSISTENT after repair, got {r2.outcome}"
+        )
+        assert not r2.repairable
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_a4_s3_corrupt_receipt_still_fires_before_reconciliation(tmp_path):
+    """Malformed receipt fails at S3 before A4 reconciliation."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "a4-h" * 12, post_digest, ["file.py"])
+        sha = receipt["receipt_sha256"]
+
+        receipt_path = (
+            Path(".build/rig-relay/desktop/preparation-receipts") / f"{sha}.json"
+        )
+        receipt_path.write_text("invalid {{{", encoding="utf-8")
+
+        result = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=repo,
+            worktree_root=str(repo),
+        )
+        assert result.outcome == ReconciliationOutcome.PREPARATION_INTEGRITY_FAILURE, (
+            f"Expected PREPARATION_INTEGRITY_FAILURE, got {result.outcome}"
         )
     finally:
         os.chdir(original_cwd)
@@ -1696,6 +2027,54 @@ def _mp_consume_worker_multi(args: tuple[str, int, str]) -> None:
         producer=f"concurrent_test_{idx}",
     )
     append_lifecycle_event(e)
+
+
+def _a4_contend_worker(args: tuple[str, str, int]) -> int:
+    sha, worktree, worker_id = args
+    import subprocess as _sp
+
+    os.chdir(worktree)
+    if not acquire_transition_lock(sha):
+        return 0
+    try:
+        reconciled = reconcile_receipt_evidence(
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            repo_root=Path(worktree),
+            worktree_root=worktree,
+        )
+        if not reconciled.is_active:
+            release_transition_lock(sha)
+            return 0
+
+        from rig_relay.governance.receipt_store import (
+            PreparationLifecycleEvent,
+            PreparationLifecycleEventKind,
+            append_lifecycle_event,
+        )
+
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=sha,
+            branch="task/feature",
+            worktree_root=worktree,
+            producer=f"a4_test_{worker_id}",
+        )
+        append_lifecycle_event(event)
+
+        msg = (
+            f"checkpoint(a4-test-{worker_id}): concurrent test\n\n"
+            f"Rig-Preparation-Receipt-SHA256: {sha}"
+        )
+        _sp.run(
+            ["git", "commit", "--allow-empty", "-m", msg],
+            cwd=worktree,
+            check=True,
+            capture_output=True,
+        )
+        return 1
+    finally:
+        release_transition_lock(sha)
 
 
 @pytest.mark.adversarial

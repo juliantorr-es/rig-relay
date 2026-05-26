@@ -837,6 +837,345 @@ def cr_lifecycle_ledger_path() -> Path:
     return _lifecycle_ledger_path()
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ── Single-Use Transition Lock (A4) ────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+
+# Per-receipt transition locks: one fcntl lock file per preparation
+# receipt SHA256.  Held across the full verify → commit → consume
+# critical corridor so two concurrent checkpoints cannot race through
+# the ACTIVE gate.
+
+_transition_lock_fds: dict[str, int] = {}
+_transition_lock_mutex = threading.Lock()
+
+
+def acquire_transition_lock(preparation_receipt_sha256: str) -> bool:
+    """Acquire an exclusive per-receipt transition lock.
+
+    The lock covers the full single-use checkpoint transition:
+    re-verify ACTIVE → commit → append CONSUMED → release.
+
+    Returns True on success, False if lock cannot be acquired.
+    """
+    lock_file = _store_root() / f"transition_{preparation_receipt_sha256}.lock"
+    try:
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        lock_file.touch(exist_ok=True)
+        fd = os.open(str(lock_file), os.O_RDWR)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        with _transition_lock_mutex:
+            _transition_lock_fds[preparation_receipt_sha256] = fd
+        return True
+    except OSError:
+        return False
+
+
+def release_transition_lock(preparation_receipt_sha256: str) -> None:
+    """Release the per-receipt transition lock."""
+    with _transition_lock_mutex:
+        fd = _transition_lock_fds.pop(preparation_receipt_sha256, None)
+    if fd is not None:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+        except OSError:
+            pass
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# ── Cross-Evidence Reconciliation (A4) ─────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class ReconciliationOutcome(StrEnum):
+    ACTIVE = auto()
+    CONSUMED_CONSISTENT = auto()
+    TERMINAL_COMMITTED_REPAIRABLE = auto()
+    LIFECYCLE_ONLY_NO_TERMINAL = auto()
+    DUPLICATE_TERMINAL = auto()
+    PREPARATION_INTEGRITY_FAILURE = auto()
+    LIFECYCLE_AUTHORITY_CORRUPT = auto()
+    GIT_EVIDENCE_AMBIGUOUS = auto()
+    UNRECOVERABLE_CONTRADICTION = auto()
+
+
+@dataclass(slots=True)
+class ReconciliationResult:
+    outcome: ReconciliationOutcome
+    preparation_receipt_sha256: str = ""
+    lifecycle_status: PreparationLifecycleEventKind | None = None
+    terminal_commit_sha: str | None = None
+    committed_head_sha: str | None = None
+    error_detail: str = ""
+    repairable: bool = False
+
+    @property
+    def is_active(self) -> bool:
+        return self.outcome == ReconciliationOutcome.ACTIVE
+
+    @property
+    def is_consumed(self) -> bool:
+        return self.outcome == ReconciliationOutcome.CONSUMED_CONSISTENT
+
+    @property
+    def is_repairable(self) -> bool:
+        return self.outcome == ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE
+
+
+def _find_terminal_commit(
+    preparation_receipt_sha256: str, repo_root: Path
+) -> dict[str, str | bool | None]:
+    """Search bounded git history for a commit with structured trailer.
+
+    Uses ``git log --format=%(trailers:only,unfold)`` with
+    ``--grep`` for the exact trailer key.  Parses trailer lines for
+    ``Rig-Preparation-Receipt-SHA256: value`` and only matches an
+    exact value equality.
+
+    Returns ``{"committed_head": sha, "trailer_match": True}`` or
+    ``{"committed_head": None, "trailer_match": False}``.
+    """
+    import subprocess
+
+    trailer_key = "Rig-Preparation-Receipt-SHA256"
+    try:
+        proc = subprocess.run(
+            [
+                "git",
+                "log",
+                "-10",
+                "--format=%H%n%(trailers:only,unfold)",
+                f"--grep={trailer_key}: {preparation_receipt_sha256}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=repo_root,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return {"committed_head": None, "trailer_match": False}
+
+    if proc.returncode != 0:
+        return {"committed_head": None, "trailer_match": False}
+
+    output = proc.stdout.strip()
+    if not output:
+        return {"committed_head": None, "trailer_match": False}
+
+    lines = output.splitlines()
+    if not lines:
+        return {"committed_head": None, "trailer_match": False}
+
+    candidate_head = lines[0].strip()
+    trailer_lines = lines[1:]
+
+    for line in trailer_lines:
+        line = line.strip()
+        if ": " not in line:
+            continue
+        key, _, value = line.partition(": ")
+        if key == trailer_key and value == preparation_receipt_sha256:
+            return {"committed_head": candidate_head, "trailer_match": True}
+
+    return {"committed_head": None, "trailer_match": False}
+
+
+def _count_terminal_commits(preparation_receipt_sha256: str, repo_root: Path) -> int:
+    """Count git commits with the exact trailer key=value pair."""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            [
+                "git",
+                "log",
+                "-10",
+                "--format=%H",
+                f"--grep=Rig-Preparation-Receipt-SHA256: {preparation_receipt_sha256}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=repo_root,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return 0
+
+    if proc.returncode != 0:
+        return 0
+    commits = [h for h in proc.stdout.strip().splitlines() if h]
+    return len(commits)
+
+
+def reconcile_receipt_evidence(
+    *,
+    preparation_receipt_sha256: str,
+    branch: str,
+    repo_root: Path,
+    worktree_root: str = "",
+    expected_post_index_digest: str | None = None,
+) -> ReconciliationResult:
+    """Cross-evidence reconciliation across all durable authorities.
+
+    Reads preparation receipt, lifecycle ledger, and git trailer
+    evidence. Produces typed reconciliation outcomes sufficient for
+    governed checkpoint and validate decisions.
+
+    Called under the per-receipt transition lock for checkpoint
+    operations; callable without lock for read-only validate paths.
+    """
+    from rig_relay.core.logger import logger
+
+    # 1. Load and integrity-check preparation receipt (S3)
+    load_result = load_preparation_receipt_typed(preparation_receipt_sha256)
+    if not load_result.is_valid:
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.PREPARATION_INTEGRITY_FAILURE,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=load_result.error_detail,
+        )
+
+    receipt = load_result.receipt
+    assert receipt is not None
+
+    # Verify branch binding
+    receipt_branch = receipt.get("branch", "")
+    if receipt_branch and branch and receipt_branch != branch:
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.UNRECOVERABLE_CONTRADICTION,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=f"Branch mismatch: receipt={receipt_branch}, current={branch}",
+        )
+
+    # 2. Load lifecycle authority (S5)
+    life_result = load_lifecycle_events(preparation_receipt_sha256)
+    if not life_result.is_ok and not life_result.is_absent:
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.LIFECYCLE_AUTHORITY_CORRUPT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=life_result.error_detail,
+        )
+
+    life_status = life_result.status
+    lifecycle_consumed = (
+        life_status == PreparationLifecycleEventKind.CONSUMED if life_status else False
+    )
+    lifecycle_superseded = (
+        life_status == PreparationLifecycleEventKind.SUPERSEDED
+        if life_status
+        else False
+    )
+    lifecycle_revoked = (
+        life_status == PreparationLifecycleEventKind.REVOKED if life_status else False
+    )
+
+    # 3. Terminal Git trailer evidence (A3/A4)
+    terminal_count = _count_terminal_commits(preparation_receipt_sha256, repo_root)
+    terminal_result = _find_terminal_commit(preparation_receipt_sha256, repo_root)
+
+    # 4. Reconcile
+    # ── Terminal lifecycle states (superseded, revoked) are authoritative ──
+    if lifecycle_superseded:
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.CONSUMED_CONSISTENT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=life_status,
+        )
+    if lifecycle_revoked:
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.CONSUMED_CONSISTENT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=life_status,
+        )
+
+    # ── Normal reconciliation ──
+    if not lifecycle_consumed and terminal_count == 0:
+        # Clean state: nothing consumed, no terminal evidence
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.ACTIVE,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=PreparationLifecycleEventKind.ACTIVE,
+        )
+
+    if lifecycle_consumed and terminal_count == 1:
+        committed_head: str | None = (
+            terminal_result["committed_head"]
+            if isinstance(terminal_result["committed_head"], str)
+            else None
+        )
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.CONSUMED_CONSISTENT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
+            terminal_commit_sha=committed_head,
+            committed_head_sha=committed_head,
+        )
+
+    if terminal_count >= 1 and not lifecycle_consumed:
+        committed_head: str | None = (
+            terminal_result["committed_head"]
+            if isinstance(terminal_result["committed_head"], str)
+            else None
+        )
+        if terminal_count > 1:
+            logger.warning(
+                "Duplicate terminal evidence for receipt %s: %d commits",
+                preparation_receipt_sha256,
+                terminal_count,
+            )
+            return ReconciliationResult(
+                outcome=ReconciliationOutcome.DUPLICATE_TERMINAL,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                lifecycle_status=life_status,
+                terminal_commit_sha=committed_head,
+                error_detail=f"Found {terminal_count} terminal commits",
+            )
+
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=PreparationLifecycleEventKind.ACTIVE,
+            terminal_commit_sha=committed_head,
+            committed_head_sha=committed_head,
+            repairable=True,
+        )
+
+    if lifecycle_consumed and terminal_count == 0:
+        # Lifecycle says CONSUMED but no terminal git evidence —
+        # inconsistent: cannot verify consumption
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=PreparationLifecycleEventKind.CONSUMED,
+            error_detail=(
+                "Lifecycle claims CONSUMED but no git commit carries "
+                "the terminal trailer"
+            ),
+        )
+
+    if terminal_count > 1:
+        ch: str | None = (
+            terminal_result["committed_head"]
+            if isinstance(terminal_result["committed_head"], str)
+            else None
+        )
+        return ReconciliationResult(
+            outcome=ReconciliationOutcome.DUPLICATE_TERMINAL,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            lifecycle_status=life_status,
+            terminal_commit_sha=ch,
+            error_detail=f"Found {terminal_count} terminal commits",
+        )
+
+    return ReconciliationResult(
+        outcome=ReconciliationOutcome.UNRECOVERABLE_CONTRADICTION,
+        preparation_receipt_sha256=preparation_receipt_sha256,
+        lifecycle_status=life_status,
+        error_detail="Unexpected reconciliation state",
+    )
+
+
 __all__ = [
     "LifecycleLoadOutcome",
     "LifecycleLoadResult",
@@ -844,6 +1183,9 @@ __all__ = [
     "PreparationLifecycleEventKind",
     "PreparationLoadOutcome",
     "PreparationLoadResult",
+    "ReconciliationOutcome",
+    "ReconciliationResult",
+    "acquire_transition_lock",
     "append_lifecycle_event",
     "cr_lifecycle_ledger_path",
     "find_active_preparation_receipts",
@@ -858,5 +1200,7 @@ __all__ = [
     "persist_preparation_receipt",
     "persist_validation_receipt",
     "read_lifecycle_events",
+    "reconcile_receipt_evidence",
+    "release_transition_lock",
     "resolve_best_preparation_receipt",
 ]

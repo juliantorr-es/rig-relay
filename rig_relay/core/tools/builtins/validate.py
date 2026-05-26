@@ -885,16 +885,58 @@ class Validate(
                         ),
                     )
 
-            # ── S4: Lifecycle check — refuse consumed/superseded/revoked ──
+            # ── A4: Cross-evidence reconciliation — refuse consumed/inconsistent/contradiction ──
             try:
+                from pathlib import Path as _Path
+
                 from rig_relay.governance.receipt_store import (
-                    PreparationLifecycleEventKind,
-                    get_lifecycle_status,
+                    ReconciliationOutcome,
+                    reconcile_receipt_evidence,
                 )
 
-                life_status = get_lifecycle_status(args.preparation_receipt_sha256)
-                match life_status:
-                    case PreparationLifecycleEventKind.CONSUMED:
+                reconciled = reconcile_receipt_evidence(
+                    preparation_receipt_sha256=args.preparation_receipt_sha256,
+                    branch=receipt.get("branch", ""),
+                    repo_root=_Path(cwd),
+                    worktree_root=cwd,
+                )
+                match reconciled.outcome:
+                    case ReconciliationOutcome.ACTIVE:
+                        pass
+                    case ReconciliationOutcome.CONSUMED_CONSISTENT:
+                        # Distinguish superseded/revoked from consumed
+                        from rig_relay.governance.receipt_store import (
+                            PreparationLifecycleEventKind,
+                        )
+
+                        if (
+                            reconciled.lifecycle_status
+                            == PreparationLifecycleEventKind.SUPERSEDED
+                        ):
+                            return (
+                                None,
+                                None,
+                                (
+                                    "refused",
+                                    "preparation_receipt_superseded",
+                                    "This preparation receipt has been superseded.",
+                                    "Use the newer receipt or prepare_checkpoint again.",
+                                ),
+                            )
+                        if (
+                            reconciled.lifecycle_status
+                            == PreparationLifecycleEventKind.REVOKED
+                        ):
+                            return (
+                                None,
+                                None,
+                                (
+                                    "refused",
+                                    "preparation_receipt_revoked",
+                                    "This preparation receipt has been revoked.",
+                                    "Run prepare_checkpoint again to create a fresh receipt.",
+                                ),
+                            )
                         return (
                             None,
                             None,
@@ -905,30 +947,75 @@ class Validate(
                                 "Run prepare_checkpoint again to create a fresh receipt.",
                             ),
                         )
-                    case PreparationLifecycleEventKind.SUPERSEDED:
+                    case ReconciliationOutcome.TERMINAL_COMMITTED_REPAIRABLE:
                         return (
                             None,
                             None,
                             (
                                 "refused",
-                                "preparation_receipt_superseded",
-                                "This preparation receipt has been superseded.",
-                                "Use the newer receipt or run prepare_checkpoint again.",
+                                "preparation_receipt_consumed",
+                                "This preparation receipt has a terminal commitment but lifecycle is repairable.",
+                                "Run checkpoint to finalize or prepare_checkpoint for a fresh receipt.",
                             ),
                         )
-                    case PreparationLifecycleEventKind.REVOKED:
+                    case ReconciliationOutcome.LIFECYCLE_ONLY_NO_TERMINAL:
                         return (
                             None,
                             None,
                             (
                                 "refused",
-                                "preparation_receipt_revoked",
-                                "This preparation receipt has been revoked.",
-                                "Run prepare_checkpoint again to create a fresh receipt.",
+                                "preparation_receipt_inconsistent",
+                                "Lifecycle claims CONSUMED but no terminal evidence exists.",
+                                "Investigate inconsistency or prepare_checkpoint again.",
+                            ),
+                        )
+                    case ReconciliationOutcome.DUPLICATE_TERMINAL:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_duplicate_terminal",
+                                "Multiple terminal commits claim this preparation receipt.",
+                                "Investigate integrity incident or prepare_checkpoint again.",
+                            ),
+                        )
+                    case ReconciliationOutcome.UNRECOVERABLE_CONTRADICTION:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_contradiction",
+                                f"Unrecoverable evidence contradiction: {reconciled.error_detail}",
+                                "Investigate or prepare_checkpoint again.",
+                            ),
+                        )
+                    case (
+                        ReconciliationOutcome.PREPARATION_INTEGRITY_FAILURE
+                        | ReconciliationOutcome.LIFECYCLE_AUTHORITY_CORRUPT
+                    ):
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_corrupt",
+                                f"Authority corruption: {reconciled.error_detail}",
+                                "Run prepare_checkpoint again.",
                             ),
                         )
                     case _:
-                        pass
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_binding_error",
+                                f"Unexpected reconciliation outcome: {reconciled.outcome}",
+                                "Run prepare_checkpoint again.",
+                            ),
+                        )
             except ImportError:
                 pass
 
