@@ -13,10 +13,15 @@ from rig_relay.core.telemetry.artifacts import should_artifact_tool_result
 from rig_relay.core.telemetry.local import dump_canonical_json
 from rig_relay.core.telemetry.tool_contract import (
     ToolDeterminismClass as ToolDeterminismClass,
-    ToolMutationClass as ToolMutationClass,
+    ToolMutationClass,
     ToolOutputKind,
 )
-from rig_relay.core.tool_runtime_models import ToolRuntimeResult
+from rig_relay.core.tool_runtime_models import (
+    RefusalCode,
+    ToolRuntimeRefusal,
+    ToolRuntimeResult,
+    ToolRuntimeStatus,
+)
 from rig_relay.core.types import LLMMessage, ToolResultEvent
 
 if TYPE_CHECKING:
@@ -190,34 +195,85 @@ class ToolResultRuntime:
         disabled, or argument validation failure) must still produce a bound
         tool observation before the conversation continues.
 
-        Emits structured telemetry for observability: a failed_resolved
-        tool call is a governance outcome (containment or admission failure),
-        not an absence of activity.
+        Emits structured telemetry for observability AND a canonical
+        <rig-tool-outcome> annotation so the model receives truthful
+        pre-execution refusal semantics rather than a raw error string.
 
         Returns the appended LLMMessage for caller inspection.
         """
         loop = self._loop
-        error_msg = f"<tool_error>{failed.tool_name}: {failed.error}</tool_error>"
+        error_text = getattr(failed, "error", "Unknown error")
+
+        # ── Classify failure kind for canonical outcome ──────────────
+        failure_kind = _classify_failure_kind(error_text)
+        refusal_code: RefusalCode
+        match failure_kind:
+            case "unknown_tool":
+                refusal_code = RefusalCode.TOOL_NOT_FOUND
+            case "disabled_tool":
+                refusal_code = RefusalCode.TOOL_PERMISSION_DENIED
+            case _:
+                refusal_code = RefusalCode.TOOL_INVOCATION_FAILED
+
+        # ── Construct a pre-execution refused runtime result ─────────
+        tool_name = getattr(failed, "tool_name", "unknown")
+        call_id = getattr(failed, "call_id", "")
+        pre_result = ToolRuntimeResult(
+            status=ToolRuntimeStatus.REFUSED,
+            tool_name=tool_name,
+            tool_call_id=call_id,
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            turn_id=turn_id,
+            error_kind=failure_kind,
+            error_message=error_text,
+            refusal=ToolRuntimeRefusal(
+                refusal_code=refusal_code, message=error_text, recoverable=False
+            ),
+            mutation_performed=False,
+            investigation_outcome=None,
+        )
+
+        # ── Derive agent outcome annotation ─────────────────────────
+        from rig_relay.core.tools._agent_outcome import (
+            derive_agent_outcome,
+            format_agent_outcome,
+            neutralize_reserved_delimiters,
+        )
+
+        outcome = derive_agent_outcome(pre_result, ToolMutationClass.READ_ONLY)
+        annotation = format_agent_outcome(outcome)
+        display_text = neutralize_reserved_delimiters(error_text)
+        display_text = (
+            f"<tool_error>{tool_name}: {display_text}</tool_error>\n\n{annotation}"
+        )
+
         msg = LLMMessage.model_validate(
-            loop.format_handler.create_failed_tool_response_message(failed, error_msg)
+            loop.format_handler.create_failed_tool_response_message(
+                failed, display_text
+            )
         )
         loop.messages.append(msg)
 
-        # ── Emit structured telemetry for failed-resolved tool calls ──
+        # ── Emit outcome projection + structured telemetry ───────────
         if self._evidence is not None:
-            error_str = getattr(failed, "error", "")
-            failure_kind = _classify_failure_kind(error_str)
+            try:
+                self._evidence.emit_agent_outcome_projection(
+                    outcome, correlation_id=correlation_id, causation_id=causation_id
+                )
+            except Exception:
+                pass
 
             try:
-                error_sha256 = hashlib.sha256(error_msg.encode("utf-8")).hexdigest()
+                error_sha256 = hashlib.sha256(display_text.encode("utf-8")).hexdigest()
             except Exception:
                 error_sha256 = ""
 
             try:
                 self._evidence.emit_tool_call_failed_resolved(
-                    tool_name=getattr(failed, "tool_name", "unknown"),
-                    call_id=getattr(failed, "call_id", ""),
-                    error=error_str,
+                    tool_name=tool_name,
+                    call_id=call_id,
+                    error=error_text,
                     failure_kind=failure_kind,
                     error_sha256=error_sha256,
                     correlation_id=correlation_id,
