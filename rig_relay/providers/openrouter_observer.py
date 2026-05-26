@@ -1,125 +1,217 @@
-"""OpenRouter generation metadata observer.
+"""OpenRouter Generation Metadata Observer — content-light, read-only audit enrichment.
 
-Read-only. Performs bounded metadata lookup after primary inference
-completion for routed gateway providers. Uses the official OpenRouter
-generation metadata endpoint (GET /api/v1/generation?id=<id>).
-
-Content-light: never stores prompts, generated text, or credentials.
-Gracefully degrades on timeout, 401, 404, or missing generation ID.
+Performs a documented read-only GET lookup by generation ID against
+the OpenRouter generation metadata endpoint. Maps safe fields into
+canonical content-light evidence. Never stores prompts, completions,
+raw bodies, or credentials. Degrades safely on failure.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
-import logging
 from typing import Any
 
 import httpx
 
-from rig_relay.providers.invocation import GatewayProvenance, GatewayProvenanceSource
+from rig_relay.providers.invocation import UsageEvidenceSource
 
-logger = logging.getLogger(__name__)
-OPENROUTER_METADATA_URL = "https://openrouter.ai/api/v1/generation"
+GENERATION_METADATA_ENDPOINT = "https://openrouter.ai/api/v1/generation"
 
 
-class OpenRouterGenerationObserver:
-    """Observes downstream provider provenance from OpenRouter metadata.
+@dataclass
+class OpenRouterGenerationEvidence:
+    """Content-light generation audit evidence from read-only metadata lookup."""
 
-    Usage:
-        observer = OpenRouterGenerationObserver(api_key="...")
-        provenance, cost = await observer.observe(generation_id="gen-...")
-        if provenance is None:
-            # Metadata unavailable — response remains successful
-            pass
+    evidence_source: str = UsageEvidenceSource.GENERATION_METADATA_LOOKUP.value
+    provider_generation_id: str | None = None
+    downstream_provider: str | None = None
+    downstream_model: str | None = None
+    native_tokens_prompt: int | None = None
+    native_tokens_completion: int | None = None
+    native_tokens_cached: int | None = None
+    native_tokens_reasoning: int | None = None
+    total_cost: float | None = None
+    upstream_cost: float | None = None
+    streamed: bool | None = None
+
+    # Audit enrichment status
+    enrichment_success: bool = False
+    enrichment_error: str | None = None
+    enrichment_skipped_reason: str | None = None
+
+    # Discrepancy markers
+    audit_total_cost: float | None = None
+
+    def has_any_evidence(self) -> bool:
+        return any([
+            self.native_tokens_prompt,
+            self.native_tokens_completion,
+            self.total_cost,
+            self.downstream_provider,
+        ])
+
+    def set_skipped(self, reason: str) -> None:
+        self.enrichment_success = False
+        self.enrichment_skipped_reason = reason
+
+    def set_error(self, error: str) -> None:
+        self.enrichment_success = False
+        self.enrichment_error = error
+
+
+async def observe_generation_metadata(
+    generation_id: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+    api_key: str | None = None,
+    timeout: float = 15.0,
+) -> OpenRouterGenerationEvidence:
+    """Observe OpenRouter generation metadata for a completed generation.
+
+    Content-light: never stores prompts, completions, or raw bodies.
+    Degrades safely: failure never converts primary success into failure.
     """
+    evidence = OpenRouterGenerationEvidence(provider_generation_id=generation_id)
 
-    def __init__(self, api_key: str | None = None, timeout: float = 10.0) -> None:
-        self._api_key = api_key
-        self._timeout = timeout
+    if not generation_id or not generation_id.startswith("gen-"):
+        evidence.set_skipped("Invalid or empty generation ID")
+        return evidence
 
-    async def observe(
-        self, generation_id: str
-    ) -> tuple[GatewayProvenance | None, dict[str, Any]]:
-        """Observe downstream provenance from generation metadata.
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
 
-        Returns (provenance, cost_data). provenance is None if metadata
-        is unavailable or degraded. The primary inference result must NOT
-        be invalidated by metadata observation failure.
+    close_client = False
+    if client is None:
+        client = httpx.AsyncClient(timeout=httpx.Timeout(timeout))
+        close_client = True
 
-        Content-light: never returns raw prompts, generated text, or
-        credentials in the cost data dict.
-        """
-        if not generation_id or not self._api_key:
-            return None, {}
-
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                response = await client.get(
-                    OPENROUTER_METADATA_URL,
-                    params={"id": generation_id},
-                    headers={
-                        "Authorization": f"Bearer {self._api_key}",
-                        "Content-Type": "application/json",
-                    },
-                )
-        except (httpx.TimeoutException, httpx.RequestError) as e:
-            logger.debug("OpenRouter metadata timeout/error: %s", e)
-            return None, {}
-
+    try:
+        url = f"{GENERATION_METADATA_ENDPOINT}?id={generation_id}"
+        response = await client.get(url, headers=headers)
         if response.status_code == 404:
-            logger.debug("OpenRouter generation ID not found: %s", generation_id)
-            return None, {}
+            evidence.set_skipped("Generation not found (404)")
+            return evidence
         if response.status_code == 401:
-            logger.debug("OpenRouter metadata unauthorized")
-            return None, {}
-        if response.status_code != 200:
-            logger.debug(
-                "OpenRouter metadata unexpected status: %d", response.status_code
+            evidence.set_skipped("Auth failure (401)")
+            return evidence
+        if response.status_code == 403:
+            evidence.set_skipped("Access denied (403)")
+            return evidence
+        if response.status_code == 429:
+            evidence.set_skipped("Rate limited (429)")
+            return evidence
+        if not response.is_success:
+            evidence.set_error(f"HTTP {response.status_code}")
+            return evidence
+
+        data = response.json()
+        return _parse_generation_data(data, evidence)
+
+    except httpx.TimeoutException:
+        evidence.set_error("Generation metadata lookup timed out")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        evidence.set_error("Malformed generation metadata response")
+    except httpx.RequestError as e:
+        evidence.set_error(f"Network error: {type(e).__name__}")
+    finally:
+        if close_client:
+            await client.aclose()
+
+    return evidence
+
+
+def _parse_generation_data(
+    data: dict[str, Any], evidence: OpenRouterGenerationEvidence
+) -> OpenRouterGenerationEvidence:
+    """Map safe generation metadata fields into content-light evidence."""
+    gen_data = data.get("data", data)
+
+    if provider := gen_data.get("provider_name"):
+        evidence.downstream_provider = str(provider)
+    if model := gen_data.get("model"):
+        evidence.downstream_model = str(model)
+    if pts := gen_data.get("native_tokens_prompt"):
+        evidence.native_tokens_prompt = int(pts)
+    if cts := gen_data.get("native_tokens_completion"):
+        evidence.native_tokens_completion = int(cts)
+    if ctd := gen_data.get("native_tokens_cached"):
+        evidence.native_tokens_cached = int(ctd)
+    if rts := gen_data.get("native_tokens_reasoning"):
+        evidence.native_tokens_reasoning = int(rts)
+    if cost := gen_data.get("total_cost"):
+        if isinstance(cost, (int, float)):
+            evidence.total_cost = float(cost)
+    if up := gen_data.get("upstream_inference_cost"):
+        if isinstance(up, (int, float)):
+            evidence.upstream_cost = float(up)
+    if "streamed" in gen_data:
+        evidence.streamed = bool(gen_data["streamed"])
+
+    if evidence.has_any_evidence():
+        evidence.enrichment_success = True
+    else:
+        evidence.set_skipped("Generation data contained no usable evidence fields")
+
+    return evidence
+
+
+def compute_discrepancy(
+    inline: dict[str, Any], gen: OpenRouterGenerationEvidence
+) -> dict[str, Any]:
+    """Compare inline and generation metadata evidence. Surface discrepancies."""
+    result: dict[str, Any] = {
+        "discrepancy_detected": False,
+        "discrepancy_fields": [],
+        "inline_retained": True,
+        "audit_enriched": gen.enrichment_success,
+    }
+
+    if not gen.enrichment_success:
+        return result
+
+    comparisons = [
+        (
+            "input_tokens",
+            "native_tokens_prompt",
+            inline.get("input_tokens"),
+            gen.native_tokens_prompt,
+        ),
+        (
+            "output_tokens",
+            "native_tokens_completion",
+            inline.get("output_tokens"),
+            gen.native_tokens_completion,
+        ),
+        (
+            "cached_tokens",
+            "native_tokens_cached",
+            inline.get("cache_read_tokens"),
+            gen.native_tokens_cached,
+        ),
+        (
+            "reasoning_tokens",
+            "native_tokens_reasoning",
+            inline.get("reasoning_tokens"),
+            gen.native_tokens_reasoning,
+        ),
+        ("total_cost", "total_cost", inline.get("gateway_total_cost"), gen.total_cost),
+    ]
+
+    for inline_name, audit_name, inline_val, audit_val in comparisons:
+        if inline_val is not None and audit_val is not None and inline_val != audit_val:
+            result["discrepancy_detected"] = True
+            result["discrepancy_fields"].append(
+                f"{inline_name}/{audit_name}: inline={inline_val} vs audit={audit_val}"
             )
-            return None, {}
 
-        try:
-            data = json.loads(response.text)
-        except json.JSONDecodeError:
-            logger.debug("OpenRouter metadata malformed JSON")
-            return None, {}
-
-        if not isinstance(data, dict) or not data.get("data"):
-            return None, {}
-
-        gen = data["data"]
-        provider_name = gen.get("provider_name", "")
-        model = gen.get("model", "")
-
-        provenance = None
-        if provider_name:
-            provenance = GatewayProvenance(
-                downstream_provider=provider_name,
-                downstream_model=model if model != provider_name else None,
-                provenance_source=GatewayProvenanceSource.RESPONSE_BODY,
-            )
-
-        cost_data: dict[str, Any] = {}
-        total_cost = gen.get("total_cost")
-        if total_cost is not None and total_cost != 0:
-            cost_data["gateway_total_cost"] = float(total_cost)
-        upstream_cost = gen.get("upstream_inference_cost")
-        if upstream_cost is not None:
-            cost_data["gateway_upstream_cost"] = float(upstream_cost)
-        native_prompt = gen.get("native_tokens_prompt")
-        if native_prompt is not None:
-            cost_data["gateway_native_tokens_prompt"] = int(native_prompt)
-        native_completion = gen.get("native_tokens_completion")
-        if native_completion is not None:
-            cost_data["gateway_native_tokens_completion"] = int(native_completion)
-        native_cached = gen.get("native_tokens_cached")
-        if native_cached is not None:
-            cost_data["gateway_native_tokens_cached"] = int(native_cached)
-        native_reasoning = gen.get("native_tokens_reasoning")
-        if native_reasoning is not None:
-            cost_data["gateway_native_tokens_reasoning"] = int(native_reasoning)
-
-        return provenance, cost_data
+    return result
 
 
-__all__ = ["OpenRouterGenerationObserver"]
+__all__ = [
+    "GENERATION_METADATA_ENDPOINT",
+    "OpenRouterGenerationEvidence",
+    "compute_discrepancy",
+    "observe_generation_metadata",
+]

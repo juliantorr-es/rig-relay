@@ -189,68 +189,13 @@ class OpenAIAdapter(APIAdapter):
             api_style = getattr(provider, "api_style", "openai")
             response_id: str | None = data.get("id")
             model_id: str | None = data.get("model")
+            is_routed = provider_class == ProviderClass.ROUTED_GATEWAY
 
-            # ── OpenRouter rich inline usage ──────────────────────
-            cache_tokens: int | None = None
-            reasoning_tokens: int | None = None
-            total_cost: float | None = None
-            upstream_cost: float | None = None
-            cache_verified: bool | None = None
-            reasoning_verified: bool | None = None
-            cost_verified: bool | None = None
-            evidence_source: str | None = None
-
-            if provider_class == ProviderClass.ROUTED_GATEWAY:
-                evidence_source = UsageEvidenceSource.INLINE_RESPONSE.value
-                prompt_details = usage_data.get("prompt_tokens_details", {}) or {}
-                completion_details = (
-                    usage_data.get("completion_tokens_details", {}) or {}
-                )
-                if "cached_tokens" in prompt_details:
-                    cache_tokens = int(prompt_details["cached_tokens"])
-                    cache_verified = True
-                if "reasoning_tokens" in completion_details:
-                    reasoning_tokens = int(completion_details["reasoning_tokens"])
-                    reasoning_verified = True
-                if "cost" in usage_data:
-                    cost_value = usage_data["cost"]
-                    if isinstance(cost_value, (int, float)):
-                        total_cost = float(cost_value)
-                        cost_verified = True
-                # Upstream cost in usage_data (OpenRouter passes this when available)
-                if "cost_details" in usage_data:
-                    cd = usage_data["cost_details"] or {}
-                    if "upstream_inference_cost" in cd:
-                        upstream_cost = float(cd["upstream_inference_cost"])
-
-            # Gateway provenance from response headers (OpenRouter)
-            gateway_prov: GatewayProvenance | None = None
-            gw_prov_verified: bool | None = None
-            if (
-                provider_class == ProviderClass.ROUTED_GATEWAY
-                and self._last_response_headers
-            ):
-                downstream = self._last_response_headers.get("x-provider", "").lower()
-                downstream_model = (
-                    self._last_response_headers.get("x-provider-model", "").lower()
-                    or None
-                )
-                if downstream:
-                    gateway_prov = GatewayProvenance(
-                        downstream_provider=downstream,
-                        downstream_model=downstream_model,
-                        provenance_source=GatewayProvenanceSource.RESPONSE_HEADER,
-                    )
-                    gw_prov_verified = True
-                    if evidence_source is not None:
-                        evidence_source = (
-                            UsageEvidenceSource.RESPONSE_HEADER_PLUS_INLINE_USAGE.value
-                        )
-                else:
-                    gateway_prov = GatewayProvenance(
-                        provenance_source=GatewayProvenanceSource.UNAVAILABLE
-                    )
-                    gw_prov_verified = False
+            evidence = (
+                _extract_openrouter_evidence(usage_data, self._last_response_headers)
+                if is_routed
+                else {}
+            )
 
             outcome = build_invocation_outcome(
                 requested_provider_id=provider_name,
@@ -261,44 +206,32 @@ class OpenAIAdapter(APIAdapter):
                 streaming=self._last_streaming,
                 input_tokens=usage.prompt_tokens or None,
                 output_tokens=usage.completion_tokens or None,
-                total_tokens=(
-                    int(usage_data["total_tokens"])
-                    if "total_tokens" in usage_data
-                    else None
-                ),
+                total_tokens=int(usage_data["total_tokens"])
+                if "total_tokens" in usage_data
+                else None,
                 actual_model_id=model_id
                 if model_id and model_id != self._last_model_name
                 else None,
                 actual_model_verified=model_id is not None,
                 provider_response_id=response_id,
-                provider_generation_id=response_id
-                if provider_class == ProviderClass.ROUTED_GATEWAY
-                else None,
-                gateway_provenance=gateway_prov,
-                gateway_provenance_verified=gw_prov_verified,
+                provider_generation_id=response_id if is_routed else None,
                 usage_verified=True,
                 streaming_terminal_usage_verified=self._last_streaming,
                 actual_provider_verified=None,
                 safety_refusal_verified=None,
-                cache_read_tokens=cache_tokens,
-                cache_read_verified=cache_verified,
-                reasoning_tokens=reasoning_tokens,
-                reasoning_tokens_verified=reasoning_verified,
-                gateway_total_cost=total_cost,
-                gateway_upstream_cost=upstream_cost,
-                gateway_cost_verified=cost_verified,
-                usage_evidence_source=evidence_source,
+                cache_read_tokens=evidence.get("cache_read_tokens"),
+                cache_read_verified=evidence.get("cache_read_verified"),
+                reasoning_tokens=evidence.get("reasoning_tokens"),
+                reasoning_tokens_verified=evidence.get("reasoning_tokens_verified"),
+                gateway_total_cost=evidence.get("gateway_total_cost"),
+                gateway_upstream_cost=evidence.get("gateway_upstream_cost"),
+                gateway_cost_verified=evidence.get("gateway_cost_verified"),
+                usage_evidence_source=evidence.get("usage_evidence_source"),
+                gateway_provenance=evidence.get("gateway_provenance"),
+                gateway_provenance_verified=evidence.get("gateway_provenance_verified"),
             )
 
         return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)
-
-
-_ADAPTERS: dict[str, APIAdapter] = {
-    "openai": OpenAIAdapter(),
-    "anthropic": AnthropicAdapter(),
-    "gemini": GeminiAdapter(),
-    "reasoning": ReasoningAdapter(),
-}
 
 
 def _provider_class_for_name(name: str) -> ProviderClass:
@@ -307,10 +240,83 @@ def _provider_class_for_name(name: str) -> ProviderClass:
     return ProviderClass.DIRECT_INFERENCE
 
 
+def _extract_openrouter_evidence(
+    usage_data: dict[str, Any], response_headers: dict[str, str]
+) -> dict[str, Any]:
+    """Extract rich OpenRouter inline usage and gateway provenance.
+
+    Returns a dict of evidence fields for build_invocation_outcome.
+    Never stores raw content, credentials, or prompt/completion text.
+    """
+    result: dict[str, Any] = {
+        "cache_read_tokens": None,
+        "cache_read_verified": None,
+        "reasoning_tokens": None,
+        "reasoning_tokens_verified": None,
+        "gateway_total_cost": None,
+        "gateway_upstream_cost": None,
+        "gateway_cost_verified": None,
+        "usage_evidence_source": None,
+        "gateway_provenance": None,
+        "gateway_provenance_verified": None,
+    }
+    evidence_source = UsageEvidenceSource.INLINE_RESPONSE.value
+
+    # Inline rich usage
+    prompt_details = usage_data.get("prompt_tokens_details", {}) or {}
+    completion_details = usage_data.get("completion_tokens_details", {}) or {}
+    if "cached_tokens" in prompt_details:
+        result["cache_read_tokens"] = int(prompt_details["cached_tokens"])
+        result["cache_read_verified"] = True
+    if "reasoning_tokens" in completion_details:
+        result["reasoning_tokens"] = int(completion_details["reasoning_tokens"])
+        result["reasoning_tokens_verified"] = True
+    if "cost" in usage_data and isinstance(usage_data["cost"], (int, float)):
+        result["gateway_total_cost"] = float(usage_data["cost"])
+        result["gateway_cost_verified"] = True
+    cd = usage_data.get("cost_details") or {}
+    if "upstream_inference_cost" in cd:
+        result["gateway_upstream_cost"] = float(cd["upstream_inference_cost"])
+
+    # Gateway provenance from response headers
+    downstream = response_headers.get("x-provider", "").lower()
+    downstream_model = response_headers.get("x-provider-model", "").lower() or None
+    if downstream:
+        result["gateway_provenance"] = GatewayProvenance(
+            downstream_provider=downstream,
+            downstream_model=downstream_model,
+            provenance_source=GatewayProvenanceSource.RESPONSE_HEADER,
+        )
+        result["gateway_provenance_verified"] = True
+        evidence_source = UsageEvidenceSource.RESPONSE_HEADER_PLUS_INLINE_USAGE.value
+    else:
+        result["gateway_provenance"] = GatewayProvenance(
+            provenance_source=GatewayProvenanceSource.UNAVAILABLE
+        )
+        result["gateway_provenance_verified"] = False
+
+    result["usage_evidence_source"] = evidence_source
+    return result
+
+
+_ADAPTERS: dict[str, APIAdapter] = {
+    "anthropic": AnthropicAdapter(),
+    "gemini": GeminiAdapter(),
+}
+
+
 def _get_adapter(api_style: str) -> APIAdapter:
-    """Load the adapter for the given API style."""
+    """Create or load the adapter for the given API style.
+
+    OpenAI-compatible and Reasoning adapters return fresh instances
+    per request to prevent shared mutable state contamination.
+    """
     if api_style == "openai-responses":
         return OpenAIResponsesAdapter()
+    if api_style == "openai":
+        return OpenAIAdapter()
+    if api_style == "reasoning":
+        return ReasoningAdapter()
     if api_style not in _ADAPTERS:
         if api_style == "vertex-anthropic":
             from rig_relay.core.llm.backend.vertex import VertexAnthropicAdapter
@@ -329,15 +335,11 @@ class GenericBackend:
         provider: ProviderConfig,
         timeout: float = 720.0,
     ) -> None:
-        """Initialize the backend.
-
-        Args:
-            client: Optional httpx client to use. If not provided, one will be created.
-        """
         self._client = client
         self._owns_client = client is None
         self._provider = provider
         self._timeout = timeout
+        self._adapter = _get_adapter(getattr(provider, "api_style", "openai"))
 
     async def __aenter__(self) -> GenericBackend:
         if self._client is None:
@@ -386,8 +388,7 @@ class GenericBackend:
             else None
         )
 
-        api_style = getattr(self._provider, "api_style", "openai")
-        adapter = _get_adapter(api_style)
+        adapter = self._adapter
 
         req = adapter.prepare_request(
             model_name=model.name,
@@ -400,13 +401,6 @@ class GenericBackend:
             provider=self._provider,
             api_key=api_key,
             thinking=model.thinking,
-        )
-
-        # ── Capture request-scoped adapter state (isolation) ─────────
-        _req_model_name: str = getattr(adapter, "_last_model_name", model.name)
-        _req_streaming: bool = getattr(adapter, "_last_streaming", False)
-        _req_provider_name: str = getattr(
-            adapter, "_last_provider_name", self._provider.name
         )
 
         headers = req.headers
@@ -463,8 +457,7 @@ class GenericBackend:
             else None
         )
 
-        api_style = getattr(self._provider, "api_style", "openai")
-        adapter = _get_adapter(api_style)
+        adapter = self._adapter
 
         req = adapter.prepare_request(
             model_name=model.name,
