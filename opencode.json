@@ -5,6 +5,8 @@
     "AGENTS.md",
     "docs/governance/mission-envelope.md",
     "docs/governance/cross-session-coordination.md",
+    "docs/governance/step-up-authorization.md",
+    "docs/governance/identity-provider-policy.md",
     "docs/governance/usage-data-doctrine.md",
     "docs/governance/reviewer-orchestrator.md",
     "docs/governance/delegate-fleet-orchestration.md",

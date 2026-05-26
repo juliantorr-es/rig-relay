@@ -225,14 +225,14 @@ This preserves the usage data doctrine's privacy boundary: no coordination data 
 ## Governed Checkpoint Commits
 
 Agents may create local checkpoint commits at session end for their own session-owned files.
-This provides clean local save points without granting agents authority over push, merge, or release history.
+This provides clean local save points while keeping publication as a separate milestone-gated authority.
 
 ### Policy
 
 - Agents may create local checkpoint commits for session-owned, mission-scoped files.
-- Agents may NOT push, amend, rebase, merge, reset, clean, stash, restore, or commit unrelated files.
+- Agents may push checkpointed commits for mission-owned files only after a named milestone and explicit publication authorization. Agents may NOT push ad hoc, and they may not amend, rebase, merge, reset, clean, stash, restore, or commit unrelated files.
 - Direct `git commit` and `git add` via bash are blocked — use the `checkpoint` tool instead.
-- Only the user publishes (pushes) to remotes.
+- Publication is a separate authority from checkpointing. The milestone-authorized publisher may be a human or an agent acting on the named review slice; the published commit must remain within the mission-owned checkpointed boundary.
 
 ### Checkpoint Flow
 
@@ -243,7 +243,7 @@ This provides clean local save points without granting agents authority over pus
 5. Stage only candidate files.
 6. Commit with generated message: `checkpoint(<task_id>): <mission summary>`
 7. Emit checkpoint artifact with session_id, task_id, files_committed, commit_sha, pre/post HEAD, validation hashes.
-8. Never push.
+8. Never push in the checkpoint flow. Publication happens only through the milestone-authorized publication flow.
 
 ### Refusal Conditions
 
@@ -378,4 +378,4 @@ packet schemas, security boundaries, and bootstrap implementation status.
 
 ## Governance Principle
 
-**Agents can checkpoint. Only you publish.**
+**Agents can checkpoint, then publish only the checkpointed slice after milestone authorization.**

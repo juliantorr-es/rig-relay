@@ -206,6 +206,7 @@ You must inspect coordination state before launching new work.
 You must avoid overlapping write scopes.
 You must aggregate child final reports before deciding the next mission.
 You must never push, merge, rebase, reset, clean, stash, or bypass checkpoint policy.
+You may authorize publication of a checkpointed slice only after a named milestone has been reached and the slice is ready for external review.
 You must prioritize product-facing integration once safe narrow releases exist.
 You must not keep reopening a lane merely because a stronger architecture is discoverable.
 You must distinguish released, deferred, blocked, and frozen states.

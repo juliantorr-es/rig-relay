@@ -14,9 +14,9 @@ receipts and policy enforcement.
    search/read.
 
 2. **High-authority actions require step-up authorization** — real upload,
-   checkpoint commits, fleet/spawn execution, destructive cleanup, credential
-   changes, and telemetry share level changes must not execute without explicit
-   user verification.
+   checkpoint commits, checkpoint publication/push, fleet/spawn execution,
+   destructive cleanup, credential changes, and telemetry share level changes
+   must not execute without explicit user verification.
 
    In the desktop cockpit dev/local phase, `mint_authorization_receipt_dev`,
    `mint_authorization_receipt_local`, and `inspect_authorization_receipt`
@@ -39,6 +39,7 @@ receipts and policy enforcement.
 | `remote_upload.confirm` | Execute real Google Drive upload |
 | `telemetry.share_level.change` | Change remote telemetry sharing level |
 | `checkpoint.commit` | Create a governed checkpoint commit |
+| `checkpoint.publish` | Publish a checkpointed commit for remote review |
 | `spawn.execute` | Spawn a child session for autonomous execution |
 | `fleet.execute` | Execute a fleet of child sessions |
 | `lease_cleanup.archive` | Archive stale coordination leases |

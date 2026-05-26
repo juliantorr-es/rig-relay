@@ -69,4 +69,4 @@ no push, no mutation.
 
 ### Adoption/Merge/Push Gates
 All remain separately gated. Review acceptance does not execute merge.
-Merge requires adoption approval. Push requires preproduction approval.
+Merge requires adoption approval. Publishing checkpointed review slices requires named milestone authorization and preproduction approval. Push remains separate from merge.

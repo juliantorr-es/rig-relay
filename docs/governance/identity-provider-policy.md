@@ -41,6 +41,19 @@ No repo scope. No workflow scope. No admin scope.
 GitHub App user auth is preferred over classic OAuth App. If not practical
 for alpha, OAuth App fallback is acceptable.
 
+## GitHub-Connected Review Boundary
+
+GitHub-connected review tooling is a bounded snapshot, not a live mirror.
+
+- A connected repository snapshot remains in the state it had when imported; later pushes do not auto-sync into the same Gemini chat.
+- Keep the review slice within the provider limit of one repository per chat, up to 5,000 files and 100 MB.
+- Private repositories require a linked GitHub account that already has access to the repo.
+- If the linked account is disconnected, public repositories can still be imported, but private repositories must be re-linked before reuse.
+- Gemini GitHub import cannot read commit history, pull requests, or other repo metadata, cannot read a repository by raw URL in the prompt, and cannot write back into the repository.
+- Treat `.github/workflows/` as outside the review surface for Gemini-connected repository imports.
+- Work or school accounts may be blocked by Google Workspace policy or firewall restrictions even when the repo itself is valid.
+- Consumer GitHub Code Assist review quotas are limited to 33 pull request reviews per day, while the enterprise tier allows at least 100 per day depending on codebase and review cost. Review slices should stay narrow and intentionally published for review rather than trying to turn a whole repository into one session.
+
 ### Google (identity-only, OIDC)
 
 - `openid` — OIDC authentication
