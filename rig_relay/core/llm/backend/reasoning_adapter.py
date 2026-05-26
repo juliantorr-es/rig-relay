@@ -17,10 +17,20 @@ from rig_relay.core.types import (
     StrToolChoice,
     ToolCall,
 )
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    ProviderClass,
+    build_invocation_outcome,
+)
 
 
 class ReasoningAdapter(APIAdapter):
     endpoint: ClassVar[str] = "/chat/completions"
+
+    def __init__(self) -> None:
+        self._last_model_name: str = ""
+        self._last_streaming: bool = False
+        self._last_provider_name: str = ""
 
     def _convert_message(self, msg: LLMMessage) -> dict[str, Any]:
         match msg.role:
@@ -121,6 +131,9 @@ class ReasoningAdapter(APIAdapter):
         api_key: str | None = None,
         thinking: str = "off",
     ) -> PreparedRequest:
+        self._last_model_name = model_name
+        self._last_streaming = enable_streaming
+        self._last_provider_name = provider.name
         merged_messages = merge_consecutive_user_messages(messages)
         converted_messages = [self._convert_message(msg) for msg in merged_messages]
 
@@ -220,9 +233,33 @@ class ReasoningAdapter(APIAdapter):
             message = LLMMessage(role=Role.assistant, content="")
 
         usage_data = data.get("usage") or {}
+        has_usage = "prompt_tokens" in usage_data or "completion_tokens" in usage_data
         usage = LLMUsage(
             prompt_tokens=usage_data.get("prompt_tokens", 0),
             completion_tokens=usage_data.get("completion_tokens", 0),
         )
 
-        return LLMChunk(message=message, usage=usage)
+        outcome = None
+        if has_usage:
+            provider_name = self._last_provider_name or provider.name
+            response_id: str | None = data.get("id")
+            model_id: str | None = data.get("model")
+            outcome = build_invocation_outcome(
+                requested_provider_id=provider_name,
+                requested_model_id=self._last_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style=getattr(provider, "api_style", "reasoning"),
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=self._last_streaming,
+                input_tokens=usage.prompt_tokens or None,
+                output_tokens=usage.completion_tokens or None,
+                actual_model_id=model_id
+                if model_id and model_id != self._last_model_name
+                else None,
+                actual_model_verified=model_id is not None,
+                provider_response_id=response_id,
+                usage_verified=True,
+                streaming_terminal_usage_verified=self._last_streaming,
+            )
+
+        return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)

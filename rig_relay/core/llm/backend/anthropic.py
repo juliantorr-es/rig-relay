@@ -338,6 +338,7 @@ class AnthropicAdapter(APIAdapter):
         self._current_index: int = 0
         self._last_model_name: str = ""
         self._last_streaming: bool = False
+        self._last_provider_name: str = "anthropic"
         self._message_start_usage: LLMUsage | None = None
 
     @staticmethod
@@ -495,6 +496,7 @@ class AnthropicAdapter(APIAdapter):
     ) -> PreparedRequest:
         self._last_model_name = model_name
         self._last_streaming = enable_streaming
+        self._last_provider_name = provider.name
         self._message_start_usage = None
         system_prompt, converted_messages = self._mapper.prepare_messages(messages)
         converted_tools = self._mapper.prepare_tools(tools)
@@ -537,7 +539,7 @@ class AnthropicAdapter(APIAdapter):
             crt = chunk.usage.cache_read_tokens or None
             cct = chunk.usage.cache_creation_tokens or None
             outcome = build_invocation_outcome(
-                requested_provider_id="anthropic",
+                requested_provider_id=self._last_provider_name,
                 requested_model_id=self._last_model_name,
                 provider_class=ProviderClass.DIRECT_INFERENCE,
                 api_style="anthropic",
@@ -683,7 +685,7 @@ class AnthropicAdapter(APIAdapter):
         )
         if self._message_start_usage is not None:
             outcome = build_invocation_outcome(
-                requested_provider_id="anthropic",
+                requested_provider_id=self._last_provider_name,
                 requested_model_id=self._last_model_name,
                 provider_class=ProviderClass.DIRECT_INFERENCE,
                 api_style="anthropic",

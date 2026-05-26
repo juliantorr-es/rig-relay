@@ -20,6 +20,11 @@ from rig_relay.core.types import (
     StrToolChoice,
     ToolCall,
 )
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    ProviderClass,
+    build_invocation_outcome,
+)
 
 if TYPE_CHECKING:
     from rig_relay.core.config import ProviderConfig
@@ -110,6 +115,9 @@ class _OpenAIResponsesStreamParser:
         self._commentary_indices: set[int] = set()
         self._ignored_event_types: set[str] = set()
         self._tool_call_states: dict[int, _ResponsesToolCallState] = {}
+        self._adapter_model_name: str = ""
+        self._adapter_streaming: bool = False
+        self._adapter_provider_name: str = "openai"
 
     def reset(self) -> None:
         self._commentary_indices.clear()
@@ -360,13 +368,36 @@ class _OpenAIResponsesStreamParser:
         response_obj = cast(_ResponsesObject, data.get("response") or {})
         self.reset()
         output = response_obj.get("output") or []
+        usage = self._usage_from_response(response_obj.get("usage"))
+        response_id: str | None = response_obj.get("id")
+        model: str | None = response_obj.get("model")
+        outcome = None
+        if usage.prompt_tokens or usage.completion_tokens:
+            outcome = build_invocation_outcome(
+                requested_provider_id=self._adapter_provider_name,
+                requested_model_id=self._adapter_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai-responses",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=True,
+                input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
+                output_tokens=usage.completion_tokens
+                if usage.completion_tokens
+                else None,
+                actual_model_id=model if model != self._adapter_model_name else None,
+                actual_model_verified=model is not None,
+                provider_response_id=response_id,
+                usage_verified=True,
+                streaming_terminal_usage_verified=True,
+            )
         return LLMChunk(
             message=LLMMessage(
                 role=Role.assistant,
                 content="",
                 reasoning_state=self._reasoning_state_from_output(output),
             ),
-            usage=self._usage_from_response(response_obj.get("usage")),
+            usage=usage,
+            invocation_outcome=outcome,
         )
 
     def _on_error(self, data: _ResponsesStreamEvent) -> LLMChunk:
@@ -412,6 +443,9 @@ class OpenAIResponsesAdapter(APIAdapter):
 
     def __init__(self) -> None:
         self._stream_parser = _OpenAIResponsesStreamParser()
+        self._last_model_name: str = ""
+        self._last_streaming: bool = False
+        self._last_provider_name: str = "openai"
 
     @staticmethod
     def _is_temperature_supported(model_name: str) -> bool:
@@ -539,6 +573,12 @@ class OpenAIResponsesAdapter(APIAdapter):
         api_key: str | None = None,
         thinking: str = "off",
     ) -> PreparedRequest:
+        self._last_model_name = model_name
+        self._last_streaming = enable_streaming
+        self._last_provider_name = provider.name
+        self._stream_parser._adapter_model_name = model_name
+        self._stream_parser._adapter_streaming = enable_streaming
+        self._stream_parser._adapter_provider_name = provider.name
         merged_messages = merge_consecutive_user_messages(messages)
         input_items = self._convert_messages(merged_messages)
 
@@ -629,11 +669,30 @@ class OpenAIResponsesAdapter(APIAdapter):
             output = response_data.get("output")
             if output is None:
                 raise ValueError("OpenAI Responses response missing output")
+            usage = self._stream_parser._usage_from_response(response_data.get("usage"))
+            response_id: str | None = data.get("id")
+            model: str | None = data.get("model")
+            outcome = build_invocation_outcome(
+                requested_provider_id=self._last_provider_name,
+                requested_model_id=self._last_model_name,
+                provider_class=ProviderClass.DIRECT_INFERENCE,
+                api_style="openai-responses",
+                outcome_class=InvocationOutcomeClass.SUCCESS,
+                streaming=False,
+                input_tokens=usage.prompt_tokens if usage.prompt_tokens else None,
+                output_tokens=usage.completion_tokens
+                if usage.completion_tokens
+                else None,
+                actual_model_id=model if model != self._last_model_name else None,
+                actual_model_verified=model is not None,
+                provider_response_id=response_id,
+                usage_verified=True,
+                streaming_terminal_usage_verified=False,
+            )
             return LLMChunk(
                 message=self._parse_output_items(output),
-                usage=self._stream_parser._usage_from_response(
-                    response_data.get("usage")
-                ),
+                usage=usage,
+                invocation_outcome=outcome,
             )
 
         return self._stream_parser.parse(

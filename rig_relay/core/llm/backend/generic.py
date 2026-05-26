@@ -26,6 +26,8 @@ from rig_relay.core.types import (
 from rig_relay.core.utils import async_generator_retry, async_retry
 from rig_relay.core.utils.http import build_ssl_context
 from rig_relay.providers.invocation import (
+    GatewayProvenance,
+    GatewayProvenanceSource,
     InvocationOutcomeClass,
     build_invocation_outcome,
 )
@@ -42,6 +44,7 @@ class OpenAIAdapter(APIAdapter):
         self._last_model_name: str = ""
         self._last_streaming: bool = False
         self._last_provider_name: str = ""
+        self._last_response_headers: dict[str, str] = {}
 
     def build_payload(
         self,
@@ -185,6 +188,32 @@ class OpenAIAdapter(APIAdapter):
             api_style = getattr(provider, "api_style", "openai")
             response_id: str | None = data.get("id")
             model_id: str | None = data.get("model")
+
+            # Gateway provenance from response headers (OpenRouter)
+            gateway_prov: GatewayProvenance | None = None
+            gw_prov_verified: bool | None = None
+            if (
+                provider_class == ProviderClass.ROUTED_GATEWAY
+                and self._last_response_headers
+            ):
+                downstream = self._last_response_headers.get("x-provider", "").lower()
+                downstream_model = (
+                    self._last_response_headers.get("x-provider-model", "").lower()
+                    or None
+                )
+                if downstream:
+                    gateway_prov = GatewayProvenance(
+                        downstream_provider=downstream,
+                        downstream_model=downstream_model,
+                        provenance_source=GatewayProvenanceSource.RESPONSE_HEADER,
+                    )
+                    gw_prov_verified = True
+                else:
+                    gateway_prov = GatewayProvenance(
+                        provenance_source=GatewayProvenanceSource.UNAVAILABLE
+                    )
+                    gw_prov_verified = False
+
             outcome = build_invocation_outcome(
                 requested_provider_id=provider_name,
                 requested_model_id=self._last_model_name,
@@ -199,11 +228,12 @@ class OpenAIAdapter(APIAdapter):
                 else None,
                 actual_model_verified=model_id is not None,
                 provider_response_id=response_id,
+                gateway_provenance=gateway_prov,
+                gateway_provenance_verified=gw_prov_verified,
                 usage_verified=True,
                 streaming_terminal_usage_verified=self._last_streaming,
                 actual_provider_verified=None,
                 safety_refusal_verified=None,
-                gateway_provenance_verified=None,
             )
 
         return LLMChunk(message=message, usage=usage, invocation_outcome=outcome)
@@ -326,7 +356,9 @@ class GenericBackend:
         url = f"{base}{req.endpoint}"
 
         try:
-            res_data, _ = await self._make_request(url, req.body, headers)
+            res_data, resp_headers = await self._make_request(url, req.body, headers)
+            if hasattr(adapter, "_last_response_headers"):
+                adapter._last_response_headers = dict(resp_headers.items())
             return adapter.parse_response(res_data, self._provider)
 
         except httpx.HTTPStatusError as e:

@@ -46,6 +46,11 @@ from rig_relay.core.types import (
 )
 from rig_relay.core.utils import get_server_url_from_api_base
 from rig_relay.core.utils.http import build_ssl_context
+from rig_relay.providers.invocation import (
+    InvocationOutcomeClass,
+    build_invocation_outcome,
+)
+from rig_relay.providers.models import ProviderClass
 
 if TYPE_CHECKING:
     from rig_relay.core.config import ModelConfig, ProviderConfig
@@ -320,6 +325,17 @@ class MistralBackend:
                     prompt_tokens=response.usage.prompt_tokens or 0,
                     completion_tokens=response.usage.completion_tokens or 0,
                 ),
+                invocation_outcome=build_invocation_outcome(
+                    requested_provider_id=self._provider.name,
+                    requested_model_id=model.name,
+                    provider_class=ProviderClass.DIRECT_INFERENCE,
+                    api_style=getattr(self._provider, "api_style", "openai"),
+                    outcome_class=InvocationOutcomeClass.SUCCESS,
+                    streaming=False,
+                    input_tokens=response.usage.prompt_tokens or None,
+                    output_tokens=response.usage.completion_tokens or None,
+                    usage_verified=True,
+                ),
             )
 
         except SDKError as e:
@@ -405,6 +421,28 @@ class MistralBackend:
                         else 0,
                     ),
                     correlation_id=correlation_id,
+                    invocation_outcome=build_invocation_outcome(
+                        requested_provider_id=self._provider.name,
+                        requested_model_id=model.name,
+                        provider_class=ProviderClass.DIRECT_INFERENCE,
+                        api_style=getattr(self._provider, "api_style", "openai"),
+                        outcome_class=InvocationOutcomeClass.SUCCESS,
+                        streaming=True,
+                        input_tokens=(
+                            chunk.data.usage.prompt_tokens
+                            if chunk.data.usage and chunk.data.usage.prompt_tokens
+                            else None
+                        ),
+                        output_tokens=(
+                            chunk.data.usage.completion_tokens
+                            if chunk.data.usage and chunk.data.usage.completion_tokens
+                            else None
+                        ),
+                        usage_verified=chunk.data.usage is not None,
+                        streaming_terminal_usage_verified=chunk.data.usage is not None,
+                    )
+                    if chunk.data.usage
+                    else None,
                 )
 
         except SDKError as e:

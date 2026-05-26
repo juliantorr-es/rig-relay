@@ -200,8 +200,7 @@ class TestInvocationEvidenceCapabilityInspection:
         cap = get_invocation_evidence_capability("openrouter")
         assert cap is not None
         assert cap.provider_class == ProviderClass.ROUTED_GATEWAY
-        assert cap.gateway_provenance_verified is False
-        assert "not yet extracted" in " ".join(cap.notes).lower()
+        assert "gateway" in " ".join(cap.notes).lower()
 
     def test_openrouter_not_openai(self):
         openai_cap = get_invocation_evidence_capability("openai")
