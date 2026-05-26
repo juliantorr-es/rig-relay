@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 from typing import Any
 
 import pytest
@@ -22,6 +23,34 @@ from rig_relay.governance.auth_receipts import (
 )
 
 
+def _init_git_repo(tmp_path: Path, branch: str = "task/feature") -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "init", "-b", branch], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README.md").write_text("# Test")
+    subprocess.run(
+        ["git", "add", "README.md"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "initial"], cwd=repo, check=True, capture_output=True
+    )
+    return repo
+
+
 def _build_valid_receipt(action: str = "checkpoint.commit") -> dict[str, Any]:
     return generate_dev_receipt(action)
 
@@ -33,8 +62,7 @@ def _receipt_json(action: str = "checkpoint.commit") -> str:
 class TestResolveAuthorization:
     def test_valid_receipt_returns_authorized(self) -> None:
         result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json=_receipt_json("checkpoint.commit"),
+            action="checkpoint.commit", receipt_json=_receipt_json("checkpoint.commit")
         )
         assert result.authorized is True
         assert result.receipt is not None
@@ -42,8 +70,7 @@ class TestResolveAuthorization:
 
     def test_invalid_receipt_json_returns_refusal(self) -> None:
         result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json="not valid json",
+            action="checkpoint.commit", receipt_json="not valid json"
         )
         assert result.authorized is False
         assert result.reason == "Invalid receipt JSON"
@@ -51,8 +78,7 @@ class TestResolveAuthorization:
     def test_expired_receipt_returns_refusal(self) -> None:
         receipt = generate_dev_receipt("checkpoint.commit", ttl_seconds=0)
         result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json=json.dumps(receipt),
+            action="checkpoint.commit", receipt_json=json.dumps(receipt)
         )
         assert result.authorized is False
         assert result.reason is not None and "expired" in result.reason.lower()
@@ -60,17 +86,13 @@ class TestResolveAuthorization:
     def test_wrong_action_receipt_returns_refusal(self) -> None:
         receipt = generate_dev_receipt("spawn.execute")
         result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json=json.dumps(receipt),
+            action="checkpoint.commit", receipt_json=json.dumps(receipt)
         )
         assert result.authorized is False
         assert result.reason is not None and "Action mismatch" in result.reason
 
     def test_no_receipt_returns_missing_receipt(self) -> None:
-        result = resolve_authorization(
-            action="checkpoint.commit",
-            receipt_json=None,
-        )
+        result = resolve_authorization(action="checkpoint.commit", receipt_json=None)
         assert result.authorized is False
         assert result.reason == "missing_receipt"
 
@@ -112,7 +134,8 @@ class TestCheckpointAuthorizationGate:
             session_id=session_id,
         )
 
-    def test_checkpoint_refuses_when_no_receipt(self) -> None:
+    def test_checkpoint_refuses_when_no_receipt(self, tmp_path: Path) -> None:
+        repo = _init_git_repo(tmp_path)
         guard = get_guard()
         checkpoint = self._make_checkpoint()
         args = self._make_args(authorization_receipt=None)
@@ -123,13 +146,14 @@ class TestCheckpointAuthorizationGate:
             {},
             CoordinationStore(checkpoint.config.store_root),
             guard,
-            Path.cwd(),
+            repo,
         )
         assert result is not None
         assert result.ok is False
         assert "requires authorization receipt" in result.message
 
-    def test_checkpoint_valid_receipt_works(self) -> None:
+    def test_checkpoint_valid_receipt_works(self, tmp_path: Path) -> None:
+        repo = _init_git_repo(tmp_path)
         guard = get_guard()
         guard.capture()
         checkpoint = self._make_checkpoint()
@@ -142,17 +166,20 @@ class TestCheckpointAuthorizationGate:
             {},
             CoordinationStore(checkpoint.config.store_root),
             guard,
-            Path.cwd(),
+            repo,
         )
-        if result is not None:
-            msg = result.message.lower()
-            assert "authorization" not in msg
-            refusal = result.refusal_reason or ""
-            assert "receipt" not in refusal.lower()
+        assert result is not None, (
+            "Expected refusal for empty include_paths, not successful precondition pass"
+        )
+        msg = result.message.lower()
+        assert "authorization" not in msg
+        refusal = result.refusal_reason or ""
+        assert "receipt" not in refusal.lower()
 
     def test_emits_authorization_refused_event_on_refusal(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
+        repo = _init_git_repo(tmp_path)
         events_captured: list[dict[str, Any]] = []
 
         def _capture_event(
@@ -185,7 +212,7 @@ class TestCheckpointAuthorizationGate:
             {},
             CoordinationStore(checkpoint.config.store_root),
             guard,
-            Path.cwd(),
+            repo,
         )
 
         auth_events = [

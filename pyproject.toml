@@ -171,6 +171,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "PLR"]
 "notebooks/*" = ["ANN", "PLR", "I001", "RUF100"]
+"rig_relay/core/tools/builtins/bash.py" = ["PLR"]
 "rig_relay/core/tools/builtins/git.py" = ["PLR"]
 
 "rig_relay/runtime/tool_invocation_execution.py" = ["PLR"]

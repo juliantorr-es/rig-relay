@@ -280,7 +280,10 @@ class BashToolConfig(BaseToolConfig):
         default_factory=_get_default_denylist_standalone,
         description="Commands that are denied only when run without arguments",
     )
-    sensitive_patterns: list[str] = Field(default=["sudo"], description=())
+    sensitive_patterns: list[str] = Field(
+        default=["sudo"],
+        description="Command prefixes that trigger elevated sensitivity checks",
+    )
     restrict_raw_shell: bool = Field(
         default=True,
         description=(
