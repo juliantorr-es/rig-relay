@@ -120,6 +120,11 @@ class FleetClaimEvent(BaseModel):
     event_digest: str
     reason: str | None = None
     prior_event_digest: str | None = None
+    expires_at: str | None = None
+    conflicting_path: str | None = None
+    conflicting_mission_id: str | None = None
+    conflicting_lane_id: str | None = None
+    conflicting_agent_id: str | None = None
 
 
 class FleetClaimState(StrEnum):
@@ -137,6 +142,7 @@ class FleetClaimInfo(BaseModel):
     agent_id: str
     mode: str = "exclusive_write"
     acquired_at: str
+    expires_at: str | None = None
     base_sha256: dict[str, str]
 
 
@@ -248,11 +254,10 @@ class FleetClaimLedger:
         """
         if event.event_sequence == 0:
             event.event_sequence = self._next_sequence()
-        if not event.prior_event_digest:
-            event.prior_event_digest = self._last_event_digest()
-        if not event.event_digest:
-            payload = event.model_dump(exclude={"event_id", "event_digest"})
-            event.event_digest = _sha256_event_payload(payload)
+        # Ledger owns digest authority — always overwrite caller-supplied values
+        event.prior_event_digest = self._last_event_digest()
+        payload = event.model_dump(exclude={"event_id", "event_digest"})
+        event.event_digest = _sha256_event_payload(payload)
         if not event.event_id:
             event.event_id = event.event_digest
         line = dump_canonical_json(event.model_dump(exclude_none=True)) + "\n"
@@ -505,12 +510,6 @@ class FleetClaimProtocol:
 
         self._ledger._acquire_transition_lock()
         try:
-            base_sha256: dict[str, str] = {}
-            for p in paths:
-                rp = resolved[p]
-                if rp.is_file():
-                    base_sha256[p] = file_sha256(rp)
-
             for p in paths:
                 active = self._ledger.find_active_claim(p)
                 if active is not None:
@@ -522,7 +521,6 @@ class FleetClaimProtocol:
                         lane_id=lane_id,
                         agent_id=agent_id,
                         claimed_paths=[p],
-                        prior_sha256=base_sha256,
                         timestamp=now,
                         event_digest="",
                         reason=f"Path already claimed by {active.lane_id} at {active.timestamp}",
@@ -531,6 +529,14 @@ class FleetClaimProtocol:
                     return FleetClaimResult(
                         acquired=False, event=refusal_event, reason=refusal_event.reason
                     )
+
+            # Capture file hashes after conflict evaluation, immediately
+            # before CLAIM_ACQUIRED append
+            base_sha256: dict[str, str] = {}
+            for p in paths:
+                rp = resolved[p]
+                if rp.is_file():
+                    base_sha256[p] = file_sha256(rp)
 
             now = _now_iso()
             event = FleetClaimEvent(
@@ -688,7 +694,6 @@ class FleetClaimProtocol:
             rp = self._resolve(p)
             if rp.is_file():
                 FleetClaimXattr.write_claim(rp, info)
-
 
 
 __all__ = [

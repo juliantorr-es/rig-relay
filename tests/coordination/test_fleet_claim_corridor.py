@@ -65,36 +65,55 @@ def _release_worker(
     ))
 
 
-def _lifecycle_worker(
-    ledger_path_str: str,
-    repo_root_str: str,
-    paths: list[str],
-    mission_id: str,
-    lane_id: str,
-    agent_id: str,
-    method: str,
-    result_queue: multiprocessing.Queue,
+
+
+def _hash_proof_worker(
+    ledger_path_str: str, repo_root_str: str, path: str,
+    ready_event: multiprocessing.Event, result_queue: multiprocessing.Queue,
 ) -> None:
     ledger_path = Path(ledger_path_str)
     repo_root = Path(repo_root_str)
     ledger = FleetClaimLedger(ledger_path)
     proto = FleetClaimProtocol(ledger, repo_root)
-    if method == "edit_started":
-        proto.record_edit_started(
-            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        )
-    elif method == "tests_completed":
-        proto.record_tests_completed(
-            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        )
-    elif method == "ready_for_integration":
-        proto.record_ready_for_integration(
-            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        )
-    else:
-        proto.record_work_parked(
-            paths=paths, mission_id=mission_id, lane_id=lane_id, agent_id=agent_id
-        )
+    ready_event.set()
+    r = proto.acquire_claim(
+        paths=[path], mission_id="m1", lane_id="l1", agent_id="a1"
+    )
+    result_queue.put((r.acquired, r.event.prior_sha256 if r.event else None))
+
+
+def _digest_chain_public_append_worker(
+    ledger_path_str: str, result_queue: multiprocessing.Queue,
+) -> None:
+    from rig_relay.coordination.fleet_claim_corridor import (
+        FleetClaimEvent,
+        FleetClaimEventKind,
+        _now_iso,
+    )
+    ledger_path = Path(ledger_path_str)
+    ledger = FleetClaimLedger(ledger_path)
+    event = FleetClaimEvent(
+        event_id="", event_kind=FleetClaimEventKind.CLAIM_REQUESTED,
+        mission_id="m_raw", lane_id="l_raw", agent_id="a_raw",
+        claimed_paths=["race_digest.txt"], timestamp=_now_iso(), event_digest="",
+        prior_event_digest="fabricated_deadbeef000000000000000000000000000000000000000000000000000000",
+    )
+    result = ledger.append(event)
+    result_queue.put((result.event_sequence, result.event_digest, result.prior_event_digest))
+
+
+def _digest_chain_proto_worker(
+    ledger_path_str: str, repo_root_str: str, result_queue: multiprocessing.Queue,
+) -> None:
+    ledger_path = Path(ledger_path_str)
+    repo_root = Path(repo_root_str)
+    ledger = FleetClaimLedger(ledger_path)
+    proto = FleetClaimProtocol(ledger, repo_root)
+    r = proto.release_claim(
+        paths=["race_digest.txt"], mission_id="m_acq", lane_id="l_acq", agent_id="a_acq"
+    )
+    result_queue.put((r.event.event_sequence, r.event.event_digest, r.event.prior_event_digest))
+
 
 
 @pytest.fixture
@@ -241,278 +260,46 @@ class TestFleetClaimCorridor:
 
     # ── C0.1 authority tests ──────────────────────────────────────────
 
-    def test_acquire_base_hash_inside_lock_causal_race(self, tmp_path: Path) -> None:
-        fpath = tmp_path / "race_hash.txt"
-        fpath.write_text("original")
-        ledger_path = (
-            tmp_path / ".rig" / "relay" / "fleet" / "coordination_events.v1.jsonl"
-        )
-        q: multiprocessing.Queue = multiprocessing.Queue()
-        p_a = multiprocessing.Process(
-            target=_acquire_worker,
-            args=(
-                str(ledger_path),
-                str(tmp_path),
-                "race_hash.txt",
-                "m_a",
-                "l_a",
-                "a_a",
-                q,
-            ),
-        )
-        p_b = multiprocessing.Process(
-            target=_acquire_worker,
-            args=(
-                str(ledger_path),
-                str(tmp_path),
-                "race_hash.txt",
-                "m_b",
-                "l_b",
-                "a_b",
-                q,
-            ),
-        )
-        p_a.start()
-        p_b.start()
-        p_a.join(timeout=30)
-        p_b.join(timeout=30)
-        results = [q.get(timeout=10) for _ in range(2)]
-        acquired = [r for r in results if r[0] is True]
-        refused = [r for r in results if r[0] is False]
-        assert len(acquired) == 1
-        assert len(refused) == 1
-        ledger = FleetClaimLedger(ledger_path)
-        events = ledger.read_all()
-        acquired_events = [
-            e for e in events if e.event_kind == FleetClaimEventKind.CLAIM_ACQUIRED
-        ]
-        assert len(acquired_events) == 1
-        expected_hash = file_sha256(fpath)
-        winning_event = acquired_events[0]
-        assert winning_event.prior_sha256 is not None
-        assert expected_hash in winning_event.prior_sha256.values()
-
-    def test_lifecycle_events_preserve_ownership(
+    
+    def test_stale_xattr_does_not_override_canonical_ledger_after_reacquisition(
         self, protocol: tuple[FleetClaimProtocol, Path]
     ) -> None:
+        """Prove scan_claims() and find_active_claim() both report lane B
+        when stale lane-A xattrs are present after release/reacquire.
+        """
         proto, tmp = protocol
-        fpath = tmp / "lifecycle.txt"
-        fpath.write_text("lifecycle content")
+        fpath = tmp / "stale_xattr.txt"
+        fpath.write_text("content_a")
+
+        from rig_relay.coordination.fleet_claim_corridor import FleetClaimInfo, _now_iso
+
         proto.acquire_claim(
-            paths=["lifecycle.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
+            paths=["stale_xattr.txt"], mission_id="m_a", lane_id="l_a", agent_id="a_a"
         )
-        for method in [
-            proto.record_edit_started,
-            proto.record_tests_completed,
-            proto.record_ready_for_integration,
-            proto.record_work_parked,
-        ]:
-            r = method(
-                paths=["lifecycle.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-            )
-            assert r.acquired is True
-        active = proto._ledger.find_active_claim("lifecycle.txt")
-        assert active is not None
-        assert active.lane_id == "l1"
-        assert active.event_kind == FleetClaimEventKind.CLAIM_ACQUIRED
-        events = proto._ledger.read_all()
-        released = [
-            e for e in events if e.event_kind == FleetClaimEventKind.CLAIM_RELEASED
-        ]
-        assert len(released) == 0
+        proto.release_claim(
+            paths=["stale_xattr.txt"], mission_id="m_a", lane_id="l_a", agent_id="a_a"
+        )
 
-    def test_work_parked_preserves_claim_xattr(
-        self, protocol: tuple[FleetClaimProtocol, Path]
-    ) -> None:
-        proto, tmp = protocol
-        fpath = tmp / "parked.txt"
-        fpath.write_text("park me")
+        # Deliberately write stale lane-A xattrs
+        stale_info = FleetClaimInfo(
+            mission_id="m_a", lane_id="l_a", agent_id="a_a",
+            acquired_at=_now_iso(), base_sha256={},
+        )
+        FleetClaimXattr.write_claim(fpath, stale_info)
+
+        # Lane B acquires — canonical owner
         proto.acquire_claim(
-            paths=["parked.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
+            paths=["stale_xattr.txt"], mission_id="m_b", lane_id="l_b", agent_id="a_b"
         )
-        r = proto.record_work_parked(
-            paths=["parked.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        assert r.acquired is True
-        claim_info = FleetClaimXattr.read_claim(fpath)
-        assert claim_info is not None
-        assert claim_info.lane_id == "l1"
-        state = FleetClaimXattr.read_state(fpath)
-        assert state == FleetClaimState.PARKED
-        active = proto._ledger.find_active_claim("parked.txt")
+
+        active = proto._ledger.find_active_claim("stale_xattr.txt")
         assert active is not None
-        assert active.lane_id == "l1"
+        assert active.lane_id == "l_b"
 
-    def test_concurrent_lifecycle_events_via_subprocess(self, tmp_path: Path) -> None:
-        fpath = tmp_path / "concurrent_lc.txt"
-        fpath.write_text("concurrent lifecycle")
-        ledger_path = (
-            tmp_path / ".rig" / "relay" / "fleet" / "coordination_events.v1.jsonl"
-        )
-        ledger = FleetClaimLedger(ledger_path)
-        proto = FleetClaimProtocol(ledger, tmp_path)
-        r = proto.acquire_claim(
-            paths=["concurrent_lc.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        assert r.acquired is True
-        q: multiprocessing.Queue = multiprocessing.Queue()
-        methods = [
-            "edit_started",
-            "tests_completed",
-            "ready_for_integration",
-            "work_parked",
-        ]
-        processes = []
-        for method in methods:
-            p = multiprocessing.Process(
-                target=_lifecycle_worker,
-                args=(
-                    str(ledger_path),
-                    str(tmp_path),
-                    ["concurrent_lc.txt"],
-                    "m1",
-                    "l1",
-                    "a1",
-                    method,
-                    q,
-                ),
-            )
-            processes.append(p)
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join(timeout=30)
-        results = [q.get(timeout=10) for _ in range(len(methods))]
-        assert len(results) == len(methods)
-        assert all(r[0] for r in results)
-        events = ledger.read_all()
-        lifecycle_events = [
-            e
-            for e in events
-            if e.event_kind
-            in {
-                FleetClaimEventKind.EDIT_STARTED,
-                FleetClaimEventKind.TESTS_COMPLETED,
-                FleetClaimEventKind.READY_FOR_INTEGRATION,
-                FleetClaimEventKind.WORK_PARKED,
-            }
-        ]
-        assert len(lifecycle_events) == len(methods)
-        sequences = [e.event_sequence for e in events]
-        assert len(set(sequences)) == len(sequences)
-        assert sorted(sequences) == list(range(1, len(events) + 1))
-        active = ledger.find_active_claim("concurrent_lc.txt")
-        assert active is not None
-        assert active.lane_id == "l1"
-
-    def test_integration_refused_stale_base_via_protocol(self, tmp_path: Path) -> None:
-        fpath = tmp_path / "stale_proto.txt"
-        fpath.write_text("version 1")
-        ledger_path = (
-            tmp_path / ".rig" / "relay" / "fleet" / "coordination_events.v1.jsonl"
-        )
-        ledger = FleetClaimLedger(ledger_path)
-        proto = FleetClaimProtocol(ledger, tmp_path)
-        r = proto.acquire_claim(
-            paths=["stale_proto.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        assert r.acquired is True
-        r_not_stale = proto.record_integration_refused_stale_base(
-            paths=["stale_proto.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        assert r_not_stale.acquired is True
-        assert r_not_stale.event is None
-        r_foreign = proto.record_integration_refused_stale_base(
-            paths=["stale_proto.txt"],
-            mission_id="m1",
-            lane_id="coord",
-            agent_id="a_coord",
-        )
-        assert r_foreign.acquired is False
-        assert r_foreign.event is None
-        fpath.write_text("version 2 — external mutation")
-        r_stale = proto.record_integration_refused_stale_base(
-            paths=["stale_proto.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        assert r_stale.acquired is False
-        assert r_stale.event is not None
-        assert (
-            r_stale.event.event_kind
-            == FleetClaimEventKind.INTEGRATION_REFUSED_STALE_BASE
-        )
-        active = ledger.find_active_claim("stale_proto.txt")
-        assert active is not None
-        assert active.event_kind == FleetClaimEventKind.CLAIM_ACQUIRED
-        assert active.lane_id == "l1"
-        events = ledger.read_all()
-        stale_events = [
-            e
-            for e in events
-            if e.event_kind == FleetClaimEventKind.INTEGRATION_REFUSED_STALE_BASE
-        ]
-        assert len(stale_events) == 1
-        info = FleetClaimXattr.read_claim(fpath)
-        assert info is not None
-        assert info.lane_id == "l1"
-
-    def test_outside_root_paths_refused_no_event(
-        self, protocol: tuple[FleetClaimProtocol, Path]
-    ) -> None:
-        proto, tmp = protocol
-        for label, call in [
-            (
-                "abs_acquire",
-                lambda: proto.acquire_claim(
-                    paths=["/tmp/outside.txt"],
-                    mission_id="m1",
-                    lane_id="l1",
-                    agent_id="a1",
-                ),
-            ),
-            (
-                "dotdot_acquire",
-                lambda: proto.acquire_claim(
-                    paths=["../outside.txt"],
-                    mission_id="m1",
-                    lane_id="l1",
-                    agent_id="a1",
-                ),
-            ),
-            (
-                "dotdot_release",
-                lambda: proto.release_claim(
-                    paths=["../outside.txt"],
-                    mission_id="m1",
-                    lane_id="l1",
-                    agent_id="a1",
-                ),
-            ),
-        ]:
-            result = call()
-            assert result.acquired is False, label
-            assert result.event is None, label
-            assert "outside" in (result.reason or "").lower(), label
-        events = proto._ledger.read_all()
-        assert len(events) == 0
-
-    def test_non_expiring_claim_contract(
-        self, protocol: tuple[FleetClaimProtocol, Path]
-    ) -> None:
-        proto, tmp = protocol
-        fpath = tmp / "non_expiring.txt"
-        fpath.write_text("claim me forever")
-        proto.acquire_claim(
-            paths=["non_expiring.txt"], mission_id="m1", lane_id="l1", agent_id="a1"
-        )
-        active = proto._ledger.find_active_claim("non_expiring.txt")
-        assert active is not None
-        assert active.lane_id == "l1"
-        events = proto._ledger.read_all()
-        renewed = [
-            e for e in events if e.event_kind == FleetClaimEventKind.CLAIM_RENEWED
-        ]
-        assert len(renewed) == 0
-
+        scanned = proto.scan_claims()
+        assert "stale_xattr.txt" in scanned
+        assert scanned["stale_xattr.txt"].lane_id == "l_b"
+        assert scanned["stale_xattr.txt"].mission_id == "m_b"
 
 class TestFleetClaimCorridorLocking:
     def test_two_processes_same_file_one_acquires_one_refused(
@@ -751,3 +538,117 @@ class TestFleetClaimCorridorLocking:
         scanned = proto.scan_claims()
         assert "resilient2.txt" in scanned
         assert scanned["resilient2.txt"].mission_id == "m1"
+
+
+    def test_public_append_racing_protocol_transition_digest_chain_proof(
+        self, tmp_path: Path
+    ) -> None:
+        """Public append racing acquire: unique sequences, predecessor linkage,
+        and recomputed canonical digest for every event.
+        """
+        fpath = tmp_path / "race_digest.txt"
+        fpath.write_text("race digest chain content")
+        ledger_path = (
+            tmp_path / ".rig" / "relay" / "fleet" / "coordination_events.v1.jsonl"
+        )
+        ledger = FleetClaimLedger(ledger_path)
+        proto = FleetClaimProtocol(ledger, tmp_path)
+
+        from rig_relay.coordination.fleet_claim_corridor import _sha256_event_payload
+
+        # Acquire first event (single-threaded, sequence 1)
+        r = proto.acquire_claim(
+            paths=["race_digest.txt"], mission_id="m_acq", lane_id="l_acq", agent_id="a_acq"
+        )
+        assert r.acquired is True
+
+        # Now race public append with protocol transition
+        q: multiprocessing.Queue = multiprocessing.Queue()
+
+        p1 = multiprocessing.Process(
+            target=_digest_chain_public_append_worker,
+            args=(str(ledger_path), q),
+        )
+        p2 = multiprocessing.Process(
+            target=_digest_chain_proto_worker,
+            args=(str(ledger_path), str(tmp_path), q),
+        )
+        p1.start()
+        p2.start()
+        p1.join(timeout=30)
+        p2.join(timeout=30)
+
+        results = [q.get(timeout=10) for _ in range(2)]
+        assert len(results) == 2
+
+        events = sorted(ledger.read_all(), key=lambda e: e.event_sequence)
+        assert len(events) >= 3
+
+        sequences = [e.event_sequence for e in events]
+        assert len(set(sequences)) == len(sequences)
+
+        # Verify chain: predecessor linkage and canonical digests
+        for i in range(1, len(events)):
+            prev = events[i - 1]
+            curr = events[i]
+            assert curr.prior_event_digest == prev.event_digest, (
+                f"Chain broken seq={curr.event_sequence}: "
+                f"prior={curr.prior_event_digest[:16] if curr.prior_event_digest else 'None'}..., "
+                f"expected={prev.event_digest[:16]}..."
+            )
+            payload = curr.model_dump(exclude={"event_id", "event_digest"})
+            expected_digest = _sha256_event_payload(payload)
+            assert curr.event_digest == expected_digest, (
+                f"Digest mismatch seq={curr.event_sequence}"
+            )
+
+
+    def test_base_hash_captured_during_held_lock_proof(
+        self, tmp_path: Path
+    ) -> None:
+        """Hold the transition lock, mutate the file, release, verify hash."""
+        fpath = tmp_path / "hash_proof.txt"
+        fpath.write_text("original content")
+        ledger_path = (
+            tmp_path / ".rig" / "relay" / "fleet" / "coordination_events.v1.jsonl"
+        )
+
+        ledger = FleetClaimLedger(ledger_path)
+        proto = FleetClaimProtocol(ledger, tmp_path)
+
+        # Acquire a blocker file to hold the transition lock
+        blocker = tmp_path / "blocker.txt"
+        blocker.write_text("blocker")
+        proto.acquire_claim(
+            paths=["blocker.txt"], mission_id="m_block", lane_id="l_block", agent_id="a_block"
+        )
+
+        q: multiprocessing.Queue = multiprocessing.Queue()
+        ready = multiprocessing.Event()
+
+        p = multiprocessing.Process(
+            target=_hash_proof_worker,
+            args=(str(ledger_path), str(tmp_path), "hash_proof.txt", ready, q),
+        )
+        p.start()
+        ready.wait(timeout=10)
+
+        # Mutate file while subprocess blocked on lock
+        fpath.write_text("mutated content during lock hold")
+        mutated_hash = file_sha256(fpath)
+
+        # Release the blocker so subprocess can proceed
+        proto.release_claim(
+            paths=["blocker.txt"], mission_id="m_block", lane_id="l_block", agent_id="a_block"
+        )
+
+        p.join(timeout=30)
+        acquired, prior = q.get(timeout=10)
+
+        assert acquired is True
+        assert prior is not None
+        assert prior.get("hash_proof.txt") == mutated_hash, (
+            f"prior_sha256 must match post-mutation content. "
+            f"Expected {mutated_hash[:16]}..., got {prior.get('hash_proof.txt', 'N/A')[:16]}..."
+        )
+

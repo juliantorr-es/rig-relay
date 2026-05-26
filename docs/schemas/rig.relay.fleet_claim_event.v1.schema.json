@@ -94,29 +94,11 @@
       ],
       "description": "Refusal reason, integration note, or parked blocker context."
     },
-    "expires_at": {
-      "type": ["string", "null"],
-      "format": "date-time",
-      "description": "ISO 8601 UTC expiry timestamp of the claim lease, set at acquisition."
-    },
-    "conflicting_path": {
-      "type": ["string", "null"],
-      "description": "Requested path that triggered a release refusal."
-    },
-    "conflicting_mission_id": {
-      "type": ["string", "null"],
-      "description": "Active owner mission_id at the conflicting path."
-    },
-    "conflicting_lane_id": {
-      "type": ["string", "null"],
-      "description": "Active owner lane_id at the conflicting path."
-    },
-    "conflicting_agent_id": {
-      "type": ["string", "null"],
-      "description": "Active owner agent_id at the conflicting path."
-    },
     "prior_event_digest": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "SHA-256 hex digest of the immediately preceding event in the ledger, for digest-chain validation."
     }
   },
