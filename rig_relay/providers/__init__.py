@@ -15,6 +15,11 @@ frontend storage.
 
 from __future__ import annotations
 
+from rig_relay.providers.evidence_ledger import (
+    VerifiedLedgerResult,
+    VerifiedProviderEvent,
+    load_verified_provider_events,
+)
 from rig_relay.providers.health_check import check_provider_status
 from rig_relay.providers.invocation import (
     GatewayProvenance,
@@ -98,6 +103,8 @@ __all__ = [
     "ProviderOperationsReport",
     "ProviderStatus",
     "ProviderStatusSummary",
+    "VerifiedLedgerResult",
+    "VerifiedProviderEvent",
     "assert_content_light",
     "build_invocation_outcome",
     "check_provider_status",
@@ -108,6 +115,7 @@ __all__ = [
     "get_provider_capability",
     "get_provider_class",
     "invocation_evidence_capabilities",
+    "load_verified_provider_events",
     "provider_class_for",
     "provider_health_check",
     "provider_onboarding_remove_key",

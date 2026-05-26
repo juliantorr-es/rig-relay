@@ -19,6 +19,7 @@ from rig_relay.providers.evidence_ledger import (
     LEDGER_DIR,
     LEDGER_FILE,
     load_provider_events,
+    load_verified_provider_events,
     persist_provider_event,
 )
 from rig_relay.providers.invocation import (
@@ -26,6 +27,7 @@ from rig_relay.providers.invocation import (
     ProviderClass,
     ProviderInvocationOutcome,
 )
+from rig_relay.providers.operations import generate_operations_report
 from rig_relay.providers.query import ProviderEvidenceQueryService
 
 
@@ -712,3 +714,261 @@ class TestQueryProjectionSchema:
         serialized = json.dumps(summary_dict)
         assert "api_key" not in serialized.lower()
         assert "secret" not in serialized.lower()
+
+
+class TestReadSideIntegrityVerification:
+    def test_tampered_body_retaining_old_digest_is_detected(self):
+        """Mutate a persisted event body while preserving its digest string,
+        then prove the verified reader detects the corruption.
+        """
+        outcome = _build_outcome("openai", "gpt-4o")
+        digest = persist_provider_event(outcome, session_id="s-tamper", turn_id="t1")
+
+        svc_before = ProviderEvidenceQueryService()
+        assert svc_before.integrity_verified
+        assert svc_before.event_count == 1
+
+        # Tamper the ledger: change provider identity but keep digest
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        lines = ledger_path.read_text("utf-8").splitlines()
+        assert len(lines) == 1
+
+        tampered_line = lines[0].replace(
+            '"requested_provider_id":"openai"',
+            '"requested_provider_id":"malicious-provider"',
+        )
+        assert tampered_line != lines[0]
+        assert digest in tampered_line
+
+        ledger_path.write_text(tampered_line + "\n")
+
+        # Verified reader must detect
+        verified = load_verified_provider_events()
+        assert not verified.corpus_integrity_verified
+        assert verified.digest_mismatch_count == 1
+        assert len(verified.corrupt_events) == 1
+        assert verified.corrupt_events[0].corruption_kind == "digest_mismatch"
+        assert len(verified.valid_events) == 0
+
+        # Query service must NOT report integrity_verified
+        svc = ProviderEvidenceQueryService()
+        assert not svc.integrity_verified
+        assert svc.event_count == 0
+        assert svc.corrupt_count == 1
+
+        # Operations report must NOT count corrupt event
+        report = generate_operations_report()
+        assert not report.integrity_verified
+        assert report.event_count == 0
+        assert "malicious-provider" not in report.provider_identities
+
+    def test_schema_invalid_line_is_detected(self):
+        """A line missing required schema fields is surfaced as corrupt."""
+        outcome = _build_outcome("openai", "gpt-4o")
+        persist_provider_event(outcome, session_id="s-schema", turn_id="t1")
+
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        original_lines = ledger_path.read_text("utf-8")
+        injected = json.dumps({
+            "schema_version": "rig.relay.provider_invocation_evidence_event.v1",
+            "event_id": "bad",
+            "created_at": "2026-01-01T00:00:00Z",
+        })
+        ledger_path.write_text(original_lines + injected + "\n")
+
+        verified = load_verified_provider_events()
+        assert not verified.corpus_integrity_verified
+        assert verified.schema_invalid_count >= 1
+        assert len(verified.valid_events) == 1  # original still valid
+
+    def test_malformed_json_line_is_surfaced(self):
+        """A non-JSON line is surfaced as corrupt, not silently skipped."""
+        outcome = _build_outcome("openai", "gpt-4o")
+        persist_provider_event(outcome, session_id="s-malformed", turn_id="t1")
+
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        original = ledger_path.read_text("utf-8")
+        ledger_path.write_text(original + "this is not json at all\n")
+
+        verified = load_verified_provider_events()
+        assert not verified.corpus_integrity_verified
+        assert verified.malformed_json_count == 1
+        assert len(verified.corrupt_events) >= 1
+        assert any(
+            c.corruption_kind == "malformed_json" for c in verified.corrupt_events
+        )
+        assert len(verified.valid_events) == 1
+
+    def test_duplicate_digest_is_surfaced(self):
+        """Two events sharing the same digest are detected as digest_mismatch
+        (the tampered event's recalculated digest won't match the injected one)."""
+        outcome1 = _build_outcome("openai", "gpt-4o")
+        persist_provider_event(outcome1, session_id="s-dup1", turn_id="t1")
+        outcome1_copy = _build_outcome("openai", "gpt-4o")
+        persist_provider_event(outcome1_copy, session_id="s-dup2", turn_id="t2")
+
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        lines_all = ledger_path.read_text("utf-8").splitlines()
+        assert len(lines_all) == 2
+        first_event = json.loads(lines_all[0])
+        second_event = json.loads(lines_all[1])
+        first_digest = first_event["event_digest"]
+        second_digest = second_event["event_digest"]
+        assert first_digest != second_digest
+
+        second_tampered = json.dumps(dict(second_event, event_digest=first_digest))
+        ledger_path.write_text(lines_all[0] + "\n" + second_tampered + "\n")
+
+        verified = load_verified_provider_events()
+        assert not verified.corpus_integrity_verified
+        assert verified.digest_mismatch_count == 1
+
+    def test_raw_injected_events_without_canonical_flag_bypass_verification(self):
+        """from_test_events without canonical_source=True does not enforce
+        digest recomputation. This is the test-only escape hatch."""
+        outcome = _build_outcome()
+        persist_provider_event(outcome, session_id="s-raw", turn_id="t1")
+
+        from rig_relay.providers.evidence_ledger import load_provider_events
+
+        raw_events = load_provider_events()
+        raw_events[0]["outcome"]["requested_provider_id"] = "tampered"
+
+        svc = ProviderEvidenceQueryService.from_test_events(raw_events)
+        assert svc.event_count == 1
+        assert svc.all_events()[0].provider_id == "tampered"
+        assert not svc.integrity_verified
+
+    def test_tampered_field_not_counted_in_operations_report(self):
+        """A tampered event should not contribute cached/reasoning/discrepancy counts."""
+        outcome = _build_outcome(
+            "openai",
+            cache_read_tokens=100,
+            cache_read_verified=True,
+            reasoning_tokens=50,
+            reasoning_tokens_verified=True,
+        )
+        digest = persist_provider_event(outcome, session_id="s-count", turn_id="t1")
+
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        lines = ledger_path.read_text("utf-8")
+        tampered = lines.replace(
+            '"cache_read_verified":true', '"cache_read_verified":false'
+        )
+        assert digest in tampered
+        ledger_path.write_text(tampered)
+
+        report = generate_operations_report()
+        assert not report.integrity_verified
+        assert report.event_count == 0
+        assert report.cached_tokens_verified == 0
+        assert report.cached_tokens_events == 0
+
+    def test_non_streaming_backend_to_verified_query(self):
+        """Non-streaming backend path still produces queryable verified evidence."""
+        import httpx
+        import respx
+
+        from rig_relay.core.config import (
+            ModelConfig,
+            ProviderConfig as CoreProviderConfig,
+        )
+        from rig_relay.core.llm.backend.generic import GenericBackend
+        from rig_relay.core.types import LLMMessage, Role
+
+        provider = CoreProviderConfig(
+            name="openai",
+            api_style="openai",
+            api_base="https://api.openai.com/v1",
+            api_key_env_var="OPENAI_API_KEY",
+        )
+        model = ModelConfig(name="gpt-4o", provider="openai", alias="gpt-4o")
+
+        async def _run():
+            response_json = {
+                "id": "chatcmpl-200",
+                "object": "chat.completion",
+                "model": "gpt-4o",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            }
+            with respx.mock:
+                respx.post("https://api.openai.com/v1/chat/completions").mock(
+                    return_value=httpx.Response(200, json=response_json)
+                )
+                backend = GenericBackend(provider=provider)
+                try:
+                    chunk = await backend.complete(
+                        model=model, messages=[LLMMessage(role=Role.user, content="Hi")]
+                    )
+                finally:
+                    await backend.close()
+            return chunk
+
+        chunk = asyncio.run(_run())
+        assert chunk.invocation_outcome is not None
+        persist_provider_event(chunk.invocation_outcome, session_id="s-verified-ns")
+
+        svc = ProviderEvidenceQueryService()
+        assert svc.integrity_verified
+        assert svc.event_count == 1
+        assert svc.all_events()[0].input_tokens == 10
+
+    def test_verified_query_does_not_mutate_ledger(self):
+        """Query service operations never write to the canonical ledger."""
+        _ = persist_provider_event(_build_outcome(), session_id="s-imm")
+
+        from rig_relay.providers.evidence_ledger import LEDGER_DIR, LEDGER_FILE
+
+        ledger_path = Path(LEDGER_DIR) / LEDGER_FILE
+        before = ledger_path.read_text("utf-8")
+
+        svc = ProviderEvidenceQueryService()
+        _ = svc.all_events()
+        _ = svc.build_summary()
+        _ = svc.list_by_provider("openai")
+
+        after = ledger_path.read_text("utf-8")
+        assert before == after
+
+    def test_deterministic_verified_queries(self):
+        """Identical admitted evidence produces identical query digests."""
+        _ = persist_provider_event(
+            _build_outcome("openai", "gpt-4o"), session_id="s-det1"
+        )
+        _ = persist_provider_event(
+            _build_outcome("anthropic", "claude"), session_id="s-det2"
+        )
+
+        svc1 = ProviderEvidenceQueryService()
+        svc2 = ProviderEvidenceQueryService()
+
+        assert svc1.integrity_verified == svc2.integrity_verified
+        assert svc1.build_summary().digest == svc2.build_summary().digest
+        assert (
+            svc1.list_by_provider("openai").projection_digest
+            == svc2.list_by_provider("openai").projection_digest
+        )
+
+
+import asyncio

@@ -17,7 +17,12 @@ import hashlib
 import json
 from typing import Any
 
-from rig_relay.providers.evidence_ledger import LEDGER_FILE, load_provider_events
+from rig_relay.providers.evidence_ledger import (
+    LEDGER_FILE,
+    VerifiedLedgerResult,
+    VerifiedProviderEvent,
+    load_verified_provider_events,
+)
 
 _PROJECTION_SCHEMA_VERSION = "rig.relay.provider_evidence_query_projection.v1"
 
@@ -128,14 +133,25 @@ def _normalize_event(raw: dict[str, Any]) -> ProviderEvidenceQuery:
     )
 
 
-def _verify_integrity(events: list[ProviderEvidenceQuery]) -> tuple[bool, list[str]]:
-    errors: list[str] = []
-    digests = [e.event_digest for e in events]
-    non_empty = [d for d in digests if d and d.startswith("sha256:")]
-    if len(non_empty) < len(events):
-        errors.append("Some events have empty or invalid digests")
-    if len(set(non_empty)) < len(events):
+def _verify_integrity(
+    normalized: list[ProviderEvidenceQuery], verified: VerifiedLedgerResult
+) -> tuple[bool, list[str]]:
+    """Verify integrity against canonical recomputed digests.
+
+    Uses the verified reader's recomputed digest comparison, not merely
+    digest-string shape. Corrupt events in the verified result cause
+    integrity failure.
+    """
+    errors: list[str] = list(verified.corruption_summary)
+    if not verified.corpus_integrity_verified:
+        return False, errors
+
+    digests = [e.event_digest for e in normalized if e.event_digest]
+    if len(digests) != len(normalized):
+        errors.append("Some normalized events have empty digests")
+    if len(set(digests)) != len(normalized):
         errors.append("Duplicate event digests detected")
+
     if not errors:
         return True, []
     return False, errors
@@ -155,24 +171,148 @@ def _compute_projection_digest(
 
 
 class ProviderEvidenceQueryService:
-    """Typed read-side query service over canonical provider evidence.
+    """Typed read-side query service over verified canonical provider evidence.
 
     All methods are read-only. Never mutates the canonical ledger.
     Returns typed, content-light, deterministic projections.
+
+    By default, loads events through the verified reader which schema-validates
+    and digest-recomputes every event. A tampered ledger causes integrity failure;
+    corrupt events are surfaced but excluded from valid result sets.
     """
 
-    def __init__(self, events: list[dict[str, Any]] | None = None) -> None:
-        if events is None:
-            events = load_provider_events()
-        self._raw_events = events
+    def __init__(self, verified: VerifiedLedgerResult | None = None) -> None:
+        if verified is None:
+            verified = load_verified_provider_events()
+        self._verified = verified
         self._normalized: list[ProviderEvidenceQuery] = [
-            _normalize_event(e) for e in events
+            _normalize_event(e) for e in verified.valid_events
         ]
-        self._integrity_ok, self._integrity_errors = _verify_integrity(self._normalized)
+        self._integrity_ok, self._integrity_errors = _verify_integrity(
+            self._normalized, verified
+        )
+
+    @classmethod
+    def from_test_events(
+        cls, events: list[dict[str, Any]], *, canonical_source: bool = False
+    ) -> ProviderEvidenceQueryService:
+        """Construct a service from test-only event dictionaries.
+
+        Args:
+            events: Raw event dictionaries for testing.
+            canonical_source: True only when events were admitted through
+                persist_provider_event() and re-read through
+                load_verified_provider_events(). When False, integrity
+                verification is skipped and projections never claim
+                integrity_verified=True.
+
+        Returns:
+            A service instance suitable for testing query logic without
+            requiring a real ledger file.
+        """
+        if canonical_source:
+            from rig_relay.providers.evidence_ledger import (
+                _recompute_event_digest,
+                _validate_event_against_schema,
+            )
+
+            result = VerifiedLedgerResult()
+            seen_ids: set[str] = set()
+            seen_digests: set[str] = set()
+            for e in events:
+                result.total_lines += 1
+                try:
+                    _validate_event_against_schema(e)
+                except Exception as exc:
+                    result.schema_invalid_count += 1
+                    result.corpus_integrity_verified = False
+                    result.corruption_summary.append(
+                        f"Event {e.get('event_id', '?')}: schema invalid"
+                    )
+                    result.events.append(
+                        VerifiedProviderEvent(
+                            event=e,
+                            event_id=e.get("event_id", ""),
+                            is_corrupt=True,
+                            corruption_kind="schema_invalid",
+                            corruption_detail=str(exc),
+                        )
+                    )
+                    result.corrupt_events.append(result.events[-1])
+                    continue
+
+                recomputed = _recompute_event_digest(e)
+                if recomputed != e.get("event_digest", ""):
+                    result.digest_mismatch_count += 1
+                    result.corpus_integrity_verified = False
+                    result.corruption_summary.append(
+                        f"Event {e.get('event_id', '?')}: digest mismatch"
+                    )
+                    result.events.append(
+                        VerifiedProviderEvent(
+                            event=e,
+                            event_id=e.get("event_id", ""),
+                            is_corrupt=True,
+                            corruption_kind="digest_mismatch",
+                        )
+                    )
+                    result.corrupt_events.append(result.events[-1])
+                    continue
+
+                eid = e.get("event_id", "")
+                dg = e.get("event_digest", "")
+                if eid in seen_ids or dg in seen_digests:
+                    result.duplicate_event_id_count += eid in seen_ids
+                    result.duplicate_digest_count += dg in seen_digests
+                    result.corpus_integrity_verified = False
+                    result.corruption_summary.append(f"Event {eid}: duplicate")
+                    result.events.append(
+                        VerifiedProviderEvent(
+                            event=e,
+                            event_id=eid,
+                            is_corrupt=True,
+                            corruption_kind="duplicate",
+                        )
+                    )
+                    result.corrupt_events.append(result.events[-1])
+                    continue
+
+                seen_ids.add(eid)
+                seen_digests.add(dg)
+                result.events.append(
+                    VerifiedProviderEvent(
+                        event=e, event_id=eid, event_digest=dg, is_valid=True
+                    )
+                )
+                result.valid_events.append(e)
+
+            if not result.corruption_summary:
+                result.corpus_integrity_verified = True
+            return cls(verified=result)
+
+        verified = VerifiedLedgerResult(
+            events=[
+                VerifiedProviderEvent(
+                    event=e,
+                    event_id=e.get("event_id", ""),
+                    event_digest=e.get("event_digest", ""),
+                    is_valid=True,
+                )
+                for e in events
+            ],
+            total_lines=len(events),
+            valid_events=events,
+            corpus_integrity_verified=False,
+        )
+        return cls(verified=verified)
 
     @property
     def event_count(self) -> int:
         return len(self._normalized)
+
+    @property
+    def corrupt_count(self) -> int:
+        return len(self._verified.corrupt_events)
 
     @property
     def integrity_verified(self) -> bool:
@@ -182,93 +322,101 @@ class ProviderEvidenceQueryService:
     def integrity_errors(self) -> list[str]:
         return list(self._integrity_errors)
 
+    @property
+    def corruption_summary(self) -> list[str]:
+        return list(self._verified.corruption_summary)
+
     def all_events(self) -> list[ProviderEvidenceQuery]:
-        """Return all normalized evidence events."""
+        """Return all valid normalized evidence events."""
         return list(self._normalized)
 
+    def corrupt_events(self) -> list[dict[str, Any]]:
+        """Return raw corrupt/untrusted events surfaced by the verified reader."""
+        return [v.event for v in self._verified.corrupt_events]
+
     def list_by_provider(self, provider_id: str) -> ProviderEvidenceQueryResult:
-        """Filter events by requested provider identity."""
+        """Filter valid events by requested provider identity."""
         return self._build_result(
             [e for e in self._normalized if e.provider_id == provider_id],
             f"provider_id={provider_id}",
         )
 
     def list_by_api_style(self, api_style: str) -> ProviderEvidenceQueryResult:
-        """Filter events by adapter api_style (e.g. openai, anthropic, openai-responses)."""
+        """Filter valid events by adapter api_style (e.g. openai, anthropic, openai-responses)."""
         return self._build_result(
             [e for e in self._normalized if e.api_style == api_style],
             f"api_style={api_style}",
         )
 
     def list_streaming(self) -> ProviderEvidenceQueryResult:
-        """Return streaming events."""
+        """Return valid streaming events."""
         return self._build_result(
             [e for e in self._normalized if e.streaming], "streaming=true"
         )
 
     def list_non_streaming(self) -> ProviderEvidenceQueryResult:
-        """Return non-streaming events."""
+        """Return valid non-streaming events."""
         return self._build_result(
             [e for e in self._normalized if not e.streaming], "streaming=false"
         )
 
     def list_with_cached_tokens(self) -> ProviderEvidenceQueryResult:
-        """Return events with verified cached-token details."""
+        """Return valid events with verified cached-token details."""
         return self._build_result(
             [e for e in self._normalized if e.cache_read_verified],
             "cache_read_verified=true",
         )
 
     def list_with_reasoning_tokens(self) -> ProviderEvidenceQueryResult:
-        """Return events with verified reasoning-token details."""
+        """Return valid events with verified reasoning-token details."""
         return self._build_result(
             [e for e in self._normalized if e.reasoning_tokens_verified],
             "reasoning_tokens_verified=true",
         )
 
     def list_with_discrepancy(self) -> ProviderEvidenceQueryResult:
-        """Return events where usage discrepancy was detected."""
+        """Return valid events where usage discrepancy was detected."""
         return self._build_result(
             [e for e in self._normalized if e.usage_discrepancy_detected],
             "usage_discrepancy_detected=true",
         )
 
     def list_refusals(self) -> ProviderEvidenceQueryResult:
-        """Return refusal and safety-block events."""
+        """Return valid refusal and safety-block events."""
         return self._build_result(
             [e for e in self._normalized if e.is_refusal],
             "outcome_class in (refusal, safety_block)",
         )
 
     def list_errors(self) -> ProviderEvidenceQueryResult:
-        """Return error events."""
+        """Return valid error events."""
         return self._build_result(
             [e for e in self._normalized if e.is_error], "outcome_class=error"
         )
 
     def list_degraded(self) -> ProviderEvidenceQueryResult:
-        """Return events with degraded or unverified usage evidence."""
+        """Return valid events with degraded or unverified usage evidence."""
         return self._build_result(
             [e for e in self._normalized if e.usage_verified is not True],
             "usage_verified != true",
         )
 
     def lookup_by_event_id(self, event_id: str) -> ProviderEvidenceQuery | None:
-        """Look up a single event by its event_id."""
+        """Look up a single valid event by its event_id."""
         for e in self._normalized:
             if e.event_id == event_id:
                 return e
         return None
 
     def lookup_by_digest(self, digest: str) -> ProviderEvidenceQuery | None:
-        """Look up a single event by its event_digest."""
+        """Look up a single valid event by its event_digest."""
         for e in self._normalized:
             if e.event_digest == digest:
                 return e
         return None
 
     def build_summary(self) -> ProviderEvidenceSummary:
-        """Build a content-light aggregate summary projection."""
+        """Build a content-light aggregate summary from valid evidence only."""
         provider_ids: list[str] = []
         api_styles: list[str] = []
         streaming = 0
@@ -302,9 +450,16 @@ class ProviderEvidenceQueryService:
         provider_ids.sort()
         api_styles.sort()
 
+        integrity_errors = list(self._integrity_errors)
+        if self._verified.corrupt_events:
+            integrity_errors.append(
+                f"Corrupt events detected: {len(self._verified.corrupt_events)}"
+            )
+
         summary_data: dict[str, Any] = {
             "schema_version": _PROJECTION_SCHEMA_VERSION,
             "total_events": len(self._normalized),
+            "corrupt_events": len(self._verified.corrupt_events),
             "provider_ids": provider_ids,
             "api_styles": api_styles,
             "streaming_count": streaming,
@@ -315,7 +470,7 @@ class ProviderEvidenceQueryService:
             "refusal_count": refusals,
             "error_count": errors,
             "integrity_verified": self._integrity_ok,
-            "integrity_errors": self._integrity_errors,
+            "integrity_errors": integrity_errors,
         }
         digest = (
             "sha256:"
@@ -338,7 +493,7 @@ class ProviderEvidenceQueryService:
             refusal_count=refusals,
             error_count=errors,
             integrity_verified=self._integrity_ok,
-            integrity_errors=self._integrity_errors,
+            integrity_errors=integrity_errors,
             digest=digest,
             generated_at=datetime.now(UTC).isoformat(),
         )

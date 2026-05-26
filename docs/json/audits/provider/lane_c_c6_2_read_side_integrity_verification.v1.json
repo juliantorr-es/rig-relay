@@ -1,0 +1,114 @@
+{
+  "schema_version": "rig.relay.provider_corridor_audit.v1",
+  "audit_id": "lane_c6_2_read_side_integrity_verification_hardened",
+  "supersedes": {
+    "audit_id": "lane_c6_1_provider_evidence_release_truth_reconciled_and_query_service_published",
+    "path": "docs/json/audits/provider/lane_c_c6_1_release_verification.v1.json",
+    "reason": "C6.1 published the query service and corrected the stale release audit. However, its _verify_integrity() only checked digest string shape (non-empty, sha256: prefix, non-duplicate) without recomputing digests from canonical event content. A tampered ledger line retaining its original digest string would be projected as integrity_verified=True. C6.2 hardens the read-side verification boundary and adds the shared verified reader consumed by both query and operations services."
+  },
+  "created_at": "2026-05-26T21:30:00+00:00",
+  "lane": "C",
+  "mission": "C6.2 \u2014 Read-Side Canonical Integrity Verification and Provider Diagnostics Projection Hardening",
+  "corridor": "provider_outcome_evidence",
+  "corridor_owner": "Lane C",
+  "c6_1_defect_documented": {
+    "defect": "_verify_integrity() verified digest shape, not content. load_provider_events() silently skipped malformed JSON and did not schema-validate or digest-recompute events. ProviderEvidenceQueryService accepted arbitrary dict injections as canonical evidence.",
+    "impact": "A tampered ledger line with preserved digest string would report integrity_verified=True in both query and operations services.",
+    "c6_append_authority": "NOT affected. persist_provider_event() remained fail-closed with schema validation before append. Only read-side verification was insufficient."
+  },
+  "c6_2_repairs": {
+    "shared_verified_reader": {
+      "module": "rig_relay/providers/evidence_ledger.py",
+      "new_types": [
+        "VerifiedProviderEvent (per-event verification disposition)",
+        "VerifiedLedgerResult (typed loading result with valid/corrupt separation)"
+      ],
+      "new_function": "load_verified_provider_events() \u2014 schema-validates, digest-recomputes, surfaces malformed lines, detects duplicates",
+      "key_functions": [
+        "_recompute_event_digest() \u2014 blanks stored digest before recomputation matching persistence rule",
+        "_process_loaded_line() \u2014 per-line parse, validate, digest-check, duplicate-check"
+      ],
+      "deprecated": "load_provider_events() retained for compatibility but marked as deprecated for authoritative consumption"
+    },
+    "query_service": {
+      "module": "rig_relay/providers/query.py",
+      "changes": [
+        "Constructor accepts VerifiedLedgerResult instead of raw dicts",
+        "_verify_integrity() checks corrupt event count and verified reader corruption_summary",
+        "from_test_events() classmethod for test construction (non-canonical by default)",
+        "canonical_source=True flag for test events that must pass full verification",
+        "corrupt_events property exposes untrusted entries",
+        "corruption_summary property exposes corruption details"
+      ]
+    },
+    "operations_report": {
+      "module": "rig_relay/providers/operations.py",
+      "changes": [
+        "generate_operations_report() consumes VerifiedLedgerResult",
+        "Backward-compatible events= parameter routes through from_test_events(canonical_source=True) for verification",
+        "_verify_integrity_from_reader() replaces digest-shape check with verified reader corruption_surface"
+      ]
+    }
+  },
+  "source_boundary_hashes": {
+    "rig_relay/providers/evidence_ledger.py": "sha256:95b125333d3df30e74df42b9dbbc1ed6b1f33dcaf5832b8248127fa9301b16f4",
+    "rig_relay/providers/query.py": "sha256:e7cd46e06faba72f0049346e4bdf260e7aec007e95791c1b7b7e9b0d01f481e7",
+    "rig_relay/providers/operations.py": "sha256:cf408520d0b73af6c112fd05c54d9b4da8ea6fd13bb855f289e932052c7e1dbe",
+    "rig_relay/providers/__init__.py": "sha256:015ccac396ded6974d93dd6112605f2545c7d8b11a2ff14080dae9ee62ad5bfa",
+    "tests/providers/test_query_service.py": "sha256:0236cae8dcb5dddb8541ca375d359a8b89ec411f401b41a9ec9ff349fa68603c"
+  },
+  "append_authority": {
+    "status": "already fail-closed and released (C6)",
+    "persist_provider_event_schema_validation": "before lock acquisition",
+    "content_light_gate": "enforced",
+    "fcntl_flock_durability": "verified",
+    "no_regression": true
+  },
+  "read_side_authority": {
+    "status": "hardened in C6.2",
+    "schema_validation_on_load": true,
+    "digest_recomputation_on_load": true,
+    "malformed_json_surfaced": true,
+    "duplicate_detection": "event_id and digest",
+    "corrupt_corpus_denies_integrity_verified": true,
+    "query_and_operations_share_verified_reader": true,
+    "tampered_field_not_counted": "proven"
+  },
+  "production_proofs": {
+    "total_tests": 81,
+    "invocation_evidence_tests": 28,
+    "ledger_and_operations_tests": 18,
+    "query_service_tests": 26,
+    "read_side_integrity_tests": 9,
+    "tampered_body_detected": "test_tampered_body_retaining_old_digest_is_detected",
+    "schema_invalid_detected": "test_schema_invalid_line_is_detected",
+    "malformed_json_surfaced": "test_malformed_json_line_is_surfaced",
+    "duplicate_digest_surfaced": "test_duplicate_digest_is_surfaced",
+    "raw_injection_bypassed": "test_raw_injected_events_without_canonical_flag_bypass_verification",
+    "tampered_fields_not_counted": "test_tampered_field_not_counted_in_operations_report",
+    "non_streaming_backend_to_verified_query": "test_non_streaming_backend_to_verified_query",
+    "query_does_not_mutate_ledger": "test_verified_query_does_not_mutate_ledger",
+    "deterministic_verified_queries": "test_deterministic_verified_queries"
+  },
+  "validation": {
+    "pyright": "0 errors, 0 warnings",
+    "ruff": "all clean",
+    "ruff_format": "5 files unchanged",
+    "schema_draft_07": "valid",
+    "schema_validation_script": "provider schemas pass"
+  },
+  "deferred": {
+    "lane_b_telemetry_sink_convergence": "Deferred \u2014 Lane B owns runtime outcome projection",
+    "desktop_gridline_wiring": "Deferred \u2014 future desktop consumption surface",
+    "fleet_coordination": "Deferred \u2014 shared mechanism"
+  },
+  "lane_c_releases_boundary": true,
+  "lane_c_boundary_release": "Append authority released at C6 (f03a11d7). Query/diagnostics read-side boundary released at C6.1 (64fa9a3e). Read-side integrity hardened at C6.2.",
+  "final_status": "read_side_integrity_verification_hardened_and_query_projection_published",
+  "final_status_identifier": "lane_c_c6_2_provider_evidence_read_side_integrity_and_query_projection_hardened_published",
+  "prior_contradictions_preserved": [
+    "C6 stale audit at f03a11d7 with lane_c_releases_boundary: false (immutable evidence)",
+    "C6.1 superseding audit at 64fa9a3e corrected release truth (immutable evidence)",
+    "C6.1 query service integrity overclaim documented in this C6.2 audit"
+  ]
+}

@@ -16,7 +16,15 @@ import hashlib
 import json
 from typing import Any
 
-from rig_relay.providers.evidence_ledger import LEDGER_FILE, load_provider_events
+from rig_relay.providers.evidence_ledger import (
+    LEDGER_FILE,
+    VerifiedLedgerResult,
+    load_verified_provider_events,
+)
+
+_CORRUPTED_LEDGER_ERROR = (
+    "Ledger contains corrupt events — integrity cannot be verified"
+)
 
 
 @dataclass
@@ -68,22 +76,24 @@ class ProviderOperationsReport:
     report_digest: str = ""
 
 
-def _verify_integrity(
-    events: list[dict[str, Any]], report: ProviderOperationsReport
+def _verify_integrity_from_reader(
+    verified: VerifiedLedgerResult, report: ProviderOperationsReport
 ) -> None:
-    report.integrity_event_digests = [e.get("event_digest", "") for e in events]
-    non_empty = [
-        d for d in report.integrity_event_digests if d and d.startswith("sha256:")
+    """Verify integrity from the canonical verified reader.
+
+    Uses recomputed digests and schema validation from the verified reader,
+    not merely digest-string shape. Corrupt events cause integrity failure.
+    """
+    report.integrity_event_digests = [
+        e.get("event_digest", "") for e in verified.valid_events
     ]
-    unique = set(non_empty)
-    if len(non_empty) == len(events) and len(unique) == len(events):
-        report.integrity_verified = True
-        return
-    report.integrity_verified = False
-    if len(non_empty) < len(events):
-        report.integrity_errors.append("Some events have empty or invalid digests")
-    if len(unique) < len(events):
-        report.integrity_errors.append("Duplicate event digests detected")
+    report.integrity_verified = verified.corpus_integrity_verified
+    if not verified.corpus_integrity_verified:
+        report.integrity_errors.extend(verified.corruption_summary)
+    if verified.corrupt_events:
+        report.integrity_errors.append(
+            f"Corrupt events excluded from report: {len(verified.corrupt_events)}"
+        )
 
 
 def _count_event_fields(
@@ -164,21 +174,48 @@ def _count_degraded(
 
 
 def generate_operations_report(
+    verified: VerifiedLedgerResult | None = None,
+    *,
     events: list[dict[str, Any]] | None = None,
 ) -> ProviderOperationsReport:
-    """Generate a deterministic provider operations projection from ledger events.
+    """Generate a deterministic provider operations projection from verified evidence.
 
-    If events is None, loads from the canonical ledger file.
+    Accepts either a VerifiedLedgerResult or raw event dictionaries (deprecated).
+    When events are provided directly, integrity is verified against the same
+    recomputed-digest and schema-validation rules used by the verified reader.
+
+    If neither is provided, loads from the canonical ledger through
+    load_verified_provider_events() which schema-validates and
+    digest-recomputes every event. Only valid admitted events contribute
+    to provider identity counts, token detail summaries, discrepancy
+    counts, and other aggregate fields. Corrupt events are surfaced
+    but excluded.
+
     The returned report is content-light and reconstructable.
     """
-    if events is None:
-        events = load_provider_events()
+    if verified is None and events is not None:
+        from rig_relay.providers.query import ProviderEvidenceQueryService
 
-    report = ProviderOperationsReport(ledger_file=LEDGER_FILE, event_count=len(events))
+        svc = ProviderEvidenceQueryService.from_test_events(
+            events, canonical_source=True
+        )
+        verified = svc._verified
 
-    _verify_integrity(events, report)
-    for event in events:
+    if verified is None:
+        verified = load_verified_provider_events()
+
+    report = ProviderOperationsReport(
+        ledger_file=LEDGER_FILE, event_count=len(verified.valid_events)
+    )
+
+    _verify_integrity_from_reader(verified, report)
+    for event in verified.valid_events:
         _count_event_fields(event, report)
+
+    if verified.corrupt_events:
+        report.integrity_errors.append(
+            f"Corrupt events detected: {len(verified.corrupt_events)}"
+        )
 
     report.provider_identities.sort()
     return _finalize_report(report)
