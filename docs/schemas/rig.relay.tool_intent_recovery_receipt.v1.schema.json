@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.tool_intent_recovery_receipt.v1.schema.json",
+  "title": "Tool Intent Recovery Receipt v1",
+  "description": "Content-light receipt for a deterministic tool-call recovery attempt. Never contains raw model emission, normalized argument values, file content, write payloads, or patch text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "created_at",
+    "manifest_digest",
+    "original_emission_sha256",
+    "payload_schema_valid",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.relay.tool_intent_recovery_receipt.v1"
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique identifier for this recovery receipt"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the tool surface manifest used for this recovery"
+    },
+    "original_emission_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the raw model emission — never the raw content itself"
+    },
+    "normalization_rules_applied": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Stable normalization rule identifiers applied during recovery"
+    },
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "selected_canonical_tool": {
+      "type": ["string", "null"]
+    },
+    "selected_tool_mutation_class": {
+      "type": ["string", "null"]
+    },
+    "selected_tool_determinism_class": {
+      "type": ["string", "null"]
+    },
+    "normalized_payload_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "payload_schema_valid": {
+      "type": "boolean"
+    },
+    "admission_decision": {
+      "type": ["string", "null"],
+      "enum": [
+        "auto_execute_read_only",
+        "auto_execute_validation",
+        "proposal_only_mutation",
+        "require_remote_authorization",
+        "refuse_raw_shell",
+        "refuse_ambiguous",
+        "refuse_unsupported",
+        null
+      ]
+    },
+    "proposal_only": {
+      "type": "boolean"
+    },
+    "refused_reason": {
+      "type": ["string", "null"]
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Self-referential integrity digest — computed over all fields except this one"
+    }
+  }
+}
