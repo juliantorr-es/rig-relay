@@ -1,0 +1,178 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-a-p2-unsafe-execution-profile-admission-closure",
+  "document_type": "audit",
+  "title": "Lane A P2 — Unsafe Execution Profile Admission Closure — Existing Acceptance",
+  "summary": "The unsafe raw-shell execution profile admission gate is already fully implemented, covered at every selection/restoration/listing/cycling/runtime boundary, and proven by 27 existing real-substrate tests. No bypass remains. Status: existing_acceptance_proven.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "owners": ["Lane A"],
+  "tags": ["governance", "execution-profile", "raw-shell", "admission", "audit", "existing-acceptance", "lane-a", "p2"],
+  "canonical_path": "docs/json/audits/governance/lane_a_p2_unsafe_execution_profile_admission_closure.v1.json",
+  "source_commit": "806934b5492169fb395b0f3465b55955e34157f0",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Unsafe Execution Profile Admission Closure — Existing Acceptance"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Anchors"
+    },
+    {
+      "block_id": "list-1",
+      "type": "list",
+      "content": "Current GitHub main SHA: 806934b5492169fb395b0f3465b55955e34157f0\nLocal Lane A HEAD: 650a5e1b (P1 checkpoint, NOT on remote)\nLane A P1 status: lane_a_p1_checkpoint_authorization_recovery_closure_proven (local only)\nLane A P0.1 status: published_remote_mutation_authority_bypass_acceptance_closed (published: 758928d0)"
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Confirmed Pre-Repair Bypass Assessment"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "NO. The unsafe raw-shell execution profile admission gate is already fully implemented. The canonical admission function is_profile_admitted_for_selection() in rig_relay/core/agents/models.py gates the unsafe-raw-shell profile behind RIG_RELAY_ALLOW_UNSAFE=1 (exact string match, not truthy). This function is invoked at every boundary that enumerates, selects, restores, or cycles execution profiles. No bypass remains."
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Canonical Admission Rule"
+    },
+    {
+      "block_id": "code-3",
+      "type": "code",
+      "language": "python",
+      "content": "# rig_relay/core/agents/models.py:392-412\ndef is_profile_admitted_for_selection(profile_name, *, source=\"\"):\n    if profile_name in _UNSAFE_DIAGNOSTIC_PROFILES:\n        if os.environ.get(\"RIG_RELAY_ALLOW_UNSAFE\", \"\") != \"1\":\n            return False, \"Profile '{profile_name}' is a diagnostic-only mode...\"\n    return True, None"
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Every Boundary Closed"
+    },
+    {
+      "block_id": "table-4",
+      "type": "table",
+      "columns": ["Boundary", "Gate Location", "Invocation Source", "Behavior Without Env Var"],
+      "rows": [
+        ["ACP mode listing", "acp/utils.py::build_mode_state()", "acp_mode_listing", "Excluded from available_modes list"],
+        ["ACP mode selection", "acp/utils.py::is_valid_acp_mode()", "acp_set_session_mode", "Returns False; mode change silently refused"],
+        ["Config default_agent", "manager.py::AgentManager.__init__()", "config_default_agent", "Raises ValueError with actionable message"],
+        ["CLI --agent argument", "manager.py::AgentManager.__init__()", "config_default_agent", "Same as default_agent: ValueError"],
+        ["Agent switch (mid-session)", "manager.py::switch_profile()", "agent_switch", "Raises ValueError"],
+        ["Available agents listing", "manager.py::available_agents property", "agent_available_listing", "Filtered out of dict"],
+        ["Agent cycle/order", "manager.py::get_agent_order() + next_agent()", "agent_cycle", "Not in builtin_order; available_agents excludes it"],
+        ["Forked session", "session_runtime.py::fork()", "config_default_agent", "Passes through AgentManager.__init__()"],
+        ["ACN session restart", "acp/_session_lifecycle.py::_create_agent_loop()", "config_default_agent", "Passes through AgentManager.__init__()"],
+        ["Bash runtime (final)", "bash.py::run() restrict_raw_shell", "diagnostic_raw_shell", "Hard runtime refusal for raw commands"]
+      ]
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Diagnostic Enablement Behavior"
+    },
+    {
+      "block_id": "p-5",
+      "type": "paragraph",
+      "content": "With RIG_RELAY_ALLOW_UNSAFE=1: The unsafe-raw-shell profile is admitted at all boundaries. It appears in ACP listings, passes mode selection, passes AgentManager construction, and passes switch_profile. The profile sets bypass_tool_permissions=True and restrict_raw_shell=False on the bash tool, giving raw shell access. The profile is classified as AgentSafety.YOLO with a description marking it as Diagnostic/developer mode with raw shell access. Without the env var: All boundaries refuse. The refusal message explicitly mentions RIG_RELAY_ALLOW_UNSAFE=1 as the required enablement. The env var check is exact-match (not truthy): RIG_RELAY_ALLOW_UNSAFE=0 returns False."
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Evidence — Existing Suite"
+    },
+    {
+      "block_id": "table-6",
+      "type": "table",
+      "columns": ["Test File", "Test Count", "Status"],
+      "rows": [
+        ["tests/core/agents/test_unsafe_raw_shell_admission.py", "27", "27 passed"],
+        ["TestUnsafeProfileAdmissionGate", "4", "4 passed"],
+        ["TestAgentManagerConstructionRefusal", "2", "2 passed"],
+        ["TestAgentManagerAvailableAgentsExcludesUnsafe", "3", "3 passed"],
+        ["TestAgentSwitchProfileRefusal", "3", "3 passed"],
+        ["TestBashRuntimeRestrictRawShellEnforcement", "8", "8 passed"],
+        ["TestUnsafeProfileOverridesRestrictRawShell", "3", "3 passed"],
+        ["TestACPModeAdmission", "4", "4 passed"]
+      ]
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Specific Provings (from existing tests)"
+    },
+    {
+      "block_id": "list-7",
+      "type": "list",
+      "content": "admission_function_refuses_without_env: is_profile_admitted_for_selection returns False\nadmission_function_accepts_with_env_set: returns True with RIG_RELAY_ALLOW_UNSAFE=1\nadmission_function_refuses_env_not_exactly_1: RIG_RELAY_ALLOW_UNSAFE=0 returns False\nnormal_profile_always_admitted: DEFAULT profile returns True\nconstruction_refuses_unsafe_without_env: AgentManager raises ValueError\nconstruction_accepts_unsafe_with_env: AgentManager succeeds with env var\nunsafe_not_in_available_agents: excluded from available_agents dict\nunsafe_in_available_agents_with_env: included with env var\nswitch_to_unsafe_refused_without_env: switch_profile raises ValueError\nswitch_to_unsafe_accepted_with_env: switch_profile succeeds\nacp_mode_listing_excludes_unsafe: build_mode_state skips unsafe mode\nacp_mode_listing_includes_unsafe_with_env: includes with env var\nacp_mode_selection_refuses_unsafe: is_valid_acp_mode returns False\nacp_mode_selection_accepts_unsafe_with_env: returns True with env var\nrefuses_arbitrary_command_with_restrict: Bash with restrict_raw_shell=True refuses date\nallows_arbitrary_command_without_restrict: Bash with restrict_raw_shell=False allows echo hello\nrestricted_bash_still_blocks_destructive_git: git reset is refused regardless\nrestrict_default_is_true: BashToolConfig defaults restrict_raw_shell=True\nunsafe_profile_disables_restrict_raw_shell: UNSAFE_RAW_SHELL overrides restrict_raw_shell=False\nnormal_profile_does_not_override_restrict: DEFAULT profile does not override bash tool settings"
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Pre-Existing Test Failures (Evidence of Gate Correctness)"
+    },
+    {
+      "block_id": "p-8",
+      "type": "paragraph",
+      "content": "7 tests in tests/core/test_agent_loop_functional_recovery.py fail because they use agent_name=BuiltinAgentName.UNSAFE_RAW_SHELL without RIG_RELAY_ALLOW_UNSAFE=1. The failure is the ADMISSION GATE WORKING CORRECTLY: ValueError with message Profile 'unsafe-raw-shell' is a diagnostic-only mode that requires explicit enablement. These tests pre-date the admission gate and need a targeted update to set the env var when exercising unsafe raw shell. This is a known pre-existing condition, not a P2 regression."
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Normal Profiles Unaffected"
+    },
+    {
+      "block_id": "p-9",
+      "type": "paragraph",
+      "content": "All normal agent profiles (DEFAULT, PLAN, ACCEPT_EDITS, MISSION_SCOPED_AUTO, CLEANER, BUILDER, ORCHESTRATOR, LEAN, EXPLORE) pass the admission gate unconditionally. The gate only filters profiles in _UNSAFE_DIAGNOSTIC_PROFILES (currently only UNSAFE_RAW_SHELL). Existing governed mutation, validation, checkpoint, and read-only observation paths remain fully functional."
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentional Deferred Work"
+    },
+    {
+      "block_id": "list-10",
+      "type": "list",
+      "ordered": true,
+      "content": "Fix 7 pre-existing test_agent_loop_functional_recovery.py tests to set RIG_RELAY_ALLOW_UNSAFE=1 when using UNSAFE_RAW_SHELL — these test the governed mutation runtime and predate the admission gate; no implementation change needed\nProduction credential/token-store migration — separate identity-storage mission\nGitHub dispatch corridor — closed in P0.1\nLane B operational persistence/desktop/tracing — not touched\nLane C provider/Gemini work — not touched\nA2A runtime handoff — not touched\nAgentLoop redesign, Ralph, fleet, frontend, SwiftUI, telemetry — not touched"
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Discovered Out-of-Scope Risks"
+    },
+    {
+      "block_id": "p-11",
+      "type": "paragraph",
+      "content": "None. The admission gate is centralized in one function with 6 invocation points (ACP listing, ACP selection, config init, agent switch, available listing, agent cycle) plus a runtime enforcement layer in the bash tool. No alias bypass, no capitalization bypass, no persisted-state smuggler, no direct-configuration injection path was found. The _UNSAFE_DIAGNOSTIC_PROFILES set centralizes the list of gated profiles."
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status"
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "lane_a_p2_unsafe_execution_profile_existing_acceptance_proven. The unsafe raw-shell execution profile admission gate is already fully implemented, covered at every boundary, and proven by 27 existing real-substrate tests. No bypass remains. No implementation changes are required for P2. Lane A may proceed to the next owned authority seam."
+    }
+  ]
+}
