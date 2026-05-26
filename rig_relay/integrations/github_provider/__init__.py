@@ -2,6 +2,7 @@
 
 No live GitHub OAuth. No GitHub App JWT. No token exchange. No webhooks.
 No GitHub API network calls. No credential storage.
+No raw tokens, private keys, or secrets in any exported model.
 
 Provides:
 - Typed models for auth state, capabilities, operation requests, receipts, decisions
@@ -9,6 +10,8 @@ Provides:
 - Capability decision engine with refuse-default mutation policy
 - Content-light operation receipt building
 - Token detection and redaction helpers
+- Bounded GitHub truth evidence models (v1)
+- Read-only GitHub Repository Truth Adapter (v1)
 
 Usage:
     from rig_relay.integrations.github_provider import (
@@ -126,6 +129,25 @@ from rig_relay.integrations.github_provider._surface_preview import (
     GitHubSurfacePreviewError,
     build_github_surface_preview,
 )
+from rig_relay.integrations.github_provider._truth_adapter import (
+    GitHubTruthAdapter,
+    GitHubTruthAdapterError,
+    create_truth_adapter,
+)
+from rig_relay.integrations.github_provider._truth_models import (
+    GitHubCheckRunEvidence,
+    GitHubCIStatusEvidence,
+    GitHubCommitPresence,
+    GitHubCommitRelationship,
+    GitHubCompareResult,
+    GitHubInstallationAccess,
+    GitHubPublicationVerification,
+    GitHubRemoteRefObservation,
+    GitHubRepositoryIdentity,
+    GitHubTokenStatus,
+    GitHubTruthErrorKind,
+    GitHubVerificationStatus,
+)
 
 __all__ = [
     "FakeGitHubAppAuth",
@@ -134,7 +156,13 @@ __all__ = [
     "GitHubAccessLevel",
     "GitHubAuthMode",
     "GitHubAuthStatus",
+    "GitHubCIStatusEvidence",
+    "GitHubCheckRunEvidence",
+    "GitHubCommitPresence",
+    "GitHubCommitRelationship",
+    "GitHubCompareResult",
     "GitHubGrantStatus",
+    "GitHubInstallationAccess",
     "GitHubLiveAuthConfig",
     "GitHubLiveAuthError",
     "GitHubLiveJwtSigner",
@@ -151,9 +179,12 @@ __all__ = [
     "GitHubProviderOperationReceipt",
     "GitHubProviderOperationRequest",
     "GitHubProviderRequiredPermission",
+    "GitHubPublicationVerification",
     "GitHubPublishPrConfig",
     "GitHubPublishPrError",
     "GitHubRedactionStatus",
+    "GitHubRemoteRefObservation",
+    "GitHubRepositoryIdentity",
     "GitHubRepositoryPermissionGrant",
     "GitHubSecurityIntakeCollector",
     "GitHubSecurityMissionCandidateRoutingError",
@@ -165,8 +196,13 @@ __all__ = [
     "GitHubSurfacePreview",
     "GitHubSurfacePreviewError",
     "GitHubSurfaceStewardAudit",
+    "GitHubTokenStatus",
     "GitHubTokenStorageAuthority",
+    "GitHubTruthAdapter",
+    "GitHubTruthAdapterError",
+    "GitHubTruthErrorKind",
     "GitHubVerdict",
+    "GitHubVerificationStatus",
     "assert_content_light_mapping",
     "assert_no_raw_github_token",
     "build_github_operating_picture",
@@ -179,6 +215,7 @@ __all__ = [
     "build_github_security_packet_runner_plan",
     "build_github_surface_audit",
     "build_github_surface_preview",
+    "create_truth_adapter",
     "evaluate_github_capability",
     "get_capability",
     "hash_identifier",
