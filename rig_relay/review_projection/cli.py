@@ -221,17 +221,24 @@ def _run_disclose_authorization(
     purpose: str | None,
     retention: str | None,
     training_use: str | None,
-    require_authorization: bool,
-    authorization_receipt_json: str | None,
+    authorization_id: str,
 ) -> None:
-    """Authorize disclosure intent for an existing candidate bundle.
-    Does NOT transmit the bundle — records intent only.
+    """Authorize and record disclosure intent for an existing candidate bundle.
+
+    Requires a valid single-use disclosure authorization receipt from the
+    Lane A governance module. Consumes the receipt atomically before
+    recording intent. Does NOT transmit the bundle. Records a content-light
+    disclosure event in the disclosure ledger.
     """
     import datetime as _datetime
     import hashlib as _hashlib
     import uuid as _uuid
 
-    from rig_relay.governance.auth_receipts import resolve_authorization
+    from rig_relay.governance.disclosure_authorization import (
+        DisclosureClass,
+        DisclosureOutcome,
+        consume_disclosure_authorization,
+    )
 
     repo_root = Path.cwd()
     output_dir = repo_root / ".build" / "rig-relay" / "review_projection"
@@ -242,7 +249,7 @@ def _run_disclose_authorization(
     compilation_receipt_sha256 = ""
     for rp in sorted(output_dir.glob("receipt_*.json")):
         try:
-            rcpt = __import__("json").loads(rp.read_text("utf-8"))
+            rcpt = json.loads(rp.read_text("utf-8"))
         except Exception:
             continue
         if rcpt.get("candidate_zip_sha256") == candidate_zip_hash:
@@ -261,30 +268,53 @@ def _run_disclose_authorization(
 
     projection_id = compilation_receipt.get("projection_id", "unknown")
 
-    # 2. Require authorization if requested
-    if require_authorization:
-        action_scope = {
-            "target_sha256": candidate_zip_hash,
-            "projection_id": projection_id,
-            "recipient_class": recipient_class,
-            "provider_or_channel": provider_or_channel,
-        }
-        auth_result = resolve_authorization(
-            "review_projection.disclose.authorize",
-            receipt_json=authorization_receipt_json,
-            action_scope=action_scope,
-        )
-        if not auth_result.authorized:
-            print(f"REFUSED: {auth_result.reason}")
-            return
-        auth_receipt_hash = (
-            auth_result.receipt.get("receipt_sha256", "") if auth_result.receipt else ""
-        )
-    else:
-        print("WARNING: No authorization required — dev bypass mode")
-        auth_receipt_hash = None
+    # 2. Map recipient_class to a governance DisclosureClass
+    recipient_class_map = {
+        "local_candidate_no_disclosure": DisclosureClass.METADATA_DISCLOSURE.value,
+        "external_ai_reviewer_controlled_account": DisclosureClass.COMMIT_PATCH.value,
+        "human_reviewer_confidentiality_duty": DisclosureClass.COMMIT_BODY.value,
+        "private_repository_reviewer_access": DisclosureClass.BRANCH_ENUMERATION.value,
+        "other_approved_recipient": DisclosureClass.METADATA_DISCLOSURE.value,
+    }
+    disclosure_class = recipient_class_map.get(
+        recipient_class, DisclosureClass.METADATA_DISCLOSURE.value
+    )
 
-    # 3. Build authorization receipt
+    # 3. Consume the disclosure authorization (single-use, evidence-bound)
+    if not authorization_id:
+        print("REFUSED: authorization_id is required for disclosure.")
+        print(
+            "Obtain a disclosure authorization receipt with issue_disclosure_authorization()."
+        )
+        return
+
+    consume_result = consume_disclosure_authorization(
+        authorization_id, current_evidence_digest=candidate_zip_hash
+    )
+
+    if consume_result.outcome != DisclosureOutcome.CONSUMED:
+        outcome_map = {
+            DisclosureOutcome.EXPIRED: "Authorization receipt has expired.",
+            DisclosureOutcome.ALREADY_CONSUMED: "Authorization receipt was already consumed (replay refused).",
+            DisclosureOutcome.EVIDENCE_MISMATCH: "Authorization receipt does not match this candidate bundle.",
+            DisclosureOutcome.UNSUPPORTED_CLASS: "Disclosure class is not supported for this authorization.",
+            DisclosureOutcome.NOT_FOUND: "Authorization receipt not found.",
+            DisclosureOutcome.CORRUPT: "Authorization receipt is corrupt or tampered.",
+        }
+        detail = outcome_map.get(
+            consume_result.outcome,
+            f"Authorization failed: {consume_result.outcome.value}",
+        )
+        if consume_result.error_detail:
+            detail += f" ({consume_result.error_detail})"
+        print(f"REFUSED: {detail}")
+        return
+
+    auth_receipt_hash = (
+        consume_result.receipt.receipt_sha256 if consume_result.receipt else ""
+    )
+
+    # 4. Build authorization receipt (review projection model)
     auth_id = f"dza_{_uuid.uuid4().hex[:16]}"
     now = _datetime.datetime.now(_datetime.UTC).isoformat() + "Z"
 
@@ -299,27 +329,46 @@ def _run_disclose_authorization(
         retention_assertion=retention,
         training_use_assertion=training_use,
         is_transmission_authorized=False,
-        approved_by="local_system_auth" if require_authorization else "dev_only",
+        approved_by="governance_disclosure_authorization",
         approved_at=now,
         authorization_receipt_sha256=auth_receipt_hash,
     )
 
-    # 4. Write receipt
+    # 5. Write receipt
     receipt_path = output_dir / f"disclosure_authorization_{auth_id}.json"
     receipt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
 
-    # 5. Append to disclosure ledger
+    # 6. Append to disclosure authorization ledger (review projection model)
     ledger_path = output_dir / "disclosure_authorization_ledger.jsonl"
     with open(ledger_path, "a") as lf:
         lf.write(receipt.model_dump_json() + "\n")
 
-    print(f"Disclosure authorization recorded: {auth_id}")
+    # 7. Append content-light disclosure event to governance ledger
+    disclosure_ledger_dir = Path(".build/rig-relay/governance")
+    disclosure_ledger_dir.mkdir(parents=True, exist_ok=True)
+    disclosure_ledger_path = disclosure_ledger_dir / "disclosure_events.v1.jsonl"
+    event = {
+        "schema_version": "rig.relay.disclosure_event.v1",
+        "event_id": _uuid.uuid4().hex,
+        "authorization_id": authorization_id,
+        "authorization_receipt_sha256": auth_receipt_hash,
+        "evidence_digest": candidate_zip_hash,
+        "disclosure_class": disclosure_class,
+        "recipient_class": recipient_class,
+        "projection_id": projection_id,
+        "created_at": now,
+        "outcome": "authorized",
+    }
+    with open(disclosure_ledger_path, "a") as lf:
+        lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
+
+    print(f"Disclosure authorization consumed and recorded: {auth_id}")
+    print(f"Authorization receipt digest: {auth_receipt_hash}")
     print(f"Receipt: {receipt_path}")
-    print(f"Ledger: {ledger_path}")
     print(f"Projection: {projection_id}")
     print(f"Recipient: {recipient_class} via {provider_or_channel}")
     print()
-    print("This records authorization INTENT only. No bundle has been transmitted.")
+    print("This records disclosure INTENT only. No bundle has been transmitted.")
     print(
         "Controlled disclosure measures recorded — does not determine trade-secret protection."
     )
@@ -475,15 +524,10 @@ def main():
         help="Training-use assertion (user-recorded, not independently verified)",
     )
     p_disclose.add_argument(
-        "--require-authorization",
-        action="store_true",
-        help="Require step-up authorization receipt",
-    )
-    p_disclose.add_argument(
-        "--authorization-receipt",
+        "--authorization-id",
         type=str,
-        default=None,
-        help="JSON authorization receipt string",
+        required=True,
+        help="Governance disclosure authorization receipt ID (from issue_disclosure_authorization)",
     )
 
     args = parser.parse_args()
@@ -508,8 +552,7 @@ def main():
             args.purpose,
             args.retention,
             args.training_use,
-            args.require_authorization,
-            args.authorization_receipt,
+            args.authorization_id,
         )
 
 

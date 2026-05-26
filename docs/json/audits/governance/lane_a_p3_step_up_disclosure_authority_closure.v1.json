@@ -1,0 +1,195 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-a-p3-step-up-disclosure-authority-closure",
+  "document_type": "audit",
+  "title": "Lane A P3 — Step-Up Disclosure Authorization and Declassification Ledger Closure",
+  "summary": "Closed the dev bypass in the review_projection CLI disclose command. Disclosure now requires mandatory single-use governance authorization receipts bound to the exact candidate bundle hash. A content-light disclosure event ledger records authorized disclosures without containing raw content, source code, or secrets. Replay is prevented through atomic consumption.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "owners": ["Lane A"],
+  "tags": ["governance", "disclosure", "step-up-authorization", "audit", "review-projection", "lane-a", "p3"],
+  "canonical_path": "docs/json/audits/governance/lane_a_p3_step_up_disclosure_authority_closure.v1.json",
+  "source_commit": "806934b5492169fb395b0f3465b55955e34157f0",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Step-Up Disclosure Authorization and Declassification Ledger Closure"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Anchors"
+    },
+    {
+      "block_id": "list-1",
+      "type": "list",
+      "content": "Remote GitHub main SHA: 806934b5492169fb395b0f3465b55955e34157f0\nLocal Lane A HEAD: 3b07f65f (P2 acceptance artifact, local only)\nLane A P1: 650a5e1b (checkpoint auth, local only)\nLane A P0.1: 758928d0 (dispatch auth, published)"
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Source-Level Pre-Condition"
+    },
+    {
+      "block_id": "p-2",
+      "type": "paragraph",
+      "content": "The governance disclosure authorization module (rig_relay/governance/disclosure_authorization.py) already provided a complete authority with issue/validate/consume/replay semantics. However, the review_projection CLI disclose command (rig_relay/review_projection/cli.py) had a dev bypass: the --require-authorization flag was optional and defaulted to False, allowing disclosure intent to be recorded without any step-up authorization. The governance consume_disclosure_authorization() function was unwired — nothing called it in the production disclosure path."
+    },
+    {
+      "block_id": "h2-2b",
+      "type": "heading",
+      "level": 2,
+      "content": "Bypass Closed"
+    },
+    {
+      "block_id": "p-2b",
+      "type": "paragraph",
+      "content": "The _run_disclose_authorization() function now requires a mandatory authorization_id. Rather than using the generic resolve_authorization() from auth_receipts.py (which only validates), it consumes a governance disclosure receipt via consume_disclosure_authorization() with single-use semantics. The dev bypass (--require-authorization flag, WARNING output, dev_only approval) has been removed. The authorization receipt must bind to the exact candidate_zip_hash (evidence_digest), disclosure_class mapped from recipient_class, and be unexpired and unconsumed."
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Authorization Binding Rule"
+    },
+    {
+      "block_id": "p-3",
+      "type": "paragraph",
+      "content": "1. issue_disclosure_authorization() creates a receipt bound to evidence_digest (the candidate ZIP hash) and disclosure_class. 2. The CLI disclose command maps recipient_class to a governance DisclosureClass. 3. consume_disclosure_authorization() validates: receipt exists, integrity check, expiry check, consumption check, evidence_digest match. 4. On success, the receipt is atomically consumed (one_time=True, consumed=True) and re-verified after persist. 5. On any failure, a typed refusal is printed and no disclosure intent is recorded."
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Disclosure Event Ledger"
+    },
+    {
+      "block_id": "p-4",
+      "type": "paragraph",
+      "content": "Path: .build/rig-relay/governance/disclosure_events.v1.jsonl. Content-light JSONL. Each record: schema_version (rig.relay.disclosure_event.v1), event_id, authorization_id, authorization_receipt_sha256, evidence_digest, disclosure_class, recipient_class, projection_id, created_at, outcome. Never contains raw source code, file contents, crosswalk values, secrets, credentials, or token-shaped values."
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Replay/Expiry/Mismatch Behavior"
+    },
+    {
+      "block_id": "list-5",
+      "type": "list",
+      "content": "Replay: After consumption (one_time=True, consumed=True), second attempt returns DisclosureOutcome.ALREADY_CONSUMED → REFUSED with details\nExpired: Receipt with expired expires_at returns DisclosureOutcome.EXPIRED → REFUSED\nEvidence mismatch: Receipt bound to different evidence_digest returns DisclosureOutcome.EVIDENCE_MISMATCH → REFUSED\nNot found: Nonexistent auth_id returns DisclosureOutcome.NOT_FOUND → REFUSED\nCorrupt: Tampered receipt returns DisclosureOutcome.CORRUPT → REFUSED\nUnsupported class: Invalid disclosure class returns DisclosureOutcome.UNSUPPORTED_CLASS → REFUSED"
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Disclosure Surfaces Inspected"
+    },
+    {
+      "block_id": "list-6",
+      "type": "list",
+      "content": "rig_relay/governance/disclosure_authorization.py — full authority (issue, validate, consume, replay) — now wired\nrig_relay/review_projection/cli.py::_run_disclose_authorization() — CLI disclose command — dev bypass removed, now mandatory authorization\nrig_relay/review_projection/models.py — DisclosureAuthorizationReceipt, DisclosureReceipt, DisclosureTarget, LocalCrosswalk — unchanged\nrig_relay/governance/auth_receipts.py — review_projection.disclose.authorize protected action — unchanged\nrig_relay/desktop/authorization_receipts.py — mint_dev_receipt for disclose — unchanged\nrig_relay/desktop/github_truth_projection.py — progressive disclosure tier — unchanged"
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Exact Files Owned"
+    },
+    {
+      "block_id": "list-7",
+      "type": "list",
+      "content": "rig_relay/review_projection/cli.py — modified (_run_disclose_authorization + CLI args)\ntests/governance/test_disclosure_cli_authorization.py — new (6 tests)\ndocs/json/audits/governance/lane_a_p3_step_up_disclosure_authority_closure.v1.json — new (this artifact)"
+    },
+    {
+      "block_id": "h2-8",
+      "type": "heading",
+      "level": 2,
+      "content": "Test Evidence"
+    },
+    {
+      "block_id": "table-8",
+      "type": "table",
+      "columns": ["Test Suite", "Tests", "Status"],
+      "rows": [
+        ["test_disclosure_cli_authorization.py (new)", "6", "6 passed"],
+        ["R1: refuse without auth_id", "test_disclose_refuses_with_empty_authorization_id", "PASSED"],
+        ["R2: valid auth for exact hash", "test_disclose_authorized_for_exact_bundle_hash", "PASSED"],
+        ["R3: replay refused", "test_disclose_replay_refused", "PASSED"],
+        ["R4: evidence mismatch", "test_disclose_wrong_bundle_hash_refused", "PASSED"],
+        ["R5: content-light ledger", "test_disclosure_ledger_is_content_light", "PASSED"],
+        ["R6: existing unchanged", "test_existing_governance_primitives_still_work", "PASSED"],
+        ["test_disclosure_authorization.py (existing)", "15", "15 passed"],
+        ["TOTAL", "21", "21 passed"]
+      ]
+    },
+    {
+      "block_id": "h2-9",
+      "type": "heading",
+      "level": 2,
+      "content": "Static Gates"
+    },
+    {
+      "block_id": "table-9",
+      "type": "table",
+      "columns": ["Gate", "File", "Result"],
+      "rows": [
+        ["ruff check", "tests/governance/test_disclosure_cli_authorization.py", "All checks passed"],
+        ["ruff format --check", "tests/governance/test_disclosure_cli_authorization.py", "Already formatted"],
+        ["pyright", "rig_relay/review_projection/cli.py", "0 errors, 0 warnings"],
+        ["pyright", "tests/governance/test_disclosure_cli_authorization.py", "0 errors, 0 warnings"],
+        ["ruff check", "rig_relay/review_projection/cli.py", "6 pre-existing errors (not mine)"]
+      ]
+    },
+    {
+      "block_id": "h2-10",
+      "type": "heading",
+      "level": 2,
+      "content": "Content-Light Proof"
+    },
+    {
+      "block_id": "p-10",
+      "type": "paragraph",
+      "content": "R5 proves the disclosure event ledger contains only hashes and metadata. Forbidden content checks: source_code, raw_content, file_content, password, secret, api_key, token, ghp_/ghs_/gho_, bearer, print(, def, class. All absent. Each event has evidence_digest, authorization_id, disclosure_class, recipient_class, projection_id, outcome — content-light hashes and labels only. The review projection DisclosureAuthorizationReceipt model already has built-in safety fields: human_export_approval_required=True, controlled_disclosure_measures_recorded=True, raw_source_content_in_receipt=False."
+    },
+    {
+      "block_id": "h2-11",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentionally Deferred Work"
+    },
+    {
+      "block_id": "list-11",
+      "type": "list",
+      "ordered": true,
+      "content": "Desktop UI for disclosure authorization — the CLI is the only executable boundary; desktop reveal UX is separate\nTelemetry sharing controls — separate mission\nProvider disclosure routing — separate mission\nML exports or dataset disclosure — separate mission\nBrowser extension disclosure — separate mission\nSelective literal/comment refinement — separate mission\nCrosswalk reveal (revealing pseudonym mappings) — the LocalCrosswalk model has export_prohibited=True; actual crosswalk reveal would need its own disclosure authorization class\nBundle export/transmission — the current code records intent only; actual ZIP export is a separate operation not yet implemented"
+    },
+    {
+      "block_id": "h2-12",
+      "type": "heading",
+      "level": 2,
+      "content": "Discovered Out-of-Scope Risks"
+    },
+    {
+      "block_id": "p-12",
+      "type": "paragraph",
+      "content": "None. The governance disclosure authority primitives are complete and correctly implemented. The only gap was the CLI dev bypass, now closed. The two disclosure authorization models (governance DisclosureAuthorizationReceipt and review_projection DisclosureAuthorizationReceipt) use different schemas but serve different roles: governance handles authorization lifecycle (issue/validate/consume), review_projection records intent events. This is acceptable for now but could be unified in a future schema consolidation mission."
+    },
+    {
+      "block_id": "h2-13",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status"
+    },
+    {
+      "block_id": "p-13",
+      "type": "paragraph",
+      "content": "lane_a_p3_step_up_disclosure_authority_closure_proven. The dev bypass in the review_projection CLI disclose command has been closed. Disclosure now requires mandatory single-use governance authorization bound to the exact candidate bundle hash. A content-light disclosure event ledger records authorized disclosures without raw content. 21 tests pass. 3 static gates pass. Lane A may proceed to the next owned authority seam."
+    }
+  ]
+}
