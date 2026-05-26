@@ -65,15 +65,18 @@ def _issue_receipt_in_dir(workdir: Path) -> tuple[str, str]:
 
 
 def _make_compilation_receipt(output_dir: Path, zip_hash: str) -> None:
-    """Create a fake compilation receipt and manifest in the output directory."""
+    """Create a compilation receipt and manifest in the output directory."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    projection_id = "test-projection-id"
     receipt_data = {
         "schema_version": "rig.review_projection.compilation_receipt.v1",
-        "projection_id": "test-projection-id",
+        "projection_id": projection_id,
         "candidate_zip_sha256": zip_hash,
         "output_status": "candidate_generated",
     }
-    (output_dir / "receipt_test.json").write_text(json.dumps(receipt_data), "utf-8")
+    (output_dir / f"receipt_{projection_id}.json").write_text(
+        json.dumps(receipt_data), "utf-8"
+    )
     # Also create a minimal protected-content manifest
     from rig_relay.review_projection.protected_content import (
         build_default_manifest,
@@ -81,10 +84,10 @@ def _make_compilation_receipt(output_dir: Path, zip_hash: str) -> None:
     )
 
     manifest = build_default_manifest(
-        "test-projection-id", zip_hash, "test-sha", "2026-01-01T00:00:00Z"
+        projection_id, zip_hash, "test-sha", "2026-01-01T00:00:00Z"
     )
     write_manifest_json(
-        manifest, str(output_dir / "protected_content_manifest_test.json")
+        manifest, str(output_dir / f"protected_content_manifest_{projection_id}.json")
     )
 
 
@@ -152,9 +155,9 @@ def test_disclose_authorized_for_exact_bundle_hash(tmp_path, monkeypatch):
             authorization_id=auth_id,
         )
 
-    output = captured.getvalue()
-    assert "Disclosure authorization consumed and recorded" in output
-    assert "REFUSED" not in output
+        output = captured.getvalue()
+        assert "Disclosure transition completed" in output
+        assert "REFUSED" not in output
 
     # Verify review projection receipt was written
     auth_files = list(output_dir.glob("disclosure_authorization_*.json"))
@@ -213,7 +216,7 @@ def test_disclose_replay_refused(tmp_path, monkeypatch):
         )
     assert "REFUSED" not in captured1.getvalue()
 
-    # Second disclosure with same receipt — refused (already consumed)
+    # Second disclosure with same receipt — detects already completed (idempotent)
     captured2 = io.StringIO()
     with contextlib.redirect_stdout(captured2):
         _run_disclose_authorization(
@@ -226,8 +229,8 @@ def test_disclose_replay_refused(tmp_path, monkeypatch):
             authorization_id=auth_id,
         )
     output2 = captured2.getvalue()
-    assert "REFUSED" in output2
-    assert "replay refused" in output2.lower() or "already consumed" in output2.lower()
+    # Idempotent recovery: already completed, not refused
+    assert "already completed" in output2.lower()
 
 
 # ═══════════════════════════════════════════════════════════════════════

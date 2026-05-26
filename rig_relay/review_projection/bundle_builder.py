@@ -128,11 +128,11 @@ class BundleBuilder:
         manifest.total_items = len(files_content)
 
         # Populate selectors from pseudonymized crosswalk identities.
-        # SOURCE_IDENTIFIER (non-STR_) → PSEUDONYMIZED_DISCLOSABLE selectors.
-        # STRING_LITERAL (STR_) → HASH_EVIDENCE_ONLY, NO disclosable selectors.
+        # SOURCE_IDENTIFIER (non-S_) → PSEUDONYMIZED_DISCLOSABLE selectors.
+        # STRING_LITERAL (S_) → HASH_EVIDENCE_ONLY, NO disclosable selectors.
         pseudonymized = sorted(set(crosswalk.mappings.values()))
-        source_identifiers = [p for p in pseudonymized if not p.startswith("STR_")]
-        string_literals = [p for p in pseudonymized if p.startswith("STR_")]
+        source_identifiers = [p for p in pseudonymized if not p.startswith("S_")]
+        string_literals = [p for p in pseudonymized if p.startswith("S_")]
 
         if source_identifiers:
             selectors = build_selector_entries(

@@ -17,7 +17,6 @@ from rig_relay.review_projection.bundle_builder import BundleBuilder
 from rig_relay.review_projection.classification import ClassificationEngine
 from rig_relay.review_projection.models import (
     BundleManifest,
-    DisclosureAuthorizationReceipt,
     DisclosureReceipt,
     DisclosureTarget,
     FileClassification,
@@ -224,60 +223,47 @@ def _run_disclose_authorization(
     authorization_id: str,
     selector_digest: str | None = None,
 ) -> None:
-    """Authorize and record disclosure intent for an existing candidate bundle.
+    """Authorize and record disclosure intent — thin caller over the v2
+    disclosure transition authority.
 
-    Requires a valid single-use disclosure authorization receipt from the
-    Lane A governance module. Consumes the receipt atomically before
-    recording intent. Does NOT transmit the bundle. Records a content-light
-    disclosure event in the disclosure ledger.
-
-    If selector_digest is provided, binds disclosure to an exact selector
-    in the protected-content manifest.
+    All downstream persistence (receipt, manifest mutation, disclosure
+    event, terminal advancement) is owned by the transition service.
+    This function performs only input admission and result rendering.
     """
-    import datetime as _datetime
     import hashlib as _hashlib
-    import uuid as _uuid
 
-    from rig_relay.governance.disclosure_authorization import (
-        DisclosureClass,
-        DisclosureOutcome,
-        consume_disclosure_authorization,
-    )
+    from rig_relay.governance.disclosure_authorization import DisclosureClass
     from rig_relay.review_projection.protected_content import (
         is_disclosure_class_prohibited,
         load_manifest_json,
-        mark_selector_disclosed,
         verify_manifest_binding,
         verify_manifest_integrity,
         verify_policy_version,
         verify_selector_disclosable,
-        write_manifest_json,
     )
 
     repo_root = Path.cwd()
     output_dir = repo_root / ".build" / "rig-relay" / "review_projection"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Find the compilation receipt for this candidate ZIP hash
-    compilation_receipt = None
+    # 1. Find the compilation receipt
     compilation_receipt_sha256 = ""
+    projection_id = "unknown"
     for rp in sorted(output_dir.glob("receipt_*.json")):
         try:
             rcpt = json.loads(rp.read_text("utf-8"))
         except Exception:
             continue
         if rcpt.get("candidate_zip_sha256") == candidate_zip_hash:
-            compilation_receipt = rcpt
             compilation_receipt_sha256 = _hashlib.sha256(rp.read_bytes()).hexdigest()
+            projection_id = rcpt.get("projection_id", "unknown")
             break
 
-    if compilation_receipt is None:
+    if compilation_receipt_sha256 == "":
         print(
             f"REFUSED: No compilation receipt found for ZIP hash {candidate_zip_hash}"
         )
         return
-
-    projection_id = compilation_receipt.get("projection_id", "unknown")
 
     # 2. Load and verify protected-content manifest
     manifest = None
@@ -287,33 +273,29 @@ def _run_disclose_authorization(
             manifest = loaded
             break
 
-    if manifest is not None:
-        # Verify manifest binds to this bundle
-        ok, err = verify_manifest_binding(manifest, candidate_zip_hash)
-        if not ok:
-            print(f"REFUSED: Manifest binding failure — {err}")
-            return
-
-        # Verify policy version
-        ok, err = verify_policy_version(manifest)
-        if not ok:
-            print(f"REFUSED: {err}")
-            return
-
-        # Verify manifest self-integrity (digest must match computed)
-        ok, err = verify_manifest_integrity(manifest)
-        if not ok:
-            print(f"REFUSED: {err}")
-            return
-    else:
-        # No manifest found — refuse (manifest is now mandatory)
+    if manifest is None:
         print(
             "REFUSED: Protected-content manifest not found for this bundle. "
             "Regenerate the bundle to produce a manifest."
         )
         return
 
-    # 2. Map recipient_class to a governance DisclosureClass
+    ok, err = verify_manifest_binding(manifest, candidate_zip_hash)
+    if not ok:
+        print(f"REFUSED: Manifest binding failure — {err}")
+        return
+
+    ok, err = verify_policy_version(manifest)
+    if not ok:
+        print(f"REFUSED: {err}")
+        return
+
+    ok, err = verify_manifest_integrity(manifest)
+    if not ok:
+        print(f"REFUSED: {err}")
+        return
+
+    # 3. Map recipient class → governance disclosure class
     recipient_class_map = {
         "local_candidate_no_disclosure": DisclosureClass.METADATA_DISCLOSURE.value,
         "external_ai_reviewer_controlled_account": DisclosureClass.BRANCH_ENUMERATION.value,
@@ -325,28 +307,22 @@ def _run_disclose_authorization(
         recipient_class, DisclosureClass.METADATA_DISCLOSURE.value
     )
 
-    # 2a. If selector_digest provided, verify it is disclosable AND
-    # resolve the manifest selector's required disclosure class
-    selector_disclosed = False
+    # 3a. Selector verification
     selector_manifest_class: str | None = None
     if selector_digest and manifest is not None:
         ok, err = verify_selector_disclosable(manifest, selector_digest)
         if not ok:
             print(f"REFUSED: {err}")
             return
-
-        # Resolve the selector's required disclosure class from manifest
         for sel in manifest.selectors:
             if sel.selector_digest == selector_digest:
                 selector_manifest_class = sel.disclosure_class
                 break
-
         if selector_manifest_class is None:
             print("REFUSED: Selector found but missing disclosure_class in manifest.")
             return
-        selector_disclosed = True
 
-    # 2b. Refuse prohibited disclosure classes
+    # 3b. Refuse prohibited classes
     if is_disclosure_class_prohibited(disclosure_class):
         print(
             f"REFUSED: Disclosure class '{disclosure_class}' is prohibited "
@@ -354,207 +330,81 @@ def _run_disclose_authorization(
         )
         return
 
-    # 3. Consume the disclosure authorization (single-use, evidence-bound)
     if not authorization_id:
         print("REFUSED: authorization_id is required for disclosure.")
         print(
-            "Obtain a disclosure authorization receipt with issue_disclosure_authorization()."
+            "Obtain a disclosure authorization receipt with "
+            "issue_disclosure_authorization()."
         )
         return
 
     # ═══════════════════════════════════════════════════════════════
-    # P4.5 / A5: Governed disclosure transition corridor
-    # Replaces the loose write sequence with a named, recoverable
-    # transaction authority.
+    # A6: Governed disclosure transition corridor (v2)
+    # The transition service owns all downstream persistence.
     # ═══════════════════════════════════════════════════════════════
     from rig_relay.governance.disclosure_transition import (
-        TransitionStatus,
-        _acquire_transition_lock,
-        _release_transition_lock,
-        advance_transition,
-        lookup_pending_transition,
-        prepare_transition,
+        execute_disclosure_transition,
+        recover_disclosure_transition,
     )
 
-    manifest_digest_before = manifest.manifest_digest
-
-    _acquire_transition_lock()
-    try:
-        # Check for existing transition (recovery)
-        existing = lookup_pending_transition(authorization_id, candidate_zip_hash)
-        if existing is not None:
-            if existing.status == TransitionStatus.COMPLETED:
-                print(
-                    f"Disclosure already completed for this authorization. "
-                    f"Transition: {existing.transition_id}"
-                )
-                return
-            transition = existing
-        else:
-            # Prepare new transition
-            transition = prepare_transition(
-                authorization_id=authorization_id,
-                evidence_digest=candidate_zip_hash,
-                projection_id=projection_id,
-                disclosure_class=disclosure_class,
-                manifest_digest_before=manifest_digest_before,
-                recipient_class=recipient_class,
-                provider_or_channel=provider_or_channel,
-                purpose=purpose,
-                selector_digest=selector_digest,
-                selector_required_class=selector_manifest_class,
-            )
-
-        # Consume authorization under transition lock
-        consume_result = consume_disclosure_authorization(
-            authorization_id,
-            current_evidence_digest=candidate_zip_hash,
-            current_disclosure_class=disclosure_class,
-            current_selector_digest=selector_digest,
-            current_required_selector_class=selector_manifest_class,
-        )
-
-        if consume_result.outcome != DisclosureOutcome.CONSUMED:
-            outcome_map: dict = {
-                DisclosureOutcome.EXPIRED: "Authorization receipt has expired.",
-                DisclosureOutcome.ALREADY_CONSUMED: "Authorization receipt was already consumed (replay refused).",
-                DisclosureOutcome.EVIDENCE_MISMATCH: "Authorization receipt does not match this candidate bundle.",
-                DisclosureOutcome.UNSUPPORTED_CLASS: "Disclosure class is not supported for this authorization.",
-                DisclosureOutcome.CLASS_MISMATCH: "Disclosure class mismatch.",
-                DisclosureOutcome.SELECTOR_MISMATCH: "Selector mismatch.",
-                DisclosureOutcome.SELECTOR_UNAUTHORIZED: "Selector unauthorized.",
-                DisclosureOutcome.SELECTOR_REQUIRED_CLASS_MISMATCH: "Selector required class mismatch.",
-                DisclosureOutcome.NOT_FOUND: "Authorization receipt not found.",
-                DisclosureOutcome.CORRUPT: "Authorization receipt is corrupt or tampered.",
-            }
-            detail = outcome_map.get(
-                consume_result.outcome,
-                f"Authorization failed: {consume_result.outcome.value}",
-            )
-            if consume_result.error_detail:
-                detail += f" ({consume_result.error_detail})"
-            print(f"REFUSED: {detail}")
-            advance_transition(
-                transition, TransitionStatus.REFUSED, recovery_detail=detail
-            )
-            return
-
-        transition = advance_transition(
-            transition, TransitionStatus.AUTHORIZATION_CONSUMED
-        )
-
-        auth_receipt_hash = (
-            consume_result.receipt.receipt_sha256 if consume_result.receipt else ""
-        )
-
-        # 4. Build authorization receipt (review projection model)
-        auth_id = f"dza_{_uuid.uuid4().hex[:16]}"
-        now = _datetime.datetime.now(_datetime.UTC).isoformat() + "Z"
-
-        receipt = DisclosureAuthorizationReceipt(
-            authorization_id=auth_id,
+    # Try recovery first — the existing disclose command handles idempotent resume
+    transition, err = recover_disclosure_transition(
+        authorization_id, candidate_zip_hash
+    )
+    if err and transition is None:
+        # No existing transition — execute fresh
+        transition, err = execute_disclosure_transition(
+            authorization_id=authorization_id,
+            evidence_digest=candidate_zip_hash,
             projection_id=projection_id,
-            candidate_zip_sha256=candidate_zip_hash,
-            compilation_receipt_sha256=compilation_receipt_sha256,
-            recipient_class=DisclosureTarget(recipient_class),
+            disclosure_class=disclosure_class,
+            manifest_digest_before=manifest.manifest_digest,
+            recipient_class=recipient_class,
             provider_or_channel=provider_or_channel,
-            purpose_or_context=purpose,
+            purpose=purpose,
+            selector_digest=selector_digest,
+            selector_required_class=selector_manifest_class,
             retention_assertion=retention,
             training_use_assertion=training_use,
-            is_transmission_authorized=False,
-            approved_by="governance_disclosure_authorization",
-            approved_at=now,
-            authorization_receipt_sha256=auth_receipt_hash,
+            compilation_receipt_sha256=compilation_receipt_sha256,
         )
 
-        # 5. Write receipt
-        receipt_path = output_dir / f"disclosure_authorization_{auth_id}.json"
-        receipt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
+    if err:
+        print(f"REFUSED: {err}")
+        return
 
-        # 6. Append to disclosure authorization ledger (review projection model)
-        ledger_path = output_dir / "disclosure_authorization_ledger.jsonl"
-        with open(ledger_path, "a") as lf:
-            lf.write(receipt.model_dump_json() + "\n")
+    if transition is None:
+        print("REFUSED: Transition service returned no result.")
+        return
 
-        transition = advance_transition(
-            transition,
-            TransitionStatus.PROJECTION_RECEIPT_PERSISTED,
-            downstream_receipt_digest=str(receipt_path),
+    if transition.status.value == "completed":
+        if transition.recovery_detail == "recovered_already_complete":
+            print(
+                f"Disclosure already completed for this authorization. "
+                f"Transition: {transition.transition_id}"
+            )
+        else:
+            print(f"Disclosure transition completed: {transition.transition_id}")
+        print(f"Projection: {transition.projection_id}")
+        print(
+            f"Recipient: {transition.recipient_class} via "
+            f"{transition.provider_or_channel}"
         )
-
-        # 7. Append content-light disclosure event to governance ledger
-        disclosure_ledger_dir = Path(".build/rig-relay/governance")
-        disclosure_ledger_dir.mkdir(parents=True, exist_ok=True)
-        disclosure_ledger_path = disclosure_ledger_dir / "disclosure_events.v1.jsonl"
-        event: dict = {
-            "schema_version": "rig.relay.disclosure_event.v1",
-            "event_id": _uuid.uuid4().hex,
-            "authorization_id": authorization_id,
-            "authorization_receipt_sha256": auth_receipt_hash,
-            "evidence_digest": candidate_zip_hash,
-            "disclosure_class": disclosure_class,
-            "recipient_class": recipient_class,
-            "projection_id": projection_id,
-            "created_at": now,
-            "outcome": "authorized",
-            "transition_id": transition.transition_id,
-        }
-        if manifest is not None:
-            event["manifest_digest_before"] = manifest_digest_before
-        if selector_digest:
-            event["selector_digest"] = selector_digest
-        if selector_disclosed and manifest is not None:
-            event["selector_disclosed"] = True
-            mark_selector_disclosed(manifest, selector_digest or "")
-            # Update manifest on disk
-            for mp in sorted(output_dir.glob("protected_content_manifest_*.json")):
-                if (
-                    load_manifest_json(str(mp)) is not None
-                    and load_manifest_json(str(mp)).bundle_digest == candidate_zip_hash  # type: ignore[union-attr]
-                ):
-                    write_manifest_json(manifest, str(mp))
-                    break
-            event["manifest_digest_after"] = manifest.manifest_digest
-        if manifest is not None:
-            event["manifest_digest"] = manifest.manifest_digest
-
-        # Record manifest mutation as a transition state
-        transition = advance_transition(
-            transition,
-            TransitionStatus.MANIFEST_APPLIED,
-            manifest_digest_after=event.get("manifest_digest_after"),
+        print()
+        print("This records disclosure INTENT only. No bundle has been transmitted.")
+        print(
+            "Controlled disclosure measures recorded — does not determine "
+            "trade-secret protection."
         )
-
-        downstream_event_id = event["event_id"]
-        with open(disclosure_ledger_path, "a") as lf:
-            lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
-
-        transition = advance_transition(
-            transition,
-            TransitionStatus.DISCLOSURE_EVENT_RECORDED,
-            downstream_event_id=downstream_event_id,
-            manifest_digest_after=event.get("manifest_digest_after"),
+        print(
+            "Recipient conditions are user-asserted, not independently "
+            "verified by Rig Relay."
         )
-
-        # Terminal
-        advance_transition(transition, TransitionStatus.COMPLETED)
-
-    finally:
-        _release_transition_lock()
-
-    print(f"Disclosure authorization consumed and recorded: {auth_id}")
-    print(f"Authorization receipt digest: {auth_receipt_hash}")
-    print(f"Receipt: {receipt_path}")
-    print(f"Projection: {projection_id}")
-    print(f"Recipient: {recipient_class} via {provider_or_channel}")
-    print()
-    print("This records disclosure INTENT only. No bundle has been transmitted.")
-    print(
-        "Controlled disclosure measures recorded — does not determine trade-secret protection."
-    )
-    print(
-        "Recipient conditions are user-asserted, not independently verified by Rig Relay."
-    )
+    else:
+        print(f"Disclosure transition ended with status: {transition.status.value}")
+        print(f"Transition: {transition.transition_id}")
+        if transition.recovery_detail:
+            print(f"Detail: {transition.recovery_detail}")
 
 
 def _run_diff_projection(repo_root: Path) -> None:

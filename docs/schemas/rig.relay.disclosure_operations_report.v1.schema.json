@@ -1,0 +1,224 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.disclosure_operations_report.v1.schema.json",
+  "title": "Disclosure Operations Report v1",
+  "description": "Content-light deterministic operations report derived from canonical disclosure transition evidence. Reports recovery outcomes, competition results, duplicate prevention, and protected-content disposition without embedding raw content, secrets, file paths, or source code. Lane A owns this report surface.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "report_id",
+    "generated_at",
+    "recovery_window_proofs",
+    "competition_outcomes",
+    "duplicate_prevention",
+    "protected_content_disposition",
+    "evidence_authority_tiers",
+    "canonical_source_sha256",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.disclosure_operations_report.v1"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "Deterministic report identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of report generation."
+    },
+    "recovery_window_proofs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["window_name", "crash_after_status", "last_durable_status_before_crash", "recovery_outcome", "terminal_status"],
+        "properties": {
+          "window_name": {
+            "type": "string",
+            "description": "Human-readable label for the crash window."
+          },
+          "crash_after_status": {
+            "type": "string",
+            "description": "TransitionStatus at which os._exit(1) was triggered."
+          },
+          "last_durable_status_before_crash": {
+            "type": "string",
+            "description": "Last transition status durably recorded (fsynced) before the crash."
+          },
+          "recovery_outcome": {
+            "type": "string",
+            "enum": ["recovered_and_completed", "recovered_already_complete", "refused"]
+          },
+          "terminal_status": {
+            "type": "string",
+            "description": "Final transition status after recovery."
+          },
+          "recovery_transition_id": {
+            "type": "string",
+            "description": "Transition ID of the recovery session."
+          },
+          "downstream_artifacts_recreated": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of downstream artifacts that were recreated during recovery."
+          },
+          "downstream_artifacts_reused": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of downstream artifacts that were reused (already existed)."
+          },
+          "evidence_tier": {
+            "type": "string",
+            "const": "canonical",
+            "description": "Recovery windows are derived from the fsynced transition ledger."
+          }
+        }
+      }
+    },
+    "competition_outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["competition_kind", "winner_transition_id", "follower_transition_id", "result"],
+        "properties": {
+          "competition_kind": {
+            "type": "string",
+            "enum": ["concurrent_recovery", "incompatible_evidence", "incompatible_selector", "legacy_plan_rejected"],
+            "description": "Type of competition or incompatibility tested."
+          },
+          "winner_transition_id": {
+            "type": "string",
+            "description": "Transition ID of the process that achieved COMPLETED."
+          },
+          "follower_transition_id": {
+            "type": ["string", "null"],
+            "description": "Transition ID of the competing process, or null if it was rejected before reaching the plan."
+          },
+          "result": {
+            "type": "string",
+            "enum": ["single_winner_idempotent_follower", "both_completed_same_plan", "follower_refused", "legacy_rejected"],
+            "description": "Competition resolution."
+          },
+          "follower_outcome": {
+            "type": "string",
+            "description": "Specific typed outcome for the follower process."
+          },
+          "evidence_tier": {
+            "type": "string",
+            "const": "canonical",
+            "description": "Competition outcomes derived from the fsynced transition ledger."
+          }
+        }
+      }
+    },
+    "duplicate_prevention": {
+      "type": "object",
+      "required": ["receipt_dedup", "manifest_dedup", "event_dedup", "authorization_dedup"],
+      "properties": {
+        "receipt_dedup": {
+          "type": "object",
+          "properties": {
+            "mechanism": {"type": "string", "const": "stable_identity_dza_transition_id"},
+            "duplicates_detected": {"type": "integer"},
+            "duplicates_prevented": {"type": "integer"}
+          }
+        },
+        "manifest_dedup": {
+          "type": "object",
+          "properties": {
+            "mechanism": {"type": "string", "const": "two_image_validation_rule"},
+            "manifest_mutations": {"type": "integer"},
+            "post_image_detected": {"type": "integer", "description": "Times the exact post-mutation image was already on disk."}
+          }
+        },
+        "event_dedup": {
+          "type": "object",
+          "properties": {
+            "mechanism": {"type": "string", "const": "transition_id_dedup_key"},
+            "events_emitted": {"type": "integer"},
+            "duplicates_skipped": {"type": "integer"}
+          }
+        },
+        "authorization_dedup": {
+          "type": "object",
+          "properties": {
+            "mechanism": {"type": "string", "const": "single_use_atomic_consume"},
+            "consumptions_attempted": {"type": "integer"},
+            "consumptions_succeeded": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "protected_content_disposition": {
+      "type": "object",
+      "required": ["string_literals", "comments", "docstrings"],
+      "properties": {
+        "string_literals": {
+          "type": "object",
+          "properties": {
+            "disposition": {"type": "string", "const": "hash_evidence_only_no_selectors"},
+            "crosswalk_entries": {"type": "integer", "description": "Number of STR_ prefixed entries in crosswalk."},
+            "manifest_selectors": {"type": "integer", "description": "Number of selectors in manifest for string literals (must be 0)."},
+            "evidence_tier": {"type": "string", "const": "proven_by_test"}
+          }
+        },
+        "comments": {
+          "type": "object",
+          "properties": {
+            "disposition": {"type": "string", "const": "stripped_by_transformer_no_entries"},
+            "crosswalk_entries": {"type": "integer", "description": "Number of comment-derived entries in crosswalk (must be 0)."},
+            "manifest_selectors": {"type": "integer", "description": "Number of selectors from comments (must be 0)."},
+            "evidence_tier": {"type": "string", "const": "proven_by_test"}
+          }
+        },
+        "docstrings": {
+          "type": "object",
+          "properties": {
+            "disposition": {"type": "string", "const": "removed_by_ast_transform_no_entries"},
+            "crosswalk_entries": {"type": "integer", "description": "Number of docstring-derived entries in crosswalk (must be 0)."},
+            "manifest_selectors": {"type": "integer", "description": "Number of selectors from docstrings (must be 0)."},
+            "evidence_tier": {"type": "string", "const": "proven_by_test"}
+          }
+        }
+      }
+    },
+    "manifest_recovery": {
+      "type": "object",
+      "description": "Manifest two-image validation rule results.",
+      "properties": {
+        "rule": {"type": "string", "const": "two_image_validation"},
+        "precondition_matches": {"type": "integer"},
+        "post_image_matches": {"type": "integer"},
+        "unknown_state_refusals": {"type": "integer"},
+        "evidence_tier": {"type": "string", "const": "canonical"}
+      }
+    },
+    "evidence_authority_tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["evidence_domain", "tier", "justification"],
+        "properties": {
+          "evidence_domain": {"type": "string"},
+          "tier": {"type": "string", "enum": ["canonical", "observable_durable", "proven_by_test"]},
+          "justification": {"type": "string"}
+        }
+      }
+    },
+    "canonical_source_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 of the transitions.jsonl ledger this report was derived from."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Guarantee that this report contains no raw content, secrets, or source code."
+    }
+  },
+  "additionalProperties": false
+}

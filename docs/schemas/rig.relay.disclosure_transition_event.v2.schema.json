@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.disclosure_transition_event.v2.schema.json",
+  "title": "Disclosure Transition Event v2",
+  "description": "Canonical append-only disclosure transition event. v2 binds stable timestamps, compilation receipt digest, retention/training assertions, and consumed authorization receipt digest in the PREPARED and AUTHORIZATION_CONSUMED states. Recovery reconstructs all downstream artifacts deterministically from the immutable plan. Lane A owns this authority surface.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "transition_id",
+    "authorization_id",
+    "evidence_digest",
+    "projection_id",
+    "disclosure_class",
+    "recipient_class",
+    "provider_or_channel",
+    "manifest_digest_before",
+    "status",
+    "transition_digest",
+    "created_at",
+    "sequence"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.disclosure_transition_event.v2"
+    },
+    "transition_id": {
+      "type": "string",
+      "pattern": "^dzt_[a-f0-9]{24}$",
+      "description": "Stable transition identifier. Root identity for all downstream artifact identities."
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^disc_[a-f0-9]{32}$",
+      "description": "Governance disclosure authorization receipt identifier."
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the opaque evidence object (candidate ZIP bundle)."
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Review projection identifier. Used for manifest path and receipt construction."
+    },
+    "disclosure_class": {
+      "type": "string",
+      "enum": [
+        "path_identity",
+        "path_inventory",
+        "branch_identity",
+        "branch_enumeration",
+        "commit_subject",
+        "commit_body",
+        "commit_patch",
+        "metadata_disclosure",
+        "raw_content"
+      ],
+      "description": "Governance disclosure class for this transition."
+    },
+    "selector_digest": {
+      "type": ["string", "null"],
+      "description": "Protected-content selector digest for scoped disclosure."
+    },
+    "selector_required_class": {
+      "type": ["string", "null"],
+      "description": "Manifest selector's required disclosure class for three-way match."
+    },
+    "manifest_digest_before": {
+      "type": "string",
+      "description": "Protected-content manifest digest before the disclosure mutation."
+    },
+    "manifest_digest_after": {
+      "type": ["string", "null"],
+      "description": "Protected-content manifest digest after the disclosure mutation. Populated at MANIFEST_APPLIED."
+    },
+    "recipient_class": {
+      "type": "string",
+      "enum": [
+        "local_candidate_no_disclosure",
+        "external_ai_reviewer_controlled_account",
+        "human_reviewer_confidentiality_duty",
+        "private_repository_reviewer_access",
+        "other_approved_recipient"
+      ],
+      "description": "Disclosure recipient class."
+    },
+    "provider_or_channel": {
+      "type": "string",
+      "description": "Provider or channel for disclosure routing."
+    },
+    "purpose": {
+      "type": ["string", "null"],
+      "description": "Documented purpose for the disclosure."
+    },
+    "retention_assertion": {
+      "type": ["string", "null"],
+      "description": "User-asserted retention period. Bound at PREPARED for deterministic receipt reconstruction."
+    },
+    "training_use_assertion": {
+      "type": ["string", "null"],
+      "description": "User-asserted training-use disposition. Bound at PREPARED for deterministic receipt reconstruction."
+    },
+    "compilation_receipt_sha256": {
+      "type": "string",
+      "description": "SHA256 of the compilation receipt file. Validated against disk at PREPARED and bound for deterministic receipt reconstruction."
+    },
+    "receipt_approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Stable timestamp bound at PREPARED. Used verbatim in the downstream disclosure receipt for byte-for-byte reproducibility."
+    },
+    "disclosure_event_created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Stable timestamp bound at PREPARED. Used verbatim in the downstream disclosure event for byte-for-byte reproducibility."
+    },
+    "consumed_auth_receipt_digest": {
+      "type": ["string", "null"],
+      "description": "SHA256 digest of the consumed governance authorization receipt. Populated at AUTHORIZATION_CONSUMED. Used during recovery to validate receipt integrity."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "prepared",
+        "authorization_consumed",
+        "projection_receipt_persisted",
+        "manifest_applied",
+        "disclosure_event_recorded",
+        "completed",
+        "refused",
+        "conflict",
+        "corrupt",
+        "recovery_required"
+      ],
+      "description": "Current lifecycle state."
+    },
+    "parent_transition_digest": {
+      "type": ["string", "null"],
+      "description": "Transition digest of the parent event in the chain. Used for integrity chains."
+    },
+    "downstream_event_id": {
+      "type": ["string", "null"],
+      "description": "Content-light disclosure event identifier. Populated at DISCLOSURE_EVENT_RECORDED."
+    },
+    "downstream_receipt_digest": {
+      "type": ["string", "null"],
+      "description": "Path or digest of the persisted projection receipt. Populated at PROJECTION_RECEIPT_PERSISTED."
+    },
+    "recovery_detail": {
+      "type": ["string", "null"],
+      "description": "Human-readable recovery or error detail. Populated at recovery/refusal/corrupt transitions."
+    },
+    "corrupt_detail": {
+      "type": ["string", "null"],
+      "description": "Detailed corruption description if status is corrupt."
+    },
+    "transition_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 integrity digest binding all governance-significant fields at this lifecycle state."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of this event's creation."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence number within the transition_id chain."
+    }
+  },
+  "additionalProperties": false
+}
