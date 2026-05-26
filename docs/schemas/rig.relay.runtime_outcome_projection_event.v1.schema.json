@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.runtime_outcome_projection_event.v1.schema.json",
+  "title": "Runtime Outcome Projection Event",
+  "description": "Content-light durable projection of a model-visible tool outcome. Binds the canonical AgentToolOutcome observed by the model to a durable evidence record for read-side reporting and future lane integration.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "tool_name",
+    "tool_call_id",
+    "status",
+    "answer_kind",
+    "mutation_disposition",
+    "content_light"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.runtime_outcome_projection_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier (UUID or hash-derived)"
+    },
+    "session_id": { "type": "string" },
+    "turn_id": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "causation_id": { "type": "string" },
+    "tool_name": { "type": "string" },
+    "tool_call_id": { "type": "string" },
+    "tool_mutation_class": { "type": "string" },
+    "tool_determinism_class": { "type": "string" },
+    "status": { "type": "string" },
+    "answer_kind": { "type": "string" },
+    "error_kind": { "type": "string" },
+    "refusal_code": { "type": "string" },
+    "recoverable": { "type": "boolean" },
+    "retryable": { "type": "boolean" },
+    "retryability_basis": { "type": "string" },
+    "mutation_disposition": { "type": "string" },
+    "degraded_capabilities": { "type": "array", "items": { "type": "string" } },
+    "investigation_outcome": { "type": "string" },
+    "authority_decision": { "type": "string" },
+    "authority_source": { "type": "string" },
+    "cache_hit": { "type": "boolean" },
+    "output_kind": {
+      "type": "string",
+      "enum": ["inline", "artifacted", "empty", "error"]
+    },
+    "artifact_evidence_sha256": { "type": "string" },
+    "git_summary_hash": { "type": "string" },
+    "model_visible_outcome_digest": {
+      "type": "string",
+      "description": "SHA256 of the canonical AgentToolOutcome JSON delivered to the model"
+    },
+    "outcome_annotation_hash": {
+      "type": "string",
+      "description": "SHA256 of the full <rig-tool-outcome>...</rig-tool-outcome> annotation text"
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "created_at": { "type": "string", "format": "date-time" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}

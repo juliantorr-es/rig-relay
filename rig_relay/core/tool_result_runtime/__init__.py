@@ -121,6 +121,19 @@ class ToolResultRuntime:
                 self._evidence.emit_agent_outcome_projection(
                     outcome, correlation_id=corr_id, causation_id=cause_id
                 )
+                # ── Durable Runtime Outcome Projection Contract v1 ──
+                from rig_relay.runtime.outcome_projection import build_projection_event
+
+                outcome_event = build_projection_event(
+                    outcome,
+                    output_kind=output_kind.value
+                    if hasattr(output_kind, "value")
+                    else str(output_kind),
+                    annotation_text=annotation,
+                )
+                self._evidence.emit_runtime_outcome_projection_event(
+                    outcome_event, correlation_id=corr_id, causation_id=cause_id
+                )
 
         loop.messages.append(
             LLMMessage.model_validate(
@@ -270,6 +283,20 @@ class ToolResultRuntime:
                 pass
 
             try:
+                from rig_relay.runtime.outcome_projection import build_projection_event
+
+                outcome_event = build_projection_event(
+                    outcome, output_kind="error", annotation_text=annotation
+                )
+                self._evidence.emit_runtime_outcome_projection_event(
+                    outcome_event,
+                    correlation_id=correlation_id,
+                    causation_id=causation_id,
+                )
+            except Exception:
+                pass
+
+            try:
                 error_sha256 = hashlib.sha256(display_text.encode("utf-8")).hexdigest()
             except Exception:
                 error_sha256 = ""
@@ -313,7 +340,15 @@ def _classify_failure_kind(error: str) -> str:
     return "resolution_failure"
 
 
-_MUTATION_TOOL_NAMES: frozenset[str] = frozenset({
+# ── Deprecated compatibility shim ────────────────────────────────────────
+# This hardcoded list exists ONLY as a fallback for environments where
+# no ToolManager registry is available (e.g., minimal tests without a full
+# AgentLoop session). It MUST NOT override canonical tool authority.
+# Any new/additional event with the tool_manager registry present will use
+# the actual tool mutation_class from the registry.
+# TODO(lane-b5): Remove this shim once all production test fixtures carry
+# a ToolManager instance.
+_DEPRECATED_MUTATION_TOOL_NAMES: frozenset[str] = frozenset({
     "search_replace",
     "write_file",
     "patch_file",
@@ -326,13 +361,13 @@ def _resolve_mutation_class(
 ) -> ToolMutationClass:
     """Return the mutation class for a tool name.
 
-    Prefers canonical tool registry lookup via tool_manager.available_tools.
-    Falls back to a minimal hardcoded list for known built-in mutation tools
-    when no registry is available.
+    Uses canonical tool registry lookup via tool_manager.available_tools
+    as the primary authority. Falls back to a deprecated hardcoded list
+    only when no registry is available (non-authoritative shim).
 
-    Unknown/untrusted tools default to READ_ONLY (safe — they cannot have
-    mutated state).
+    Unknown/untrusted tools default to READ_ONLY.
     """
+    # ── Primary authority: tool registry ─────────────────────────────
     if tool_manager is not None and hasattr(tool_manager, "available_tools"):
         available = tool_manager.available_tools
         tool_cls = available.get(tool_name)
@@ -342,6 +377,7 @@ def _resolve_mutation_class(
                 if hasattr(mc, "value"):
                     return mc
                 return ToolMutationClass(str(mc))
-    if tool_name in _MUTATION_TOOL_NAMES:
+    # ── Deprecated shim: only when no registry available ─────────────
+    if tool_name in _DEPRECATED_MUTATION_TOOL_NAMES:
         return ToolMutationClass.WRITES_WORKSPACE
     return ToolMutationClass.READ_ONLY

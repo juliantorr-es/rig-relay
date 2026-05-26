@@ -680,6 +680,9 @@ class _FakeEvidenceForArtifactTest:
     def emit_agent_outcome_projection(self, outcome: Any, **kwargs: Any) -> None:
         pass
 
+    def emit_runtime_outcome_projection_event(self, event: Any, **kwargs: Any) -> None:
+        pass
+
     def emit_tool_call_finished(self, **kwargs: Any) -> None:
         pass
 
@@ -749,7 +752,6 @@ class TestB4_3_2_RealArtifactEmission:
 
 
 # ── B4.3.3: Actual ToolExecutor causal binding ───────────────────────────
-
 
 
 @pytest.mark.asyncio

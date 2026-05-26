@@ -243,6 +243,22 @@ class TelemetryEvidenceService:
             receipt_candidate=True,
         )
 
+    def emit_runtime_outcome_projection_event(
+        self, event: Any, correlation_id: str = "", causation_id: str = ""
+    ) -> None:
+        """Emit a Runtime Outcome Projection Contract v1 event.
+
+        Content-light. Binds the model-visible AgentToolOutcome digest
+        to a durable projection record for read-side evidence and reporting.
+        """
+        self._telemetry_client.send_telemetry_event(
+            event_name="rig.relay.runtime_outcome.projection",
+            correlation_id=correlation_id,
+            causation_id=causation_id,
+            properties=event.to_dict(),
+            receipt_candidate=True,
+        )
+
     def emit_artifact_written(
         self, *, artifact: Any, display_text: str, tool_name: str, sequence: int
     ) -> str:
