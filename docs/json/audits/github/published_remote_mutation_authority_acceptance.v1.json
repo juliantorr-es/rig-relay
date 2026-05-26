@@ -1,0 +1,206 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "published-remote-mutation-authority-acceptance",
+  "document_type": "audit",
+  "title": "Published Remote Mutation Authority Acceptance — Lane A P0.1 Closure",
+  "summary": "Acceptance-closes the published Lane A repair at juliantorr-es/rig-relay@main that bound github_ci_cd.py:dispatch to Lane A remote-action authorization through Lane B GitHubAuthorizationConsumer. All seven acceptance questions proven, all gates pass, no live bypass remains.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "owners": ["Lane A"],
+  "tags": ["github", "remote-action", "authorization", "audit", "acceptance", "dispatch", "mutation-boundary", "lane-a"],
+  "canonical_path": "docs/json/audits/github/published_remote_mutation_authority_acceptance.v1.json",
+  "source_commit": "696dad360ebbec202004227092174bc8151e7ccc",
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "Published Remote Mutation Authority Acceptance"
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "Version Anchors"
+    },
+    {
+      "block_id": "list-1",
+      "type": "list",
+      "content": "Current GitHub main SHA: 696dad360ebbec202004227092174bc8151e7ccc\nBaseline SHA: 6ac6d40ba31a9bba2e6693cff8dbb2eef31520c0\nCommits since baseline: 2 (655b51d2 Lane A closure checkpoint, 696dad36 Enable websearch for all OpenCode agents)"
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Verified Published Paths"
+    },
+    {
+      "block_id": "list-2",
+      "type": "list",
+      "content": "rig_relay/core/tools/builtins/github_ci_cd.py (181 insertions, 6 deletions, 187 changed lines)\ntests/tools/test_github_ci_cd_builtin.py (new, 22 tests, 875 lines)\ndocs/json/audits/desktop/lane_b_architecture_audit.v1.json (Lane B owned, not verified by this lane)"
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Acceptance Questions — Causal Proofs"
+    },
+    {
+      "block_id": "h3-q1",
+      "type": "heading",
+      "level": 3,
+      "content": "Q1: Does every executable workflow_dispatch path consume a matching authorization receipt before any outbound mutation request?"
+    },
+    {
+      "block_id": "p-q1",
+      "type": "paragraph",
+      "content": "YES. In github_ci_cd.py lines 525-625, the dispatch case first checks authorization_id (line 526, refusal if empty), then calls GitHubAuthorizationConsumer.validate_and_consume() (line 552), and only on ConsumerOutcome.AUTHORIZED outcome calls _execute_dispatch via run_in_executor (lines 588-589). The HTTP POST to GitHub's dispatch endpoint is inside _execute_dispatch. There is no other code path from the dispatch case to _execute_dispatch. Proven by test_dispatch_refuses_without_authorization_id (0 HTTP calls) and test_dispatch_authorized_success (1 HTTP POST after receipt consumption)."
+    },
+    {
+      "block_id": "h3-q2",
+      "type": "heading",
+      "level": 3,
+      "content": "Q2: Is the consumed receipt bound to the exact operation, target identity, ref, workflow ID, inputs payload, and prior evidence digest?"
+    },
+    {
+      "block_id": "p-q2",
+      "type": "paragraph",
+      "content": "YES. The payload is built by _build_dispatch_request_payload() (line 548-550), capturing owner, repo, workflow_id, ref, and inputs. This payload is passed as request_payload to validate_and_consume() which calls compute_request_digest() for exact content binding. target_identity is set to {owner}/{repo} (line 556). prior_evidence_digest is passed from tool args (line 557). The consumer maps operation_kind workflow_dispatch to RemoteActionClass.GITHUB_ACTIONS_DISPATCH. Any mismatch returns refusal. Proven by: wrong_action_class, wrong_target, wrong_ref, wrong_workflow_id, wrong_inputs, stale_evidence refusal tests."
+    },
+    {
+      "block_id": "h3-q3",
+      "type": "heading",
+      "level": 3,
+      "content": "Q3: Is a receipt single-use, including when the HTTP outcome becomes indeterminate?"
+    },
+    {
+      "block_id": "p-q3",
+      "type": "paragraph",
+      "content": "YES. Lane A's consume_remote_action_authorization() atomically marks the receipt consumed under fcntl file lock before returning. The GitHubAuthorizationConsumer.validate_and_consume() calls this before any HTTP request. For the indeterminate case: if _execute_dispatch raises any Exception after consumption, the tool returns remote_outcome_indeterminate with explicit warning: Receipt was consumed before the HTTP call. Do not retry with the same receipt. The replay test proves first dispatch succeeds with 1 HTTP call, second attempt with same receipt is refused with 0 HTTP calls. The indeterminate test additionally proves the receipt is consumed and a second attempt is refused."
+    },
+    {
+      "block_id": "h3-q4",
+      "type": "heading",
+      "level": 3,
+      "content": "Q4: Does post-consumption timeout/network/API failure prevent retry under the same receipt and explicitly require remote re-observation plus fresh authorization?"
+    },
+    {
+      "block_id": "p-q4",
+      "type": "paragraph",
+      "content": "YES. Lines 591-614 catch except Exception after the receipt was consumed and yield a result with status error, error_kind github.remote_outcome_indeterminate, remote_outcome_indeterminate=True, summary stating the HTTP request failed after authorization receipt was consumed, and warnings: Receipt was consumed before the HTTP call. Do not retry with the same receipt. Re-observe remote state and re-authorize if needed. Test test_dispatch_timeout_returns_remote_outcome_indeterminate proves first call returns remote_outcome_indeterminate, second call with same receipt returns refused."
+    },
+    {
+      "block_id": "h3-q5",
+      "type": "heading",
+      "level": 3,
+      "content": "Q5: Do all read-only GitHub observations remain executable without a remote-action authorization receipt?"
+    },
+    {
+      "block_id": "p-q5",
+      "type": "paragraph",
+      "content": "YES. Four read-only actions are preserved without authorization gate: workflow_status (line 627), list_workflows (line 645), list_runs (line 658), check_pr (line 677). Each requires only a GitHub OAuth token and returns mutation_class read_only. Proven by test_workflow_status_read_only_no_auth_required, test_list_workflows_read_only, test_list_runs_read_only, test_check_pr_read_only — all succeed with no authorization_id."
+    },
+    {
+      "block_id": "h3-q6",
+      "type": "heading",
+      "level": 3,
+      "content": "Q6: Can any token-shaped secret leak through any serialized GitHubToolResult?"
+    },
+    {
+      "block_id": "p-q6",
+      "type": "paragraph",
+      "content": "NO. Token sentinel protection via _contains_token_sentinel() (detects ghp_, ghs_, gho_, ghu_, ghr_, bearer) and _redact_token_sentinels() (regex replacement). GitHubToolResult fields are string fields populated from constants, error messages, or typed consumer results — never from raw token values. The token is read by _get_github_token() for HTTP Authorization headers only. Proven by test_contains_token_sentinel_detects_github_tokens, test_redact_token_sentinels, test_github_tool_result_no_token_leakage, test_refusal_result_no_token_leakage."
+    },
+    {
+      "block_id": "h3-q7",
+      "type": "heading",
+      "level": 3,
+      "content": "Q7: Does any live GitHub remote-mutation path remain outside the authorization consumer boundary?"
+    },
+    {
+      "block_id": "p-q7a",
+      "type": "paragraph",
+      "content": "NO. Complete audit inventory from test_audit_all_live_mutation_paths_accounted:"
+    },
+    {
+      "block_id": "list-q7",
+      "type": "list",
+      "content": "github_ci_cd_dispatch: bound — now requires Lane A receipt via GitHubAuthorizationConsumer\ngithub_live_auth_post_json: infrastructure — OAuth token exchange only, not a product mutation\ngithub_app_token_manager_post: infrastructure — JWT to installation token exchange only\ngithub_identity_oauth_post: infrastructure — device code and OAuth token flow\ngithub_user_adapter_patch: bound — already uses GitHubAuthorizationConsumer\ngithub_repo_bootstrap_post: bound — already uses GitHubAuthorizationConsumer\ngithub_pages_adapter_put: bound — already uses GitHubAuthorizationConsumer"
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Gate Results — Real Substrate Execution"
+    },
+    {
+      "block_id": "h3-tests",
+      "type": "heading",
+      "level": 3,
+      "content": "Test Gates (104 passed, 0 failed)"
+    },
+    {
+      "block_id": "table-tests",
+      "type": "table",
+      "columns": ["Test Suite", "Result"],
+      "rows": [
+        ["tests/tools/test_github_ci_cd_builtin.py", "22 passed, 0 failed"],
+        ["tests/governance/test_remote_action_authorization.py", "29 passed, 0 failed"],
+        ["tests/integrations/github_provider/test_authorization_consumer.py", "31 passed, 0 failed"],
+        ["tests/tools/test_github_truth_tool.py", "11 passed, 0 failed"],
+        ["tests/release_gate/test_github_ci_cd_reliability_artifact.py", "11 passed, 0 failed"]
+      ]
+    },
+    {
+      "block_id": "h3-static",
+      "type": "heading",
+      "level": 3,
+      "content": "Static Gates (all passed)"
+    },
+    {
+      "block_id": "table-static",
+      "type": "table",
+      "columns": ["Gate", "Result"],
+      "rows": [
+        ["ruff check", "All checks passed"],
+        ["ruff format --check", "2 files already formatted"],
+        ["pyright", "0 errors, 0 warnings, 0 informations"]
+      ]
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "Invariants Confirmed"
+    },
+    {
+      "block_id": "list-invariants",
+      "type": "list",
+      "content": "Receipt-consumption invariant: receipt consumed atomically before any HTTP POST; single-use semantics enforce no replay.\nIndeterminate-outcome invariant: timeout or response loss after consumption returns remote_outcome_indeterminate; no automatic retry; caller must re-observe and re-authorize.\nToken non-disclosure invariant: no ghp_/ghs_/gho_/ghu_/ghr_ patterns or bearer tokens leak in any serialized result.\nRead-only preservation verdict: workflow_status, list_workflows, list_runs, check_pr all functional without authorization receipt; mutation_class read_only truthfully declared.\nMutation emission verdict: dispatch is the sole executable GitHub remote mutation in the tool; it is now fully authorization-bound through the Lane A/Lane B corridor."
+    },
+    {
+      "block_id": "h2-6",
+      "type": "heading",
+      "level": 2,
+      "content": "Intentionally Deferred Seams"
+    },
+    {
+      "block_id": "list-deferred",
+      "type": "list",
+      "ordered": true,
+      "content": "Production token-store migration: DevFileTokenStore is dev-only plaintext storage. Current repair adds sentinel redaction but does not migrate to production credential storage. Parked for a separate approved identity-storage mission.\nTool-level read-only/mutating split: The tool-level mutation_class remains EXTERNAL_SIDE_EFFECT (reflecting the presence of dispatch). Per-action mutation_class fields now truthfully distinguish read_only vs destructive in results. A future slice could split the tool into separate read-only and mutating built-in tools.\nContract-only GitHub operations without executable adapters: GitHub capability contracts exist for workflow_rerun, pages_publish, and pages_cancel but have no wired built-in tool mutation paths. These are not live bypasses — zero executable mutation surface. Their contract-only existence should be audited when those operations get tool implementations."
+    },
+    {
+      "block_id": "h2-7",
+      "type": "heading",
+      "level": 2,
+      "content": "Final Status"
+    },
+    {
+      "block_id": "p-final",
+      "type": "paragraph",
+      "content": "published_remote_mutation_authority_bypass_acceptance_closed. All seven acceptance questions proven causally from source. All 104 tests pass. All three static gates pass. Zero live GitHub remote-mutation bypasses remain. Lane A relinquishes the GitHub dispatch corridor. Lane A may now proceed into P1 Coordination Services and Governed Runtime Tools."
+    }
+  ]
+}
