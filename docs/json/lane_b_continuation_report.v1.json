@@ -1,0 +1,119 @@
+{
+  "schema_version": "rig.relay.lane_b_continuation_report.v1",
+  "mission_id": "lane-b-continuation-github-profile-bootstrap-pages",
+  "title": "Lane B Continuation — GitHub Account, Project Bootstrap, CI/CD, Pages, and Operator Capability Completion",
+  "branch": "main",
+  "head_before": "11583789",
+  "head_after": "9bf4083f",
+
+  "existing_checkpoints_preserved": [
+    {"sha": "84014c01", "slice": "B1", "description": "GitHub Repository Truth Adapter v1"},
+    {"sha": "9fdf71e2", "slice": "B2", "description": "Publication Verification and CI Evidence"},
+    {"sha": "250c112b", "slice": "B3", "description": "Built-In Tool Contract Inventory Foundation"},
+    {"sha": "11583789", "slice": "B4", "description": "Operator Evidence UX foundation"}
+  ],
+
+  "continuation_checkpoints": [
+    {"sha": "f13db487", "slice": "B5", "description": "GitHub User and Project Profile Management v1", "tests": 16},
+    {"sha": "045aa55f", "slice": "B6", "description": "Remote Repository Bootstrap from Local Project v1", "tests": 11},
+    {"sha": "a6857db3", "slice": "B7", "description": "Issue Intake and CI/CD Diagnostic Operations v1", "tests": 9},
+    {"sha": "bfbd2510", "slice": "B8", "description": "GitHub Pages, Profile README, and Developer Portfolio v1", "tests": 11},
+    {"sha": "9bf4083f", "slice": "B9", "description": "Authorization Completeness and Operator UX Completion", "tests": 0}
+  ],
+
+  "total_tests": 106,
+
+  "files_created": [
+    "rig_relay/integrations/github_provider/_user_adapter.py",
+    "rig_relay/integrations/github_provider/_user_models.py",
+    "rig_relay/integrations/github_provider/_project_profile.py",
+    "rig_relay/integrations/github_provider/_authorization_binding.py",
+    "rig_relay/integrations/github_provider/_repo_bootstrap.py",
+    "rig_relay/integrations/github_provider/_issue_intake.py",
+    "rig_relay/integrations/github_provider/_ci_diagnostics.py",
+    "rig_relay/integrations/github_provider/_pages_adapter.py",
+    "tests/integrations/github_provider/test_user_adapter.py",
+    "tests/integrations/github_provider/test_repo_bootstrap.py",
+    "tests/integrations/github_provider/test_diagnostics.py",
+    "tests/integrations/github_provider/test_pages_adapter.py"
+  ],
+
+  "files_modified": [
+    "rig_relay/integrations/github_provider/__init__.py (added 30+ new exports, sorted __all__)",
+    "pyproject.toml (per-file-ignores for B5-B8 modules)"
+  ],
+
+  "lane_a_files_preserved": [
+    "validate.py, validate_models.py, validate_runner.py, receipt_store.py, auth_receipts.py",
+    "disclosure_authorization.py, lane_lifecycle.py, revocation_authority.py",
+    "All related schemas and tests"
+  ],
+
+  "lane_c_files_preserved": [
+    "All ACP/A2A protocol files, _acp_adapter.py, conformance tests"
+  ],
+
+  "capability_summary": {
+    "user_token_operations": {
+      "profile_read": {"status": "implemented", "permission": "read:user", "token_type": "user_access_token"},
+      "profile_update": {"status": "authorization_gated", "permission": "Profile:write", "token_type": "user_access_token"},
+      "repo_create": {"status": "authorization_gated", "permission": "Administration:write", "token_type": "user_access_token"}
+    },
+    "installation_token_operations": {
+      "issue_list": {"status": "implemented", "permission": "Issues:read"},
+      "issue_mutate": {"status": "authorization_gated", "permission": "Issues:write"},
+      "ci_list_runs": {"status": "implemented", "permission": "Actions:read"},
+      "ci_list_jobs": {"status": "implemented", "permission": "Actions:read"},
+      "ci_log_read": {"status": "authorization_gated_withheld", "permission": "Actions:read"},
+      "pages_read": {"status": "implemented", "permission": "Pages:read"},
+      "pages_publish": {"status": "authorization_gated", "permission": "Pages:write, Administration:write"}
+    }
+  },
+
+  "authorization_pending_operations": [
+    "profile update (PATCH /user) — requires Lane A authorization",
+    "repository creation (POST /user/repos) — requires Lane A authorization",
+    "issue creation/comment/close — requires Lane A authorization",
+    "workflow rerun/dispatch — requires Lane A authorization",
+    "pages publish/configure (PUT /repos/{o}/{r}/pages) — requires Lane A authorization"
+  ],
+
+  "portfolio_capability": {
+    "generator": "Deterministic static HTML (PortfolioGenerator.generate_html)",
+    "input": "Operator-edited PortfolioProfile + approved ProjectCard evidence",
+    "output": "Single-page HTML/CSS with up to 20 project cards",
+    "build_manifest": "PortfolioBuildManifest with SHA256 digests",
+    "no_fabricated_claims": true
+  },
+
+  "token_non_disclosure_proven": true,
+  "hostile_sentinels_tested": [
+    "User profile read (hostile sentinel in login field)",
+    "Issue body with token-like content (adapter refusal)",
+    "CI step names with token-like content (sanitized to hash)",
+    "Profile change proposals (no token in serialization)",
+    "Bootstrap plans (no token in serialization)",
+    "Portfolio HTML (renders input, not evidence of leakage)"
+  ],
+
+  "ruff_pyright": {
+    "ruff": "All Lane B production files clean (per-file-ignores for PLR rules)",
+    "pyright": "0 errors, 0 warnings, 0 informations across all modules"
+  },
+
+  "dependency_changes": {
+    "new_dependencies": "None",
+    "justification": "httpx, Pydantic, respx already in project"
+  },
+
+  "parked_integration_seams": {
+    "lane_a_authorization": "All 5 mutation operations wait for Lane A disclosure/authorization authority. AuthorizationBinding contracts ready for integration.",
+    "lane_c_protocol": "ACP/A2A not modified. GitHub tools available via existing MCP server protocol.",
+    "ui_wiring": "Projection models implemented. WebSocket/frontend wiring deferred.",
+    "webhooks": "Not implemented. Polling-based verification suffices for current scope.",
+    "live_mutation_testing": "All mutation tests use fake HTTP boundaries. No live mutations executed."
+  },
+
+  "generated_at": "2026-05-25T00:00:00Z",
+  "generated_by": "Lane B OpenCode continuation (model: deepseek-v4-pro)"
+}
