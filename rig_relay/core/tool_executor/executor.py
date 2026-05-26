@@ -302,7 +302,10 @@ class ToolExecutor:
                     if response_model is not None and hasattr(
                         response_model, "model_dump"
                     ):
-                        result_dict = response_model.model_dump()
+                        if hasattr(response_model, "redacted_projection"):
+                            result_dict = response_model.redacted_projection()
+                        else:
+                            result_dict = response_model.model_dump()
                         text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
                     self._deliver_tool_response_or_raise(
                         tool_call=tool_call,
@@ -325,7 +328,10 @@ class ToolExecutor:
                     if response_model is not None and hasattr(
                         response_model, "model_dump"
                     ):
-                        result_dict = response_model.model_dump()
+                        if hasattr(response_model, "redacted_projection"):
+                            result_dict = response_model.redacted_projection()
+                        else:
+                            result_dict = response_model.model_dump()
                         text = "\n".join(f"{k}: {v}" for k, v in result_dict.items())
                         try:
                             of_interest = session_ctx.tool_manager.get(tn)

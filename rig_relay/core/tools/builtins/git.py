@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 import hashlib
 import os
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,7 +34,18 @@ from rig_relay.core.utils import kill_async_subprocess
 # ── Bounded Git evidence result models (Lane B3) ──────────────────────
 
 
-class GitStatusResult(BaseModel):
+class _GitEvidenceModel(BaseModel):
+    """Mixin for bounded Git evidence with redaction and integrity."""
+
+    def _evidence_digest(self) -> str:
+        raw = self.model_dump_json()
+        return f"sha256:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+    def redacted_projection(self) -> dict[str, Any]:
+        raise NotImplementedError
+
+
+class GitStatusResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "status"
@@ -53,8 +64,27 @@ class GitStatusResult(BaseModel):
     truncated: bool = False
     error_kind: str | None = None
 
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "repository_state": self.repository_state,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "is_detached": self.is_detached,
+            "ahead_count": self.ahead_count,
+            "behind_count": self.behind_count,
+            "staged_count": self.staged_count,
+            "unstaged_count": self.unstaged_count,
+            "untracked_count": self.untracked_count,
+            "conflicted_count": self.conflicted_count,
+            "changed_paths_count": len(self.changed_paths),
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
-class GitDiffResult(BaseModel):
+
+class GitDiffResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "diff"
@@ -68,8 +98,38 @@ class GitDiffResult(BaseModel):
     truncated: bool = False
     error_kind: str | None = None
 
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "files_changed_count": self.files_changed_count,
+            "additions": self.additions,
+            "deletions": self.deletions,
+            "change_kind_summary": {
+                k: v
+                for k, v in {
+                    "added": sum(1 for ck in self.change_kinds.values() if ck == "A"),
+                    "modified": sum(
+                        1 for ck in self.change_kinds.values() if ck == "M"
+                    ),
+                    "deleted": sum(1 for ck in self.change_kinds.values() if ck == "D"),
+                    "renamed": sum(
+                        1 for ck in self.change_kinds.values() if ck.startswith("R")
+                    ),
+                    "copied": sum(
+                        1 for ck in self.change_kinds.values() if ck.startswith("C")
+                    ),
+                }.items()
+                if v > 0
+            },
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
-class GitLogResult(BaseModel):
+
+class GitLogResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "log"
@@ -80,8 +140,19 @@ class GitLogResult(BaseModel):
     truncated: bool = False
     error_kind: str | None = None
 
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "commits_returned": self.commits_returned,
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
-class GitBranchResult(BaseModel):
+
+class GitBranchResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "branch"
@@ -93,8 +164,21 @@ class GitBranchResult(BaseModel):
     truncated: bool = False
     error_kind: str | None = None
 
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "current_branch_available": self.current_branch is not None,
+            "branches_count": len(self.branches),
+            "is_detached": self.is_detached,
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
-class GitShowResult(BaseModel):
+
+class GitShowResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "show"
@@ -110,8 +194,23 @@ class GitShowResult(BaseModel):
     truncated: bool = False
     error_kind: str | None = None
 
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "commit_sha": self.commit_sha,
+            "subject_available": self.subject is not None,
+            "files_changed_count": self.files_changed_count,
+            "additions": self.additions,
+            "deletions": self.deletions,
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
-class GitLsFilesResult(BaseModel):
+
+class GitLsFilesResult(_GitEvidenceModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = "ls_files"
@@ -121,6 +220,17 @@ class GitLsFilesResult(BaseModel):
     paths_returned: int = 0
     truncated: bool = False
     error_kind: str | None = None
+
+    def redacted_projection(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "branch_available": self.branch is not None,
+            "head_sha": self.head_sha,
+            "paths_returned": self.paths_returned,
+            "evidence_digest": self._evidence_digest(),
+            "truncated": self.truncated,
+            "error_kind": self.error_kind,
+        }
 
 
 # ── Raw subprocess result (kept internal for _run_git) ────────────────
@@ -279,6 +389,25 @@ class GitBase[TArgs: BaseModel, TResult: BaseModel](
 
     def _validate_paths(self, paths: list[str]) -> list[str]:
         return [self._validate_path(p) for p in paths]
+
+    async def _verify_commit_ref(self, rev: str) -> str:
+        """Validate a revision as a commit object via git rev-parse --verify.
+
+        Rejects option-shaped revisions, ambiguous names, non-commit objects,
+        and invalid refs. Returns the full 40-char SHA on success.
+        """
+        if rev.startswith("-"):
+            raise ToolError(f"Revision cannot start with '-': {rev}")
+        try:
+            result = await self._run_git(
+                "rev-parse", ["--verify", "--end-of-options", f"{rev}^{{commit}}"]
+            )
+        except ToolError as exc:
+            raise ToolError(f"Revision '{rev}' is not a valid commit object") from exc
+        sha = result.stdout.strip()
+        if not sha or len(sha) < 7:
+            raise ToolError(f"Revision '{rev}' resolved to invalid SHA: {sha!r}")
+        return sha
 
 
 # ── Git status ────────────────────────────────────────────────────────
@@ -856,10 +985,12 @@ class GitShow(GitBase[GitShowArgs, GitShowResult]):
         if args.ref.startswith("-"):
             raise ToolError(f"Ref cannot start with '-': {args.ref}")
 
+        verified_ref = await self._verify_commit_ref(args.ref)
+
         head = await self._read_head()
         branch = await self._read_branch()
 
-        fmt_argv = ["--format=%H%x00%aI%x00%s", "--numstat", "-z", args.ref]
+        fmt_argv = ["--format=%H%x00%aI%x00%s", "--numstat", "-z", verified_ref]
         if args.paths:
             fmt_argv.append("--")
             fmt_argv.extend(self._validate_paths(args.paths))
