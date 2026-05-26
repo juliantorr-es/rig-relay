@@ -317,6 +317,158 @@ class ToolResultRuntime:
 
         return msg
 
+    def handle_recovery_handoff(self, handoff: Any) -> LLMMessage:
+        """Admit a recovery handoff and produce the model-visible outcome.
+
+        Reads the handoff kind to determine the admission path:
+        - read_only: normal tool outcome with auto_execute_read_only decision
+        - validation: normal tool outcome with auto_execute_validation decision
+        - mutation_proposal_only: proposal-only outcome (never direct execution)
+        - refusal: typed refusal outcome with projection evidence
+
+        Returns the appended LLMMessage.
+        """
+        from rig_relay.recovery.handoff import (
+            RecoveryHandoffMutationProposal,
+            RecoveryHandoffReadOnly,
+            RecoveryHandoffRefusal,
+            RecoveryHandoffValidation,
+        )
+
+        if isinstance(handoff, RecoveryHandoffReadOnly):
+            kind = "read_only"
+        elif isinstance(handoff, RecoveryHandoffValidation):
+            kind = "validation"
+        elif isinstance(handoff, RecoveryHandoffMutationProposal):
+            kind = "mutation_proposal_only"
+        elif isinstance(handoff, RecoveryHandoffRefusal):
+            kind = "refusal"
+        else:
+            kind = getattr(handoff, "handoff_kind", "unknown")
+
+        corr_id: str = getattr(handoff, "runtime_correlation_id", "") or ""
+
+        match kind:
+            case "read_only":
+                return self._admit_read_only_handoff(handoff, corr_id)
+            case "validation":
+                return self._admit_validation_handoff(handoff, corr_id)
+            case "mutation_proposal_only":
+                return self._admit_mutation_proposal_handoff(handoff, corr_id)
+            case "refusal":
+                return self._admit_refusal_handoff(handoff, corr_id)
+            case _:
+                return self._admit_unknown_handoff(handoff, corr_id)
+
+    def _admit_read_only_handoff(self, handoff: Any, correlation_id: str) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="read_only",
+            decision="auto_execute_read_only",
+            correlation_id=correlation_id,
+        )
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
+        )
+
+    def _admit_validation_handoff(
+        self, handoff: Any, correlation_id: str
+    ) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="validation",
+            decision="auto_execute_validation",
+            correlation_id=correlation_id,
+        )
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
+        )
+
+    def _admit_mutation_proposal_handoff(
+        self, handoff: Any, correlation_id: str
+    ) -> LLMMessage:
+        tool_name: str = getattr(handoff, "canonical_tool_name", "unknown")
+        outcome = _build_handoff_outcome(
+            tool_name=tool_name,
+            handoff_kind="mutation_proposal_only",
+            decision="proposal_only_mutation",
+            correlation_id=correlation_id,
+        )
+        return self._append_handoff_message(
+            tool_name, outcome, correlation_id, prefix=f"[recovery handoff] {tool_name}"
+        )
+
+    def _admit_refusal_handoff(self, handoff: Any, correlation_id: str) -> LLMMessage:
+        refusal_code: str = getattr(handoff, "refusal_code", "unknown_refusal")
+        reason: str = getattr(handoff, "reason", "")
+        outcome = _build_handoff_outcome(
+            tool_name="unknown",
+            handoff_kind="refusal",
+            decision="refused",
+            correlation_id=correlation_id,
+            refusal_code=refusal_code,
+            error_kind="recovery_refusal",
+        )
+        prefix = f"<tool_error>recovery_refused: {refusal_code}"
+        if reason:
+            prefix += f" — {reason}"
+        prefix += "</tool_error>"
+        return self._append_handoff_message(
+            "unknown", outcome, correlation_id, prefix=prefix
+        )
+
+    def _admit_unknown_handoff(self, handoff: Any, correlation_id: str) -> LLMMessage:
+        outcome = _build_handoff_outcome(
+            tool_name="unknown",
+            handoff_kind="unknown",
+            decision="refused",
+            correlation_id=correlation_id,
+            refusal_code="unknown_handoff_kind",
+            error_kind="recovery_refusal",
+        )
+        prefix = "<tool_error>recovery_refused: unknown_handoff_kind</tool_error>"
+        return self._append_handoff_message(
+            "unknown", outcome, correlation_id, prefix=prefix
+        )
+
+    def _append_handoff_message(
+        self, tool_name: str, outcome: Any, correlation_id: str, *, prefix: str = ""
+    ) -> LLMMessage:
+        from rig_relay.core.tools._agent_outcome import format_agent_outcome
+        from rig_relay.core.types import Role
+
+        annotation = format_agent_outcome(outcome)
+        display_text = f"{prefix}\n\n{annotation}"
+
+        msg = LLMMessage(
+            role=Role.tool,
+            tool_call_id=getattr(outcome, "tool_call_id", "") or "",
+            name=tool_name,
+            content=display_text,
+        )
+        self._loop.messages.append(msg)
+        self._emit_handoff_projection_event(outcome, annotation, correlation_id)
+        return msg
+
+    def _emit_handoff_projection_event(
+        self, outcome: Any, annotation: str, correlation_id: str
+    ) -> None:
+        if self._evidence is None:
+            return
+        try:
+            from rig_relay.runtime.outcome_projection import build_projection_event
+
+            event = build_projection_event(
+                outcome, output_kind="inline", annotation_text=annotation
+            )
+            self._evidence.emit_runtime_outcome_projection_event(
+                event, correlation_id=correlation_id
+            )
+        except Exception:
+            pass
+
 
 def _classify_failure_kind(error: str) -> str:
     """Classify the failure kind from the error message text.
@@ -340,34 +492,14 @@ def _classify_failure_kind(error: str) -> str:
     return "resolution_failure"
 
 
-# ── Deprecated compatibility shim ────────────────────────────────────────
-# This hardcoded list exists ONLY as a fallback for environments where
-# no ToolManager registry is available (e.g., minimal tests without a full
-# AgentLoop session). It MUST NOT override canonical tool authority.
-# Any new/additional event with the tool_manager registry present will use
-# the actual tool mutation_class from the registry.
-# TODO(lane-b5): Remove this shim once all production test fixtures carry
-# a ToolManager instance.
-_DEPRECATED_MUTATION_TOOL_NAMES: frozenset[str] = frozenset({
-    "search_replace",
-    "write_file",
-    "patch_file",
-    "checkpoint",
-})
-
-
 def _resolve_mutation_class(
     tool_name: str, tool_manager: Any = None
 ) -> ToolMutationClass:
-    """Return the mutation class for a tool name.
+    """Return the mutation class for a tool name via the canonical tool registry.
 
-    Uses canonical tool registry lookup via tool_manager.available_tools
-    as the primary authority. Falls back to a deprecated hardcoded list
-    only when no registry is available (non-authoritative shim).
-
-    Unknown/untrusted tools default to READ_ONLY.
+    Reads ``mutation_class`` from the registered ``BaseTool`` subclass.
+    When no registry or entry is found, defaults to READ_ONLY.
     """
-    # ── Primary authority: tool registry ─────────────────────────────
     if tool_manager is not None and hasattr(tool_manager, "available_tools"):
         available = tool_manager.available_tools
         tool_cls = available.get(tool_name)
@@ -377,7 +509,35 @@ def _resolve_mutation_class(
                 if hasattr(mc, "value"):
                     return mc
                 return ToolMutationClass(str(mc))
-    # ── Deprecated shim: only when no registry available ─────────────
-    if tool_name in _DEPRECATED_MUTATION_TOOL_NAMES:
-        return ToolMutationClass.WRITES_WORKSPACE
     return ToolMutationClass.READ_ONLY
+
+
+def _build_handoff_outcome(
+    *,
+    tool_name: str,
+    handoff_kind: str,
+    decision: str,
+    correlation_id: str = "",
+    refusal_code: str | None = None,
+    error_kind: str | None = None,
+) -> Any:
+    """Build an AgentToolOutcome for a recovery handoff admission."""
+    import uuid
+
+    from rig_relay.core.tools._agent_outcome import AgentToolOutcome
+
+    return AgentToolOutcome(
+        tool_name=tool_name,
+        tool_call_id=correlation_id or f"handoff-{uuid.uuid4().hex[:12]}",
+        correlation_id=correlation_id or None,
+        status="completed" if refusal_code is None else "refused",
+        answer_kind="positive" if refusal_code is None else "refused",
+        error_kind=error_kind,
+        refusal_code=refusal_code,
+        recoverable=False,
+        retryable=False,
+        mutation_disposition="not_applicable",
+        authority_decision=decision,
+        authority_source="recovery_handoff",
+        warnings=[],
+    )
