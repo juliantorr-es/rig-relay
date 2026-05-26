@@ -81,13 +81,18 @@ def _get_default_allowlist() -> list[str]:
     else:
         return common + [
             "cat",
+            "env",
+            "false",
             "file",
             "find",
             "head",
             "ls",
+            "printf",
             "pwd",
+            "sleep",
             "stat",
             "tail",
+            "true",
             "uname",
             "wc",
             "which",
@@ -235,11 +240,7 @@ class BashToolConfig(BaseToolConfig):
         default_factory=_get_default_denylist_standalone,
         description="Commands that are denied only when run without arguments",
     )
-    sensitive_patterns: list[str] = Field(
-        default=["sudo"],
-        description=(
-        ),
-    )
+    sensitive_patterns: list[str] = Field(default=["sudo"], description=())
     restrict_raw_shell: bool = Field(
         default=True,
         description=(
@@ -423,7 +424,8 @@ class Bash(
         """Check if command matches the validate tool reroute patterns.
         Only pytest, ruff check, and pyright are recognized. cat, grep,
         git, and python -c are deliberately excluded — the agent must
-        use dedicated governed tools for those operations."""
+        use dedicated governed tools for those operations.
+        """
         try:
             tokens = command.split()
         except Exception:
@@ -435,7 +437,12 @@ class Bash(
         if root in ("pytest", "pytest3"):
             return True
         # python -m pytest
-        if root == "python" and len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "pytest":
+        if (
+            root == "python"
+            and len(tokens) >= 3
+            and tokens[1] == "-m"
+            and tokens[2] == "pytest"
+        ):
             return True
         # ruff check
         if root == "ruff" and len(tokens) >= 2 and tokens[1] == "check":
@@ -500,10 +507,13 @@ class Bash(
             if getattr(self.config, "restrict_raw_shell", False):
                 # Governed Command Execution Airlock v1:
                 # In contained missions, only validation commands (pytest, ruff, pyright)
-                # may pass through raw bash via reroute to the governed validate tool.
+                # and known-safe allowlisted commands may pass through.
                 # cat, grep, git, and python -c are NOT exceptions — the agent must
                 # use the dedicated governed tools (read_file, grep tool, git_status, etc.)
-                if not _matches_validate_reroute(full_command):
+                if not (
+                    Bash._matches_validate_reroute(full_command)
+                    or self._is_allowlisted(full_command)
+                ):
                     return PermissionContext(
                         permission=ToolPermission.NEVER,
                         reason=(
@@ -913,6 +923,37 @@ class Bash(
                 reroute=reroute_meta,
             )
             return
+
+        # ── Runtime restrict_raw_shell enforcement ────────────
+        # Hard safety boundary: enforced regardless of permission bypass.
+        # Only allowlisted (read-only) commands and validation-equivalent
+        # commands (pytest, ruff check, pyright) to pass through.
+        if getattr(self.config, "restrict_raw_shell", False):
+            if not (
+                Bash._matches_validate_reroute(args.command)
+                or self._is_allowlisted(args.command)
+            ):
+                elapsed = (time.perf_counter() - start) * 1000
+                yield BashResult(
+                    command=args.command,
+                    stdout="",
+                    stderr="",
+                    returncode=-1,
+                    status="refused",
+                    duration_ms=elapsed,
+                    stdout_bytes=0,
+                    stderr_bytes=0,
+                    stdout_truncated=False,
+                    stderr_truncated=False,
+                    error_kind="refused",
+                    refusal_reason=(
+                        "Raw shell execution is unavailable in this workspace-contained "
+                        "mission. Use governed file tools for reads or edits, or the "
+                        "validation tool for approved tests and static checks."
+                    ),
+                    reroute=reroute_meta,
+                )
+                return
 
         timeout = args.timeout or self.config.default_timeout
         max_stdout_cap = (

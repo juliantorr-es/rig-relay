@@ -209,7 +209,11 @@ UNSAFE_RAW_SHELL = AgentProfile(
     "Unsafe Raw Shell (Diagnostic Only)",
     "Diagnostic/developer mode with raw shell access. Bypasses approval gates but remains subject to hard runtime safety boundaries (workspace enforcement, dirty-file guard, destructive Git refusal). Not suitable for autonomous missions.",
     AgentSafety.YOLO,
-    overrides={"bypass_tool_permissions": True, "base_disabled": ["exit_plan_mode"]},
+    overrides={
+        "bypass_tool_permissions": True,
+        "base_disabled": ["exit_plan_mode"],
+        "tools": {"bash": {"restrict_raw_shell": False}},
+    },
 )
 
 EXPLORE = AgentProfile(

@@ -147,6 +147,7 @@ class TestResolvePermissionWindowsSyntax:
     """Verify allowlist/denylist works with Windows-style commands."""
 
     def _make_bash(self, **kwargs) -> Bash:
+        kwargs.setdefault("restrict_raw_shell", False)
         config = BashToolConfig(**kwargs)
         return Bash(config_getter=lambda: config, state=BaseToolState())
 
@@ -251,6 +252,7 @@ class TestDenylistWordBoundary:
     """Verify denylist matches whole command names, not prefixes."""
 
     def _make_bash(self, **kwargs) -> Bash:
+        kwargs.setdefault("restrict_raw_shell", False)
         config = BashToolConfig(**kwargs)
         return Bash(config_getter=lambda: config, state=BaseToolState())
 
