@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import hashlib
 from pathlib import Path
 import zipfile
@@ -9,6 +10,11 @@ from rig_relay.review_projection.models import (
     BundleManifest,
     DisclosureReceipt,
     LocalCrosswalk,
+)
+from rig_relay.review_projection.protected_content import (
+    ContentKind,
+    build_default_manifest,
+    write_manifest_json,
 )
 
 
@@ -58,6 +64,29 @@ class BundleBuilder:
                     "confidential_artifact_refused:review_projection_bundle"
                 )
 
+        # ── Crosswalk prohibition (structural enforcement) ─────────
+        _CROSSWALK_SENTINELS = frozenset({
+            "crosswalk",
+            "local_crosswalk",
+            "pseudonym_map",
+        })
+        for rel_path in files_content:
+            path_lower = rel_path.lower()
+            for sentinel in _CROSSWALK_SENTINELS:
+                if sentinel in path_lower:
+                    raise ValueError(
+                        "crosswalk_material_refused:review_projection_bundle — "
+                        "Crosswalk material is prohibited from bundle export."
+                    )
+        for content in files_content.values():
+            content_lower = content.lower()
+            for sentinel in _CROSSWALK_SENTINELS:
+                if sentinel in content_lower:
+                    raise ValueError(
+                        "crosswalk_material_refused:review_projection_bundle — "
+                        "Crosswalk material detected in file content."
+                    )
+
         # 1. Bundle Manifest into the ZIP content map
         files_content["bundle_manifest.json"] = bundle_manifest.model_dump_json(
             indent=2
@@ -83,3 +112,21 @@ class BundleBuilder:
 
         rcpt_path = self.output_dir / f"receipt_{projection_id}.json"
         rcpt_path.write_text(receipt.model_dump_json(indent=2), "utf-8")
+
+        # 6. Build and write protected-content manifest
+        now_iso = datetime.datetime.now(datetime.UTC).isoformat() + "Z"
+        source_digest = receipt.head_sha or "unknown"
+        manifest = build_default_manifest(
+            projection_id=projection_id,
+            bundle_digest=zip_hash,
+            source_digest=source_digest,
+            created_at=now_iso,
+        )
+        manifest.count_retained_projected = len(files_content)
+        manifest.total_items = len(files_content)
+        manifest.content_kinds_present = [ContentKind.BUNDLE_METADATA.value]
+        manifest_path = (
+            self.output_dir / f"protected_content_manifest_{projection_id}.json"
+        )
+        write_manifest_json(manifest, str(manifest_path))
+        receipt.candidate_zip_sha256 = zip_hash

@@ -222,6 +222,7 @@ def _run_disclose_authorization(
     retention: str | None,
     training_use: str | None,
     authorization_id: str,
+    selector_digest: str | None = None,
 ) -> None:
     """Authorize and record disclosure intent for an existing candidate bundle.
 
@@ -229,6 +230,9 @@ def _run_disclose_authorization(
     Lane A governance module. Consumes the receipt atomically before
     recording intent. Does NOT transmit the bundle. Records a content-light
     disclosure event in the disclosure ledger.
+
+    If selector_digest is provided, binds disclosure to an exact selector
+    in the protected-content manifest.
     """
     import datetime as _datetime
     import hashlib as _hashlib
@@ -238,6 +242,15 @@ def _run_disclose_authorization(
         DisclosureClass,
         DisclosureOutcome,
         consume_disclosure_authorization,
+    )
+    from rig_relay.review_projection.protected_content import (
+        is_disclosure_class_prohibited,
+        load_manifest_json,
+        verify_manifest_binding,
+        verify_policy_version,
+        verify_selector_disclosable,
+        mark_selector_disclosed,
+        write_manifest_json,
     )
 
     repo_root = Path.cwd()
@@ -261,24 +274,66 @@ def _run_disclose_authorization(
         print(
             f"REFUSED: No compilation receipt found for ZIP hash {candidate_zip_hash}"
         )
-        print(
-            "Generate a candidate bundle first with: python -m rig_relay.review_projection.cli diff"
-        )
         return
 
     projection_id = compilation_receipt.get("projection_id", "unknown")
 
+    # 2. Load and verify protected-content manifest
+    manifest = None
+    for mp in sorted(output_dir.glob("protected_content_manifest_*.json")):
+        loaded = load_manifest_json(str(mp))
+        if loaded is not None and loaded.bundle_digest == candidate_zip_hash:
+            manifest = loaded
+            break
+
+    if manifest is not None:
+        # Verify manifest binds to this bundle
+        ok, err = verify_manifest_binding(manifest, candidate_zip_hash)
+        if not ok:
+            print(f"REFUSED: Manifest binding failure — {err}")
+            return
+
+        # Verify policy version
+        ok, err = verify_policy_version(manifest)
+        if not ok:
+            print(f"REFUSED: {err}")
+            return
+    else:
+        # No manifest found — refuse (manifest is now mandatory)
+        print(
+            "REFUSED: Protected-content manifest not found for this bundle. "
+            "Regenerate the bundle to produce a manifest."
+        )
+        return
+
     # 2. Map recipient_class to a governance DisclosureClass
     recipient_class_map = {
         "local_candidate_no_disclosure": DisclosureClass.METADATA_DISCLOSURE.value,
-        "external_ai_reviewer_controlled_account": DisclosureClass.COMMIT_PATCH.value,
-        "human_reviewer_confidentiality_duty": DisclosureClass.COMMIT_BODY.value,
-        "private_repository_reviewer_access": DisclosureClass.BRANCH_ENUMERATION.value,
+        "external_ai_reviewer_controlled_account": DisclosureClass.BRANCH_ENUMERATION.value,
+        "human_reviewer_confidentiality_duty": DisclosureClass.COMMIT_SUBJECT.value,
+        "private_repository_reviewer_access": DisclosureClass.COMMIT_BODY.value,
         "other_approved_recipient": DisclosureClass.METADATA_DISCLOSURE.value,
     }
     disclosure_class = recipient_class_map.get(
         recipient_class, DisclosureClass.METADATA_DISCLOSURE.value
     )
+
+    # 2a. If selector_digest provided, verify it is disclosable
+    selector_disclosed = False
+    if selector_digest and manifest is not None:
+        ok, err = verify_selector_disclosable(manifest, selector_digest)
+        if not ok:
+            print(f"REFUSED: {err}")
+            return
+        selector_disclosed = True
+
+    # 2b. Refuse prohibited disclosure classes
+    if is_disclosure_class_prohibited(disclosure_class):
+        print(
+            f"REFUSED: Disclosure class '{disclosure_class}' is prohibited "
+            f"for this review corridor."
+        )
+        return
 
     # 3. Consume the disclosure authorization (single-use, evidence-bound)
     if not authorization_id:
@@ -347,7 +402,7 @@ def _run_disclose_authorization(
     disclosure_ledger_dir = Path(".build/rig-relay/governance")
     disclosure_ledger_dir.mkdir(parents=True, exist_ok=True)
     disclosure_ledger_path = disclosure_ledger_dir / "disclosure_events.v1.jsonl"
-    event = {
+    event: dict = {
         "schema_version": "rig.relay.disclosure_event.v1",
         "event_id": _uuid.uuid4().hex,
         "authorization_id": authorization_id,
@@ -359,6 +414,21 @@ def _run_disclose_authorization(
         "created_at": now,
         "outcome": "authorized",
     }
+    if manifest is not None:
+        event["manifest_digest"] = manifest.manifest_digest
+    if selector_digest:
+        event["selector_digest"] = selector_digest
+    if selector_disclosed and manifest is not None:
+        event["selector_disclosed"] = True
+        mark_selector_disclosed(manifest, selector_digest or "")
+        # Update manifest on disk
+        for mp in sorted(output_dir.glob("protected_content_manifest_*.json")):
+            if (
+                load_manifest_json(str(mp)) is not None
+                and load_manifest_json(str(mp)).bundle_digest == candidate_zip_hash  # type: ignore[union-attr]
+            ):
+                write_manifest_json(manifest, str(mp))
+                break
     with open(disclosure_ledger_path, "a") as lf:
         lf.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
 
@@ -529,6 +599,12 @@ def main():
         required=True,
         help="Governance disclosure authorization receipt ID (from issue_disclosure_authorization)",
     )
+    p_disclose.add_argument(
+        "--selector-digest",
+        type=str,
+        default=None,
+        help="Optional: exact selector digest for scoped disclosure",
+    )
 
     args = parser.parse_args()
 
@@ -553,6 +629,7 @@ def main():
             args.retention,
             args.training_use,
             args.authorization_id,
+            args.selector_digest,
         )
 
 

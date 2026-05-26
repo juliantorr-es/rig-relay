@@ -65,7 +65,7 @@ def _issue_receipt_in_dir(workdir: Path) -> tuple[str, str]:
 
 
 def _make_compilation_receipt(output_dir: Path, zip_hash: str) -> None:
-    """Create a fake compilation receipt in the output directory."""
+    """Create a fake compilation receipt and manifest in the output directory."""
     output_dir.mkdir(parents=True, exist_ok=True)
     receipt_data = {
         "schema_version": "rig.review_projection.compilation_receipt.v1",
@@ -74,6 +74,18 @@ def _make_compilation_receipt(output_dir: Path, zip_hash: str) -> None:
         "output_status": "candidate_generated",
     }
     (output_dir / "receipt_test.json").write_text(json.dumps(receipt_data), "utf-8")
+    # Also create a minimal protected-content manifest
+    from rig_relay.review_projection.protected_content import (
+        build_default_manifest,
+        write_manifest_json,
+    )
+
+    manifest = build_default_manifest(
+        "test-projection-id", zip_hash, "test-sha", "2026-01-01T00:00:00Z"
+    )
+    write_manifest_json(
+        manifest, str(output_dir / "protected_content_manifest_test.json")
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════
