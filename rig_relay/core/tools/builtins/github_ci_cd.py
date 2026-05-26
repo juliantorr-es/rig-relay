@@ -108,6 +108,8 @@ class GitHubToolArgs(BaseModel):
     branch: str | None = None
     inputs: dict[str, str] = Field(default_factory=dict)
     limit: int = 10
+    authorization_id: str = ""
+    prior_evidence_digest: str = ""
 
 
 # ── Result Models ────────────────────────────────────────────────────
@@ -172,6 +174,10 @@ class GitHubToolResult(BaseModel):
     runs: list[GitHubWorkflowRun] = Field(default_factory=list)
     pr_info: GitHubPRInfo | None = None
     warnings: list[str] = Field(default_factory=list)
+    authorization_outcome: str | None = None
+    authorization_error: str | None = None
+    remote_outcome_indeterminate: bool = False
+    mutation_class: str | None = None
 
 
 # ── Error Vocabulary ───────────────────────────────────────────────────
@@ -186,7 +192,75 @@ _GITHUB_ERROR_KINDS: dict[str, str] = {
     "unknown_action": "github.unknown_action",
     "network_error": "github.network_error",
     "timeout": "github.timeout",
+    "authorization_required": "github.authorization_required",
+    "authorization_refused": "github.authorization_refused",
+    "remote_outcome_indeterminate": "github.remote_outcome_indeterminate",
 }
+
+# ── Per-action mutation classification ─────────────────────────────────
+
+_READ_ONLY_ACTIONS: frozenset[str] = frozenset({
+    "workflow_status",
+    "list_workflows",
+    "list_runs",
+    "check_pr",
+})
+
+_MUTATING_ACTIONS: frozenset[str] = frozenset({"dispatch"})
+
+
+def _mutation_class_for(action: str) -> str | None:
+    if action in _READ_ONLY_ACTIONS:
+        return "read_only"
+    if action in _MUTATING_ACTIONS:
+        return "destructive"
+    return None
+
+
+# ── Authorization Helpers ─────────────────────────────────────────────────
+
+
+def _build_dispatch_request_payload(
+    owner: str, repo: str, workflow_id: str, ref: str, inputs: dict[str, str]
+) -> dict[str, Any]:
+    return {
+        "action": "dispatch",
+        "owner": owner,
+        "repo": repo,
+        "workflow_id": workflow_id,
+        "ref": ref,
+        "inputs": inputs,
+    }
+
+
+# ── Token Sentinel Protection ──────────────────────────────────────────
+
+_TOKEN_SENTINEL_PATTERNS: tuple[str, ...] = ("ghp_", "ghs_", "gho_", "ghu_", "ghr_")
+
+
+def _contains_token_sentinel(text: str | None) -> bool:
+    if not text:
+        return False
+    lower = text.lower()
+    if "bearer " in lower:
+        return True
+    return any(pat in lower for pat in _TOKEN_SENTINEL_PATTERNS)
+
+
+def _redact_token_sentinels(text: str | None) -> str | None:
+    if text is None:
+        return None
+    if not _contains_token_sentinel(text):
+        return text
+    import re
+
+    result = text
+    for pat in _TOKEN_SENTINEL_PATTERNS:
+        result = re.sub(rf"{pat}[a-zA-Z0-9_]+", "<redacted>", result)
+    result = re.sub(
+        r"bearer\s+[a-zA-Z0-9_\-\.]+", "bearer <redacted>", result, flags=re.IGNORECASE
+    )
+    return result
 
 
 # ── Token Helper ─────────────────────────────────────────────────────
@@ -386,9 +460,10 @@ class GitHubTool(
     ToolUIData[GitHubToolArgs, GitHubToolResult],
 ):
     description: ClassVar[str] = (
-        "Interact with GitHub CI/CD: trigger workflow dispatches, "
-        "check workflow run status, list workflows, list recent runs, "
-        "and check pull request status. Requires prior GitHub OAuth sign-in."
+        "Interact with GitHub CI/CD: check workflow run status, list workflows, "
+        "list recent runs, check pull request status, and trigger workflow "
+        "dispatches. Dispatch actions require a Lane A remote-action authorization "
+        "receipt; read-only observations do not. Requires prior GitHub OAuth sign-in."
     )
     determinism_class: ClassVar[ToolDeterminismClass] = (
         ToolDeterminismClass.NONDETERMINISTIC_EXTERNAL_IO
@@ -436,6 +511,7 @@ class GitHubTool(
                 status="refused",
                 summary="GitHub authentication required — sign in first",
                 error_kind=_GITHUB_ERROR_KINDS["token_unavailable"],
+                mutation_class=_mutation_class_for(args.action),
                 warnings=[
                     "GitHub sign-in required. Use sign_in_github_start + sign_in_github_exchange."
                 ],
@@ -447,6 +523,60 @@ class GitHubTool(
         try:
             match args.action:
                 case "dispatch":
+                    if not args.authorization_id:
+                        yield GitHubToolResult(
+                            action=args.action,
+                            status="refused",
+                            summary=(
+                                "Workflow dispatch requires remote-action authorization. "
+                                "Provide an authorization_id from Lane A."
+                            ),
+                            error_kind=_GITHUB_ERROR_KINDS["authorization_required"],
+                            mutation_class="destructive",
+                            warnings=[
+                                "Remote-action authorization receipt required for workflow dispatch. "
+                                "Obtain one via GitHubAuthorizationConsumer.issue_authorization()."
+                            ],
+                        )
+                        return
+
+                    from rig_relay.integrations.github_provider._authorization_consumer import (
+                        ConsumerOutcome,
+                        GitHubAuthorizationConsumer,
+                    )
+
+                    payload = _build_dispatch_request_payload(
+                        args.owner, args.repo, args.workflow_id, args.ref, args.inputs
+                    )
+                    consumer = GitHubAuthorizationConsumer()
+                    auth_result = consumer.validate_and_consume(
+                        authorization_id=args.authorization_id,
+                        operation_kind="workflow_dispatch",
+                        request_payload=payload,
+                        target_identity=f"{args.owner}/{args.repo}",
+                        prior_evidence_digest=args.prior_evidence_digest,
+                    )
+
+                    authorized = auth_result.outcome == ConsumerOutcome.AUTHORIZED.value
+                    if not authorized:
+                        yield GitHubToolResult(
+                            action=args.action,
+                            status="refused",
+                            summary=(
+                                f"Workflow dispatch authorization refused: "
+                                f"{auth_result.outcome}"
+                            ),
+                            error_kind=_GITHUB_ERROR_KINDS["authorization_refused"],
+                            authorization_outcome=auth_result.outcome,
+                            authorization_error=auth_result.error_detail,
+                            mutation_class="destructive",
+                            warnings=[
+                                auth_result.suggested_next_action
+                                or ("Obtain a valid dispatch authorization receipt")
+                            ],
+                        )
+                        return
+
                     da = GitHubDispatchArgs(
                         owner=args.owner,
                         repo=args.repo,
@@ -454,12 +584,44 @@ class GitHubTool(
                         ref=args.ref,
                         inputs=args.inputs,
                     )
-                    dr = await loop.run_in_executor(None, _execute_dispatch, da, token)
+                    try:
+                        dr = await loop.run_in_executor(
+                            None, _execute_dispatch, da, token
+                        )
+                    except Exception:
+                        yield GitHubToolResult(
+                            action=args.action,
+                            status="error",
+                            summary=(
+                                "Workflow dispatch HTTP request failed or timed out "
+                                "after authorization receipt was consumed. Remote "
+                                "outcome could not be determined — re-observe the "
+                                "workflow state and request a new authorization if "
+                                "the dispatch did not reach GitHub."
+                            ),
+                            error_kind=_GITHUB_ERROR_KINDS[
+                                "remote_outcome_indeterminate"
+                            ],
+                            authorization_outcome=auth_result.outcome,
+                            remote_outcome_indeterminate=True,
+                            mutation_class="destructive",
+                            warnings=[
+                                "Receipt was consumed before the HTTP call. "
+                                "Do not retry with the same receipt. "
+                                "Re-observe remote state and re-authorize if needed."
+                            ],
+                        )
+                        return
                     yield GitHubToolResult(
                         action=args.action,
                         status="ok",
-                        summary=f"Dispatched workflow {args.workflow_id} on {args.owner}/{args.repo} @ {args.ref}",
+                        summary=(
+                            f"Dispatched workflow {args.workflow_id} on "
+                            f"{args.owner}/{args.repo} @ {args.ref}"
+                        ),
                         dispatch_result=dr,
+                        authorization_outcome=auth_result.outcome,
+                        mutation_class="destructive",
                     )
 
                 case "workflow_status":
@@ -477,6 +639,7 @@ class GitHubTool(
                             f"{f' ({run.conclusion})' if run.conclusion else ''}"
                         ),
                         workflow_run=run,
+                        mutation_class="read_only",
                     )
 
                 case "list_workflows":
@@ -489,6 +652,7 @@ class GitHubTool(
                         status="ok",
                         summary=f"{len(workflows)} workflows in {args.owner}/{args.repo}",
                         workflows=workflows,
+                        mutation_class="read_only",
                     )
 
                 case "list_runs":
@@ -507,6 +671,7 @@ class GitHubTool(
                         status="ok",
                         summary=f"{len(runs)} recent runs in {args.owner}/{args.repo}",
                         runs=runs,
+                        mutation_class="read_only",
                     )
 
                 case "check_pr":
@@ -524,6 +689,7 @@ class GitHubTool(
                             f"({pr_info.state}, checks: {pr_info.checks_status})"
                         ),
                         pr_info=pr_info,
+                        mutation_class="read_only",
                     )
 
                 case _:
@@ -532,6 +698,7 @@ class GitHubTool(
                         status="error",
                         summary=f"Unknown action: {args.action}",
                         error_kind=_GITHUB_ERROR_KINDS["unknown_action"],
+                        mutation_class=_mutation_class_for(args.action),
                         warnings=[
                             "Valid actions: dispatch, workflow_status, list_workflows, list_runs, check_pr"
                         ],
@@ -572,4 +739,12 @@ class GitHubTool(
             )
 
 
-__all__ = ["GitHubTool", "GitHubToolArgs", "GitHubToolResult"]
+__all__ = [
+    "GitHubDispatchResult",
+    "GitHubPRInfo",
+    "GitHubTool",
+    "GitHubToolArgs",
+    "GitHubToolResult",
+    "GitHubWorkflow",
+    "GitHubWorkflowRun",
+]
