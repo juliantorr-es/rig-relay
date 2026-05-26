@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.local_inference.assistance_projection.v1.schema.json",
+  "title": "Local Inference Assistance Projection v1",
+  "description": "Content-light Gridline projection for local inference assistance: runtime availability, capability suitability, current results, drafts requiring review, refusal explanations. Non-mutating. Content-light throughout.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "created_at",
+    "local_runtime",
+    "task_suitability",
+    "assistance_results",
+    "approval_needed",
+    "drafts_awaiting_review",
+    "refusal_count",
+    "content_light",
+    "raw_drafts_exposed"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.local_inference.assistance_projection.v1" },
+    "projection_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "local_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "configured"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "configured": { "type": "boolean" },
+        "endpoint_sha256": { "type": "string" },
+        "runtime_kind": { "type": "string" },
+        "platform_class": { "type": "string" }
+      }
+    },
+    "task_suitability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_available", "tasks"],
+      "properties": {
+        "runtime_available": { "type": "boolean" },
+        "runtime_kind": { "type": "string" },
+        "tasks": { "type": "object" }
+      }
+    },
+    "assistance_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_results", "total_executed", "total_refused", "drafts_awaiting_review", "drafts", "refusals"],
+      "properties": {
+        "total_results": { "type": "integer", "minimum": 0 },
+        "total_executed": { "type": "integer", "minimum": 0 },
+        "total_refused": { "type": "integer", "minimum": 0 },
+        "drafts_awaiting_review": { "type": "integer", "minimum": 0 },
+        "drafts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["result_id", "task_id", "draft_sha256", "requires_approval"],
+            "properties": {
+              "result_id": { "type": "string" },
+              "task_id": { "type": "string" },
+              "draft_sha256": { "type": "string" },
+              "draft_byte_count": { "type": "integer", "minimum": 0 },
+              "output_disposition": { "type": "string" },
+              "publication_applicability": { "type": "string" },
+              "requires_approval": { "type": "boolean" },
+              "created_at": { "type": "string" }
+            }
+          }
+        },
+        "refusals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["result_id", "task_id", "status"],
+            "properties": {
+              "result_id": { "type": "string" },
+              "task_id": { "type": "string" },
+              "status": { "type": "string" },
+              "refusal_reason": { "type": "string" },
+              "refusal_code": { "type": "string" },
+              "created_at": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "approval_needed": { "type": "boolean" },
+    "drafts_awaiting_review": { "type": "integer", "minimum": 0 },
+    "refusal_count": { "type": "integer", "minimum": 0 },
+    "refusal_explanations": { "type": "array" },
+    "next_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "projection_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "content_light": { "const": true },
+    "raw_drafts_exposed": { "const": false }
+  }
+}

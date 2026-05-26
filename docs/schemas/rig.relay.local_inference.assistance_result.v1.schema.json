@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.local_inference.assistance_result.v1.schema.json",
+  "title": "Local Inference Assistance Result v1",
+  "description": "Content-light result of a local-model assistance task. Raw model output is referenced by SHA256 digest only; never copied into content-light telemetry/evidence or public publication automatically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "result_id",
+    "task_id",
+    "created_at",
+    "status",
+    "required_enforcement_class",
+    "enforcement_class_used",
+    "output_disposition",
+    "publication_applicability",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.local_inference.assistance_result.v1" },
+    "result_id": { "type": "string" },
+    "task_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "executed",
+        "refused_unsupported_enforcement",
+        "refused_runtime_unavailable",
+        "refused_unsafe_packet",
+        "refused_capability_unproven",
+        "refused_model_error",
+        "degraded_json_object_only"
+      ]
+    },
+    "execution_latency_ms": { "type": "integer", "minimum": 0 },
+    "model_safe_id": { "type": "string" },
+    "required_enforcement_class": {
+      "type": "string",
+      "enum": [
+        "unsupported",
+        "json_object_formatting_only",
+        "native_json_schema",
+        "native_grammar_gbnf"
+      ]
+    },
+    "enforcement_class_used": {
+      "type": "string",
+      "enum": [
+        "unsupported",
+        "json_object_formatting_only",
+        "native_json_schema",
+        "native_grammar_gbnf"
+      ]
+    },
+    "capability_admission_decision_digest": { "type": "string" },
+    "capability_admission_decision_id": { "type": "string" },
+    "output_disposition": {
+      "type": "string",
+      "enum": [
+        "draft_requires_review",
+        "internal_only",
+        "refused_publication",
+        "no_output_produced"
+      ]
+    },
+    "publication_applicability": {
+      "type": "string",
+      "enum": ["project_page", "portfolio", "internal_only", "none"]
+    },
+    "draft_sha256": { "type": "string" },
+    "draft_byte_count": { "type": "integer", "minimum": 0 },
+    "context_packet_digest": { "type": "string" },
+    "refusal_reason": { "type": "string" },
+    "refusal_code": { "type": "string" },
+    "output_token_count": { "type": "integer", "minimum": 0 },
+    "input_token_count": { "type": "integer", "minimum": 0 },
+    "content_light": { "const": true }
+  }
+}

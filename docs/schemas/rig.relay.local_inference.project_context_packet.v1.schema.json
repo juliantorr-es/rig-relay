@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.local_inference.project_context_packet.v1.schema.json",
+  "title": "Local Inference Project Context Packet v1",
+  "description": "Sanitized project context for M0 local inference assistance tasks. Content-light: project identity, technology summary, public-safe description only. M0-owned fixture until L0 publishes its sanitized project context packet contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "packet_id",
+    "created_at",
+    "public_safe",
+    "provenance",
+    "packet_digest"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.local_inference.project_context_packet.v1" },
+    "packet_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "project_name": { "type": "string" },
+    "project_summary": { "type": "string" },
+    "technology_keywords": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "package_dependency_summary": { "type": "string" },
+    "component_architecture_summary": { "type": "string" },
+    "current_milestone": { "type": "string" },
+    "public_safe": { "type": "boolean" },
+    "provenance": { "type": "string" },
+    "packet_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}
