@@ -1,6 +1,7 @@
-"""Deterministic Tool Intent Recovery Corridor — D0 Pure Substrate + D1A Evaluation.
+"""Deterministic Tool Intent Recovery Corridor — D0 + D1A + D2 live-runtime.
 
-Public API for the recovery package. D0 and D1A — no live runtime integration.
+Public API for the recovery package. D0 (substrate), D1A (evaluation),
+D2 (constrained execution corridor).
 """
 
 from __future__ import annotations
@@ -12,6 +13,12 @@ from rig_relay.recovery.admission_policy import (
     is_mutation_class,
 )
 from rig_relay.recovery.alias_policy import resolve_alias
+from rig_relay.recovery.constrained_execution import (
+    ConstrainedExecutionRequest,
+    ConstrainedExecutionResult,
+    ConstraintEnforcementDisposition,
+    execute_constrained_recovery,
+)
 from rig_relay.recovery.constraint_compiler import (
     ConstraintCompilationReceipt,
     ConstraintFeatureStatus,
@@ -53,7 +60,10 @@ from rig_relay.recovery.transducer import transduce
 __all__ = [
     "AdmittedToolEntry",
     "CanonicalToolSurfaceManifest",
+    "ConstrainedExecutionRequest",
+    "ConstrainedExecutionResult",
     "ConstraintCompilationReceipt",
+    "ConstraintEnforcementDisposition",
     "ConstraintFeatureStatus",
     "EvidenceLedger",
     "RawRecoveryInput",
@@ -81,6 +91,7 @@ __all__ = [
     "compile_constraints",
     "decide_admission",
     "evaluate_recovery_cases",
+    "execute_constrained_recovery",
     "is_auto_execute_decision",
     "is_mutation_class",
     "resolve_alias",

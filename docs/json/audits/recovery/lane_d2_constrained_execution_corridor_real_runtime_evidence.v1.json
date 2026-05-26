@@ -1,0 +1,71 @@
+{
+  "audit_id": "lane-d-d2-2026-05-26",
+  "captured_emission_results": {
+    "admission_outcomes": {
+      "auto_execute_read_only": 4,
+      "proposal_only_mutation": 4
+    },
+    "avg_latency_ms": 2062,
+    "handoff_distribution": {
+      "mutation_proposal_only": 4,
+      "read_only": 4
+    },
+    "total_captured_local_model_emissions": 8,
+    "total_output_tokens": 288
+  },
+  "constraint_enforcement_truth": {
+    "enforced_mechanism": "response_format_json_object",
+    "grammar_enforcement_available": false,
+    "json_object_enforcement_available": true,
+    "json_object_enforcement_exercised": true,
+    "json_schema_enforcement_available": false,
+    "truth_note": "json_object enforcement works via OpenAI-compatible response_format. json_schema not confirmed as grammar-level constraint \u2014 may be prompted formatting. No native GBNF/grammar enforcement."
+  },
+  "created_at": "2026-05-26T19:56:21.898586+00:00",
+  "d2_closure_status": "runtime_enforcement_boundary_and_captured_emission_proven",
+  "evidence_artifacts": [
+    ".build/rig-relay/evidence/lane_d_d2_audit.v1.json"
+  ],
+  "files_modified": [
+    "rig_relay/recovery/__init__.py"
+  ],
+  "files_produced": [
+    "rig_relay/recovery/constrained_execution.py",
+    "tests/recovery/test_constrained_execution.py"
+  ],
+  "mutation_proposal_only_invariant": {
+    "note": "All mutation-class emissions produced proposal-only handoffs. No direct execution variant exists.",
+    "preserved": true,
+    "proposal_only_count": 4
+  },
+  "predecessors_verified": {
+    "all_present_on_remote_main": true,
+    "d0_audit_commit": "4c15e6ec",
+    "d0_commit": "48dde840",
+    "d1a_commit": "5bc0b605",
+    "remote_head_at_verification": "5bc0b605"
+  },
+  "recovery_pipeline_integrity": {
+    "constraint_receipt_digest": "sha256:87ce72fd2b3b5f98c5db2872073f1c46d344546594344f6edf3178ae4d8cc19f",
+    "manifest_digest": "sha256:f498166f8524fdc75902c71be5e39b9ed8fef59a8b3afa144f2e77a54ccd5aad",
+    "projection_digest": "sha256:afbdc9638fd19bfa3b4d6351fb5d40a419e4c441e4b0f2acdc819736b4dbd88d"
+  },
+  "remaining_seams": [
+    "json_schema grammar-level enforcement not available on Ollama",
+    "Lane C execution_client has hardcoded model name making it unusable for real runtimes without modification",
+    "Multi-model corpus expansion deferred"
+  ],
+  "runtime_environment": {
+    "endpoint": "http://localhost:11434",
+    "endpoint_sha256": "7866d63830422cd421667c95360eaf1d8819f6f603bd2d479450e06cf01cb023",
+    "model": "qwen2.5:0.5b",
+    "model_size_mb": 397,
+    "platform": "macOS 26.5",
+    "runtime": "Ollama"
+  },
+  "schema_version": "rig.relay.lane_d_d2_audit.v1",
+  "tests_passed": 7,
+  "tests_run": [
+    "tests/recovery/test_constrained_execution.py (5 non-provider, 2 provider)"
+  ]
+}
