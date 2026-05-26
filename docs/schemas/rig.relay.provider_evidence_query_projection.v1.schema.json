@@ -1,0 +1,57 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://rig-relay.local/schemas/rig.relay.provider_evidence_query_projection.v1.schema.json",
+    "title": "Provider Evidence Query Projection",
+    "description": "Typed content-light read-side projection of canonical provider evidence. Never stores raw prompts, completions, provider payloads, secrets, or API keys.",
+    "type": "object",
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "const": "rig.relay.provider_evidence_query_projection.v1"
+        },
+        "events": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "event_id": {"type": "string"},
+                    "created_at": {"type": "string"},
+                    "session_id": {"type": "string"},
+                    "correlation_id": {"type": "string"},
+                    "provider_id": {"type": "string"},
+                    "model_id": {"type": "string"},
+                    "api_style": {"type": "string"},
+                    "outcome_class": {"type": "string"},
+                    "streaming": {"type": "boolean"},
+                    "input_tokens": {"type": ["integer", "null"]},
+                    "output_tokens": {"type": ["integer", "null"]},
+                    "total_tokens": {"type": ["integer", "null"]},
+                    "cache_read_tokens": {"type": ["integer", "null"]},
+                    "cache_read_verified": {"type": ["boolean", "null"]},
+                    "reasoning_tokens": {"type": ["integer", "null"]},
+                    "reasoning_tokens_verified": {"type": ["boolean", "null"]},
+                    "usage_discrepancy_detected": {"type": ["boolean", "null"]},
+                    "usage_verified": {"type": ["boolean", "null"]},
+                    "is_refusal": {"type": "boolean"},
+                    "is_error": {"type": "boolean"},
+                    "event_digest": {"type": "string"},
+                    "content_light": {"type": "boolean"}
+                },
+                "required": ["event_id", "provider_id", "outcome_class", "streaming", "content_light"],
+                "additionalProperties": false
+            }
+        },
+        "total_canonical_events": {"type": "integer"},
+        "matched_count": {"type": "integer"},
+        "integrity_verified": {"type": "boolean"},
+        "integrity_errors": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "projection_digest": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "query_description": {"type": "string"}
+    },
+    "required": ["schema_version", "total_canonical_events", "matched_count", "integrity_verified", "projection_digest"],
+    "additionalProperties": false
+}

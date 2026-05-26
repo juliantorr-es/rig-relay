@@ -57,6 +57,12 @@ from rig_relay.providers.operations import (
     ProviderOperationsReport,
     generate_operations_report,
 )
+from rig_relay.providers.query import (
+    ProviderEvidenceQuery,
+    ProviderEvidenceQueryResult,
+    ProviderEvidenceQueryService,
+    ProviderEvidenceSummary,
+)
 from rig_relay.providers.registry import (
     PROVIDER_REGISTRY,
     ProviderInfo,
@@ -81,6 +87,10 @@ __all__ = [
     "ProviderCapability",
     "ProviderClass",
     "ProviderConfig",
+    "ProviderEvidenceQuery",
+    "ProviderEvidenceQueryResult",
+    "ProviderEvidenceQueryService",
+    "ProviderEvidenceSummary",
     "ProviderInfo",
     "ProviderInvocationOutcome",
     "ProviderKeyStore",

@@ -1,0 +1,99 @@
+{
+  "schema_version": "rig.relay.provider_corridor_audit.v1",
+  "audit_id": "lane_c6_1_provider_evidence_release_truth_reconciled_and_query_service_published",
+  "supersedes": {
+    "audit_id": "lane_c6_provider_evidence_authority_closure",
+    "path": "docs/json/audits/provider/lane_c_c6_provider_evidence_authority_audit.v1.json",
+    "reason": "The C6 audit artifact was promoted to remote main at f03a11d7 while still declaring lane_c_releases_boundary: false, lane_c_boundary_release: NOT YET RELEASED, and final_status_identifier: lane_c_c6_provider_evidence_authority_candidate_validated_locally_pending_promotion. This publication-truth contradiction is preserved as immutable evidence. This C6.1 artifact supersedes it with a truthful post-publication release declaration and adds the adjacent Provider Evidence Query Service as the first application-facing read-side consumer of the released corridor."
+  },
+  "created_at": "2026-05-26T15:30:00+00:00",
+  "lane": "C",
+  "mission": "C6.1 \u2014 Published Provider Evidence Boundary Reconciliation and Application-Facing Evidence Query Closure",
+  "corridor": "provider_outcome_evidence",
+  "corridor_owner": "Lane C",
+  "publication": {
+    "remote_head": "f03a11d7",
+    "commit_message": "Add claim-adversary checks to OpenCode prompts",
+    "mixed_lane_publication": true,
+    "mixed_lane_description": "f03a11d7 promoted 44 files across multiple lanes (Lane A disclosure query, Lane B recovery intent authority/prompts/tool result runtime, Lane C provider evidence authority, configuration files, PROJECT.md). The commit message does not reference Lane C. Despite mixed-lane publication, the Lane C provider evidence boundary content was promoted intact and the SHA256 hashes of all 14 Lane C files match the locally validated C6 implementation.",
+    "lane_c_files_published": [
+      "rig_relay/providers/invocation.py",
+      "rig_relay/providers/__init__.py",
+      "rig_relay/providers/evidence_ledger.py",
+      "rig_relay/providers/operations.py",
+      "rig_relay/core/llm/backend/anthropic.py",
+      "rig_relay/core/llm/backend/gemini.py",
+      "rig_relay/core/llm/backend/generic.py",
+      "rig_relay/core/llm/backend/mistral.py",
+      "rig_relay/core/llm/backend/openai_responses.py",
+      "rig_relay/core/llm/backend/reasoning_adapter.py",
+      "tests/providers/test_invocation_evidence.py",
+      "tests/providers/test_evidence_ledger_and_operations.py",
+      "docs/schemas/rig.relay.provider_invocation_evidence_event.v1.schema.json",
+      "docs/json/audits/provider/lane_c_c6_provider_evidence_authority_audit.v1.json"
+    ],
+    "publication_contamination": "mixed-lane push included 30 foreign-lane files beyond the 14 Lane C files. No provider-surface collisions detected. Lane C boundary content isolated and verifiable."
+  },
+  "c6_stale_audit_contradiction": {
+    "contradiction": "Audit artifact promoted in f03a11d7 declares lane_c_releases_boundary: false, lane_c_boundary_release: NOT YET RELEASED, final_status_identifier: lane_c_c6_provider_evidence_authority_candidate_validated_locally_pending_promotion. The prior session claimed lane_c_c6_provider_evidence_authority_closed but the promoted audit did not support that claim.",
+    "resolution": "This C6.1 artifact is the truthful post-publication release declaration. The stale C6 audit is preserved as immutable evidence of the publication-truth contradiction.",
+    "prior_audit_stale_fields": {
+      "lane_c_releases_boundary": false,
+      "lane_c_boundary_release": "NOT YET RELEASED",
+      "final_status_identifier": "lane_c_c6_provider_evidence_authority_candidate_validated_locally_pending_promotion"
+    }
+  },
+  "implementation_authority_survived": true,
+  "implementation_authority_verification": {
+    "production_tests_pass": "46/46",
+    "pyright": "0 errors, 0 warnings",
+    "ruff": "clean",
+    "schema_draft_07_valid": true,
+    "append_boundary_fail_closed": true,
+    "backend_to_ledger_to_report_real_paths": true,
+    "content_light_enforced": true,
+    "integrity_verified": true,
+    "concurrency_proof": true,
+    "plr_waiver_already_removed_on_remote": true,
+    "foreign_lane_collisions": "none",
+    "cross_coupling_to_lane_b_telemetry": "none"
+  },
+  "c6_1_additions": {
+    "query_service_module": "rig_relay/providers/query.py",
+    "query_schema": "docs/schemas/rig.relay.provider_evidence_query_projection.v1.schema.json",
+    "query_tests": "tests/providers/test_query_service.py",
+    "audit_artifact": "docs/json/audits/provider/lane_c_c6_1_release_verification.v1.json"
+  },
+  "query_service_capabilities": [
+    "Typed ProviderEvidenceQuery projection per canonical event",
+    "ProviderEvidenceQueryResult with integrity metadata and deterministic digest",
+    "ProviderEvidenceSummary for diagnostic panel consumption",
+    "filter_by_provider",
+    "filter_by_api_style",
+    "filter_by_streaming_disposition",
+    "filter_by_cached_tokens_presence",
+    "filter_by_reasoning_tokens_presence",
+    "filter_by_discrepancy_disposition",
+    "filter_by_refusal_disposition",
+    "filter_by_error_disposition",
+    "filter_by_degraded_evidence",
+    "filter_by_integrity_invalid",
+    "lookup_by_event_id",
+    "lookup_by_digest",
+    "build_summary projection with deterministic digest",
+    "Read-only guarantee: never mutates the canonical ledger"
+  ],
+  "source_boundary_hashes": {
+    "rig_relay/providers/query.py": "sha256:a823cbd402a7aa5cda5c1abc88125c87ba6a0e25308d224dd2672c1e086f1180"
+  },
+  "deferred": {
+    "lane_b_telemetry_sink_convergence": "Deferred \u2014 Lane B owns runtime outcome projection",
+    "desktop_gridline_wiring": "Deferred \u2014 future desktop consumption surface",
+    "fleet_coordination": "Deferred \u2014 shared mechanism"
+  },
+  "lane_c_releases_boundary": true,
+  "lane_c_boundary_release": "Provider evidence authority corridor released at f03a11d7 (implementation) and verified in this session. Query service boundary released as Lane C6.1.",
+  "final_status": "release_truth_reconciled_and_query_service_published",
+  "final_status_identifier": "lane_c_c6_1_provider_evidence_release_truth_reconciled_and_query_service_published",
+  "plr_waiver_status": "already published on remote via Lane A6 (d8c636b9). Not owned by C6.1."
+}
