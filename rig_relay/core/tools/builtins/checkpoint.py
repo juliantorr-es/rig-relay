@@ -309,6 +309,15 @@ class Checkpoint(
             receipt_candidate=True,
         )
 
+        # 8. Append consumed lifecycle event for the preparation receipt
+        if args.preparation_receipt_sha256:
+            self._consume_preparation_receipt(
+                receipt_sha256=args.preparation_receipt_sha256,
+                branch=branch,
+                repo_root=repo_root,
+                committed_head_sha=post_commit_head,
+            )
+
         yield result
 
     def _emit_checkpoint_refused(
@@ -439,6 +448,57 @@ class Checkpoint(
                     error_kind="preparation_binding_error",
                     suggested_next_action="Run prepare_checkpoint again.",
                 )
+
+        # 1.5: Lifecycle check — refuse consumed/superseded/revoked receipts
+        try:
+            from rig_relay.governance.receipt_store import (
+                PreparationLifecycleEventKind,
+                get_lifecycle_status,
+            )
+
+            life_status = get_lifecycle_status(receipt_sha256)
+            match life_status:
+                case PreparationLifecycleEventKind.CONSUMED:
+                    return CheckpointResult(
+                        ok=False,
+                        refusal_reason=(
+                            "This preparation receipt has already been consumed "
+                            "by a completed checkpoint. Each preparation receipt "
+                            "may only be checkpointed once."
+                        ),
+                        error_kind="preparation_receipt_consumed",
+                        suggested_next_action=(
+                            "Run prepare_checkpoint again to create a fresh "
+                            "preparation receipt for the new index state."
+                        ),
+                    )
+                case PreparationLifecycleEventKind.SUPERSEDED:
+                    return CheckpointResult(
+                        ok=False,
+                        refusal_reason=(
+                            "This preparation receipt has been superseded by a "
+                            "newer conflicting preparation. The newer receipt "
+                            "governs this scope."
+                        ),
+                        error_kind="preparation_receipt_superseded",
+                        suggested_next_action=(
+                            "Use the newer preparation receipt for checkpoint, "
+                            "or run prepare_checkpoint again."
+                        ),
+                    )
+                case PreparationLifecycleEventKind.REVOKED:
+                    return CheckpointResult(
+                        ok=False,
+                        refusal_reason="This preparation receipt has been revoked.",
+                        error_kind="preparation_receipt_revoked",
+                        suggested_next_action=(
+                            "Run prepare_checkpoint again to create a fresh receipt."
+                        ),
+                    )
+                case _:
+                    pass  # ACTIVE — proceed
+        except ImportError:
+            pass  # Lifecycle infrastructure not available — proceed without check
 
         # 2. Verify index tree digest matches
         from rig_relay.core.git_index_operations import compute_index_tree_digest
@@ -1057,3 +1117,116 @@ class Checkpoint(
 
     def resolve_permission(self, args: CheckpointArgs) -> None:
         return None
+
+    @staticmethod
+    def _consume_preparation_receipt(
+        *, receipt_sha256: str, branch: str, repo_root: Path, committed_head_sha: str
+    ) -> None:
+        """Append a consumed lifecycle event for the preparation receipt.
+
+        Best-effort — failure to append the lifecycle event does not
+        block the checkpoint result. Crash recovery (below) can repair
+        a missing consumed event from terminal checkpoint evidence.
+        """
+        try:
+            from rig_relay.governance.receipt_store import (
+                PreparationLifecycleEvent,
+                PreparationLifecycleEventKind,
+                append_lifecycle_event,
+                get_lifecycle_status,
+            )
+
+            # Check if already consumed (crash recovery: we already
+            # committed but may have failed to record lifecycle event)
+            if (
+                get_lifecycle_status(receipt_sha256)
+                == PreparationLifecycleEventKind.CONSUMED
+            ):
+                return
+
+            event = PreparationLifecycleEvent(
+                event_kind=PreparationLifecycleEventKind.CONSUMED,
+                preparation_receipt_sha256=receipt_sha256,
+                branch=branch,
+                worktree_root=str(repo_root.resolve()),
+                producer="checkpoint.run",
+                committed_head_sha=committed_head_sha,
+            )
+            append_lifecycle_event(event)
+        except Exception:
+            pass  # Best-effort; terminal checkpoint evidence provides recovery
+
+    @staticmethod
+    def _recover_missing_lifecycle_event(
+        *, receipt_sha256: str, branch: str, repo_root: Path
+    ) -> bool:
+        """Recover a missing consumed lifecycle event from terminal checkpoint evidence.
+
+        Searches recent git log for a commit containing the
+        Rig-Preparation-Receipt-SHA256 trailer matching the receipt.
+        If found, repairs by appending the missing consumed event.
+
+        Returns True if recovery was attempted, False otherwise.
+        """
+        try:
+            from rig_relay.governance.receipt_store import (
+                PreparationLifecycleEvent,
+                PreparationLifecycleEventKind,
+                append_lifecycle_event,
+                get_lifecycle_status,
+            )
+
+            if (
+                get_lifecycle_status(receipt_sha256)
+                == PreparationLifecycleEventKind.CONSUMED
+            ):
+                return False
+
+            # Search git log for terminal checkpoint evidence
+            import subprocess
+
+            proc = subprocess.run(
+                [
+                    "git",
+                    "log",
+                    "-10",
+                    "--format=%H %B",
+                    "--grep",
+                    f"Rig-Preparation-Receipt-SHA256: {receipt_sha256}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=repo_root,
+            )
+            if proc.returncode != 0 or not proc.stdout.strip():
+                return False
+
+            first_line = proc.stdout.strip().split("\n")[0]
+            committed_head = first_line.split()[0] if first_line else None
+            if not committed_head:
+                return False
+
+            current = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                cwd=repo_root,
+            )
+            current_branch = (
+                current.stdout.strip() if current.returncode == 0 else branch
+            )
+
+            event = PreparationLifecycleEvent(
+                event_kind=PreparationLifecycleEventKind.CONSUMED,
+                preparation_receipt_sha256=receipt_sha256,
+                branch=current_branch or branch,
+                worktree_root=str(repo_root.resolve()),
+                producer="checkpoint._recover_missing_lifecycle_event",
+                committed_head_sha=committed_head,
+            )
+            append_lifecycle_event(event)
+            return True
+        except Exception:
+            return False

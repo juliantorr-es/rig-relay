@@ -885,6 +885,53 @@ class Validate(
                         ),
                     )
 
+            # ── S4: Lifecycle check — refuse consumed/superseded/revoked ──
+            try:
+                from rig_relay.governance.receipt_store import (
+                    PreparationLifecycleEventKind,
+                    get_lifecycle_status,
+                )
+
+                life_status = get_lifecycle_status(args.preparation_receipt_sha256)
+                match life_status:
+                    case PreparationLifecycleEventKind.CONSUMED:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_consumed",
+                                "This preparation receipt has already been consumed.",
+                                "Run prepare_checkpoint again to create a fresh receipt.",
+                            ),
+                        )
+                    case PreparationLifecycleEventKind.SUPERSEDED:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_superseded",
+                                "This preparation receipt has been superseded.",
+                                "Use the newer receipt or run prepare_checkpoint again.",
+                            ),
+                        )
+                    case PreparationLifecycleEventKind.REVOKED:
+                        return (
+                            None,
+                            None,
+                            (
+                                "refused",
+                                "preparation_receipt_revoked",
+                                "This preparation receipt has been revoked.",
+                                "Run prepare_checkpoint again to create a fresh receipt.",
+                            ),
+                        )
+                    case _:
+                        pass
+            except ImportError:
+                pass
+
             prepared_digest: str | None = None
 
             expected_paths = receipt.get("prepared_paths", []) or []

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import UTC, datetime
 from enum import StrEnum, auto
 import hashlib
 import json
 from pathlib import Path
+import secrets
 from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PreparationLoadOutcome(StrEnum):
@@ -56,8 +59,6 @@ def _sha256_bytes(data: bytes) -> str:
 
 
 def _generate_id() -> str:
-    import secrets
-
     return secrets.token_hex(16)
 
 
@@ -441,16 +442,204 @@ def find_active_validation_receipts(
     return receipts
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ── Immutable Preparation Receipt Lifecycle Events (S4) ───────────────
+# ═══════════════════════════════════════════════════════════════════════
+
+_LIFECYCLE_SCHEMA_VERSION = "rig.relay.preparation_lifecycle_event.v1"
+
+
+class PreparationLifecycleEventKind(StrEnum):
+    ACTIVE = auto()
+    CONSUMED = auto()
+    SUPERSEDED = auto()
+    REVOKED = auto()
+
+
+class PreparationLifecycleEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = _LIFECYCLE_SCHEMA_VERSION
+    event_id: str = Field(default_factory=lambda: secrets.token_hex(16))
+    event_kind: PreparationLifecycleEventKind
+    preparation_receipt_sha256: str
+    branch: str = ""
+    worktree_root: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    producer: str = ""
+    committed_head_sha: str | None = None
+    superseded_by_receipt_sha256: str | None = None
+    integrity_digest: str = ""
+
+    def recompute_integrity(self) -> str:
+        payload = self.model_dump(exclude={"integrity_digest"})
+        payload["integrity_digest"] = ""
+        payload_data = json.dumps(payload, sort_keys=True).encode("utf-8")
+        return _sha256_bytes(payload_data)
+
+    def seal(self) -> None:
+        self.integrity_digest = self.recompute_integrity()
+
+
+def _lifecycle_ledger_path() -> Path:
+    return _store_root() / "lifecycle.jsonl"
+
+
+def append_lifecycle_event(event: PreparationLifecycleEvent) -> str | None:
+    """Append an immutable lifecycle event to the canonical JSONL ledger.
+
+    Returns the event_id on success, None on failure.
+    The event is sealed with an integrity digest before writing.
+    """
+    event.seal()
+    ledger = _lifecycle_ledger_path()
+    try:
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        line = event.model_dump_json() + "\n"
+        with open(ledger, "a") as f:
+            f.write(line)
+        return event.event_id
+    except OSError:
+        return None
+
+
+def read_lifecycle_events(
+    preparation_receipt_sha256: str,
+) -> list[PreparationLifecycleEvent]:
+    """Read all lifecycle events for a preparation receipt.
+
+    Returns events in append order (oldest first).
+    Malformed lines are silently skipped.
+    """
+    ledger = _lifecycle_ledger_path()
+    if not ledger.exists():
+        return []
+    events: list[PreparationLifecycleEvent] = []
+    with open(ledger) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj: dict[str, Any] = json.loads(line)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if obj.get("preparation_receipt_sha256") != preparation_receipt_sha256:
+                continue
+            try:
+                event = PreparationLifecycleEvent.model_validate(obj)
+            except Exception:
+                continue
+            events.append(event)
+    return events
+
+
+def get_lifecycle_status(
+    preparation_receipt_sha256: str,
+) -> PreparationLifecycleEventKind:
+    """Determine the current lifecycle status of a preparation receipt.
+
+    Returns the most-recent terminal lifecycle event kind, or ACTIVE
+    if no lifecycle event has been recorded.
+
+    Terminal events are CONSUMED, SUPERSEDED, and REVOKED.
+    Multiple events may exist (e.g., superseded then later revoked);
+    the last event in the ledger determines the outcome.
+    """
+    events = read_lifecycle_events(preparation_receipt_sha256)
+    if not events:
+        return PreparationLifecycleEventKind.ACTIVE
+    return events[-1].event_kind
+
+
+def find_active_receipts_by_scope(
+    *, branch: str, worktree_root: str, prepared_paths: list[str]
+) -> list[dict[str, Any]]:
+    """Find preparation receipts whose prepared paths overlap with the given scope.
+
+    Used to identify candidates for supersession when a new preparation
+    receipt is created. Only returns receipts stored on disk that pass
+    S3 integrity checks. Lifecycle checks are left to callers.
+    """
+    root = _store_root()
+    if not root.exists():
+        return []
+
+    path_set = set(prepared_paths)
+    overlapping: list[dict[str, Any]] = []
+
+    for f in sorted(root.glob("*.json")):
+        try:
+            receipt = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(receipt, dict):
+            continue
+        if (
+            receipt.get("schema_version")
+            != "rig.relay.checkpoint_preparation_receipt.v1"
+        ):
+            continue
+
+        # Same branch binding
+        if receipt.get("branch") != branch:
+            continue
+
+        # Same worktree
+        receipt_wt = receipt.get("worktree_root", "")
+        if receipt_wt:
+            try:
+                if str(Path(receipt_wt).resolve()) != str(
+                    Path(worktree_root).resolve()
+                ):
+                    continue
+            except Exception:
+                if str(receipt_wt) != str(worktree_root):
+                    continue
+
+        # Skip receipts whose scope is completely disjoint
+        receipt_paths = set(receipt.get("prepared_paths", []) or [])
+        if not isinstance(receipt_paths, set):
+            try:
+                receipt_paths = set(receipt_paths)
+            except TypeError:
+                continue
+        if not path_set.intersection(receipt_paths):
+            continue
+
+        # S3 integrity check via recomputed digest
+        stored = receipt.get("receipt_sha256", "")
+        recomputed = _recompute_receipt_digest(receipt)
+        if not stored or stored != recomputed:
+            continue
+
+        overlapping.append(receipt)
+
+    overlapping.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return overlapping
+
+
+def cr_lifecycle_ledger_path() -> Path:
+    return _lifecycle_ledger_path()
+
+
 __all__ = [
+    "PreparationLifecycleEvent",
+    "PreparationLifecycleEventKind",
     "PreparationLoadOutcome",
     "PreparationLoadResult",
+    "append_lifecycle_event",
+    "cr_lifecycle_ledger_path",
     "find_active_preparation_receipts",
+    "find_active_receipts_by_scope",
     "find_active_validation_receipts",
     "generate_validation_receipt",
+    "get_lifecycle_status",
     "load_preparation_receipt",
     "load_preparation_receipt_typed",
     "load_validation_receipt",
     "persist_preparation_receipt",
     "persist_validation_receipt",
+    "read_lifecycle_events",
     "resolve_best_preparation_receipt",
 ]

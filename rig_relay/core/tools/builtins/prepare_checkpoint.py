@@ -254,6 +254,43 @@ class PrepareCheckpoint(
                 persisted = persist_preparation_receipt(receipt)
                 if persisted is not None:
                     receipt_sha256 = receipt["receipt_sha256"]
+
+                # ── S4: Supersede conflicting active receipts on same scope ──
+                if persisted is not None:
+                    try:
+                        from rig_relay.governance.receipt_store import (
+                            PreparationLifecycleEvent,
+                            PreparationLifecycleEventKind,
+                            append_lifecycle_event,
+                            find_active_receipts_by_scope,
+                            get_lifecycle_status,
+                        )
+
+                        overlapping = find_active_receipts_by_scope(
+                            branch=branch_name or "",
+                            worktree_root=str(worktree_root),
+                            prepared_paths=prep.prepared_paths,
+                        )
+                        for older in overlapping:
+                            older_sha = older.get("receipt_sha256", "")
+                            if not older_sha or older_sha == receipt_sha256:
+                                continue
+                            if (
+                                get_lifecycle_status(older_sha)
+                                != PreparationLifecycleEventKind.ACTIVE
+                            ):
+                                continue
+                            supersede = PreparationLifecycleEvent(
+                                event_kind=PreparationLifecycleEventKind.SUPERSEDED,
+                                preparation_receipt_sha256=older_sha,
+                                branch=branch_name or "",
+                                worktree_root=str(worktree_root),
+                                producer="prepare_checkpoint.run",
+                                superseded_by_receipt_sha256=receipt_sha256,
+                            )
+                            append_lifecycle_event(supersede)
+                    except Exception:
+                        pass  # Best-effort; lifecycle events may be repaired later
             except Exception:
                 yield PrepareCheckpointResult(
                     ok=False,

@@ -1219,3 +1219,431 @@ def test_s3_backward_compatible_load_returns_none_for_non_valid(tmp_path):
         )
     finally:
         os.chdir(original_cwd)
+
+
+# ── S4: Immutable Preparation Receipt Lifecycle Events ────────────────────
+
+from rig_relay.governance.receipt_store import (
+    PreparationLifecycleEvent,
+    PreparationLifecycleEventKind,
+    append_lifecycle_event,
+    get_lifecycle_status,
+    read_lifecycle_events,
+)
+
+
+@pytest.mark.adversarial
+def test_s4_new_receipt_is_active_before_checkpoint(tmp_path):
+    """Newly prepared receipt is ACTIVE by default."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-a" * 12, post_digest, ["file.py"])
+        status = get_lifecycle_status(receipt["receipt_sha256"])
+        assert status == PreparationLifecycleEventKind.ACTIVE, (
+            f"Expected ACTIVE, got {status}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_consumed_event_persisted_to_ledger(tmp_path):
+    """Append a consumed lifecycle event and verify it is readable."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-b" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+            committed_head_sha="sha256:deadbeef",
+        )
+        event_id = append_lifecycle_event(event)
+        assert event_id is not None, "append_lifecycle_event returned None"
+
+        events = read_lifecycle_events(receipt_sha)
+        assert len(events) == 1
+        assert events[0].event_kind == PreparationLifecycleEventKind.CONSUMED
+        assert events[0].preparation_receipt_sha256 == receipt_sha
+        assert events[0].integrity_digest, "Event must be sealed with integrity"
+
+        status = get_lifecycle_status(receipt_sha)
+        assert status == PreparationLifecycleEventKind.CONSUMED, (
+            f"Expected CONSUMED after append, got {status}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_consumed_receipt_refused_by_validate(tmp_path):
+    """Validate refuses a consumed preparation receipt."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# original")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-c" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Mark as consumed
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(event)
+
+        tool = _new_validate_tool()
+        prepared_digest, worktree_matched, refusal = _check_binding(
+            tool, receipt_sha, str(repo)
+        )
+
+        assert refusal is not None, "S4: must refuse consumed receipt"
+        assert refusal[1] == "preparation_receipt_consumed", (
+            f"Expected preparation_receipt_consumed, got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_consumed_receipt_cannot_be_replayed(tmp_path):
+    """Even if index state is recreated, consumed receipt cannot be reused."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-d" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Consume
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(event)
+
+        # Commit to advance HEAD, then recreate the EXACT same index state
+        subprocess.run(
+            ["git", "commit", "-m", "consume"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        _stage_file(repo, "file2.py", "# new content")
+        # The old receipt still matches its own post_digest but is consumed
+        tool = _new_validate_tool()
+        prepared_digest, worktree_matched, refusal = _check_binding(
+            tool, receipt_sha, str(repo)
+        )
+
+        assert refusal is not None, (
+            "S4: consumed receipt must be refused even with matching digest"
+        )
+        assert refusal[1] == "preparation_receipt_consumed", (
+            f"Expected preparation_receipt_consumed, got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_original_receipt_file_unchanged_after_consumption(tmp_path):
+    """Consumption does not modify the original preparation receipt JSON file."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-e" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        receipt_path_obj = (
+            Path(".build/rig-relay/desktop/preparation-receipts")
+            / f"{receipt_sha}.json"
+        )
+        original_bytes = receipt_path_obj.read_bytes()
+
+        # Consume
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.CONSUMED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+        )
+        append_lifecycle_event(event)
+
+        after_bytes = receipt_path_obj.read_bytes()
+        assert original_bytes == after_bytes, (
+            "S4: preparation receipt file must be immutable — "
+            "consumption must not modify the original receipt"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_supersede_conflicting_receipt(tmp_path):
+    """Newer receipt with overlapping paths supersedes older active receipt."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        older = _make_receipt(repo, "s4-f" * 12, post_digest, ["file.py"])
+        older_sha = older["receipt_sha256"]
+        assert get_lifecycle_status(older_sha) == PreparationLifecycleEventKind.ACTIVE
+
+        # Create newer receipt with overlapping path
+        _stage_file(repo, "file.py", "# updated content")
+        new_post_digest = compute_index_tree_digest(repo)
+        newer = generate_preparation_receipt(
+            mission_id="test-mission",
+            authority_provenance_sha256="sha256:" + "s4-f2" * 10,
+            claim_id="test-claim-2",
+            session_id="test-sess",
+            task_id="test-task",
+            branch="task/feature",
+            prepared_paths=["file.py"],  # same path — conflicts
+            change_kinds=["modify"],
+            expected_worktree_sha256_values=["sha256:deadbeef"],
+            pre_index_tree_digest="dummy-pre",
+            post_index_tree_digest=new_post_digest,
+            index_mutation_performed=True,
+            worktree_root=str(repo),
+        )
+        persist_preparation_receipt(newer)
+        newer_sha = newer["receipt_sha256"]
+
+        # Manual supersession (simulating what prepare_checkpoint does)
+        supersede_event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.SUPERSEDED,
+            preparation_receipt_sha256=older_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+            superseded_by_receipt_sha256=newer_sha,
+        )
+        append_lifecycle_event(supersede_event)
+
+        assert (
+            get_lifecycle_status(older_sha) == PreparationLifecycleEventKind.SUPERSEDED
+        ), f"Expected SUPERSEDED, got {get_lifecycle_status(older_sha)}"
+        assert (
+            get_lifecycle_status(newer_sha) == PreparationLifecycleEventKind.ACTIVE
+        ), "Newer receipt should still be ACTIVE"
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_disjoint_paths_do_not_supersede(tmp_path):
+    """Receipts with disjoint paths remain independently active."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file_a.py", "# content A")
+    post_digest_a = compute_index_tree_digest(repo)
+    assert post_digest_a is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        a_receipt = _make_receipt(repo, "s4-g" * 12, post_digest_a, ["file_a.py"])
+        a_sha = a_receipt["receipt_sha256"]
+
+        # Create receipt B for a DIFFERENT file (disjoint scope)
+        _stage_file(repo, "file_b.py", "# content B")
+        subprocess.run(
+            ["git", "commit", "-m", "add B"], cwd=repo, check=True, capture_output=True
+        )
+        _stage_file(repo, "file_b.py", "# content B v2")
+        post_digest_b = compute_index_tree_digest(repo)
+        b_receipt = generate_preparation_receipt(
+            mission_id="test-mission",
+            authority_provenance_sha256="sha256:" + "s4-g2" * 10,
+            claim_id="test-claim-2",
+            session_id="test-sess",
+            task_id="test-task",
+            branch="task/feature",
+            prepared_paths=["file_b.py"],  # disjoint — no overlap
+            change_kinds=["modify"],
+            expected_worktree_sha256_values=["sha256:deadbeef"],
+            pre_index_tree_digest="dummy-pre",
+            post_index_tree_digest=post_digest_b,
+            index_mutation_performed=True,
+            worktree_root=str(repo),
+        )
+        persist_preparation_receipt(b_receipt)
+
+        # Both should be ACTIVE — no supersession between disjoint scopes
+        assert get_lifecycle_status(a_sha) == PreparationLifecycleEventKind.ACTIVE, (
+            f"Receipt A should remain ACTIVE, got {get_lifecycle_status(a_sha)}"
+        )
+        assert (
+            get_lifecycle_status(b_receipt["receipt_sha256"])
+            == PreparationLifecycleEventKind.ACTIVE
+        ), "Receipt B should be ACTIVE"
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_validate_refuses_superseded_receipt(tmp_path):
+    """Validate refuses a superseded preparation receipt."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-h" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        event = PreparationLifecycleEvent(
+            event_kind=PreparationLifecycleEventKind.SUPERSEDED,
+            preparation_receipt_sha256=receipt_sha,
+            branch="task/feature",
+            worktree_root=str(repo),
+            producer="test",
+            superseded_by_receipt_sha256="sha256:some-newer-receipt",
+        )
+        append_lifecycle_event(event)
+
+        tool = _new_validate_tool()
+        prepared_digest, worktree_matched, refusal = _check_binding(
+            tool, receipt_sha, str(repo)
+        )
+
+        assert refusal is not None, "S4: must refuse superseded receipt"
+        assert refusal[1] == "preparation_receipt_superseded", (
+            f"Expected preparation_receipt_superseded, got {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_crash_recovery_repairs_missing_consumed_event(tmp_path):
+    """Terminal checkpoint evidence repairs a missing consumed lifecycle event."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-i" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Create a checkpoint commit with Rig-Preparation-Receipt-SHA256 trailer
+        # (simulating what checkpoint._stage_and_commit produces)
+        message = (
+            "checkpoint(test): s4 test commit\n\n"
+            f"Rig-Preparation-Receipt-SHA256: {receipt_sha}"
+        )
+        subprocess.run(
+            ["git", "commit", "-m", message], cwd=repo, check=True, capture_output=True
+        )
+
+        # Ensure no lifecycle event exists yet (simulating crash after commit
+        # but before lifecycle event was written)
+        assert (
+            get_lifecycle_status(receipt_sha) == PreparationLifecycleEventKind.ACTIVE
+        ), "No lifecycle event yet — simulating crash"
+
+        # Run crash recovery
+        from rig_relay.core.tools.builtins.checkpoint import Checkpoint
+
+        recovered = Checkpoint._recover_missing_lifecycle_event(
+            receipt_sha256=receipt_sha, branch="task/feature", repo_root=repo
+        )
+
+        assert recovered is True, (
+            "S4: crash recovery should repair missing consumed event from "
+            "terminal checkpoint evidence"
+        )
+        assert (
+            get_lifecycle_status(receipt_sha) == PreparationLifecycleEventKind.CONSUMED
+        ), "S4: after recovery, receipt must be CONSUMED"
+
+        events = read_lifecycle_events(receipt_sha)
+        assert len(events) == 1
+        assert events[0].event_kind == PreparationLifecycleEventKind.CONSUMED
+        assert events[0].committed_head_sha is not None, (
+            "Recovered event should bind to committed head"
+        )
+    finally:
+        os.chdir(original_cwd)
+
+
+@pytest.mark.adversarial
+def test_s4_s3_typed_failures_still_fire_before_lifecycle(tmp_path):
+    """Malformed receipt produces S3 typed failure, not lifecycle check."""
+    repo = _init_repo(tmp_path)
+    _stage_file(repo, "file.py", "# content")
+    post_digest = compute_index_tree_digest(repo)
+    assert post_digest is not None
+
+    original_cwd = os.getcwd()
+    os.chdir(repo)
+    try:
+        receipt = _make_receipt(repo, "s4-j" * 12, post_digest, ["file.py"])
+        receipt_sha = receipt["receipt_sha256"]
+
+        # Corrupt the receipt
+        receipt_path = (
+            Path(".build/rig-relay/desktop/preparation-receipts")
+            / f"{receipt_sha}.json"
+        )
+        receipt_path.write_text("not valid json {{{", encoding="utf-8")
+
+        tool = _new_validate_tool()
+        prepared_digest, worktree_matched, refusal = _check_binding(
+            tool, receipt_sha, str(repo)
+        )
+
+        assert refusal is not None
+        assert refusal[1] == "preparation_receipt_corrupt", (
+            "S4: corrupt receipt must produce S3 typed failure "
+            f"(preparation_receipt_corrupt), not lifecycle failure. Got: {refusal[1]}"
+        )
+    finally:
+        os.chdir(original_cwd)
