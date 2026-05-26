@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.disclosure_event.v1.schema.json",
+  "title": "Disclosure Event v1",
+  "description": "Content-light disclosure event appended to the durable disclosure-event ledger when a disclosure transition completes. Each event is deduplicated by transition_id. Never contains raw source code, secrets, file paths beyond stable identifiers, or unbounded error strings. Lane A owns this event domain.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "authorization_id",
+    "authorization_receipt_sha256",
+    "evidence_digest",
+    "disclosure_class",
+    "recipient_class",
+    "projection_id",
+    "created_at",
+    "outcome",
+    "transition_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.disclosure_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^dze_dzt_[a-f0-9]{24}$",
+      "description": "Stable disclosure-event identity. Derived from transition_id."
+    },
+    "authorization_id": {
+      "type": "string",
+      "description": "Governance disclosure authorization identifier used for this event."
+    },
+    "authorization_receipt_sha256": {
+      "type": "string",
+      "description": "SHA256 digest of the governance authorization receipt consumed for this disclosure. May be empty string if receipt not yet loaded."
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^(sha256:)?[a-f0-9]{64}$",
+      "description": "SHA256 digest of the opaque evidence object (candidate ZIP bundle). Accepts raw or sha256: prefixed hex."
+    },
+    "disclosure_class": {
+      "type": "string",
+      "description": "Governance DisclosureClass for this disclosure."
+    },
+    "recipient_class": {
+      "type": "string",
+      "description": "Class of disclosure recipient."
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Review projection identifier bound to this disclosure."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp bound by the transition plan at PREPARED time."
+    },
+    "outcome": {
+      "type": "string",
+      "const": "authorized",
+      "description": "Disclosure outcome. Always 'authorized' for durably recorded events."
+    },
+    "transition_id": {
+      "type": "string",
+      "pattern": "^dzt_[a-f0-9]{24}$",
+      "description": "Parent disclosure transition identifier. Acts as deduplication key."
+    },
+    "manifest_digest_before": {
+      "type": "string",
+      "description": "SHA256 digest of the protected-content manifest before selector mutation. Present when manifest was loaded."
+    },
+    "manifest_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the protected-content manifest at event time. Present when manifest was loaded."
+    },
+    "selector_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the disclosed selector identity, if a scoped selector disclosure was authorized."
+    },
+    "selector_disclosed": {
+      "type": "boolean",
+      "description": "True when a scoped selector was disclosed in this event."
+    },
+    "manifest_digest_after": {
+      "type": "string",
+      "description": "SHA256 digest of the manifest after the selector disclosure mutation was applied."
+    }
+  },
+  "additionalProperties": false
+}

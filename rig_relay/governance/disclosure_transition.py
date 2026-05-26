@@ -32,6 +32,11 @@ import tempfile
 import threading
 from typing import Any
 
+try:
+    import jsonschema
+except ImportError:
+    jsonschema = None  # type: ignore[assignment]
+
 # ═════════════════════════════════════════════════════════════════════════
 # Transition states
 # ═════════════════════════════════════════════════════════════════════════
@@ -241,7 +246,118 @@ def _release_transition_lock() -> None:
     _transition_lock.release()
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# Schema-enforced admission (fail-closed)
+# ═════════════════════════════════════════════════════════════════════════
+
+TRANSITION_EVENT_SCHEMA_PATH = Path(
+    "docs/schemas/rig.relay.disclosure_transition_event.v2.schema.json"
+)
+DISCLOSURE_EVENT_SCHEMA_PATH = Path(
+    "docs/schemas/rig.relay.disclosure_event.v1.schema.json"
+)
+DISCLOSURE_EVENT_SCHEMA_VERSION = "rig.relay.disclosure_event.v1"
+
+_transition_schema: dict[str, Any] | None = None
+_disclosure_event_schema: dict[str, Any] | None = None
+_schema_load_error: str | None = None
+_de_schema_load_error: str | None = None
+
+
+def _load_transition_schema() -> dict[str, Any]:
+    global _transition_schema, _schema_load_error
+    if _transition_schema is not None:
+        return _transition_schema
+    if _schema_load_error is not None:
+        raise RuntimeError(_schema_load_error)
+    if jsonschema is None:
+        _schema_load_error = (
+            "jsonschema dependency unavailable — canonical transition evidence "
+            "append is blocked. Install jsonschema to enable disclosure transitions."
+        )
+        raise RuntimeError(_schema_load_error)
+    # Resolve schema path relative to this module, not CWD
+    module_dir = Path(__file__).resolve().parent.parent.parent
+    schema_path = module_dir / TRANSITION_EVENT_SCHEMA_PATH
+    if not schema_path.exists():
+        _schema_load_error = (
+            f"Transition event schema missing at {schema_path} — canonical "
+            f"append is blocked. The schema is required for admission control."
+        )
+        raise RuntimeError(_schema_load_error)
+    try:
+        loaded = json.loads(schema_path.read_text("utf-8"))
+        _transition_schema = loaded
+        return loaded
+    except (json.JSONDecodeError, OSError) as exc:
+        _schema_load_error = (
+            f"Transition event schema at {schema_path} is unreadable: {exc}"
+        )
+        raise RuntimeError(_schema_load_error) from exc
+
+
+def _jsonschema_validate(schema: dict[str, Any], event: dict[str, Any]) -> None:
+    """Thin wrapper that satisfies pyright by hoisting the None guard."""
+    if jsonschema is None:
+        raise RuntimeError(_schema_load_error or "jsonschema unavailable")
+    jsonschema.validate(instance=event, schema=schema)
+
+
+def _validate_transition_event(event: dict[str, Any]) -> None:
+    """Fail-closed schema validation for transition event admission.
+
+    Refuses malformed, wrong-version, missing-field, or extra-property events
+    before they enter the canonical ledger. Schema unavailability is a hard
+    refusal.
+    """
+    schema = _load_transition_schema()
+    _jsonschema_validate(schema, event)
+
+
+def _validate_disclosure_event(event: dict[str, Any]) -> None:
+    """Fail-closed schema validation for disclosure event admission.
+
+    Validates against the governing rig.relay.disclosure_event.v1 JSON Schema
+    before durable append. Schema unavailability is a hard refusal.
+    """
+    schema = _load_disclosure_event_schema()
+    _jsonschema_validate(schema, event)
+
+
+def _load_disclosure_event_schema() -> dict[str, Any]:
+    global _disclosure_event_schema, _de_schema_load_error
+    if _disclosure_event_schema is not None:
+        return _disclosure_event_schema
+    if _de_schema_load_error is not None:
+        raise RuntimeError(_de_schema_load_error)
+    if jsonschema is None:
+        _de_schema_load_error = (
+            "jsonschema dependency unavailable — canonical disclosure event "
+            "append is blocked. Install jsonschema to enable disclosure events."
+        )
+        raise RuntimeError(_de_schema_load_error)
+    module_dir = Path(__file__).resolve().parent.parent.parent
+    schema_path = module_dir / DISCLOSURE_EVENT_SCHEMA_PATH
+    if not schema_path.exists():
+        _de_schema_load_error = (
+            f"Disclosure event schema missing at {schema_path} — canonical "
+            f"append is blocked. The schema is required for admission control."
+        )
+        raise RuntimeError(_de_schema_load_error)
+    try:
+        loaded = json.loads(schema_path.read_text("utf-8"))
+        _disclosure_event_schema = loaded
+        return loaded
+    except (json.JSONDecodeError, OSError) as exc:
+        _de_schema_load_error = (
+            f"Disclosure event schema at {schema_path} is unreadable: {exc}"
+        )
+        raise RuntimeError(_de_schema_load_error) from exc
+
+
 def _append_transition_event(event: dict[str, Any]) -> None:
+    """Schema-validated, fail-closed append to canonical transition ledger."""
+    _validate_transition_event(event)
     ledger = _transition_ledger_path()
     ledger.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n"
@@ -669,6 +785,7 @@ def _persist_disclosure_event_durable(
 ) -> str:
     """Durably append the disclosure event, deduplicated by transition_id."""
     event = _build_disclosure_event(transition, manifest)
+    _validate_disclosure_event(event)
     ledger = _disclosure_event_ledger_path()
     event_id = _event_identity(transition.transition_id)
 
@@ -682,6 +799,15 @@ def _persist_disclosure_event_durable(
             except json.JSONDecodeError:
                 continue
             if existing.get("transition_id") == transition.transition_id:
+                # Idempotent dedup — verify content match
+                for key in event:
+                    if event.get(key) != existing.get(key):
+                        raise ValueError(
+                            f"Disclosure event conflict for transition_id "
+                            f"{transition.transition_id}: field {key!r} mismatch — "
+                            f"existing {existing.get(key)!r}, "
+                            f"attempted {event.get(key)!r}"
+                        )
                 return event_id
 
     _durable_append_jsonl(ledger, event)
@@ -1007,6 +1133,23 @@ def recover_disclosure_transition(
 
     _acquire_transition_lock()
     try:
+        # Re-read last event under the lock to prevent stale-read races
+        # in concurrent recovery.
+        locked_last = _last_event_for_auth(authorization_id, evidence_digest)
+        if locked_last is not None and locked_last.get("sequence", 0) > last_event.get(
+            "sequence", 0
+        ):  # type: ignore[union-attr]
+            # Another process advanced the transition while we were waiting
+            locked_plan = _event_to_transition(locked_last)
+            if locked_plan is not None and locked_plan.is_terminal():
+                if locked_plan.status == TransitionStatus.COMPLETED:
+                    locked_plan.recovery_detail = "recovered_already_complete"
+                    return locked_plan, None
+                return (
+                    locked_plan,
+                    f"cannot recover terminal transition: {locked_plan.status.value}",
+                )
+
         t = plan
 
         # Resume from the NEXT step after last_status
@@ -1151,8 +1294,9 @@ def recover_disclosure_transition(
             )
 
         # Step 6: COMPLETED
-        t = advance_transition(t, TransitionStatus.COMPLETED)
-        t.recovery_detail = "recovered_and_completed"
+        t = advance_transition(
+            t, TransitionStatus.COMPLETED, recovery_detail="recovered_and_completed"
+        )
         return t, None
 
     except Exception as exc:

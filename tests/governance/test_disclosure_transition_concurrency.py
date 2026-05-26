@@ -499,15 +499,21 @@ def test_incompatible_resume_no_plan(tmp_path):
 
 
 def test_incompatible_resume_legacy_v1_rejected(tmp_path):
-    """A manually constructed v1 event in the ledger is rejected by recovery."""
+    """A v1 event is rejected at the schema-enforced append boundary before
+    any ledger write. Recovery never sees it because it can't enter canonical
+    evidence.
+    """
     _clean_all_stores()
     os.chdir(str(tmp_path))
 
-    from rig_relay.governance.disclosure_transition import _append_transition_event
+    from rig_relay.governance.disclosure_transition import (
+        _append_transition_event,
+        _transition_ledger_path,
+    )
 
     v1_event = {
         "schema_version": "rig.relay.disclosure_transition_event.v1",
-        "transition_id": "dzt_legacy",
+        "transition_id": "dzt_aabbccdd11223344556677",
         "authorization_id": "disc_legacy",
         "evidence_digest": EVIDENCE_DIGEST,
         "projection_id": "proj",
@@ -515,18 +521,42 @@ def test_incompatible_resume_legacy_v1_rejected(tmp_path):
         "recipient_class": "test",
         "provider_or_channel": "test",
         "manifest_digest_before": "sha256:abc",
+        "manifest_digest_after": None,
+        "retention_assertion": None,
+        "training_use_assertion": None,
+        "compilation_receipt_sha256": "",
+        "receipt_approved_at": "2026-01-01T00:00:00Z",
+        "disclosure_event_created_at": "2026-01-01T00:00:00Z",
+        "consumed_auth_receipt_digest": None,
         "status": "prepared",
+        "parent_transition_digest": None,
+        "downstream_event_id": None,
+        "downstream_receipt_digest": None,
+        "recovery_detail": None,
+        "corrupt_detail": None,
         "transition_digest": "sha256:abc",
         "created_at": "2026-01-01T00:00:00Z",
         "sequence": 0,
     }
-    _append_transition_event(v1_event)
 
+    ledger = _transition_ledger_path()
+    pre_bytes = ledger.read_bytes() if ledger.exists() else b""
+
+    try:
+        _append_transition_event(v1_event)
+        raise AssertionError("v1 event should have been refused by schema validation")
+    except Exception:
+        pass
+
+    # Ledger must remain unchanged
+    post_bytes = ledger.read_bytes() if ledger.exists() else b""
+    assert pre_bytes == post_bytes, "v1 event rejection should leave ledger unchanged"
+
+    # Recovery with auth+evidence that has no plan (v1 never entered)
     transition, err = recover_disclosure_transition("disc_legacy", EVIDENCE_DIGEST)
     assert transition is None
     assert err is not None
-    assert "incompatible transition plan schema" in err.lower()
-    assert "v1" in err
+    assert "no transition exists" in err.lower()
 
 
 def test_incompatible_resume_evidence_mismatch(tmp_path):

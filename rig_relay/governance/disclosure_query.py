@@ -196,7 +196,7 @@ def _compute_sha256(data: bytes) -> str:
 
 
 def _seal_result(result: DisclosureQueryResult) -> None:
-    data = result.model_dump(exclude={"query_digest"})
+    data = result.model_dump(exclude={"query_digest", "generated_at"})
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     result.query_digest = _compute_sha256(canonical.encode("utf-8"))
 
