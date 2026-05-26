@@ -250,9 +250,30 @@ def audit_storage(
 
     Returns:
         Dict with categories, totals, budget status, and recommendations.
+        Returns a warning dict if root does not exist or is not a directory.
     """
     if root is None:
         root = _default_build_root()
+    if not root.is_dir():
+        return {
+            "schema_version": "rig.relay.storage_audit.v1",
+            "build_root": str(root),
+            "total_size_mb": 0.0,
+            "total_file_count": 0,
+            "categories": {},
+            "budget": {
+                "warn_local_mb": 1024,
+                "max_local_mb": 2048,
+                "refuse_fleet_over_mb": 4096,
+                "status": "unknown",
+            },
+            "stale_lease_count": 0,
+            "largest_files": [],
+            "rollup_candidates": [],
+            "prune_candidates_count": 0,
+            "prune_candidates_total_mb": 0.0,
+            "recommendations": [],
+        }
     if budget is None:
         budget = dict(DEFAULT_BUDGET)
     repo_root = _repo_root(root)
@@ -332,4 +353,4 @@ def audit_storage(
     }
 
 
-__all__ = ["CATEGORY_LABELS", "DEFAULT_BUDGET", "audit_storage", "_default_build_root"]
+__all__ = ["CATEGORY_LABELS", "DEFAULT_BUDGET", "_default_build_root", "audit_storage"]

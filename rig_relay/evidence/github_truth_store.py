@@ -68,8 +68,17 @@ class GitHubTruthStore:
         return self.root / "observations.jsonl"
 
     def _digest_for(self, record: dict[str, Any]) -> str:
-        """Compute observation digest from canonical JSON for idempotency."""
-        return _sha256(json.dumps(record, sort_keys=True))
+        """Compute observation digest from canonical JSON for idempotency.
+
+        Excludes observed_at and observation_digest from the hash so
+        repeated identical observations produce the same digest.
+        """
+        stable = {
+            k: v
+            for k, v in record.items()
+            if k not in {"observed_at", "observation_digest"}
+        }
+        return _sha256(json.dumps(stable, sort_keys=True))
 
     def append_observation(
         self,

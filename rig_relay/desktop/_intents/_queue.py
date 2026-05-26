@@ -1955,32 +1955,46 @@ def _execute_site_editor_save(intent_id: str, params: dict) -> dict[str, Any]:
 
 def _execute_run_queue_plan_dry_run(intent_id: str) -> dict[str, Any]:
     try:
-        from scripts.rig_relay_queue_plan import main as queue_main
+        from rig_relay.operational.commands import compute_queue_plan
 
         coord_root = DEFAULT_BUILD_ROOT / "coordination"
         queue_dir = DEFAULT_BUILD_ROOT / "queue"
-        argv = [
-            "--coordination-root",
-            str(coord_root),
-            "--max-items",
-            "4",
-            "--output",
-            str(queue_dir / "ready_plan.json"),
-        ]
-        if coord_root.is_dir() and queue_dir.is_dir():
-            rc = queue_main(argv)
+        output_path = queue_dir / "ready_plan.json"
+
+        if not coord_root.is_dir() or not queue_dir.is_dir():
             return _build_result(
                 "run_queue_plan_dry_run",
                 intent_id,
                 "completed",
-                summary=f"Queue plan dry-run completed (exit code: {rc}).",
+                result_kind="plan_dry_run",
+                summary="No coordination root or queue directory found. Nothing planned.",
             )
+
+        # Read existing queue or use empty default
+        queue_data: dict[str, Any] = {}
+        queue_file = queue_dir / "work_queue.json"
+        if queue_file.is_file():
+            try:
+                queue_data = json.loads(queue_file.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                queue_data = {}
+
+        plan = compute_queue_plan(queue_data, coordination_root=coord_root, max_items=4)
+
+        # Persist plan to expected output path (backward-compatible)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(plan, indent=2), encoding="utf-8")
+
         return _build_result(
             "run_queue_plan_dry_run",
             intent_id,
             "completed",
-            result_kind="plan_dry_run",
-            summary="No coordination root or queue directory found. Nothing planned.",
+            summary=(
+                f"Queue plan dry-run completed: "
+                f"{len(plan.get('ready_items', []))} ready, "
+                f"{len(plan.get('blocked_items', []))} blocked, "
+                f"{len(plan.get('waiting_items', []))} waiting."
+            ),
         )
     except Exception as e:
         return _build_result(

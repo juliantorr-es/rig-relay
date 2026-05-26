@@ -16,11 +16,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from rig_relay.evidence._storage_audit import (
-    DEFAULT_BUDGET,
-    _default_build_root,
-    audit_storage,
-)
+from rig_relay.evidence._storage_audit import _default_build_root, audit_storage
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

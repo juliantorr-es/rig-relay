@@ -68,14 +68,14 @@ from rig_relay.desktop.bridge_state_machine import (
 from rig_relay.desktop.correlation import DesktopCorrelation
 from rig_relay.desktop.lifecycle_artifact import LifecycleArtifactWriter
 from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
-from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
-from rig_relay.tracing.recorder import TraceRecorder
-from rig_relay.tracing.store import get_default_trace_store
 from rig_relay.tracing._handshake import (
     format_handshake_trace,
     load_events,
     select_handshake_id,
 )
+from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
+from rig_relay.tracing.recorder import TraceRecorder
+from rig_relay.tracing.store import get_default_trace_store
 
 HTTP_OK = 200
 

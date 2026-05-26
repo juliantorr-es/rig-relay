@@ -1955,38 +1955,79 @@ def _execute_site_editor_save(intent_id: str, params: dict) -> dict[str, Any]:
 
 def _execute_run_spawn_plan_dry_run(intent_id: str) -> dict[str, Any]:
     try:
-        from scripts.rig_relay_spawn_session import main as spawn_main
+        from datetime import UTC, datetime
+
+        from rig_relay.operational.commands import (
+            DEFAULT_MAX_PARALLEL_SESSIONS as MAX_SLOTS,
+            compute_spawn_plan,
+        )
 
         coord_root = DEFAULT_BUILD_ROOT / "coordination"
-        argv = [
-            "--mission-packet",
-            "",
-            "--dry-run",
-            "--coordination-root",
-            str(coord_root),
-        ]
-        if coord_root.is_dir():
-            rc = spawn_main(argv)
+        if not coord_root.is_dir():
             return _build_result(
                 "run_spawn_plan_dry_run",
                 intent_id,
                 "completed",
-                summary=f"Spawn plan dry-run completed (exit code: {rc}).",
+                result_kind="plan_dry_run",
+                summary="No coordination root found. Nothing planned.",
             )
-        return _build_result(
-            "run_spawn_plan_dry_run",
-            intent_id,
-            "completed",
-            result_kind="plan_dry_run",
-            summary="No coordination root found. Nothing planned.",
+
+        # Validate with a minimal mission packet to exercise the planning path
+        minimal_packet: dict[str, Any] = {
+            "schema_version": "rig.relay.mission_packet.v1",
+            "mission_id": f"dry_run_{intent_id[:8]}",
+            "parent_sprint_id": "dry_run_sprint",
+            "agent_profile": "tester",
+            "mission_title": "Dry-run spawn plan validation",
+            "instructions": "Read-only dry run",
+            "tool_policy": {"allow_write": False},
+            "coordination_policy": {"claim_task": False, "reserve_paths": False},
+            "checkpoint_policy": "off",
+            "validation_commands": ["uv run echo dry-run"],
+            "done_when": ["Dry-run completed"],
+            "max_runtime_seconds": 60,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        plan = compute_spawn_plan(
+            minimal_packet,
+            coordination_root=coord_root,
+            max_parallel_sessions=MAX_SLOTS,
         )
-    except SystemExit:
-        # spawn_main uses SystemExit; capture it cleanly
+
+        # Validate with a minimal mission packet to exercise the planning path
+        minimal_packet: dict[str, Any] = {
+            "schema_version": "rig.relay.mission_packet.v1",
+            "mission_id": f"dry_run_{intent_id[:8]}",
+            "parent_sprint_id": "dry_run_sprint",
+            "agent_profile": "tester",
+            "mission_title": "Dry-run spawn plan validation",
+            "instructions": "Read-only dry run",
+            "tool_policy": {"allow_write": False},
+            "coordination_policy": {"claim_task": False, "reserve_paths": False},
+            "checkpoint_policy": "off",
+            "validation_commands": ["uv run echo dry-run"],
+            "done_when": ["Dry-run completed"],
+            "max_runtime_seconds": 60,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        plan = compute_spawn_plan(
+            minimal_packet,
+            coordination_root=coord_root,
+            max_parallel_sessions=MAX_SLOTS,
+        )
+
+        status_text = "can spawn" if plan.get("can_spawn") else "refused"
         return _build_result(
             "run_spawn_plan_dry_run",
             intent_id,
             "completed",
-            summary="Spawn plan dry-run completed.",
+            summary=(
+                f"Spawn plan dry-run completed: {status_text}, "
+                f"{plan.get('active_child_count', 0)} active children, "
+                f"{plan.get('available_child_slots', 0)} available slots."
+            ),
         )
     except Exception as e:
         return _build_result(

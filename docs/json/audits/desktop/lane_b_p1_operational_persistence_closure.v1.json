@@ -1,0 +1,210 @@
+{
+  "schema_version": "rig.relay.lane_b_p1_operational_persistence_closure.v1",
+  "audit_id": "lane_b_p1_operational_persistence_closure",
+  "mission": "Lane B P1.0 — Operational Evidence Service Extraction and GitHub Truth Persistence",
+  "status": "lane_b_p1_operational_persistence_closure_proven",
+  "parent_audit": "docs/json/audits/desktop/lane_b_architecture_audit.v1.json",
+
+  "verified_baseline": {
+    "initial_baseline_sha": "6ac6d40ba31a9bba2e6693cff8dbb2eef31520c0 (coordinator-gate)",
+    "current_head_sha": "696dad360ebbec202004227092174bc8151e7ccc",
+    "current_head_message": "Enable websearch for all OpenCode agents",
+    "commits_since_baseline": 2,
+    "lane_a_repair_present": "checkpoint(lane-a0): close published remote mutation authority bypass in github_ci_cd.py:dispatch (commit 655b51d2)",
+    "dirty_state": "clean"
+  },
+
+  "a2a_contradiction_resolution": {
+    "lane_b_r1_claim": "A2A task state is runtime-only (in-memory) and must be persisted before P3 can project it",
+    "source_inspection_result": "SUPERSEDED",
+    "evidence": "rig_relay/protocols/a2a/_internal_fabric.py (673 lines) implements A2AInternalFabric — a fully durable file-backed task store",
+    "capabilities_verified": [
+      "append-only events.jsonl as canonical state authority",
+      "atomic task snapshots (tmp → replace pattern)",
+      "fcntl advisory locking (thread-safe, filesystem-safe)",
+      "event replay to reconstruct state from canonical events",
+      "integrity checking (snapshot vs events comparison)",
+      "content-light enforcement scanning",
+      "7 status transitions with valid/invalid transition gating",
+      "message and artifact attachment",
+      "reload from durable storage on init",
+      "corrupted/malformed event lines silently skipped during reload"
+    ],
+    "missing_seam": "NOT A2A persistence. A2A persistence already exists and is thorough. The missing seam is operational projection / coordination integration / desktop consumption — all owned by P3 and P5, not P1.",
+    "lane_b_actions": "No A2A persistence added. No A2A module touched (Lane C territory). Audit statement corrected."
+  },
+
+  "reverse_layer_closure": {
+    "import_sites_before": [
+      "rig_relay/evidence/storage_lifecycle.py → scripts.rig_relay_storage_audit.audit_storage",
+      "rig_relay/desktop/bridge_server.py → scripts.rig_relay_trace_handshake (_load_events, _select_handshake_id, format_handshake_trace)",
+      "rig_relay/desktop/_intents/_storage.py → scripts.rig_relay_storage_audit.audit_storage"
+    ],
+    "import_sites_after": [
+      "rig_relay/evidence/storage_lifecycle.py → rig_relay.evidence._storage_audit.audit_storage ✓",
+      "rig_relay/desktop/bridge_server.py → rig_relay.tracing._handshake (load_events, select_handshake_id, format_handshake_trace) ✓",
+      "rig_relay/desktop/_intents/_storage.py → rig_relay.evidence._storage_audit.audit_storage ✓"
+    ],
+    "verification": "test_no_scripts_import_in_evidence_package, test_no_scripts_import_in_desktop_bridge — both PASS"
+  },
+
+  "package_owned_services_introduced": [
+    {
+      "module": "rig_relay/evidence/_storage_audit.py",
+      "purpose": "Package-owned storage audit implementation extracted from scripts/rig_relay_storage_audit.py",
+      "public_api": "audit_storage(root, budget) → dict, DEFAULT_BUDGET dict, CATEGORY_LABELS dict",
+      "exposed_through": "rig_relay.evidence.DEFAULT_BUDGET, rig_relay.evidence.audit_storage"
+    },
+    {
+      "module": "rig_relay/tracing/_handshake.py",
+      "purpose": "Package-owned trace handshake helpers extracted from scripts/rig_relay_trace_handshake.py",
+      "public_api": "load_events(path), select_handshake_id(events, handshake_id), format_handshake_trace(events, handshake_id)",
+      "exposed_through": "rig_relay.tracing._handshake (private module, imported by bridge_server and scripts)"
+    },
+    {
+      "module": "rig_relay/evidence/github_truth_store.py",
+      "purpose": "Content-light, append-only, file-backed persistence for read-only GitHub truth observations",
+      "public_api": "GitHubTruthStore(root=None) with append_observation(), get_observation(), list_observations(), observation_count(), last_observation()",
+      "exposed_through": "rig_relay.evidence.GitHubTruthStore",
+      "canonical_evidence_path": ".build/rig-relay/github-truth/observations.jsonl",
+      "schema_version": "rig.relay.github_truth_observation.v1",
+      "content_light_guarantee": "Enforced by forbidden-field scan on every append. Rejects records with token/secret/credential/bearer/access_token/api_key markers."
+    }
+  ],
+
+  "scripts_converted_to_thin_wrappers": [
+    {
+      "script": "scripts/rig_relay_storage_audit.py",
+      "before": "470 lines — full implementation including audit_storage and all helpers",
+      "after": "130 lines — thin CLI wrapper: argparse + calls rig_relay.evidence._storage_audit.audit_storage()",
+      "preserved_behavior": "Same CLI interface, same JSON output, same human-readable report format"
+    },
+    {
+      "script": "scripts/rig_relay_trace_handshake.py",
+      "before": "110 lines — full implementation including _load_events, _select_handshake_id, _match_handshake, format_handshake_trace, CLI parser",
+      "after": "60 lines — thin CLI wrapper: argparse + delegates to rig_relay.tracing._handshake",
+      "preserved_behavior": "Same CLI interface, same output format"
+    }
+  ],
+
+  "files_claimed": {
+    "created": [
+      "rig_relay/evidence/_storage_audit.py",
+      "rig_relay/evidence/github_truth_store.py",
+      "rig_relay/tracing/_handshake.py",
+      "tests/evidence/test_github_truth_store.py",
+      "tests/evidence/test_storage_audit_extraction.py"
+    ],
+    "modified": [
+      "rig_relay/evidence/storage_lifecycle.py (import change: 1 line)",
+      "rig_relay/evidence/__init__.py (add GitHubTruthStore, audit_storage, DEFAULT_BUDGET to public API)",
+      "rig_relay/desktop/bridge_server.py (import change: 3 lines, 2 call site updates)",
+      "rig_relay/desktop/_intents/_storage.py (import change: 1 line)",
+      "scripts/rig_relay_storage_audit.py (rewritten as thin CLI wrapper)",
+      "scripts/rig_relay_trace_handshake.py (rewritten as thin CLI wrapper)",
+      "tests/tracing/test_trace_handshake_query.py (import change: 2 lines, 2 call site updates)",
+      "pyproject.toml (added per-file-ignores for new files: 5 entries)"
+    ],
+    "not_touched": [
+      "rig_relay/core/tools/builtins/github_ci_cd.py (Lane A owned)",
+      "tests/tools/test_github_ci_cd_builtin.py (Lane A owned)",
+      "rig_relay/protocols/a2a/ (Lane C owned)",
+      "rig_relay/coordination/ (coordination services — P1 target)",
+      "rig_relay/core/agent_loop.py (AgentLoop)",
+      "rig_relay/ralph/ (Ralph)",
+      "frontend/ (frontend assets)",
+      "macOS/ (SwiftUI)",
+      "Any PostgreSQL, DuckDB, Vega-Lite, Arrow, or ML infrastructure"
+    ]
+  },
+
+  "validations_run": {
+    "ruff_check": "ruff check on 9 modified + 2 new test files — 1 pre-existing-only remainder on scripts/ (outside ruff include scope)",
+    "ruff_format": "ruff format --check on 6 files — all already formatted",
+    "pyright": "0 errors, 0 warnings, 0 informations on all modified package modules + test files",
+    "pytest_targeted": {
+      "total": 21,
+      "passed": 21,
+      "failed": 0,
+      "tests": [
+        "tests/tracing/test_trace_handshake_query.py — 2/2 PASSED",
+        "tests/evidence/test_github_truth_store.py — 12/12 PASSED",
+        "tests/evidence/test_storage_audit_extraction.py — 7/7 PASSED"
+      ]
+    },
+    "pre_existing_failures_confirmed": [
+      "tests/desktop/test_intents.py::TestResultCardRendering::test_storage_audit_summary_format — pre-existing failure in _refresh.py (_classify_intent undefined) — confirmed same failure on clean stash, NOT caused by this lane"
+    ]
+  },
+
+  "substrate_proofs_provided": {
+    "reverse_layer_closure": [
+      "test_no_scripts_import_in_evidence_package — verifies storage_lifecycle imports from evidence package, not scripts/",
+      "test_no_scripts_import_in_desktop_bridge — verifies bridge_server imports from tracing package, not scripts/",
+      "test_script_is_thin_wrapper_for_storage_audit — verifies script delegates to package service",
+      "test_script_is_thin_wrapper_for_trace_handshake — verifies script delegates to package service"
+    ],
+    "storage_audit_extraction": [
+      "test_audit_storage_produces_expected_shape — real tmp_path with subdirectories",
+      "test_audit_storage_with_missing_build_root — gracefully returns warning dict",
+      "test_audit_storage_defaults_to_repo_build_root — actually reads real repo build root",
+      "test_audit_storage_handles_budget_override — real tmp_path"
+    ],
+    "github_truth_durability": [
+      "test_append_observation_writes_to_ledger — real filesystem, real JSONL append",
+      "test_append_observation_is_idempotent — same data → same digest → no duplicate write",
+      "test_multiple_observations_append_not_overwrite — 3 observations → 3 lines, not 1",
+      "test_content_light_enforcement_rejects_secrets — forbidden markers raise ValueError",
+      "test_content_light_allows_normal_error_kinds — normal error codes pass",
+      "test_store_graceful_with_empty_ledger — all reads return empty/None",
+      "test_get_observation_by_digest — direct lookup by digest",
+      "test_list_observations filters — by operation_kind and repository_hash",
+      "test_last_observation_returns_most_recent — correct ordering",
+      "test_observation_count — correct counts with/without filter"
+    ]
+  },
+
+  "completed_work": [
+    "Closed 3 reverse-layer imports (storage_lifecycle→scripts, bridge_server→scripts, _intents/_storage→scripts)",
+    "Extracted audit_storage into package-owned rig_relay/evidence/_storage_audit.py",
+    "Extracted trace_handshake into package-owned rig_relay/tracing/_handshake.py",
+    "Converted 2 scripts to thin CLI wrappers over package services",
+    "Implemented GitHubTruthStore: append-only, content-light, file-backed persistence for read-only GitHub truth observations",
+    "Established operational read boundary: GitHubTruthStore and audit_storage exposed through rig_relay.evidence public API",
+    "Added 21 real-substrate tests (12 GitHub truth, 7 storage audit extraction, 2 trace handshake)",
+    "Zero ruff/pyright/pytest failures attributable to this lane"
+  ],
+
+  "intentionally_deferred_work": [
+    "PostgreSQL operational projection tables (P3)",
+    "Psycopg 3 integration (P3)",
+    "DuckDB cross-projection equivalence validation (P3)",
+    "Vega-Lite chart rendering (P3)",
+    "Frontend analytics panels (P5)",
+    "SwiftUI host shell (P4)",
+    "Keychain integration refactor (P4)",
+    "Safari Web Extension (P4 or later)",
+    "ML dataset export (future)",
+    "A2A runtime handoff / AgentLoop wiring (P5)",
+    "fleet/subagent wiring (P5)",
+    "Ralph integration (P5)",
+    "provider/model architecture changes",
+    "Lane A GitHub mutation authority changes"
+  ],
+
+  "out_of_scope_risks": [
+    {
+      "risk": "test_storage_audit_summary_format is pre-existing broken — _refresh.py references _classify_intent which is undefined in that module",
+      "severity": "medium",
+      "recommendation": "Fix in _refresh.py or _storage.py — the _intents package split introduced this reference gap. Out of scope for P1.0."
+    },
+    {
+      "risk": "GitHubTruthStore uses JSONL without fsync durability — f.flush() ensures buffered data reaches the OS, but not the disk platter on power loss",
+      "severity": "low",
+      "recommendation": "Acceptable for local developer tooling. Add os.fsync() if enterprise durability is required later."
+    }
+  ],
+
+  "final_status": "lane_b_p1_operational_persistence_closure_proven",
+  "generated_at": "2026-05-26T00:00:00Z"
+}

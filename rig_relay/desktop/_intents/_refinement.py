@@ -1955,7 +1955,7 @@ def _execute_site_editor_save(intent_id: str, params: dict) -> dict[str, Any]:
 
 def _execute_generate_refinement_report(intent_id: str) -> dict[str, Any]:
     try:
-        from scripts.rig_relay_builtin_tool_refinement import run as run_refinement
+        from rig_relay.operational.refinement import run_refinement_report
 
         derived_dir = DEFAULT_DERIVED_DIR
         reports_dir = DEFAULT_REPORTS_DIR
@@ -1963,7 +1963,9 @@ def _execute_generate_refinement_report(intent_id: str) -> dict[str, Any]:
         jsonl_output = DEFAULT_DERIVED_DIR / "builtin_tool_refinement_backlog.jsonl"
 
         reports_dir.mkdir(parents=True, exist_ok=True)
-        run_refinement(derived_dir, reports_dir, output, jsonl_output, strict=False)
+        run_refinement_report(
+            derived_dir, reports_dir, output, jsonl_output, strict=False
+        )
 
         warnings: list[str] = []
         if not output.is_file():
@@ -1975,7 +1977,6 @@ def _execute_generate_refinement_report(intent_id: str) -> dict[str, Any]:
                 summary="Refinement report was not generated.",
             )
 
-        # Count items
         item_count = 0
         if jsonl_output.is_file():
             with jsonl_output.open() as f:
@@ -2010,7 +2011,7 @@ def _execute_create_refinement_packets(
     intent_id: str, params: dict[str, Any]
 ) -> dict[str, Any]:
     try:
-        from scripts.rig_relay_create_builtin_refinement_packets import generate_packets
+        from rig_relay.operational.refinement import generate_refinement_packets
 
         backlog = DEFAULT_DERIVED_DIR / "builtin_tool_refinement_backlog.jsonl"
         report = DEFAULT_REPORTS_DIR / "built-in-tool-refinement.md"
@@ -2030,7 +2031,7 @@ def _execute_create_refinement_packets(
                 summary="No refinement backlog found. Run generate_refinement_report first.",
             )
 
-        packet_paths, packet_warnings = generate_packets(
+        packet_paths, packet_warnings = generate_refinement_packets(
             backlog=backlog,
             report=report,
             output_dir=output_dir,

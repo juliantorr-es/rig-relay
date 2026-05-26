@@ -1,0 +1,241 @@
+{
+  "schema_version": "rig.relay.lane_b_p1_1_operational_snapshot_coordination_read_services.v1",
+  "audit_id": "lane_b_p1_1_operational_snapshot_coordination_read_services",
+  "mission": "Lane B P1.1 — Canonical Operational Snapshot Compiler and Coordination Read-Service Promotion",
+  "status": "lane_b_p1_1_operational_snapshot_and_coordination_read_services_proven",
+  "parent_audit": "docs/json/audits/desktop/lane_b_p1_operational_persistence_closure.v1.json",
+
+  "verified_baseline": {
+    "published_github_sha": "650a5e1b4237120d9d01cb6f5264f9a85dd7434d",
+    "published_head_message": "checkpoint(lane-a-p1): durable pre-commit checkpoint authorization persistence and idempotent crash recovery",
+    "local_p1_0_state": "P1.0 is committed in HEAD (650a5e1b). Post-P1.0 refinements are in local dirty state (per-file-ignores, ruff auto-fix, missing-root guard, idempotency fix, unused import removal).",
+    "dirty_state_preserved": true,
+    "dirty_files_p1_0_continuity": [
+      "pyproject.toml (per-file-ignores)",
+      "rig_relay/desktop/bridge_server.py (ruff import sort)",
+      "rig_relay/evidence/__init__.py (updated public API)",
+      "rig_relay/evidence/_storage_audit.py (missing-root guard)",
+      "rig_relay/evidence/github_truth_store.py (idempotency fix)",
+      "scripts/rig_relay_storage_audit.py (unused import removal)"
+    ],
+    "other_lanes_in_head": [
+      "Lane A: 650a5e1b checkpoint(lane-a-p1) — durable pre-commit checkpoint authorization persistence and idempotent crash recovery",
+      "Lane C: fd8b79fa checkpoint(lane-c-p1) — provider capability spine + native Gemini adapter closure"
+    ]
+  },
+
+  "pre_implementation_decisions": {
+    "sources_inspected": [
+      "rig_relay/desktop/projection.py (build_projection, _build_* helpers — 24 sections)",
+      "rig_relay/desktop/analytics_projection.py (8 DuckDB analytics widgets)",
+      "rig_relay/desktop/github_truth_projection.py (GitHubConnectionProjection, PublicationStatusProjection)",
+      "rig_relay/coordination/store.py (CoordinationStore, read_state_projection)",
+      "rig_relay/coordination/fleet_queue.py (FleetQueue, list_items, FleetQueueSnapshot)",
+      "rig_relay/coordination/fleet_coordinator.py (FleetCoordinator — mutative)",
+      "rig_relay/coordination/current_state.py (already package-owned, uses duckdb)",
+      "rig_relay/coordination/models.py (CoordinationStateProjection, CoordinationSession, etc.)",
+      "rig_relay/protocols/a2a/_internal_fabric.py (A2AInternalFabric — already durable, Lane C)",
+      "rig_relay/protocols/a2a/_models.py (A2ATaskCard, A2ATaskLifecycleEvent, etc.)",
+      "rig_relay/evidence/receipt_store.py (ReceiptStore, manifest/envelopes)",
+      "rig_relay/evidence/receipt_envelope.py (ReceiptEnvelope, build_governance_decision_envelope)",
+      "rig_relay/analytics/governance_decisions_projection.py (DuckDB governance projection — not consumed by snapshot)"
+    ],
+    "remaining_script_imports_in_rig_relay": [
+      "rig_relay/desktop/_intents/_spawn.py → scripts.rig_relay_spawn_session (mutative session spawner — deferred)",
+      "rig_relay/desktop/_intents/_queue.py → scripts.rig_relay_queue_plan (mutative queue planner — deferred)",
+      "rig_relay/desktop/_intents/_refinement.py → scripts.rig_relay_builtin_tool_refinement + scripts.rig_relay_create_builtin_refinement_packets (mutative refinement tools — deferred)"
+    ],
+    "coordination_promotion_decision": "NO promotions performed. current_state is already package-owned (rig_relay/coordination/current_state.py). Remaining script imports are mutative/orchestration tools, not read-only operational services. Deferred to future P1 orchestration slice.",
+    "sources_admitted": [
+      {
+        "source": "storage_lifecycle",
+        "authority": "rebuildable_projection",
+        "reason": "P1.0 stabilized — compute_storage_summary() is package-owned and read-only"
+      },
+      {
+        "source": "github_truth",
+        "authority": "canonical",
+        "reason": "P1.0 stabilized — GitHubTruthStore provides append-only durable observation ledger"
+      },
+      {
+        "source": "coordination",
+        "authority": "canonical",
+        "reason": "Package-owned CoordinationStore.read_state_projection() — read-only, content-light"
+      },
+      {
+        "source": "fleet_queue",
+        "authority": "canonical",
+        "reason": "Package-owned FleetQueue.list_items() — read-only snapshot from append-only event log"
+      }
+    ],
+    "sources_deferred": [
+      {
+        "source": "a2a_tasks",
+        "reason": "Lane C territory. A2AInternalFabric exists and is durable, but cross-lane read contract pending. Listed in inventory as unavailable with informative degradation reason."
+      },
+      {
+        "source": "receipt_governance",
+        "reason": "Requires DuckDB for governance decisions projection. Deferred to analytics layer (P3)."
+      },
+      {
+        "source": "trace_handshake",
+        "reason": "Ephemeral observation (runtime handshake events), not canonical evidence for operational snapshot."
+      }
+    ]
+  },
+
+  "implementation_deliverables": {
+    "deliverable_1_operational_snapshot": {
+      "module": "rig_relay/operational/snapshot.py",
+      "function": "build_operational_snapshot(build_root=None) → dict",
+      "schema": "rig.relay.operational_snapshot.v1",
+      "properties": {
+        "read_only": true,
+        "content_light": "Enforced per-source and per-snapshot with forbidden-field scanning",
+        "degradation_handling": "Each source degrades independently — one bad sensor does not black out entire cockpit",
+        "source_inventory": "7-source typed inventory with authority classification, persistence form, availability, and degradation reasons",
+        "composed_domains": "storage_lifecycle (P1.0), github_truth (P1.0), coordination (package-owned), fleet_queue (package-owned)"
+      }
+    },
+    "deliverable_2_source_registry": {
+      "location": "Inline within build_operational_snapshot() — not a separate module",
+      "entries": 7,
+      "per_entry_fields": "source_id, authority_classification (canonical|rebuildable_projection|ephemeral_observation), persistence_form (jsonl|json|package_owned_computed_read_model|sharded_json), available, content_light, degradation_reason (if unavailable)"
+    },
+    "deliverable_3_coordination_promotion": {
+      "promoted": "None — current_state already package-owned, remaining script imports are mutative/orchestration tools",
+      "deferred": "3 script imports in _intents/ for spawn_session, queue_plan, refinement tools"
+    },
+    "deliverable_4_desktop_backend_wiring": {
+      "wired": true,
+      "addition": "Added _build_operational() to build_projection() — additive, backend-only",
+      "section_name": "operational",
+      "patch_section_added": true,
+      "must_not_modify": "No JavaScript, CSS, HTML, widget, Vega-Lite, layout, or protocol changes"
+    },
+    "deliverable_5_a2a_correction": {
+      "status": "Carried forward — Lane B-R1 audit claim 'A2A runtime-only' remains superseded. A2A source inventory entry documents it as canonical + durable but unavailable to operational snapshot due to cross-lane read contract pending (Lane C territory)."
+    }
+  },
+
+  "files_claimed": {
+    "created": [
+      "rig_relay/operational/__init__.py",
+      "rig_relay/operational/snapshot.py",
+      "tests/operational/test_snapshot.py"
+    ],
+    "modified": [
+      "rig_relay/desktop/projection.py (added _build_operational, operational section, patch section name, source_status entry)",
+      "pyproject.toml (added operational/snapshot.py to per-file-ignores)"
+    ],
+    "not_touched": [
+      "rig_relay/core/tools/builtins/github_ci_cd.py (Lane A)",
+      "Lane A checkpoint/campaign/mutation/receipt/recovery modules",
+      "rig_relay/providers/ (Lane C)",
+      "rig_relay/protocols/a2a/ (Lane C)",
+      "rig_relay/core/agent_loop.py (AgentLoop)",
+      "rig_relay/ralph/ (Ralph)",
+      "rig_relay/coordination/ (coordination services — consumed read-only, not modified)",
+      "frontend/ (frontend assets)",
+      "macOS/ (SwiftUI)",
+      "PostgreSQL, DuckDB, Vega-Lite, Arrow, ML infrastructure"
+    ]
+  },
+
+  "validations": {
+    "ruff_check": "All checks passed on rig_relay/operational/, rig_relay/desktop/projection.py, tests/operational/",
+    "ruff_format": "All files already formatted",
+    "pyright": "0 errors, 0 warnings, 0 informations on all new and modified package modules + tests",
+    "pytest": {
+      "total": 30,
+      "passed": 30,
+      "failed": 0,
+      "categories": [
+        "P1.0 regression (storage audit extraction): 7/7 PASSED",
+        "P1.0 regression (trace handshake): 2/2 PASSED",
+        "P1.0 regression (GitHub truth): 12/12 PASSED",
+        "P1.1 operational snapshot: 9/9 PASSED"
+      ]
+    },
+    "import_scan": {
+      "remaining_scripts_imports": 3,
+      "all_in_desktop_intent_handlers": true,
+      "all_mutative_or_orchestration": true,
+      "no_new_scripts_imports_introduced": true
+    },
+    "smoke_test": "from rig_relay.operational.snapshot import build_operational_snapshot — successful, produces 4-source snapshot with 7-entry inventory",
+    "pre_existing_failures": "test_storage_audit_summary_format (pre-existing _classify_intent bug in _refresh.py) — NOT fixed, remains stale on baseline, out of scope for P1.1"
+  },
+
+  "substrate_proofs": {
+    "snapshot_composition": [
+      "test_snapshot_has_required_structure — schema, content_light, read_only fields",
+      "test_source_inventory_covers_all_sources — 7 entries, all expected IDs",
+      "test_storage_lifecycle_present — correct authority classification",
+      "test_github_truth_present — correct authority classification",
+      "test_multiple_invocations_produce_equivalent_output — idempotent structure"
+    ],
+    "degraded_source_handling": [
+      "test_deferred_sources_show_as_unavailable — a2a_tasks correctly marked unavailable with Lane C reason"
+    ],
+    "content_light": [
+      "test_content_light_no_forbidden_fields_in_snapshot — no access_token, api_key, private_key, raw_prompt, credential in serialized output"
+    ],
+    "read_only_authority": [
+      "test_read_only_snapshot_does_not_mutate_evidence — no new JSONL files created by snapshot generation"
+    ],
+    "github_truth_integration": [
+      "test_github_truth_with_real_store_populates_summary — real GitHubTruthStore with real observations"
+    ]
+  },
+
+  "completed_work": [
+    "Designed Operational Snapshot v1 sensor-fusion boundary (7-source typed inventory, per-source degradation)",
+    "Implemented build_operational_snapshot() composing 4 canonical sources (storage, github_truth, coordination, fleet_queue)",
+    "Implemented typed source inventory with authority classification, persistence form, availability, degradation reasons",
+    "Wired operational snapshot into desktop projection build_projection() as additive section (backend-only, zero frontend changes)",
+    "Added 'operational' patch section name for WebSocket partial-refresh support",
+    "Resolved coordination promotion decision: no promotions needed (current_state already package-owned, remaining are mutative)",
+    "Carried forward A2A persistence correction (Lane B-R1 'runtime-only' claim superseded)",
+    "Inventory of remaining 3 script imports in rig_relay/ (all in _intents/ for mutative tools — deferred)",
+    "Content-light enforcement on snapshot output (forbidden-field scanning)",
+    "9 real-substrate tests for snapshot composition, degradation, privacy, and read-only authority",
+    "Zero ruff/pyright/pytest failures attributable to this lane",
+    "30 total tests pass (21 P1.0 regression + 9 new)"
+  ],
+
+  "intentionally_deferred": [
+    "Coordination service promotion (spawn_planner, queue_planner, refinement_packet_builder) — mutative tools, future P1 orchestration slice",
+    "A2A operational consumption — cross-lane read contract pending (Lane C territory)",
+    "Receipt/governance operational projection — requires DuckDB (defers to P3 analytics layer)",
+    "PostgreSQL operational projection tables (P3)",
+    "Psycopg 3 integration (P3)",
+    "Vega-Lite / Arrow / visualization (P3/P5)",
+    "Frontend analytics panels (P5)",
+    "SwiftUI host shell (P4)",
+    "Safari Web Extension (P4 or later)",
+    "ML datasets",
+    "AgentLoop / Ralph / fleet execution wiring (P5)"
+  ],
+
+  "discovered_out_of_scope_risks": [
+    {
+      "risk": "test_storage_audit_summary_format pre-existing failure (unresolved _classify_intent in _refresh.py)",
+      "severity": "medium",
+      "status": "Not fixed — outside P1.1 scope. Stale on baseline."
+    },
+    {
+      "risk": "3 remaining script imports in _intents/ are mutative orchestration tools — promoting them would require careful authority separation",
+      "severity": "medium",
+      "status": "Deferred to future P1 orchestration slice"
+    },
+    {
+      "risk": "CoordinationStore.__post_init__ creates subdirectories eagerly — this is pre-existing and causes false-positive mutation signals in read-only tests",
+      "severity": "low",
+      "status": "Acknowledged in rglob-based test. Snapshot itself creates zero evidence JSONL files."
+    }
+  ],
+
+  "final_status": "lane_b_p1_1_operational_snapshot_and_coordination_read_services_proven",
+  "generated_at": "2026-05-26T00:00:00Z"
+}

@@ -56,6 +56,7 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "carte_blanche_dashboard",
     "site_editor",
     "operating_picture",
+    "operational",
 })
 
 
@@ -969,6 +970,22 @@ def _build_operating_picture() -> dict[str, Any]:
     return {"available": False, "reason": "no_repository_opened"}
 
 
+def _build_operational() -> dict[str, Any]:
+    """Build operational snapshot from canonical Lane B evidence.
+
+    Degrades honestly on missing sources — one bad sensor does not
+    black out the entire cockpit.
+    """
+    try:
+        from rig_relay.operational.snapshot import build_operational_snapshot
+
+        snapshot = build_operational_snapshot()
+        snapshot["available"] = True
+        return snapshot
+    except Exception:
+        return {"available": False, "reason": "snapshot_generation_failed"}
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -1136,6 +1153,7 @@ def build_projection(
     carte_blanche_dashboard = _build_carte_blanche_dashboard()
     site_editor = _build_site_editor_projection()
     operating_picture = _build_operating_picture()
+    operational = _build_operational()
 
     source_status = {
         "current_state": current_state["available"],
@@ -1158,6 +1176,7 @@ def build_projection(
         "live_mutation_readiness": live_mutation_readiness["available"],
         "carte_blanche_dashboard": carte_blanche_dashboard["available"],
         "operating_picture": operating_picture["available"],
+        "operational": operational["available"],
     }
 
     warnings: list[str] = []
@@ -1203,6 +1222,7 @@ def build_projection(
         "carte_blanche_dashboard": carte_blanche_dashboard,
         "site_editor": site_editor,
         "operating_picture": operating_picture,
+        "operational": operational,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }
