@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.validation_execution_authority.v1.schema.json",
+  "title": "Validation Execution Authority v1",
+  "description": "Canonical execution-risk classification and containment truth for a single validate check. Reports the requested validation kind, execution-risk classification, requested containment requirement, actual containment properties proved, whether execution is permitted, whether execution is refused because no adequate contained authority exists, and the evidence binding for any completed run.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "check_id",
+    "command_kind",
+    "execution_risk",
+    "containment_properties",
+    "uncontained_execution_authorized"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.validation_execution_authority.v1"
+    },
+    "check_id": {
+      "type": "string",
+      "description": "Check identifier from the validate profile."
+    },
+    "command_kind": {
+      "type": "string",
+      "description": "The kind of check (pytest, ruff, pyright, schema, policy, git, custom)."
+    },
+    "execution_risk": {
+      "type": "string",
+      "enum": [
+        "repository_code_executing",
+        "repository_inspection",
+        "static_analysis",
+        "custom_unclassified"
+      ],
+      "description": "Execution-risk classification for this check kind."
+    },
+    "containment_properties": {
+      "type": "object",
+      "required": [
+        "filesystem_isolation",
+        "network_isolation",
+        "secret_isolation",
+        "descendant_containment",
+        "resource_sandbox",
+        "shell_interpretation_avoided",
+        "ambient_environment_scrubbed",
+        "output_bounded",
+        "timeout_enforced",
+        "process_session_created",
+        "containment_backend",
+        "notes"
+      ],
+      "properties": {
+        "filesystem_isolation": {
+          "type": "boolean",
+          "description": "True when the execution environment prevents access to files outside the workspace."
+        },
+        "network_isolation": {
+          "type": "boolean",
+          "description": "True when the execution environment prevents network access."
+        },
+        "secret_isolation": {
+          "type": "boolean",
+          "description": "True when secrets, tokens, and environment variables are scrubbed from the execution environment."
+        },
+        "descendant_containment": {
+          "type": "boolean",
+          "description": "True when the execution environment prevents spawning descendant processes."
+        },
+        "resource_sandbox": {
+          "type": "boolean",
+          "description": "True when resource limits (CPU, memory, I/O) are enforced."
+        },
+        "shell_interpretation_avoided": {
+          "type": "boolean",
+          "description": "True when argv-based execution is used instead of shell interpretation."
+        },
+        "ambient_environment_scrubbed": {
+          "type": "boolean",
+          "description": "True when HOME, PATH, and other ambient env vars are reduced or redirected."
+        },
+        "output_bounded": {
+          "type": "boolean",
+          "description": "True when stdout/stderr output is capped to a maximum byte count."
+        },
+        "timeout_enforced": {
+          "type": "boolean",
+          "description": "True when a wall-clock timeout is enforced on execution."
+        },
+        "process_session_created": {
+          "type": "boolean",
+          "description": "True when a new process session is created."
+        },
+        "containment_backend": {
+          "type": "string",
+          "description": "Identifier of the containment backend in use, or 'none'."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Human-readable notes about the containment configuration."
+        }
+      },
+      "additionalProperties": false
+    },
+    "uncontained_execution_authorized": {
+      "type": "boolean",
+      "description": "True when repository-code-executing validation was explicitly authorized under uncontained-execution policy."
+    },
+    "containment_backend_unavailable": {
+      "type": "boolean",
+      "description": "True when the requested containment level is unavailable with the current backend."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["passed", "failed", "refused", "blocked", "timed_out", "skipped"],
+      "description": "Execution status of the check."
+    },
+    "refusal_reason": {
+      "type": "string",
+      "description": "Reason for refusal when status is refused."
+    }
+  },
+  "additionalProperties": false
+}

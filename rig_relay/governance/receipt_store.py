@@ -1198,6 +1198,165 @@ def reconcile_receipt_evidence(
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ── Public Preparation Receipt Revocation (S6) ─────────────────────────
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class RevocationOutcome(StrEnum):
+    REVOKED = auto()
+    ALREADY_REVOKED = auto()
+    ALREADY_CONSUMED = auto()
+    ALREADY_SUPERSEDED = auto()
+    RECEIPT_NOT_FOUND = auto()
+    RECEIPT_CORRUPT = auto()
+    LIFECYCLE_AUTHORITY_CORRUPT = auto()
+    LEDGER_WRITE_FAILED = auto()
+    CONFLICTING_TERMINAL = auto()
+
+
+@dataclass(slots=True)
+class RevocationResult:
+    outcome: RevocationOutcome
+    preparation_receipt_sha256: str = ""
+    revocation_event_id: str | None = None
+    error_detail: str = ""
+
+    @property
+    def succeeded(self) -> bool:
+        return self.outcome in {
+            RevocationOutcome.REVOKED,
+            RevocationOutcome.ALREADY_REVOKED,
+        }
+
+
+def revoke_preparation_receipt(
+    preparation_receipt_sha256: str, *, producer: str = "revoke_preparation_receipt"
+) -> RevocationResult:
+    """Revoke an active preparation receipt.
+
+    Idempotent and race-safe. A receipt already consumed, superseded,
+    revoked, or corrupt must not be casually revoked. At most one
+    terminal transition is accepted.
+
+    Steps:
+    1. Load and verify the preparation receipt.
+    2. Read current lifecycle status.
+    3. If already REVOKED → idempotent success.
+    4. If CONSUMED, SUPERSEDED, or corrupt → refuse.
+    5. Append a sealed REVOKED lifecycle event.
+    6. Verify the write.
+
+    Returns a typed RevocationResult.
+    """
+    from rig_relay.core.logger import logger
+
+    # 1. Load and integrity-check the preparation receipt
+    load_result = load_preparation_receipt_typed(preparation_receipt_sha256)
+    match load_result.outcome:
+        case PreparationLoadOutcome.LOADED_VALID:
+            pass
+        case PreparationLoadOutcome.ABSENT:
+            return RevocationResult(
+                outcome=RevocationOutcome.RECEIPT_NOT_FOUND,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                error_detail="Receipt file does not exist",
+            )
+        case (
+            PreparationLoadOutcome.UNREADABLE
+            | PreparationLoadOutcome.MALFORMED_JSON
+            | PreparationLoadOutcome.SCHEMA_INVALID
+            | PreparationLoadOutcome.INTEGRITY_MISMATCH
+        ):
+            return RevocationResult(
+                outcome=RevocationOutcome.RECEIPT_CORRUPT,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                error_detail=load_result.error_detail,
+            )
+
+    # 2. Read current lifecycle status
+    life_result = load_lifecycle_events(preparation_receipt_sha256)
+    if not life_result.is_ok and not life_result.is_absent:
+        return RevocationResult(
+            outcome=RevocationOutcome.LIFECYCLE_AUTHORITY_CORRUPT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=life_result.error_detail,
+        )
+
+    # 3. Determine eligibility
+    current_status = life_result.status
+    match current_status:
+        case PreparationLifecycleEventKind.REVOKED:
+            return RevocationResult(
+                outcome=RevocationOutcome.ALREADY_REVOKED,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+            )
+        case PreparationLifecycleEventKind.CONSUMED:
+            return RevocationResult(
+                outcome=RevocationOutcome.ALREADY_CONSUMED,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                error_detail="Receipt has been consumed — cannot revoke",
+            )
+        case PreparationLifecycleEventKind.SUPERSEDED:
+            return RevocationResult(
+                outcome=RevocationOutcome.ALREADY_SUPERSEDED,
+                preparation_receipt_sha256=preparation_receipt_sha256,
+                error_detail="Receipt has been superseded — cannot revoke",
+            )
+        case PreparationLifecycleEventKind.ACTIVE | None:
+            pass
+
+    # 4. Construct and append REVOKED event
+    receipt = load_result.receipt
+    branch = (receipt.get("branch") or "") if receipt else ""
+    worktree_root = (receipt.get("worktree_root") or "") if receipt else ""
+
+    event = PreparationLifecycleEvent(
+        event_kind=PreparationLifecycleEventKind.REVOKED,
+        preparation_receipt_sha256=preparation_receipt_sha256,
+        branch=branch,
+        worktree_root=worktree_root,
+        producer=producer,
+    )
+
+    event_id = append_lifecycle_event(event)
+    if event_id is None:
+        return RevocationResult(
+            outcome=RevocationOutcome.LEDGER_WRITE_FAILED,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail="Lifecycle ledger write failed",
+        )
+
+    # 5. Verify the write
+    life_result = load_lifecycle_events(preparation_receipt_sha256)
+    if not life_result.is_ok:
+        logger.error(
+            "Post-revoke lifecycle verification failed for receipt %s: %s",
+            preparation_receipt_sha256,
+            life_result.error_detail,
+        )
+        return RevocationResult(
+            outcome=RevocationOutcome.LIFECYCLE_AUTHORITY_CORRUPT,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=f"Post-revoke lifecycle verification failed: {life_result.error_detail}",
+        )
+    if life_result.status != PreparationLifecycleEventKind.REVOKED:
+        return RevocationResult(
+            outcome=RevocationOutcome.CONFLICTING_TERMINAL,
+            preparation_receipt_sha256=preparation_receipt_sha256,
+            error_detail=(
+                f"After revoke append, lifecycle status is {life_result.status}, "
+                f"not REVOKED — another terminal transition may have occurred"
+            ),
+        )
+
+    return RevocationResult(
+        outcome=RevocationOutcome.REVOKED,
+        preparation_receipt_sha256=preparation_receipt_sha256,
+        revocation_event_id=event_id,
+    )
+
+
 __all__ = [
     "LifecycleLoadOutcome",
     "LifecycleLoadResult",
@@ -1207,6 +1366,8 @@ __all__ = [
     "PreparationLoadResult",
     "ReconciliationOutcome",
     "ReconciliationResult",
+    "RevocationOutcome",
+    "RevocationResult",
     "acquire_transition_lock",
     "append_lifecycle_event",
     "cr_lifecycle_ledger_path",
@@ -1225,4 +1386,5 @@ __all__ = [
     "reconcile_receipt_evidence",
     "release_transition_lock",
     "resolve_best_preparation_receipt",
+    "revoke_preparation_receipt",
 ]

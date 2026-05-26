@@ -1,0 +1,427 @@
+"""Generic Disclosure Authorization Authority v1.
+
+Governed, narrow-scoped temporary disclosure rights over opaque
+evidence objects. Supports issue, validate, consume, expire, and
+refuse semantics with evidence-freshness enforcement.
+
+Lane A owns this generic authority substrate. Lane B will later
+consume it for Git-specific disclosure implementation.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum, auto
+import hashlib
+import json
+from pathlib import Path
+import secrets
+
+from pydantic import BaseModel, ConfigDict, Field
+
+# ── Disclosure classes ────────────────────────────────────────────────────────
+
+
+class DisclosureClass(StrEnum):
+    PATH_IDENTITY = auto()
+    PATH_INVENTORY = auto()
+    BRANCH_IDENTITY = auto()
+    BRANCH_ENUMERATION = auto()
+    COMMIT_SUBJECT = auto()
+    COMMIT_BODY = auto()
+    COMMIT_PATCH = auto()
+    METADATA_DISCLOSURE = auto()
+    RAW_CONTENT = auto()
+
+
+# The default policy blocks broad raw-content disclosure.
+# Narrow classes are permitted by default.
+RESTRICTED_DISCLOSURE_CLASSES: frozenset[str] = frozenset({
+    DisclosureClass.RAW_CONTENT.value,
+    DisclosureClass.COMMIT_PATCH.value,
+})
+
+
+# ── Authorization receipt model ──────────────────────────────────────────────
+
+
+DISCLOSURE_AUTHZ_SCHEMA_VERSION = "rig.relay.disclosure_authorization_receipt.v1"
+
+
+class DisclosureAuthorizationReceipt(BaseModel):
+    """Narrow-scoped temporary disclosure authorization receipt.
+
+    Binds to a specific evidence digest and disclosure class.
+    Supports single-use or bounded-use consumption.
+    Carries issuance identity, expiry, and integrity digest.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = DISCLOSURE_AUTHZ_SCHEMA_VERSION
+    authorization_id: str = Field(default_factory=lambda: _generate_id())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    evidence_digest: str = ""
+    disclosure_class: str = ""
+    requested_selector: str | None = None
+    actor_identity: str = ""
+    producer_identity: str = ""
+    purpose: str = ""
+    issued_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    expires_at: str = ""
+    one_time: bool = True
+    max_uses: int = 1
+    use_count: int = 0
+    consumed: bool = False
+    receipt_sha256: str = ""
+
+    def recompute_integrity(self) -> str:
+        payload = self.model_dump(exclude={"receipt_sha256"})
+        payload["receipt_sha256"] = ""
+        payload_data = json.dumps(payload, sort_keys=True).encode("utf-8")
+        return "sha256:" + hashlib.sha256(payload_data).hexdigest()
+
+    def seal(self) -> None:
+        self.receipt_sha256 = self.recompute_integrity()
+
+    def verify_integrity(self) -> bool:
+        return self.receipt_sha256 == self.recompute_integrity()
+
+
+# ── Outcomes ─────────────────────────────────────────────────────────────────
+
+
+class DisclosureOutcome(StrEnum):
+    ISSUED = auto()
+    VALID = auto()
+    EXPIRED = auto()
+    CONSUMED = auto()
+    EVIDENCE_MISMATCH = auto()
+    UNSUPPORTED_CLASS = auto()
+    NOT_FOUND = auto()
+    CORRUPT = auto()
+    ALREADY_CONSUMED = auto()
+    ALREADY_EXPIRED = auto()
+    UNKNOWN = auto()
+
+
+@dataclass(slots=True)
+class DisclosureResult:
+    outcome: DisclosureOutcome
+    authorization_id: str = ""
+    receipt: DisclosureAuthorizationReceipt | None = None
+    error_detail: str = ""
+
+    @property
+    def is_authorized(self) -> bool:
+        return self.outcome in {DisclosureOutcome.ISSUED, DisclosureOutcome.VALID}
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+def _generate_id() -> str:
+    return "disc_" + secrets.token_hex(16)
+
+
+def _sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _store_root() -> Path:
+    return Path(".build/rig-relay/desktop/disclosure-authorizations")
+
+
+def _receipt_path(authorization_id: str) -> Path:
+    """Path for a disclosure authorization receipt, keyed by stable authorization_id."""
+    return _store_root() / f"{authorization_id}.json"
+
+
+def _persist_receipt(receipt: DisclosureAuthorizationReceipt) -> str | None:
+    store = _store_root()
+    try:
+        store.mkdir(parents=True, exist_ok=True)
+        path = _receipt_path(receipt.authorization_id)
+        path.write_text(
+            json.dumps(receipt.model_dump(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return str(path)
+    except OSError:
+        return None
+
+
+def _load_receipt(authorization_id: str) -> DisclosureAuthorizationReceipt | None:
+    path = _receipt_path(authorization_id)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return DisclosureAuthorizationReceipt.model_validate(data)
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return None
+
+
+# ── Issue authorization ──────────────────────────────────────────────────────
+
+
+def issue_disclosure_authorization(
+    *,
+    evidence_digest: str,
+    disclosure_class: str,
+    requested_selector: str | None = None,
+    actor_identity: str = "",
+    producer_identity: str = "",
+    purpose: str = "",
+    ttl_minutes: int = 15,
+    one_time: bool = True,
+    max_uses: int = 1,
+) -> DisclosureResult:
+    """Issue a narrow-scoped disclosure authorization receipt.
+
+    Args:
+        evidence_digest: SHA256 digest of the opaque evidence object.
+        disclosure_class: One of the DisclosureClass values.
+        requested_selector: Optional pseudonymous selector within evidence.
+        actor_identity: Identity of the requesting actor.
+        producer_identity: Identity of the evidence producer.
+        purpose: Documented purpose for the disclosure.
+        ttl_minutes: Time-to-live in minutes.
+        one_time: Whether the receipt is single-use.
+        max_uses: Maximum uses (only meaningful when one_time=False).
+
+    Returns:
+        DisclosureResult with the sealed receipt on success.
+    """
+    valid_classes = {c.value for c in DisclosureClass}
+    if disclosure_class not in valid_classes:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.UNSUPPORTED_CLASS,
+            error_detail=f"Unsupported disclosure class: {disclosure_class}. "
+            f"Valid classes: {sorted(valid_classes)}",
+        )
+
+    now = datetime.now(UTC)
+    expires = now + timedelta(minutes=ttl_minutes)
+
+    receipt = DisclosureAuthorizationReceipt(
+        evidence_digest=evidence_digest,
+        disclosure_class=disclosure_class,
+        requested_selector=requested_selector,
+        actor_identity=actor_identity,
+        producer_identity=producer_identity,
+        purpose=purpose,
+        issued_at=now.isoformat(),
+        expires_at=expires.isoformat(),
+        one_time=one_time,
+        max_uses=max_uses,
+    )
+    receipt.seal()
+
+    path = _persist_receipt(receipt)
+    if path is None:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.UNKNOWN,
+            error_detail="Failed to persist disclosure authorization receipt",
+        )
+
+    return DisclosureResult(
+        outcome=DisclosureOutcome.ISSUED,
+        authorization_id=receipt.authorization_id,
+        receipt=receipt,
+    )
+
+
+# ── Validate authorization ───────────────────────────────────────────────────
+
+
+def validate_disclosure_authorization(
+    authorization_id: str, *, current_evidence_digest: str | None = None
+) -> DisclosureResult:
+    """Validate a disclosure authorization receipt against current evidence.
+
+    Checks integrity, expiry, consumption, evidence freshness, and
+    disclosure class validity.
+
+    Args:
+        authorization_id: Stable authorization identifier (not receipt_sha256).
+        current_evidence_digest: Current evidence digest for freshness check.
+
+    Returns:
+        DisclosureResult with validation outcome.
+    """
+    receipt = _load_receipt(authorization_id)
+    if receipt is None or not receipt.verify_integrity():
+        outcome = (
+            DisclosureOutcome.NOT_FOUND
+            if receipt is None
+            else DisclosureOutcome.CORRUPT
+        )
+        detail = (
+            f"Receipt not found: {authorization_id}"
+            if receipt is None
+            else "Receipt integrity check failed"
+        )
+        return DisclosureResult(
+            outcome=outcome,
+            authorization_id=authorization_id
+            if receipt is None
+            else receipt.authorization_id,
+            error_detail=detail,
+        )
+
+    # Expiry check — combine parsing and comparison
+    try:
+        expires = datetime.fromisoformat(receipt.expires_at)
+        expired = datetime.now(UTC) >= expires
+    except (ValueError, TypeError):
+        return DisclosureResult(
+            outcome=DisclosureOutcome.CORRUPT,
+            authorization_id=receipt.authorization_id,
+            error_detail="Invalid expires_at format",
+        )
+    if expired:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.EXPIRED,
+            authorization_id=receipt.authorization_id,
+            receipt=receipt,
+            error_detail=f"Receipt expired at {receipt.expires_at}",
+        )
+
+    # Consumption check — consolidate into single return path
+    consumed = (receipt.one_time and receipt.consumed) or (
+        not receipt.one_time and receipt.use_count >= receipt.max_uses
+    )
+    if consumed:
+        detail = (
+            "One-time receipt already consumed"
+            if receipt.one_time
+            else f"Bounded-use receipt exhausted ({receipt.use_count}/{receipt.max_uses})"
+        )
+        return DisclosureResult(
+            outcome=DisclosureOutcome.ALREADY_CONSUMED,
+            authorization_id=receipt.authorization_id,
+            receipt=receipt,
+            error_detail=detail,
+        )
+
+    # Evidence freshness and class validity checks
+    valid_classes = {c.value for c in DisclosureClass}
+    if current_evidence_digest and receipt.evidence_digest != current_evidence_digest:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.EVIDENCE_MISMATCH,
+            authorization_id=receipt.authorization_id,
+            receipt=receipt,
+            error_detail=(
+                f"Evidence digest mismatch: receipt bound to "
+                f"{receipt.evidence_digest[:16]}..., "
+                f"current evidence is {current_evidence_digest[:16]}..."
+            ),
+        )
+    if receipt.disclosure_class not in valid_classes:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.UNSUPPORTED_CLASS,
+            authorization_id=receipt.authorization_id,
+            receipt=receipt,
+            error_detail=f"Unsupported disclosure class: {receipt.disclosure_class}",
+        )
+
+    return DisclosureResult(
+        outcome=DisclosureOutcome.VALID,
+        authorization_id=receipt.authorization_id,
+        receipt=receipt,
+    )
+
+
+# ── Consume authorization ────────────────────────────────────────────────────
+
+
+def consume_disclosure_authorization(
+    authorization_id: str, *, current_evidence_digest: str | None = None
+) -> DisclosureResult:
+    """Validate and consume a disclosure authorization receipt.
+
+    First validates, then marks as consumed (atomically: the receipt
+    is re-loaded after persist to verify consumption).
+
+    Args:
+        authorization_id: Stable authorization identifier.
+        current_evidence_digest: Current evidence digest for freshness.
+
+    Returns:
+        DisclosureResult with outcome. Only VALID signals a consumed use.
+    """
+    valid = validate_disclosure_authorization(
+        authorization_id, current_evidence_digest=current_evidence_digest
+    )
+    if not valid.is_authorized:
+        return valid
+
+    receipt = valid.receipt
+    assert receipt is not None
+
+    if receipt.one_time:
+        receipt.consumed = True
+    else:
+        receipt.use_count += 1
+    receipt.seal()
+
+    path = _persist_receipt(receipt)
+    if path is None:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.UNKNOWN,
+            authorization_id=receipt.authorization_id,
+            error_detail="Failed to persist consumed receipt",
+        )
+
+    # Re-verify: ensure consumption took effect
+    reloaded = _load_receipt(receipt.authorization_id)
+    if reloaded is None or not reloaded.verify_integrity():
+        return DisclosureResult(
+            outcome=DisclosureOutcome.CORRUPT,
+            authorization_id=receipt.authorization_id,
+            error_detail="Post-consume verification failed",
+        )
+    if receipt.one_time and not reloaded.consumed:
+        return DisclosureResult(
+            outcome=DisclosureOutcome.CORRUPT,
+            authorization_id=receipt.authorization_id,
+            error_detail="Consume flag not persisted",
+        )
+
+    return DisclosureResult(
+        outcome=DisclosureOutcome.CONSUMED,
+        authorization_id=receipt.authorization_id,
+        receipt=reloaded,
+    )
+
+
+# ── Replay detection ─────────────────────────────────────────────────────────
+
+
+def check_disclosure_replay(
+    authorization_id: str, *, current_evidence_digest: str | None = None
+) -> DisclosureResult:
+    """Check whether a disclosure authorization would be accepted (non-mutating).
+
+    Same validation logic as validate_disclosure_authorization but
+    does not consume. Useful for pre-flight checks.
+    """
+    return validate_disclosure_authorization(
+        authorization_id, current_evidence_digest=current_evidence_digest
+    )
+
+
+__all__ = [
+    "DISCLOSURE_AUTHZ_SCHEMA_VERSION",
+    "RESTRICTED_DISCLOSURE_CLASSES",
+    "DisclosureAuthorizationReceipt",
+    "DisclosureClass",
+    "DisclosureOutcome",
+    "DisclosureResult",
+    "check_disclosure_replay",
+    "consume_disclosure_authorization",
+    "issue_disclosure_authorization",
+    "validate_disclosure_authorization",
+]

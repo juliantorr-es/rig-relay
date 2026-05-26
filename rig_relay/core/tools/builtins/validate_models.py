@@ -7,6 +7,8 @@ validate submodules — only stdlib, pydantic, and framework base types.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import StrEnum, auto
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,6 +34,72 @@ VALID_DIRTY_POLICIES: frozenset[str] = frozenset({
 })
 
 
+# ── Execution risk classification ──────────────────────────────────────
+
+
+class ValidationExecutionRisk(StrEnum):
+    REPOSITORY_CODE_EXECUTING = auto()
+    REPOSITORY_INSPECTION = auto()
+    STATIC_ANALYSIS = auto()
+    CUSTOM_UNCLASSIFIED = auto()
+
+
+@dataclass(slots=True)
+class ContainmentProperties:
+    filesystem_isolation: bool = False
+    network_isolation: bool = False
+    secret_isolation: bool = False
+    descendant_containment: bool = False
+    resource_sandbox: bool = False
+    shell_interpretation_avoided: bool = False
+    ambient_environment_scrubbed: bool = False
+    output_bounded: bool = False
+    timeout_enforced: bool = False
+    process_session_created: bool = False
+    containment_backend: str = "none"
+    notes: str = ""
+
+    @property
+    def any_containment(self) -> bool:
+        return (
+            self.filesystem_isolation
+            or self.network_isolation
+            or self.secret_isolation
+            or self.descendant_containment
+            or self.resource_sandbox
+        )
+
+    def to_dict(self) -> dict[str, bool | str]:
+        return {
+            "filesystem_isolation": self.filesystem_isolation,
+            "network_isolation": self.network_isolation,
+            "secret_isolation": self.secret_isolation,
+            "descendant_containment": self.descendant_containment,
+            "resource_sandbox": self.resource_sandbox,
+            "shell_interpretation_avoided": self.shell_interpretation_avoided,
+            "ambient_environment_scrubbed": self.ambient_environment_scrubbed,
+            "output_bounded": self.output_bounded,
+            "timeout_enforced": self.timeout_enforced,
+            "process_session_created": self.process_session_created,
+            "containment_backend": self.containment_backend,
+            "notes": self.notes,
+        }
+
+
+def classify_command_execution_risk(
+    command_kind: str, argv: list[str] | None = None
+) -> ValidationExecutionRisk:
+    match command_kind:
+        case "git":
+            return ValidationExecutionRisk.REPOSITORY_INSPECTION
+        case "ruff" | "pyright":
+            return ValidationExecutionRisk.STATIC_ANALYSIS
+        case "pytest" | "schema" | "policy":
+            return ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+        case _:
+            return ValidationExecutionRisk.CUSTOM_UNCLASSIFIED
+
+
 # ── Profile data classes ──────────────────────────────────────────────
 
 
@@ -47,6 +115,7 @@ class ProfileCheck:
         *,
         allow_mutation: bool = False,
         allow_network: bool = False,
+        execution_risk: ValidationExecutionRisk | None = None,
     ) -> None:
         self.check_id = check_id
         self.command_kind = command_kind
@@ -54,6 +123,11 @@ class ProfileCheck:
         self.display = display or " ".join(argv)
         self.allow_mutation = allow_mutation
         self.allow_network = allow_network
+        self.execution_risk = (
+            execution_risk
+            if execution_risk is not None
+            else classify_command_execution_risk(command_kind)
+        )
 
 
 class Profile:
@@ -177,6 +251,18 @@ class ValidateArgs(BaseModel):
         description="pytest-xdist distribution mode: loadfile, load, each.",
     )
 
+    allow_uncontained_execution: bool = Field(
+        default=False,
+        description="When True, repository-code-executing checks (pytest, schema scripts, "
+        "policy scripts) are allowed under explicit authority. The receipt will truthfully "
+        "report that no containment was proved. Default (False) refuses such checks in "
+        "governed autonomous mode with a typed refusal.",
+    )
+    uncontained_authorization_receipt: str | None = Field(
+        default=None,
+        description="Optional authorization receipt for uncontained execution. "
+        "When provided, it is validated and recorded in the check result.",
+    )
     preparation_receipt_sha256: str | None = Field(
         default=None,
         description="SHA256 of a durable preparation receipt from prepare_checkpoint. "
@@ -228,6 +314,12 @@ class ValidateCheckResult(BaseModel):
     worker_count: int | None = None
     distribution: str | None = None
     validation_phase: str | None = None
+
+    # ── Execution authority metadata ──────────────────────────
+    execution_risk: str = "custom_unclassified"
+    containment_properties: dict[str, Any] = Field(default_factory=dict)
+    uncontained_execution_authorized: bool = False
+    containment_backend_unavailable: bool = False
 
 
 # ── Content-light receipt models ──────────────────────────────────────

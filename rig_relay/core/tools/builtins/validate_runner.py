@@ -16,7 +16,10 @@ import time
 from rig_relay.core.tools.builtins.validate_models import (
     RECEIPT_SCRIPT,
     SCHEMA_SCRIPT,
+    ContainmentProperties,
     ValidateCheckResult,
+    ValidationExecutionRisk,
+    classify_command_execution_risk,
 )
 from rig_relay.core.tools.builtins.validate_summaries import _parse_check_summary
 
@@ -109,20 +112,17 @@ def _compute_fingerprint(argv: Sequence[str]) -> str:
 async def _run_check(
     argv: list[str], *, output_cap: int, timeout: int, cwd: str | None
 ) -> ValidateCheckResult:
-    """Run a single check as a subprocess and return a structured result.
-
-    Uses argv-based execution (no shell). Captures stdout/stderr with
-    byte caps, computes hashes, measures duration, and classifies failures.
-    """
     start = time.perf_counter()
     check_id = _compute_fingerprint(argv)
+    command_kind = _infer_kind_from_argv(argv)
+    execution_risk = classify_command_execution_risk(command_kind, argv)
 
     missing = check_missing_dependency(argv)
     if missing:
         elapsed = (time.perf_counter() - start) * 1000
         return ValidateCheckResult(
             check_id=check_id,
-            command_kind=_infer_kind_from_argv(argv),
+            command_kind=command_kind,
             command_display=" ".join(argv),
             command_fingerprint=check_id,
             status="blocked",
@@ -130,6 +130,11 @@ async def _run_check(
             failure_kind="missing_dependency",
             stdout_bytes=0,
             stderr_bytes=0,
+            execution_risk=execution_risk.value,
+            containment_properties=ContainmentProperties().to_dict(),
+            containment_backend_unavailable=(
+                execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            ),
         )
 
     try:
@@ -144,7 +149,7 @@ async def _run_check(
         elapsed = (time.perf_counter() - start) * 1000
         return ValidateCheckResult(
             check_id=check_id,
-            command_kind=_infer_kind_from_argv(argv),
+            command_kind=command_kind,
             command_display=" ".join(argv),
             command_fingerprint=check_id,
             status="blocked",
@@ -152,6 +157,11 @@ async def _run_check(
             failure_kind="missing_dependency",
             stdout_bytes=0,
             stderr_bytes=0,
+            execution_risk=execution_risk.value,
+            containment_properties=ContainmentProperties().to_dict(),
+            containment_backend_unavailable=(
+                execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            ),
         )
 
     try:
@@ -166,7 +176,7 @@ async def _run_check(
         elapsed = (time.perf_counter() - start) * 1000
         return ValidateCheckResult(
             check_id=check_id,
-            command_kind=_infer_kind_from_argv(argv),
+            command_kind=command_kind,
             command_display=" ".join(argv),
             command_fingerprint=check_id,
             status="timed_out",
@@ -174,6 +184,11 @@ async def _run_check(
             failure_kind="timeout",
             stdout_bytes=0,
             stderr_bytes=0,
+            execution_risk=execution_risk.value,
+            containment_properties=ContainmentProperties().to_dict(),
+            containment_backend_unavailable=(
+                execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            ),
         )
 
     elapsed = (time.perf_counter() - start) * 1000
@@ -207,6 +222,22 @@ async def _run_check(
         command_kind, stdout_str, stderr_str, returncode
     )
 
+    # Truthful containment reporting: direct subprocess, no sandbox
+    containment = ContainmentProperties(
+        filesystem_isolation=False,
+        network_isolation=False,
+        secret_isolation=False,
+        descendant_containment=False,
+        resource_sandbox=False,
+        shell_interpretation_avoided=True,
+        ambient_environment_scrubbed=False,
+        output_bounded=True,
+        timeout_enforced=True,
+        process_session_created=False,
+        containment_backend="none",
+        notes="Direct argv subprocess execution via asyncio. No filesystem, network, or process-tree containment.",
+    )
+
     return ValidateCheckResult(
         check_id=check_id,
         command_kind=command_kind,
@@ -223,4 +254,10 @@ async def _run_check(
         stderr_truncated=stderr_truncated,
         failure_kind=failure_kind,
         parsed_summary=parsed_summary,
+        execution_risk=execution_risk.value,
+        containment_properties=containment.to_dict(),
+        uncontained_execution_authorized=False,
+        containment_backend_unavailable=(
+            execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+        ),
     )

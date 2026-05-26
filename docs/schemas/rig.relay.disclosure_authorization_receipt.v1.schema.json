@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.disclosure_authorization_receipt.v1.schema.json",
+  "title": "Disclosure Authorization Receipt v1",
+  "description": "Narrow-scoped temporary disclosure authorization receipt. Binds authorization to a specific evidence digest and disclosure class. Supports single-use and bounded-use consumption with integrity protection. Lane A owns this generic authority substrate; Lane B consumes it for Git-specific disclosure.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "evidence_digest",
+    "disclosure_class",
+    "issued_at",
+    "expires_at",
+    "one_time",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.disclosure_authorization_receipt.v1"
+    },
+    "authorization_id": {
+      "type": "string",
+      "description": "Stable authorization identifier — used as the persistent file key."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of receipt creation."
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the opaque evidence object this authorization binds to."
+    },
+    "disclosure_class": {
+      "type": "string",
+      "enum": [
+        "path_identity",
+        "path_inventory",
+        "branch_identity",
+        "branch_enumeration",
+        "commit_subject",
+        "commit_body",
+        "commit_patch",
+        "metadata_disclosure",
+        "raw_content"
+      ],
+      "description": "Narrow-scoped disclosure class. raw_content and commit_patch are restricted by default policy."
+    },
+    "requested_selector": {
+      "type": ["string", "null"],
+      "description": "Optional pseudonymous selector or target identity within the evidence object."
+    },
+    "actor_identity": {
+      "type": "string",
+      "description": "Identity of the requesting actor."
+    },
+    "producer_identity": {
+      "type": "string",
+      "description": "Identity of the evidence producer."
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Documented purpose for this disclosure."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of issuance."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which the receipt is invalid."
+    },
+    "one_time": {
+      "type": "boolean",
+      "description": "True for single-use receipts, False for bounded-use."
+    },
+    "max_uses": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum uses for bounded-use receipts (ignored when one_time=True)."
+    },
+    "use_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current use count for bounded-use receipts."
+    },
+    "consumed": {
+      "type": "boolean",
+      "description": "True when a one-time receipt has been consumed."
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Integrity digest covering all receipt data (excluding this field)."
+    }
+  },
+  "additionalProperties": false
+}

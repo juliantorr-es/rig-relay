@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.lane_lifecycle_event.v1.schema.json",
+  "title": "Lane Lifecycle Event v1",
+  "description": "Immutable lane lifecycle event for the promotion and consumption authority. Each event is appended to an append-only JSONL ledger, carries an integrity digest, a predecessor digest binding it to the prior event in the chain, and references lane identity, mission identity, base revision, and bounded evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "lane_id",
+    "mission_id",
+    "integrity_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.lane_lifecycle_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier."
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "lane_claimed",
+        "ready_requested",
+        "ready_refused",
+        "validation_passed",
+        "validation_failed",
+        "accepted",
+        "refused",
+        "promoted",
+        "promotion_refused",
+        "consumed",
+        "failed",
+        "parked"
+      ],
+      "description": "Lifecycle transition kind."
+    },
+    "lane_id": {
+      "type": "string",
+      "description": "Lane identifier — stable across all events for the same lane."
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "Mission identifier binding."
+    },
+    "base_revision": {
+      "type": "string",
+      "description": "Git revision SHA at lane creation — used for stale base detection."
+    },
+    "branch_identity": {
+      "type": "string",
+      "description": "Content-light branch identity reference."
+    },
+    "worktree_identity": {
+      "type": "string",
+      "description": "Content-light worktree identity reference."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of event creation."
+    },
+    "producer": {
+      "type": "string",
+      "description": "Identifier of the producing operation."
+    },
+    "prior_event_digest": {
+      "type": ["string", "null"],
+      "description": "Integrity digest of the immediately prior event in this lane's chain. Null for the first event."
+    },
+    "integrity_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 integrity digest covering all event data (excluding this field)."
+    },
+    "claimed_path_evidence_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 of claimed-path evidence at lane creation."
+    },
+    "readiness_request_id": {
+      "type": ["string", "null"],
+      "description": "Identifier of the readiness request."
+    },
+    "proof_bundle_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 of the proof bundle submitted with a readiness request."
+    },
+    "validation_decision_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 of the validation decision evidence."
+    },
+    "acceptance_reason": {
+      "type": ["string", "null"],
+      "description": "Acceptance reason for accepted transitions."
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Refusal reason for refused or promotion_refused transitions."
+    },
+    "promotion_target": {
+      "type": ["string", "null"],
+      "description": "Target branch or corridor for promotion."
+    },
+    "promotion_source_sha256": {
+      "type": ["string", "null"],
+      "description": "SHA256 of the promotion source evidence."
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_kind": { "const": "ready_requested" } }
+      },
+      "then": {
+        "required": ["proof_bundle_sha256"],
+        "properties": {
+          "proof_bundle_sha256": {
+            "type": "string",
+            "pattern": "^sha256:"
+          }
+        }
+      }
+    }
+  ]
+}

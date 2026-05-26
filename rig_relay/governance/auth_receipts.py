@@ -36,6 +36,8 @@ DEFAULT_POLICY: dict[str, Any] = {
         "credentials.configure",
         "update.restart_now",
         "review_projection.disclose.authorize",
+        "preparation_receipt.revoke",
+        "validate.uncontained_execution",
     ],
     "action_methods": {
         "remote_upload.confirm": [
@@ -52,6 +54,8 @@ DEFAULT_POLICY: dict[str, Any] = {
         "credentials.configure": ["none_dev_only", "local_system_auth"],
         "update.restart_now": ["none_dev_only", "local_system_auth"],
         "review_projection.disclose.authorize": ["none_dev_only", "local_system_auth"],
+        "preparation_receipt.revoke": ["none_dev_only", "local_system_auth"],
+        "validate.uncontained_execution": ["none_dev_only", "local_system_auth"],
     },
     "receipt_ttl_seconds": 300,
     "default_method": "local_system_auth",

@@ -44,6 +44,7 @@ from rig_relay.core.tools.builtins.validate_models import (
     DIRTY_POLICY_CLEAN,
     MAX_CAP_BYTES,
     VALIDATE_RECEIPT_SCHEMA_VERSION,
+    ContainmentProperties,
     Profile,
     ProfileCheck,
     ValidateArgs,
@@ -53,6 +54,8 @@ from rig_relay.core.tools.builtins.validate_models import (
     ValidateReceipt,
     ValidateResult,
     ValidateToolConfig,
+    ValidationExecutionRisk,
+    classify_command_execution_risk,
 )
 
 # Paths
@@ -188,6 +191,7 @@ __all__ = [
     "DIRTY_POLICY_CLEAN",
     "MAX_CAP_BYTES",
     "VALIDATE_RECEIPT_SCHEMA_VERSION",
+    "ContainmentProperties",
     "Profile",
     "ProfileCheck",
     "Validate",
@@ -198,6 +202,7 @@ __all__ = [
     "ValidateReceipt",
     "ValidateResult",
     "ValidateToolConfig",
+    "ValidationExecutionRisk",
     "_check_dirty_policy",
     "_collect_git_state",
     "_compute_fingerprint",
@@ -215,6 +220,7 @@ __all__ = [
     "_run_check",
     "_scope_check_argv",
     "check_missing_dependency",
+    "classify_command_execution_risk",
     "classify_failure",
     "get_profile",
     "list_profiles",
@@ -619,6 +625,32 @@ class Validate(
         cr = await self._execute_profile_check(prepared)
         if prepared.run.normalized_paths:
             cr.affected_paths = list(prepared.run.normalized_paths)
+
+        # ── Populate execution authority fields ─────────────────
+        cr.execution_risk = check.execution_risk.value
+        containment = ContainmentProperties(
+            filesystem_isolation=False,
+            network_isolation=False,
+            secret_isolation=False,
+            descendant_containment=False,
+            resource_sandbox=False,
+            shell_interpretation_avoided=True,
+            ambient_environment_scrubbed=False,
+            output_bounded=cr.stdout_bytes is not None,
+            timeout_enforced=True,
+            process_session_created=False,
+            containment_backend="none",
+            notes="Direct argv subprocess execution via asyncio. No filesystem, network, or process-tree containment.",
+        )
+        cr.containment_properties = containment.to_dict()
+        cr.uncontained_execution_authorized = (
+            check.execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            and prepared.run.args.allow_uncontained_execution
+        )
+        cr.containment_backend_unavailable = (
+            check.execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            and not containment.any_containment
+        )
         if cr.status == "passed":
             prepared.run.state_machine.transition(
                 ValidateProfileEvent.CHECK_PASSED,
@@ -715,6 +747,115 @@ class Validate(
                 attributes={"profile": run.args.profile, "check_id": check.check_id},
             )
             return self._skipped_result(check)
+
+        # ── Execution authority gate ──────────────────────────────
+        # Repository-code-executing checks (pytest, schema scripts,
+        # policy scripts) must be explicitly authorized when no real
+        # containment backend is available. The v1 contract is fail-closed:
+        # such checks are refused under autonomous governed validate
+        # unless allow_uncontained_execution=True is provided with a
+        # VALID auditable authorization receipt.
+        if (
+            check.execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            and not run.args.allow_uncontained_execution
+        ):
+            run.state_machine.transition(
+                ValidateProfileEvent.CHECK_SKIPPED,
+                reason=(
+                    f"repository-code-executing check {check.check_id} "
+                    f"refused: no contained execution backend available"
+                ),
+                attributes={
+                    "profile": run.args.profile,
+                    "check_id": check.check_id,
+                    "refusal_code": "contained_validation_backend_unavailable",
+                },
+            )
+            fp = _compute_fingerprint(run_argv)
+            return ValidateCheckResult(
+                check_id=check.check_id,
+                command_kind=check.command_kind,
+                command_display=check.display,
+                command_fingerprint=fp,
+                status="refused",
+                failure_kind="contained_validation_backend_unavailable",
+                execution_risk=check.execution_risk.value,
+                containment_properties=ContainmentProperties().to_dict(),
+                containment_backend_unavailable=True,
+            )
+
+        # ── Explicit authorization gate for uncontained execution ──
+        if (
+            check.execution_risk == ValidationExecutionRisk.REPOSITORY_CODE_EXECUTING
+            and run.args.allow_uncontained_execution
+        ):
+            if not run.args.uncontained_authorization_receipt:
+                run.state_machine.transition(
+                    ValidateProfileEvent.CHECK_SKIPPED,
+                    reason=(
+                        f"uncontained execution requested for {check.check_id} "
+                        f"but no authorization receipt provided"
+                    ),
+                    attributes={
+                        "profile": run.args.profile,
+                        "check_id": check.check_id,
+                        "refusal_code": "uncontained_execution_unauthorized",
+                    },
+                )
+                fp = _compute_fingerprint(run_argv)
+                return ValidateCheckResult(
+                    check_id=check.check_id,
+                    command_kind=check.command_kind,
+                    command_display=check.display,
+                    command_fingerprint=fp,
+                    status="refused",
+                    failure_kind="uncontained_execution_unauthorized",
+                    execution_risk=check.execution_risk.value,
+                    containment_properties=ContainmentProperties(
+                        notes="Authorization receipt missing for uncontained execution"
+                    ).to_dict(),
+                    containment_backend_unavailable=True,
+                )
+
+            # Validate authorization receipt
+            import json as _json
+
+            from rig_relay.governance.auth_receipts import validate_receipt
+
+            try:
+                authz = _json.loads(run.args.uncontained_authorization_receipt)
+            except (_json.JSONDecodeError, TypeError):
+                fp = _compute_fingerprint(run_argv)
+                return ValidateCheckResult(
+                    check_id=check.check_id,
+                    command_kind=check.command_kind,
+                    command_display=check.display,
+                    command_fingerprint=fp,
+                    status="refused",
+                    failure_kind="uncontained_execution_unauthorized",
+                    execution_risk=check.execution_risk.value,
+                    containment_properties=ContainmentProperties(
+                        notes="Authorization receipt is not valid JSON"
+                    ).to_dict(),
+                    containment_backend_unavailable=True,
+                )
+
+            valid, reason = validate_receipt(authz, "validate.uncontained_execution")
+            if not valid:
+                fp = _compute_fingerprint(run_argv)
+                return ValidateCheckResult(
+                    check_id=check.check_id,
+                    command_kind=check.command_kind,
+                    command_display=check.display,
+                    command_fingerprint=fp,
+                    status="refused",
+                    failure_kind="uncontained_execution_unauthorized",
+                    execution_risk=check.execution_risk.value,
+                    containment_properties=ContainmentProperties(
+                        notes=f"Authorization invalid: {reason}"
+                    ).to_dict(),
+                    containment_backend_unavailable=True,
+                )
 
         cmd_fp = _compute_fingerprint(run_argv)
         input_fp, file_fps = compute_input_fingerprint(
