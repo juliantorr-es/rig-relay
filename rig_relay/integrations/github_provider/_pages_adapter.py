@@ -21,6 +21,21 @@ from rig_relay.integrations.github_provider._redaction import hash_identifier
 GITHUB_API_BASE = "https://api.github.com"
 
 
+def _map_pages_consumer_outcome(outcome: str) -> str:
+    return {
+        "authorized": "github.pages.authorized",
+        "missing_authorization": PagesErrorKind.AUTHORIZATION_PENDING,
+        "request_digest_mismatch": "github.pages.request_digest_mismatch",
+        "action_mismatch": "github.pages.action_mismatch",
+        "target_mismatch": "github.pages.target_mismatch",
+        "provider_mismatch": "github.pages.provider_mismatch",
+        "stale_evidence": "github.pages.stale_evidence",
+        "expired_receipt": "github.pages.expired_receipt",
+        "already_consumed": "github.pages.already_consumed",
+        "integrity_tampered": "github.pages.integrity_tampered",
+    }.get(outcome, PagesErrorKind.UNKNOWN)
+
+
 # ── Pages Models ────────────────────────────────────────────────────────
 
 
@@ -175,15 +190,42 @@ class GitHubPagesAdapter:
         repo: str,
         source_branch: str,
         source_path: str = "/",
-        _authorized: bool = False,
+        authorization_id: str = "",
+        prior_evidence_digest: str = "",
     ) -> PagesPublicationResult:
         plan_id = f"pages-{owner}/{repo}-{int(__import__('time').time())}"
-        if not _authorized:
+
+        from rig_relay.integrations.github_provider._authorization_consumer import (
+            ConsumerOutcome,
+            GitHubAuthorizationConsumer,
+        )
+
+        if not authorization_id:
             return PagesPublicationResult(
                 plan_id=plan_id,
-                status="authorization_pending",
+                status="authorization_required",
                 error_kind=PagesErrorKind.AUTHORIZATION_PENDING,
-                suggested_next_action="Pages configuration requires Lane A authorization",
+                suggested_next_action="Provide a Lane A remote-action authorization receipt",
+            )
+
+        payload: dict[str, Any] = {
+            "source": {"branch": source_branch, "path": source_path}
+        }
+        target = f"{owner}/{repo}"
+        consumer_result = GitHubAuthorizationConsumer.validate_and_consume(
+            authorization_id=authorization_id,
+            operation_kind="pages_configure",
+            request_payload=payload,
+            target_identity=target,
+            prior_evidence_digest=prior_evidence_digest,
+        )
+
+        if consumer_result.outcome != ConsumerOutcome.AUTHORIZED.value:
+            return PagesPublicationResult(
+                plan_id=plan_id,
+                status="refused",
+                error_kind=_map_pages_consumer_outcome(consumer_result.outcome),
+                suggested_next_action=consumer_result.suggested_next_action,
             )
 
         try:

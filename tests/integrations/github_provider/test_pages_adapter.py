@@ -70,8 +70,8 @@ async def test_pages_status_not_configured(respx_mock: respx.MockRouter, adapter
 
 @pytest.mark.asyncio
 async def test_configure_pages_refuses_without_authorization(adapter):
-    result = await adapter.configure_pages("owner", "repo", "main", _authorized=False)
-    assert result.status == "authorization_pending"
+    result = await adapter.configure_pages("owner", "repo", "main", authorization_id="")
+    assert result.status == "authorization_required"
     assert result.error_kind == PagesErrorKind.AUTHORIZATION_PENDING
 
 
@@ -79,8 +79,19 @@ async def test_configure_pages_refuses_without_authorization(adapter):
 async def test_configure_pages_succeeds_when_authorized(
     respx_mock: respx.MockRouter, adapter
 ):
-    respx_mock.put(f"{GITHUB_API_BASE}/repos/owner/repo/pages").respond(204)
+    from rig_relay.integrations.github_provider._authorization_consumer import (
+        GitHubAuthorizationConsumer,
+    )
 
+    payload = {"source": {"branch": "main", "path": "/"}}
+    issue_result = GitHubAuthorizationConsumer.issue_authorization(
+        operation_kind="pages_configure",
+        request_payload=payload,
+        target_identity="owner/repo",
+        prior_evidence_digest="sha256:pages-prior",
+    )
+
+    respx_mock.put(f"{GITHUB_API_BASE}/repos/owner/repo/pages").respond(204)
     respx_mock.get(f"{GITHUB_API_BASE}/repos/owner/repo/pages").respond(
         json={
             "source": {"branch": "main", "path": "/"},
@@ -89,7 +100,13 @@ async def test_configure_pages_succeeds_when_authorized(
         }
     )
 
-    result = await adapter.configure_pages("owner", "repo", "main", _authorized=True)
+    result = await adapter.configure_pages(
+        "owner",
+        "repo",
+        "main",
+        authorization_id=issue_result.authorization_id,
+        prior_evidence_digest="sha256:pages-prior",
+    )
     assert result.status == "executed"
     assert result.site_url is not None
 

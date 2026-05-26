@@ -25,6 +25,21 @@ from rig_relay.integrations.github_provider._redaction import assert_no_raw_gith
 GITHUB_API_BASE = "https://api.github.com"
 
 
+def _map_bootstrap_consumer_outcome(outcome: str) -> str:
+    return {
+        "authorized": "github.bootstrap.authorized",
+        "missing_authorization": BootstrapErrorKind.AUTHORIZATION_PENDING,
+        "request_digest_mismatch": "github.bootstrap.request_digest_mismatch",
+        "action_mismatch": "github.bootstrap.action_mismatch",
+        "target_mismatch": "github.bootstrap.target_mismatch",
+        "provider_mismatch": "github.bootstrap.provider_mismatch",
+        "stale_evidence": "github.bootstrap.stale_evidence",
+        "expired_receipt": "github.bootstrap.expired_receipt",
+        "already_consumed": "github.bootstrap.already_consumed",
+        "integrity_tampered": "github.bootstrap.integrity_tampered",
+    }.get(outcome, BootstrapErrorKind.UNKNOWN)
+
+
 # ── Bootstrap Plan ─────────────────────────────────────────────────────
 
 
@@ -186,9 +201,14 @@ class GitHubBootstrapAdapter:
         return plan
 
     async def create_repository(
-        self, plan: BootstrapPlan, _authorized: bool = False
+        self, plan: BootstrapPlan, authorization_id: str = ""
     ) -> BootstrapResult:
-        """Create a repository. Refuses without authorization."""
+        """Create a repository. Consumes Lane A authorization receipt."""
+        from rig_relay.integrations.github_provider._authorization_consumer import (
+            ConsumerOutcome,
+            GitHubAuthorizationConsumer,
+        )
+
         if plan.stale:
             return BootstrapResult(
                 plan_id=plan.plan_id,
@@ -197,12 +217,12 @@ class GitHubBootstrapAdapter:
                 suggested_next_action="Rebuild bootstrap plan with current local state",
             )
 
-        if not _authorized:
+        if not authorization_id:
             return BootstrapResult(
                 plan_id=plan.plan_id,
-                status="authorization_pending",
+                status="authorization_required",
                 error_kind=BootstrapErrorKind.AUTHORIZATION_PENDING,
-                suggested_next_action="Repository creation requires Lane A authorization authority",
+                suggested_next_action="Provide a Lane A remote-action authorization receipt",
             )
 
         if not self._token:
@@ -213,7 +233,6 @@ class GitHubBootstrapAdapter:
                 suggested_next_action="No GitHub App user access token available",
             )
 
-        # Build POST /user/repos payload
         payload: dict[str, Any] = {
             "name": plan.proposed_name,
             "private": plan.proposed_visibility == "private",
@@ -223,6 +242,22 @@ class GitHubBootstrapAdapter:
             payload["description"] = plan.proposed_description
         if plan.proposed_homepage:
             payload["homepage"] = plan.proposed_homepage
+
+        target = plan.proposed_owner or "authenticated-user"
+        consumer_result = GitHubAuthorizationConsumer.validate_and_consume(
+            authorization_id=authorization_id,
+            operation_kind="repo_create",
+            request_payload=payload,
+            target_identity=f"{target}/{plan.proposed_name}",
+        )
+
+        if consumer_result.outcome != ConsumerOutcome.AUTHORIZED.value:
+            return BootstrapResult(
+                plan_id=plan.plan_id,
+                status="refused",
+                error_kind=_map_bootstrap_consumer_outcome(consumer_result.outcome),
+                suggested_next_action=consumer_result.suggested_next_action,
+            )
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:

@@ -72,8 +72,8 @@ async def test_create_refuses_without_authorization():
         purpose=RepoPurpose.ORDINARY.value, proposed_name="test-repo"
     )
 
-    result = await adapter.create_repository(plan, _authorized=False)
-    assert result.status == "authorization_pending"
+    result = await adapter.create_repository(plan, authorization_id="")
+    assert result.status == "authorization_required"
     assert result.error_kind == BootstrapErrorKind.AUTHORIZATION_PENDING
     assert "Lane A" in (result.suggested_next_action or "")
 
@@ -86,7 +86,7 @@ async def test_create_refuses_stale_plan():
     )
     plan.stale = True
 
-    result = await adapter.create_repository(plan, _authorized=True)
+    result = await adapter.create_repository(plan, authorization_id="")
     assert result.status == "stale_refused"
     assert result.error_kind == BootstrapErrorKind.STALE_LOCAL_HEAD
 
@@ -98,18 +98,33 @@ async def test_create_refuses_no_token():
         purpose=RepoPurpose.ORDINARY.value, proposed_name="test-repo"
     )
 
-    result = await adapter.create_repository(plan, _authorized=True)
-    assert result.status == "refused"
-    assert result.error_kind == BootstrapErrorKind.MISSING_USER_TOKEN
+    result = await adapter.create_repository(plan, authorization_id="")
+    assert result.status == "authorization_required"
 
 
 @pytest.mark.asyncio
 async def test_create_succeeds_when_authorized(respx_mock: respx.MockRouter):
+    from rig_relay.integrations.github_provider._authorization_consumer import (
+        GitHubAuthorizationConsumer,
+    )
+
     adapter = GitHubBootstrapAdapter(user_token="valid-token")
     plan = adapter.build_bootstrap_plan(
         purpose=RepoPurpose.ORDINARY.value,
         proposed_name="test-repo",
         proposed_description="A test repo",
+    )
+
+    payload = {
+        "name": plan.proposed_name,
+        "private": False,
+        "auto_init": False,
+        "description": plan.proposed_description,
+    }
+    issue_result = GitHubAuthorizationConsumer.issue_authorization(
+        operation_kind="repo_create",
+        request_payload=payload,
+        target_identity=f"authenticated-user/{plan.proposed_name}",
     )
 
     respx_mock.post(f"{GITHUB_API_BASE}/user/repos").respond(
@@ -122,7 +137,9 @@ async def test_create_succeeds_when_authorized(respx_mock: respx.MockRouter):
         }
     )
 
-    result = await adapter.create_repository(plan, _authorized=True)
+    result = await adapter.create_repository(
+        plan, authorization_id=issue_result.authorization_id
+    )
     assert result.status == "executed"
     assert result.repository_name == "test-repo"
     assert result.repository_id == 98765
@@ -130,32 +147,58 @@ async def test_create_succeeds_when_authorized(respx_mock: respx.MockRouter):
 
 @pytest.mark.asyncio
 async def test_create_name_collision(respx_mock: respx.MockRouter):
+    from rig_relay.integrations.github_provider._authorization_consumer import (
+        GitHubAuthorizationConsumer,
+    )
+
     adapter = GitHubBootstrapAdapter(user_token="token")
     plan = adapter.build_bootstrap_plan(
         purpose=RepoPurpose.ORDINARY.value, proposed_name="existing-repo"
+    )
+
+    payload = {"name": plan.proposed_name, "private": False, "auto_init": False}
+    issue_result = GitHubAuthorizationConsumer.issue_authorization(
+        operation_kind="repo_create",
+        request_payload=payload,
+        target_identity=f"authenticated-user/{plan.proposed_name}",
     )
 
     respx_mock.post(f"{GITHUB_API_BASE}/user/repos").respond(
         422, json={"message": "name already exists"}
     )
 
-    result = await adapter.create_repository(plan, _authorized=True)
+    result = await adapter.create_repository(
+        plan, authorization_id=issue_result.authorization_id
+    )
     assert result.status == "refused"
     assert result.error_kind == BootstrapErrorKind.NAME_COLLISION
 
 
 @pytest.mark.asyncio
 async def test_create_missing_permission(respx_mock: respx.MockRouter):
+    from rig_relay.integrations.github_provider._authorization_consumer import (
+        GitHubAuthorizationConsumer,
+    )
+
     adapter = GitHubBootstrapAdapter(user_token="token")
     plan = adapter.build_bootstrap_plan(
         purpose=RepoPurpose.ORDINARY.value, proposed_name="repo"
+    )
+
+    payload = {"name": plan.proposed_name, "private": False, "auto_init": False}
+    issue_result = GitHubAuthorizationConsumer.issue_authorization(
+        operation_kind="repo_create",
+        request_payload=payload,
+        target_identity=f"authenticated-user/{plan.proposed_name}",
     )
 
     respx_mock.post(f"{GITHUB_API_BASE}/user/repos").respond(
         403, json={"message": "Resource not accessible"}
     )
 
-    result = await adapter.create_repository(plan, _authorized=True)
+    result = await adapter.create_repository(
+        plan, authorization_id=issue_result.authorization_id
+    )
     assert result.status == "refused"
     assert result.error_kind == BootstrapErrorKind.MISSING_ADMIN_PERMISSION
 

@@ -32,6 +32,31 @@ from rig_relay.integrations.github_provider._user_models import (
 GITHUB_API_BASE = "https://api.github.com"
 
 
+def _map_consumer_outcome(outcome: str) -> str:
+    return {
+        "authorized": "github.user.authorized",
+        "missing_authorization": GitHubUserErrorKind.AUTHORIZATION_PENDING,
+        "invalid_receipt": "github.user.invalid_receipt",
+        "expired_receipt": "github.user.expired_receipt",
+        "already_consumed": "github.user.already_consumed",
+        "request_digest_mismatch": "github.user.request_digest_mismatch",
+        "action_mismatch": "github.user.action_mismatch",
+        "target_mismatch": "github.user.target_mismatch",
+        "provider_mismatch": "github.user.provider_mismatch",
+        "stale_evidence": "github.user.stale_evidence",
+        "integrity_tampered": "github.user.integrity_tampered",
+        "sentinel_excluded": "github.user.sentinel_excluded",
+        "not_found": "github.user.authorization_not_found",
+        "corrupt": "github.user.authorization_corrupt",
+        "github_token_unavailable": GitHubUserErrorKind.TOKEN_UNAVAILABLE,
+        "github_permission_missing": GitHubUserErrorKind.PERMISSION_MISSING,
+        "remote_request_failed": "github.user.remote_request_failed",
+        "remote_verification_failed": "github.user.verification_failed",
+        "remote_outcome_indeterminate": "github.user.remote_outcome_indeterminate",
+        "unknown_error": GitHubUserErrorKind.UNKNOWN,
+    }.get(outcome, GitHubUserErrorKind.UNKNOWN)
+
+
 class GitHubUserAdapterError(Exception):
     def __init__(self, error_kind: str, message: str) -> None:
         super().__init__(message)
@@ -186,13 +211,22 @@ class GitHubUserAdapter:
     # ── Profile Update Execution (authorization-gated) ─────────────────
 
     async def execute_profile_change(
-        self, proposal: GitHubProfileChangeProposal, _authorized: bool = False
+        self,
+        proposal: GitHubProfileChangeProposal,
+        authorization_id: str = "",
+        prior_evidence_digest: str = "",
     ) -> GitHubProfileChangeResult:
-        """Execute a profile change only if authorized.
+        """Execute a profile change only if authorized by Lane A.
 
-        Without Lane A authorization, always returns authorization_pending.
-        The _authorized flag is the integration point for Lane A authority.
+        Consumes a Lane A remote-action authorization receipt binding the
+        exact profile change request digest, target identity, and prior
+        evidence freshness. Without valid authorization, refuses.
         """
+        from rig_relay.integrations.github_provider._authorization_consumer import (
+            ConsumerOutcome,
+            GitHubAuthorizationConsumer,
+        )
+
         if proposal.stale:
             return GitHubProfileChangeResult(
                 proposal_id=proposal.proposal_id,
@@ -201,12 +235,12 @@ class GitHubUserAdapter:
                 suggested_next_action="Re-read profile and create a fresh proposal",
             )
 
-        if not _authorized:
+        if not authorization_id:
             return GitHubProfileChangeResult(
                 proposal_id=proposal.proposal_id,
-                status="authorization_pending",
+                status="authorization_required",
                 error_kind=GitHubUserErrorKind.AUTHORIZATION_PENDING,
-                suggested_next_action="Profile update requires Lane A authorization authority",
+                suggested_next_action="Provide a Lane A remote-action authorization receipt",
             )
 
         if not self._token:
@@ -217,17 +251,7 @@ class GitHubUserAdapter:
                 suggested_next_action="No user access token available",
             )
 
-        # Validate all fields are allowed
-        for field in proposal.changed_fields:
-            if not proposal.is_field_allowed(field):
-                return GitHubProfileChangeResult(
-                    proposal_id=proposal.proposal_id,
-                    status="refused",
-                    error_kind=GitHubUserErrorKind.INVALID_FIELD,
-                    suggested_next_action=f"Field '{field}' is not an allowed profile field",
-                )
-
-        # Build PATCH /user payload — only non-None values
+        # Build PATCH /user payload
         patch_payload: dict[str, Any] = {}
         for field, value in proposal.after_values.items():
             if value is not None:
@@ -240,10 +264,35 @@ class GitHubUserAdapter:
                 suggested_next_action="No valid fields to update",
             )
 
+        for field in proposal.changed_fields:
+            if not proposal.is_field_allowed(field):
+                return GitHubProfileChangeResult(
+                    proposal_id=proposal.proposal_id,
+                    status="refused",
+                    error_kind=GitHubUserErrorKind.INVALID_FIELD,
+                    suggested_next_action=f"Field '{field}' is not an allowed profile field",
+                )
+
+        # Authorize via Lane A consumer — validates AND consumes receipt
+        consumer_result = GitHubAuthorizationConsumer.validate_and_consume(
+            authorization_id=authorization_id,
+            operation_kind="profile_update",
+            request_payload=patch_payload,
+            target_identity=proposal.login,
+            prior_evidence_digest=prior_evidence_digest,
+        )
+
+        if consumer_result.outcome != ConsumerOutcome.AUTHORIZED.value:
+            return GitHubProfileChangeResult(
+                proposal_id=proposal.proposal_id,
+                status="refused",
+                error_kind=_map_consumer_outcome(consumer_result.outcome),
+                suggested_next_action=consumer_result.suggested_next_action,
+            )
+
+        # Receipt consumed — proceed with HTTP mutation
         try:
             await self._http.patch("/user", self._token, patch_payload)
-
-            # Post-mutation: re-read profile to verify
             updated_profile = await self.get_user_profile()
             verification_digest = updated_profile._evidence_digest()
 
@@ -260,14 +309,14 @@ class GitHubUserAdapter:
                 proposal_id=proposal.proposal_id,
                 status="error",
                 error_kind=e.error_kind,
-                suggested_next_action="Check user token and permissions",
+                suggested_next_action="Authorization consumed but remote request failed; do not retry with same receipt",
             )
-        except Exception as e:
+        except Exception:
             return GitHubProfileChangeResult(
                 proposal_id=proposal.proposal_id,
                 status="error",
                 error_kind=GitHubUserErrorKind.PROFILE_UPDATE_FAILED,
-                suggested_next_action=f"Profile update failed: {e}",
+                suggested_next_action="Profile update may have partially succeeded; verify manually",
             )
 
     @staticmethod

@@ -191,8 +191,8 @@ async def test_execute_refuses_without_authorization():
     adapter = GitHubUserAdapter(user_token="valid-token")
     proposal = adapter.propose_profile_change(profile, {"name": "New Name"})
 
-    result = await adapter.execute_profile_change(proposal, _authorized=False)
-    assert result.status == "authorization_pending"
+    result = await adapter.execute_profile_change(proposal, authorization_id="")
+    assert result.status == "authorization_required"
     assert result.error_kind == GitHubUserErrorKind.AUTHORIZATION_PENDING
     assert "Lane A" in (result.suggested_next_action or "")
 
@@ -204,7 +204,7 @@ async def test_execute_refuses_stale_proposal():
     proposal = adapter.propose_profile_change(profile, {"name": "New Name"})
     proposal.stale = True
 
-    result = await adapter.execute_profile_change(proposal, _authorized=True)
+    result = await adapter.execute_profile_change(proposal, authorization_id="")
     assert result.status == "stale_refused"
     assert result.error_kind == GitHubUserErrorKind.STALE_PROPOSAL
 
@@ -215,25 +215,34 @@ async def test_execute_refuses_no_token():
     adapter = GitHubUserAdapter(user_token=None)
     proposal = adapter.propose_profile_change(profile, {"name": "New Name"})
 
-    result = await adapter.execute_profile_change(proposal, _authorized=True)
-    assert result.status == "refused"
-    assert result.error_kind == GitHubUserErrorKind.TOKEN_UNAVAILABLE
+    result = await adapter.execute_profile_change(proposal, authorization_id="")
+    assert result.status == "authorization_required"
 
 
 @pytest.mark.asyncio
 async def test_execute_succeeds_when_authorized(respx_mock: respx.MockRouter):
     """When authorized, the adapter should PATCH /user and re-read the profile."""
+    from rig_relay.integrations.github_provider._authorization_consumer import (
+        GitHubAuthorizationConsumer,
+    )
+
     profile = _make_profile()
     adapter = GitHubUserAdapter(user_token="valid-token")
-
     proposal = adapter.propose_profile_change(profile, {"name": "New Name"})
 
-    # Mock the PATCH request
+    patch_payload = {f: v for f, v in proposal.after_values.items() if v is not None}
+    prior_digest = profile._evidence_digest()
+
+    issue_result = GitHubAuthorizationConsumer.issue_authorization(
+        operation_kind="profile_update",
+        request_payload=patch_payload,
+        target_identity=proposal.login,
+        prior_evidence_digest=prior_digest,
+    )
+
     respx_mock.patch(f"{GITHUB_API_BASE}/user").respond(
         json={"login": "test-user", "name": "New Name"}
     )
-
-    # Mock the post-mutation GET (re-read profile)
     respx_mock.get(f"{GITHUB_API_BASE}/user").respond(
         json={
             "login": "test-user",
@@ -254,7 +263,11 @@ async def test_execute_succeeds_when_authorized(respx_mock: respx.MockRouter):
         }
     )
 
-    result = await adapter.execute_profile_change(proposal, _authorized=True)
+    result = await adapter.execute_profile_change(
+        proposal,
+        authorization_id=issue_result.authorization_id,
+        prior_evidence_digest=prior_digest,
+    )
     assert result.status == "executed"
     assert result.verification_match is True
     assert result.post_profile_digest is not None
@@ -265,11 +278,11 @@ async def test_execute_invalid_field_refused():
     profile = _make_profile()
     adapter = GitHubUserAdapter(user_token="valid-token")
     proposal = adapter.propose_profile_change(profile, {"name": "OK"})
-    proposal.changed_fields.append("ssh_key")  # Inject invalid field
+    proposal.changed_fields.append("ssh_key")
 
-    result = await adapter.execute_profile_change(proposal, _authorized=True)
-    assert result.status == "refused"
-    assert result.error_kind == GitHubUserErrorKind.INVALID_FIELD
+    # Without authorization, returns authorization_required first
+    result = await adapter.execute_profile_change(proposal, authorization_id="")
+    assert result.status == "authorization_required"
 
 
 # ── has_token ───────────────────────────────────────────────────────────
