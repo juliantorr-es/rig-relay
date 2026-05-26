@@ -142,6 +142,7 @@ class FleetClaimInfo(BaseModel):
     agent_id: str
     mode: str = "exclusive_write"
     acquired_at: str
+    expires_at: str | None = None
     base_sha256: dict[str, str]
 
 
@@ -477,19 +478,20 @@ class FleetClaimProtocol:
         return evt
 
     def acquire_claim(
-        self, paths: list[str], mission_id: str, lane_id: str, agent_id: str
+        self,
+        paths: list[str],
+        mission_id: str,
+        lane_id: str,
+        agent_id: str,
+        ttl_minutes: int = 120,
     ) -> FleetClaimResult:
         refusal = self._validate_paths(paths)
         if refusal is not None:
             return FleetClaimResult(acquired=False, reason=refusal)
 
         resolved: dict[str, Path] = {}
-        base_sha256: dict[str, str] = {}
         for p in paths:
-            rp = self._resolve(p)
-            resolved[p] = rp
-            if rp.is_file():
-                base_sha256[p] = file_sha256(rp)
+            resolved[p] = self._resolve(p)
 
         self._ledger._acquire_transition_lock()
         try:
@@ -504,7 +506,6 @@ class FleetClaimProtocol:
                         lane_id=lane_id,
                         agent_id=agent_id,
                         claimed_paths=[p],
-                        prior_sha256=base_sha256,
                         timestamp=now,
                         event_digest="",
                         reason=f"Path already claimed by {active.lane_id} at {active.timestamp}",
@@ -514,7 +515,18 @@ class FleetClaimProtocol:
                         acquired=False, event=refusal_event, reason=refusal_event.reason
                     )
 
+            base_sha256: dict[str, str] = {}
+            for p in paths:
+                rp = resolved[p]
+                if rp.is_file():
+                    base_sha256[p] = file_sha256(rp)
+
             now = _now_iso()
+            from datetime import UTC, datetime, timedelta
+
+            expires = (
+                datetime.now(tz=UTC) + timedelta(minutes=ttl_minutes)
+            ).isoformat()
             event = FleetClaimEvent(
                 event_id="",
                 event_kind=FleetClaimEventKind.CLAIM_ACQUIRED,
@@ -525,6 +537,7 @@ class FleetClaimProtocol:
                 prior_sha256=base_sha256 if base_sha256 else None,
                 timestamp=now,
                 event_digest="",
+                expires_at=expires,
             )
 
             def _xattr_acquire() -> None:
@@ -533,6 +546,7 @@ class FleetClaimProtocol:
                     lane_id=lane_id,
                     agent_id=agent_id,
                     acquired_at=now,
+                    expires_at=expires,
                     base_sha256=base_sha256,
                 )
                 for p in paths:
@@ -561,44 +575,57 @@ class FleetClaimProtocol:
         self._ledger._acquire_transition_lock()
         try:
             active_claims = self._ledger.active_claims()
+            now = _now_iso()
             for p in paths:
                 active = active_claims.get(p)
-                if active is not None:
-                    if (
-                        active.mission_id != mission_id
-                        or active.lane_id != lane_id
-                        or active.agent_id != agent_id
-                    ):
-                        now = _now_iso()
-                        refusal_event = FleetClaimEvent(
-                            event_id="",
-                            event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
-                            mission_id=mission_id,
-                            lane_id=lane_id,
-                            agent_id=agent_id,
-                            claimed_paths=list(paths),
-                            timestamp=now,
-                            event_digest="",
-                            reason=(
-                                f"Release refused: path {p} actively claimed by "
-                                f"lane={active.lane_id} mission={active.mission_id} "
-                                f"agent={active.agent_id}, not by "
-                                f"lane={lane_id} mission={mission_id} agent={agent_id}"
-                            ),
-                        )
-                        self._emit_locked(refusal_event)
-                        return FleetClaimResult(
-                            acquired=False,
-                            event=refusal_event,
-                            reason=refusal_event.reason,
-                            conflicting_claim=FleetClaimInfo(
-                                mission_id=active.mission_id,
-                                lane_id=active.lane_id,
-                                agent_id=active.agent_id,
-                                acquired_at=active.timestamp,
-                                base_sha256=active.prior_sha256 or {},
-                            ),
-                        )
+                if active is None:
+                    refusal_event = FleetClaimEvent(
+                        event_id="",
+                        event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
+                        mission_id=mission_id,
+                        lane_id=lane_id,
+                        agent_id=agent_id,
+                        claimed_paths=[p],
+                        timestamp=now,
+                        event_digest="",
+                        conflicting_path=p,
+                        reason=f"Release refused: path={p} has no active claim",
+                    )
+                    self._emit_locked(refusal_event)
+                    return FleetClaimResult(
+                        acquired=False, event=refusal_event, reason=refusal_event.reason
+                    )
+
+                if (
+                    active.mission_id != mission_id
+                    or active.lane_id != lane_id
+                    or active.agent_id != agent_id
+                ):
+                    now = _now_iso()
+                    refusal_event = FleetClaimEvent(
+                        event_id="",
+                        event_kind=FleetClaimEventKind.CLAIM_RELEASE_REFUSED,
+                        mission_id=mission_id,
+                        lane_id=lane_id,
+                        agent_id=agent_id,
+                        claimed_paths=[p],
+                        timestamp=now,
+                        event_digest="",
+                        conflicting_path=p,
+                        conflicting_mission_id=active.mission_id,
+                        conflicting_lane_id=active.lane_id,
+                        conflicting_agent_id=active.agent_id,
+                        reason=(
+                            f"Release refused: path {p} owned by "
+                            f"lane={active.lane_id} mission={active.mission_id} "
+                            f"agent={active.agent_id}, not by "
+                            f"lane={lane_id} mission={mission_id} agent={agent_id}"
+                        ),
+                    )
+                    self._emit_locked(refusal_event)
+                    return FleetClaimResult(
+                        acquired=False, event=refusal_event, reason=refusal_event.reason
+                    )
 
             now = _now_iso()
             release_notes = [f"Released to state={new_state.value}"]
@@ -651,22 +678,25 @@ class FleetClaimProtocol:
         return result
 
     def scan_claims(self) -> dict[str, FleetClaimInfo]:
+        """Return active claims derived entirely from the canonical ledger fold.
+
+        Xattrs are not consulted for authority. Stale or missing xattrs are
+        projection-only noise. mirror_to_xattrs() may repair projections.
+        """
         result: dict[str, FleetClaimInfo] = {}
         active_claims = self._ledger.active_claims()
         for p, evt in active_claims.items():
             rp = self._resolve(p)
-            info = FleetClaimXattr.read_claim(rp)
-            if info is None and rp.is_file():
+            if rp.is_file():
                 base = evt.prior_sha256 or {}
-                info = FleetClaimInfo(
+                result[p] = FleetClaimInfo(
                     mission_id=evt.mission_id,
                     lane_id=evt.lane_id,
                     agent_id=evt.agent_id,
                     acquired_at=evt.timestamp,
+                    expires_at=evt.expires_at,
                     base_sha256=base,
                 )
-            if info is not None:
-                result[p] = info
         return result
 
     def mirror_to_xattrs(self) -> None:
