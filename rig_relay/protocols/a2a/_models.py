@@ -30,6 +30,8 @@ class A2AAgentCard:
     content_light: bool = True
     schema_version: str = "rig.relay.a2a.agent_card.v1"
     generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    extensions: dict[str, object] | None = None
+    trust_tier: str = ""
 
 
 @dataclass
@@ -49,6 +51,12 @@ class A2ATaskCard:
     content_light: bool = True
     schema_version: str = "rig.relay.a2a.task_card.v1"
     generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    artifact_refs: list[dict[str, object]] = field(default_factory=list)
+    extensions: dict[str, object] | None = None
+    cancellation_reason: str = ""
+    refusal_reason: str = ""
+    trust_tier: str = ""
+    integrity_digest: str = ""
 
 
 @dataclass

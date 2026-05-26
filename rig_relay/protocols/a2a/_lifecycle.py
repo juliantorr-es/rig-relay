@@ -120,6 +120,12 @@ def transition_task(card: A2ATaskCard, new_status: A2ATaskStatus) -> A2ATaskCard
         generated_at=now,
         content_light=True,
         schema_version=card.schema_version,
+        artifact_refs=list(card.artifact_refs),
+        extensions=dict(card.extensions) if card.extensions is not None else None,
+        cancellation_reason=card.cancellation_reason,
+        refusal_reason=card.refusal_reason,
+        trust_tier=card.trust_tier,
+        integrity_digest=card.integrity_digest,
     )
     new_card.events.append(
         A2ATaskLifecycleEvent(
@@ -155,6 +161,12 @@ def send_local_task_message(
         generated_at=now,
         content_light=True,
         schema_version=card.schema_version,
+        artifact_refs=list(card.artifact_refs),
+        extensions=dict(card.extensions) if card.extensions is not None else None,
+        cancellation_reason=card.cancellation_reason,
+        refusal_reason=card.refusal_reason,
+        trust_tier=card.trust_tier,
+        integrity_digest=card.integrity_digest,
     )
 
 
