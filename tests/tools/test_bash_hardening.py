@@ -87,7 +87,7 @@ async def test_stdout_truncation_marks_truncated_flag(bash):
 
 @pytest.mark.asyncio
 async def test_stderr_truncation_marks_truncated_flag(bash):
-    config = BashToolConfig(max_output_bytes=5)
+    config = BashToolConfig(max_output_bytes=5, restrict_raw_shell=False)
     tool = Bash(config_getter=lambda: config, state=BaseToolState())
     result = await collect_result(tool.run(BashArgs(command="printf 'abcdefghij' >&2")))
     assert result.stderr == "abcde"

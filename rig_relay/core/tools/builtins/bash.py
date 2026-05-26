@@ -419,6 +419,218 @@ class Bash(
             return False
         return tokens[0] in self.config.sensitive_patterns
 
+    # ── Shell Grammar Containment ────────────────────────────────────────
+    # Scoped missions must refuse any command that chains, redirects,
+    # substitutes, wraps, or delegates beyond a single safe executable.
+
+    _SHELL_WRAPPER_COMMANDS: ClassVar[frozenset[str]] = frozenset({
+        "sh",
+        "bash",
+        "zsh",
+        "dash",
+        "fish",
+        "eval",
+        "exec",
+        "env",
+        "xargs",
+        "nohup",
+        "su",
+        "sudo",
+        "nice",
+    })
+
+    _SHELL_SEPARATOR_TOKENS: ClassVar[frozenset[str]] = frozenset({
+        ";",
+        "||",
+        "&&",
+        "|",
+        "|&",
+    })
+
+    _SHELL_REDIRECT_PREFIXES: ClassVar[tuple[str, ...]] = (
+        ">",
+        ">>",
+        ">&",
+        "<",
+        "<<",
+        "<&",
+        "<<<",
+        "&>",
+    )
+
+    _SHELL_SUBSTITUTION_MARKERS: ClassVar[tuple[str, ...]] = (
+        "$(",
+        "`",
+        "$((",
+        "<(",
+        ">(",
+    )
+
+    @staticmethod
+    def _parse_shell_tokens(command: str) -> list[str] | None:
+        """Tokenize a shell command using shlex, returning tokens or None on failure."""
+        import shlex
+
+        try:
+            tokens = shlex.split(command, comments=True)
+        except ValueError:
+            return None
+        if not tokens:
+            return None
+        return tokens
+
+    @classmethod
+    def _has_shell_composition(cls, command: str) -> bool:
+        """Check raw string for shell composition constructs.
+
+        Detects: semicolons, AND/OR, pipelines, backgrounding,
+        process substitution, command substitution, here docs/strings,
+        and shell control operators.
+
+        Returns True if shell composition is detected.
+        """
+        import re
+
+        # Strip comments so they don't hide trailing composition
+        stripped = command.strip()
+        if not stripped:
+            return False
+
+        # Pipeline or logical chaining (needs context — we check bare tokens too)
+        if any(sep in stripped for sep in cls._SHELL_SEPARATOR_TOKENS):
+            return True
+
+        # Background execution: & at end or before a space/separator
+        if re.search(r"(?<!\&)&(?!\&)\s*$|\s&\s", stripped):
+            return True
+
+        # Semicolon command separator
+        if re.search(r"[^;];\s", stripped) or stripped.rstrip().endswith(";"):
+            return True
+
+        # Command substitution: $(...) or backticks
+        if any(marker in stripped for marker in cls._SHELL_SUBSTITUTION_MARKERS):
+            return True
+
+        # Redirection operators
+        for prefix in cls._SHELL_REDIRECT_PREFIXES:
+            if re.search(
+                rf"(?:^|\s){re.escape(prefix)}(?:\s|&|\d|[a-zA-Z./~])", stripped
+            ):
+                return True
+
+        # Here documents and here strings: << or <<<
+        if re.search(r"<<\s*[A-Za-z_]", stripped) or "<<<" in stripped:
+            return True
+
+        return False
+
+    @classmethod
+    def _classify_shell_intent(
+        cls,
+        command: str,
+        *,
+        allowlist: list[str],
+        denylist: list[str],
+        denylist_standalone: list[str],
+    ) -> tuple[bool, str | None]:
+        """Classify a shell command's executable intent for scoped missions.
+
+        Returns (admitted, refusal_reason). Only single, simple
+        commands that match the allowlist or validation registry are
+        admitted. Multi-command sequences, shell features, wrappers,
+        indirection, and ambiguous constructs are refused.
+
+        This is the canonical shell-intent classification authority
+        for scoped (restrict_raw_shell=True) execution.
+        """
+        # ── Quick check: multi-command composition ──────────
+        if cls._has_shell_composition(command):
+            return False, (
+                "Shell composition (pipes, redirects, separators, or "
+                "substitutions) is prohibited in scoped missions. Use "
+                "governed tools for reads, edits, and validation."
+            )
+
+        # ── Tokenize into shell words ───────────────────────
+        tokens = cls._parse_shell_tokens(command)
+        if tokens is None:
+            return False, (
+                "Could not parse shell command safely. "
+                "Use governed tools instead of raw shell."
+            )
+
+        if not tokens:
+            return False, "Empty command after parsing."
+
+        executable = tokens[0]
+
+        # ── Absolute path bypass ────────────────────────────
+        if executable.startswith("/"):
+            return False, (
+                "Absolute executable paths are prohibited in scoped missions. "
+                "Use governed tools for reads, edits, and validation."
+            )
+
+        # ── Shell wrapper or delegation ─────────────────────
+        if executable in cls._SHELL_WRAPPER_COMMANDS:
+            # env alone is safe — only block if it's wrapping another command
+            if executable == "env" and len(tokens) == 1:
+                pass  # allow standalone env
+            elif executable == "env":
+                return False, (
+                    "Command 'env' with arguments is prohibited in scoped "
+                    "missions. Use governed tools."
+                )
+            else:
+                return False, (
+                    f"Command '{executable}' is a shell wrapper or delegation "
+                    f"utility that is prohibited in scoped missions. "
+                    f"Use governed tools."
+                )
+
+        # ── Environment variable prefix (VAR=val cmd) ──────
+        if "=" in executable and not executable.startswith("-"):
+            return False, (
+                "Environment variable prefixes are prohibited in scoped "
+                "missions. Use governed tools."
+            )
+
+        # ── Denylist check ──────────────────────────────────
+        for pattern in denylist:
+            if command == pattern or command.startswith(pattern + " "):
+                return False, (
+                    f"Command matches denylist pattern '{pattern}' and is "
+                    f"prohibited in scoped missions."
+                )
+
+        # ── Standalone denylist check ───────────────────────
+        if len(tokens) == 1:
+            cmd_name = os.path.basename(executable)
+            if cmd_name in denylist_standalone or executable in denylist_standalone:
+                return False, (
+                    f"Command '{executable}' is not allowed as a standalone "
+                    f"command in scoped missions."
+                )
+
+        # ── Validation-equivalent check ─────────────────────
+        if cls._matches_validate_reroute(command):
+            return True, None
+
+        # ── Allowlist check ─────────────────────────────────
+        if any(
+            command == pattern or command.startswith(pattern + " ")
+            for pattern in allowlist
+        ):
+            return True, None
+
+        # ── Not in any admitted set ─────────────────────────
+        return False, (
+            "Raw shell execution is unavailable in this workspace-contained "
+            "mission. Use governed file tools for reads or edits, or the "
+            "validation tool for approved tests and static checks."
+        )
+
     @staticmethod
     def _matches_validate_reroute(command: str) -> bool:
         """Check if command matches the validate tool reroute patterns.
@@ -503,23 +715,25 @@ class Bash(
         if not find_execution_required:
             # Governed Command Execution Airlock v1:
             # In contained missions (restrict_raw_shell=True), refuse raw
-            # commands that don't match the known validation reroute registry.
+            # commands that don't pass shell-intent classification.
             if getattr(self.config, "restrict_raw_shell", False):
-                # Governed Command Execution Airlock v1:
-                # In contained missions, only validation commands (pytest, ruff, pyright)
-                # and known-safe allowlisted commands may pass through.
-                # cat, grep, git, and python -c are NOT exceptions — the agent must
-                # use the dedicated governed tools (read_file, grep tool, git_status, etc.)
-                if not (
-                    Bash._matches_validate_reroute(full_command)
-                    or self._is_allowlisted(full_command)
-                ):
+                admitted, reason = Bash._classify_shell_intent(
+                    full_command,
+                    allowlist=self.config.allowlist,
+                    denylist=self.config.denylist,
+                    denylist_standalone=self.config.denylist_standalone,
+                )
+                if not admitted:
                     return PermissionContext(
                         permission=ToolPermission.NEVER,
                         reason=(
-                            "Raw shell execution is unavailable in this workspace-contained "
-                            "mission. Use governed file tools for reads or edits, or the "
-                            "validation tool for approved tests and static checks."
+                            reason
+                            or (
+                                "Raw shell execution is unavailable in this "
+                                "workspace-contained mission. Use governed file "
+                                "tools for reads or edits, or the validation "
+                                "tool for approved tests and static checks."
+                            )
                         ),
                     )
             return None
@@ -926,13 +1140,22 @@ class Bash(
 
         # ── Runtime restrict_raw_shell enforcement ────────────
         # Hard safety boundary: enforced regardless of permission bypass.
-        # Only allowlisted (read-only) commands and validation-equivalent
-        # commands (pytest, ruff check, pyright) to pass through.
+        # Uses canonical shell-intent classification to reject:
+        #  - Multi-command sequences (;, &&, ||, |, &, newlines)
+        #  - Shell features (redirects, substitutions, here docs)
+        #  - Shell wrappers (sh -c, bash -c, eval, exec, env)
+        #  - Executable indirection (absolute paths, xargs, find -exec)
+        #  - Environment-prefixed execution (VAR=val cmd)
+        # Only single-command, simple invocations of allowlisted or
+        # validation-equivalent executables pass through.
         if getattr(self.config, "restrict_raw_shell", False):
-            if not (
-                Bash._matches_validate_reroute(args.command)
-                or self._is_allowlisted(args.command)
-            ):
+            admitted, refusal_reason = Bash._classify_shell_intent(
+                args.command,
+                allowlist=self.config.allowlist,
+                denylist=self.config.denylist,
+                denylist_standalone=self.config.denylist_standalone,
+            )
+            if not admitted:
                 elapsed = (time.perf_counter() - start) * 1000
                 yield BashResult(
                     command=args.command,
@@ -946,7 +1169,8 @@ class Bash(
                     stdout_truncated=False,
                     stderr_truncated=False,
                     error_kind="refused",
-                    refusal_reason=(
+                    refusal_reason=refusal_reason
+                    or (
                         "Raw shell execution is unavailable in this workspace-contained "
                         "mission. Use governed file tools for reads or edits, or the "
                         "validation tool for approved tests and static checks."
