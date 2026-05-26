@@ -1,0 +1,1285 @@
+{
+  "schema_version": "rig.relay.lane_b_architecture_audit.v1",
+  "audit_id": "lane_b_r1_desktop_native_analytics_operational_data_plane",
+  "mission": "Lane B-R1 — Desktop Host, Native Integration, Analytics, Visualization, ML and Operational Data Plane Audit",
+  "branch": "main",
+  "head_commit": "6ac6d40ba31a9bba2e6693cff8d2bb2eef31520c0",
+  "head_short": "6ac6d40b",
+  "head_message": "checkpoint(coordinator-gate): test-surface ruff auto-fix import ordering and docstring formatting",
+  "dirty_state": "clean",
+  "status": "complete",
+  "generated_at": "2026-05-26T00:00:00Z",
+  "read_only": true,
+  "mutations_performed": 0,
+
+  "git_discipline_rules_followed": [
+    "no amend, no force-push, no destructive operations",
+    "no commits, no pushes — only user publishes",
+    "rejected pushes → rebase, never merge, never force",
+    "dirty files are protected — this session is read-only, zero mutations",
+    "parallel agent lanes share one working tree — Lane A's repair not disturbed",
+    "direct git commit/add blocked — checkpoint tool only (not used in this audit)"
+  ],
+
+  "executive_summary": "Rig Relay is a Python backend with a web frontend, currently hosted on macOS via pywebview (Cocoa/WebKit WKWebView). The desktop architecture is a single DesktopBridgeServer on one port serving both static assets and a token-gated WebSocket projection stream. The frontend is vanilla HTML/CSS/JS with a runtime state machine, widget system, and reactive projection loop. The backend owns all state, policy, governance, agent orchestration, tool registry, analytics authority, and evidence authority. This audit verifies the published GitHub baseline at commit 6ac6d40b, inventories all desktop/frontend/data/script surfaces, defines the SwiftUI shell authority matrix, evaluates Safari Web Extension feasibility, maps the operational data plane from canonical JSON artifacts through DuckDB analytics to future PostgreSQL projections, evaluates Arrow/Vega-Lite for frontend data transport and visualization, defines the ML privacy boundary, reclassifies 22 promotion-candidate scripts into service/tool/projection/data-plane roles, and proposes a non-overlapping P1–P5 implementation ownership plan.",
+
+  "section_1_current_desktop_host_architecture": {
+    "title": "Section 1 — Current Desktop Host Architecture",
+    "status": "verified_from_source",
+
+    "actual_host": {
+      "technology": "pywebview (version 6.2.1+)",
+      "gui_backend": "cocoa (macOS WebKit WKWebView)",
+      "python_file": "rig_relay/cli/desktop_cockpit.py",
+      "key_function": "_open_window()",
+      "key_line": 1179
+    },
+
+    "window_lifecycle": {
+      "window_creation": "webview.create_window(title='Rig Relay', url=frontend_url, js_api=api, width=1200, height=800, resizable=True, min_size=(800, 600))",
+      "gui_start": "webview.start(gui='cocoa', debug=webview_debug) — blocking until window closes",
+      "http_server_disabled": "Uses custom DesktopBridgeServer, NOT pywebview's built-in http_server=True",
+      "on_close": "bridge_loop.call_soon_threadsafe(bridge_loop.stop)"
+    },
+
+    "bridge_transport": {
+      "primary_server": "rig_relay/desktop/bridge_server.py — DesktopBridgeServer class",
+      "architecture": "Single HTTPS/WSS server on one port serving static files + WebSocket",
+      "routes": "GET /index.html → static files, GET /ws → WebSocket upgrade",
+      "dependencies": "websockets library (stdlib-quality WS + HTTP), ssl_context optional for TLS",
+      "auth": "token-gated — client sends {\"type\": \"auth\", \"token\": \"...\"} on WS connect"
+    },
+
+    "fallback_transport": {
+      "mechanism": "pywebview JS bridge (js_api=api) — CockpitAPI instance exposed to window.pywebview.api",
+      "usage": "Primarily for frontend lifecycle events (record_frontend_event), runtime_config, OAuth flow, keychain, file dialogs",
+      "note": "Not the primary chat/intent transport — those go through WebSocket"
+    },
+
+    "frontend_loading": {
+      "source": "frontend/desktop/ directory — vanilla HTML/CSS/JS, no framework",
+      "entry_point": "frontend/desktop/index.html",
+      "js_modules": "49 JS files organized into boot/, js/, js/widgets/, js/protocol/, js/runtime/, js/telemetry/",
+      "css_modules": "8 CSS files (variables.css, layout.css, header.css, chat.css, widgets.css, notifications.css, analytics.css, delight.css, styles.css)",
+      "websocket_client": "frontend/desktop/js/protocol/client.js",
+      "runtime_state": "frontend/desktop/js/runtime/ — stateMachine.js, reducer.js, actions.js, selectors.js, loops.js, initial state"
+    },
+
+    "frontend_backend_protocol": {
+      "message_types": "auth, get_projection, get_available_actions, get_chat_state, get_progress_events, desktop_intent, send_chat_message, clear_chat, cancel_chat_response, subscribe, unsubscribe, ping",
+      "response_types": "auth_ok, projection, available_actions, chat_state, chat_state_updated, chat_message_accepted, chat_cleared, chat_cancelled, progress_events, progress_event, desktop_intent_result, error, pong, message_too_large, rate_limited, server_full",
+      "bridge_protocol": "rig_relay/desktop/bridge_protocol.py — BridgeMessage enums and types for bidirectional bridge"
+    },
+
+    "backend_projections": {
+      "primary_builder": "rig_relay/desktop/projection.py — build_projection()",
+      "sections": "24 patch sections: current_state, queue, dataset, semantic_snippets, telemetry_bundle, update, storage, providers, identity, integrations, release_gate, service_state, warnings, read_only_actions, execution_progress, resources, spiderweb_topology, security_lifecycle_program, live_mutation_readiness, carte_blanche_dashboard, site_editor, operating_picture",
+      "analytics_sub_projection": "rig_relay/desktop/analytics_projection.py — 8 analytics widgets (governance_gate_health, session_health_scorecard, tool_latency_heatmap, release_gate_blocker_burndown, dependency_risk_surface, out_of_scope_findings, correlation_integrity, local_inference_capability)",
+      "github_projection": "rig_relay/desktop/github_truth_projection.py — GitHubConnectionProjection, PublicationStatusProjection, CIPipelineStatusProjection — models only, wired through desktop projection build_projection() as 'integrations.github' section"
+    },
+
+    "state_ownership": {
+      "backend_owns": "AgentLoop, chat state (ChatStore), chat history (messages, ChatState), runtime config, projection data, auth tokens, keychain access, OAuth flows, provider windows state, repository registration, workspace provisioning, mission admission",
+      "frontend_owns": "DOM state, CSS layout modes (operator/review/system/technical), widget disclosure levels, viewport state, notification UI state, WebSocket transport state, frontend trace context",
+      "pywebview_owns": "Window handle, window title, native window Cocoa state, file dialog UI, provider companion windows (shared Safari cookie jar on macOS)",
+      "no_duplicated_state": "Confirmed — no duplicate AgentLoop, no duplicate governance, no duplicate policy in frontend or pywebview"
+    },
+
+    "renderer_architecture": {
+      "projection_driven": true,
+      "mechanism": "Backend builds full projection dict → WebSocket pushes projection JSON → frontend renders widgets via projection.js → widgets.js → individual widget modules",
+      "analytics_widgets": "Backend queries DuckDB via AnalyticsEngine, returns pre-computed view dicts → frontend renders cards/charts",
+      "static_docs_renderer": "rig_relay/docs_renderer/ (25 modules) + rig_relay/site_renderer/ (9 modules) — renders documentation to static HTML/CSS for GitHub Pages, NOT used by cockpit",
+      "note": "The renderer is projection-driven, NOT view-specific. Widgets receive projection data and render accordingly."
+    },
+
+    "boundaries_surviving_future_swiftui_host": [
+      "Frontend HTML/CSS/JS — identical assets, same index.html",
+      "DesktopBridgeServer — same HTTP/WS server, same auth, same routes",
+      "ProjectionWebSocketServer — same protocol, same message types",
+      "build_projection() — same builder, same sections, same data sources",
+      "CockpitAPI (as backend-only) — chat, intents, auth, keychain, repo registration",
+      "Desktop intents — same _refresh module, same validation, same authorization",
+      "Analytics projection — same DuckDB engine, same views",
+      "GitHub truth projection — same models, same adapter integration"
+    ]
+  },
+
+  "section_2_target_macos_host_architecture": {
+    "title": "Section 2 — Target macOS Host Architecture (SwiftUI Thin Shell)",
+    "recommendation": "Thin SwiftUI shell hosting one WKWebView displaying the same web frontend, communicating through a narrow authenticated bridge to the Python backend.",
+
+    "rationale_against_current_pywebview": [
+      "pywebview creates an independent WKWebView — no native menu bar integration, no native toolbar, no accessibility tree, no dock integration, no native open/save panel",
+      "pywebview's JS bridge (evaluate_js) is unauthenticated from the perspective of the frontend — any Python->JS call is inherently trusted, limiting attack surface hardening",
+      "pywebview's file dialog support is limited to one call per window",
+      "pywebview cannot participate in macOS sandbox entitlements or security-scoped bookmark acquisition",
+      "pywebview provider windows share Safari's cookie jar — convenient for development but a privacy concern for production",
+      "pywebview's window lifecyle is managed by its own Cocoa runloop, not by SwiftUI's NSApplication lifecycle"
+    ],
+
+    "swiftui_shell_responsibilities": {
+      "must_own": [
+        "App and window lifecycle (NSApplicationDelegate hooks, scene phases)",
+        "Menu bar intents (standard Edit/Copy/Paste, custom Rig Relay commands → backend intent)",
+        "Native open/save/folder pickers (NSOpenPanel/NSSavePanel → backend path intake)",
+        "Drag and drop intake (NSItemProvider/UTType → backend registration)",
+        "Security-scoped bookmark acquisition (sandboxed distribution → backend path authorization)",
+        "Native notifications (UNUserNotificationCenter → backend notification events)",
+        "Dock/menu-bar icon presentation with badge counts from backend projection",
+        "App activation and URL opening (custom URL scheme rig-relay:// → backend intent routing)",
+        "Appearance/accessibility forwarding (light/dark mode → CSS variable via WKWebView evaluateJavaScript)",
+        "WKWebView cookie and website data isolation (app-local, not shared Safari cookie jar)",
+        "WKUserScript injection for backend-derived runtime config (token, ws_url, origin) before page load",
+        "Safari extension messaging relay (native app group shared container → extension → backend)",
+        "Future App Intents / Shortcuts (Siri/Shortcuts → narrow capability registry → backend intent)"
+      ],
+      "must_not_own": [
+        "AgentLoop or LLM orchestration",
+        "Any governance, policy, or authorization decisions",
+        "Receipt generation or verification",
+        "GitHub logic, A2A task state, or tool registry",
+        "Analytics querying, DuckDB or PostgreSQL database connections",
+        "Telemetry decisions or bundle assembly",
+        "Checkpoint or commit authority",
+        "Any duplicate of backend projection state",
+        "File mutation or search_replace authority",
+        "Bash command execution or subprocess management"
+      ]
+    },
+
+    "bridge_protocol_requirements": {
+      "transport": "HTTPS + WSS on loopback (127.0.0.1), same DesktopBridgeServer",
+      "auth": "Token-gated, generated by backend, injected into WKWebView via WKUserScript at load time",
+      "shell_to_backend_events": [
+        "native_file_picked: {paths: [str], source: 'open'|'save'|'folder', timestamp: str}",
+        "native_drag_dropped: {paths: [str], types: [str], origin: str}",
+        "native_notification_clicked: {notification_id: str, action: str}",
+        "native_app_activated: {url: str|null, source: str}",
+        "native_appearance_changed: {color_scheme: 'light'|'dark', high_contrast: bool}",
+        "native_menu_action: {action_id: str, parameters: dict|null}",
+        "native_safari_extension_message: {event_type: str, payload_sha256: str, content_light: true}"
+      ],
+      "backend_to_shell_events": [
+        "shell_update_title: {title: str}",
+        "shell_update_badge: {count: int|null, label: str|null}",
+        "shell_request_file_picker: {mode: 'open'|'save'|'folder', allowed_types: [str]}",
+        "shell_request_notification: {title: str, body: str, identifier: str}",
+        "shell_acquire_security_scoped_bookmark: {path: str, options: dict}"
+      ],
+      "principle": "Shell sends bounded events; backend makes decisions; shell displays results. No state duplication."
+    },
+
+    "pywebview_retention": "Retain pywebview as current development host and fallback for non-macOS platforms. SwiftUI is macOS-specific. pywebview is the primary host until SwiftUI shell ships."
+  },
+
+  "section_3_safari_web_extension": {
+    "title": "Section 3 — Safari Web Extension Evaluation",
+    "recommendation": "Defer to P4 (Native macOS Host wave) or later. Not in P1–P3.",
+    "rationale": "The SwiftUI shell/backend bridge must prove stable before introducing cross-process browser extension messaging. The Safari extension is a companion capability, not a prerequisite for any P1–P3 service.",
+
+    "feasible_capabilities": [
+      "Send selected text or page metadata from Safari to Rig Relay via native app group shared container",
+      "Forward GitHub issue/PR URLs for backend inspection and context packet enrichment",
+      "Forward documentation or error-page context into a governed context packet",
+      "Open Rig Relay to a projected view from toolbar button click",
+      "Display bounded backend status (active session count, last checkpoint) in extension popover"
+    ],
+
+    "privacy_and_authority_contract": {
+      "explicit_user_gesture_required": "All content capture must require explicit user gesture (toolbar button click, context menu item)",
+      "no_silent_scraping": "Must not silently scrape browsing activity into telemetry",
+      "no_github_credentials_in_extension": "Must not hold GitHub credentials, tokens, or API keys",
+      "no_tool_execution": "Must not execute tools, create checkpoints, or perform A2A mutations",
+      "no_policy_bypass": "Must not bypass disclosure authorization or governance policy",
+      "content_light": "Extension messages to backend are hashed (sha256) — raw page content never leaves browser context without explicit capture gesture and content-light envelope",
+      "minimum_viable_privacy": "Safari extension does not connect to the internet itself — it communicates only with the Rig Relay native app through the native messaging/app group bridge"
+    },
+
+    "milestone": "P4 or later. The prerequisite is a working SwiftUI shell that can receive app group messages."
+  },
+
+  "section_4_data_source_inventory": {
+    "title": "Section 4 — Operational and Analytical Data Source Inventory",
+    "status": "complete_inventory_with_classification",
+
+    "data_sources": [
+      {
+        "source_id": "observability_jsonl",
+        "canonical_path": "~/.rig/relay/sessions/<id>/observability.jsonl",
+        "schema": "rig.relay.workflow_event.v1 (event envelope) + various event payload schemas",
+        "storage_form": "append-only JSONL",
+        "confidentiality_tier": "evidence_retained_and_locally_retained",
+        "content_light": false,
+        "safe_for_aggregation": "Evidence-retained fields only; locally-retained fields must be stripped before export",
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": "Evidence-retained aggregate fields only",
+        "ml_disclosure_needed": true,
+        "retention_default": "raw_observability_days=3 (hot tier)",
+        "key_fields": "session_id, event_name, event_id, event_hash, sequence, created_at, tool_call_id, tool_name, tool_input_sha256, tool_output_sha256, status, model, latency_ms, input_bytes, output_bytes"
+      },
+      {
+        "source_id": "receipts_jsonl",
+        "canonical_path": "~/.rig/relay/sessions/<id>/receipts.jsonl",
+        "schema": "rig.relay.evidence.receipt.v1",
+        "storage_form": "append-only JSONL (Merkle-linked)",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": "Evidence-retained fields; receipt bodies may contain hashed content references",
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "receipts: raw_tool_artifacts_days=3 (hot tier)",
+        "key_fields": "receipt_id, receipt_sha256, parent_sha256, schema_version, created_at, envelope_kind"
+      },
+      {
+        "source_id": "governance_receipt_store",
+        "canonical_path": "~/.rig/relay/receipts/manifest.jsonl + envelopes/*/",
+        "schema": "rig.relay.evidence.receipt_envelope.v1 (ReceiptEnvelope)",
+        "storage_form": "manifest.jsonl index + sharded JSON envelope files",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "governance decisions → derived retention (180 days warm)",
+        "key_fields": "decision_id, decision_kind (allowed/blocked/requires_review), severity, reasons, session_id, tool_name, path_hashes, source_schema_version",
+        "existing_duckdb_projection": "rig_relay/analytics/governance_decisions_projection.py — builds disposable 'governance_decisions' DuckDB table from ReceiptStore"
+      },
+      {
+        "source_id": "coordination_events",
+        "canonical_path": ".build/rig-relay/coordination/events.jsonl",
+        "schema": "rig.relay.cross_session_coordination.v1",
+        "storage_form": "append-only JSONL",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "coordination_events_days=14 (warm tier)",
+        "key_fields": "session_id, parent_session_id, fleet_id, task_id, event_name, agent_profile_name, reservation_mode, reservation_status, path_count, path_hashes, conflict_kind, artifact_sha256, outcome"
+      },
+      {
+        "source_id": "checkpoint_events",
+        "derived_from": "observability.jsonl (rig.relay.checkpoint.committed / rig.relay.checkpoint.refused)",
+        "schema": "rig.relay.checkpoint_eval.v1",
+        "storage_form": "derived JSONL export via rig_relay_dataset_export.py",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "derived_jsonl_days=30 (warm tier)",
+        "key_fields": "session_id, task_id, branch, pre_commit_head, post_commit_head, commit_sha, files_committed_count, status (committed/refused), refusal_code"
+      },
+      {
+        "source_id": "tool_reasoning_traces",
+        "derived_from": "observability.jsonl (TOOL_REASONING_TRACE events) + tool output artifacts",
+        "schema": "rig.relay.artifact.tool_reasoning_trace.v1",
+        "storage_form": "artifact files under ~/.rig/relay/sessions/<id>/artifacts/tool-results/",
+        "confidentiality_tier": "locally_retained (raw) / evidence_retained (hashes + metadata)",
+        "content_light": false,
+        "safe_for_aggregation": "Metadata only (hashes, latencies, classes)",
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": "Metadata/hash fields only",
+        "suitable_for_frontend_visualization": "Metadata/hash fields only",
+        "ml_disclosure_needed": true,
+        "retention_default": "raw_tool_artifacts_days=3 (hot tier)",
+        "key_fields": "tool_call_id, tool_name, tool_input_sha256, tool_output_sha256, tool_output_kind, determinism_class, mutation_class, latency_ms, input_bytes, output_bytes, warnings"
+      },
+      {
+        "source_id": "a2a_tasks",
+        "canonical_path": "In-memory A2AServerState — tasks dict, delegations dict (not yet persisted)",
+        "schema": "rig.relay.a2a.task_card.v1, rig.relay.a2a.delegation_receipt.v1",
+        "storage_form": "runtime/in-memory — no persistence yet",
+        "confidentiality_tier": "locally_retained (runtime only)",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "Not persisted — lost on restart",
+        "key_fields": "task_id, agent_id, status, trust_tier, created_at, updated_at, input_hash, output_hash, cancellation_reason, task_count, open_task_count, completed_count, failed_count",
+        "gap": "A2A task state is NOT persisted. This must be resolved in P1 or P3 before operational projection."
+      },
+      {
+        "source_id": "github_truth_evidence",
+        "canonical_path": "Runtime via GitHubTruthAdapter — PublicationVerification, InstallationAccess",
+        "schema": "rig_relay/integrations/github_provider/_truth_models.py — GitHubPublicationVerification, GitHubInstallationAccess",
+        "storage_form": "runtime/on-demand (not persisted between sessions)",
+        "confidentiality_tier": "locally_retained (tokens excluded from projection)",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "Not persisted — on-demand only",
+        "key_fields": "verification_status, accepted_head_present, remote_head_sha, expected_sha, ref, follow_on_commits_count, ci_state, connected, token_status, app_id",
+        "gap": "GitHub truth evidence is not persisted. Publication verification results should persist as canonical evidence."
+      },
+      {
+        "source_id": "out_of_scope_findings",
+        "canonical_path": "docs/findings/out-of-scope-findings.jsonl",
+        "schema": "Append-only JSONL — no formal schema (plain dict rows)",
+        "storage_form": "append-only JSONL",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "In-repo — committed, not subject to hot/warm GC",
+        "key_fields": "finding_id, severity, title, affected_files, language, best_practice_anchor, recommended_slice"
+      },
+      {
+        "source_id": "derived_datasets",
+        "canonical_path": ".build/rig-relay/derived/",
+        "datasets": [
+          "cross_session_coordination_dataset.jsonl",
+          "coordination_conflict_dataset.jsonl",
+          "artifact_reuse_dataset.jsonl",
+          "checkpoint_eval_dataset.jsonl",
+          "tool_failure_patterns_dataset.jsonl",
+          "provider_task_performance_dataset.jsonl",
+          "findings_dataset.jsonl",
+          "semantic_change_snippets.jsonl"
+        ],
+        "schema": "Per dataset — coordination v1, conflict v1, artifact_reuse v1, checkpoint_eval v1",
+        "storage_form": "derived JSONL (warm tier, 30 days)",
+        "confidentiality_tier": "evidence_retained (content-light by construction)",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "derived_jsonl_days=30 (warm tier) → Parquet rollup after (cold tier, 365 days)"
+      },
+      {
+        "source_id": "telemetry_bundles",
+        "canonical_path": ".build/rig-relay/telemetry/ (optional, opt-in)",
+        "schema": "rig.relay.telemetry_bundle_manifest.v1",
+        "storage_form": "zip bundles + manifest JSON",
+        "confidentiality_tier": "exportable_after_redaction (requires opt-in + consent record)",
+        "content_light": true,
+        "safe_for_aggregation": "Only if user has opted in to remote sharing",
+        "useful_for_local_analytics": false,
+        "suitable_for_postgres_operational": false,
+        "suitable_for_frontend_visualization": false,
+        "ml_disclosure_needed": true,
+        "retention_default": "Subject to upload_mode setting, not local retention policy"
+      },
+      {
+        "source_id": "desktop_operator_projection",
+        "built_by": "rig_relay/desktop/projection.py — build_projection()",
+        "storage_form": "Ephemeral — built on request, not persisted",
+        "confidentiality_tier": "locally_retained (projection may contain hashes and counts, not raw data)",
+        "content_light": true,
+        "safe_for_aggregation": false,
+        "useful_for_local_analytics": false,
+        "suitable_for_postgres_operational": false,
+        "suitable_for_frontend_visualization": "This IS the frontend visualization payload",
+        "ml_disclosure_needed": false,
+        "retention_default": "Ephemeral — not retained"
+      },
+      {
+        "source_id": "session_lifecycle_state",
+        "canonical_path": "~/.rig/relay/sessions/<id>/manifest.json",
+        "schema": "Session lifecycle manifest fields",
+        "storage_form": "JSON manifest per session",
+        "confidentiality_tier": "evidence_retained",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "raw_observability_days=3 (hot tier)",
+        "key_fields": "session_id, parent_session_id, agent_profile, provider, model, thinking_enabled, created_at, completion_status"
+      },
+      {
+        "source_id": "live_mutation_readiness",
+        "canonical_path": "Runtime via governance engine + attestation — 12-gate policy",
+        "schema": "rig_relay/governance/decisions.py — GateDecision, GovernanceDecisionKind",
+        "storage_form": "Runtime (persisted as governance decision receipt)",
+        "confidentiality_tier": "evidence_retained (as receipt)",
+        "content_light": true,
+        "safe_for_aggregation": true,
+        "useful_for_local_analytics": true,
+        "suitable_for_postgres_operational": true,
+        "suitable_for_frontend_visualization": true,
+        "ml_disclosure_needed": false,
+        "retention_default": "governance decisions → derived retention (180 days)",
+        "key_fields": "decision_id, decision_kind, severity, reasons, tool_name, path_hashes"
+      }
+    ],
+
+    "lane_specific_data_sources": {
+      "lane_a": [
+        "Lane A's validation authority, receipt revocation, disclosure authorization, lane lifecycle, remote-action authorization records — these flow through governance decisions (GateDecision → ReceiptEnvelope) and are captured in the governance receipt store at ~/.rig/relay/receipts/"
+      ],
+      "lane_b": [
+        "GitHub truth (PublicationVerification), publication verification, issues, CI/CD, Pages deployment, portfolio data, authorization-consumer evidence — maintained by GitHubTruthAdapter under rig_relay/integrations/github_provider/_truth_adapter.py"
+      ],
+      "lane_c": [
+        "A2A tasks (A2ATaskCard), artifacts, trust tiers, gateway config, conformance records — modeled in rig_relay/protocols/a2a/_models.py, server state in A2AServerState"
+      ]
+    }
+  },
+
+  "section_5_operational_projection_port": {
+    "title": "Section 5 — Canonical Operational Projection Port",
+    "description": "The P3 operational projection port is the normalized interface between canonical portable evidence (JSON/JSONL/CSV) and PostgreSQL operational tables. It preserves canonical artifact identity and never converts Postgres into source-of-truth. Postgres rows are rebuildable from canonical artifacts.",
+
+    "port_contract": {
+      "schema_version": "rig.relay.operational_projection_port.v1",
+      "principle": "Every Postgres row is a content-light projection of a canonical artifact. The artifact is always the authority. Postgres rows can be dropped and rebuilt from artifacts.",
+
+      "required_fields_per_record": [
+        "source_schema_version (string) — schema version of the source canonical artifact",
+        "source_artifact_digest (sha256 string) — SHA256 of the canonical source artifact",
+        "record_identity (string) — stable identity within the projection table (derived from source, not auto-increment)",
+        "event_or_receipt_identity (string|null) — if applicable, the canonical event/receipt identity",
+        "producer (string) — which subsystem produced this record (agent_loop, coordination, governance, github, a2a, telemetry)",
+        "mission_scope (string|null) — mission/lane/task/workspace/repository scope",
+        "timestamp_or_sequence (ISO8601 string) — when the source event occurred",
+        "outcome_classification (string) — simplified outcome (completed, failed, blocked, refused, pending)",
+        "confidentiality_tier (string) — evidence_retained, locally_retained, exportable_after_redaction",
+        "authorization_requirement (string|null) — required authorization posture if applicable",
+        "projection_version (string) — version of this projection record format",
+        "idempotency_key (string) — deterministic replay key (hash of source_artifact_digest + record_identity)",
+        "payload_envelope (jsonb) — versioned bounded JSON content-light envelope",
+        "rebuildability_status (string) — 'rebuildable' (can regenerate from canonical artifact) or 'source_only' (canonical artifact is the sole authority, no separate record)"
+      ]
+    },
+
+    "projection_table_recommendations": {
+      "approach": "typed_projection_tables",
+      "rejected_approach": "unified_bounded_event_ledger",
+      "rejection_reason": "A single universal event/projection ledger creates schema drift (every event type has different required fields), makes query performance dependent on jsonb indexes only, and mixes confidentiality tiers without column-level control. Typed projection tables per domain allow relational indexing on stable dimensions while using jsonb for versioned content.",
+
+      "recommended_tables": [
+        {
+          "table": "governance_decisions",
+          "priority": "first",
+          "source": "ReceiptStore (manifest.jsonl + envelope shards)",
+          "stable_columns": "decision_id VARCHAR PRIMARY KEY, decision_kind VARCHAR, severity VARCHAR, created_at TIMESTAMP, session_id VARCHAR, actor_id VARCHAR, tool_name VARCHAR, confidentiality_tier VARCHAR, source_schema_version VARCHAR, source_artifact_digest VARCHAR, rebuildability_status VARCHAR",
+          "jsonb_columns": "reasons JSONB, path_hashes JSONB, metadata JSONB",
+          "indexes": "BTREE on decision_kind, BTREE on severity, BTREE on created_at, GIN on reasons JSONB, GIN on path_hashes JSONB",
+          "read_patterns": "Filter by kind/severity/date range, count by decision outcome, join to sessions for throughput analysis"
+        },
+        {
+          "table": "session_lifecycle",
+          "priority": "first",
+          "source": "Session manifests + observability.jsonl session events",
+          "stable_columns": "session_id VARCHAR PRIMARY KEY, parent_session_id VARCHAR, agent_profile VARCHAR, provider VARCHAR, model VARCHAR, thinking_enabled BOOLEAN, created_at TIMESTAMP, completed_at TIMESTAMP, completion_status VARCHAR, source_schema_version VARCHAR",
+          "jsonb_columns": "metadata JSONB, warnings JSONB",
+          "indexes": "BTREE on parent_session_id, BTREE on agent_profile, BTREE on created_at, BTREE on completion_status",
+          "read_patterns": "Active session dashboard, session throughput by profile, parent-child session joins for fleet analysis"
+        },
+        {
+          "table": "coordination_events",
+          "priority": "first",
+          "source": ".build/rig-relay/coordination/events.jsonl",
+          "stable_columns": "coord_event_hash VARCHAR PRIMARY KEY, session_id VARCHAR, parent_session_id VARCHAR, fleet_id VARCHAR, task_id VARCHAR, event_name VARCHAR, agent_profile_name VARCHAR, created_at TIMESTAMP, outcome VARCHAR, reservation_mode VARCHAR, reservation_status VARCHAR, source_schema_version VARCHAR",
+          "jsonb_columns": "path_hashes JSONB, metadata JSONB, warnings JSONB",
+          "indexes": "BTREE on event_name, BTREE on session_id, BTREE on created_at, BTREE on outcome, GIN on path_hashes JSONB",
+          "read_patterns": "Coordination dashboard (reservations, refusals, conflicts), fleet status, session coordination history"
+        },
+        {
+          "table": "a2a_tasks",
+          "priority": "second",
+          "source": "A2AServerState (must be persisted by P1 first)",
+          "stable_columns": "task_id VARCHAR PRIMARY KEY, agent_id VARCHAR, status VARCHAR, trust_tier VARCHAR, created_at TIMESTAMP, updated_at TIMESTAMP, cancellation_reason VARCHAR, refusal_reason VARCHAR, source_schema_version VARCHAR",
+          "jsonb_columns": "artifact_refs JSONB, extensions JSONB",
+          "indexes": "BTREE on status, BTREE on agent_id, BTREE on trust_tier, BTREE on created_at",
+          "read_patterns": "Task lifecycle dashboard, agent delegation monitoring, trust tier audit",
+          "gap": "A2A task state is NOT persisted currently. Must be persisted before P3 can project it."
+        },
+        {
+          "table": "github_publication_verification",
+          "priority": "second",
+          "source": "GitHubTruthAdapter (runtime, must be persisted by P1)",
+          "stable_columns": "verification_id VARCHAR PRIMARY KEY, verification_status VARCHAR, accepted_head_present BOOLEAN, expected_sha VARCHAR, remote_head_sha VARCHAR, ref VARCHAR, follow_on_commits_count INTEGER, follow_on_head_sha VARCHAR, ci_state VARCHAR, created_at TIMESTAMP, source_schema_version VARCHAR",
+          "jsonb_columns": "error_kind VARCHAR, suggested_next_action VARCHAR, evidence_digest VARCHAR",
+          "indexes": "BTREE on verification_status, BTREE on expected_sha, BTREE on created_at",
+          "read_patterns": "Publication dashboard, CI state history, divergence tracking",
+          "gap": "GitHub truth evidence is NOT persisted. Must be persisted before P3 can project it."
+        },
+        {
+          "table": "checkpoint_history",
+          "priority": "second",
+          "source": "observability.jsonl (rig.relay.checkpoint.committed/refused events)",
+          "stable_columns": "checkpoint_id VARCHAR PRIMARY KEY, session_id VARCHAR, task_id VARCHAR, branch VARCHAR, pre_commit_head VARCHAR, post_commit_head VARCHAR, commit_sha VARCHAR, files_committed_count INTEGER, status VARCHAR, refusal_code VARCHAR, created_at TIMESTAMP, source_schema_version VARCHAR",
+          "jsonb_columns": "validation_summary_hash VARCHAR, checkpoint_artifact_sha256 VARCHAR",
+          "indexes": "BTREE on session_id, BTREE on branch, BTREE on status, BTREE on created_at",
+          "read_patterns": "Checkpoint history dashboard, committed vs refused ratio, session checkpoint throughput"
+        },
+        {
+          "table": "tool_outcomes",
+          "priority": "second",
+          "source": "observability.jsonl (TOOL_CALL_COMPLETED events)",
+          "stable_columns": "tool_call_id VARCHAR PRIMARY KEY, session_id VARCHAR, tool_name VARCHAR, status VARCHAR, model VARCHAR, agent_profile_name VARCHAR, created_at TIMESTAMP, source_schema_version VARCHAR",
+          "jsonb_columns": "tool_input_sha256 VARCHAR, tool_output_sha256 VARCHAR, warnings JSONB",
+          "indexes": "BTREE on tool_name, BTREE on status, BTREE on session_id, BTREE on created_at",
+          "read_patterns": "Tool success/failure dashboard, agent profile tool usage, mutation success rate"
+        },
+        {
+          "table": "out_of_scope_findings",
+          "priority": "third",
+          "source": "docs/findings/out-of-scope-findings.jsonl",
+          "stable_columns": "finding_id VARCHAR PRIMARY KEY, severity VARCHAR, title VARCHAR, language VARCHAR, best_practice_anchor VARCHAR, recorded_at TIMESTAMP, source_schema_version VARCHAR",
+          "jsonb_columns": "affected_files JSONB, recommended_slice VARCHAR",
+          "indexes": "BTREE on severity, BTREE on language, BTREE on recorded_at",
+          "read_patterns": "Findings by severity/language, trending over time, recommended next slices"
+        }
+      ]
+    }
+  },
+
+  "section_6_postgresql_implementation_phases": {
+    "title": "Section 6 — PostgreSQL Implementation Phases",
+    "recommendation": "Phase 1: Define the projection port + backend interface (P3). Phase 2: Add Psycopg 3 and first table implementation (P3 same slice or follow-up).",
+
+    "psycopg_evaluation": {
+      "recommended": true,
+      "version": "Psycopg 3 (psycopg[binary]>=3.2)",
+      "package_location": "rig_relay/data/operational/ (new package, not adding to core or desktop)",
+      "dependency_declaration": "uv add psycopg[binary] — declared as optional extras group 'postgres' or as a core dependency if P3 is non-optional",
+      "first_use": "COPY for bulk ingest of canonical JSONL artifacts (receipts, coordination events) into typed projection tables",
+      "async_support": "Psycopg 3 async connection pool — well-suited for async agent loop and projection refresh background tasks",
+      "test_environment": "Tests require a running PostgreSQL instance. Options: (a) pg_tmp ephemeral database with pg_isready check, (b) Docker with testcontainers pattern, (c) GitHub Actions service container for CI. Recommend pg_tmp for local dev + CI service container for GitHub Actions.",
+      "no_sqlalchemy": "Do NOT recommend SQLAlchemy or Alembic. Psycopg 3 direct SQL execution with typed projection builders is sufficient. No migration framework needed — projection tables are rebuildable from canonical artifacts."
+    },
+
+    "copy_evaluation": {
+      "fit": "Bulk ingest for canonical JSONL → typed projection tables",
+      "usage": "COPY governance_decisions FROM STDIN or COPY coordination_events FROM STDIN — rows are normalized during build, not during COPY",
+      "export": "COPY ... TO STDOUT for bulk export of projection tables → rebuildable artifact verification",
+      "alternative": "DuckDB reads JSONL, transforms, writes Parquet → Psycopg COPY reads Parquet → Postgres. Adds DuckDB buffer. Not needed for first slice — direct JSONL→Postgres row builder is sufficient."
+    },
+
+    "listen_notify_evaluation": {
+      "fit": "Bounded cockpit invalidation signal — NOT state transport",
+      "usage": "Backend writes projection row → NOTIFY 'cockpit:governance_decisions' → WKWebView/WS receives event → frontend requests refresh of specific widget",
+      "principle": "Notification carries table name + optional filter key — never carries row data. Frontend issues get_projection request after invalidation.",
+      "do_not_use_for": "Real-time state streaming, event sourcing, transactional outbox, or replication"
+    },
+
+    "materialized_views": {
+      "fit": "Heavier dashboard summaries that join across tables",
+      "candidates": [
+        "session_throughput_summary (per day/week, grouped by agent_profile, provider, model)",
+        "governance_decision_daily_summary (per day, by decision_kind and severity)",
+        "coordination_conflict_weekly_summary (per week, by conflict_kind)",
+        "checkpoint_commit_daily_summary (per day, per branch)"
+      ],
+      "refresh_policy": "REFRESH MATERIALIZED VIEW CONCURRENTLY on schedule or on demand — not on every write"
+    },
+
+    "roles_and_rls": {
+      "fit": "Future hosted/team operation, not P3",
+      "usage": "Roles: cockpit_reader (read-only), evidence_writer (insert projection rows), operator_admin (manage users). RLS: row-level security by team/tenant scope when multi-tenant operation is implemented.",
+      "timeline": "P5 or later — requires tenant registry and hosted authentication infrastructure."
+    }
+  },
+
+  "section_7_duckdb_parquet_role": {
+    "title": "Section 7 — DuckDB and Derived Snapshot Role",
+    "recommendation": "DuckDB remains a disposable read-side analytical projection over canonical artifacts. Parquet is a derived historical/analytical snapshot format, never a mutation authority.",
+
+    "existing_duckdb_projections": [
+      {
+        "name": "Governance Decisions Projection",
+        "file": "rig_relay/analytics/governance_decisions_projection.py",
+        "source": "ReceiptStore (manifest.jsonl + envelope shards)",
+        "table": "governance_decisions (DuckDB in-memory)",
+        "disposability": "Fully disposable — call build_governance_decisions_projection() to rebuild"
+      },
+      {
+        "name": "Analytics Engine (Observability + Receipts)",
+        "file": "rig_relay/analytics/engine.py — AnalyticsEngine",
+        "source": "~/.rig/relay/sessions/*/observability.jsonl + receipts.jsonl",
+        "tables": "observability, receipts (DuckDB in-memory)",
+        "disposability": "Fully disposable — call ingest_*() to rebuild"
+      },
+      {
+        "name": "Analytics Views (8 pre-built)",
+        "file": "rig_relay/analytics/views.py",
+        "source": "fact_model_turns, fact_bash_invocations, fact_tool_invocations (in-memory DuckDB tables)",
+        "views": "governance_gate_health, session_health_scorecard, tool_latency_heatmap, release_gate_blocker_burndown, dependency_risk_surface, out_of_scope_findings, correlation_integrity, local_inference_capability",
+        "note": "These views currently query from in-memory DuckDB tables built by AnalyticsEngine, not from a persistence layer"
+      }
+    ],
+
+    "duckdb_vs_postgres_equivalence": {
+      "requirement": "Given the same canonical evidence corpus, a DuckDB analytical projection and Postgres operational projection should agree on bounded semantic records where they intentionally overlap.",
+      "validation_mechanism": "A cross-projection validation check (P3 scope): for each projected table with an equivalent DuckDB view, compare row counts, aggregate sums, and sampled hash matches. Emit validation report as canonical evidence.",
+      "discrepancy_tolerance": "Count-only differences may arise from timing (DuckDB snapshot vs Postgres live). Hash-equivalent records must match exactly."
+    },
+
+    "parquet_role": {
+      "authority": "Derived historical/analytical snapshot ONLY",
+      "not_authority_for": "Mutations, evidence records, checkpoint commits, governance decisions",
+      "generation": "DuckDB SELECT * FROM projected_table → COPY TO '*.parquet' (FORMAT PARQUET)",
+      "use_cases": [
+        "Historical rollup of governance decisions older than 30 days",
+        "Cross-session fleet analysis > 14 days (beyond coordination events retention)",
+        "ML dataset export (anonymized, content-light, privacy-legible)"
+      ],
+      "retention": "Parquet rollups: 365 days (cold tier)"
+    },
+
+    "data_product_classification": {
+      "duckdb_only": [
+        "Ad-hoc exploratory queries over raw observability (developer/debug)",
+        "Bash invocation pattern clustering",
+        "Model token cost estimation across sessions",
+        "Cross-session correlation integrity checks"
+      ],
+      "postgres_operational": [
+        "Governance decision history (filterable, indexed, with jsonb reasons)",
+        "Session lifecycle dashboard (active/completed/failed)",
+        "Coordination state (reservations, conflicts, leases)",
+        "A2A task lifecycle monitoring",
+        "GitHub publication verification history",
+        "Checkpoint commit/refusal history",
+        "Tool outcome surveillance"
+      ],
+      "both_postgres_and_duckdb": [
+        "Session health scorecard (DuckDB for analytical depth, Postgres for dashboard latency)",
+        "Tool latency patterns (DuckDB for heatmaps/trends, Postgres for responsive lookup)",
+        "Checkpoint throughput (DuckDB for historical analysis, Postgres for current state)"
+      ]
+    }
+  },
+
+  "section_8_viz_and_analytics": {
+    "title": "Section 8 — Desktop Analytics, Visualization, and Frontend Data Transport",
+    "status": "evaluated_and_recommended",
+
+    "analytics_questions_and_mapping": [
+      {
+        "question": "Which tools have the highest failure/refusal rates?",
+        "source_corpus": "observability.jsonl (TOOL_CALL_COMPLETED events)",
+        "analysis_service": "AnalyticsEngine (DuckDB) → tool failure query",
+        "projection_type": "Desktop panel (bar chart or heatmap)",
+        "confidentiality_tier": "evidence_retained",
+        "permitted_drill_down": "By tool_name, by session, by model — no raw prompts or outputs",
+        "freshness": "Near-realtime (tool completes → event logged → DuckDB re-queries on projection refresh)",
+        "visualization_form": "Bar chart (tool × failure count) or heatmap (tool × session)"
+      },
+      {
+        "question": "What are model/provider cost and latency outcomes?",
+        "source_corpus": "observability.jsonl (REQUEST_ACCOUNTED, TOOL_REASONING_TRACE)",
+        "analysis_service": "AnalyticsEngine → model_rows.py → fact_model_turns",
+        "projection_type": "Desktop panel (histogram, scatter or line chart)",
+        "confidentiality_tier": "evidence_retained",
+        "permitted_drill_down": "By provider, model, agent_profile — no raw prompts",
+        "freshness": "Session-bounded (complete session → aggregate)",
+        "visualization_form": "Histogram (latency distribution), scatter (tokens vs latency)"
+      },
+      {
+        "question": "What are authorization and refusal rates?",
+        "source_corpus": "Governance receipt store (GateDecision → ReceiptEnvelope)",
+        "analysis_service": "governance_decisions_projection.py (DuckDB)",
+        "projection_type": "Desktop panel",
+        "confidentiality_tier": "evidence_retained",
+        "permitted_drill_down": "By decision_kind, severity, tool_name",
+        "freshness": "Near-realtime",
+        "visualization_form": "Stacked bar (kind × count) or pie/donut chart"
+      },
+      {
+        "question": "What are validation and checkpoint throughput rates?",
+        "source_corpus": "observability.jsonl (checkpoint events) + coordination events",
+        "analysis_service": "Dataset export → checkpoint_eval_dataset.jsonl",
+        "projection_type": "Desktop panel",
+        "confidentiality_tier": "evidence_retained",
+        "permitted_drill_down": "By session, branch, status",
+        "freshness": "On checkpoint event",
+        "visualization_form": "Counter card + line chart over time"
+      },
+      {
+        "question": "How often do coordination collisions occur?",
+        "source_corpus": "coordination events.jsonl",
+        "analysis_service": "Coordination conflict dataset → conflict counts",
+        "projection_type": "Desktop panel (fleet/coordination widget)",
+        "confidentiality_tier": "evidence_retained",
+        "permitted_drill_down": "By conflict_kind, session",
+        "freshness": "On conflict event",
+        "visualization_form": "Counter card + timeline"
+      }
+    ],
+
+    "frontend_data_transport": {
+      "current": "JSON over WebSocket — typed projection dicts (< 1MB typical)",
+      "vega_lite_declarative_viz": {
+        "recommendation": "Use Vega-Lite declarative JSON visualization grammar for desktop charts",
+        "fit_assessment": {
+          "backend_owned_viz_specs": "Backend owns query, aggregation, authorization, provenance, and safe chart-spec generation. Frontend renders approved specifications and emits bounded interaction intents.",
+          "supported_views": "Timelines, histograms, layered CI/tool outcomes, faceted agent/provider comparisons, regression/trend analysis (with Vega-Lite transforms), density/quantile views, selection-driven drill-down, multi-view dashboards",
+          "bundle_size": "Vega-Lite + Vega runtime ≈ 300-400KB gzipped. Acceptable for desktop app (not a web SaaS). Minimal impact on WKWebView (localhost, no network latency).",
+          "current_stack_fit": "Vega-Lite requires a runtime JS library. Current frontend is vanilla JS with no build system. Adding Vega-Lite requires either (a) bundled script tag from CDN (not appropriate for local-only desktop), (b) vendored library in frontend/, or (c) a minimal build step. Vendoring a single vegalite.min.js in frontend/desktop/js/vendor/ is the simplest path.",
+          "accessibility": "Vega-Lite charts are SVG-based, which WKWebView renders natively. Screen reader descriptions can be added via Vega-Lite's description field. Not as accessible as semantic HTML tables but adequate for developer tooling.",
+          "security": "Vega-Lite specs are JSON documents. Backend must validate specs against Vega-Lite JSON Schema before emission. No eval() or Function() in Vega-Lite rendering.",
+          "interaction": "selections and faceted views"
+        }
+      },
+      "arrow_js_evaluation": {
+        "recommended": false,
+        "postpone_reason": "Current projection payloads are small (< 1MB JSON). Arrow IPC improves transport for multi-megabyte tabular datasets. No current projection exceeds that threshold. Re-evaluate when derived datasets (coordination, checkpoint, findings) grow beyond thousands of rows in a single projection payload.",
+        "when_to_introduce": "When any single projection payload regularly exceeds 2MB JSON or when exploratory analytics tables exceed 10,000 rows in a single query result sent to the frontend.",
+        "fallback": "JSON projection contracts remain necessary even if Arrow is introduced — dashboard status cards and small widget data will always use JSON.",
+        "build_impact": "Apache Arrow JavaScript (apache-arrow npm package) requires a build system (npm/webpack/vite) — the current vanilla JS frontend has no build system. Introducing Arrow triggers a frontend toolchain decision that is not needed for P1–P3."
+      }
+    }
+  },
+
+  "section_9_ml_privacy_boundary": {
+    "title": "Section 9 — ML Analysis Privacy Boundary",
+    "status": "defined_and_content_light",
+
+    "safe_by_default_features": [
+      "Outcome classes (completed, failed, blocked, refused, cancelled)",
+      "Durations (latency_ms, session_duration_s)",
+      "Counts (tool_call_count, turn_count, token_count, file_count)",
+      "Task states (created, running, completed, failed)",
+      "Refusal reasons (enum values, not full reason text)",
+      "Evidence sizes (input_bytes, output_bytes, artifact_count)",
+      "Provider and model category (provider name, model ID — not API keys)",
+      "Cost and latency where available (cost_estimate, latency_ms)",
+      "CI result classes (passed, failed, cancelled, skipped)",
+      "Approval outcomes (allowed, blocked, requires_review)",
+      "Pseudonymous coordination patterns (session ID hashes, task ID hashes, path hashes)",
+      "Tool invocation metadata (tool_name, status, determinism_class, mutation_class)"
+    ],
+
+    "requires_explicit_disclosure_or_consent": [
+      "Raw prompts (never in ML datasets — disclosure violated)",
+      "Raw source code (never in ML datasets — IP boundary)",
+      "Private GitHub issue bodies (never — third-party data)",
+      "Raw workflow logs / CI output (never in ML datasets)",
+      "Private artifacts / private file paths (never)",
+      "Source diffs (never — use semantic change snippets instead)",
+      "Raw semantic change snippets with identifiers preserved (use anonymized snippets only)",
+      "Any field currently classified as 'locally_retained'"
+    ],
+
+    "ml_dataset_manifest_requirements": {
+      "schema_version": "rig.relay.ml_dataset_manifest.v1",
+      "required_fields": [
+        "feature_provenance (per feature: source corpus, transformation, aggregation method)",
+        "exclusions (list of excluded fields with reasons)",
+        "consent_posture (implicit_local / explicit_opt_in / commercial_license_required)",
+        "disclosure_tier (evidence_retained / content_light_derived / pseudonymized / fully_anonymized)",
+        "source_digests (per source: file path hash, sha256, row count, date range)",
+        "sampling_method (random / stratified / full / time_window)",
+        "truncation (max rows, max features, outlier capping)",
+        "schema_version (version of the dataset schema)",
+        "export_destination (local / remote_opt_in / shared_benchmark)",
+        "content_light_guarantee (boolean — always true for ML datasets)"
+      ]
+    },
+
+    "ml_disclosure_governance": {
+      "principle": "Default ML-ready datasets MUST remain content-light and privacy-legible. No raw prompts, no raw source code, no secrets, no private identifiers.",
+      "consent_gate": "Contribution of ML datasets to shared benchmarks requires separate explicit consent (commercial_dataset_license scope in telemetry_consent — never default).",
+      "enterprise_ml": "Enterprise operational ML (predicting lane blockage, estimating session cost, detecting coordination drift) operates on operational projections — which are already content-light. No additional disclosure required."
+    }
+  },
+
+  "section_10_script_surface_promotion_reclassification": {
+    "title": "Section 10 — Production Surface Promotion Audit",
+    "status": "22_candidates_reclassified",
+
+    "candidate_scripts": [
+      {
+        "script": "rig_relay_queue_plan.py",
+        "current_location": "scripts/rig_relay_queue_plan.py",
+        "current_imports": "stdlib only — json, pathlib, argparse, datetime, subprocess for git",
+        "classification": "coordination_service",
+        "recommendation": "Promote to rig_relay.coordination.queue_planner as a pure function (not a script). Must emit coordination operational projection rows for P3.",
+        "role": "Computes ready work plan from pending work queue + coordination state. Dry-run only. No mutations. This is an orchestrator/coordination service — should be importable by AgentLoop/Ralph/fleet.",
+        "data_contract": "Input: work_queue.json + coordination leases → Output: ready work plan (ready_items, blocked_items, waiting_items with reasons, recommendations). Each item must include projection-ready fields (item_id, status, reason, path_hashes).",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_spawn_session.py",
+        "current_location": "scripts/rig_relay_spawn_session.py",
+        "current_imports": "rig_relay.coordination (models, store), coordination validation",
+        "classification": "coordination_service",
+        "recommendation": "Promote to rig_relay.coordination.spawn_planner. Dry-run mode stays; execute mode deferred. Must emit coord.path.reserved and coord.task.claimed events.",
+        "role": "Validates mission packet against coordination constraints, returns can_spawn or refusal_code. The spawn planner is the gate between orchestration intent and child session launch.",
+        "data_contract": "Input: mission_packet → Output: spawn plan (can_spawn, refusal_code, path_validation_results, coordination_state_snapshot).",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_create_review_packet.py",
+        "current_location": "scripts/rig_relay_create_review_packet.py",
+        "current_imports": "stdlib only — json, pathlib, argparse, datetime, shutil",
+        "classification": "coordination_service",
+        "recommendation": "Promote to rig_relay.coordination.review_packet_builder. Must emit coord.artifact.published event with artifact_kind=review_packet.",
+        "role": "Bridges completed mission → reviewer input for next mission prompt. Orchestration loop artifact.",
+        "data_contract": "Input: session_id, task_id, final_report_path, review_kind → Output: 5-file review packet (review_packet.json + companion files).",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_create_sprint_cockpit.py",
+        "current_location": "scripts/rig_relay_create_sprint_cockpit.py",
+        "current_imports": "subprocess (for git commands), json, hashlib, pathlib, argparse",
+        "classification": "coordination_service_desktop_projection_producer",
+        "recommendation": "Promote to rig_relay.coordination.cockpit_builder + emit projection-compatible output consumed by build_projection(). Must emit coord.projection.read event.",
+        "role": "Produces sprint cockpit packet consumed by reviewer orchestrator + desktop cockpit projection (sprint_cockpit section).",
+        "data_contract": "Output: sprint_cockpit.json + sprint_cockpit.md with coordination_summary, dataset_summary, open_findings, recent_checkpoints, active_sessions, active_path_reservations.",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_create_builtin_refinement_packets.py",
+        "current_location": "scripts/rig_relay_create_builtin_refinement_packets.py",
+        "current_imports": "jsonschema, json, uuid, argparse, pathlib",
+        "classification": "coordination_service",
+        "recommendation": "Promote to rig_relay.coordination.refinement_packet_builder. Emits mission packets from refinement backlog. Must emit coord.artifact.published events.",
+        "role": "Converts built-in tool refinement backlog rows into bounded mission packets for orchestration loop.",
+        "data_contract": "Input: builtin_tool_refinement_backlog.jsonl → Output: mission_packet JSON files, validation_commands per packet.",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_current_state.py",
+        "current_location": "scripts/rig_relay_current_state.py (thin wrapper)",
+        "current_imports": "Imports core from rig_relay.coordination.current_state (already promoted)",
+        "classification": "coordination_service_already_promoted",
+        "recommendation": "Core logic is already in rig_relay.coordination.current_state. Script is now a thin CLI wrapper. Remove script wrapper after P1 completes.",
+        "role": "Live orchestration pulse — active children, reservations, conflicts, stale leases, recommendations.",
+        "data_contract": "Already defined in coordination.current_state module.",
+        "p_phase": "P1"
+      },
+      {
+        "script": "rig_relay_storage_audit.py",
+        "current_location": "scripts/rig_relay_storage_audit.py",
+        "current_imports": "stdlib, rig_relay.evidence.session_lifecycle",
+        "classification": "evidence_service",
+        "recommendation": "Promote to rig_relay.evidence.storage_audit as an importable function. compute_storage_summary() already wraps it in evidence/storage_lifecycle.py — close the gap.",
+        "role": "Read-only storage inspection + budget status. Used by fleet preflight and desktop projection.",
+        "data_contract": "Output: storage summary dict (budget_status, total_size_mb, category counts, rollup/prune candidates, stale lease count, recommendations). Must be projectable into Postgres operational tables.",
+        "p_phase": "P2"
+      },
+      {
+        "script": "rig_relay_compact_artifacts.py",
+        "current_location": "scripts/rig_relay_compact_artifacts.py",
+        "current_imports": "duckdb, json, pathlib",
+        "classification": "evidence_service_duckdb_projection_producer",
+        "recommendation": "Promote to rig_relay.evidence.artifact_compaction. DuckDB JSONL→Parquet pipeline.",
+        "role": "Storage lifecycle maintenance — compacts derived JSONL to Parquet for cold storage.",
+        "data_contract": "Input: derived/*.jsonl → Output: derived/*.parquet + rollup_manifest.json. Dry-run by default.",
+        "p_phase": "P2"
+      },
+      {
+        "script": "rig_relay_gc_artifacts.py",
+        "current_location": "scripts/rig_relay_gc_artifacts.py",
+        "current_imports": "rig_relay.evidence.storage_lifecycle",
+        "classification": "evidence_service",
+        "recommendation": "Promote to rig_relay.evidence.artifact_gc as an importable function.",
+        "role": "Retention-based garbage collection. Preserves protected classes. Dry-run by default.",
+        "data_contract": "Input: storage budget config, build root → Output: GC plan (candidate_count, candidates, protected_reason per item).",
+        "p_phase": "P2"
+      },
+      {
+        "script": "rig_relay_create_telemetry_bundle.py",
+        "current_location": "scripts/rig_relay_create_telemetry_bundle.py",
+        "current_imports": "rig_relay.evidence.telemetry_bundle, redaction, zipfile",
+        "classification": "telemetry_service",
+        "recommendation": "Promote to rig_relay.evidence.telemetry_bundle_builder.",
+        "role": "Creates content-light zip bundles from derived datasets + reports. Gated by telemetry consent and budget.",
+        "data_contract": "Output: telemetry bundle zip + bundle manifest. Content-light guarantee enforced by redaction validator.",
+        "p_phase": "P2"
+      },
+      {
+        "script": "rig_relay_contribute_telemetry_bundle.py",
+        "current_location": "scripts/rig_relay_contribute_telemetry_bundle.py",
+        "current_imports": "rig_relay.evidence.google_drive_upload, authorization, consent",
+        "classification": "telemetry_adapter",
+        "recommendation": "Promote to rig_relay.evidence.telemetry_contribution with clear consent gates.",
+        "role": "Optional remote sharing — requires explicit opt-in, valid authorization receipt, consent record. Google Drive upload is the only transport.",
+        "data_contract": "Input: telemetry bundle + consent record + authorization receipt → Output: google_drive_upload_receipt.",
+        "p_phase": "P2"
+      },
+      {
+        "script": "rig_relay_dataset_export.py",
+        "current_location": "scripts/rig_relay_dataset_export.py",
+        "current_imports": "jsonschema, json, csv, argparse, datetime",
+        "classification": "data_plane_service",
+        "recommendation": "Promote to rig_relay.data.derived.dataset_exporter. Must export both derived datasets AND produce Postgres-compatible normalized rows.",
+        "role": "Transforms event streams and findings → clean derived JSONL/CSV for machine consumption. Validates rows against schemas.",
+        "data_contract": "Output: 7 derived JSONL/CSV datasets + export_manifest.json. Each dataset row must carry the operational projection envelope fields (source_schema_version, source_artifact_digest, etc.) required by P3.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_dataset_report.py",
+        "current_location": "scripts/rig_relay_dataset_report.py",
+        "current_imports": "stdlib — reads JSONL, writes markdown report",
+        "classification": "data_plane_service",
+        "recommendation": "Promote to rig_relay.data.derived.dataset_reporter as a pure function returning structured dict, with script wrapper for CLI.",
+        "role": "Content-light Markdown summary for human inspection. Reads derived datasets, emits report.",
+        "data_contract": "Output: dataset-summary.md (Executive Summary, Event Volume, Tool Behavior, Guard, Coordination, Checkpoints, etc.).",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_dataset_inspector_lib.py",
+        "current_location": "scripts/rig_relay_dataset_inspector_lib.py",
+        "current_imports": "stdlib — duckdb optional, json, pathlib",
+        "classification": "data_plane_service_analytical",
+        "recommendation": "Promote to rig_relay.data.analytical.inspector_lib. Importable by both script CLI and marimo notebook.",
+        "role": "Data loading/summary/aggregation/filter helpers for the interactive inspector. NOT a production runtime service — developer/admin analytical tool.",
+        "data_contract": "Input: derived datasets → Output: aggregate dicts, chart data (list-of-dicts), filter results.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_export_coordination_datasets.py",
+        "current_location": "scripts/rig_relay_export_coordination_datasets.py",
+        "current_imports": "json, argparse, jsonschema optional",
+        "classification": "data_plane_service",
+        "recommendation": "Promote to rig_relay.data.coordination.dataset_exporter.",
+        "role": "Transforms coordination events + checkpoint events → 4 derived datasets (cross_session_coordination, coordination_conflict, artifact_reuse, checkpoint_eval).",
+        "data_contract": "Each row must carry coordination event identity and source digest for Postgres rebuildability.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_export_semantic_change_snippets.py",
+        "current_location": "scripts/rig_relay_export_semantic_change_snippets.py",
+        "current_imports": "ast (Python AST for anonymization), json, argparse",
+        "classification": "data_plane_service",
+        "recommendation": "Promote to rig_relay.data.semantic.snippet_exporter.",
+        "role": "Reads write_file, search_replace, checkpoint artifacts + coordination events → anonymized semantic change snippets.",
+        "data_contract": "Content-light guarantee: no raw source code, identifiers anonymized, literals stripped, paths hashed. Each snippet row must include source_digest for provenance.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_builtin_tool_refinement.py",
+        "current_location": "scripts/rig_relay_builtin_tool_refinement.py",
+        "current_imports": "reads derived datasets, writes backlog",
+        "classification": "analytical_tool",
+        "recommendation": "Convert to governed built-in tool or analytical service under rig_relay.data.refinement.",
+        "role": "Converts observed tool usage data → ranked refinement backlog. Consumes derived datasets only.",
+        "data_contract": "Output: builtin_tool_refinement_backlog.jsonl + refinement report. Content-light: counts, labels, hashes only.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_validate_schemas.py",
+        "current_location": "scripts/rig_relay_validate_schemas.py",
+        "current_imports": "jsonschema, json, pathlib",
+        "classification": "contract_validation_service",
+        "recommendation": "Promote to rig_relay.data.validation.schema_validator. Should be invokeable as both a service and a governed tool (validation_suite or dedicated schema validation tool).",
+        "role": "Validates JSON/JSONL artifacts against JSON Schema without modifying files.",
+        "data_contract": "Output: validation report with per-file pass/fail, error details. Must emit validation event into operational projection.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_trace_golden_path.py",
+        "current_location": "scripts/rig_relay_trace_golden_path.py",
+        "current_imports": "rig_relay.tracing (already promoted)",
+        "classification": "tracing_service_already_partially_promoted",
+        "recommendation": "Core tracing logic is already in rig_relay.tracing. Script wrapper remains as developer/CI harness.",
+        "role": "Golden path trace verification across bridge, agent loop, tool execution. Developer/CI tool — not production runtime.",
+        "p_phase": "P3"
+      },
+      {
+        "script": "rig_relay_trace_handshake.py",
+        "current_location": "scripts/rig_relay_trace_handshake.py",
+        "current_imports": "stdlib — json, pathlib, datetime",
+        "classification": "tracing_tool_developer",
+        "recommendation": "Keep as developer/CI harness. Used by DesktopBridgeServer for handshake trace display. Does not need promotion.",
+        "role": "Formats handshake trace events for terminal display. Developer utility only.",
+        "p_phase": "no_promotion_needed"
+      },
+      {
+        "script": "rig_relay_trace_visibility_audit.py",
+        "current_location": "scripts/rig_relay_trace_visibility_audit.py",
+        "current_imports": "stdlib — json, pathlib, argparse",
+        "classification": "contract_validation_developer_tool",
+        "recommendation": "Keep as developer tool. May be converted to a governed analytical tool in P5.",
+        "role": "Audits trace event visibility across the codebase. Developer/build-time tool.",
+        "p_phase": "P5"
+      },
+      {
+        "script": "rig_relay_release_coherence_audit.py",
+        "current_location": "scripts/rig_relay_release_coherence_audit.py",
+        "current_imports": "stdlib — json, pathlib, argparse, subprocess",
+        "classification": "release_gate_tool_developer",
+        "recommendation": "Keep as developer/CI tool for release gate validation. Not a production service.",
+        "role": "Verifies release candidate coherence before gate promotion. Release engineering tool.",
+        "p_phase": "developer_only"
+      }
+    ],
+
+    "cross_script_import_findings": [
+      "FINDING: rig_relay.evidence.storage_lifecycle.compute_storage_summary() imports from scripts.rig_relay_storage_audit.audit_storage. This is the reverse of the recommended layering — the evidence package should not import from scripts/. Fix: promote audit_storage to rig_relay.evidence._storage_audit and call it from there.",
+      "FINDING: rig_relay.desktop.bridge_server imports from scripts.rig_relay_trace_handshake (_load_events, _select_handshake_id, format_handshake_trace). This is acceptable because trace_handshake is a developer utility — but it means the bridge server has a soft runtime dependency on the scripts/ directory. Mitigation: copy or promote the handshake formatting to rig_relay.tracing."
+    ]
+  },
+
+  "section_11_p1_p5_implementation_ownership_plan": {
+    "title": "Section 11 — P0–P5 Non-Overlapping Implementation Ownership Plan",
+
+    "p0_lane_a_ongoing_repair": {
+      "owner": "Lane A (concurrent, in progress during this audit)",
+      "scope": "GitHub workflow-dispatch authorization bypass repair",
+      "package_surfaces": "rig_relay/integrations/github_provider/_live_mutation_preflight.py, authorization pathway files",
+      "note": "This audit does not touch these paths. Lane B does NOT compete."
+    },
+
+    "p1_coordination_services": {
+      "title": "P1 — Coordination Services, Governed Runtime Tools, Desktop Coordination Projections",
+      "package_surfaces": [
+        "rig_relay/coordination/queue_planner.py (from rig_relay_queue_plan.py)",
+        "rig_relay/coordination/spawn_planner.py (from rig_relay_spawn_session.py)",
+        "rig_relay/coordination/review_packet_builder.py (from rig_relay_create_review_packet.py)",
+        "rig_relay/coordination/cockpit_builder.py (from rig_relay_create_sprint_cockpit.py)",
+        "rig_relay/coordination/refinement_packet_builder.py (from rig_relay_create_builtin_refinement_packets.py)",
+        "rig_relay/coordination/current_state.py (core already promoted; remove script wrapper)",
+        "rig_relay/protocols/a2a/_persistence.py (NEW — persist A2A task state to canonical JSONL)"
+      ],
+      "must_not_change": [
+        "rig_relay/core/ (AgentLoop, LLM mixins, tool registry)",
+        "rig_relay/desktop/ (projection, bridge, WebSocket)",
+        "rig_relay/analytics/ (DuckDB, views)",
+        "rig_relay/evidence/ (receipts, storage)"
+      ],
+      "deliverables": [
+        "5 promoted coordination services importable by AgentLoop/Ralph/fleet/subagents through A2A",
+        "A2A task state persisted to canonical JSONL (prerequisite for P3 operational projection)",
+        "GitHub truth evidence persistence (prerequisite for P3 operational projection)",
+        "Coordination projection envelope field added to all P1 artifact emissions for P3 consumption",
+        "Desktop cockpit projection updated to consume P1 coordination projections"
+      ]
+    },
+
+    "p2_evidence_telemetry_services": {
+      "title": "P2 — Evidence, Telemetry, Storage and Redaction Services",
+      "package_surfaces": [
+        "rig_relay/evidence/_storage_audit.py (from rig_relay_storage_audit.py — close the scripts→evidence import gap)",
+        "rig_relay/evidence/artifact_compaction.py (from rig_relay_compact_artifacts.py)",
+        "rig_relay/evidence/artifact_gc.py (from rig_relay_gc_artifacts.py — fill existing stub)",
+        "rig_relay/evidence/telemetry_bundle_builder.py (from rig_relay_create_telemetry_bundle.py)",
+        "rig_relay/evidence/telemetry_contribution.py (from rig_relay_contribute_telemetry_bundle.py)"
+      ],
+      "must_not_change": [
+        "rig_relay/coordination/ (P1 surface in progress)",
+        "rig_relay/core/ (AgentLoop, LLM mixins)",
+        "rig_relay/desktop/ (projection, bridge)",
+        "rig_relay/analytics/ (DuckDB)"
+      ],
+      "deliverables": [
+        "scripts→evidence import gap closed (compute_storage_summary no longer imports from scripts/)",
+        "Unified consent-aware telemetry submission with correct four-layer distinction: product telemetry (opt-out), remote contribution (separate consent gate), local operational observability (always on for governance), enterprise evidence/audit (always on for enterprise, regardless of telemetry preference)",
+        "Redaction validator unified: rig_relay.evidence.redaction is the single authority — no duplicated forbidden-content scanning across scripts",
+        "Storage lifecycle projection for Postgres (P3 consumption)"
+      ]
+    },
+
+    "p3_operational_data_plane": {
+      "title": "P3 — Operational Data Plane, Analytics, Visualization and Contract Services",
+      "package_surfaces": [
+        "rig_relay/data/operational/ (NEW package — Postgres projection port + Psycopg adapter)",
+        "rig_relay/data/operational/projection_port.py (canonical projection port interface)",
+        "rig_relay/data/operational/postgres_adapter.py (Psycopg 3 async adapter — only when justified)",
+        "rig_relay/data/derived/dataset_exporter.py (from rig_relay_dataset_export.py)",
+        "rig_relay/data/derived/dataset_reporter.py (from rig_relay_dataset_report.py)",
+        "rig_relay/data/coordination/dataset_exporter.py (from rig_relay_export_coordination_datasets.py)",
+        "rig_relay/data/semantic/snippet_exporter.py (from rig_relay_export_semantic_change_snippets.py)",
+        "rig_relay/data/validation/schema_validator.py (from rig_relay_validate_schemas.py)",
+        "rig_relay/data/refinement/tool_analyzer.py (from rig_relay_builtin_tool_refinement.py)",
+        "rig_relay/data/analytical/inspector_lib.py (from rig_relay_dataset_inspector_lib.py)",
+        "rig_relay/data/operational/governance_decisions_projection.py (adapt existing DuckDB projection to emit Postgres-format normalized rows)",
+        "rig_relay/data/operational/session_lifecycle_projection.py (NEW)",
+        "rig_relay/data/operational/coordination_events_projection.py (NEW)",
+        "rig_relay/data/operational/a2a_tasks_projection.py (NEW — prerequisites: P1 A2A persistence)",
+        "rig_relay/data/operational/github_publication_projection.py (NEW — prerequisites: P1 GitHub truth persistence)",
+        "rig_relay/data/operational/checkpoint_history_projection.py (NEW)",
+        "rig_relay/data/operational/tool_outcomes_projection.py (NEW)"
+      ],
+      "must_not_change": [
+        "rig_relay/coordination/ (P1 surface)",
+        "rig_relay/evidence/ (P2 surface — consume only)",
+        "rig_relay/core/ (AgentLoop, LLM mixins)",
+        "rig_relay/desktop/projection.py (add projection sections, don't refactor)"
+      ],
+      "deliverables": [
+        "Canonical Postgres projection port interface defined in code (not just audit)",
+        "First Postgres operational projection table(s): governance_decisions + session_lifecycle (highest value, lowest dependency)",
+        "Psycopg 3 dependency declared with COPY-based ingest, async connection pool",
+        "DuckDB equivalence validation: cross-check row counts and hash matches for governance decisions projection",
+        "Desktop projection integration: analytics widgets consume Postgres-projected views where Postgres is available, fall back to DuckDB",
+        "6 remaining projection tables implemented as source data becomes available (P1/P2 outputs)"
+      ]
+    },
+
+    "p4_native_macos_host": {
+      "title": "P4 — Native macOS Host and Safari Integration",
+      "package_surfaces": [
+        "macos/RigRelay.xcodeproj or Package.swift (SwiftUI shell + WKWebView host)",
+        "macos/RigRelay/Bridge/ (shell→backend bridge protocol implementation)",
+        "macos/RigRelay/Extensions/ (optional Safari Web Extension — after bridge is stable)",
+        "macos/RigRelay/NativeCapabilities/ (file picker, drag/drop, notifications, keychain, URL scheme)",
+        "pyproject.toml [tool.rig-relay.native-host] section for Swift host configuration"
+      ],
+      "must_not_duplicate": [
+        "AgentLoop, governance, policy, receipts",
+        "GitHub logic, A2A task state, tool registry",
+        "Analytics querying, DuckDB, Postgres connections",
+        "Telemetry decisions, bundle assembly",
+        "Checkpoint or commit authority",
+        "Backend projection state"
+      ],
+      "deliverables": [
+        "Thin SwiftUI shell with single WKWebView loading the same web frontend",
+        "Narrow authenticated bridge (HTTPS/WSS to DesktopBridgeServer, same protocol)",
+        "Native capabilities: menu bar, open/save/folder pickers, drag/drop, native notifications, dock badge, appearance forwarding, app activation/URL scheme",
+        "Keychain-mediated secret access (replace keyring-based approach with native Keychain API)",
+        "Safari Web Extension (optional companion): bounded content capture, GitHub URL forwarding, status popover — privacy-gated",
+        "pywebview retained as development/fallback host"
+      ]
+    },
+
+    "p5_runtime_integration": {
+      "title": "P5 — Runtime Coordination and Desktop Workbench Integration",
+      "package_surfaces": [
+        "rig_relay/core/agent_loop.py (wiring: A2A integration, P1 coordination service calls)",
+        "rig_relay/ralph/ (Ralph integration with P1 coordination services)",
+        "rig_relay/coordination/fleet/ (fleet/subagent integration)",
+        "frontend/desktop/js/widgets/analytics.js (integration with P3 data/projection services)",
+        "rig_relay/desktop/projection.py (integration: P3 Postgres projection sections for workbench widgets)"
+      ],
+      "must_not_begin_until": "P1–P4 prerequisites are accepted and at minimum P1 + P2 are merged to main. P3 operational projections should be functional before workbench widgets are wired.",
+      "deliverables": [
+        "AgentLoop wired to A2A + P1 coordination services for orchestration loop",
+        "Ralph consumes coordination projections for mission candidate scoring",
+        "Fleet/subagents consume ready work plan and spawn planner through coordination services",
+        "Frontend workbench panels consume P3 data/projection services for analytics widgets",
+        "Desktop operator experience: coordination dashboard, evidence rail, ML-ready dataset export (content-light)"
+      ]
+    }
+  },
+
+  "section_12_uncertainties_and_parked_decisions": {
+    "title": "Section 12 — Uncertainties and Parked Decisions",
+    "sources": [
+      {
+        "category": "missing_github_source",
+        "detail": "GitHub truth evidence (PublicationVerification) is NOT persisted between sessions. Lane B's product doctrine depends on this data being projectable into operational analytics. P1 must resolve this.",
+        "impact": "blocks github_publication_verification Postgres table projection in P3"
+      },
+      {
+        "category": "missing_persistence",
+        "detail": "A2A task state (A2AServerState) is in-memory only. All A2A task lifecycle, delegation receipt, and trust tier data is lost on restart. P1 must add canonical JSONL persistence.",
+        "impact": "blocks a2a_tasks Postgres table projection in P3 — no source data exists"
+      },
+      {
+        "category": "import_gap",
+        "detail": "rig_relay.evidence.storage_lifecycle imports from scripts.rig_relay_storage_audit — the evidence package has a soft runtime dependency on a script. This is the reverse of the recommended layering.",
+        "impact": "P2 must close this gap by promoting audit_storage to rig_relay.evidence._storage_audit"
+      },
+      {
+        "category": "import_gap",
+        "detail": "rig_relay.desktop.bridge_server imports from scripts.rig_relay_trace_handshake for handshake trace display. This creates a soft runtime dependency on scripts/ in the desktop bridge path.",
+        "impact": "P3 should promote or inline the handshake formatting logic into rig_relay.tracing"
+      },
+      {
+        "category": "no_frontend_build_system",
+        "detail": "Frontend is vanilla JS with no build system. Introducing Arrow JS, Vega-Lite, or any npm dependency requires a build toolchain decision. This is parked until the data volume justifies it.",
+        "impact": "P3 visualization uses Vega-Lite with a vendored library; Arrow JS is deferred"
+      },
+      {
+        "category": "sqlite_forbidden",
+        "detail": "SQLite is explicitly forbidden per doctrine. No evaluation was performed for SQLite alternatives.",
+        "impact": "none — DuckDB is the analytical engine, PostgreSQL is the operational projection target"
+      },
+      {
+        "category": "no_postgres_test_environment",
+        "detail": "No Postgres test environment exists. P3 must define a test setup (pg_tmp, Docker, or CI service container) before implementing the first projection table.",
+        "impact": "P3's first slice should include test infrastructure definition"
+      },
+      {
+        "category": "parked_safari_extension",
+        "detail": "Safari Web Extension is deferred to P4 or later. Bridge stability must be proven first.",
+        "impact": "no P1–P3 impact — Safari extension is not a prerequisite for any operational or data-plane service"
+      },
+      {
+        "category": "parked_ml_dataset_export",
+        "detail": "ML-ready dataset export is defined in the privacy boundary (Section 9) but not scheduled for immediate implementation. The manifest schema and content-light guarantees are defined for future use.",
+        "impact": "P3 output includes content-light enriched data that ML exporters can consume later"
+      }
+    ]
+  },
+
+  "section_13_verified_current_state": {
+    "title": "Section 13 — Verified Current Implementation (Source-of-Truth)",
+    "baseline_verified": true,
+    "head": "6ac6d40b",
+    "desktop_host_verified": "pywebview 6.2.1+ on Cocoa/WKWebView",
+    "frontend_verified": "49 JS files, 8 CSS files, vanilla HTML/CSS/JS stack at frontend/desktop/",
+    "projection_verified": "build_projection() with 24 patch sections in rig_relay/desktop/projection.py",
+    "protocol_verified": "DesktopBridgeServer + ProjectionWebSocketServer on single port; BridgeMessage protocol in bridge_protocol.py",
+    "analytics_verified": "DuckDB AnalyticsEngine + 8 pre-built views + governance_decisions_projection in rig_relay/analytics/",
+    "governance_verified": "GovernanceDecisionKind model, GateDecision, ReceiptEnvelope, ReceiptStore, Evidence adapter",
+    "a2a_verified": "A2AServer, A2AAgentCard, A2ATaskCard, A2ATaskStatus, trust tiers, capability classes — all defined but NOT persisted",
+    "github_projection_verified": "GitHubConnectionProjection, PublicationStatusProjection, CIPipelineStatusProjection — models only, runtime evidence NOT persisted",
+    "coordination_verified": "CoordinationSession, CoordinationStore, models, lease_manager, fleet_coordinator — file-backed under .build/rig-relay/coordination/",
+    "scripts_verified": "53 rig_relay_* scripts — 22 identified as promotion candidates; 2 cross-script imports found (storage_lifecycle → scripts, bridge_server → trace_handshake)",
+    "docs_renderer_verified": "rig_relay/docs_renderer/ (25 modules) + rig_relay/site_renderer/ (9 modules) — renders static HTML/CSS for GitHub Pages; NOT used by cockpit",
+    "no_missing_paths_found": true,
+    "paths_that_exist_as_described": [
+      "rig_relay/desktop/projection.py",
+      "rig_relay/desktop/websocket_server.py",
+      "rig_relay/desktop/bridge_server.py",
+      "rig_relay/desktop/bridge_protocol.py",
+      "rig_relay/desktop/intents.py",
+      "rig_relay/desktop/_intents/_refresh.py",
+      "rig_relay/desktop/github_truth_projection.py",
+      "rig_relay/desktop/analytics_projection.py",
+      "rig_relay/analytics/governance_decisions_projection.py",
+      "rig_relay/analytics/engine.py",
+      "rig_relay/analytics/views.py",
+      "rig_relay/evidence/storage_lifecycle.py",
+      "rig_relay/evidence/governance_decision_evidence.py",
+      "rig_relay/evidence/receipt_envelope.py",
+      "rig_relay/protocols/a2a/server.py",
+      "rig_relay/protocols/a2a/_models.py",
+      "rig_relay/protocols/a2a/_trust.py",
+      "rig_relay/protocols/a2a/_gateway.py",
+      "rig_relay/coordination/models.py",
+      "rig_relay/coordination/current_state.py",
+      "frontend/desktop/index.html",
+      "frontend/desktop/js/protocol/client.js"
+    ]
+  },
+
+  "report_metadata": {
+    "audit_kind": "read_only_architecture_audit",
+    "report_schema": "rig.relay.lane_b_architecture_audit.v1",
+    "files_read": 35,
+    "files_created": 1,
+    "files_modified": 0,
+    "files_deleted": 0,
+    "commits_created": 0,
+    "checkpoints_created": 0,
+    "conflicts_with_other_lanes": 0,
+    "lane_a_repair_not_disturbed": true,
+    "implementation_beginning": false,
+    "markdown_files_created": 0,
+    "out_of_scope_findings_recorded": 0,
+    "report_destinations": [
+      "docs/json/audits/desktop/lane_b_architecture_audit.v1.json (canonical structured artifact)"
+    ]
+  }
+}
