@@ -1,0 +1,255 @@
+{
+  "schema_version": "rig.relay.builtin_tool_contract_coverage.v1",
+  "generated_at": "2026-05-26T05:37:39Z",
+  "generated_by": "lane-b-slice-3",
+  "total_tools": 32,
+  "tools": [
+    {
+      "tool_name": "ask_user_question",
+      "class_name": "AskUserQuestion",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "read_only",
+      "description": "Each question has 2-4 choices plus an automatic 'Other' option for free text. Use this to gather preferences, clarify requirements, or get decisions."
+    },
+    {
+      "tool_name": "ast_grep",
+      "class_name": "AstGrep",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "AST-aware structural search. Matches code SHAPES rather than text strings. Uses Tree-sitter-backed parsers. Metavariables: $A matches one AST node, $$$ARGS matches a sequence. Use ast_grep when the qu"
+    },
+    {
+      "tool_name": "bash",
+      "class_name": "Bash",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "writes_workspace",
+      "description": "Run a one-off bash command and capture its output."
+    },
+    {
+      "tool_name": "behavior_patch",
+      "class_name": "BehaviorPatch",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "writes_workspace",
+      "description": "Enforce Red -> Green -> Refactor TDD cycle with cryptographically verifiable receipts."
+    },
+    {
+      "tool_name": "checkpoint",
+      "class_name": "Checkpoint",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "writes_workspace",
+      "description": "Create a governed local checkpoint commit for session-owned files. Creates a LOCAL git commit only \u2014 does not push, merge, or promote. Automatically receives a mission-issued authorization receipt whe"
+    },
+    {
+      "tool_name": "coordination",
+      "class_name": "Coordination",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "writes_workspace",
+      "description": "Shared coordination plane for claims, leases, and artifacts."
+    },
+    {
+      "tool_name": "exit_plan_mode",
+      "class_name": "ExitPlanMode",
+      "determinism_class": "deterministic_pure",
+      "mutation_class": "read_only",
+      "description": "Signal that your plan is complete and you are ready to start implementing. This will ask the user to confirm switching from plan mode to accept-edits mode. Only use this tool when you have finished wr"
+    },
+    {
+      "tool_name": "get_context",
+      "class_name": "GetContext",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Get governed repository context: repo topology, subsystem map, active work lanes, collision warnings, and recommended context files. Call this FIRST before planning or editing to understand the landsc"
+    },
+    {
+      "tool_name": "git_branch",
+      "class_name": "GitBranch",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded branch information. Returns current branch or full branch list without raw git output."
+    },
+    {
+      "tool_name": "git_diff",
+      "class_name": "GitDiff",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded diff evidence. Returns change statistics (--numstat) and change-kind classifications (--name-status) without raw patch content."
+    },
+    {
+      "tool_name": "git_hub_tool",
+      "class_name": "GitHubTool",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "external_side_effect",
+      "description": "Interact with GitHub CI/CD: trigger workflow dispatches, check workflow run status, list workflows, list recent runs, and check pull request status. Requires prior GitHub OAuth sign-in."
+    },
+    {
+      "tool_name": "git_hub_truth_tool",
+      "class_name": "GitHubTruthTool",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "read_only",
+      "description": "Read-only GitHub repository truth observations: verify publication, check CI status, observe remote refs and commits. Requires GitHub App installation authentication. Content-light \u2014 no raw paths, log"
+    },
+    {
+      "tool_name": "git_log",
+      "class_name": "GitLog",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded commit log. Returns structured commit hashes and subjects via --format, not raw git porcelain output."
+    },
+    {
+      "tool_name": "git_ls_files",
+      "class_name": "GitLsFiles",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded file listing. Returns NUL-delimited file paths without raw git output."
+    },
+    {
+      "tool_name": "git_show",
+      "class_name": "GitShow",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded commit inspection. Returns structured commit metadata and change statistics without raw patch content."
+    },
+    {
+      "tool_name": "git_status",
+      "class_name": "GitStatus",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Bounded workspace status. Returns structured branch, head, and dirty-state evidence. For checkpoint eligibility, prefer git_workspace_state."
+    },
+    {
+      "tool_name": "git_workspace_state",
+      "class_name": "GitWorkspaceState",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Return a structured read-side projection of the current local Git workspace state: branch, staged/unstaged/untracked/deleted/renamed/conflicted files, upstream divergence, checkpoint candidates and bl"
+    },
+    {
+      "tool_name": "grep",
+      "class_name": "Grep",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Recursively search files for a regex pattern using ripgrep (rg) or grep. Respects .gitignore and .codeignore files by default when using ripgrep.\n\nUse grep for text, identifiers, messages, comments, f"
+    },
+    {
+      "tool_name": "inspect_structure",
+      "class_name": "InspectStructure",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Run a named deterministic code inspection against the repository. Returns normalized findings and a verdict \u2014 the agent receives classified results rather than raw syntax hits. Available inspections: "
+    },
+    {
+      "tool_name": "prepare_checkpoint",
+      "class_name": "PrepareCheckpoint",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "mutates_git_state",
+      "description": "Prepare admitted files for a governed checkpoint by staging them in the Git index. Verifies mission scope, dirty-file protection, coordination reservations, and expected file-state hashes before stagi"
+    },
+    {
+      "tool_name": "read_file",
+      "class_name": "ReadFile",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Read a text file (encoding detected safely), returning content from a specific line range. Reading is capped by a byte limit for safety.\n\nUse read_file when the target file is known and you need sourc"
+    },
+    {
+      "tool_name": "report",
+      "class_name": "Report",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "writes_evidence_only",
+      "description": "File a structured report: mission report, out-of-scope finding, bug report, architecture seam, data race, or other discovery. Reports are append-only to a local JSONL ledger. This is the write-side co"
+    },
+    {
+      "tool_name": "search_replace",
+      "class_name": "SearchReplace",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "writes_workspace",
+      "description": "Replace sections of files using SEARCH/REPLACE blocks. Prefer search_replace for targeted changes to existing files. Use write_file only for new files or complete file replacement. Blocks are applied "
+    },
+    {
+      "tool_name": "session_lifecycle_finalize",
+      "class_name": "SessionLifecycleFinalize",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "writes_workspace",
+      "description": "Finalize a Relay session by classifying artifacts, compacting eligible current-session files, and writing lifecycle evidence."
+    },
+    {
+      "tool_name": "skill",
+      "class_name": "Skill",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Activate a Rig skill by name. Skills are modular capability bundles. The skill will inject detailed instructions, workflows, and access to bundled resources (scripts, references, templates) into the c"
+    },
+    {
+      "tool_name": "task",
+      "class_name": "Task",
+      "determinism_class": "nondeterministic_provider",
+      "mutation_class": "writes_workspace",
+      "description": "Delegate a task to a subagent for independent execution. Useful for exploration, research, or parallel work that doesn't require user interaction. The subagent runs in-memory and saves interaction log"
+    },
+    {
+      "tool_name": "todo",
+      "class_name": "Todo",
+      "determinism_class": "deterministic_pure",
+      "mutation_class": "writes_temp_only",
+      "description": "Manage todos. Use action='read' to view, action='write' with complete list to update."
+    },
+    {
+      "tool_name": "validate",
+      "class_name": "Validate",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "read_only",
+      "description": "Run a read-only validation profile. Returns structured results with blocker taxonomy.\n\nAvailable profiles:\n  quick \u2014 Fast git status + focused pytest. Use for fast feedback during editing.\n  python \u2014 "
+    },
+    {
+      "tool_name": "validation_suite",
+      "class_name": "ValidationSuite",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "read_only",
+      "description": "Run allowlisted validation commands and return structured evidence.\n\nAllowed step kinds: ruff_check, ruff_format_check, pyright, pyrefly, pytest, schema_validation, storage_audit, desktop_cockpit_dry_"
+    },
+    {
+      "tool_name": "web_fetch",
+      "class_name": "WebFetch",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "read_only",
+      "description": "Fetch content from a URL. Converts HTML to markdown for readability."
+    },
+    {
+      "tool_name": "web_search",
+      "class_name": "WebSearch",
+      "determinism_class": "nondeterministic_external_io",
+      "mutation_class": "read_only",
+      "description": "Search the web for current information."
+    },
+    {
+      "tool_name": "write_file",
+      "class_name": "WriteFile",
+      "determinism_class": "deterministic_repo_state",
+      "mutation_class": "writes_workspace",
+      "description": "Create or overwrite a UTF-8 file. Use write_file for creating new files or completely replacing existing files. For targeted modifications to existing code, prefer search_replace. Parents directories "
+    }
+  ],
+  "lane_a_parked_dependencies": [
+    "validate tool \u2014 native Validate execution authority owned by Lane A",
+    "validate_models \u2014 validation models owned by Lane A",
+    "validate_runner \u2014 validation runner owned by Lane A",
+    "checkpoint tool \u2014 checkpoint transaction authority owned by Lane A governance",
+    "prepare_checkpoint \u2014 checkpoint preparation owned by Lane A"
+  ],
+  "lane_c_parked_dependencies": [
+    "ACP protocol: agent-client-protocol adapters owned by Lane C",
+    "A2A protocol: agent-to-agent protocol adapters owned by Lane C"
+  ],
+  "known_gaps": [
+    {
+      "tool": "git_hub_tool",
+      "gap": "mutation_class is EXTERNAL_SIDE_EFFECT for all operations, including read-only ones (workflow_status, list_workflows, list_runs, check_pr). Per-operation mutation classification deferred to future refactor.",
+      "severity": "medium"
+    },
+    {
+      "tool": "task",
+      "gap": "subagent delegation has EXTERNAL_SIDE_EFFECT mutation_class but spans read-only exploration and workspace writes. Per-operation classification deferred.",
+      "severity": "low"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ from collections.abc import AsyncGenerator
 import json
 from typing import Any, ClassVar
 
+import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.core.telemetry.tool_contract import (
@@ -164,12 +165,28 @@ class GitHubToolResult(BaseModel):
     action: str
     status: str
     summary: str
+    error_kind: str | None = None
     dispatch_result: GitHubDispatchResult | None = None
     workflow_run: GitHubWorkflowRun | None = None
     workflows: list[GitHubWorkflow] = Field(default_factory=list)
     runs: list[GitHubWorkflowRun] = Field(default_factory=list)
     pr_info: GitHubPRInfo | None = None
     warnings: list[str] = Field(default_factory=list)
+
+
+# ── Error Vocabulary ───────────────────────────────────────────────────
+
+_GITHUB_ERROR_KINDS: dict[str, str] = {
+    "token_unavailable": "github.token_unavailable",
+    "token_expired": "github.token_expired",
+    "api_error": "github.api_error",
+    "not_found": "github.not_found",
+    "permission_denied": "github.permission_denied",
+    "rate_limited": "github.rate_limited",
+    "unknown_action": "github.unknown_action",
+    "network_error": "github.network_error",
+    "timeout": "github.timeout",
+}
 
 
 # ── Token Helper ─────────────────────────────────────────────────────
@@ -413,12 +430,15 @@ class GitHubTool(
 
         try:
             token = await loop.run_in_executor(None, _get_github_token)
-        except ToolError as e:
+        except ToolError:
             yield GitHubToolResult(
                 action=args.action,
                 status="refused",
-                summary=str(e),
-                warnings=["GitHub sign-in required"],
+                summary="GitHub authentication required — sign in first",
+                error_kind=_GITHUB_ERROR_KINDS["token_unavailable"],
+                warnings=[
+                    "GitHub sign-in required. Use sign_in_github_start + sign_in_github_exchange."
+                ],
             )
             return
 
@@ -511,16 +531,43 @@ class GitHubTool(
                         action=args.action,
                         status="error",
                         summary=f"Unknown action: {args.action}",
+                        error_kind=_GITHUB_ERROR_KINDS["unknown_action"],
                         warnings=[
                             "Valid actions: dispatch, workflow_status, list_workflows, list_runs, check_pr"
                         ],
                     )
 
-        except Exception as e:
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            if status_code == 404:
+                ek = _GITHUB_ERROR_KINDS["not_found"]
+            elif status_code in {401, 403}:
+                ek = _GITHUB_ERROR_KINDS["permission_denied"]
+            elif status_code == 429:
+                ek = _GITHUB_ERROR_KINDS["rate_limited"]
+            else:
+                ek = _GITHUB_ERROR_KINDS["api_error"]
             yield GitHubToolResult(
                 action=args.action,
                 status="error",
-                summary=f"GitHub API error: {e}",
+                summary=f"GitHub API error (HTTP {status_code})",
+                error_kind=ek,
+                warnings=warnings,
+            )
+        except TimeoutError:
+            yield GitHubToolResult(
+                action=args.action,
+                status="error",
+                summary="GitHub API request timed out",
+                error_kind=_GITHUB_ERROR_KINDS["timeout"],
+                warnings=warnings,
+            )
+        except Exception:
+            yield GitHubToolResult(
+                action=args.action,
+                status="error",
+                summary="GitHub API request failed",
+                error_kind=_GITHUB_ERROR_KINDS["network_error"],
                 warnings=warnings,
             )
 
