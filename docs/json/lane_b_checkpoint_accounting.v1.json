@@ -1,0 +1,136 @@
+{
+  "schema_version": "rig.relay.lane_b_checkpoint_accounting.v1",
+  "report_kind": "checkpoint_accounting_and_remote_authority_readiness",
+  "generated_at": "2026-05-25T00:00:00Z",
+  "generated_by": "Lane B OpenCode accounting session (model: deepseek-v4-pro)",
+
+  "checkpoint_count": 9,
+  "discrepancy_correction": "Prior report said eight checkpoints but listed nine. Actual count is nine: B1-B9.",
+  "discrepancy_diagnosis": "The B1-B4 launch report listed 4 checkpoints. The continuation report added B5-B9, listing 5 more = 9 total. The launch report's count of 'four slices' in narrative was correct for that mission phase.",
+
+  "checkpoints": [
+    {
+      "slice": "B1",
+      "sha": "84014c01",
+      "files": ["rig_relay/integrations/github_provider/_truth_adapter.py", "rig_relay/integrations/github_provider/_truth_models.py", "rig_relay/integrations/github_provider/__init__.py", "tests/integrations/github_provider/test_truth_adapter.py", "pyproject.toml"],
+      "descends_from_lane_a_39560097": false,
+      "descends_from_lane_c_33bda937": false,
+      "tests": 30
+    },
+    {
+      "slice": "B2",
+      "sha": "9fdf71e2",
+      "files": ["rig_relay/core/tools/builtins/github_truth_tool.py", "tests/tools/test_github_truth_tool.py"],
+      "descends_from_lane_a_39560097": false,
+      "descends_from_lane_c_33bda937": false,
+      "tests": 12
+    },
+    {
+      "slice": "B3",
+      "sha": "250c112b",
+      "files": ["rig_relay/core/tools/builtins/github_ci_cd.py", "docs/json/tools/builtin_tool_contract_coverage.v1.json"],
+      "descends_from_lane_a_39560097": false,
+      "descends_from_lane_c_33bda937": false,
+      "tests": 2
+    },
+    {
+      "slice": "B4",
+      "sha": "11583789",
+      "files": ["rig_relay/desktop/github_truth_projection.py", "tests/desktop/test_github_truth_projection.py"],
+      "descends_from_lane_a_39560097": false,
+      "descends_from_lane_c_33bda937": false,
+      "tests": 15
+    },
+    {
+      "slice": "B5",
+      "sha": "f13db487",
+      "files": ["rig_relay/integrations/github_provider/_user_adapter.py", "rig_relay/integrations/github_provider/_user_models.py", "rig_relay/integrations/github_provider/_project_profile.py", "rig_relay/integrations/github_provider/_authorization_binding.py", "tests/integrations/github_provider/test_user_adapter.py", "pyproject.toml"],
+      "descends_from_lane_a_39560097": true,
+      "descends_from_lane_c_33bda937": true,
+      "tests": 16
+    },
+    {
+      "slice": "B6",
+      "sha": "045aa55f",
+      "files": ["rig_relay/integrations/github_provider/_repo_bootstrap.py", "tests/integrations/github_provider/test_repo_bootstrap.py", "pyproject.toml"],
+      "descends_from_lane_a_39560097": true,
+      "descends_from_lane_c_33bda937": true,
+      "tests": 11
+    },
+    {
+      "slice": "B7",
+      "sha": "a6857db3",
+      "files": ["rig_relay/integrations/github_provider/_issue_intake.py", "rig_relay/integrations/github_provider/_ci_diagnostics.py", "tests/integrations/github_provider/test_diagnostics.py", "pyproject.toml"],
+      "descends_from_lane_a_39560097": true,
+      "descends_from_lane_c_33bda937": true,
+      "tests": 9
+    },
+    {
+      "slice": "B8",
+      "sha": "bfbd2510",
+      "files": ["rig_relay/integrations/github_provider/_pages_adapter.py", "tests/integrations/github_provider/test_pages_adapter.py", "pyproject.toml"],
+      "descends_from_lane_a_39560097": true,
+      "descends_from_lane_c_33bda937": true,
+      "tests": 11
+    },
+    {
+      "slice": "B9",
+      "sha": "9bf4083f",
+      "files": ["rig_relay/integrations/github_provider/__init__.py"],
+      "descends_from_lane_a_39560097": true,
+      "descends_from_lane_c_33bda937": true,
+      "tests": 0
+    }
+  ],
+
+  "ancestry_summary": {
+    "lane_a_checkpoint": "39560097",
+    "lane_a_description": "governance-authority-contract-capture — native Validate execution authority, public receipt revocation, disclosure authorization, lane/promotion lifecycle",
+    "lane_c_checkpoint": "33bda937",
+    "lane_c_description": "cross-boundary security and conformance closure v1",
+    "b1_b4_not_descendants": "B1-B4 do NOT descend from 39560097 or 33bda937 — they were built before the Lane A/C integration checkpoints were committed",
+    "b5_b9_are_descendants": "B5-B9 DO descend from both 39560097 and 33bda937",
+    "integration_required": "B1-B4 would require rebase or merge onto Lane A/C integration to bring them into the updated ancestry. No action taken per instructions."
+  },
+
+  "foreign_lane_contamination": {
+    "lane_a_files_in_b_checkpoints": "NONE. No Lane A file (validate, governance, receipt, disclosure, lane_lifecycle, revocation) ever entered a B checkpoint.",
+    "lane_c_files_in_b_checkpoints": "NONE. No Lane C file (ACP, A2A, protocol, conformance) ever entered a B checkpoint.",
+    "foreign_dirty_files_preserved": [
+      "rig_relay/protocols/a2a/_internal_fabric.py (modified — Lane C)",
+      "rig_relay/protocols/a2a/_provider_profiles.py (modified — Lane C)",
+      "tests/protocols/a2a/test_a2a_internal_fabric_v1.py (modified — Lane C)",
+      "tests/protocols/a2a/test_a2a_provider_profiles_v1.py (modified — Lane C)"
+    ],
+    "shared_files_modified_additively": [
+      "pyproject.toml (per-file-ignores entries only — additive)",
+      "rig_relay/integrations/github_provider/__init__.py (Lane B exports — additive)"
+    ]
+  },
+
+  "authorization_binding_verification": {
+    "bindings_count": 8,
+    "all_pending": true,
+    "all_refusal_code_authorization_authority_pending": true,
+    "all_lane_a_integrated_false": true,
+    "no_silent_disclosure_authorization_reuse": true,
+    "binding_operations": [
+      "profile_update", "repo_create", "issue_create", "issue_comment",
+      "issue_close", "pages_publish", "workflow_rerun", "workflow_dispatch"
+    ]
+  },
+
+  "proof_results": {
+    "cumulative_tests": {"total": 106, "passed": 106, "failed": 0},
+    "token_non_disclosure_b5_b9": {"total": 20, "passed": 20, "failed": 0},
+    "ruff_all_lane_b_production_modules": "0 errors (1 unused variable fixed)",
+    "pyright_all_lane_b_production_modules": "0 errors, 0 warnings, 0 informations",
+    "portfolio_rendering_proof": "PASS — deterministic HTML, valid manifest, SHA256 digests",
+    "operator_projection_proof": "PASS — valid serialization, content-light, no tokens",
+    "schema_validation": "No Lane B JSON Schema files created in this session. All Lane B models are Pydantic with model_dump_json proofs."
+  },
+
+  "lane_b_status": "lane_b_github_foundation_captured_pending_remote_action_authority",
+  "status_rationale": "All nine checkpoints accounted. Ancestry truthful (B5-B9 descend from Lane A/C; B1-B4 pre-date but unmodified). Foreign lanes untouched. 106/106 tests green. Ruff and pyright clean. Portfolio/projection rendering proven. Token non-disclosure proven across B5-B9. All remote GitHub mutations correctly refuse pending Lane A remote-action authority. B9 authorization bindings explicitly pending, no silent disclosure authorization reuse.",
+  "next_step": "When Lane A returns a captured checkpoint for remote-action authority contract, Lane B will receive one narrow final wiring mission to consume it and prove authorized remote operations using fake GitHub HTTP endpoints only."
+}

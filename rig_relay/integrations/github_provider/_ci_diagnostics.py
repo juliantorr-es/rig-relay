@@ -146,7 +146,6 @@ class GitHubDiagnosticAdapter:
     async def list_workflow_runs(
         self, owner: str, repo: str, branch: str | None = None, limit: int = 20
     ) -> list[dict[str, Any]]:
-        repo_hash = hash_identifier(f"{owner}/{repo}")
         try:
             token = self._get_token()
             params: dict[str, Any] = {"per_page": min(limit, 50)}
