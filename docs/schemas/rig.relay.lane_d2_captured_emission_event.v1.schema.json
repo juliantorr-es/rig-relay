@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.lane_d2_captured_emission_event.v1.schema.json",
+  "title": "Lane D2 Captured Emission Event v1",
+  "description": "Content-light captured local-model emission event from the D2 constrained execution corridor. Hashes and classifications only; never contains raw prompts, completions, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "created_at",
+    "execution_id",
+    "execution_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.lane_d2_captured_emission_event.v1" },
+    "event_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "execution_id": { "type": "string" },
+    "execution_status": {
+      "type": "string",
+      "enum": ["executed", "runtime_unavailable", "refused", "failed"]
+    },
+    "emission_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "emission_byte_count": { "type": "integer", "minimum": 0 },
+    "output_token_count": { "type": "integer", "minimum": 0 },
+    "input_token_count": { "type": "integer", "minimum": 0 },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "admission_decision": { "type": "string" },
+    "handoff_kind": { "type": "string" },
+    "handoff_digest": { "type": "string" },
+    "proposal_only": { "type": "boolean" },
+    "mutation_class": { "type": "string" },
+    "selected_canonical_tool": { "type": "string" },
+    "refusal_code": { "type": "string" },
+    "runtime_kind": { "type": "string" },
+    "model_name_hash": { "type": "string" },
+    "json_schema_enforcement_exercised": { "type": "boolean" },
+    "json_schema_enforcement_available": { "type": "boolean" },
+    "enforced_mechanism": { "type": "string" },
+    "event_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

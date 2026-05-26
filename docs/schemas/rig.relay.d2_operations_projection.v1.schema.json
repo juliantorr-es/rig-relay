@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.d2_operations_projection.v1.schema.json",
+  "title": "D2 Operations Projection v1",
+  "description": "Deterministic D2 constrained execution operations projection. Content-light: counts, hashes, classifications only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "created_at",
+    "total_executions"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.d2_operations_projection.v1" },
+    "projection_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "constraint_receipt_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "total_executions": { "type": "integer", "minimum": 0 },
+    "executed_count": { "type": "integer", "minimum": 0 },
+    "failed_count": { "type": "integer", "minimum": 0 },
+    "refused_count": { "type": "integer", "minimum": 0 },
+    "runtime_unavailable_count": { "type": "integer", "minimum": 0 },
+    "admission_decisions": { "type": "object" },
+    "handoff_kinds": { "type": "object" },
+    "captured_local_model_emission_count": { "type": "integer", "minimum": 0 },
+    "proposal_only_mutation_count": { "type": "integer", "minimum": 0 },
+    "proposal_only_mutation_preserved": { "type": "boolean" },
+    "refusal_count": { "type": "integer", "minimum": 0 },
+    "mutation_proposal_only_invariant": { "type": "boolean" },
+    "total_output_tokens": { "type": "integer", "minimum": 0 },
+    "total_latency_ms": { "type": "integer", "minimum": 0 },
+    "avg_latency_ms": { "type": "integer", "minimum": 0 },
+    "runtime_enforcement_disposition": { "type": "object" },
+    "projection_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.constrained_execution_result.v1.schema.json",
+  "title": "Constrained Execution Result v1",
+  "description": "Result of a constrained-generation recovery execution. Content-light: hashes, decisions, classifications only. Never contains raw prompts, completions, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "execution_id",
+    "execution_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.constrained_execution_result.v1" },
+    "execution_id": { "type": "string" },
+    "execution_status": {
+      "type": "string",
+      "enum": ["executed", "runtime_unavailable", "refused", "failed"]
+    },
+    "execution_error": { "type": "string" },
+    "emission_sha256": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "emission_byte_count": { "type": "integer", "minimum": 0 },
+    "output_token_count": { "type": "integer", "minimum": 0 },
+    "input_token_count": { "type": "integer", "minimum": 0 },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "evaluation_event_digest": { "type": "string" },
+    "admission_decision": { "type": "string" },
+    "handoff_kind": {
+      "type": "string",
+      "enum": ["read_only", "validation", "mutation_proposal_only", "refusal", ""]
+    },
+    "handoff_digest": { "type": "string" },
+    "proposal_only": { "type": "boolean" },
+    "mutation_class": { "type": "string" },
+    "selected_canonical_tool": { "type": "string" },
+    "refusal_code": { "type": "string" },
+    "refusal_reason": { "type": "string" },
+    "constraint_enforcement_disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "disposition_id", "runtime_kind"],
+      "properties": {
+        "schema_version": { "const": "rig.relay.constraint_enforcement_disposition.v1" },
+        "disposition_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "runtime_kind": { "type": "string" },
+        "runtime_endpoint_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "model_name": { "type": "string" },
+        "json_object_enforcement_available": { "type": "boolean" },
+        "json_object_enforcement_exercised": { "type": "boolean" },
+        "json_schema_enforcement_available": { "type": "boolean" },
+        "json_schema_enforcement_exercised": { "type": "boolean" },
+        "grammar_enforcement_available": { "type": "boolean" },
+        "grammar_enforcement_exercised": { "type": "boolean" },
+        "enforced_mechanism": { "type": "string" },
+        "enforcement_truth_note": { "type": "string" }
+      }
+    },
+    "evidence_ledger_path": { "type": "string" },
+    "evidence_event_count": { "type": "integer", "minimum": 0 }
+  }
+}

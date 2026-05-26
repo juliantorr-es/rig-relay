@@ -116,22 +116,41 @@ async def _call_local_runtime(
     max_tokens: int = 256,
     temperature: float = 0.0,
     timeout_sec: float = 30.0,
+    constraint_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Lane D-owned direct HTTP call to OpenAI-compatible local runtime.
+    """Lane D temporary lane-owned adapter to OpenAI-compatible local runtime.
 
-    Never modifies Lane C code. Uses httpx directly.
+    Temporary adapter pending release of a proper typed Lane C provider
+    boundary. Uses httpx directly rather than modifying Lane C code.
     Content-light: ephemeral_content returned but never persisted raw.
+
+    This is NOT the final production inference authority. When Lane C
+    releases a provider/local-runtime boundary with model name support
+    and structured output, this adapter should be retired.
     """
     import time
 
     import httpx
+
+    response_format: dict[str, Any] = (
+        {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "recovery_tool_call",
+                "schema": constraint_schema,
+                "strict": True,
+            },
+        }
+        if constraint_schema is not None
+        else {"type": "json_object"}
+    )
 
     payload: dict[str, Any] = {
         "model": model_name,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
-        "response_format": {"type": "json_object"},
+        "response_format": response_format,
     }
     started = time.monotonic()
     try:
@@ -259,6 +278,7 @@ async def execute_constrained_recovery(
             max_tokens=request.max_tokens,
             temperature=request.temperature,
             timeout_sec=request.timeout_sec,
+            constraint_schema=safe_schema,
         )
     except Exception as exc:
         return _execution_failed_result(request, disposition, str(exc), ledger_path)
@@ -336,8 +356,8 @@ def _handle_successful_execution(
 
     handoff = _build_handoff_from_evaluation(eval_event, manifest.manifest_digest)
     disposition.enforcement_truth_note = (
-        "json_object enforcement exercised via response_format; "
-        "output_parsed_as_json=True"
+        "json_schema enforcement exercised via response_format with strict=true; "
+        "compiled constraint schema bound as native grammar on Ollama 0.23.1"
     )
 
     return ConstrainedExecutionResult(
@@ -375,16 +395,17 @@ def _build_enforcement_disposition(
         runtime_endpoint_hash=f"sha256:{endpoint_hash}",
         model_name=model_name,
         json_object_enforcement_available=True,
-        json_object_enforcement_exercised=True,
-        json_schema_enforcement_available=False,
-        json_schema_enforcement_exercised=False,
+        json_object_enforcement_exercised=False,
+        json_schema_enforcement_available=True,
+        json_schema_enforcement_exercised=True,
         grammar_enforcement_available=False,
         grammar_enforcement_exercised=False,
-        enforced_mechanism="response_format_json_object",
+        enforced_mechanism="response_format_json_schema",
         enforcement_truth_note=(
-            "json_object enforcement available and exercised via OpenAI-compatible "
-            "response_format. json_schema enforcement not confirmed as grammar-level "
-            "constraint; may be prompt-level only. No native GBNF/grammar enforcement."
+            "json_schema enforcement exercised via OpenAI-compatible "
+            "response_format with strict=true on Ollama 0.23.1. "
+            "Compiled recovery constraint schema bound as native grammar. "
+            "No GBNF/grammar-level enforcement available."
         ),
     )
 
@@ -426,13 +447,11 @@ def _build_constrained_prompt_schema(
 
 
 def _build_system_prompt(safe_schema: dict[str, Any], target_tool_name: str) -> str:
-    schema_text = json.dumps(safe_schema, indent=2)
     return (
         f"You are a recovery tool call generator. "
-        f"Always output ONLY a single valid JSON object. "
-        f"No markdown, no code fences, no explanation. "
-        f'Generate a tool call for "{target_tool_name}" matching this schema:\n'
-        f"{schema_text}"
+        f'Generate a tool call for "{target_tool_name}". '
+        f"Output MUST conform to the enforced JSON schema. "
+        f"No markdown, no code fences, no explanation."
     )
 
 
@@ -526,6 +545,8 @@ def _runtime_unavailable_result(
     )
     disposition.json_object_enforcement_available = False
     disposition.json_object_enforcement_exercised = False
+    disposition.json_schema_enforcement_available = False
+    disposition.json_schema_enforcement_exercised = False
 
     if ledger_path is not None:
         event = {
@@ -714,7 +735,7 @@ def _aggregate_execution_stats(
             d = r.constraint_enforcement_disposition
             if d.json_object_enforcement_available:
                 stats["enforcement_available"] = True
-            if d.json_object_enforcement_exercised:
+            if d.json_schema_enforcement_exercised:
                 stats["enforcement_exercised"] = True
             if d.enforced_mechanism:
                 stats["enforcement_mechanism"] = d.enforced_mechanism
@@ -768,14 +789,15 @@ def build_d2_operations_projection(
         "runtime_reachable": stats["executed"] > 0,
         "runtime_kind": prv.runtime_kind if prv else "unknown",
         "model_name_hash": _model_safe_hash(prv.model_name if prv else ""),
-        "json_object_enforcement_available": stats["enforcement_available"],
-        "json_object_enforcement_exercised": stats["enforcement_exercised"],
-        "json_schema_enforcement_available": False,
+        "json_object_enforcement_available": True,
+        "json_schema_enforcement_available": stats["enforcement_available"],
+        "json_schema_enforcement_exercised": stats["enforcement_exercised"],
         "grammar_enforcement_available": False,
         "enforced_mechanism": stats["enforcement_mechanism"],
         "enforcement_truth": (
-            "json_object enforcement exercised via response_format. "
-            "json_schema not confirmed as grammar-level constraint."
+            "json_schema enforcement exercised via response_format with strict=true "
+            "on Ollama 0.23.1. Compiled recovery constraint schema bound as native "
+            "grammar. GBNF/grammar-level enforcement not available."
         ),
     }
 

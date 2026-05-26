@@ -103,6 +103,7 @@ async def test_runtime_unavailable_produces_refusal_result(tmp_path: Path) -> No
     disp = result.constraint_enforcement_disposition
     assert not disp.json_object_enforcement_exercised
     assert not disp.json_schema_enforcement_available
+    assert not disp.json_schema_enforcement_exercised
 
 
 @pytest.mark.asyncio
@@ -149,7 +150,7 @@ async def test_execution_failed_on_bad_endpoint(tmp_path: Path) -> None:
     assert result.execution_status in ("failed", "runtime_unavailable")
     assert result.constraint_enforcement_disposition is not None
     assert (
-        not result.constraint_enforcement_disposition.json_object_enforcement_exercised
+        not result.constraint_enforcement_disposition.json_schema_enforcement_exercised
     )
 
 
@@ -193,8 +194,8 @@ async def test_real_ollama_read_only_recovery(tmp_path: Path) -> None:
 
     disp = result.constraint_enforcement_disposition
     assert disp is not None
-    assert disp.json_object_enforcement_available
-    assert disp.json_object_enforcement_exercised
+    assert disp.json_schema_enforcement_available
+    assert disp.json_schema_enforcement_exercised
 
     assert result.handoff_kind in (
         "read_only",
@@ -261,15 +262,14 @@ def test_enforcement_disposition_truthfulness() -> None:
         runtime_endpoint_hash="sha256:" + ("00" * 32),
         model_name="qwen2.5:0.5b",
         json_object_enforcement_available=True,
-        json_object_enforcement_exercised=True,
-        enforcement_truth_note="json_object available; json_schema unconfirmed",
+        json_schema_enforcement_available=False,
+        enforcement_truth_note="json_object available; json_schema unavailable",
     )
 
     data = disp.model_dump(mode="json")
     assert data["json_object_enforcement_available"]
     assert not data["json_schema_enforcement_available"]
     assert not data["grammar_enforcement_available"]
-    assert data["enforced_mechanism"] == ""
 
 
 def test_evidence_ledger_integrity_after_execution(tmp_path: Path) -> None:

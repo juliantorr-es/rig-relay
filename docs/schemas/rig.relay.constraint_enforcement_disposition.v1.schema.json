@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.constraint_enforcement_disposition.v1.schema.json",
+  "title": "Constraint Enforcement Disposition v1",
+  "description": "Truthful record of constraint enforcement capability and exercise. Never mislabels prompted formatting as constraint enforcement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "disposition_id",
+    "runtime_kind",
+    "runtime_endpoint_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "rig.relay.constraint_enforcement_disposition.v1" },
+    "disposition_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "runtime_kind": { "type": "string" },
+    "runtime_endpoint_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "model_name": { "type": "string" },
+    "json_object_enforcement_available": { "type": "boolean" },
+    "json_object_enforcement_exercised": { "type": "boolean" },
+    "json_schema_enforcement_available": { "type": "boolean" },
+    "json_schema_enforcement_exercised": { "type": "boolean" },
+    "grammar_enforcement_available": { "type": "boolean" },
+    "grammar_enforcement_exercised": { "type": "boolean" },
+    "enforced_mechanism": { "type": "string" },
+    "enforcement_truth_note": { "type": "string" }
+  }
+}
