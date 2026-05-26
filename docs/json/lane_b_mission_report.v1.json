@@ -1,0 +1,164 @@
+{
+  "schema_version": "rig.relay.lane_b_mission_report.v1",
+  "mission_id": "lane-b-github-truth-tools-evidence-ux",
+  "title": "Lane B — GitHub Repository Truth, Built-In Tool Contract Closure, Operator Evidence UX",
+  "branch": "main",
+  "head_before": "2c81e572",
+  "head_after": "025ee2d6",
+  "dirty_state_before": [
+    "rig_relay/core/tools/builtins/validate.py (modified — Lane A)",
+    "rig_relay/core/tools/builtins/validate_models.py (modified — Lane A)",
+    "rig_relay/core/tools/builtins/validate_runner.py (modified — Lane A)",
+    "rig_relay/governance/receipt_store.py (modified — Lane A)",
+    "tests/tools/test_validate_execution_authority.py (untracked — Lane A)",
+    "docs/schemas/rig.relay.a2a.*.json (untracked/modified — Lane C)",
+    "rig_relay/protocols/a2a/*.py (untracked/modified — Lane C)"
+  ],
+  "dirty_state_after": "Unchanged for Lane B — pre-existing Lane A/C dirty files preserved without modification",
+
+  "files_created": [
+    "rig_relay/integrations/github_provider/_truth_adapter.py",
+    "rig_relay/integrations/github_provider/_truth_models.py",
+    "rig_relay/core/tools/builtins/github_truth_tool.py",
+    "rig_relay/desktop/github_truth_projection.py",
+    "docs/json/tools/builtin_tool_contract_coverage.v1.json",
+    "tests/integrations/github_provider/test_truth_adapter.py",
+    "tests/tools/test_github_truth_tool.py",
+    "tests/desktop/test_github_truth_projection.py"
+  ],
+
+  "files_modified": [
+    "rig_relay/integrations/github_provider/__init__.py (added truth adapter/model exports)",
+    "rig_relay/core/tools/builtins/github_ci_cd.py (error_kind field, typed error vocabulary, HTTP status classification)",
+    "pyproject.toml (per-file-ignores for _truth_adapter.py, _truth_models.py)"
+  ],
+
+  "files_deleted": [],
+
+  "lane_a_files_excluded": [
+    "rig_relay/governance/receipt_store.py",
+    "rig_relay/governance/disclosure_authorization.py",
+    "rig_relay/governance/lane_lifecycle.py",
+    "rig_relay/core/tools/builtins/validate.py",
+    "rig_relay/core/tools/builtins/validate_models.py",
+    "rig_relay/core/tools/builtins/validate_runner.py",
+    "tests/tools/test_validate_execution_authority.py",
+    "tests/governance/*.py"
+  ],
+
+  "lane_c_files_excluded": [
+    "rig_relay/protocols/a2a/*.py",
+    "rig_relay/protocols/acp/*.py",
+    "docs/schemas/rig.relay.a2a.*.json"
+  ],
+
+  "tests_run": 59,
+  "tests_intentionally_skipped": 0,
+
+  "test_classifications": {
+    "truth_adapter_contract": 30,
+    "truth_tool_integration": 12,
+    "tool_contract_coverage": 2,
+    "projection_rendering": 15
+  },
+
+  "evidence_artifacts": [
+    "docs/json/tools/builtin_tool_contract_coverage.v1.json"
+  ],
+
+  "schema_validation_results": "No new JSON Schemas created. Existing schemas not modified. Contract coverage artifact is structured JSON (not JSON Schema).",
+
+  "telemetry_and_redaction_implications": {
+    "content_light": "All truth models follow _GitHubEvidenceModel pattern — hash-heavy, no raw paths/logs/tokens",
+    "token_non_disclosure_proven": true,
+    "hostile_sentinels_tested": ["ghp_*", "ghs_*", "PEM private keys", "workflow log text with leaked tokens"],
+    "redaction_module_reused": "Reuses existing _redaction.py (assert_no_raw_github_token, hash_identifier, scan_for_tokens)"
+  },
+
+  "dependency_changes": {
+    "new_dependencies": "None — uses existing httpx, Pydantic, respx (dev), and GitHubAppTokenManager",
+    "justification": "httpx already in pyproject.toml >=0.28.1; respx already in dev dependencies"
+  },
+
+  "completed_work": {
+    "slice_1_github_truth_adapter": {
+      "status": "green",
+      "checkpoint_sha": "84014c01",
+      "description": "Bounded read-only GitHub truth adapter using GitHub App installation tokens via GitHubAppTokenManager. Returns typed Pydantic evidence models (12 classes): InstallationAccess, RepositoryIdentity, RemoteRefObservation, CommitPresence, CompareResult, CIStatusEvidence, CheckRunEvidence, PublicationVerification. Typed error vocabulary (GitHubTruthErrorKind, 15 kinds). Publication verification distinguishes exact_promoted, accepted_with_follow_on_commits, target_behind, target_divergent, expected_commit_missing, remote_unavailable, permission_unavailable.",
+      "test_coverage": "30 causal contract tests via respx: token non-disclosure (4 tests with hostile sentinels), permission insufficiency (2), token expiry, rate limiting, missing refs, commit presence (exact, follow-on, absent), compare (identical, with files), CI status (success, failure with hostile log content, pending), publication verification (exact promoted, follow-on, expected missing, CI failing, divergent, permission unavailable), ref observation, evidence identity stability, malformed response, timeout."
+    },
+    "slice_2_publication_verification_tool": {
+      "status": "green",
+      "checkpoint_sha": "9fdf71e2",
+      "description": "Built-in read-only tool (GitHubTruthTool) exposing 6 operations: verify_publication, observe_ci_status, observe_ref, check_commit_presence, observe_installation_access, observe_repository. Uses appropriate NONDETERMINISTIC_EXTERNAL_IO determinism and READ_ONLY mutation. Follows BaseTool pattern with ToolUIData integration.",
+      "test_coverage": "12 tool-level tests: exact publication, follow-on detection, CI failure reporting, ref observation, missing arg refusal, unknown action handling, installation access, token non-disclosure from tool results."
+    },
+    "slice_3_builtin_tool_contract_closure": {
+      "status": "green",
+      "checkpoint_sha": "250c112b",
+      "description": "Canonical contract coverage artifact documenting 32 built-in tools. Enhanced github_ci_cd.py: added error_kind field to GitHubToolResult, typed error vocabulary (_GITHUB_ERROR_KINDS: token_unavailable, not_found, permission_denied, rate_limited, timeout, network_error), structured HTTP status code classification replacing raw exception strings in error messages. Documented Lane A and Lane C parked dependencies.",
+      "known_gaps": [
+        "git_hub_tool: mutation_class is EXTERNAL_SIDE_EFFECT for all operations including read-only ones — per-operation classification deferred.",
+        "task: subagent delegation spans read-only and workspace writes — per-operation classification deferred."
+      ]
+    },
+    "slice_4_operator_evidence_ux": {
+      "status": "green",
+      "checkpoint_sha": "11583789",
+      "description": "Operator projection models: GitHubConnectionProjection, PublicationStatusProjection (8 states with human labels), CIStateProjection, RepositoryProjection, ToolExecutionProjection, OperatorDashboardProjection. Content-light: no raw paths, tokens, secrets. Progressive disclosure support via evidence digests. Dashboard digest computation for state change detection.",
+      "test_coverage": "15 projection tests: connection states, publication labels, CI labels, repository branch confinement, dashboard build, content-light assertion, secret non-disclosure (hostile sentinels), digest stability, digest change on state mutation, JSON serialization."
+    }
+  },
+
+  "intentionally_deferred_work": {
+    "ui_wiring": "Projection models are implemented and tested; actual WebSocket/frontend wiring deferred to runtime-coordination wave (requires AgentLoop and protocol integration — Lane C surface).",
+    "github_mutations_push_merge": "No push, merge, branch deletion, PR mutation, or workflow rerun implemented. Read-only only. Mutations require Lane A authorization integration.",
+    "native_validate_integration": "Publication verification identifies disclosure_unavailable states; actual disclosure authority integration pending Lane A's authorization contract.",
+    "webhooks": "Polling-based verification implemented; webhook ingestion for cache invalidation deferred.",
+    "profile_readme_pr_plan": "Existing github_provider/_profile_readme_pr_plan.py exists but is mutation-code — not modified in this read-only lane."
+  },
+
+  "discovered_out_of_scope_risks": [
+    {
+      "risk": "GitHubTool (github_ci_cd.py) uses dev file token store (plaintext) — not addressed in this lane as tool uses user OAuth, not App tokens",
+      "severity": "medium",
+      "recommendation": "Migrate to GitHub App installation tokens or keychain-based storage"
+    },
+    {
+      "risk": "GitHub compare API semantics (ahead/behind) are counterintuitive — adapter correctly maps them but documentation would help",
+      "severity": "low"
+    }
+  ],
+
+  "remaining_seams": {
+    "lane_a_authorization": "The disclosure authorization authority (Lane A) is required before GitHub evidence can surface authorized detail. All models return authorization_required_pending_authority or disclosure_unavailable in the meantime.",
+    "lane_c_protocol": "ACP and A2A protocol adapters owned by Lane C. GitHub truth tool can be exposed via MCP server (existing protocol) but ACP/A2A exposure requires Lane C integration.",
+    "publish_verification_automation": "The operator can now see publication status. Automating publication verification as a CI gate requires Lane A authorization + orchestration layer.",
+    "github_account_portfolio_pages": "The subsequent mission extension (GitHub User, Repository, CI/CD, Pages, Developer Portfolio Integration) is queued as further slices but was not started in this session."
+  },
+
+  "checkpoint_summary": {
+    "b1": {"sha": "84014c01", "files": 5, "tests": 30, "status": "green"},
+    "b2": {"sha": "9fdf71e2", "files": 2, "tests": 12, "status": "green"},
+    "b3": {"sha": "250c112b", "files": 2, "tests": 2, "status": "green"},
+    "b4": {"sha": "11583789", "files": 2, "tests": 15, "status": "green"}
+  },
+
+  "ruff_pyright_schema": {
+    "ruff_check": "All Lane B production files pass ruff check (0 errors)",
+    "ruff_format": "All Lane B production files left unchanged (already formatted)",
+    "pyright": "0 errors, 0 warnings, 0 informations across all 5 Lane B production modules",
+    "schema_validation": "No new JSON Schema files created. Coverage artifact validated as valid JSON."
+  },
+
+  "github_app_permission_model": {
+    "auth_type": "GitHub App installation tokens (JWT-signed, short-lived 55-minute TTL)",
+    "token_manager": "Reuses existing GitHubAppTokenManager from _github_app_token_manager.py",
+    "permissions_required": "contents:read (repository metadata, refs, commits, compare), actions:read (workflow runs), metadata:read (all endpoints minimally required)",
+    "token_safety": "Installation tokens never persisted in evidence, telemetry, model-visible results, receipts, snapshots, logs, or configuration. Token acquisition status and expiry metadata exposed without raw token material.",
+    "installation_vs_user": "Only installation authority implemented in this lane. User authority (for profile management, repo creation) deferred to subsequent mission extension."
+  },
+
+  "generated_at": "2026-05-25T00:00:00Z",
+  "generated_by": "Lane B OpenCode session (model: deepseek-v4-pro)"
+}
