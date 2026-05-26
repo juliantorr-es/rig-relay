@@ -39,6 +39,11 @@ from rig_relay.protocols.a2a._identity import (
     build_agent_card_with_security,
     build_identity_metadata,
 )
+from rig_relay.protocols.a2a._internal_fabric import (
+    A2AInternalFabric,
+    InternalA2ATaskState,
+    capability_check_for_task,
+)
 from rig_relay.protocols.a2a._lifecycle import (
     build_agent_card,
     build_delegation_receipt,
@@ -80,6 +85,7 @@ __all__ = [
     "A2AArtifactRef",
     "A2ADelegationReceipt",
     "A2AGovernanceBinding",
+    "A2AInternalFabric",
     "A2ALocalIdentity",
     "A2ASecurityScheme",
     "A2ATaskCard",
@@ -91,6 +97,7 @@ __all__ = [
     "CapabilityClass",
     "ConfidentialityTier",
     "ExecutionRisk",
+    "InternalA2ATaskState",
     "MutationIntent",
     "RefusalReason",
     "TrustTier",
@@ -103,6 +110,7 @@ __all__ = [
     "cancel_task",
     "capabilities_for_tier",
     "capability_admitted",
+    "capability_check_for_task",
     "compute_agent_card_digest",
     "compute_digest",
     "compute_governance_binding_digest",
