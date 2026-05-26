@@ -743,3 +743,7 @@ class TestFleetClaimCorridorLocking:
         seqs = [e.event_sequence for e in events]; assert len(set(seqs)) == total; assert sorted(seqs) == list(range(1, total+1))
         for e in events:
             assert e.event_digest == _sha256_event_payload(e.model_dump(exclude={"event_id","event_digest"}))
+
+    
+
+    

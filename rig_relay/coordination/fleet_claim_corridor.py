@@ -119,11 +119,6 @@ class FleetClaimEvent(BaseModel):
     event_sequence: int = 0
     event_digest: str
     reason: str | None = None
-    expires_at: str | None = None
-    conflicting_path: str | None = None
-    conflicting_mission_id: str | None = None
-    conflicting_lane_id: str | None = None
-    conflicting_agent_id: str | None = None
     prior_event_digest: str | None = None
 
 
@@ -142,7 +137,6 @@ class FleetClaimInfo(BaseModel):
     agent_id: str
     mode: str = "exclusive_write"
     acquired_at: str
-    expires_at: str | None = None
     base_sha256: dict[str, str]
 
 
@@ -559,7 +553,6 @@ class FleetClaimProtocol:
                 prior_sha256=base_sha256 if base_sha256 else None,
                 timestamp=now,
                 event_digest="",
-                expires_at=expires,
             )
 
             def _xattr_acquire() -> None:
@@ -695,7 +688,6 @@ class FleetClaimProtocol:
                 lane_id=evt.lane_id,
                 agent_id=evt.agent_id,
                 acquired_at=evt.timestamp,
-                expires_at=evt.expires_at,
                 base_sha256=base,
             )
         return result
