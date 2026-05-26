@@ -71,10 +71,10 @@ from rig_relay.desktop.websocket_server import ProjectionWebSocketServer
 from rig_relay.tracing.golden_path import TraceAuthorityKind, build_golden_path_event
 from rig_relay.tracing.recorder import TraceRecorder
 from rig_relay.tracing.store import get_default_trace_store
-from scripts.rig_relay_trace_handshake import (
-    _load_events,
-    _select_handshake_id,
+from rig_relay.tracing._handshake import (
     format_handshake_trace,
+    load_events,
+    select_handshake_id,
 )
 
 HTTP_OK = 200
@@ -895,11 +895,11 @@ class DesktopBridgeServer:
         )
         if not trace_path.exists():
             return
-        events = _load_events(trace_path)
+        events = load_events(trace_path)
         handshake_id = (
             self._runtime_config.handshake_id if self._runtime_config else None
         )
-        selected = _select_handshake_id(events, handshake_id)
+        selected = select_handshake_id(events, handshake_id)
         if selected is None:
             print()
             print("Handshake trace: none found")

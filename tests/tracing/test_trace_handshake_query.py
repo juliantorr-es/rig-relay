@@ -3,10 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.rig_relay_trace_handshake import (
-    _select_handshake_id,
-    format_handshake_trace,
-)
+from rig_relay.tracing._handshake import format_handshake_trace, select_handshake_id
 
 
 def test_format_handshake_trace_filters_correlated_events(tmp_path: Path) -> None:
@@ -59,5 +56,5 @@ def test_select_handshake_id_prefers_runtime_match_then_latest() -> None:
         },
     ]
 
-    assert _select_handshake_id(events, "corr_1") == "corr_1"
-    assert _select_handshake_id(events, None) == "corr_2"
+    assert select_handshake_id(events, "corr_1") == "corr_1"
+    assert select_handshake_id(events, None) == "corr_2"

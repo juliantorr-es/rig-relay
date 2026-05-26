@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from scripts.rig_relay_storage_audit import audit_storage
+from rig_relay.evidence._storage_audit import audit_storage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"

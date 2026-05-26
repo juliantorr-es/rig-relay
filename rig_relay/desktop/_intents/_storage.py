@@ -1955,7 +1955,7 @@ def _execute_site_editor_save(intent_id: str, params: dict) -> dict[str, Any]:
 
 def _execute_run_storage_audit(intent_id: str) -> dict[str, Any]:
     try:
-        from scripts.rig_relay_storage_audit import audit_storage
+        from rig_relay.evidence._storage_audit import audit_storage
 
         result = audit_storage(root=DEFAULT_BUILD_ROOT)
         budget_status = result.get("budget", {}).get("status", "unknown")
