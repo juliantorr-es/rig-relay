@@ -358,6 +358,10 @@
     <button class="surface-tab" data-surface="inference-studio" role="tab">Inference Studio</button>
     <button class="surface-tab" data-surface="publish-preview" role="tab">Publish Preview</button>
     <button class="surface-tab" data-surface="timeline" role="tab">Timeline History</button>
+    <button class="surface-tab" data-surface="repository-readiness" role="tab">Repository Readiness</button>
+    <button class="surface-tab" data-surface="fleet-workspaces" role="tab">Fleet Workspaces</button>
+    <button class="surface-tab" data-surface="harness-profile" role="tab">Harness Profile</button>
+    <button class="surface-tab" data-surface="analytics-reports" role="tab">Analytics &amp; Reports</button>
   </nav>
 
   <div id="mode-bar" role="tablist" aria-label="Layout mode">
@@ -516,6 +520,34 @@
       <div id="timeline-degradation" class="timeline-degradation status-block"></div>
       <div id="timeline-domains" class="timeline-domains status-block"></div>
       <div class="fixture-banner" style="display:none">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
+  <div id="surface-repository-readiness" class="surface-container" role="region" aria-label="Repository Readiness surface">
+    <div class="surface-content">
+      <h2>Repository Readiness</h2>
+      <div id="repository-readiness-chips"></div>
+    </div>
+  </div>
+
+  <div id="surface-fleet-workspaces" class="surface-container" role="region" aria-label="Fleet Workspaces surface">
+    <div class="surface-content">
+      <h2>Fleet Workspaces</h2>
+      <div id="fleet-workspaces-chips"></div>
+    </div>
+  </div>
+
+  <div id="surface-harness-profile" class="surface-container" role="region" aria-label="Harness Profile surface">
+    <div class="surface-content">
+      <h2>Harness Profile</h2>
+      <div id="harness-profile-chips"></div>
+    </div>
+  </div>
+
+  <div id="surface-analytics-reports" class="surface-container" role="region" aria-label="Analytics &amp; Reports surface">
+    <div class="surface-content">
+      <h2>Analytics &amp; Reports</h2>
+      <div id="analytics-reports-chips"></div>
     </div>
   </div>
 

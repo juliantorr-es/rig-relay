@@ -319,3 +319,40 @@
 .proto-section { margin-top: 6px; }
 .proto-section-label { font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: var(--font-weight-semibold); }
 .proto-sub { padding-left: 8px; }
+
+/* Y1-Y4 Surface Slots */
+.surface-grid-section {
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.surface-grid-section h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  letter-spacing: 0.02em;
+}
+
+.setup-required {
+  background: rgba(198, 144, 38, 0.12);
+  color: var(--warning-color);
+  border: 1px solid rgba(198, 144, 38, 0.2);
+}
+
+.provenance-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .surface-grid-section {
+    transition: none;
+  }
+}

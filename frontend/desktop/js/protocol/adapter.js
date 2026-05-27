@@ -37,6 +37,10 @@ var _surfaceStates = {
   'inference-studio': { status: 'unavailable' },
   'publish-preview': { status: 'unavailable' },
   'timeline': { status: 'unavailable' },
+  'repository-readiness': { status: 'unavailable' },
+  'fleet-workspaces': { status: 'unavailable' },
+  'harness-profile': { status: 'unavailable' },
+  'analytics-reports': { status: 'unavailable' },
 };
 var _intentCallbacks = {};             // intentName -> callback(result)
 var _projectionCallbacks = [];         // Called when projection state changes
@@ -186,10 +190,14 @@ function _computeSurfaceStates() {
   _setPublishPreviewSurfaceState(proj);
   _setTimelineSurfaceState(proj);
   _setInferenceStudioSurfaceState(proj);
+  _setRepositoryReadinessSurfaceState(proj);
+  _setFleetWorkspacesSurfaceState(proj);
+  _setHarnessProfileSurfaceState(proj);
+  _setAnalyticsReportsSurfaceState(proj);
 }
 
 function _setAllSurfacesUnavailable() {
-  var surfaces = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview', 'timeline'];
+  var surfaces = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview', 'timeline', 'repository-readiness', 'fleet-workspaces', 'harness-profile', 'analytics-reports'];
   for (var i = 0; i < surfaces.length; i++) {
     _surfaceStates[surfaces[i]] = { status: 'unavailable', reason: 'No projection received' };
   }
@@ -439,6 +447,66 @@ function _setInferenceStudioSurfaceState(proj) {
   };
 }
 
+function _setRepositoryReadinessSurfaceState(proj) {
+  var rr = proj.repository_readiness_surface;
+  if (!rr) {
+    _surfaceStates['repository-readiness'] = { status: 'unavailable', reason: 'Repository Readiness service not available' };
+    return;
+  }
+  var trust = rr.trust_state || 'deferred';
+  _surfaceStates['repository-readiness'] = {
+    status: rr.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: rr.provenance || 'derived_projection',
+    reason: rr.degraded_reason || '',
+  };
+}
+
+function _setFleetWorkspacesSurfaceState(proj) {
+  var fw = proj.fleet_workspaces_surface;
+  if (!fw) {
+    _surfaceStates['fleet-workspaces'] = { status: 'unavailable', reason: 'Fleet Workspaces service not available' };
+    return;
+  }
+  var trust = fw.trust_state || 'deferred';
+  _surfaceStates['fleet-workspaces'] = {
+    status: fw.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: fw.provenance || 'derived_projection',
+    reason: fw.degraded_reason || '',
+  };
+}
+
+function _setHarnessProfileSurfaceState(proj) {
+  var hp = proj.harness_profile_surface;
+  if (!hp) {
+    _surfaceStates['harness-profile'] = { status: 'unavailable', reason: 'Harness Profile service not available' };
+    return;
+  }
+  var trust = hp.trust_state || 'deferred';
+  _surfaceStates['harness-profile'] = {
+    status: hp.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: hp.provenance || 'derived_projection',
+    reason: hp.degraded_reason || '',
+  };
+}
+
+function _setAnalyticsReportsSurfaceState(proj) {
+  var ar = proj.analytics_reports_surface;
+  if (!ar) {
+    _surfaceStates['analytics-reports'] = { status: 'unavailable', reason: 'Analytics & Reports service not available' };
+    return;
+  }
+  var trust = ar.trust_state || 'deferred';
+  _surfaceStates['analytics-reports'] = {
+    status: ar.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: ar.provenance || 'derived_projection',
+    reason: ar.degraded_reason || '',
+  };
+}
+
 // ── Trust state mapping ─────────────────────────────────────────────
 
 function _mapTrustToStatus(trustState, connectionState) {
@@ -462,6 +530,10 @@ function _renderAllSurfaces() {
   _renderInferenceStudioSurface();
   _renderPublishPreviewSurface();
   _renderTimelineSurface();
+  _renderRepositoryReadinessSurface();
+  _renderFleetWorkspacesSurface();
+  _renderHarnessProfileSurface();
+  _renderAnalyticsReportsSurface();
 }
 
 function _renderConnectSurface() {
@@ -1100,6 +1172,60 @@ function _renderTimelineSurface() {
       unsupDiv.style.color = 'var(--warning-color)';
       tlDomains.appendChild(unsupDiv);
     }
+  }
+}
+
+function _renderRepositoryReadinessSurface() {
+  var state = _surfaceStates['repository-readiness'];
+  _renderDefaultUnavailableSurface('repository-readiness-chips', state, 'Repository Readiness', 'Repository intake pipeline and compilation state');
+}
+
+function _renderFleetWorkspacesSurface() {
+  var state = _surfaceStates['fleet-workspaces'];
+  _renderDefaultUnavailableSurface('fleet-workspaces-chips', state, 'Fleet Workspaces', 'Active worktrees, lane reservations, and workspace isolation');
+}
+
+function _renderHarnessProfileSurface() {
+  var state = _surfaceStates['harness-profile'];
+  _renderDefaultUnavailableSurface('harness-profile-chips', state, 'Harness Profile', 'Agent profile configuration, tool policy, and safety gates');
+}
+
+function _renderAnalyticsReportsSurface() {
+  var state = _surfaceStates['analytics-reports'];
+  _renderDefaultUnavailableSurface('analytics-reports-chips', state, 'Analytics & Reports', 'Dataset summaries, refinement reports, and evidence exports');
+}
+
+function _renderDefaultUnavailableSurface(containerId, state, title, description) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+
+  while (el.firstChild) el.firstChild.remove();
+
+  var chip = document.createElement('span');
+  var status = state.status || 'unavailable';
+  chip.className = 'status-chip ' + (status === 'available' ? 'available' : 'setup-required');
+  chip.textContent = status === 'available' ? 'Available' : 'Setup Required';
+  el.appendChild(chip);
+
+  var detail = document.createElement('div');
+  detail.className = 'status-detail';
+  detail.textContent = description + ' \u2014 not yet available in this release.';
+  el.appendChild(detail);
+
+  if (state.provenance) {
+    var prov = document.createElement('span');
+    prov.className = 'provenance-label';
+    prov.textContent = 'Source: ' + String(state.provenance);
+    prov.style.cssText = 'font-size:0.68rem;color:var(--text-muted);margin-top:4px;display:block;';
+    el.appendChild(prov);
+  }
+
+  if (state.trust && state.trust !== 'deferred') {
+    var trustEl = document.createElement('span');
+    trustEl.className = 'evidence-tag ' + (state.trust === 'trusted_live' ? 'proven' : 'planned');
+    trustEl.textContent = String(state.trust);
+    trustEl.style.marginLeft = '4px';
+    el.appendChild(trustEl);
   }
 }
 
