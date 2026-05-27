@@ -156,10 +156,10 @@ for (const line of storageWriteLines) {
 }
 assert(!foundTokenStorage, 'no session tokens in localStorage/sessionStorage');
 
-// ── Rule: Dynamic result rendering uses textContent or escapeHtml ──
+// ── Rule: Dynamic result rendering uses safe DOM or escapeHtml ──
 //
-// The row() helper function in app.js uses escapeHtml() for all dynamic content.
-// Verify escapeHtml function exists and row() uses it.
+// The _row() DOM helper uses textContent (safe) for all dynamic content.
+// The escapeHtml function exists for inline HTML-escape needs.
 assert(
   source.includes('function escapeHtml'),
   'escapeHtml function exists for content sanitization'
@@ -169,14 +169,14 @@ assert(
   'escapeHtml is called in rendering code'
 );
 
-// ── Rule: row() helper uses escapeHtml for label and value ──
+// ── Rule: _row() DOM helper uses textContent (safe, no innerHTML) ──
 assert(
-  source.includes("escapeHtml(label)"),
-  "row() helper escapes label with escapeHtml"
+  source.includes('function _row') && source.includes('textContent'),
+  '_row() DOM helper exists and uses textContent'
 );
 assert(
-  source.includes("escapeHtml(value)") || source.includes("escapeHtml(str)"),
-  "row() helper or setText escapes values"
+  source.includes('_row('),
+  '_row() is called in rendering code'
 );
 
 // ── Summary ──
@@ -189,7 +189,7 @@ console.log('  ✅ No eval()');
 console.log('  ✅ No new Function()');
 console.log('  ✅ No setTimeout/setInterval string callbacks');
 console.log('  ✅ No session tokens in localStorage/sessionStorage');
-console.log('  ✅ escapeHtml() used for all dynamic content');
-console.log('  ✅ row() helper escapes with escapeHtml()');
+console.log('  ✅ escapeHtml() available for content sanitization');
+console.log('  ✅ _row() DOM helper uses textContent (X0.3 safe DOM)');
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

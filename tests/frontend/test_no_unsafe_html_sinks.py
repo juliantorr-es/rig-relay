@@ -74,3 +74,35 @@ def test_no_innerhtml_in_widgets() -> None:
             f"{path.name} has {len(sinks)} prohibited HTML sink(s):\n"
             + "\n".join(f"  L{lineno}: {content}" for lineno, content in sinks)
         )
+
+
+def _is_inside_set_widget_html(lines: list[str], sink_lineno: int) -> bool:
+    """Check if lineno falls inside the authorized setWidgetHTML function body."""
+    for i, line in enumerate(lines, 1):
+        if "function setWidgetHTML" in line:
+            func_start = i
+            depth = line.count("{") - line.count("}")
+            # Walk forward through the function body
+            for j in range(func_start + 1, len(lines) + 1):
+                depth += lines[j - 1].count("{") - lines[j - 1].count("}")
+                if depth <= 0:
+                    return func_start < sink_lineno < j
+    return False
+
+
+def test_no_unsafe_innerhtml_in_app_js() -> None:
+    """app.js must only use innerHTML in setWidgetHTML or for clearing content."""
+    path = FRONTEND_ROOT / "app.js"
+    if not path.exists():
+        return
+    sinks = _find_sinks_in_file(path)
+    lines = path.read_text().splitlines()
+    unauthorized: list[tuple[int, str]] = []
+    for lineno, content in sinks:
+        if _is_inside_set_widget_html(lines, lineno):
+            continue
+        unauthorized.append((lineno, content))
+    assert len(unauthorized) == 0, (
+        f"app.js has {len(unauthorized)} unauthorized HTML sink(s):\n"
+        + "\n".join(f"  L{lineno}: {content}" for lineno, content in unauthorized)
+    )

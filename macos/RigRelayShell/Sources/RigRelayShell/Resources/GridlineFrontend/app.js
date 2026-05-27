@@ -212,17 +212,24 @@ function renderConnectSurface(fix) {
   var ra = fix.repository_access || {};
   var raEl = document.getElementById('repo-access-status');
   if (raEl) {
-    raEl.innerHTML = (ra.status === 'granted' ? renderEvidenceTag('proven') : renderEvidenceTag('planned')) +
-      ' Repository access: <strong>' + escapeHtml(ra.status) + '</strong>' +
-      (ra.token_present ? ' &middot; Token present' : ' &middot; No token');
+    _clearEl(raEl);
+    raEl.appendChild(_buildEvidenceTag(ra.status === 'granted' ? 'proven' : 'planned'));
+    raEl.appendChild(_tn(' Repository access: '));
+    raEl.appendChild(_strong(ra.status));
+    raEl.appendChild(_tn(ra.token_present ? ' · Token present' : ' · No token'));
   }
 
   var pa = fix.publication_approval || {};
   var paEl = document.getElementById('publication-approval-status');
   if (paEl) {
-    paEl.innerHTML = renderEvidenceTag(pa.status === 'granted' ? 'proven' : 'planned') +
-      ' Publication approval: <strong>' + escapeHtml(pa.status) + '</strong>' +
-      (pa.reason ? '<br><span class="status-detail">' + escapeHtml(pa.reason) + '</span>' : '');
+    _clearEl(paEl);
+    paEl.appendChild(_buildEvidenceTag(pa.status === 'granted' ? 'proven' : 'planned'));
+    paEl.appendChild(_tn(' Publication approval: '));
+    paEl.appendChild(_strong(pa.status));
+    if (pa.reason) {
+      paEl.appendChild(_makeEl('br'));
+      paEl.appendChild(_makeEl('span', 'status-detail', pa.reason));
+    }
   }
 }
 
@@ -388,22 +395,35 @@ function renderRepositoryEstateSurface(fix) {
   var repos = fix.repositories || [];
   var repoList = document.getElementById('repo-list-container');
   if (repoList) {
-    var html = '';
-    repos.forEach(function(r) {
-      var statusTag = '';
-      if (r.clone_status === 'cloned') statusTag = renderEvidenceTag('proven');
-      else if (r.clone_status === 'failed') statusTag = renderEvidenceTag('claimed');
-      else statusTag = renderEvidenceTag('planned');
-      html += '<div class="repo-card">' +
-        '<div class="repo-name">' + escapeHtml(r.display_name) + '</div>' +
-        '<div class="repo-meta">' + statusTag +
-        ' ' + escapeHtml(r.full_name) + ' &middot; ' + escapeHtml(r.branch) + ' &middot; ' + escapeHtml(r.clone_status) +
-        (r.publication_ready ? ' <span class="evidence-tag proven">public-ready</span>' : ' <span class="evidence-tag planned">private</span>') +
-        (r.publication_blockers && r.publication_blockers.length ? '<br><span class="status-detail">Blockers: ' + escapeHtml(r.publication_blockers.join(', ')) + '</span>' : '') +
-        '</div></div>';
-    });
-    if (repos.length === 0) html = '<div class="status-detail">No repositories discovered.</div>';
-    repoList.innerHTML = html;
+    _clearEl(repoList);
+    if (repos.length === 0) {
+      repoList.appendChild(_makeEl('div', 'status-detail', 'No repositories discovered.'));
+    } else {
+      repos.forEach(function(r) {
+        var evidenceStatus = 'planned';
+        if (r.clone_status === 'cloned') evidenceStatus = 'proven';
+        else if (r.clone_status === 'failed') evidenceStatus = 'claimed';
+
+        var card = _makeEl('div', 'repo-card');
+        card.appendChild(_makeEl('div', 'repo-name', r.display_name));
+        var metaDiv = _makeEl('div', 'repo-meta');
+        metaDiv.appendChild(_buildEvidenceTag(evidenceStatus));
+        metaDiv.appendChild(_tn(' ' + r.full_name + ' · ' + r.branch + ' · ' + r.clone_status));
+        if (r.publication_ready) {
+          metaDiv.appendChild(_tn(' '));
+          metaDiv.appendChild(_makeEl('span', 'evidence-tag proven', 'public-ready'));
+        } else {
+          metaDiv.appendChild(_tn(' '));
+          metaDiv.appendChild(_makeEl('span', 'evidence-tag planned', 'private'));
+        }
+        if (r.publication_blockers && r.publication_blockers.length) {
+          metaDiv.appendChild(_makeEl('br'));
+          metaDiv.appendChild(_makeEl('span', 'status-detail', 'Blockers: ' + r.publication_blockers.join(', ')));
+        }
+        card.appendChild(metaDiv);
+        repoList.appendChild(card);
+      });
+    }
   }
 
   var intake = fix.intake_status || {};
@@ -417,7 +437,8 @@ function renderRepositoryEstateSurface(fix) {
   var sync = fix.sync_status || {};
   var syncEl = document.getElementById('repo-intake-status');
   if (syncEl && sync.status === 'synced') {
-    syncEl.innerHTML += '<br><span class="status-detail">Last synced: ' + escapeHtml(sync.last_sync_at || 'never') + '</span>';
+    syncEl.appendChild(_makeEl('br'));
+    syncEl.appendChild(_makeEl('span', 'status-detail', 'Last synced: ' + (sync.last_sync_at || 'never')));
   }
 }
 
@@ -551,25 +572,40 @@ function renderProjectStudioSurface(fix) {
   var os = fix.operator_session || {};
   var osEl = document.getElementById('operator-session-status');
   if (osEl) {
-    osEl.innerHTML = '<span class="status-line">Session: <strong>' + escapeHtml(os.status || 'idle') + '</strong> &middot; Phase: ' + escapeHtml(os.phase || 'idle') + '</span>' +
-      '<br><span class="status-detail">' + escapeHtml(os.purpose || '') + ' on ' + escapeHtml(os.repository_label || '') + '</span>';
+    _clearEl(osEl);
+    var statusLine = _makeEl('span', 'status-line');
+    statusLine.appendChild(_tn('Session: '));
+    statusLine.appendChild(_strong(os.status || 'idle'));
+    statusLine.appendChild(_tn(' · Phase: ' + (os.phase || 'idle')));
+    osEl.appendChild(statusLine);
+    osEl.appendChild(_makeEl('br'));
+    osEl.appendChild(_makeEl('span', 'status-detail', (os.purpose || '') + ' on ' + (os.repository_label || '')));
     if (os.pending_decisions && os.pending_decisions.length) {
-      osEl.innerHTML += '<br><span class="status-detail" style="color:var(--warning-color)">⚠ Pending: ' + escapeHtml(os.pending_decisions.join(', ')) + '</span>';
+      osEl.appendChild(_makeEl('br'));
+      var pendingSpan = _makeEl('span', 'status-detail', '⚠ Pending: ' + os.pending_decisions.join(', '));
+      pendingSpan.style.color = 'var(--warning-color)';
+      osEl.appendChild(pendingSpan);
     }
     if (os.blocked_capabilities && os.blocked_capabilities.length) {
-      osEl.innerHTML += '<br><span class="status-detail" style="color:var(--error-color)">Blocked: ' + escapeHtml(os.blocked_capabilities.join(', ')) + '</span>';
+      osEl.appendChild(_makeEl('br'));
+      var blockedSpan = _makeEl('span', 'status-detail', 'Blocked: ' + os.blocked_capabilities.join(', '));
+      blockedSpan.style.color = 'var(--error-color)';
+      osEl.appendChild(blockedSpan);
     }
   }
 
   var tsEl = document.getElementById('operator-tool-summary');
   if (tsEl && os.tool_summary) {
-    var toolHtml = '<table class="kv">';
+    _clearEl(tsEl);
+    var toolTable = _makeEl('table', 'kv');
     os.tool_summary.forEach(function(t) {
       var hasFailure = t.failures > 0 || t.refusals > 0;
-      toolHtml += '<tr><td class="k">' + escapeHtml(t.tool_name) + '</td><td class="' + (hasFailure ? 'warning' : 'ok') + '">' + t.calls + ' calls &middot; ' + t.successes + ' ok</td></tr>';
+      var tr = document.createElement('tr');
+      tr.appendChild(_makeEl('td', 'k', t.tool_name));
+      tr.appendChild(_makeEl('td', hasFailure ? 'warning' : 'ok', t.calls + ' calls · ' + t.successes + ' ok'));
+      toolTable.appendChild(tr);
     });
-    toolHtml += '</table>';
-    tsEl.innerHTML = toolHtml;
+    tsEl.appendChild(toolTable);
   }
 
   var propEl = document.getElementById('operator-proposals');
@@ -577,11 +613,13 @@ function renderProjectStudioSurface(fix) {
     var disp = os.proposal_dispositions;
     var keys = Object.keys(disp);
     if (keys.length > 0) {
-      var propHtml = '<div class="status-line">Proposals: ' + (os.proposal_count || 0) + '</div>';
+      _clearEl(propEl);
+      propEl.appendChild(_makeEl('div', 'status-line', 'Proposals: ' + (os.proposal_count || 0)));
       keys.forEach(function(k) {
-        propHtml += '<span class="evidence-tag ' + (k === 'refused' ? 'narrative' : 'claimed') + '">' + escapeHtml(k) + ': ' + disp[k] + '</span> ';
+        var tag = _makeEl('span', 'evidence-tag ' + (k === 'refused' ? 'narrative' : 'claimed'), k + ': ' + disp[k]);
+        propEl.appendChild(tag);
+        propEl.appendChild(_tn(' '));
       });
-      propEl.innerHTML = propHtml;
     } else {
       setText(propEl, 'No proposals yet.');
     }
@@ -594,20 +632,25 @@ function renderProjectStudioSurface(fix) {
     var pu = fix.project_understanding || {};
     var usEl = document.getElementById('understanding-status');
     if (usEl) {
-      usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(pu.study_status || 'not_started') + '</strong></span>' +
-        '<br><span class="status-detail">' + (pu.facts_discovered || 0) + ' facts (' + (pu.facts_with_provenance || 0) + ' with provenance) &middot; ' + (pu.draft_narrative_count || 0) + ' drafts (' + (pu.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+      _clearEl(usEl);
+      var usStatusLine = _makeEl('span', 'status-line');
+      usStatusLine.appendChild(_tn('Study status: '));
+      usStatusLine.appendChild(_strong(pu.study_status || 'not_started'));
+      usEl.appendChild(usStatusLine);
+      usEl.appendChild(_makeEl('br'));
+      usEl.appendChild(_makeEl('span', 'status-detail', (pu.facts_discovered || 0) + ' facts (' + (pu.facts_with_provenance || 0) + ' with provenance) · ' + (pu.draft_narrative_count || 0) + ' drafts (' + (pu.draft_narrative_awaiting_approval || 0) + ' awaiting approval)'));
     }
 
     var udEl = document.getElementById('understanding-details');
     if (udEl) {
-      var detailsHtml = '<table class="kv">';
-      if (pu.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(pu.languages_detected.join(', ')) + '</td></tr>';
-      if (pu.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(pu.frameworks_detected.join(', ')) + '</td></tr>';
-      if (pu.withheld_reasons) detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml(pu.withheld_material_count + ' items: ' + pu.withheld_reasons.join(', ')) + '</td></tr>';
-      detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(pu.portfolio_eligibility || 'unknown') + '</td></tr>';
-      detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(pu.approval_status || 'unknown') + '</td></tr>';
-      detailsHtml += '</table>';
-      udEl.innerHTML = detailsHtml;
+      _clearEl(udEl);
+      var detailsTable = _makeEl('table', 'kv');
+      if (pu.languages_detected) detailsTable.appendChild(_row('Languages', pu.languages_detected.join(', ')));
+      if (pu.frameworks_detected) detailsTable.appendChild(_row('Frameworks', pu.frameworks_detected.join(', ')));
+      if (pu.withheld_reasons) detailsTable.appendChild(_row('Withheld', (pu.withheld_material_count || 0) + ' items: ' + pu.withheld_reasons.join(', '), 'warning'));
+      detailsTable.appendChild(_row('Portfolio', pu.portfolio_eligibility || 'unknown'));
+      detailsTable.appendChild(_row('Approval', pu.approval_status || 'unknown'));
+      udEl.appendChild(detailsTable);
     }
   }
 }
@@ -655,55 +698,64 @@ function renderInferenceStudioSurface(fix) {
   if (irEl) {
     renderStatusChip(irEl.querySelector('.status-chip') || irEl, lr.available ? 'available' : 'offline', (lr.available ? 'Runtime Available' : 'Runtime Offline'));
     var detail = irEl.querySelector('.status-detail');
-    if (detail) setText(detail, (lr.available ? 'Local inference ready (' + escapeHtml(lr.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
+    if (detail) setText(detail, (lr.available ? 'Local inference ready (' + (lr.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
   }
 
   var ts = fix.task_suitability || [];
   var tasksGrid = document.getElementById('inference-tasks');
   if (tasksGrid) {
-    var taskHtml = '';
+    _clearEl(tasksGrid);
     ts.forEach(function(t) {
       var suitable = t.suitable;
-      taskHtml += '<div class="task-card ' + (suitable ? 'suitable' : 'unsuitable') + '">' +
-        '<div class="task-name">' + escapeHtml(t.task_kind) + '</div>' +
-        '<div class="task-status">' + renderEvidenceTag(suitable ? 'proven' : 'claimed') + ' ' +
-        (suitable ? 'JSON_OBJECT_FORMATTING_ONLY admitted' : escapeHtml(t.refusal_reason || 'Refused')) +
-        '</div></div>';
+      var taskCard = _makeEl('div', 'task-card ' + (suitable ? 'suitable' : 'unsuitable'));
+      taskCard.appendChild(_makeEl('div', 'task-name', t.task_kind));
+      var taskStatusDiv = _makeEl('div', 'task-status');
+      taskStatusDiv.appendChild(_buildEvidenceTag(suitable ? 'proven' : 'claimed'));
+      taskStatusDiv.appendChild(_tn(' '));
+      taskStatusDiv.appendChild(_tn(suitable ? 'JSON_OBJECT_FORMATTING_ONLY admitted' : (t.refusal_reason || 'Refused')));
+      taskCard.appendChild(taskStatusDiv);
+      tasksGrid.appendChild(taskCard);
     });
-    tasksGrid.innerHTML = taskHtml;
   }
 
   var drafts = fix.drafts || [];
   var draftList = document.getElementById('inference-drafts');
   if (draftList) {
-    var draftHtml = '<h3>Drafts (' + drafts.length + ')</h3>';
-    if (drafts.length === 0) draftHtml += '<div class="draft-item">No drafts.</div>';
-    drafts.forEach(function(d) {
-      var needsApproval = d.requires_approval || d.output_disposition === 'review_required';
-      draftHtml += '<div class="draft-item">' +
-        '<strong>' + escapeHtml(d.task_kind) + '</strong>: ' + escapeHtml(d.draft_sha256 ? d.draft_sha256.substring(0, 16) + '...' : 'unknown') +
-        ' <span class="evidence-tag ' + (needsApproval ? 'claimed' : 'proven') + '">' + (needsApproval ? 'review-required' : 'approved') + '</span>' +
-        ' (' + (d.draft_byte_count || 0) + ' bytes)' +
-        '</div>';
-    });
-    draftList.innerHTML = draftHtml;
+    _clearEl(draftList);
+    draftList.appendChild(_makeEl('h3', '', 'Drafts (' + drafts.length + ')'));
+    if (drafts.length === 0) {
+      draftList.appendChild(_makeEl('div', 'draft-item', 'No drafts.'));
+    } else {
+      drafts.forEach(function(d) {
+        var needsApproval = d.requires_approval || d.output_disposition === 'review_required';
+        var item = _makeEl('div', 'draft-item');
+        item.appendChild(_strong(d.task_kind));
+        item.appendChild(_tn(': ' + (d.draft_sha256 ? d.draft_sha256.substring(0, 16) + '...' : 'unknown')));
+        item.appendChild(_tn(' '));
+        item.appendChild(_makeEl('span', 'evidence-tag ' + (needsApproval ? 'claimed' : 'proven'), needsApproval ? 'review-required' : 'approved'));
+        item.appendChild(_tn(' (' + (d.draft_byte_count || 0) + ' bytes)'));
+        draftList.appendChild(item);
+      });
+    }
   }
 
   var refusals = fix.refusal_explanations || [];
   var refusalList = document.getElementById('inference-refusals');
   if (refusalList) {
-    var refHtml = '<h3>Refusals (' + refusals.length + ')</h3>';
+    _clearEl(refusalList);
+    refusalList.appendChild(_makeEl('h3', '', 'Refusals (' + refusals.length + ')'));
     if (refusals.length === 0) {
-      refHtml += '<div class="refusal-item" style="color:var(--text-secondary)">No refusals — all suitable tasks executed.</div>';
+      var noRef = _makeEl('div', 'refusal-item', 'No refusals — all suitable tasks executed.');
+      noRef.style.color = 'var(--text-secondary)';
+      refusalList.appendChild(noRef);
     } else {
       refusals.forEach(function(r) {
-        refHtml += '<div class="refusal-item">' +
-          '<strong>' + escapeHtml(r.task_kind) + '</strong>: ' + escapeHtml(r.refusal_reason || r.status) +
-          ' (code: ' + escapeHtml(r.refusal_code || 'UNKNOWN') + ')' +
-          '</div>';
+        var item = _makeEl('div', 'refusal-item');
+        item.appendChild(_strong(r.task_kind));
+        item.appendChild(_tn(': ' + (r.refusal_reason || r.status) + ' (code: ' + (r.refusal_code || 'UNKNOWN') + ')'));
+        refusalList.appendChild(item);
       });
     }
-    refusalList.innerHTML = refHtml;
   }
 }
 
@@ -795,28 +847,39 @@ function renderPublishPreviewSurface(fix) {
   var pc = fix.profile_candidate || {};
   var sectionsGrid = document.getElementById('publish-sections');
   if (sectionsGrid) {
-    var sectionsHtml = '';
+    _clearEl(sectionsGrid);
     (pc.public_sections || []).forEach(function(s) {
-      sectionsHtml += '<div class="section-card ' + (s.ready ? 'ready' : 'not-ready') + '">' +
-        '<strong>' + escapeHtml(s.title) + '</strong> ' + renderEvidenceTag(s.status) +
-        (s.reason ? '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(s.reason) + '</span>' : '') +
-        '</div>';
+      var card = _makeEl('div', 'section-card ' + (s.ready ? 'ready' : 'not-ready'));
+      card.appendChild(_strong(s.title));
+      card.appendChild(_tn(' '));
+      card.appendChild(_buildEvidenceTag(s.status));
+      if (s.reason) {
+        card.appendChild(_makeEl('br'));
+        var reasonSpan = _makeEl('span', 'status-detail', s.reason);
+        reasonSpan.style.fontSize = '0.7rem';
+        card.appendChild(reasonSpan);
+      }
+      sectionsGrid.appendChild(card);
     });
-    sectionsGrid.innerHTML = sectionsHtml;
   }
 
   var withheldEl = document.getElementById('publish-withheld');
   if (withheldEl) {
-    var withheldHtml = '<h3>Withheld from Public Preview</h3>';
-    if (pc.withoutheld_sections) {
+    _clearEl(withheldEl);
+    withheldEl.appendChild(_makeEl('h3', '', 'Withheld from Public Preview'));
+    if (pc.withheld_sections) {
       pc.withheld_sections.forEach(function(w) {
-        withheldHtml += '<div class="withheld-item"><strong>' + escapeHtml(w.section_id) + '</strong>: ' + escapeHtml(w.reason) + ' (' + escapeHtml(w.privacy_class) + ')</div>';
+        var item = _makeEl('div', 'withheld-item');
+        item.appendChild(_strong(w.section_id));
+        item.appendChild(_tn(': ' + w.reason + ' (' + w.privacy_class + ')'));
+        withheldEl.appendChild(item);
       });
     } else {
-      withheldHtml += '<div class="withheld-item">No explicitly withheld sections.</div>';
+      withheldEl.appendChild(_makeEl('div', 'withheld-item', 'No explicitly withheld sections.'));
     }
-    withheldHtml += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Any section not in public_sections above is withheld by default. Private/internal-only material is never rendered in this preview.</div>';
-    withheldEl.innerHTML = withheldHtml;
+    var defaultNote = _makeEl('div', 'withheld-item', 'Any section not in public_sections above is withheld by default. Private/internal-only material is never rendered in this preview.');
+    defaultNote.style.cssText = 'margin-top:8px;color:var(--text-muted)';
+    withheldEl.appendChild(defaultNote);
   }
 }
 
@@ -937,11 +1000,12 @@ function renderTimelineSurface(fix) {
   var events = fix.timeline_events || [];
   var tlEvents = document.getElementById('timeline-events');
   if (tlEvents) {
-    var html = '<h3>Timeline Events (' + (fix.event_count || events.length) + ')</h3>';
+    _clearEl(tlEvents);
+    tlEvents.appendChild(_makeEl('h3', '', 'Timeline Events (' + (fix.event_count || events.length) + ')'));
     if (events.length === 0) {
-      html += '<div class="status-detail">No timeline events recorded.</div>';
+      tlEvents.appendChild(_makeEl('div', 'status-detail', 'No timeline events recorded.'));
     } else {
-      html += '<div class="timeline-list">';
+      var tlList = _makeEl('div', 'timeline-list');
       events.forEach(function(ev) {
         var verificationCls = 'evidence-tag';
         switch (ev.verification_class) {
@@ -950,17 +1014,17 @@ function renderTimelineSurface(fix) {
           case 'canonical_degraded': verificationCls += ' planned'; break;
           default: verificationCls += ' narrative';
         }
-        html += '<div class="timeline-event-card">' +
-          '<div class="timeline-event-domain">' + escapeHtml(ev.domain || 'unknown') + ' / ' + escapeHtml(ev.kind || '') + '</div>' +
-          '<div class="timeline-event-label">' + escapeHtml(ev.label || ev.summary || '') + '</div>' +
-          '<div class="timeline-event-meta">' +
-          '<span class="' + verificationCls + '">' + escapeHtml(ev.verification_class || 'unverified') + '</span>' +
-          ' \u00B7 ' + escapeHtml(ev.source || '') + ' \u00B7 ' + escapeHtml(ev.timestamp || '') +
-          '</div></div>';
+        var card = _makeEl('div', 'timeline-event-card');
+        card.appendChild(_makeEl('div', 'timeline-event-domain', (ev.domain || 'unknown') + ' / ' + (ev.kind || '')));
+        card.appendChild(_makeEl('div', 'timeline-event-label', ev.label || ev.summary || ''));
+        var meta = _makeEl('div', 'timeline-event-meta');
+        meta.appendChild(_makeEl('span', verificationCls, ev.verification_class || 'unverified'));
+        meta.appendChild(_tn(' · ' + (ev.source || '') + ' · ' + (ev.timestamp || '')));
+        card.appendChild(meta);
+        tlList.appendChild(card);
       });
-      html += '</div>';
+      tlEvents.appendChild(tlList);
     }
-    tlEvents.innerHTML = html;
   }
 
   var tlDegradation = document.getElementById('timeline-degradation');
@@ -971,33 +1035,33 @@ function renderTimelineSurface(fix) {
     var missDeg = fix.missing_count || 0;
     var contDeg = fix.contradictory_count || 0;
     var staleDeg = fix.stale_count || 0;
-    var degHtml = '<h3>Degradation Summary</h3>';
-    degHtml += '<table class="kv">' +
-      '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
-      '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
-      '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
-      '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
-      '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
-      '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
-      '</table>';
-    tlDegradation.innerHTML = degHtml;
+    _clearEl(tlDegradation);
+    tlDegradation.appendChild(_makeEl('h3', '', 'Degradation Summary'));
+    var degTable = _makeEl('table', 'kv');
+    degTable.appendChild(_row('Canonical degraded', String(canDeg), 'warning'));
+    degTable.appendChild(_row('Corrupt', String(corDeg), corDeg > 0 ? 'error' : 'ok'));
+    degTable.appendChild(_row('Unsupported', String(unsDeg)));
+    degTable.appendChild(_row('Missing', String(missDeg)));
+    degTable.appendChild(_row('Contradictory', String(contDeg), contDeg > 0 ? 'error' : 'ok'));
+    degTable.appendChild(_row('Stale', String(staleDeg), staleDeg > 0 ? 'warning' : 'ok'));
+    tlDegradation.appendChild(degTable);
   }
 
   var tlDomains = document.getElementById('timeline-domains');
   if (tlDomains) {
     var domains = fix.domain_coverage || {};
     var domainKeys = Object.keys(domains);
-    var domainHtml = '<h3>Domain Coverage</h3>';
+    _clearEl(tlDomains);
+    tlDomains.appendChild(_makeEl('h3', '', 'Domain Coverage'));
     if (domainKeys.length > 0) {
-      domainHtml += '<table class="kv">';
+      var domTable = _makeEl('table', 'kv');
       domainKeys.forEach(function(k) {
-        domainHtml += '<tr><td class="k">' + escapeHtml(k) + '</td><td>' + escapeHtml(String(domains[k])) + '</td></tr>';
+        domTable.appendChild(_row(k, String(domains[k])));
       });
-      domainHtml += '</table>';
+      tlDomains.appendChild(domTable);
     } else {
-      domainHtml += '<div class="status-detail">No domain coverage data.</div>';
+      tlDomains.appendChild(_makeEl('div', 'status-detail', 'No domain coverage data.'));
     }
-    tlDomains.innerHTML = domainHtml;
   }
 }
 
@@ -1124,10 +1188,6 @@ function escapeHtml(str) {
 // Helper: builder-safe innerHTML for trusted backend widget HTML
 function setWidgetHTML(el, html) {
   if (el) el.innerHTML = html;
-}
-
-function row(label, value, cls) {
-  return '<tr><td class="k">' + escapeHtml(label) + '</td><td class="' + (cls || '') + '">' + escapeHtml(value) + '</td></tr>';
 }
 
 // ── Projection Rendering ──
@@ -1257,19 +1317,6 @@ function renderReceiptTimeline(data) {
     body.appendChild(entry);
   });
 }
-  _clearEl(body);
-  receipts.forEach(function(r) {
-    var kind = (r.kind || 'unknown').toLowerCase();
-    var entry = _makeEl('div', 'receipt-entry');
-    entry.appendChild(_makeEl('div', 'receipt-dot ' + kind));
-    var rbody = _makeEl('div', 'receipt-body');
-    rbody.appendChild(_makeEl('div', 'receipt-kind', escapeHtml(r.kind || 'Unknown')));
-    rbody.appendChild(_makeEl('div', 'receipt-summary', escapeHtml(r.summary || '')));
-    rbody.appendChild(_makeEl('div', 'receipt-meta', escapeHtml(r.timestamp || '') + (r.sha256 ? ' \u00B7 ' + r.sha256.substring(0, 12) : '')));
-    entry.appendChild(rbody);
-    body.appendChild(entry);
-  });
-}
 
 function renderRefinementBacklog(data) {
   var body = document.getElementById('refinement-backlog-body');
@@ -1286,12 +1333,6 @@ function renderRefinementBacklog(data) {
   table.appendChild(_row('Refined', String(ref.refined || 0)));
   table.appendChild(_row('Last', escapeHtml(ref.last_refined_at || '—')));
   body.appendChild(table);
-}
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Pending</td><td>' + (ref.pending || 0) + '</td></tr>' +
-    '<tr><td class="k">Refined</td><td>' + (ref.refined || 0) + '</td></tr>' +
-    '<tr><td class="k">Last</td><td>' + escapeHtml(ref.last_refined_at || '—') + '</td></tr>' +
-    '</table>';
 }
 
 function renderReviewValidation(data) {
@@ -1311,14 +1352,6 @@ function renderReviewValidation(data) {
   table.appendChild(_row('Duration', (val.duration_ms || '—') + ' ms'));
   if (val.last_run_at) table.appendChild(_row('Last run', escapeHtml(val.last_run_at)));
   body.appendChild(table);
-}
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Status</td><td>' + escapeHtml(val.status || 'unknown') + '</td></tr>' +
-    '<tr><td class="k">Passed</td><td>' + (val.passed_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Failed</td><td>' + (val.failed_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Duration</td><td>' + (val.duration_ms || '—') + ' ms</td></tr>' +
-    (val.last_run_at ? '<tr><td class="k">Last run</td><td>' + escapeHtml(val.last_run_at) + '</td></tr>' : '') +
-    '</table>';
 }
 
 function renderReviewStorage(data) {
@@ -1352,22 +1385,6 @@ function renderReviewStorage(data) {
   }
   body.appendChild(table);
 }
-  var html = '<table class="kv">' +
-    '<tr><td class="k">Total</td><td>' + (st.total_size_mb || 0).toFixed(1) + ' MB</td></tr>' +
-    '<tr><td class="k">Budget</td><td>' + escapeHtml(st.budget_status || '—') + '</td></tr>' +
-    '<tr><td class="k">Rollup candidates</td><td>' + (st.rollup_candidate_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Prune candidates</td><td>' + (st.prune_candidate_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Stale leases</td><td>' + (st.stale_lease_count || 0) + '</td></tr>';
-  if (st.recommendations && st.recommendations.length) {
-    html += '<tr><td class="k">Actions</td><td><ul style="margin:0;padding-left:16px">';
-    st.recommendations.forEach(function(r) {
-      html += '<li>' + escapeHtml(r) + '</li>';
-    });
-    html += '</ul></td></tr>';
-  }
-  html += '</table>';
-  body.innerHTML = html;
-}
 
 function renderSemanticSnippetsInReview(data) {
   var body = document.getElementById('review-snippets-body');
@@ -1386,13 +1403,6 @@ function renderSemanticSnippetsInReview(data) {
   table.appendChild(_row('Skipped', String(data.skipped_count || 0)));
   table.appendChild(_row('Remote safe', data.remote_sharing_safe ? 'Yes' : 'No'));
   body.appendChild(table);
-}
-  if (status) { status.className = 'source-status ok'; status.textContent = data.snippet_count + ' snippets'; }
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Snippets</td><td>' + (data.snippet_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Skipped</td><td>' + (data.skipped_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Remote safe</td><td>' + (data.remote_sharing_safe ? 'Yes' : 'No') + '</td></tr>' +
-    '</table>';
 }
 
 function renderDatasetInReview(data) {
@@ -1413,14 +1423,6 @@ function renderDatasetInReview(data) {
   table.appendChild(_row('Artifact reuse', (data.artifact_reuse_rows || 0) + ' rows'));
   table.appendChild(_row('Checkpoints', (data.checkpoint_rows || 0) + ' rows'));
   body.appendChild(table);
-}
-  if (status) { status.className = 'source-status ok'; status.textContent = 'OK'; }
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Coordination</td><td>' + (data.coordination_rows || 0) + ' rows</td></tr>' +
-    '<tr><td class="k">Tool failures</td><td>' + (data.tool_failure_rows || 0) + ' rows</td></tr>' +
-    '<tr><td class="k">Artifact reuse</td><td>' + (data.artifact_reuse_rows || 0) + ' rows</td></tr>' +
-    '<tr><td class="k">Checkpoints</td><td>' + (data.checkpoint_rows || 0) + ' rows</td></tr>' +
-    '</table>';
 }
 
 // ── System Mode Renderers ──
@@ -1449,14 +1451,6 @@ function renderTelemetryBundleInSystem(data) {
   table.appendChild(shaRow);
   body.appendChild(table);
 }
-  if (status) { status.className = 'source-status ok'; status.textContent = data.share_level || 'OK'; }
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Bundle</td><td>' + escapeHtml(data.bundle_id || '—') + '</td></tr>' +
-    '<tr><td class="k">Share level</td><td>' + escapeHtml(data.share_level || '—') + '</td></tr>' +
-    '<tr><td class="k">Status</td><td>' + escapeHtml(data.status || '—') + '</td></tr>' +
-    '<tr><td class="k">SHA256</td><td style="font-family:var(--font-mono);font-size:0.7rem">' + escapeHtml((data.bundle_sha256 || '').substring(0, 16) + '...') + '</td></tr>' +
-    '</table>';
-}
 
 function renderUpdateStatus(data) {
   var body = document.getElementById('sys-update-body');
@@ -1475,13 +1469,6 @@ function renderUpdateStatus(data) {
   table.appendChild(_row('Latest', escapeHtml(data.latest_version || '—')));
   table.appendChild(_row('Restart required', data.restart_required ? 'Yes' : 'No'));
   body.appendChild(table);
-}
-  if (status) { status.className = 'source-status ' + (data.update_available ? 'warning' : 'ok'); status.textContent = data.update_available ? 'Update available' : 'Up to date'; }
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Current</td><td>' + escapeHtml(data.current_version || '—') + '</td></tr>' +
-    '<tr><td class="k">Latest</td><td>' + escapeHtml(data.latest_version || '—') + '</td></tr>' +
-    '<tr><td class="k">Restart required</td><td>' + (data.restart_required ? 'Yes' : 'No') + '</td></tr>' +
-    '</table>';
 }
 
 function renderProjectionSources(data) {
@@ -1509,19 +1496,6 @@ function renderProjectionSources(data) {
     body.appendChild(table);
   }
 }
-  var html = '<table class="kv">';
-  var count = 0;
-  for (var key in sources) {
-    if (sources.hasOwnProperty(key)) {
-      var available = sources[key];
-      html += '<tr><td class="k">' + escapeHtml(key) + '</td><td class="' + (available ? 'ok' : 'warning') + '">' + (available ? 'available' : 'missing') + '</td></tr>';
-      count++;
-    }
-  }
-  html += '</table>';
-  if (count === 0) html = '<span class="missing">No projection source data.</span>';
-  body.innerHTML = html;
-}
 
 function renderStorageDiagnostics(data) {
   var body = document.getElementById('sys-storage-diag-body');
@@ -1547,15 +1521,6 @@ function renderStorageDiagnostics(data) {
   btn.textContent = 'Run GC';
   actionsDiv.appendChild(btn);
   body.appendChild(actionsDiv);
-}
-  body.innerHTML = '<table class="kv">' +
-    '<tr><td class="k">Rollup candidates</td><td>' + (st.rollup_candidate_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Prune candidates</td><td>' + (st.prune_candidate_count || 0) + '</td></tr>' +
-    '<tr><td class="k">Stale leases</td><td>' + (st.stale_lease_count || 0) + '</td></tr>' +
-    '</table>' +
-    '<div class="action-buttons compact" style="margin-top:8px">' +
-    '<button onclick="runIntent(\'gc_artifacts\')" class="secondary-btn">Run GC</button>' +
-    '</div>';
 }
 
 function renderConnectionStatus(data) {
@@ -1649,31 +1614,6 @@ function renderModelProvidersInSystem(providerData) {
   }
 }
 
-  var html = '';
-  var configuredCount = 0;
-  providerData.providers.forEach(function(p) {
-    var configured = p.configured || false;
-    var keySource = p.key_source || 'missing';
-    var fingerprint = p.key_fingerprint || '';
-    var status = p.status || 'unknown';
-    if (configured) configuredCount++;
-
-    html += '<tr>' +
-      '<td class="k">' + escapeHtml(p.display_name || p.provider) + '</td>' +
-      '<td class="' + (configured ? 'ok' : 'warning') + '">' + (configured ? 'Configured' : 'Missing') + '</td>' +
-      '<td style="font-size:0.7rem;color:var(--text-muted)">' + escapeHtml(keySource) + '</td>' +
-      '<td style="font-size:0.65rem;font-family:var(--font-mono);color:var(--text-muted)">' + escapeHtml(fingerprint.substring(0, 20)) + '</td>' +
-      '<td class="' + (status === 'valid' ? 'ok' : 'warning') + '" style="font-size:0.7rem">' + escapeHtml(status) + '</td>' +
-      '</tr>';
-  });
-
-  body.innerHTML = html;
-  if (pill) {
-    pill.className = 'safety-indicator ' + (configuredCount > 0 ? 'ok' : 'warn');
-    setText(pill.querySelector('.dot + *') || pill.lastChild, configuredCount + '/' + providerData.providers.length + ' configured');
-  }
-}
-
 // ── Provider Actions ──
 
 function saveProviderKey() {
@@ -1732,21 +1672,29 @@ function displayIntentResult(elementId, result) {
   el.style.display = 'block';
   el.className = 'intent-result-card ' + (result.status === 'completed' ? 'ok' : result.status === 'refused' ? 'warn' : 'error');
 
-  var html = '<div class="status-line">' + escapeHtml(result.intent_name || 'Intent') + ': ' + escapeHtml(result.status || 'unknown') + '</div>';
+  _clearEl(el);
+  el.appendChild(_makeEl('div', 'status-line', (result.intent_name || 'Intent') + ': ' + (result.status || 'unknown')));
   if (result.summary) {
-    html += '<div class="detail-line">' + escapeHtml(result.summary) + '</div>';
+    el.appendChild(_makeEl('div', 'detail-line', result.summary));
   }
   if (result.kind) {
     var structured = renderStructuredCard(result.kind, result.summary || '', result);
-    html += structured;
+    if (structured) el.appendChild(structured);
   }
-  el.innerHTML = html;
 
   // Also update LatestIntentResult in Operate
   var latestBody = document.getElementById('latest-intent-body');
   if (latestBody) {
-    latestBody.innerHTML = html;
     latestBody.className = 'widget-card-body ' + (result.status === 'completed' ? 'ok' : 'warn');
+    _clearEl(latestBody);
+    latestBody.appendChild(_makeEl('div', 'status-line', (result.intent_name || 'Intent') + ': ' + (result.status || 'unknown')));
+    if (result.summary) {
+      latestBody.appendChild(_makeEl('div', 'detail-line', result.summary));
+    }
+    if (result.kind) {
+      var structured2 = renderStructuredCard(result.kind, result.summary || '', result);
+      if (structured2) latestBody.appendChild(structured2);
+    }
   }
 }
 
@@ -1755,21 +1703,29 @@ function displayOperateIntentResult(result) {
 }
 
 function renderStructuredCard(kind, summary, result) {
+  var dom = null;
   switch (kind) {
     case 'validation_suite':
-      return renderValidationSuiteCard(summary);
+      dom = renderValidationSuiteCard(summary);
+      break;
     case 'storage_audit':
-      return renderStorageAuditCard(summary);
+      dom = renderStorageAuditCard(summary);
+      break;
     case 'report':
-      return renderReportCard(summary);
+      dom = renderReportCard(summary);
+      break;
     case 'packets':
-      return renderPacketsCard(summary);
+      dom = renderPacketsCard(summary);
+      break;
     case 'projection':
-      return renderProjectionCard(summary);
+      dom = renderProjectionCard(summary);
+      break;
     case 'checkpoint':
-      return renderCheckpointCard(summary);
+      dom = renderCheckpointCard(summary);
+      break;
     case 'lease_cleanup':
-      return renderLeaseCleanupCard(summary);
+      dom = renderLeaseCleanupCard(summary);
+      break;
     case 'bundle_dry_run':
     case 'plan_dry_run':
     case 'validation':
@@ -1780,81 +1736,83 @@ function renderStructuredCard(kind, summary, result) {
     case 'provider_onboarding':
     case 'summary':
     default:
-      return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+      dom = _makeEl('div', 'detail-line', summary);
+      break;
   }
+  return dom;
 }
 
 function renderValidationSuiteCard(summary) {
   var m = summary.match(/Validation suite '(.+?)':\s*(\w+)\.\s*(\d+)\s+executed,\s*(\d+)\s+skipped\.\s*Steps:\s*\[(.+?)\]\s*\.\s*sha256:\s*(\S+)/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
-  return '<table class="kv">' +
-    row('Suite', m[1]) +
-    row('Status', m[2]) +
-    row('Executed', m[3]) +
-    row('Skipped', m[4]) +
-    row('Steps', m[5]) +
-    row('SHA256', m[6]) +
-    '</table>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Suite', m[1]));
+  table.appendChild(_row('Status', m[2]));
+  table.appendChild(_row('Executed', m[3]));
+  table.appendChild(_row('Skipped', m[4]));
+  table.appendChild(_row('Steps', m[5]));
+  table.appendChild(_row('SHA256', m[6]));
+  return table;
 }
 
 function renderStorageAuditCard(summary) {
   var m = summary.match(/Storage audit:\s*([\d.]+)\s*MB,\s*budget=(\w+),\s*stale_leases=(\d+),\s*rollup_candidates=(\d+),\s*prune_candidates=(\d+),\s*(\d+)\s*recommendations/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
   var budgetCls = m[2] === 'ok' ? 'ok' : 'warning';
-  return '<table class="kv">' +
-    row('Total', m[1] + ' MB') +
-    row('Budget', m[2], budgetCls) +
-    row('Stale Leases', m[3]) +
-    row('Rollup Candidates', m[4]) +
-    row('Prune Candidates', m[5]) +
-    row('Recommendations', m[6]) +
-    '</table>';
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Total', m[1] + ' MB'));
+  table.appendChild(_row('Budget', m[2], budgetCls));
+  table.appendChild(_row('Stale Leases', m[3]));
+  table.appendChild(_row('Rollup Candidates', m[4]));
+  table.appendChild(_row('Prune Candidates', m[5]));
+  table.appendChild(_row('Recommendations', m[6]));
+  return table;
 }
 
 function renderReportCard(summary) {
   var m = summary.match(/(\d+)\s+backlog items/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
-  return '<table class="kv">' +
-    row('Backlog Items', m[1]) +
-    row('Summary', summary) +
-    '</table>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Backlog Items', m[1]));
+  table.appendChild(_row('Summary', summary));
+  return table;
 }
 
 function renderPacketsCard(summary) {
   var m = summary.match(/(\d+)\s+packets/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
-  return '<table class="kv">' +
-    row('Packets Created', m[1]) +
-    row('Mode', 'dry-run') +
-    '</table>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Packets Created', m[1]));
+  table.appendChild(_row('Mode', 'dry-run'));
+  return table;
 }
 
 function renderProjectionCard(summary) {
   var m = summary.match(/(\d+)\/(\d+)\s+sources/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
-  return '<table class="kv">' +
-    row('Sources', m[1] + ' / ' + m[2] + ' available') +
-    '</table>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Sources', m[1] + ' / ' + m[2] + ' available'));
+  return table;
 }
 
 function renderCheckpointCard(summary) {
   var m = summary.match(/committed:\s*(\S+)\.\s*(\d+)\s+files/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
   var shaM = summary.match(/sha256:\s*(\S+)/);
-  return '<table class="kv">' +
-    row('Commit', m[1]) +
-    row('Files', m[2]) +
-    row('SHA256', shaM ? shaM[1] : '\u2014') +
-    '</table>';
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Commit', m[1]));
+  table.appendChild(_row('Files', m[2]));
+  table.appendChild(_row('SHA256', shaM ? shaM[1] : '\u2014'));
+  return table;
 }
 
 function renderLeaseCleanupCard(summary) {
   var m = summary.match(/archive:\s*(\w+)\.\s*(\d+)\s+entries/);
-  if (!m) return '<div class="detail-line">' + escapeHtml(summary) + '</div>';
-  return '<table class="kv">' +
-    row('Action', m[1]) +
-    row('Entries', m[2]) +
-    '</table>';
+  if (!m) return _makeEl('div', 'detail-line', summary);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Action', m[1]));
+  table.appendChild(_row('Entries', m[2]));
+  return table;
 }
 
 // ── Chat ──
@@ -1945,7 +1903,8 @@ function runIntent(name) {
     if (resultEl) {
       resultEl.style.display = 'block';
       resultEl.className = 'intent-result-card pending';
-      resultEl.innerHTML = '<div class="status-line">' + escapeHtml(name) + ': running...</div>';
+      _clearEl(resultEl);
+      resultEl.appendChild(_makeEl('div', 'status-line', name + ': running...'));
     }
     // Response comes via message handler
     return;
@@ -1961,7 +1920,8 @@ function runIntent(name) {
       if (resultEl) {
         resultEl.style.display = 'block';
         resultEl.className = 'intent-result-card error';
-        resultEl.innerHTML = '<div class="status-line">Error: ' + escapeHtml(e.message || e) + '</div>';
+        _clearEl(resultEl);
+        resultEl.appendChild(_makeEl('div', 'status-line', 'Error: ' + (e.message || e)));
       }
     });
     return;
@@ -1970,7 +1930,8 @@ function runIntent(name) {
   if (resultEl) {
     resultEl.style.display = 'block';
     resultEl.className = 'intent-result-card warn';
-    resultEl.innerHTML = '<div class="status-line">No backend connection</div>';
+    _clearEl(resultEl);
+    resultEl.appendChild(_makeEl('div', 'status-line', 'No backend connection'));
   }
 }
 
@@ -2006,7 +1967,8 @@ function runAuthReceipt(intentName, params) {
     });
     resultEl.style.display = 'block';
     resultEl.className = 'intent-result-card pending';
-    resultEl.innerHTML = '<div class="status-line">' + escapeHtml(intentName) + ': running...</div>';
+    _clearEl(resultEl);
+    resultEl.appendChild(_makeEl('div', 'status-line', intentName + ': running...'));
     return;
   }
 
@@ -2018,12 +1980,16 @@ function runAuthReceipt(intentName, params) {
     })).then(function(result) {
       resultEl.style.display = 'block';
       resultEl.className = 'intent-result-card ' + (result.status === 'completed' ? 'ok' : 'warn');
-      resultEl.innerHTML = '<div class="status-line">' + escapeHtml(intentName) + ': ' + escapeHtml(result.status || 'unknown') + '</div>' +
-        (result.summary ? '<div class="detail-line">' + escapeHtml(result.summary) + '</div>' : '');
+      _clearEl(resultEl);
+      resultEl.appendChild(_makeEl('div', 'status-line', intentName + ': ' + (result.status || 'unknown')));
+      if (result.summary) {
+        resultEl.appendChild(_makeEl('div', 'detail-line', result.summary));
+      }
     }).catch(function(e) {
       resultEl.style.display = 'block';
       resultEl.className = 'intent-result-card error';
-      resultEl.innerHTML = '<div class="status-line">Error: ' + escapeHtml(e.message || e) + '</div>';
+      _clearEl(resultEl);
+      resultEl.appendChild(_makeEl('div', 'status-line', 'Error: ' + (e.message || e)));
     });
   }
 }
@@ -2038,7 +2004,8 @@ function inspectDevReceipt() {
   } catch (e) {
     resultEl.style.display = 'block';
     resultEl.className = 'intent-result-card error';
-    resultEl.innerHTML = '<div class="status-line">Invalid JSON</div>';
+    _clearEl(resultEl);
+    resultEl.appendChild(_makeEl('div', 'status-line', 'Invalid JSON'));
     return;
   }
 
@@ -2050,12 +2017,16 @@ function inspectDevReceipt() {
     })).then(function(result) {
       resultEl.style.display = 'block';
       resultEl.className = 'intent-result-card ok';
-      resultEl.innerHTML = '<div class="status-line">Inspected Receipt</div>' +
-        (result.summary ? '<div class="detail-line">' + escapeHtml(result.summary) + '</div>' : '');
+      _clearEl(resultEl);
+      resultEl.appendChild(_makeEl('div', 'status-line', 'Inspected Receipt'));
+      if (result.summary) {
+        resultEl.appendChild(_makeEl('div', 'detail-line', result.summary));
+      }
     }).catch(function(e) {
       resultEl.style.display = 'block';
       resultEl.className = 'intent-result-card error';
-      resultEl.innerHTML = '<div class="status-line">Error: ' + escapeHtml(e.message || e) + '</div>';
+      _clearEl(resultEl);
+      resultEl.appendChild(_makeEl('div', 'status-line', 'Error: ' + (e.message || e)));
     });
   }
 }
@@ -2088,19 +2059,19 @@ function renderIdentityStatus(result) {
     if (signOutBtn) signOutBtn.style.display = 'none';
   }
 
-  var html = '<table class="kv">' +
-    row('GitHub', githubStatus === 'signed_in' ? (github.display_name || 'Signed In') : 'Not signed in', githubStatus === 'signed_in' ? 'ok' : '') +
-    row('Google', googleStatus === 'signed_in' ? (google.display_name || 'Signed In') : 'Not signed in', googleStatus === 'signed_in' ? 'ok' : '') +
-    (github.display_name ? row('GitHub User', escapeHtml(github.display_name)) : '') +
-    (google.display_name ? row('Google User', escapeHtml(google.display_name)) : '') +
-    '</table>';
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('GitHub', githubStatus === 'signed_in' ? (github.display_name || 'Signed In') : 'Not signed in', githubStatus === 'signed_in' ? 'ok' : ''));
+  table.appendChild(_row('Google', googleStatus === 'signed_in' ? (google.display_name || 'Signed In') : 'Not signed in', googleStatus === 'signed_in' ? 'ok' : ''));
+  if (github.display_name) table.appendChild(_row('GitHub User', github.display_name));
+  if (google.display_name) table.appendChild(_row('Google User', google.display_name));
+  body.appendChild(table);
   if (github.warnings && github.warnings.length) {
-    html += '<div class="detail-line warning">' + escapeHtml(github.warnings.join('; ')) + '</div>';
+    body.appendChild(_makeEl('div', 'detail-line warning', github.warnings.join('; ')));
   }
   if (google.warnings && google.warnings.length) {
-    html += '<div class="detail-line warning">' + escapeHtml(google.warnings.join('; ')) + '</div>';
+    body.appendChild(_makeEl('div', 'detail-line warning', google.warnings.join('; ')));
   }
-  body.innerHTML = html;
 }
 
 function handleIdentityIntentResult(result, resultElementId) {
@@ -2110,33 +2081,62 @@ function handleIdentityIntentResult(result, resultElementId) {
   el.style.display = 'block';
   el.className = 'intent-result-card ' + (result.status === 'completed' ? 'ok' : 'warn');
 
-  var html = '<div class="status-line">' + escapeHtml(result.intent_name || 'Identity') + ': ' + escapeHtml(result.status || 'unknown') + '</div>';
+  _clearEl(el);
+  el.appendChild(_makeEl('div', 'status-line', (result.intent_name || 'Identity') + ': ' + (result.status || 'unknown')));
   if (result.summary) {
-    html += '<div class="detail-line">' + escapeHtml(result.summary) + '</div>';
+    el.appendChild(_makeEl('div', 'detail-line', result.summary));
   }
 
   // Show auth URL if present — offer in-app browser or system browser
   var extra = result.extra_fields || {};
   if (extra.auth_url && extra.loopback_port) {
-    html += '<div class="detail-line">';
+    var authDiv = _makeEl('div', 'detail-line');
     var providerName = extra.provider || 'github';
-    html += '<button class="auth-btn" onclick="window.RigRelay.openInAppAuth(\'' + escapeHtml(extra.auth_url) + '\', ' + escapeHtml(String(extra.loopback_port)) + ', \'' + escapeHtml(extra.state_hash || '') + '\', \'' + escapeHtml(providerName) + '\')">Sign in in-app</button>';
-    html += ' <a href="' + escapeHtml(extra.auth_url) + '" target="_blank" class="auth-link">Open system browser</a>';
-    html += '</div>';
-    html += '<div class="detail-line small-note">Or copy the code from the provider page and paste below:</div>';
-    html += '<div class="detail-line"><input id="oauth-code-input" type="text" placeholder="Paste authorization code here" style="width:60%"> ';
-    html += '<button onclick="window.RigRelay.submitOAuthCode()">Submit</button></div>';
+    var authBtn = document.createElement('button');
+    authBtn.className = 'auth-btn';
+    authBtn.setAttribute('onclick', "window.RigRelay.openInAppAuth('" + extra.auth_url + "', " + extra.loopback_port + ", '" + (extra.state_hash || '') + "', '" + providerName + "')");
+    authBtn.textContent = 'Sign in in-app';
+    authDiv.appendChild(authBtn);
+    authDiv.appendChild(_tn(' '));
+    var extLink = document.createElement('a');
+    extLink.href = extra.auth_url;
+    extLink.target = '_blank';
+    extLink.className = 'auth-link';
+    extLink.textContent = 'Open system browser';
+    authDiv.appendChild(extLink);
+    el.appendChild(authDiv);
+
+    el.appendChild(_makeEl('div', 'detail-line small-note', 'Or copy the code from the provider page and paste below:'));
+
+    var inputDiv = _makeEl('div', 'detail-line');
+    var codeInput = document.createElement('input');
+    codeInput.id = 'oauth-code-input';
+    codeInput.type = 'text';
+    codeInput.placeholder = 'Paste authorization code here';
+    codeInput.style.cssText = 'width:60%';
+    inputDiv.appendChild(codeInput);
+    inputDiv.appendChild(_tn(' '));
+    var submitBtn = document.createElement('button');
+    submitBtn.setAttribute('onclick', 'window.RigRelay.submitOAuthCode()');
+    submitBtn.textContent = 'Submit';
+    inputDiv.appendChild(submitBtn);
+    el.appendChild(inputDiv);
   } else if (extra.auth_url) {
-    html += '<div class="detail-line"><a href="' + escapeHtml(extra.auth_url) + '" target="_blank" class="auth-link">Open browser to sign in</a></div>';
+    var authDiv2 = _makeEl('div', 'detail-line');
+    var extLink2 = document.createElement('a');
+    extLink2.href = extra.auth_url;
+    extLink2.target = '_blank';
+    extLink2.className = 'auth-link';
+    extLink2.textContent = 'Open browser to sign in';
+    authDiv2.appendChild(extLink2);
+    el.appendChild(authDiv2);
   }
   if (extra.configured === false) {
-    html += '<div class="detail-line warning">Provider not configured. Set credentials and retry.</div>';
+    el.appendChild(_makeEl('div', 'detail-line warning', 'Provider not configured. Set credentials and retry.'));
   }
   if (extra.scopes && extra.scopes.length) {
-    html += '<div class="detail-line">Scopes: ' + escapeHtml(extra.scopes.join(', ')) + '</div>';
+    el.appendChild(_makeEl('div', 'detail-line', 'Scopes: ' + extra.scopes.join(', ')));
   }
-
-  el.innerHTML = html;
 
   // Refresh identity status display
   if (result.intent_name === 'identity_status') {
@@ -2249,11 +2249,11 @@ function handleConsentIntentResult(result) {
   el.style.display = 'block';
   el.className = 'intent-result-card ' + (result.status === 'completed' ? 'ok' : 'warn');
 
-  var html = '<div class="status-line">' + escapeHtml(result.intent_name || 'Consent') + ': ' + escapeHtml(result.status || 'unknown') + '</div>';
+  _clearEl(el);
+  el.appendChild(_makeEl('div', 'status-line', (result.intent_name || 'Consent') + ': ' + (result.status || 'unknown')));
   if (result.summary) {
-    html += '<div class="detail-line">' + escapeHtml(result.summary) + '</div>';
+    el.appendChild(_makeEl('div', 'detail-line', result.summary));
   }
-  el.innerHTML = html;
 
   // Refresh consent status
   runIntentWithCallback('telemetry_consent_status', {}, function(statusResult) {
@@ -2292,15 +2292,16 @@ function renderProgressTimeline() {
   var count = document.getElementById('progress-timeline-count');
   if (!list) return;
 
+  _clearEl(list);
+
   if (progressEvents.length === 0) {
-    list.innerHTML = '<span class="missing">No progress events yet. Execute an intent to see progress.</span>';
+    list.appendChild(_makeEl('span', 'missing', 'No progress events yet. Execute an intent to see progress.'));
     if (count) setText(count, '0');
     return;
   }
 
   if (count) setText(count, String(progressEvents.length));
 
-  var html = '';
   var maxShow = Math.min(progressEvents.length, 30);
   var events = progressEvents.slice(-maxShow);
 
@@ -2318,25 +2319,30 @@ function renderProgressTimeline() {
     var statusCls = status === 'completed' ? 'ok' : status === 'failed' || status === 'refused' ? 'error' : 'warn';
     var eventLabel = eventType.replace(/^operation\./, '').replace(/^validation\./, 'val.').replace(/\./g, ' ');
 
-    html += '<div class="progress-event-row ' + statusCls + '">';
-    html += '<span class="progress-event-type">' + escapeHtml(eventLabel) + '</span>';
+    var row = _makeEl('div', 'progress-event-row ' + statusCls);
+    row.appendChild(_makeEl('span', 'progress-event-type', eventLabel));
     if (phase && phase !== eventLabel) {
-      html += '<span class="progress-event-phase">' + escapeHtml(phase) + '</span>';
+      row.appendChild(_makeEl('span', 'progress-event-phase', phase));
     }
-    html += '<span class="progress-event-status ' + statusCls + '">' + escapeHtml(status) + '</span>';
+    row.appendChild(_makeEl('span', 'progress-event-status ' + statusCls, status));
     if (message) {
-      html += '<div class="progress-event-message">' + escapeHtml(message) + '</div>';
+      row.appendChild(_makeEl('div', 'progress-event-message', message));
     }
     if (typeof pct === 'number') {
-      html += '<div class="progress-bar-container"><div class="progress-bar" style="width:' + Math.round(pct) + '%"></div></div>';
+      var barContainer = _makeEl('div', 'progress-bar-container');
+      var bar = _makeEl('div', 'progress-bar');
+      bar.style.width = Math.round(pct) + '%';
+      barContainer.appendChild(bar);
+      row.appendChild(barContainer);
     } else if (typeof progressCur === 'number' && typeof progressTotal === 'number' && progressTotal > 0) {
-      var barPct = Math.round((progressCur / progressTotal) * 100);
-      html += '<div class="progress-bar-container"><div class="progress-bar" style="width:' + barPct + '%"></div></div>';
+      var barContainer2 = _makeEl('div', 'progress-bar-container');
+      var bar2 = _makeEl('div', 'progress-bar');
+      bar2.style.width = Math.round((progressCur / progressTotal) * 100) + '%';
+      barContainer2.appendChild(bar2);
+      row.appendChild(barContainer2);
     }
-    html += '</div>';
+    list.appendChild(row);
   }
-
-  list.innerHTML = html;
 }
 
 function handleWSMessage(message) {
