@@ -22,6 +22,7 @@ from rig_relay.native.models import (
     AppPackageIdentity,
     DiagnosticBundle,
     DiagnosticContentLightViolation,
+    DiagnosticExportBlocked,
     NotarizationEvidence,
     RecoveryEvidence,
     SigningIdentityStatus,
@@ -197,8 +198,6 @@ class DiagnosticExportService:
         timestamp = datetime.now(UTC).isoformat()
 
         violations: list[DiagnosticContentLightViolation] = []
-        warnings: list[str] = []
-        blocking: list[str] = []
 
         if app_identity is None:
             try:
@@ -303,11 +302,13 @@ class DiagnosticExportService:
         ])
 
         if violations:
-            blocking.extend(
+            blocking_reasons = [
                 f"content_light_violation_blocked_export: {v.field_name} — {v.reason}"
                 for v in violations
+            ]
+            raise DiagnosticExportBlocked(
+                violation_count=len(violations), blocking_reasons=blocking_reasons
             )
-            warnings.append("export_blocked_due_to_unsafe_content")
 
         return DiagnosticBundle(
             export_id=export_id,
@@ -324,9 +325,9 @@ class DiagnosticExportService:
             frontend_resources_present=frontend_resources_present,
             health_checks=safe_health,
             content_light_violations=violations,
-            redacted=len(violations) > 0,
-            warnings=warnings,
-            blocking=blocking,
+            redacted=False,
+            warnings=[],
+            blocking=[],
         )
 
     def validate_export(self, bundle: DiagnosticBundle) -> list[str]:

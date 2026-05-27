@@ -77,8 +77,8 @@ class RecoveryActionState(StrEnum):
 
 def build_safari_native_projection(
     *,
-    safari_companion_state: SafariCompanionState = SafariCompanionState.EXTENSION_EMBEDDED,
-    distribution_signing_state: DistributionSigningState = DistributionSigningState.ADHOC_SIGNED,
+    safari_companion_state: SafariCompanionState = SafariCompanionState.EXTENSION_BUILT,
+    distribution_signing_state: DistributionSigningState = DistributionSigningState.UNSIGNED,
     notarization_state: NotarizationState = NotarizationState.NOT_SUBMITTED,
     update_delivery_state: UpdateDeliveryState = UpdateDeliveryState.NOT_INTEGRATED,
     diagnostic_export_state: DiagnosticExportState = DiagnosticExportState.READY,

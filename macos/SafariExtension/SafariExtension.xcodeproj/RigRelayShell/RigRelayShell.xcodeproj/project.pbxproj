@@ -73,6 +73,7 @@
 		CE8D05632FC6BB120000D812 /* popup.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = popup.css; path = Resources/popup.css; sourceTree = "<group>"; };
 		CE8D05642FC6BB120000D812 /* _locales */ = {isa = PBXFileReference; lastKnownFileType = folder; name = _locales; path = Resources/_locales; sourceTree = "<group>"; };
 		CE8D05652FC6BB120000D812 /* content.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = content.js; path = Resources/content.js; sourceTree = "<group>"; };
+		CE8D05902FC6BB130000D812 /* Extension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Extension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +142,7 @@
 				CE8D055D2FC6BB120000D812 /* Resources */,
 				CE8D05512FC6BB110000D812 /* SafariWebExtensionHandler.swift */,
 				CE8D05532FC6BB110000D812 /* Info.plist */,
+				CE8D05902FC6BB130000D812 /* Extension.entitlements */,
 			);
 			path = "RigRelayShell Extension";
 			sourceTree = "<group>";
@@ -442,6 +444,7 @@
 		CE8D05572FC6BB110000D812 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "RigRelayShell Extension/Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
@@ -476,6 +479,7 @@
 		CE8D05582FC6BB110000D812 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "RigRelayShell Extension/Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;

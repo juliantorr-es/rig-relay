@@ -215,3 +215,64 @@ class DiagnosticBundle(BaseModel):
     redacted: bool = False
     warnings: list[str] = Field(default_factory=list)
     blocking: list[str] = Field(default_factory=list)
+
+
+class DiagnosticExportBlocked(Exception):
+    """Raised when diagnostic export is blocked due to unsafe content.
+
+    Fail-closed: the export must never return a bundle when blocking
+    violations are present. This exception carries the violation count
+    and blocking reasons for diagnostic display, but no raw unsafe data.
+    """
+
+    def __init__(self, violation_count: int, blocking_reasons: list[str]) -> None:
+        self.violation_count = violation_count
+        self.blocking_reasons = blocking_reasons
+        super().__init__(
+            f"Diagnostic export blocked: {violation_count} violations — "
+            + "; ".join(blocking_reasons[:3])
+        )
+
+
+class ArtifactItemKind(StrEnum):
+    REGULAR_FILE = "regular_file"
+    SYMLINK = "symlink"
+    DIRECTORY = "directory"
+    EXECUTABLE = "executable"
+    FRAMEWORK = "framework"
+    APPEX = "appex"
+
+
+class ArtifactItemSignificance(StrEnum):
+    CRITICAL = "critical"
+    NORMAL = "normal"
+    ICON = "icon"
+    CONFIG = "config"
+    META = "meta"
+
+
+class ArtifactItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    relative_path: str
+    item_kind: ArtifactItemKind
+    sha256: str | None = None
+    size: int | None = None
+    symlink_target: str | None = None
+    is_executable: bool = False
+    significance: ArtifactItemSignificance = ArtifactItemSignificance.NORMAL
+
+
+class CanonicalDistributionArtifactManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    schema_version: str = Field(default="rig.relay.native.artifact_manifest.v1")
+    artifact_kind: str
+    bundle_identifier_digest: str
+    bundle_name: str = ""
+    short_version: str = ""
+    build_version: str = ""
+    created_at: str
+    items: list[ArtifactItem] = Field(default_factory=list)
+    embedded_extension_digest: str | None = None
+    embedded_framework_digests: list[str] = Field(default_factory=list)
+    entitlement_summary_digest: str | None = None
+    manifest_digest: str = "sha256:pending"

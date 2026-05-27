@@ -1,0 +1,291 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T07:35:24Z",
+  "lane_id": "X4",
+  "mission_id": "X4.4",
+  "baseline_sha": "76357cb87f2cee87a02e89a851274cc4e1c4e611",
+  "candidate_digest": "sha256:0c6bcae8abd5faac6e6d8e97c67a3ce752345795b0843141da3f3034b18dd8c0",
+  "intended_boundary": "EmbeddedSafariCompanionLiveHandoffAndReleaseArtifactBoundary",
+  "intended_consumer_purpose": "A later X0 integration lane may render truthful Safari companion, native distribution, diagnostics, recovery and update status from a real native application boundary.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "review_20260527_r1_x4_3",
+      "reviewed_candidate_digest": "sha256:0c6bcae8abd5faac6e6d8e97c67a3ce752345795b0843141da3f3034b18dd8c0",
+      "production_paths_inspected": [
+        "rig_relay/native/_evidence_hash.py",
+        "rig_relay/native/_diagnostics.py",
+        "rig_relay/native/models.py",
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/native/_packaging.py",
+        "rig_relay/native/_release_operations.py",
+        "macos/SafariExtension/.../project.pbxproj",
+        "macos/SafariExtension/.../SafariWebExtensionHandler.swift",
+        "macos/scripts/build-app.sh",
+        "macos/SafariExtension/.../RigRelayShell Extension/Info.plist",
+        "macos/Resources/RigRelayShell.entitlements",
+        "docs/schemas/rig.relay.safari_extension_message.v1.schema.json",
+        "tests/native/test_artifact_hash.py",
+        "tests/native/test_diagnostics.py",
+        "macos/RigRelayShell/Tests/.../SafariExtensionContractTests.swift",
+        "macos/RigRelayShell/Package.swift",
+        "macos/RigRelayShell/Sources/.../SafariExtensionContract.swift"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "X4.3 candidate boundary claims an embedded Safari companion extension in the unified product app",
+          "attack": "Two different app targets exist (SPM SwiftUI and Xcode AppKit). The build script produces only the SPM app, never embedding the .appex from the Xcode project.",
+          "evidence": "build-app.sh creates PLUGINS_DIR but never populates it; project.pbxproj defines two different app targets",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "hash_artifact() produces a canonical distribution artifact manifest suitable for release evidence",
+          "attack": "Format {rel}:{size}\\n{full_content_bytes} has no record boundary framing, no schema version, and is vulnerable to hash collisions",
+          "evidence": "_evidence_hash.py uses raw concatenation with no record boundary framing",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Diagnostic export is fail-closed — unsafe content is blocked/refused",
+          "attack": "export_diagnostics ALWAYS returns a DiagnosticBundle, even when violations exist",
+          "evidence": "_diagnostics.py line 312 returns a bundle when violations exist at line 305",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Safari Web Extension handler is integrated into the product app",
+          "attack": "NSExtensionRequestHandling handler lives in Xcode project's .appex target, not in SPM product app",
+          "evidence": "SafariWebExtensionHandler.swift compiled into Xcode extension target; SPM Package.swift has no extension target",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "App and extension share a consistent App Group for shared state",
+          "attack": "App Group declared in SPM entitlements but extension target has no App Group declaration",
+          "evidence": "Extension Info.plist has only NSExtension definition, no App Group",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "build_safari_native_projection() default states truthfully represent the product",
+          "attack": "Default EXTENSION_EMBEDDED and ADHOC_SIGNED are false for the actual product build",
+          "evidence": "_safari_x0_contract.py lines 80-81 claim embedding and signing that don't exist",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "A canonical packaging path exists for the product",
+          "attack": "Two incompatible build systems exist. SPM builds SwiftUI app without extension. Xcode builds AppKit app with extension.",
+          "evidence": "SPM Package.swift vs Xcode project.pbxproj produce different products; SafariExtensionContractSummary line 713 self-documents the fork",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X4.3-R1-01",
+          "severity": "critical",
+          "violated_claim": "Candidate boundary claims embedded Safari companion extension but SPM SwiftUI app does not embed .appex",
+          "evidence": "build-app.sh creates PLUGINS_DIR but never populates it; SPM Package.swift has no extension target",
+          "required_repair": "Update build-app.sh to build extension via xcodebuild and embed into SPM app's PlugIns",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-02",
+          "severity": "critical",
+          "violated_claim": "_diagnostics.py docstring claims FAIL-CLOSED but code always returns DiagnosticBundle",
+          "evidence": "_diagnostics.py lines 1-12 claim fail-closed; lines 305-312 always return a bundle even with violations",
+          "required_repair": "Add actual refusal path: raise DiagnosticExportBlocked exception",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-03",
+          "severity": "high",
+          "violated_claim": "_evidence_hash.py claims canonical artifact-manifest digest but produces raw SHA256 with no framing",
+          "evidence": "_evidence_hash.py uses raw concatenation with no schema version or record framing",
+          "required_repair": "Create schema-versioned CanonicalDistributionArtifactManifest with proper JSON framing",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-04",
+          "severity": "high",
+          "violated_claim": "Safari companion handoff corridor is integrated into product app",
+          "evidence": "NSExtensionRequestHandling handler in Xcode .appex target, not SPM product app",
+          "required_repair": "Merge handler into unified build via xcodebuild + embedding",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-05",
+          "severity": "high",
+          "violated_claim": "build_safari_native_projection() defaults claim EXTENSION_EMBEDDED and ADHOC_SIGNED",
+          "evidence": "_safari_x0_contract.py lines 80-81 use overclaimed defaults",
+          "required_repair": "Change defaults to EXTENSION_BUILT and UNSIGNED",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-06",
+          "severity": "medium",
+          "violated_claim": "App and extension share consistent App Group",
+          "evidence": "Extension target has no App Group declaration in build settings or entitlements",
+          "required_repair": "Create Extension.entitlements with app-group and wire into Xcode project",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.3-R1-07",
+          "severity": "critical",
+          "violated_claim": "Canonical packaging path exists for product",
+          "evidence": "SPM Package.swift and Xcode project.pbxproj produce different products",
+          "required_repair": "Update build-app.sh to produce unified product from both build systems",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "review_20260527_r2_x4_4",
+      "reviewed_candidate_digest": "sha256:0c6bcae8abd5faac6e6d8e97c67a3ce752345795b0843141da3f3034b18dd8c0",
+      "production_paths_inspected": [
+        "macos/scripts/build-app.sh",
+        "rig_relay/native/_diagnostics.py",
+        "rig_relay/native/models.py",
+        "rig_relay/native/_artifact_manifest.py",
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/native/__init__.py",
+        "macos/SafariExtension/.../project.pbxproj",
+        "macos/SafariExtension/.../Extension.entitlements",
+        "tests/native/test_diagnostics.py",
+        "tests/native/test_artifact_manifest.py",
+        "docs/schemas/rig.relay.native.artifact_manifest.v1.schema.json",
+        "rig_relay/native/_evidence_hash.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Unified build produces an app with embedded extension",
+          "attack": "Does xcodebuild actually get invoked? Does .appex get copied to PlugIns?",
+          "evidence": "build-app.sh L114-118 invokes real xcodebuild; L165-167 copies .appex to PlugIns; set -euo pipefail on L2",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Diagnostic is fail-closed with no leak paths",
+          "attack": "Three vectors: export_diagnostics returns bundle, fallback identity leaks, export_text_summary bypasses gate",
+          "evidence": "L304-311 raises DiagnosticExportBlocked; fallback uses public identifiers only; export_text_summary takes already-validated bundles",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Manifest is collision-resistant with proper framing",
+          "attack": "Self-referential digest, path normalization, symlink escape, timestamp stability",
+          "evidence": "manifest_digest excluded from hash via exclude=; forward slashes enforced; symlink . and .. rejected; created_at excluded",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "X0 contract defaults are truthful",
+          "attack": "Check EXTENSION_BUILT and UNSIGNED defaults against actual state",
+          "evidence": "Extension IS built by build-app.sh; no signing identity required by default",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Extension entitlements are consistent",
+          "attack": "Does extension declare same app group? Is CODE_SIGN_ENTITLEMENTS set?",
+          "evidence": "Extension.entitlements declares group.com.rigrelay.RigRelayShell; CODE_SIGN_ENTITLEMENTS wired for Debug and Release",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "X4 lane does not contaminate foreign paths",
+          "attack": "Check git diff for files outside X4-owned slice",
+          "evidence": "28 modified files; 10 are X4-owned; foreign dirtiness from parallel lanes (X0, X1, X3, runtime) preserved but not in X4 slice",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Tests pass and are adversarial",
+          "attack": "Do tests actually pass? Are manifest tests exhaustive? Do diagnostic tests catch exception?",
+          "evidence": "82 tests pass; 31 manifest tests with real file I/O; diagnostic tests use pytest.raises(DiagnosticExportBlocked)",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "X4.3-R1-01",
+        "X4.3-R1-02",
+        "X4.3-R1-03",
+        "X4.3-R1-04",
+        "X4.3-R1-05",
+        "X4.3-R1-06",
+        "X4.3-R1-07"
+      ],
+      "changed_paths": [
+        "macos/scripts/build-app.sh",
+        "rig_relay/native/_diagnostics.py",
+        "rig_relay/native/models.py",
+        "rig_relay/native/_artifact_manifest.py",
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/native/__init__.py",
+        "macos/SafariExtension/.../project.pbxproj",
+        "macos/SafariExtension/.../Extension.entitlements",
+        "tests/native/test_diagnostics.py",
+        "tests/native/test_artifact_manifest.py",
+        "docs/schemas/rig.relay.native.artifact_manifest.v1.schema.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/native/ -v — 82/82 passed",
+        "uv run ruff check rig_relay/native/ tests/native/ — All checks passed",
+        "uv run pyright rig_relay/native/ — 0 errors, 0 warnings"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:0c6bcae8abd5faac6e6d8e97c67a3ce752345795b0843141da3f3034b18dd8c0",
+    "admitted_boundary": "EmbeddedSafariCompanionLiveHandoffAndReleaseArtifactBoundary",
+    "permitted_consumer_purpose": "A later X0 integration lane may render truthful Safari companion, native distribution, diagnostics, recovery and update status from a real native application boundary",
+    "unclaimed_capabilities": [
+      "Live Safari end-to-end transport proof (not executed in this environment)",
+      "Developer ID signing (no signing identity verified)",
+      "Notarization submission/acceptance/stapling (not executed)",
+      "Sparkle update round trip (not integrated)",
+      "SignedNotarizedSafariCompanionDistributionBoundary",
+      "ReleaseReadySafariCompanionAndSparkleUpdateBoundary",
+      "SPM app-side App Group entitlement wiring",
+      "Graceful xcodebuild-absence handling in build script"
+    ],
+    "deferred_seams": [
+      "SPM app-side App Group entitlement (app_group_not_configured blocker correctly identifies this)",
+      "Graceful xcodebuild-absence handling in build script",
+      "Developer ID Application certificate provisioning",
+      "Notarytool credentials configuration",
+      "Sparkle 2 framework integration into SPM app",
+      "Appcast hosting and EdDSA key generation",
+      "Live Safari extension enablement and transport testing"
+    ],
+    "review_round_count": 2,
+    "push_authorized": true
+  },
+  "status": "prepublication_admitted"
+}

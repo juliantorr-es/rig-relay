@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.artifact_manifest.v1",
+  "title": "Canonical Distribution Artifact Manifest",
+  "description": "Schema-versioned, framed, collision-resistant manifest for a macOS .app bundle or Sparkle update archive. Records every file, symlink, directory, embedded extension, and framework with SHA-256 digests. The manifest_digest covers the entire artifact tree — any byte change to any file produces a different digest.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.native.artifact_manifest.v1"
+    },
+    "artifact_kind": {
+      "type": "string",
+      "description": "Kind of distribution artifact. Supported values: unsigned_app, signed_app, notarization_submission, stapled_app, sparkle_update_archive."
+    },
+    "bundle_identifier_digest": {
+      "type": "string",
+      "description": "SHA-256 hash of the bundle identifier, prefixed with 'sha256:'. Excludes the raw identifier for content-light safety."
+    },
+    "bundle_name": {
+      "type": "string",
+      "description": "Human-readable bundle display name."
+    },
+    "short_version": {
+      "type": "string",
+      "description": "Marketing version string (e.g. 1.0.0)."
+    },
+    "build_version": {
+      "type": "string",
+      "description": "Build number or version string."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of manifest creation."
+    },
+    "items": {
+      "type": "array",
+      "description": "Every filesystem entry in the artifact, sorted by relative_path. Includes files, symlinks, directories, embedded extensions, and frameworks.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relative_path": {
+            "type": "string",
+            "description": "Path relative to the artifact root, with forward-slash separators."
+          },
+          "item_kind": {
+            "type": "string",
+            "enum": ["regular_file", "symlink", "directory", "executable", "framework", "appex"],
+            "description": "Kind of filesystem entry."
+          },
+          "sha256": {
+            "type": ["string", "null"],
+            "description": "SHA-256 digest of file content (sha256:hex). Null for directories and symlinks."
+          },
+          "size": {
+            "type": ["integer", "null"],
+            "description": "File size in bytes. Null for directories and symlinks."
+          },
+          "symlink_target": {
+            "type": ["string", "null"],
+            "description": "Target path of the symlink. Null for non-symlinks."
+          },
+          "is_executable": {
+            "type": "boolean",
+            "description": "Whether the file has any executable permission bit set."
+          },
+          "significance": {
+            "type": "string",
+            "enum": ["critical", "normal", "icon", "config", "meta"],
+            "description": "Heuristic significance class: critical (MacOS binary), meta (Info.plist), icon (icon resources), config (plist files), normal (everything else)."
+          }
+        },
+        "required": ["relative_path", "item_kind", "is_executable", "significance"],
+        "additionalProperties": false
+      }
+    },
+    "embedded_extension_digest": {
+      "type": ["string", "null"],
+      "description": "Identity digest of the embedded .appex extension, if present."
+    },
+    "embedded_framework_digests": {
+      "type": "array",
+      "description": "Identity digests of embedded .framework directories.",
+      "items": { "type": "string" }
+    },
+    "entitlement_summary_digest": {
+      "type": ["string", "null"],
+      "description": "SHA-256 digest of the entitlements plist, if provided."
+    },
+    "manifest_digest": {
+      "type": "string",
+      "description": "SHA-256 digest of the canonical JSON serialization of this manifest (manifest_digest field excluded from hash input). Any file change produces a different digest."
+    }
+  },
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "bundle_identifier_digest",
+    "short_version",
+    "build_version",
+    "created_at",
+    "items",
+    "manifest_digest"
+  ],
+  "additionalProperties": false
+}
