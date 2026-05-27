@@ -57,7 +57,9 @@ class TestEvidenceIngestion:
             assert r.status == "ingested", f"Failed for {kind}"
 
         counts = migrated_store.count_evidence_by_kind()
-        assert len(counts) == len(kinds)
+        for _, kind in kinds:
+            assert kind.value in counts, f"Missing kind: {kind.value}"
+            assert counts[kind.value] >= 1
 
     def test_ingest_refused_invalid_kind(self, migrated_store) -> None:
         """Ingesting with an invalid evidence kind returns refused status."""

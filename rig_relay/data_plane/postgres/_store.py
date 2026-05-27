@@ -19,11 +19,7 @@ from psycopg.types.json import Json
 
 from rig_relay.core.logger import logger
 from rig_relay.data_plane.postgres._config import PostgresConnectionConfig
-from rig_relay.data_plane.postgres._connection import (
-    check_connectivity,
-    connect,
-    transactional_cursor,
-)
+from rig_relay.data_plane.postgres._connection import check_connectivity, connect
 from rig_relay.data_plane.postgres._migrations import ensure_migrated
 from rig_relay.data_plane.postgres._models import (
     EvidenceSource,
@@ -116,26 +112,36 @@ class PostgresOperationalProjectionStore:
     ) -> IngestionReceipt:
         """Ingest a canonical evidence reference into the operational store.
 
-        Idempotent: if an evidence record with the same ``evidence_id``
-        already exists, returns a ``duplicate`` status receipt without
-        creating a new row.
+        Atomic and concurrency-safe. Uses ``INSERT ... ON CONFLICT DO NOTHING``
+        on the ``evidence_id`` PRIMARY KEY to resolve concurrent duplicate
+        submissions without a race-prone preflight SELECT.
 
-        Content-light: stores only digest/reference metadata. The
-        canonical evidence payload remains in its original ledger.
+        Two outcomes when a duplicate key exists:
+        - **duplicate**: the stored ``evidence_sha256``, ``source_ledger_path_hash``,
+          and ``source_schema_version`` match the submitted values — the same
+          canonical evidence was re-submitted (idempotent replay).
+        - **conflict**: any identity field differs — the same ``evidence_id`` was
+          submitted with non-equivalent digest/schema/path metadata. This is
+          a typed conflict, not a silent duplicate.
+
+        The evidence row and its operational ingestion receipt commit together
+        in a single transaction. The caller never receives ``failed`` after the
+        evidence row silently committed without its terminal receipt.
+
+        Content-light: stores only digest/reference metadata. The canonical
+        evidence payload remains in its original ledger.
 
         Args:
             evidence_id: Unique evidence record identity (content-derived).
-            evidence_kind: Kind of evidence (coordination_event, session_observability, etc.).
+            evidence_kind: Kind of evidence.
             evidence_sha256: SHA256 digest of the canonical evidence payload.
             source_ledger_path_hash: Salted SHA256 hash of source ledger path.
             source_schema_version: Schema version of the evidence artifact.
-            provenance: Content-light provenance metadata (session_id, etc.).
+            provenance: Content-light provenance metadata.
 
         Returns:
-            IngestionReceipt with status: ``ingested`` or ``duplicate``.
-
-        Raises:
-            ValueError: If evidence_kind is invalid.
+            IngestionReceipt with status: ``ingested``, ``duplicate``,
+            ``conflict``, ``refused``, or ``failed``.
         """
         if isinstance(evidence_kind, str):
             try:
@@ -149,76 +155,106 @@ class PostgresOperationalProjectionStore:
                     evidence_id=evidence_id,
                     evidence_kind=EvidenceSourceKind.UNKNOWN,
                     status="refused",
-                    refusal_reason=f"Invalid evidence_kind: '{evidence_kind}'. Valid: {valid}",
+                    refusal_reason=(
+                        f"Invalid evidence_kind: '{evidence_kind}'. Valid: {valid}"
+                    ),
                 )
         else:
             kind = evidence_kind
 
         schema = self.config.schema_name
-
-        # Check for duplicate
-        check_query = psql.SQL(
-            "SELECT evidence_id FROM {}.{} WHERE evidence_id = %s"
-        ).format(psql.Identifier(schema), psql.Identifier("evidence_sources"))
-        with self.conn.cursor() as cur:
-            cur.execute(check_query, (evidence_id,))
-            if cur.fetchone():
-                receipt_id = compute_receipt_id("ingest", evidence_id, datetime.now())
-                return IngestionReceipt(
-                    receipt_id=receipt_id,
-                    evidence_id=evidence_id,
-                    evidence_kind=kind,
-                    status="duplicate",
-                    ingested_at=datetime.now(),
-                )
-
-        # Insert evidence source
         provenance_data = provenance or {}
-        evidence = EvidenceSource(
-            evidence_id=evidence_id,
-            evidence_kind=kind,
-            evidence_sha256=evidence_sha256,
-            source_ledger_path_hash=source_ledger_path_hash,
-            source_schema_version=source_schema_version,
-            ingested_at=datetime.now(),
-            provenance=provenance_data,
-        )
+        now = datetime.now()
 
         insert_query = psql.SQL(
             "INSERT INTO {}.{} "
             "(evidence_id, evidence_kind, evidence_sha256, source_ledger_path_hash, "
             "source_schema_version, ingested_at, provenance) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (evidence_id) DO NOTHING"
         ).format(psql.Identifier(schema), psql.Identifier("evidence_sources"))
 
         try:
-            with transactional_cursor(self.conn) as cur:
-                cur.execute(
-                    insert_query,
-                    (
-                        evidence.evidence_id,
-                        evidence.evidence_kind.value,
-                        evidence.evidence_sha256,
-                        evidence.source_ledger_path_hash,
-                        evidence.source_schema_version,
-                        evidence.ingested_at,
-                        Json(evidence.provenance),
+            with self.conn.transaction():
+                with self.conn.cursor() as cur:
+                    cur.execute(
+                        insert_query,
+                        (
+                            evidence_id,
+                            kind.value,
+                            evidence_sha256,
+                            source_ledger_path_hash,
+                            source_schema_version,
+                            now,
+                            Json(provenance_data),
+                        ),
+                    )
+                    inserted = cur.rowcount == 1
+
+                if inserted:
+                    receipt = IngestionReceipt(
+                        receipt_id=compute_receipt_id("ingest", evidence_id, now),
+                        evidence_id=evidence_id,
+                        evidence_kind=kind,
+                        status="ingested",
+                        ingested_at=now,
+                        projection_rows_created=1,
+                    )
+                    self._record_ingestion_receipt(receipt)
+                    logger.info("Evidence ingested: %s (%s)", evidence_id, kind.value)
+                    return receipt
+
+                # Duplicate key — compare identity fields for conflict detection
+                existing = self.get_evidence(evidence_id)
+                if existing is None:
+                    return IngestionReceipt(
+                        receipt_id=compute_receipt_id("ingest", evidence_id, now),
+                        evidence_id=evidence_id,
+                        evidence_kind=kind,
+                        status="failed",
+                        refusal_reason="ON CONFLICT DO NOTHING succeeded but existing row not found",
+                        ingested_at=now,
+                    )
+
+                if (
+                    existing.evidence_sha256 == evidence_sha256
+                    and existing.source_ledger_path_hash == source_ledger_path_hash
+                    and existing.source_schema_version == source_schema_version
+                ):
+                    receipt = IngestionReceipt(
+                        receipt_id=compute_receipt_id("ingest", evidence_id, now),
+                        evidence_id=evidence_id,
+                        evidence_kind=kind,
+                        status="duplicate",
+                        ingested_at=now,
+                    )
+                    self._record_ingestion_receipt(receipt)
+                    return receipt
+
+                # Conflict: same evidence_id, different identity metadata
+                mismatch_fields: list[str] = []
+                if existing.evidence_sha256 != evidence_sha256:
+                    mismatch_fields.append("evidence_sha256")
+                if existing.source_ledger_path_hash != source_ledger_path_hash:
+                    mismatch_fields.append("source_ledger_path_hash")
+                if existing.source_schema_version != source_schema_version:
+                    mismatch_fields.append("source_schema_version")
+
+                receipt = IngestionReceipt(
+                    receipt_id=compute_receipt_id("conflict", evidence_id, now),
+                    evidence_id=evidence_id,
+                    evidence_kind=kind,
+                    status="conflict",
+                    refusal_reason=(
+                        f"Identity conflict: fields {mismatch_fields} differ from stored evidence {evidence_id}"
                     ),
+                    ingested_at=now,
                 )
-
-            receipt_id = compute_receipt_id("ingest", evidence_id, datetime.now())
-            receipt = IngestionReceipt(
-                receipt_id=receipt_id,
-                evidence_id=evidence_id,
-                evidence_kind=kind,
-                status="ingested",
-                ingested_at=datetime.now(),
-                projection_rows_created=1,
-            )
-
-            self._record_ingestion_receipt(receipt)
-            logger.info("Evidence ingested: %s (%s)", evidence_id, kind.value)
-            return receipt
+                self._record_ingestion_receipt(receipt)
+                logger.warning(
+                    "Evidence conflict for %s: %s", evidence_id, mismatch_fields
+                )
+                return receipt
 
         except Exception as e:
             logger.error("Evidence ingestion failed for %s: %s", evidence_id, e)

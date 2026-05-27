@@ -96,3 +96,23 @@ def migrated_store(
     store.ensure_migrated()
     yield store
     store.close()
+
+
+@pytest.fixture
+def pg_conn2(pg_config: PostgresConnectionConfig) -> Generator[Connection, None, None]:
+    """Second independent psycopg connection for concurrency tests."""
+    conn = connect(pg_config)
+    yield conn
+    if not conn.closed:
+        conn.close()
+
+
+@pytest.fixture
+def store2(
+    pg_config: PostgresConnectionConfig,
+) -> Generator[PostgresOperationalProjectionStore, None, None]:
+    """Second independent store for concurrency tests."""
+    store = PostgresOperationalProjectionStore(pg_config)
+    store.ensure_migrated()
+    yield store
+    store.close()
