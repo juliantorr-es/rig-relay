@@ -201,16 +201,28 @@ All built-in tools must pass through security guards. When adding a new tool or 
 - Never use `git commit --amend`, `git push --force`, or `git push --force-with-lease`.
 - Always create new commits and push with a plain `git push`.
 - If a push is rejected due to upstream changes, rebase onto the updated remote branch — never merge and never force-push.
-- **Agent checkpoint commits**: Agents may create local checkpoint commits for session-owned files using the `checkpoint` tool to preserve proven work. A checkpointed slice may be pushed for remote review only after a named milestone and explicit publication authorization. Agents may NOT push, amend, rebase, merge, reset, clean, or commit files outside their mission scope. See `docs/governance/cross-session-coordination.md`.
+- **Agent checkpoint commits**: Agents may create local checkpoint commits for session-owned files using the `checkpoint` tool to preserve proven work. Once a lane's release summary is published and a named milestone grants publication authorization, the checkpointed slice must be pushed for remote review. Agents may NOT push, amend, rebase, merge, reset, clean, or commit files outside their mission scope. See `docs/governance/cross-session-coordination.md`.
 - Direct `git commit` and `git add` via bash are blocked. Use the `checkpoint` tool instead.
 - **Stash**: `git stash` is only permitted for temporary testing with immediate `git stash pop`. Never use stash to discard or hide changes from parallel agent lanes.
 
 ## Checkpoint Publication And Review
 
 - Local checkpoint commits are the mechanism for preserving proven, mission-owned work sets.
-- Publishing a checkpointed commit is separate from authoring it; publication is only allowed after a named milestone and explicit review authorization.
+- Publishing a checkpointed commit is separate from authoring it; publication is only allowed after the release summary is published and a named milestone grants explicit review authorization.
 - Only the released or narrowly published slice should be pushed for review. Do not use the publication step to widen the lane or bundle unrelated work.
 - Review tooling may inspect the published checkpointed slice, but broader integration work remains deferred unless the released boundary is unsafe or false.
+
+## Release Summary
+
+Every final mission report must include a concise but explanatory summary that says:
+
+- what changed;
+- which choices were made and why;
+- what codebase research was performed;
+- what external sources were consulted, if any;
+- how that research led to the conclusion.
+
+Keep the summary short enough to scan, but not so short that it hides the reasoning behind the release. If no external research was needed, say so explicitly.
 
 ## Dirty-file preservation
 
@@ -342,6 +354,7 @@ Final responses in chat may use Markdown for readability, but any persisted fina
 
 Required persisted final report shape:
 
+- summary
 - branch
 - head_before
 - head_after

@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rig.relay.safari_extension_message.v1",
+  "title": "Safari Web Extension Message",
+  "description": "Typed, content-light message envelope for Safari Web Extension ↔ native Rig Relay app handoff. Extension-to-app messages carry bounded GitHub page context. App-to-extension messages carry response dispositions.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.safari_extension_message.v1"
+    },
+    "message_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique message identifier for idempotency and response correlation."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["extension_to_app", "app_to_extension"],
+      "description": "Direction of message flow."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Message kind discriminator. See payload for kind-specific shape."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Kind-specific payload. Shape depends on `kind`."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of message creation."
+    }
+  },
+  "required": ["schema_version", "message_id", "direction", "kind", "payload", "created_at"],
+  "additionalProperties": false,
+
+  "allOf": [
+    {
+      "if": {
+        "properties": { "direction": { "const": "extension_to_app" } }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "handoff.github_repository",
+              "handoff.github_pull_request",
+              "handoff.github_issue",
+              "ping"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "direction": { "const": "app_to_extension" } }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "response.accepted",
+              "response.deferred",
+              "response.refused",
+              "response.app_unavailable"
+            ]
+          }
+        }
+      }
+    }
+  ],
+
+  "definitions": {
+    "github_repository_handoff_payload": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://github\\.com/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+",
+          "description": "Canonical GitHub repository URL. Must be https://github.com/owner/repo prefix."
+        },
+        "owner": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Repository owner (user or organization)."
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Repository name."
+        },
+        "page_kind": {
+          "type": "string",
+          "enum": [
+            "repository_main",
+            "repository_code",
+            "repository_issues",
+            "repository_pulls",
+            "repository_actions",
+            "repository_projects",
+            "repository_wiki",
+            "repository_security",
+            "repository_insights",
+            "repository_settings",
+            "repository_pages",
+            "organization_profile",
+            "unknown_github"
+          ],
+          "description": "Kind of GitHub page currently open in Safari."
+        },
+        "triggered_by": {
+          "type": "string",
+          "enum": ["popup_action", "toolbar_button", "context_menu"],
+          "description": "How the user triggered this handoff."
+        }
+      },
+      "required": ["url", "owner", "repo", "page_kind", "triggered_by"],
+      "additionalProperties": false
+    },
+
+    "github_pull_request_handoff_payload": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "owner": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+        "repo": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+        "pr_number": { "type": "integer", "minimum": 1 },
+        "page_kind": {
+          "type": "string",
+          "enum": ["pull_request_conversation", "pull_request_commits", "pull_request_checks", "pull_request_files_changed", "pull_request_unknown"]
+        },
+        "triggered_by": {
+          "type": "string",
+          "enum": ["popup_action", "toolbar_button", "context_menu"]
+        }
+      },
+      "required": ["url", "owner", "repo", "pr_number", "page_kind", "triggered_by"],
+      "additionalProperties": false
+    },
+
+    "github_issue_handoff_payload": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "owner": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+        "repo": { "type": "string", "pattern": "^[a-zA-Z0-9._-]+$" },
+        "issue_number": { "type": "integer", "minimum": 1 },
+        "triggered_by": {
+          "type": "string",
+          "enum": ["popup_action", "toolbar_button", "context_menu"]
+        }
+      },
+      "required": ["url", "owner", "repo", "issue_number", "triggered_by"],
+      "additionalProperties": false
+    },
+
+    "ping_payload": {
+      "type": "object",
+      "properties": {
+        "extension_version": { "type": "string" },
+        "safari_version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "accepted_response_payload": {
+      "type": "object",
+      "properties": {
+        "in_response_to": {
+          "type": "string",
+          "format": "uuid",
+          "description": "message_id of the handoff this responds to."
+        },
+        "action": { "type": "string" },
+        "message": { "type": "string" },
+        "repository_status": {
+          "type": "string",
+          "enum": ["known_and_available", "requires_import", "requires_authorization", "status_pending"],
+          "description": "Repository availability status in Rig Relay."
+        }
+      },
+      "required": ["in_response_to", "action", "repository_status"],
+      "additionalProperties": false
+    },
+
+    "deferred_response_payload": {
+      "type": "object",
+      "properties": {
+        "in_response_to": { "type": "string", "format": "uuid" },
+        "action": { "type": "string" },
+        "message": { "type": "string" },
+        "deferral_reason": {
+          "type": "string",
+          "enum": [
+            "app_not_connected_to_carte_blanche",
+            "repository_not_authorized_by_installed_github_app",
+            "requires_selection_or_import_in_main_app",
+            "native_host_initializing",
+            "integrations_incomplete",
+            "unsupported_page_context",
+            "deferred_capability"
+          ]
+        }
+      },
+      "required": ["in_response_to", "action", "deferral_reason"],
+      "additionalProperties": false
+    },
+
+    "refused_response_payload": {
+      "type": "object",
+      "properties": {
+        "in_response_to": { "type": "string", "format": "uuid" },
+        "action": { "type": "string" },
+        "message": { "type": "string" },
+        "refusal_reason": {
+          "type": "string",
+          "enum": [
+            "action_not_permitted",
+            "repository_access_denied",
+            "unsupported_github_context",
+            "invalid_message",
+            "rate_limited",
+            "extension_not_authorized"
+          ]
+        }
+      },
+      "required": ["in_response_to", "action", "refusal_reason"],
+      "additionalProperties": false
+    },
+
+    "app_unavailable_response_payload": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" },
+        "reason": {
+          "type": "string",
+          "enum": ["app_not_running", "app_not_installed", "native_messaging_unavailable", "timeout"]
+        }
+      },
+      "required": ["message"],
+      "additionalProperties": false
+    }
+  }
+}

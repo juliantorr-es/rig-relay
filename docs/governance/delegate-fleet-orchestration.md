@@ -156,8 +156,8 @@ A work item cannot exceed its spec scope.
 
 Human oversight is the authority boundary:
 
-- Checkpointed commits may be published for upstream consumption only after a named milestone and explicit publication authorization.
-- Agents create checkpoints for session-owned files; the user or a milestone-authorized publication step decides when to publish the checkpointed slice.
+- Checkpointed commits must be published for upstream consumption once the release summary is published and a named milestone grants publication authorization.
+- Agents create checkpoints for session-owned files; once the release summary is published and a named milestone grants publication authorization, the agent or milestone-authorized publication step must publish the checkpointed slice.
 - If the parent convergence report recommends human review, the reviewer pauses and
   presents the evidence.
 - The reviewer never bypasses Git policy or dirty-file guard.

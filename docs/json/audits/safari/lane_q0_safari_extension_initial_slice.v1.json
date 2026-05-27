@@ -1,0 +1,196 @@
+{
+  "schema_version": "rig.relay.audit.lane_release.v1",
+  "audit_id": "lane_q0_safari_extension_initial_slice",
+  "audit_kind": "initial_slice_release",
+  "lane_id": "q0",
+  "lane_title": "Safari Web Extension Companion — GitHub Browser Context and Native Rig Relay Handoff Corridor",
+  "release_disposition": "candidate_local",
+  "freeze_status": "candidate_local",
+  "stated_consumer_purpose": "Provide developers with a Safari browser extension that recognizes GitHub repository pages, serializes content-light context references, and hands off user intents to the native Rig Relay app through a typed message contract.",
+  "released_boundary": "Safari Web Extension Companion v1: a Safari Web Extension that (1) activates on GitHub.com repository pages, (2) recognizes page context from URL structure only (no DOM scraping), (3) presents narrowly scoped actions (Open in Rig Relay, Study Repository, View Project Status), (4) sends typed, versioned, content-light handoff messages to the native messaging boundary, (5) renders truthful status for app-unavailable, unsupported-page, not-authorized, deferred, and refused states, (6) stores no GitHub credentials, raw page content, or publication authority.",
+  "published_sha": null,
+  "branch": "main",
+  "head": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "created_at": "2026-05-27T00:45:00Z",
+  "files_created": [
+    "macos/SafariExtension/safari-web-extension/manifest.json",
+    "macos/SafariExtension/safari-web-extension/background.js",
+    "macos/SafariExtension/safari-web-extension/content.js",
+    "macos/SafariExtension/safari-web-extension/popup.html",
+    "macos/SafariExtension/safari-web-extension/popup.js",
+    "macos/SafariExtension/safari-web-extension/popup.css",
+    "macos/SafariExtension/safari-web-extension/_locales/en/messages.json",
+    "rig_relay/extensions/safari/__init__.py",
+    "rig_relay/extensions/safari/models.py",
+    "rig_relay/extensions/safari/context.py",
+    "rig_relay/extensions/safari/_contract_fixture.py",
+    "docs/schemas/rig.relay.safari_extension_message.v1.schema.json",
+    "docs/json/audits/safari/lane_q0_platform_assumptions.v1.json",
+    "docs/json/audits/safari/lane_q0_safari_extension_initial_slice.v1.json",
+    "tests/extensions/safari/__init__.py",
+    "tests/extensions/safari/conftest.py",
+    "tests/extensions/safari/test_message_models.py",
+    "tests/extensions/safari/test_context_recognition.py",
+    "tests/extensions/safari/test_content_light.py"
+  ],
+  "files_modified": [
+    "pyproject.toml (additive: 2 per-file-ignore lines for safari models and context)"
+  ],
+  "files_deleted": [],
+  "sloc_by_category": {
+    "safari_web_extension_js": {
+      "background.js": 338,
+      "content.js": 219,
+      "popup.js": 312,
+      "total": 869
+    },
+    "safari_web_extension_html_css": {
+      "popup.html": 63,
+      "popup.css": 294,
+      "total": 357
+    },
+    "safari_web_extension_config": {
+      "manifest.json": 49,
+      "_locales/en/messages.json": 50,
+      "total": 99
+    },
+    "python_extension": {
+      "__init__.py": 46,
+      "models.py": 372,
+      "context.py": 185,
+      "_contract_fixture.py": 226,
+      "total": 829
+    },
+    "python_tests": {
+      "conftest.py": 121,
+      "test_message_models.py": 378,
+      "test_context_recognition.py": 158,
+      "test_content_light.py": 224,
+      "total": 881
+    },
+    "schema": {
+      "rig.relay.safari_extension_message.v1.schema.json": 248,
+      "total": 248
+    },
+    "total_all_files": 3283
+  },
+  "blocking_defects": [],
+  "deferred_seams": [
+    "N1 native WebKit host and native messaging endpoint — published contract consumption is a named binding milestone",
+    "Xcode project / app group entitlements / code signing — N1 owns packaging configuration",
+    "Live end-to-end messaging between Safari extension and running native app — requires N1",
+    "O0 Gridline Live Service Bridge — wire extension handoffs to backend services",
+    "J0 repository authority integration — extension currently cannot determine repository authorization status",
+    "Popup icon assets (images/ directory) — deferred for icon design",
+    "Safari extension distribution (App Store / Developer ID) — deferred to N1 packaging",
+    "Additional GitHub page contexts (Actions run details, commits, releases, discussions) — deferred to Q0.1",
+    "Firefox/Chrome extension port — deferred, Safari-first strategy",
+    "Page action context menu — deferred to Q0.1"
+  ],
+  "claim_adversary": {
+    "verdict": "ALL_PASS",
+    "total_constraints": 8,
+    "violations": 0,
+    "constraints": [
+      {
+        "id": "no_github_authority_bypass",
+        "description": "Extension must not become a hidden GitHub authority bypass",
+        "result": "PASS",
+        "evidence": "Extension stores no tokens, calls no GitHub APIs, imports no repositories. All handoffs require native app. Content script extracts URL only — no DOM content. Zero fetch/XHR calls in background.js, content.js, popup.js. No GitHub token patterns in any JS source."
+      },
+      {
+        "id": "no_credential_storage_or_transmission",
+        "description": "Extension must not store or transmit GitHub credentials",
+        "result": "PASS",
+        "evidence": "Token patterns (ghp_, ghs_, gho_, ghu_, ghr_, github_pat_) rejected at URL parsing level in both content.js (CREDENTIAL_PARAMS scan) and Python models (_TOKEN_PATTERNS regex). No fetch/XHR in extension. No localStorage usage. browser.storage.session only stores connection state (extensionReady, nativeAvailable, appStatus)."
+      },
+      {
+        "id": "no_private_content_leakage",
+        "description": "Extension must not scrape or expose private page content",
+        "result": "PASS",
+        "evidence": "Content script uses window.location only — never accesses DOM, innerHTML, textContent, or querySelector. All handoff payloads are URL-derived metadata only (owner, repo, page_kind, optional PR/issue number). No raw page HTML or file contents in any payload shape defined by the schema."
+      },
+      {
+        "id": "no_live_n1_claim",
+        "description": "Extension must not claim live N1 messaging before N1 release",
+        "result": "PASS",
+        "evidence": "NativeMessageContract fixture is explicitly a test double (simulates app responses). Release disposition is candidate_local. Deferred seam explicitly names N1 contract consumption as a named binding milestone. No Xcode project or .appex target exists."
+      },
+      {
+        "id": "no_gridline_duplication",
+        "description": "Extension popup must not duplicate Gridline frontend",
+        "result": "PASS",
+        "evidence": "Popup is 300px wide with 3 action buttons (Open in Rig Relay, Study Repository, View Project Status) and status indicators (repository detected, app connected/unavailable). No agent loop, tool execution, repository management, or projection rendering. Popup handsoff to native app — does not replicate desktop UI."
+      },
+      {
+        "id": "no_silent_ownership_boundary_crossing",
+        "description": "Extension must not silently edit N1/J0/P0 ownership boundaries",
+        "result": "PASS",
+        "evidence": "No files modified in N0, J0, P0 directories. pyproject.toml change is additive (2 PLR per-file-ignore lines for rig_relay/extensions/safari/models.py and context.py). New files are Q0-scoped only: macos/SafariExtension/, rig_relay/extensions/safari/, tests/extensions/safari/, docs/schemas/rig.relay.safari_extension_message.*, docs/json/audits/safari/."
+      },
+      {
+        "id": "content_light_message_contract",
+        "description": "All messages must be content-light — no raw page content, tokens, or credentials",
+        "result": "PASS",
+        "evidence": "Content-light validator (validate_content_light in models.py) detects 6 token patterns via _TOKEN_PATTERNS regex. Forbidden keys check rejects file_contents, html, raw_prompt, model_output. Schema enforces allowed fields only: url, owner, repo, page_kind, pr_number, issue_number, triggered_by. JSON schema validates payload shapes with additionalProperties: false on all definitions. NativeMessageContract.validate_content_light() gates all received handoffs."
+      },
+      {
+        "id": "user_triggered_actions_only",
+        "description": "All extension actions must require explicit user gesture",
+        "result": "PASS",
+        "evidence": "All handoffs triggered through popup button clicks (btnOpen, btnStudy, btnStatus with addEventListener('click')). triggered_by field is always 'popup_action' in current implementation. No automatic/silent message dispatch. No page load auto-handoff (content script only caches context, never sends). No timer-based triggers. No background script periodic pings."
+      }
+    ]
+  },
+  "privacy_audit": {
+    "token_patterns": ["ghp_", "ghs_", "gho_", "ghu_", "ghr_", "github_pat_"],
+    "content_script_scraping": "none — window.location only",
+    "native_messaging_payloads": "content-light: url, owner, repo, page_kind, optional PR/issue number, triggered_by",
+    "storage_usage": "browser.storage.session for connection state only (extensionReady, nativeAvailable, appStatus, lastNativeResponseTime)",
+    "network_access": "none — no fetch, XHR, or WebSocket in extension JS",
+    "credential_leak_vectors": "defended at 3 layers: content script URL sanitization (CREDENTIAL_PARAMS), background script token scan (isValidGitHubRepoURL), Python model validation (_TOKEN_PATTERNS regex and validate_content_light)",
+    "defense_in_depth_gaps": [
+      "Python context._TOKEN_PATTERNS frozenset does not include 'client_secret' or 'client_id' patterns that content.js CREDENTIAL_PARAMS checks — content.js rejects these but Python context.py silently passes them; gap is in the Python recognition path, not the Safari content script path. No actual leak since content script rejects before handoff."
+    ]
+  },
+  "authority_isolation": {
+    "github_app_authority": "none — J0 owns all GitHub App auth and repository authority",
+    "publication_authority": "none — extension cannot publish, import, or configure Pages",
+    "backend_mutation": "none — extension does not call rig-relay backend services",
+    "agent_loop": "none — extension has no agent execution capability",
+    "file_system": "none — extension has no file write access outside browser.storage.session",
+    "gridline_ui": "none — extension popup is a narrow handoff surface, not a product UI"
+  },
+  "test_classifications": {
+    "test_message_models": {
+      "count": 22,
+      "passed": 22,
+      "failed": 0,
+      "categories": ["envelope", "roundtrip", "validation", "serialization", "enum_smoke"]
+    },
+    "test_context_recognition": {
+      "count": 24,
+      "passed": 24,
+      "failed": 0,
+      "categories": ["page_kind_classification", "url_rejection", "edge_cases"]
+    },
+    "test_content_light": {
+      "count": 19,
+      "passed": 19,
+      "failed": 0,
+      "categories": ["token_detection", "length_guard", "roundtrip_validation", "enum_safety", "forbidden_keys"]
+    },
+    "total": 65,
+    "total_passed": 65,
+    "total_failed": 0
+  },
+  "tests_run": 65,
+  "tests_intentionally_skipped": "None — all 65 tests pass. No test failures. No skipped tests.",
+  "content_light": true,
+  "warnings": [
+    "icon assets in images/ are missing — extension will not load in Safari until provided",
+    "no Xcode project or Package.swift — extension source is a standalone directory awaiting N1 project integration",
+    "xcrun safari-web-extension-packager has not been run — build path not yet proven through Xcode",
+    "Python context._TOKEN_PATTERNS does not include 'client_secret' or 'client_id' (content.js rejects these but Python silently passes; defense-in-depth gap on the Python recognition path only)"
+  ]
+}

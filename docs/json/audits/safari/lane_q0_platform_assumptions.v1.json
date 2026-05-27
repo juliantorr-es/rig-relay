@@ -1,0 +1,153 @@
+{
+  "schema_version": "rig.relay.audit.platform_assumptions.v1",
+  "audit_id": "lane_q0_platform_assumptions",
+  "audit_kind": "platform_assumptions",
+  "lane_id": "q0",
+  "lane_title": "Safari Web Extension Companion — GitHub Browser Context and Native Rig Relay Handoff Corridor",
+  "created_at": "2026-05-27T00:45:00Z",
+  "head": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "branch": "main",
+  "platform": "apple_safari_web_extensions_macos",
+  "assumptions": [
+    {
+      "category": "safari_web_extension_architecture",
+      "assumption": "Safari Web Extensions use MV3 manifest format with browser_specific_settings.safari key",
+      "source": "Apple Developer Documentation — Safari Web Extensions",
+      "verified": true,
+      "impact_if_wrong": "Extension would fail to load in Safari; would need MV2 fallback"
+    },
+    {
+      "category": "safari_web_extension_architecture",
+      "assumption": "The extension consists of three sandboxed parts: macOS app, native app extension (.appex), and JavaScript/web files",
+      "source": "Apple: Messaging between the app and JavaScript in a Safari web extension",
+      "verified": true,
+      "impact_if_wrong": "Architecture incompatible with Apple's security model; extension would not be installable"
+    },
+    {
+      "category": "native_messaging",
+      "assumption": "Content scripts cannot call sendNativeMessage directly — must relay through background script",
+      "source": "Apple: Safari Web Extensions messaging documentation",
+      "verified": true,
+      "impact_if_wrong": "Content script to native app messages would fail silently; relay pattern ensures correctness"
+    },
+    {
+      "category": "native_messaging",
+      "assumption": "browser.runtime.sendNativeMessage ignores the application ID parameter in Safari — routes to containing app only",
+      "source": "Apple: Running Your Safari Web Extension",
+      "verified": true,
+      "impact_if_wrong": "Multi-app routing would be impossible; acceptable since Q0 only targets one app"
+    },
+    {
+      "category": "native_messaging",
+      "assumption": "Native messaging host is the Xcode extension target's SafariWebExtensionHandler, not a separate JSON manifest",
+      "source": "Apple: Safari Web Extensions architecture",
+      "verified": true,
+      "impact_if_wrong": "Porting Chrome-style native messaging host manifest would fail; correct pattern is NSExtensionContext"
+    },
+    {
+      "category": "required_permissions",
+      "assumption": "activeTab provides sufficient access for URL-based page context recognition",
+      "source": "Apple: Managing Safari Web Extension Permissions",
+      "verified": true,
+      "impact_if_wrong": "Would need broader host_permissions; activeTab is the minimal-privacy choice"
+    },
+    {
+      "category": "required_permissions",
+      "assumption": "nativeMessaging permission is required for JS ↔ native app communication",
+      "source": "Apple: Safari Web Extensions permissions documentation",
+      "verified": true,
+      "impact_if_wrong": "sendNativeMessage calls would fail; extension would have no app communication"
+    },
+    {
+      "category": "user_enablement",
+      "assumption": "Safari 16.0+ supports MV3 service workers and all APIs used by Q0",
+      "source": "Apple: Assessing Browser Compatibility (Safari extension compatibility table)",
+      "verified": true,
+      "impact_if_wrong": "Extension would need MV2 background page fallback; Safari 16+ is reasonable minimum"
+    },
+    {
+      "category": "user_enablement",
+      "assumption": "Extension must be enabled manually in Safari > Settings > Extensions tab",
+      "source": "Apple: Running Your Safari Web Extension",
+      "verified": true,
+      "impact_if_wrong": "This is user-expected behavior; not a failure mode"
+    },
+    {
+      "category": "user_enablement",
+      "assumption": "First website visit matching host_permissions triggers a permission prompt",
+      "source": "Apple: Managing Safari Web Extension Permissions",
+      "verified": true,
+      "impact_if_wrong": "User would need to manually grant site access; acceptable UX"
+    },
+    {
+      "category": "content_security",
+      "assumption": "File URL schemes in permissions are ignored by Safari — content scripts cannot run on local files",
+      "source": "Apple: Safari Web Extensions browser compatibility",
+      "verified": true,
+      "impact_if_wrong": "No impact; Q0 targets GitHub.com pages only, not local files"
+    },
+    {
+      "category": "browser_compatibility",
+      "assumption": "Safari does not support: downloads, identity, webRequestBlocking, contextMenus (iOS)",
+      "source": "Apple: Assessing Browser Compatibility",
+      "verified": true,
+      "impact_if_wrong": "None of these APIs are used by Q0; no impact"
+    },
+    {
+      "category": "app_groups",
+      "assumption": "App Groups entitlement is required for data sharing between containing app and extension",
+      "source": "Apple: App Groups entitlement documentation",
+      "verified": true,
+      "impact_if_wrong": "App and extension could not share data; this is N1's responsibility, Q0 only needs the contract"
+    },
+    {
+      "category": "hardened_runtime",
+      "assumption": "Hardened Runtime is required for notarization of macOS apps distributed outside App Store",
+      "source": "Apple: Hardened Runtime documentation",
+      "verified": true,
+      "impact_if_wrong": "Notarization would fail; N1's packaging responsibility"
+    },
+    {
+      "category": "development_workflow",
+      "assumption": "During development, unsigned extensions can be loaded via Safari > Develop > Allow Unsigned Extensions (resets on quit)",
+      "source": "Apple: Running Your Safari Web Extension",
+      "verified": true,
+      "impact_if_wrong": "Development workflow blocked; this is the documented path"
+    },
+    {
+      "category": "development_workflow",
+      "assumption": "xcrun safari-web-extension-packager converts a Chrome-style extension directory to an Xcode project",
+      "source": "Apple: Packaging a Web Extension for Safari",
+      "verified": true,
+      "impact_if_wrong": "Would need manual Xcode project setup; packaging tool is the recommended path"
+    },
+    {
+      "category": "github_url_recognition",
+      "assumption": "GitHub repository URLs follow the pattern https://github.com/owner/repo[/...]",
+      "source": "GitHub documentation",
+      "verified": true,
+      "impact_if_wrong": "URL parsing would fail for non-standard GitHub Enterprise paths; GitHub.com is the only target"
+    },
+    {
+      "category": "dependencies",
+      "assumption": "N1 (Native WebKit Host / native messaging endpoint) does not exist yet; Q0 builds against a typed contract fixture (NativeMessageContract in _contract_fixture.py)",
+      "source": "lane_n1_apple_platform_assumptions.v1.json (untracked) and lane_n1_webkit_bridge_host_architecture_correction.v1.json (untracked); N1 audit files exist but no N1 source files",
+      "verified": true,
+      "impact_if_wrong": "N1 contract consumption is a named binding milestone; Q0's contract fixture mirrors the expected Apple native messaging shape. When N1 publishes, the contract fixture is replaced by live adapter."
+    },
+    {
+      "category": "dependencies",
+      "assumption": "J0 (Developer GitHub Workspace) is published and owns GitHub App authentication and repository authority",
+      "source": "lane_j0_publication_verification.v1.json — published_sha 928d37a601d01c91c04027e51530e137e219673a",
+      "verified": true,
+      "impact_if_wrong": "Q0 would need its own GitHub auth; J0's pipe-transport corridor is the canonical authority boundary. Q0 stores no GitHub credentials and makes no GitHub API calls."
+    }
+  ],
+  "warnings": [
+    "The images/ directory exists but has no icon files — extension will not load in Safari until icon assets are provided",
+    "Apple Developer Program membership and code signing certificates are required for distribution — not required for local development",
+    "xcrun safari-web-extension-packager conversion to Xcode project is deferred until N1 provides the Xcode project structure",
+    "_contract_fixture.py has unreachable dead code at lines 203-226 (orphaned conditional branches after an early return in _run_coro)"
+  ],
+  "content_light": true
+}

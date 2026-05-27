@@ -1,0 +1,167 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "chatgpt-mac-context-pack",
+  "document_type": "guide",
+  "title": "ChatGPT Mac Product-First Context Pack",
+  "summary": "A stable-core plus rotating-snapshot context pack for ChatGPT Mac sessions that keeps Rig Relay focused on a polished product for developers and effective agents, without turning the pack into a governance encyclopedia.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "source_commit": "e038afe8",
+  "owners": ["maintainer"],
+  "tags": ["chatgpt", "mac", "context-pack", "product-first", "agents", "governance"],
+  "audience": ["contributor", "agent", "maintainer", "user"],
+  "canonical_path": "docs/json/governance/chatgpt_mac_context_pack.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "h1-1",
+      "type": "heading",
+      "level": 1,
+      "content": "ChatGPT Mac Product-First Context Pack",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "p-1",
+      "type": "paragraph",
+      "content": "This pack is the low-maintenance default for ChatGPT Mac sessions. It keeps the north star on shipping a polished Rig Relay product that is delightful for developers and effective for agents, while keeping governance present but compressed.",
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-1",
+      "type": "heading",
+      "level": 2,
+      "content": "What This Pack Should Answer",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-goals",
+      "type": "list",
+      "style": "ordered",
+      "ordered": true,
+      "items": [
+        "What is the product trying to delight users with right now?",
+        "What boundaries keep agents effective without turning the system into a compliance project?",
+        "What current state matters now, and which pieces are safe to keep stable?"
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-2",
+      "type": "heading",
+      "level": 2,
+      "content": "Stable Core",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-stable-core",
+      "type": "table",
+      "columns": ["File", "Role", "Refresh cadence"],
+      "rows": [
+        ["AGENTS.md", "Repo discipline, claim calibration, lane closure, git policy", "Rarely"],
+        ["PROJECT.md", "Canonical product and integration doctrine", "Rarely"],
+        ["README.md", "Public/product overview and first-stop orientation", "Rarely"],
+        ["docs/governance/relay-surface-matrix.md", "Surface map and product surface hierarchy", "Rarely"],
+        ["docs/governance/desktop-cockpit-ui.md", "Delight-oriented desktop UX and cockpit behavior", "Rarely"],
+        ["docs/governance/relay-desktop-projection-contract.md", "Desktop projection contract and surface expectations", "Rarely"],
+        ["docs/governance/relay-local-remote-boundary.md", "What stays local, what may go remote, and why", "Rarely"],
+        ["docs/governance/mission-envelope.md", "Mission boundary and packet spine", "Rarely"],
+        ["docs/governance/cross-session-coordination.md", "Checkpoint and coordination rules", "Rarely"],
+        ["docs/governance/reviewer-orchestrator.md", "Review/orchestrator authority and publication flow", "Rarely"],
+        ["docs/governance/delegate-fleet-orchestration.md", "Delegate/fleet release and handoff rules", "Rarely"],
+        ["docs/governance/orchestrator-subagent-model.md", "Agent role boundaries and push/review gates", "Rarely"]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-3",
+      "type": "heading",
+      "level": 2,
+      "content": "Rotating Current-State Trio",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "table-rotating",
+      "type": "table",
+      "columns": ["File", "Why it rotates", "Refresh trigger"],
+      "rows": [
+        ["docs/json/governance/frontend_bridge_backend_v1_readiness.v1.json", "Tracks the current frontend/bridge/backend readiness snapshot", "Refresh when the bridge contract, test surface, or readiness state changes"],
+        ["docs/json/governance/desktop-cockpit-ui.v1.json", "Captures the current cockpit/UI state and the product-facing experience", "Refresh when the UI or user-facing surface changes"],
+        ["docs/json/governance/github_operating_picture_v1.v1.json", "Captures the current GitHub/provider review operating picture", "Refresh when GitHub-connected review, auth, or repository-access assumptions change"]
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-4",
+      "type": "heading",
+      "level": 2,
+      "content": "Pack Rules",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-rules",
+      "type": "list",
+      "style": "bullet",
+      "items": [
+        "Keep the stable core fixed unless a doctrine change truly affects product shape or agent boundaries.",
+        "Refresh only the rotating trio when the current state changes; do not rewrite the whole pack just to reflect one new snapshot.",
+        "Do not add broad security, privacy, or cryptography doctrine unless the current task truly depends on it.",
+        "If the conversation drifts toward policy accumulation, pull it back to product delight, agent effectiveness, and the minimum safe boundary."
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    },
+    {
+      "block_id": "h2-5",
+      "type": "heading",
+      "level": 2,
+      "content": "How To Use It In ChatGPT Mac",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "list-use",
+      "type": "list",
+      "style": "ordered",
+      "ordered": true,
+      "items": [
+        "Upload the stable core once and keep it fixed.",
+        "Upload or replace only the three rotating snapshot files when the current state changes.",
+        "Ask the model to answer product goal first, then user-facing surface, then agent/review boundary, then governance only if needed.",
+        "If a new task needs a different snapshot, swap one rotating file instead of changing the stable core."
+      ],
+      "disclosure": {
+        "level": "standard"
+      }
+    }
+  ]
+}

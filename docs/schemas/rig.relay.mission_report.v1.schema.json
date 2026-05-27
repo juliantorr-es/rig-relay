@@ -8,6 +8,7 @@
     "schema_version",
     "generated_at",
     "mission_title",
+    "summary",
     "branch",
     "head_before",
     "head_after",
@@ -39,6 +40,51 @@
     },
     "mission_title": {
       "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "what_changed",
+        "key_choices",
+        "codebase_research",
+        "external_research",
+        "reasoning",
+        "conclusion"
+      ],
+      "properties": {
+        "what_changed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "codebase_research": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "external_research": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "conclusion": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Compact narrative summary explaining what changed, what choices were made, what research was done, and how the conclusion follows."
     },
     "branch": {
       "type": "string"
