@@ -128,7 +128,12 @@ def _append_jsonl(path: Path, event: dict) -> None:
 
 
 def _read_jsonl(path: Path) -> list[dict]:
-    """Read all lines from a JSONL file. Returns empty list if file missing."""
+    """Read all lines from a JSONL file. Returns empty list if file missing.
+
+    Corrupt (non-JSON) lines are captured as ``{"_corrupt": true, "_raw": ...}``
+    so the projection builder can detect and report them as corruption events
+    rather than crashing the reader.
+    """
     import json
 
     if not path.is_file():
@@ -137,8 +142,17 @@ def _read_jsonl(path: Path) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         for line in f:
             stripped = line.strip()
-            if stripped:
+            if not stripped:
+                continue
+            try:
                 results.append(json.loads(stripped))
+            except json.JSONDecodeError:
+                results.append({
+                    "_corrupt": True,
+                    "_raw": stripped[:200],
+                    "event_id": "",
+                    "payload": {},
+                })
     return results
 
 

@@ -1,9 +1,10 @@
 """Repository Estate — operational repository registry and observation service.
 
 Typed application service boundary for the Repository Estate product surface.
-Registers local repositories, observes operational facts, emits canonical
-append-only content-light evidence, and produces deterministic projections
-for PostgreSQL materialization and Gridline consumption.
+Registers local repositories, observes operational facts with identity-match
+enforcement, emits canonical append-only content-light evidence, and produces
+deterministic projections with explicit corruption degradation for PostgreSQL
+materialization and Gridline consumption.
 
 Public API:
     RepositoryEstateService — typed application service.
@@ -13,8 +14,8 @@ Public API:
 Exported models (content-light, schema-backed):
     RegisteredRepository, RepositoryObservation, RepositoryObservationChange,
     RepositoryEstateProjection, RegisteredRepositorySummary, RecentChangeEvent,
-    GitIdentityBundle, DirtyCounts, InstructionFilePresence, RemoteRecord,
-    ObservationStatus, ChangeKind, RepositoryKind, ProvenanceClass,
+    CorruptionEvent, GitIdentityBundle, DirtyCounts, InstructionFilePresence,
+    RemoteRecord, ObservationStatus, ChangeKind, RepositoryKind, ProvenanceClass,
     AuthorityState.
 """
 
@@ -28,6 +29,7 @@ from rig_relay.repository_estate._digest_utils import (
 from rig_relay.repository_estate._models import (
     AuthorityState,
     ChangeKind,
+    CorruptionEvent,
     DirtyCounts,
     GitIdentityBundle,
     InstructionFilePresence,
@@ -49,6 +51,7 @@ from rig_relay.repository_estate._service import RegistryError, RepositoryEstate
 __all__ = [
     "AuthorityState",
     "ChangeKind",
+    "CorruptionEvent",
     "DirtyCounts",
     "GitIdentityBundle",
     "InstructionFilePresence",

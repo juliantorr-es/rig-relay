@@ -33,6 +33,7 @@ class ObservationStatus(StrEnum):
     INACCESSIBLE = "inaccessible"
     NOT_A_REPOSITORY = "not_a_repository"
     DISAPPEARED = "disappeared"
+    IDENTITY_MISMATCH = "identity_mismatch"
 
 
 class ChangeKind(StrEnum):
@@ -315,6 +316,29 @@ class RecentChangeEvent(BaseModel):
     to_observation_id: str = ""
 
 
+class CorruptionEvent(BaseModel):
+    """Content-light record of evidence that failed validation during reconstruction.
+
+    Corruption events carry enough metadata to diagnose which evidence stream
+    failed and why, without exposing raw private content.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provenance: ProvenanceClass = ProvenanceClass.CORRUPT_UNTRUSTED
+    event_kind: str = Field(
+        description="Evidence stream kind: registration, observation."
+    )
+    event_id: str = Field(
+        default="", description="Event ID of the corrupted evidence record."
+    )
+    reason: str = Field(
+        description="Human-readable reason: malformed, digest_mismatch, model_validation_failed, chain_broken."
+    )
+    repository_hash: str = ""
+    observation_id: str = ""
+
+
 class RepositoryEstateProjection(BaseModel):
     """Content-light projection of the repository estate for PostgreSQL/Gridline.
 
@@ -363,6 +387,21 @@ class RepositoryEstateProjection(BaseModel):
         description="Total count of observation events in the evidence store.",
     )
 
+    corrupt_registration_count: int = Field(
+        default=0, description="Count of registration events that failed validation."
+    )
+    corrupt_observation_count: int = Field(
+        default=0, description="Count of observation events that failed validation."
+    )
+    corrupt_chain_links: int = Field(
+        default=0,
+        description="Count of observation chain digest links that are broken.",
+    )
+    corruption_events: list[CorruptionEvent] = Field(
+        default_factory=list,
+        description="Metadata for corrupted evidence records, content-light only.",
+    )
+
     content_light_guarantee: bool = True
     projection_digest: str = ""
 
@@ -370,6 +409,7 @@ class RepositoryEstateProjection(BaseModel):
 __all__ = [
     "AuthorityState",
     "ChangeKind",
+    "CorruptionEvent",
     "DirtyCounts",
     "GitIdentityBundle",
     "InstructionFilePresence",

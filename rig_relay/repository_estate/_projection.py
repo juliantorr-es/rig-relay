@@ -1,7 +1,7 @@
-"""Projection builder for RepositoryEstateService.
+"""Projection builder wrapper for RepositoryEstateService.
 
-Produce a content-light RepositoryEstateProjection from canonical evidence.
-This is a thin wrapper around RepositoryEstateService.build_projection().
+Produce a content-light RepositoryEstateProjection from canonical evidence
+via the service's internal ProjectionBuilder collaborator.
 """
 
 from __future__ import annotations
