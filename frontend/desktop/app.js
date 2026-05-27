@@ -38,7 +38,7 @@ function switchMode(mode) {
 
 // ── Surface Switching ──
 
-const SURFACE_IDS = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview'];
+const SURFACE_IDS = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview', 'timeline'];
 
 function switchSurface(surfaceId) {
   // ── S1: Deactivate all surfaces first ───────────────────────────
@@ -178,6 +178,7 @@ function _getFixture(surfaceId) {
     case 'project-studio': return window.__P0_FIXTURES__.project_studio;
     case 'inference-studio': return window.__P0_FIXTURES__.inference_studio;
     case 'publish-preview': return window.__P0_FIXTURES__.publish_preview;
+    case 'timeline': return window.__P0_FIXTURES__.timeline;
     default: return null;
   }
 }
@@ -192,10 +193,18 @@ function renderSurfaceFixture(surfaceId) {
     case 'project-studio': renderProjectStudioSurface(fix); break;
     case 'inference-studio': renderInferenceStudioSurface(fix); break;
     case 'publish-preview': renderPublishPreviewSurface(fix); break;
+    case 'timeline': renderTimelineSurface(fix); break;
   }
 }
 
 function renderConnectSurface(fix) {
+  // ── Lane X0 Phase 2: Surface state path (from adapter projection) ──
+  if (fix && fix.trust && fix.status) {
+    _renderConnectFromState(fix);
+    return;
+  }
+
+  // ── Legacy fixture path ──
   var cb = fix.carte_blanche || {};
   renderStatusChip(document.getElementById('cb-status-chip'), cb.status, cb.status === 'connected' ? 'Carte Blanche Connected' : cb.status);
   setText(document.getElementById('cb-detail'), fix._fixture_disclaimer || '');
@@ -217,7 +226,100 @@ function renderConnectSurface(fix) {
   }
 }
 
+// ── Lane X0 Phase 2: Connect surface state renderer ──
+function _renderConnectFromState(state) {
+  var cbEl = document.getElementById('cb-status-chip');
+  if (cbEl) {
+    var status = state.status || 'unavailable';
+    var label = 'Carte Blanche ';
+    switch (status) {
+      case 'connected': label += 'Connected'; break;
+      case 'deferred': label += 'Deferred'; break;
+      case 'refused': label += 'Refused'; break;
+      case 'fixture': label += '(Fixture)'; break;
+      case 'error': label += 'Error'; break;
+      default: label += escapeHtml(status);
+    }
+    renderStatusChip(cbEl, status, label);
+  }
+  var detailEl = document.getElementById('cb-detail');
+  if (detailEl) {
+    var detailText = '';
+    if (state.status === 'unavailable') detailText = 'No connection available. Backend bridge not yet established.';
+    else if (state.status === 'deferred') detailText = 'Connection deferred to live bridge aggregation milestone.';
+    else if (state.status === 'refused') detailText = 'Connection refused by backend authority.';
+    else if (state.status === 'connected') detailText = 'Live connection established.';
+    else if (state.status === 'fixture') detailText = 'Fixture-backed projection — not live service data.';
+    else detailText = 'Connection state: ' + escapeHtml(state.connection_state || 'unknown');
+    if (state.trust) detailText += ' \u00B7 Trust: ' + escapeHtml(state.trust);
+    setText(detailEl, detailText);
+  }
+
+  var raEl = document.getElementById('repo-access-status');
+  if (raEl) {
+    if (state.status === 'unavailable' || state.status === 'deferred') {
+      raEl.innerHTML = renderEvidenceTag('planned') + ' Repository access: <strong>unavailable</strong>';
+    } else if (state.status === 'connected') {
+      raEl.innerHTML = renderEvidenceTag('proven') + ' Repository access: <strong>granted</strong>' +
+        (state.token_available ? ' \u00B7 Token present' : ' \u00B7 No token') +
+        ' \u00B7 ' + escapeHtml(String(state.accessible_repository_count || 0)) + ' repositories accessible';
+    } else {
+      raEl.innerHTML = renderEvidenceTag('claimed') + ' Repository access: <strong>' + escapeHtml(state.status) + '</strong>';
+    }
+  }
+
+  var paEl = document.getElementById('publication-approval-status');
+  if (paEl) {
+    if (state.status === 'unavailable') {
+      paEl.innerHTML = renderEvidenceTag('planned') + ' Publication approval: <strong>unavailable</strong>';
+    } else if (state.status === 'connected') {
+      paEl.innerHTML = renderEvidenceTag('proven') + ' Publication approval: <strong>granted</strong>';
+    } else {
+      paEl.innerHTML = renderEvidenceTag('planned') + ' Publication approval: <strong>deferred</strong><br><span class="status-detail">Live integration deferred to O0 bridge aggregation milestone</span>';
+    }
+  }
+
+  // Provider cache disclosure section
+  var providers = state.providers || [];
+  if (providers.length > 0 || state.providers_total > 0) {
+    var connectCard = document.querySelector('#surface-connect .connect-card');
+    if (connectCard) {
+      // Remove old provider info if present
+      var oldProvider = document.getElementById('connect-provider-cache');
+      if (oldProvider) oldProvider.remove();
+
+      var providerSection = document.createElement('div');
+      providerSection.id = 'connect-provider-cache';
+      providerSection.className = 'connect-section';
+      var providerHtml = '<h3>Provider Cache Disclosure</h3>';
+      providerHtml += '<div class="status-detail">' + escapeHtml(String(state.providers_configured || providers.length)) + ' of ' + escapeHtml(String(state.providers_total || 0)) + ' providers configured</div>';
+      providerHtml += '<table class="kv" style="margin-top:8px">';
+      for (var p = 0; p < providers.length; p++) {
+        var prov = providers[p];
+        var cacheMode = prov.cache_mode || 'unknown';
+        var retention = prov.retention_class || 'unknown';
+        var ctxDisp = prov.confidential_context_disposition || 'none';
+        providerHtml += '<tr>' +
+          '<td class="k">' + escapeHtml(prov.display_name || prov.provider_name || 'unknown') + '</td>' +
+          '<td>' + escapeHtml(cacheMode) + ' \u00B7 ' + escapeHtml(retention) + '</td>' +
+          '<td style="font-size:0.7rem;color:var(--text-muted)">' + escapeHtml(ctxDisp) + '</td>' +
+          '</tr>';
+      }
+      providerHtml += '</table>';
+      providerSection.innerHTML = providerHtml;
+      connectCard.appendChild(providerSection);
+    }
+  }
+}
+
 function renderRepositoryEstateSurface(fix) {
+  // ── Lane X0 Phase 2: Surface state path (from adapter projection) ──
+  if (fix && fix.trust && fix.total_registered != null) {
+    _renderRepoEstateFromState(fix);
+    return;
+  }
+
+  // ── Legacy fixture path ──
   var repos = fix.repositories || [];
   var repoList = document.getElementById('repo-list-container');
   if (repoList) {
@@ -254,7 +356,124 @@ function renderRepositoryEstateSurface(fix) {
   }
 }
 
+// ── Lane X0 Phase 2: Repository Estate surface state renderer ──
+function _renderRepoEstateFromState(state) {
+  var repoList = document.getElementById('repo-list-container');
+  if (repoList) {
+    var repos = state.repositories || [];
+    if (repos.length === 0) {
+      if (state.status === 'unavailable') {
+        repoList.innerHTML = '<div class="status-detail">Repository service unavailable. No live bridge projection received.</div>';
+      } else if (state.status === 'deferred') {
+        repoList.innerHTML = '<div class="status-detail">Repository discovery deferred. Awaiting live workspace integration.</div>';
+      } else {
+        repoList.innerHTML = '<div class="status-detail">No registered repositories.</div>';
+      }
+    } else {
+      var html = '';
+      for (var i = 0; i < repos.length; i++) {
+        var r = repos[i];
+        var statusTag = '';
+        var repoStatus = r.status || r.import_state || 'unknown';
+        if (repoStatus === 'clean' || repoStatus === 'imported' || repoStatus === 'cloned') statusTag = renderEvidenceTag('proven');
+        else if (repoStatus === 'dirty') statusTag = renderEvidenceTag('claimed');
+        else if (repoStatus === 'failed' || repoStatus === 'inaccessible') statusTag = renderEvidenceTag('planned');
+        else statusTag = renderEvidenceTag('planned');
+
+        var statusBadge = '';
+        if (repoStatus === 'dirty') statusBadge = ' <span class="status-chip pending">dirty</span>';
+        else if (repoStatus === 'inaccessible') statusBadge = ' <span class="status-chip disconnected">inaccessible</span>';
+        else if (repoStatus === 'detached') statusBadge = ' <span class="status-chip disconnected">detached</span>';
+        else if (repoStatus === 'identity_mismatch') statusBadge = ' <span class="status-chip deferred">identity mismatch</span>';
+        else if (repoStatus === 'disappeared') statusBadge = ' <span class="status-chip disconnected">disappeared</span>';
+        else statusBadge = ' <span class="status-chip connected">clean</span>';
+
+        html += '<div class="repo-card">' +
+          '<div class="repo-name">' + escapeHtml(r.name || r.display_name || '') + statusBadge + '</div>' +
+          '<div class="repo-meta">' + statusTag +
+          ' ' + escapeHtml(r.full_name || r.path || '') + ' \u00B7 ' + escapeHtml(r.default_branch || r.branch || '') +
+          (r.remote_origin ? ' \u00B7 ' + escapeHtml(r.remote_origin) : '') +
+          '</div></div>';
+      }
+      repoList.innerHTML = html;
+    }
+  }
+
+  // Summary stats
+  var intakeEl = document.getElementById('repo-intake-status');
+  if (intakeEl) {
+    var totalReg = state.total_registered || 0;
+    var localOnly = state.local_only_count || 0;
+    var githubBacked = state.github_backed_count || 0;
+    var dirtyCount = state.dirty_count || 0;
+    var inaccessibleCount = state.inaccessible_count || 0;
+    var totalObs = state.total_observations || 0;
+    intakeEl.innerHTML = '<span class="status-chip">Estate: ' + escapeHtml(String(totalReg)) + ' registered (' +
+      escapeHtml(String(localOnly)) + ' local, ' + escapeHtml(String(githubBacked)) + ' GitHub-backed)</span>' +
+      '<br><span class="status-detail">' + escapeHtml(String(dirtyCount)) + ' dirty, ' +
+      escapeHtml(String(inaccessibleCount)) + ' inaccessible \u00B7 ' +
+      escapeHtml(String(totalObs)) + ' observations</span>';
+  }
+
+  // Corruption events
+  var corrEvents = state.corruption_events || [];
+  var corrRegCount = state.corrupt_registration_count || 0;
+  var corrObsCount = state.corrupt_observation_count || 0;
+  var corrChainLinks = state.corrupt_chain_links || 0;
+  var totalCorrupt = corrRegCount + corrObsCount + corrChainLinks;
+  if (totalCorrupt > 0) {
+    var repoContent = document.querySelector('#surface-repository-estate .surface-content');
+    if (repoContent) {
+      var oldCorr = document.getElementById('repo-corruption-status');
+      if (oldCorr) oldCorr.remove();
+
+      var corrSection = document.createElement('div');
+      corrSection.id = 'repo-corruption-status';
+      corrSection.className = 'withheld-section';
+      corrSection.innerHTML = '<h3>Corruption Events</h3>' +
+        '<table class="kv">' +
+        '<tr><td class="k">Corrupt registrations</td><td class="warning">' + corrRegCount + '</td></tr>' +
+        '<tr><td class="k">Corrupt observations</td><td class="warning">' + corrObsCount + '</td></tr>' +
+        '<tr><td class="k">Corrupt chain links</td><td class="warning">' + corrChainLinks + '</td></tr>' +
+        '</table>' +
+        (corrEvents.length > 0 ? '<div class="status-detail">Events: ' + escapeHtml(corrEvents.slice(0, 5).join('; ')) + (corrEvents.length > 5 ? '...' : '') + '</div>' : '');
+      corrSection.style.cssText = 'margin-top:16px;';
+      repoContent.appendChild(corrSection);
+    }
+  }
+
+  // Recent changes
+  var recentChanges = state.recent_changes || [];
+  if (recentChanges.length > 0) {
+    var repoContent = document.querySelector('#surface-repository-estate .surface-content');
+    if (repoContent) {
+      var oldChanges = document.getElementById('repo-recent-changes');
+      if (oldChanges) oldChanges.remove();
+
+      var changesSection = document.createElement('div');
+      changesSection.id = 'repo-recent-changes';
+      changesSection.className = 'status-block';
+      changesSection.innerHTML = '<h3>Recent Changes</h3>';
+      var changesHtml = '';
+      for (var c = 0; c < Math.min(recentChanges.length, 10); c++) {
+        var ch = recentChanges[c];
+        changesHtml += '<div class="status-detail">' + escapeHtml(ch.repository_name || '') + ': ' + escapeHtml(ch.change_kind || '') + ' \u00B7 ' + escapeHtml(ch.observed_at || '') + '</div>';
+      }
+      changesSection.innerHTML += changesHtml;
+      changesSection.style.cssText = 'margin-top:16px;';
+      repoContent.appendChild(changesSection);
+    }
+  }
+}
+
 function renderProjectStudioSurface(fix) {
+  // ── Lane X0 Phase 2: Enrich with surface state if available ──
+  var stateStudies = null;
+  if (fix && fix.trust && fix.studies) {
+    stateStudies = fix.studies;
+  }
+
+  // ── Legacy fixture path ──
   var os = fix.operator_session || {};
   var osEl = document.getElementById('operator-session-status');
   if (osEl) {
@@ -294,27 +513,65 @@ function renderProjectStudioSurface(fix) {
     }
   }
 
-  var pu = fix.project_understanding || {};
+  // L0 context enrichment from surface state studies
+  if (stateStudies && stateStudies.length > 0) {
+    _renderStudioFromStateStudies(stateStudies);
+  } else {
+    var pu = fix.project_understanding || {};
+    var usEl = document.getElementById('understanding-status');
+    if (usEl) {
+      usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(pu.study_status || 'not_started') + '</strong></span>' +
+        '<br><span class="status-detail">' + (pu.facts_discovered || 0) + ' facts (' + (pu.facts_with_provenance || 0) + ' with provenance) &middot; ' + (pu.draft_narrative_count || 0) + ' drafts (' + (pu.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+    }
+
+    var udEl = document.getElementById('understanding-details');
+    if (udEl) {
+      var detailsHtml = '<table class="kv">';
+      if (pu.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(pu.languages_detected.join(', ')) + '</td></tr>';
+      if (pu.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(pu.frameworks_detected.join(', ')) + '</td></tr>';
+      if (pu.withheld_reasons) detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml(pu.withheld_material_count + ' items: ' + pu.withheld_reasons.join(', ')) + '</td></tr>';
+      detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(pu.portfolio_eligibility || 'unknown') + '</td></tr>';
+      detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(pu.approval_status || 'unknown') + '</td></tr>';
+      detailsHtml += '</table>';
+      udEl.innerHTML = detailsHtml;
+    }
+  }
+}
+
+// ── Lane X0 Phase 2: Render project studio from surface state studies ──
+function _renderStudioFromStateStudies(studies) {
   var usEl = document.getElementById('understanding-status');
-  if (usEl) {
-    usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(pu.study_status || 'not_started') + '</strong></span>' +
-      '<br><span class="status-detail">' + (pu.facts_discovered || 0) + ' facts (' + (pu.facts_with_provenance || 0) + ' with provenance) &middot; ' + (pu.draft_narrative_count || 0) + ' drafts (' + (pu.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+  if (usEl && studies.length > 0) {
+    var s = studies[0];
+    usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(s.study_status || 'unknown') + '</strong></span>' +
+      '<br><span class="status-detail">' + (s.facts_discovered || 0) + ' facts (' + (s.facts_with_provenance || 0) + ' with provenance) \u00B7 ' +
+      (s.draft_narrative_count || 0) + ' drafts (' + (s.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
   }
 
   var udEl = document.getElementById('understanding-details');
-  if (udEl) {
+  if (udEl && studies.length > 0) {
+    var s = studies[0];
     var detailsHtml = '<table class="kv">';
-    if (pu.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(pu.languages_detected.join(', ')) + '</td></tr>';
-    if (pu.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(pu.frameworks_detected.join(', ')) + '</td></tr>';
-    if (pu.withheld_reasons) detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml(pu.withheld_material_count + ' items: ' + pu.withheld_reasons.join(', ')) + '</td></tr>';
-    detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(pu.portfolio_eligibility || 'unknown') + '</td></tr>';
-    detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(pu.approval_status || 'unknown') + '</td></tr>';
+    if (s.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(s.languages_detected.join(', ')) + '</td></tr>';
+    if (s.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(s.frameworks_detected.join(', ')) + '</td></tr>';
+    if (s.withheld_reasons && s.withheld_reasons.length) {
+      detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml((s.withheld_material_count || 0) + ' items: ' + s.withheld_reasons.join(', ')) + '</td></tr>';
+    }
+    detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(s.portfolio_eligibility || 'unknown') + '</td></tr>';
+    detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(s.approval_status || 'unknown') + '</td></tr>';
     detailsHtml += '</table>';
     udEl.innerHTML = detailsHtml;
   }
 }
 
 function renderInferenceStudioSurface(fix) {
+  // ── Lane X0 Phase 2: Surface state path (from adapter projection) ──
+  if (fix && fix.trust && (fix.omlx_strategy || fix.omlx_disclosure)) {
+    _renderInferenceFromState(fix);
+    return;
+  }
+
+  // ── Legacy fixture path ──
   var lr = fix.local_runtime || {};
   var irEl = document.getElementById('inference-runtime-status');
   if (irEl) {
@@ -372,7 +629,71 @@ function renderInferenceStudioSurface(fix) {
   }
 }
 
+// ── Lane X0 Phase 2: Inference Studio surface state renderer ──
+function _renderInferenceFromState(state) {
+  var irEl = document.getElementById('inference-runtime-status');
+  if (irEl) {
+    if (state.status === 'unavailable' || state.status === 'deferred') {
+      irEl.innerHTML = '<span class="status-chip disconnected">Inference Unavailable</span>';
+    } else {
+      var available = state.runtime_available;
+      renderStatusChip(irEl.querySelector('.status-chip') || irEl, available ? 'available' : 'offline',
+        available ? 'Runtime Available' : 'Runtime Offline');
+      var detail = irEl.querySelector('.status-detail');
+      if (detail) setText(detail, (available ? 'Local inference ready (' + escapeHtml(state.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
+    }
+  }
+
+  // OMLX disclosure
+  var omlxEl = document.getElementById('inference-tasks');
+  if (omlxEl) {
+    var omlxDisclosure = state.omlx_disclosure || 'OMLX Rigged runtime expansion is pending X2 integration milestone.';
+    var omlxStrategy = state.omlx_strategy || 'post_v1';
+    var omlxAvailable = state.omlx_available || false;
+    omlxEl.innerHTML = '<div class="task-card ' + (omlxAvailable ? 'suitable' : 'unsuitable') + '">' +
+      '<div class="task-name">OMLX Expansion</div>' +
+      '<div class="task-status">' + renderEvidenceTag(omlxAvailable ? 'proven' : 'planned') + ' ' +
+      'Strategy: ' + escapeHtml(omlxStrategy) + '. ' + escapeHtml(omlxDisclosure) +
+      '</div></div>';
+  }
+
+  // Capability claims
+  var draftsEl = document.getElementById('inference-drafts');
+  if (draftsEl) {
+    var capHtml = '<h3>Capability Status</h3>';
+    capHtml += '<table class="kv">';
+    capHtml += '<tr><td class="k">Native Schema Claimed</td><td class="' + (state.native_schema_capability_claimed ? 'ok' : 'warning') + '">' + (state.native_schema_capability_claimed ? 'Yes' : 'No') + '</td></tr>';
+    capHtml += '<tr><td class="k">Native Schema Proven</td><td class="' + (state.native_schema_capability_proven ? 'ok' : 'warning') + '">' + (state.native_schema_capability_proven ? 'Yes' : 'No') + '</td></tr>';
+    capHtml += '<tr><td class="k">Grammar Claimed</td><td class="' + (state.grammar_capability_claimed ? 'ok' : 'warning') + '">' + (state.grammar_capability_claimed ? 'Yes' : 'No') + '</td></tr>';
+    capHtml += '<tr><td class="k">Grammar Proven</td><td class="' + (state.grammar_capability_proven ? 'ok' : 'warning') + '">' + (state.grammar_capability_proven ? 'Yes' : 'No') + '</td></tr>';
+    capHtml += '<tr><td class="k">Results</td><td>' + escapeHtml(String(state.total_results || 0)) + ' total (' + escapeHtml(String(state.total_executed || 0)) + ' executed, ' + escapeHtml(String(state.total_refused || 0)) + ' refused)</td></tr>';
+    capHtml += '<tr><td class="k">Drafts Awaiting</td><td>' + escapeHtml(String(state.drafts_awaiting_review || 0)) + '</td></tr>';
+    capHtml += '</table>';
+    draftsEl.innerHTML = capHtml;
+  }
+
+  // Refusals
+  var refusalList = document.getElementById('inference-refusals');
+  if (refusalList) {
+    var totalRefused = state.total_refused || 0;
+    var refHtml = '<h3>Runtime Refusals (' + escapeHtml(String(totalRefused)) + ')</h3>';
+    if (totalRefused === 0) {
+      refHtml += '<div class="refusal-item" style="color:var(--text-secondary)">No refusals recorded.</div>';
+    } else {
+      refHtml += '<div class="refusal-item">' + escapeHtml(String(totalRefused)) + ' task proposals refused by runtime authority.</div>';
+    }
+    refusalList.innerHTML = refHtml;
+  }
+}
+
 function renderPublishPreviewSurface(fix) {
+  // ── Lane X0 Phase 2: Surface state path (from adapter projection) ──
+  if (fix && fix.trust && (fix.operation_id || fix.last_result_status)) {
+    _renderPublishFromState(fix);
+    return;
+  }
+
+  // ── Legacy fixture path ──
   var pr = fix.publication_readiness || {};
   var readinessEl = document.getElementById('publish-readiness');
   if (readinessEl) {
@@ -411,6 +732,260 @@ function renderPublishPreviewSurface(fix) {
     }
     withheldHtml += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Any section not in public_sections above is withheld by default. Private/internal-only material is never rendered in this preview.</div>';
     withheldEl.innerHTML = withheldHtml;
+  }
+}
+
+// ── Lane X0 Phase 2: Publish Preview surface state renderer ──
+function _renderPublishFromState(state) {
+  var readinessEl = document.getElementById('publish-readiness');
+  if (readinessEl) {
+    if (state.status === 'unavailable') {
+      readinessEl.innerHTML = '<span class="status-chip deferred">Not Available</span><div class="status-detail">Publish service unavailable. ' + escapeHtml(state.reason || 'No live projection received.') + '</div>';
+    } else {
+      var lastStatus = state.last_result_status || 'none';
+      var canPublish = (state.publishable_repository_count || 0) > 0 || (state.publishable_repositories && state.publishable_repositories.length > 0);
+      renderStatusChip(readinessEl.querySelector('.status-chip') || readinessEl, canPublish ? 'available' : 'deferred',
+        canPublish ? 'Preview Available' : 'Not Ready');
+      var detail = readinessEl.querySelector('.status-detail');
+      if (detail) {
+        var detailText = 'Last result: ' + escapeHtml(lastStatus) + '. ';
+        detailText += escapeHtml(String(state.publishable_repository_count || 0)) + ' repositories publishable.';
+        if (state.operation_id) detailText += ' \u00B7 Op: ' + escapeHtml(state.operation_id);
+        setText(detail, detailText);
+      }
+    }
+  }
+
+  // Preview result / refusal
+  var sectionsGrid = document.getElementById('publish-sections');
+  if (sectionsGrid) {
+    if (state.status === 'unavailable') {
+      sectionsGrid.innerHTML = '<div class="section-card not-ready"><strong>No sections</strong> <span class="evidence-tag planned">planned</span></div>';
+    } else {
+      var sectionsHtml = '';
+      if (state.preview_result) {
+        sectionsHtml += '<div class="section-card ready">' +
+          '<strong>Preview Result</strong> ' + renderEvidenceTag('proven') +
+          '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(state.preview_result.status || '') + ' \u00B7 ' + escapeHtml(state.preview_result.summary || '') + '</span>' +
+          '</div>';
+      }
+      if (state.refusal) {
+        sectionsHtml += '<div class="section-card not-ready">' +
+          '<strong>Refusal</strong> ' + renderEvidenceTag('refused') +
+          '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(state.refusal.reason || '') + ' (code: ' + escapeHtml(state.refusal.code || 'UNKNOWN') + ')</span>' +
+          '</div>';
+      }
+      if (sectionsHtml === '') sectionsHtml = '<div class="section-card not-ready"><strong>No publishable sections</strong></div>';
+      sectionsGrid.innerHTML = sectionsHtml;
+    }
+  }
+
+  // Ledger summary
+  var withheldEl = document.getElementById('publish-withheld');
+  if (withheldEl) {
+    var ledgerHtml = '<h3>Publication Ledger</h3>';
+    var totalEv = state.ledger_total_events || 0;
+    var validRows = state.ledger_valid_rows || 0;
+    var corruptRows = state.ledger_corrupt_rows || 0;
+    var corrDetected = state.ledger_corruption_detected || false;
+
+    ledgerHtml += '<table class="kv">' +
+      '<tr><td class="k">Total events</td><td>' + escapeHtml(String(totalEv)) + '</td></tr>' +
+      '<tr><td class="k">Valid rows</td><td class="ok">' + escapeHtml(String(validRows)) + '</td></tr>' +
+      '<tr><td class="k">Corrupt rows</td><td class="' + (corruptRows > 0 ? 'error' : 'ok') + '">' + escapeHtml(String(corruptRows)) + '</td></tr>' +
+      '<tr><td class="k">Corruption detected</td><td class="' + (corrDetected ? 'error' : 'ok') + '">' + (corrDetected ? '⚠ Yes' : 'No') + '</td></tr>' +
+      '</table>';
+
+    // Deployment status
+    var depAvailable = state.deployment_available || false;
+    var depReason = state.deployment_deferred_reason || 'Deployment not available in this release';
+    ledgerHtml += '<h3>Deployment</h3>';
+    ledgerHtml += '<div class="status-detail">' +
+      _renderEvidenceTag(depAvailable ? 'proven' : 'planned') + ' ' +
+      (depAvailable ? 'Deployment available' : escapeHtml(depReason)) +
+      '</div>';
+
+    ledgerHtml += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Private/internal-only material is never included in publication preview.</div>';
+    withheldEl.innerHTML = ledgerHtml;
+  }
+}
+
+// ── Lane X0 Phase 2: Timeline History surface ──
+function renderTimelineSurface(fix) {
+  if (!fix) return;
+
+  // ── Surface state path (from adapter projection) ──
+  if (fix.trust && (fix.events || fix.event_count != null)) {
+    _renderTimelineFromState(fix);
+    return;
+  }
+
+  // ── Legacy fixture path ──
+  var events = fix.timeline_events || [];
+  var tlEvents = document.getElementById('timeline-events');
+  if (tlEvents) {
+    var html = '<h3>Timeline Events (' + (fix.event_count || events.length) + ')</h3>';
+    if (events.length === 0) {
+      html += '<div class="status-detail">No timeline events recorded.</div>';
+    } else {
+      html += '<div class="timeline-list">';
+      events.forEach(function(ev) {
+        var verificationCls = 'evidence-tag';
+        switch (ev.verification_class) {
+          case 'verified_canonical': verificationCls += ' proven'; break;
+          case 'parsed_unverified': verificationCls += ' claimed'; break;
+          case 'canonical_degraded': verificationCls += ' planned'; break;
+          default: verificationCls += ' narrative';
+        }
+        html += '<div class="timeline-event-card">' +
+          '<div class="timeline-event-domain">' + escapeHtml(ev.domain || 'unknown') + ' / ' + escapeHtml(ev.kind || '') + '</div>' +
+          '<div class="timeline-event-label">' + escapeHtml(ev.label || ev.summary || '') + '</div>' +
+          '<div class="timeline-event-meta">' +
+          '<span class="' + verificationCls + '">' + escapeHtml(ev.verification_class || 'unverified') + '</span>' +
+          ' \u00B7 ' + escapeHtml(ev.source || '') + ' \u00B7 ' + escapeHtml(ev.timestamp || '') +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+    tlEvents.innerHTML = html;
+  }
+
+  var tlDegradation = document.getElementById('timeline-degradation');
+  if (tlDegradation) {
+    var canDeg = fix.canonical_degraded_count || 0;
+    var corDeg = fix.corrupt_count || 0;
+    var unsDeg = fix.unsupported_count || 0;
+    var missDeg = fix.missing_count || 0;
+    var contDeg = fix.contradictory_count || 0;
+    var staleDeg = fix.stale_count || 0;
+    var degHtml = '<h3>Degradation Summary</h3>';
+    degHtml += '<table class="kv">' +
+      '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
+      '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
+      '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
+      '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
+      '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
+      '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
+      '</table>';
+    tlDegradation.innerHTML = degHtml;
+  }
+
+  var tlDomains = document.getElementById('timeline-domains');
+  if (tlDomains) {
+    var domains = fix.domain_coverage || {};
+    var domainKeys = Object.keys(domains);
+    var domainHtml = '<h3>Domain Coverage</h3>';
+    if (domainKeys.length > 0) {
+      domainHtml += '<table class="kv">';
+      domainKeys.forEach(function(k) {
+        domainHtml += '<tr><td class="k">' + escapeHtml(k) + '</td><td>' + escapeHtml(String(domains[k])) + '</td></tr>';
+      });
+      domainHtml += '</table>';
+    } else {
+      domainHtml += '<div class="status-detail">No domain coverage data.</div>';
+    }
+    tlDomains.innerHTML = domainHtml;
+  }
+}
+
+// ── Lane X0 Phase 2: Timeline surface state renderer ──
+function _renderTimelineFromState(state) {
+  var tlEvents = document.getElementById('timeline-events');
+  if (tlEvents) {
+    if (state.status === 'unavailable') {
+      tlEvents.innerHTML = '<div class="status-detail">Timeline service unavailable. ' + escapeHtml(state.reason || 'No projection received.') + '</div>';
+    } else {
+      var events = state.events || [];
+      var html = '<h3>Timeline Events (' + escapeHtml(String(state.event_count || events.length)) + ')</h3>';
+      if (events.length === 0) {
+        html += '<div class="status-detail">No timeline events recorded.</div>';
+      } else {
+        html += '<div class="timeline-list">';
+        for (var e = 0; e < events.length; e++) {
+          var ev = events[e];
+          var verificationCls = 'evidence-tag';
+          switch (ev.verification_class) {
+            case 'verified_canonical': verificationCls += ' proven'; break;
+            case 'parsed_unverified': verificationCls += ' claimed'; break;
+            case 'canonical_degraded': verificationCls += ' planned'; break;
+            case 'corrupt': verificationCls += ' narrative'; break;
+            case 'unsupported': verificationCls += ' narrative'; break;
+            default: verificationCls += ' planned';
+          }
+          html += '<div class="timeline-event-card">' +
+            '<div class="timeline-event-domain">' + escapeHtml(ev.domain || 'unknown') + ' / ' + escapeHtml(ev.event_kind || ev.kind || '') + '</div>' +
+            '<div class="timeline-event-label">' + escapeHtml(ev.label || ev.summary || '') + '</div>' +
+            '<div class="timeline-event-meta">' +
+            '<span class="' + verificationCls + '">' + escapeHtml(ev.verification_class || 'unverified') + '</span>' +
+            ' \u00B7 ' + escapeHtml(ev.source || '') + ' \u00B7 ' + escapeHtml(ev.timestamp || ev.event_at || '') +
+            '</div></div>';
+        }
+        html += '</div>';
+      }
+      tlEvents.innerHTML = html;
+    }
+  }
+
+  // Degradation summary
+  var tlDegradation = document.getElementById('timeline-degradation');
+  if (tlDegradation) {
+    var canDeg = state.canonical_degraded_count || 0;
+    var corDeg = state.corrupt_count || 0;
+    var unsDeg = state.unsupported_count || 0;
+    var missDeg = state.missing_count || 0;
+    var contDeg = state.contradictory_count || 0;
+    var staleDeg = state.stale_count || 0;
+    var totalDegraded = canDeg + corDeg + unsDeg + missDeg + contDeg + staleDeg;
+    var degHtml = '<h3>Degradation Summary</h3>';
+    if (totalDegraded === 0) {
+      degHtml += '<div class="status-detail">No degradation detected.</div>';
+    } else {
+      degHtml += '<table class="kv">' +
+        '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
+        '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
+        '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
+        '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
+        '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
+        '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
+        '</table>';
+    }
+    var assemblyWarnings = state.assembly_warnings || [];
+    var assemblyErrors = state.assembly_errors || [];
+    if (assemblyErrors.length > 0) {
+      degHtml += '<div class="status-detail" style="color:var(--error-color)"><strong>Assembly errors:</strong> ' + escapeHtml(assemblyErrors.join('; ')) + '</div>';
+    }
+    if (assemblyWarnings.length > 0) {
+      degHtml += '<div class="status-detail" style="color:var(--warning-color)"><strong>Assembly warnings:</strong> ' + escapeHtml(assemblyWarnings.join('; ')) + '</div>';
+    }
+    tlDegradation.innerHTML = degHtml;
+  }
+
+  // Domain coverage
+  var tlDomains = document.getElementById('timeline-domains');
+  if (tlDomains) {
+    var domains = state.domain_coverage || {};
+    var unsupportedDomains = state.unsupported_domains || [];
+    var verifiedCanonical = state.verified_canonical_count || 0;
+    var parsedUnverified = state.parsed_unverified_count || 0;
+    var domainHtml = '<h3>Domain Coverage</h3>';
+    var domainKeys = Object.keys(domains);
+    if (domainKeys.length > 0) {
+      domainHtml += '<table class="kv">';
+      for (var d = 0; d < domainKeys.length; d++) {
+        var domainKey = domainKeys[d];
+        domainHtml += '<tr><td class="k">' + escapeHtml(domainKey) + '</td><td>' + escapeHtml(String(domains[domainKey])) + '</td></tr>';
+      }
+      domainHtml += '</table>';
+    }
+    domainHtml += '<div class="status-detail">' +
+      escapeHtml(String(verifiedCanonical)) + ' verified canonical \u00B7 ' +
+      escapeHtml(String(parsedUnverified)) + ' parsed unverified \u00B7 ' +
+      escapeHtml(String(unsupportedDomains.length)) + ' unsupported domains' +
+      '</div>';
+    if (unsupportedDomains.length > 0) {
+      domainHtml += '<div class="status-detail" style="color:var(--warning-color)">Unsupported: ' + escapeHtml(unsupportedDomains.join(', ')) + '</div>';
+    }
+    tlDomains.innerHTML = domainHtml;
   }
 }
 
@@ -1599,6 +2174,7 @@ window.setStatusChip = renderStatusChip;
 window.renderEvidenceTag = renderEvidenceTag;
 window.runIntent = runIntent;
 window.renderSurfaceFixture = renderSurfaceFixture;
+window.renderTimelineSurface = renderTimelineSurface;
 
 document.addEventListener('DOMContentLoaded', function() {
   // Chat UI listeners

@@ -32,6 +32,12 @@ _GATEWAY_INTENT_NAMES: frozenset[str] = frozenset({
     "studio_assemble_context_packet",
     "studio_request_local_assistance",
     "studio_get_local_draft",
+    # X0 surface intents — consume T1.2/T3.1/T4.2
+    "studio_register_repository",
+    "studio_observe_repository",
+    "studio_compile_preview",
+    "studio_get_publication_ledger_summary",
+    "studio_assemble_timeline",
 })
 
 _SINGLETON_GATEWAY: DeveloperStudioGatewayService | None = None
@@ -209,6 +215,47 @@ def execute_gateway_intent(
             if not draft_sha256:
                 return _refused_msg(intent_name, "draft_sha256 is required")
             return gw.get_local_draft(draft_sha256, idempotency_key=idempotency_key)
+
+        # ── X0 surface intents: T3.1 Repository Estate ─────────
+        case "studio_register_repository":
+            root_path_str = params.get("root_path", "")
+            if not root_path_str:
+                return _refused_msg(intent_name, "root_path is required")
+            return gw.register_repository(
+                root_path_str, idempotency_key=idempotency_key
+            )
+
+        case "studio_observe_repository":
+            repository_hash = params.get("repository_hash", "")
+            root_path_str = params.get("root_path", "")
+            if not repository_hash:
+                return _refused_msg(intent_name, "repository_hash is required")
+            return gw.observe_repository(
+                repository_hash,
+                root_path=root_path_str,
+                idempotency_key=idempotency_key,
+            )
+
+        # ── X0 surface intents: T1.2 Publication Preview ───────
+        case "studio_compile_preview":
+            project_name = params.get("project_name", "")
+            if not project_name:
+                return _refused_msg(intent_name, "project_name is required")
+            return gw.compile_preview(
+                project_name=project_name,
+                repository_root=params.get("repository_root", ""),
+                repo_owner=params.get("repo_owner", ""),
+                repo_name=params.get("repo_name", ""),
+                publication_policy=params.get("publication_policy", "preview_only"),
+                idempotency_key=idempotency_key,
+            )
+
+        case "studio_get_publication_ledger_summary":
+            return gw.get_publication_ledger_summary(idempotency_key=idempotency_key)
+
+        # ── X0 surface intents: T4.2 Timeline ──────────────────
+        case "studio_assemble_timeline":
+            return gw.assemble_timeline(idempotency_key=idempotency_key)
 
         case _:
             return {

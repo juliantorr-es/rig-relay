@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import hashlib
 import json
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -320,6 +321,13 @@ class DeveloperStudioProjection(BaseModel):
     operator: K0OperatorProjection = Field(default_factory=K0OperatorProjection)
     context: L0ContextProjection = Field(default_factory=L0ContextProjection)
     inference: M0InferenceProjection = Field(default_factory=M0InferenceProjection)
+
+    # X0 surface projections — consume published T1.2/T3.1/T4.2 + W0/W1 policy
+    connect_surface: Any = Field(default_factory=dict)
+    repository_estate_surface: Any = Field(default_factory=dict)
+    publish_preview_surface: Any = Field(default_factory=dict)
+    timeline_surface: Any = Field(default_factory=dict)
+    inference_studio_surface: Any = Field(default_factory=dict)
 
     service_health: StudioServiceHealth = Field(default_factory=StudioServiceHealth)
     provenance_summary: StudioProvenanceSummary = Field(

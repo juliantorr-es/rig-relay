@@ -36,6 +36,7 @@ var _surfaceStates = {
   'project-studio': { status: 'unavailable' },
   'inference-studio': { status: 'unavailable' },
   'publish-preview': { status: 'unavailable' },
+  'timeline': { status: 'unavailable' },
 };
 var _intentCallbacks = {};             // intentName -> callback(result)
 var _projectionCallbacks = [];         // Called when projection state changes
@@ -135,10 +136,16 @@ function _computeSurfaceStates() {
   _setSurfaceFromContext(proj.context);
   _setSurfaceFromInference(proj.inference);
   _setPublishPreviewState(proj);
+  // New surface projection sections (Lane X0 Phase 2)
+  _setConnectSurfaceState(proj);
+  _setRepositoryEstateSurfaceState(proj);
+  _setPublishPreviewSurfaceState(proj);
+  _setTimelineSurfaceState(proj);
+  _setInferenceStudioSurfaceState(proj);
 }
 
 function _setAllSurfacesUnavailable() {
-  var surfaces = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview'];
+  var surfaces = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview', 'timeline'];
   for (var i = 0; i < surfaces.length; i++) {
     _surfaceStates[surfaces[i]] = { status: 'unavailable', reason: 'No projection received' };
   }
@@ -257,6 +264,137 @@ function _setPublishPreviewState(proj) {
   };
 }
 
+function _setConnectSurfaceState(proj) {
+  var cs = proj.connect_surface;
+  if (!cs) return; // Fall through to existing workspace-based logic
+
+  var trust = cs.trust_state || 'deferred';
+  _surfaceStates['connect'] = {
+    status: cs.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: cs.provenance || 'derived_projection',
+    reason: cs.degraded_reason || '',
+    // Provider data
+    providers: cs.providers || [],
+    providers_configured: cs.providers_configured || 0,
+    providers_total: cs.providers_total || 0,
+    // Workspace connection
+    connection_state: cs.workspace_connection_state || 'disconnected',
+    token_available: cs.workspace_token_available || false,
+    installation_id_hash: cs.workspace_installation_id_hash || '',
+    accessible_repository_count: cs.workspace_accessible_repository_count || 0,
+  };
+}
+
+function _setRepositoryEstateSurfaceState(proj) {
+  var re = proj.repository_estate_surface;
+  if (!re) return;
+
+  var trust = re.trust_state || 'deferred';
+  _surfaceStates['repository-estate'] = {
+    status: re.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: re.provenance || 'derived_projection',
+    reason: re.degraded_reason || '',
+    repositories: re.registered_repositories || [],
+    total_registered: re.total_registered || 0,
+    local_only_count: re.local_only_count || 0,
+    github_backed_count: re.github_backed_count || 0,
+    dirty_count: re.dirty_count || 0,
+    inaccessible_count: re.inaccessible_count || 0,
+    recent_changes: re.recent_changes || [],
+    total_observations: re.total_observations || 0,
+    corrupt_registration_count: re.corrupt_registration_count || 0,
+    corrupt_observation_count: re.corrupt_observation_count || 0,
+    corrupt_chain_links: re.corrupt_chain_links || 0,
+    corruption_events: re.corruption_events || [],
+  };
+}
+
+function _setPublishPreviewSurfaceState(proj) {
+  var pp = proj.publish_preview_surface;
+  if (!pp) return;
+
+  var trust = pp.trust_state || 'deferred';
+  _surfaceStates['publish-preview'] = {
+    status: pp.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: pp.provenance || 'derived_projection',
+    reason: pp.degraded_reason || '',
+    operation_id: pp.operation_id || '',
+    last_result_status: pp.last_result_status || 'none',
+    preview_result: pp.preview_result || null,
+    refusal: pp.refusal || null,
+    ledger_total_events: pp.ledger_total_events || 0,
+    ledger_valid_rows: pp.ledger_valid_rows || 0,
+    ledger_corrupt_rows: pp.ledger_corrupt_rows || 0,
+    ledger_corruption_detected: pp.ledger_corruption_detected || false,
+    publishable_repository_count: pp.publishable_repository_count || 0,
+    deployment_available: pp.deployment_available || false,
+    deployment_deferred_reason: pp.deployment_deferred_reason || 'Deployment not available in this release',
+  };
+}
+
+function _setTimelineSurfaceState(proj) {
+  var tl = proj.timeline_surface;
+  if (!tl) {
+    _surfaceStates['timeline'] = { status: 'unavailable', reason: 'Timeline service not available' };
+    return;
+  }
+
+  var trust = tl.trust_state || 'deferred';
+  _surfaceStates['timeline'] = {
+    status: tl.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: tl.provenance || 'derived_projection',
+    reason: tl.degraded_reason || '',
+    timeline_id: tl.timeline_id || '',
+    assembled_at: tl.assembled_at || '',
+    events: tl.events || [],
+    event_count: tl.event_count || 0,
+    domain_coverage: tl.domain_coverage || {},
+    unsupported_domains: tl.unsupported_domains || [],
+    verified_canonical_count: tl.verified_canonical_count || 0,
+    parsed_unverified_count: tl.parsed_unverified_count || 0,
+    canonical_degraded_count: tl.canonical_degraded_count || 0,
+    corrupt_count: tl.corrupt_count || 0,
+    unsupported_count: tl.unsupported_count || 0,
+    missing_count: tl.missing_count || 0,
+    contradictory_count: tl.contradictory_count || 0,
+    stale_count: tl.stale_count || 0,
+    assembly_warnings: tl.assembly_warnings || [],
+    assembly_errors: tl.assembly_errors || [],
+  };
+}
+
+function _setInferenceStudioSurfaceState(proj) {
+  var is_ = proj.inference_studio_surface;
+  if (!is_) return;
+
+  var trust = is_.trust_state || 'deferred';
+  _surfaceStates['inference-studio'] = {
+    status: is_.available ? _mapTrustToStatus(trust) : 'unavailable',
+    trust: trust,
+    provenance: is_.provenance || 'derived_projection',
+    reason: is_.degraded_reason || '',
+    runtime_available: is_.runtime_available || false,
+    runtime_configured: is_.runtime_configured || false,
+    runtime_kind: is_.runtime_kind || 'unknown',
+    omlx_strategy: is_.omlx_strategy || 'post_v1',
+    omlx_available: is_.omlx_available || false,
+    omlx_disclosure: is_.omlx_disclosure || 'OMLX Rigged runtime expansion is pending X2 integration milestone.',
+    task_suitability_count: is_.task_suitability_count || 0,
+    total_results: is_.total_results || 0,
+    total_executed: is_.total_executed || 0,
+    total_refused: is_.total_refused || 0,
+    drafts_awaiting_review: is_.drafts_awaiting_review || 0,
+    native_schema_capability_claimed: is_.native_schema_capability_claimed || false,
+    native_schema_capability_proven: is_.native_schema_capability_proven || false,
+    grammar_capability_claimed: is_.grammar_capability_claimed || false,
+    grammar_capability_proven: is_.grammar_capability_proven || false,
+  };
+}
+
 // ── Trust state mapping ─────────────────────────────────────────────
 
 function _mapTrustToStatus(trustState, connectionState) {
@@ -279,6 +417,7 @@ function _renderAllSurfaces() {
   _renderProjectStudioSurface();
   _renderInferenceStudioSurface();
   _renderPublishPreviewSurface();
+  _renderTimelineSurface();
 }
 
 function _renderConnectSurface() {
@@ -774,6 +913,132 @@ function _renderPublishWithheld(state) {
   withheldEl.innerHTML = html;
 }
 
+function _renderTimelineSurface() {
+  var state = _surfaceStates['timeline'];
+  if (!state) return;
+
+  var tlEvents = _getEl('timeline-events');
+  var tlDegradation = _getEl('timeline-degradation');
+  var tlDomains = _getEl('timeline-domains');
+
+  // Remove old fixture banners
+  var banners = document.querySelectorAll('#surface-timeline .fixture-banner, #surface-timeline .production-banner');
+  for (var i = 0; i < banners.length; i++) banners[i].remove();
+
+  // Add production/fixture banner
+  var content = document.querySelector('#surface-timeline .surface-content');
+  if (content) {
+    var banner = document.createElement('div');
+    if (_mode === 'production' && (state.status === 'unavailable' || state.status === 'deferred')) {
+      banner.className = 'production-banner';
+      banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
+      _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
+      content.appendChild(banner);
+    } else if (_mode === 'fixture') {
+      banner.className = 'fixture-banner';
+      banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
+      _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
+      content.appendChild(banner);
+    }
+  }
+
+  // Timeline events
+  if (tlEvents) {
+    if (state.status === 'unavailable') {
+      tlEvents.innerHTML = '<div class="status-detail">Timeline service unavailable. ' + _escapeHtml(state.reason || 'No projection received.') + '</div>';
+    } else {
+      var events = state.events || [];
+      var html = '<h3>Timeline Events (' + _escapeHtml(String(state.event_count || events.length)) + ')</h3>';
+      if (events.length === 0) {
+        html += '<div class="status-detail">No timeline events recorded.</div>';
+      } else {
+        html += '<div class="timeline-list">';
+        for (var e = 0; e < events.length; e++) {
+          var ev = events[e];
+          var verificationCls = 'evidence-tag';
+          switch (ev.verification_class) {
+            case 'verified_canonical': verificationCls += ' proven'; break;
+            case 'parsed_unverified': verificationCls += ' claimed'; break;
+            case 'canonical_degraded': verificationCls += ' planned'; break;
+            case 'corrupt': verificationCls += ' narrative'; break;
+            case 'unsupported': verificationCls += ' narrative'; break;
+            default: verificationCls += ' planned';
+          }
+          html += '<div class="timeline-event-card">' +
+            '<div class="timeline-event-domain">' + _escapeHtml(ev.domain || 'unknown') + ' / ' + _escapeHtml(ev.event_kind || ev.kind || '') + '</div>' +
+            '<div class="timeline-event-label">' + _escapeHtml(ev.label || ev.summary || '') + '</div>' +
+            '<div class="timeline-event-meta">' +
+            '<span class="' + verificationCls + '">' + _escapeHtml(ev.verification_class || 'unverified') + '</span>' +
+            ' \u00B7 ' + _escapeHtml(ev.source || '') + ' \u00B7 ' + _escapeHtml(ev.timestamp || ev.event_at || '') +
+            '</div></div>';
+        }
+        html += '</div>';
+      }
+      tlEvents.innerHTML = html;
+    }
+  }
+
+  // Degradation summary
+  if (tlDegradation) {
+    var canDeg = state.canonical_degraded_count || 0;
+    var corDeg = state.corrupt_count || 0;
+    var unsDeg = state.unsupported_count || 0;
+    var missDeg = state.missing_count || 0;
+    var contDeg = state.contradictory_count || 0;
+    var staleDeg = state.stale_count || 0;
+    var totalDegraded = canDeg + corDeg + unsDeg + missDeg + contDeg + staleDeg;
+    var degHtml = '<h3>Degradation Summary</h3>';
+    if (totalDegraded === 0) {
+      degHtml += '<div class="status-detail">No degradation detected.</div>';
+    } else {
+      degHtml += '<table class="kv">' +
+        '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
+        '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
+        '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
+        '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
+        '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
+        '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
+        '</table>';
+    }
+    var assemblyWarnings = state.assembly_warnings || [];
+    var assemblyErrors = state.assembly_errors || [];
+    if (assemblyErrors.length > 0) {
+      degHtml += '<div class="status-detail" style="color:var(--error-color)"><strong>Assembly errors:</strong> ' + _escapeHtml(assemblyErrors.join('; ')) + '</div>';
+    }
+    if (assemblyWarnings.length > 0) {
+      degHtml += '<div class="status-detail" style="color:var(--warning-color)"><strong>Assembly warnings:</strong> ' + _escapeHtml(assemblyWarnings.join('; ')) + '</div>';
+    }
+    tlDegradation.innerHTML = degHtml;
+  }
+
+  // Domain coverage
+  if (tlDomains) {
+    var domains = state.domain_coverage || {};
+    var unsupportedDomains = state.unsupported_domains || [];
+    var verifiedCanonical = state.verified_canonical_count || 0;
+    var parsedUnverified = state.parsed_unverified_count || 0;
+    var domainHtml = '<h3>Domain Coverage</h3>';
+    var domainKeys = Object.keys(domains);
+    if (domainKeys.length > 0) {
+      domainHtml += '<table class="kv">';
+      for (var d = 0; d < domainKeys.length; d++) {
+        var domainKey = domainKeys[d];
+        domainHtml += '<tr><td class="k">' + _escapeHtml(domainKey) + '</td><td>' + _escapeHtml(String(domains[domainKey])) + '</td></tr>';
+      }
+      domainHtml += '</table>';
+    }
+    domainHtml += '<div class="status-detail">' +
+      _escapeHtml(String(verifiedCanonical)) + ' verified canonical \u00B7 ' +
+      _escapeHtml(String(parsedUnverified)) + ' parsed unverified \u00B7 ' +
+      _escapeHtml(String(unsupportedDomains.length)) + ' unsupported domains' +
+      '</div>';
+    if (unsupportedDomains.length > 0) {
+      domainHtml += '<div class="status-detail" style="color:var(--warning-color)">Unsupported: ' + _escapeHtml(unsupportedDomains.join(', ')) + '</div>';
+    }
+    tlDomains.innerHTML = domainHtml;
+  }
+}
+
 // ── Intent emission ──────────────────────────────────────────────────
 
 function emitConnectIntent(intentName, params) {
@@ -908,6 +1173,7 @@ function _getFixture(surfaceId) {
     case 'project-studio': return window.__P0_FIXTURES__.project_studio;
     case 'inference-studio': return window.__P0_FIXTURES__.inference_studio;
     case 'publish-preview': return window.__P0_FIXTURES__.publish_preview;
+    case 'timeline': return window.__P0_FIXTURES__.timeline;
     default: return null;
   }
 }
@@ -990,6 +1256,32 @@ function _applyFixtureToState(surfaceId, fix) {
       state.studies = [{
         withheld_reasons: (pc.withheld_sections || []).map(function(w) { return w.section_id + ': ' + w.reason; }),
       }];
+      break;
+    case 'timeline':
+      state.events = (fix.timeline_events || []).map(function(ev) {
+        return {
+          domain: ev.domain,
+          event_kind: ev.kind,
+          label: ev.label,
+          summary: ev.summary,
+          verification_class: ev.verification_class,
+          source: ev.source,
+          timestamp: ev.timestamp,
+        };
+      });
+      state.event_count = fix.event_count || state.events.length;
+      state.verified_canonical_count = fix.verified_canonical_count || 0;
+      state.parsed_unverified_count = fix.parsed_unverified_count || 0;
+      state.canonical_degraded_count = fix.canonical_degraded_count || 0;
+      state.corrupt_count = fix.corrupt_count || 0;
+      state.unsupported_count = fix.unsupported_count || 0;
+      state.missing_count = fix.missing_count || 0;
+      state.contradictory_count = fix.contradictory_count || 0;
+      state.stale_count = fix.stale_count || 0;
+      state.domain_coverage = fix.domain_coverage || {};
+      state.unsupported_domains = fix.unsupported_domains || [];
+      state.assembly_warnings = fix.assembly_warnings || [];
+      state.assembly_errors = fix.assembly_errors || [];
       break;
   }
 }

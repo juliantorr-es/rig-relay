@@ -296,6 +296,40 @@
   .studio-layout { grid-template-columns: 1fr; }
   .task-grid, .section-grid { grid-template-columns: 1fr; }
 }
+/* ── Timeline surface styles ── */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.timeline-event-card {
+  padding: 12px;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--info-color);
+}
+.timeline-event-card.verified_canonical { border-left-color: var(--ok-color); }
+.timeline-event-card.corrupt { border-left-color: var(--error-color); }
+.timeline-event-domain {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.timeline-event-label {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+.timeline-event-meta {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.timeline-degradation, .timeline-domains {
+  margin-top: 16px;
+}
 </style>
 </head>
 <body>
@@ -323,6 +357,7 @@
     <button class="surface-tab" data-surface="project-studio" role="tab">Project Studio</button>
     <button class="surface-tab" data-surface="inference-studio" role="tab">Inference Studio</button>
     <button class="surface-tab" data-surface="publish-preview" role="tab">Publish Preview</button>
+    <button class="surface-tab" data-surface="timeline" role="tab">Timeline History</button>
   </nav>
 
   <div id="mode-bar" role="tablist" aria-label="Layout mode">
@@ -474,6 +509,16 @@
     </div>
   </div>
 
+  <div id="surface-timeline" class="surface-container" role="region" aria-label="Timeline History surface">
+    <div class="surface-content">
+      <h2>Timeline History</h2>
+      <div id="timeline-events" class="timeline-events"></div>
+      <div id="timeline-degradation" class="timeline-degradation status-block"></div>
+      <div id="timeline-domains" class="timeline-domains status-block"></div>
+      <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
   <div id="expanded-overlay" role="dialog" aria-label="Expanded widget" aria-modal="true">
     <button id="expanded-close-btn" class="close-btn" aria-label="Close expanded view">&times;</button>
     <div id="expanded-content" class="expanded-widget"></div>
@@ -512,7 +557,8 @@
           'js/fixtures/p0-fixture-repository-estate.js',
           'js/fixtures/p0-fixture-project-studio.js',
           'js/fixtures/p0-fixture-inference-studio.js',
-          'js/fixtures/p0-fixture-publish-preview.js'
+          'js/fixtures/p0-fixture-publish-preview.js',
+          'js/fixtures/p0-fixture-timeline.js'
         ];
         for (var i = 0; i < sources.length; i++) {
           var s = document.createElement('script');

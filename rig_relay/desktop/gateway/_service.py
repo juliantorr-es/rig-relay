@@ -45,6 +45,13 @@ from rig_relay.desktop.gateway._projection import (
     L0_PROJECTION_BUILDER,
     M0_PROJECTION_BUILDER,
 )
+from rig_relay.desktop.gateway._projection_surfaces import (
+    CONNECT_SURFACE_PROJECTION_BUILDER,
+    INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER,
+    PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER,
+    REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER,
+    TIMELINE_SURFACE_PROJECTION_BUILDER,
+)
 
 _GATEWAY_PROJECTION_SCHEMA = "rig.relay.developer_studio_projection.v1"
 _DEFAULT_WORKSPACES_ROOT = Path.home() / ".rig" / "relay" / "workspaces"
@@ -78,6 +85,9 @@ class DeveloperStudioGatewayService:
         self._m0_service: Any = None
         self._last_projection: DeveloperStudioProjection | None = None
         self._last_authority_report: GatewayAuthorityReport | None = None
+        self._repository_estate_service: Any = None
+        self._publication_service: Any = None
+        self._timeline_service: Any = None
 
     # ── Lazy service accessors ───────────────────────────────────────
 
@@ -164,6 +174,13 @@ class DeveloperStudioGatewayService:
         l0 = L0_PROJECTION_BUILDER(self)
         m0 = M0_PROJECTION_BUILDER(self)
 
+        # X0 surface projections — consume published T1.2/T3.1/T4.2 + W0/W1 policy
+        connect_surface = CONNECT_SURFACE_PROJECTION_BUILDER(self)
+        repository_estate_surface = REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(self)
+        publish_preview_surface = PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(self)
+        timeline_surface = TIMELINE_SURFACE_PROJECTION_BUILDER(self)
+        inference_studio_surface = INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(self)
+
         health = StudioServiceHealth(
             j0_workspace=_service_health_label(j0),
             k0_operator=_service_health_label(k0),
@@ -179,6 +196,11 @@ class DeveloperStudioGatewayService:
             operator=k0,
             context=l0,
             inference=m0,
+            connect_surface=connect_surface,
+            repository_estate_surface=repository_estate_surface,
+            publish_preview_surface=publish_preview_surface,
+            timeline_surface=timeline_surface,
+            inference_studio_surface=inference_studio_surface,
             service_health=health,
             provenance_summary=provenance,
         )
@@ -822,6 +844,353 @@ class DeveloperStudioGatewayService:
             return result
         except Exception as exc:
             result = _failed("get_local_draft", str(exc))
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+    # ── T3.1: Repository Estate Service ──────────────────────────────
+
+    def _get_repository_estate_service(self) -> Any:
+        if self._repository_estate_service is None:
+            try:
+                from rig_relay.repository_estate._service import RepositoryEstateService
+
+                self._repository_estate_service = RepositoryEstateService()
+                logger.debug("gateway: T3.1 repository estate service initialized")
+            except Exception as exc:
+                logger.warning(
+                    "gateway: T3.1 repository estate service unavailable — %s", exc
+                )
+                self._repository_estate_service = _UNAVAILABLE_SENTINEL
+        return self._repository_estate_service
+
+    def register_repository(
+        self, root_path: str, *, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        """Register a local repository in the estate.
+
+        Args:
+            root_path: Path to the git repository root.
+        """
+        cached = self._check_idempotency(
+            f"register_repository:{root_path}", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        estate = self._get_repository_estate_service()
+        if estate is _UNAVAILABLE_SENTINEL:
+            result = _refused(
+                "register_repository",
+                GatewayErrorKind.SERVICE_UNAVAILABLE,
+                "RepositoryEstateService (T3.1) is unavailable",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        try:
+            registration = estate.register_repository(Path(root_path))
+            result = _succeeded(
+                "register_repository",
+                {
+                    "repository_hash": registration.repository_hash,
+                    "repository_label": registration.repository_label,
+                    "repository_kind": registration.repository_kind.value,
+                    "registered_at": registration.registered_at,
+                },
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        except Exception as exc:
+            result = _failed("register_repository", str(exc))
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+    def observe_repository(
+        self,
+        repository_hash: str,
+        root_path: str = "",
+        *,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Observe a registered repository with identity-match enforcement.
+
+        Args:
+            repository_hash: Stable identifier from registration.
+            root_path: Filesystem path. If empty, resolved from registration.
+        """
+        cached = self._check_idempotency(
+            f"observe_repository:{repository_hash}", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        estate = self._get_repository_estate_service()
+        if estate is _UNAVAILABLE_SENTINEL:
+            result = _refused(
+                "observe_repository",
+                GatewayErrorKind.SERVICE_UNAVAILABLE,
+                "RepositoryEstateService (T3.1) is unavailable",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        try:
+            resolved = Path(root_path) if root_path else None
+            observation = estate.observe_repository(repository_hash, resolved)
+            result = _succeeded(
+                "observe_repository",
+                {
+                    "observation_id": observation.observation_id,
+                    "repository_hash": observation.repository_hash,
+                    "status": observation.status.value,
+                    "observed_at": observation.observed_at,
+                    "is_dirty": observation.git_facts.dirty_counts.modified > 0
+                    or observation.git_facts.dirty_counts.untracked > 0,
+                },
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        except Exception as exc:
+            result = _failed("observe_repository", str(exc))
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+    # ── T1.2: Publication Preview Service ────────────────────────────
+
+    def _get_publication_service(self) -> Any:
+        if self._publication_service is None:
+            try:
+                from rig_relay.publication._service import (
+                    ProjectPagePublicationPreviewService,
+                )
+
+                self._publication_service = ProjectPagePublicationPreviewService()
+                logger.debug("gateway: T1.2 publication preview service initialized")
+            except Exception as exc:
+                logger.warning(
+                    "gateway: T1.2 publication preview service unavailable — %s", exc
+                )
+                self._publication_service = _UNAVAILABLE_SENTINEL
+        return self._publication_service
+
+    def compile_preview(
+        self,
+        project_name: str,
+        *,
+        repository_root: str = "",
+        repo_owner: str = "",
+        repo_name: str = "",
+        publication_policy: str = "preview_only",
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Compile a publication preview from L0 profile + J0 readiness.
+
+        Args:
+            project_name: Human-readable project name for the profile.
+            repository_root: Path to the repository root for L0 extraction.
+            repo_owner: GitHub owner for URL construction.
+            repo_name: GitHub repo name for URL construction.
+            publication_policy: preview_only, developer_approved, or public_release.
+        """
+        cached = self._check_idempotency(
+            f"compile_preview:{project_name}", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        pub = self._get_publication_service()
+        if pub is _UNAVAILABLE_SENTINEL:
+            result = _refused(
+                "compile_preview",
+                GatewayErrorKind.SERVICE_UNAVAILABLE,
+                "ProjectPagePublicationPreviewService (T1.2) is unavailable",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+        l0 = self._get_l0_service()
+        try:
+            from rig_relay.context_engine.fixtures import (
+                IntakeFixture,
+                InvestigationEvidenceFixture,
+            )
+
+            intake = IntakeFixture(
+                project_name=project_name,
+                repository_root=Path(repository_root) if repository_root else Path("."),
+            )
+            investigation = InvestigationEvidenceFixture()
+            understanding = l0.assemble(intake, investigation)
+            profile_candidate = l0.assemble_profile_candidate(understanding)
+
+            preview_result = pub.compile_preview(
+                profile_candidate,
+                publication_policy=publication_policy,
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+            )
+
+            receipt = preview_result.receipt
+            if receipt is not None:
+                receipt_summary = {
+                    "receipt_id": receipt.receipt_id,
+                    "compiled_at": receipt.compiled_at,
+                    "compilation_successful": receipt.compilation_successful,
+                    "profile_candidate_digest": receipt.profile_candidate_digest,
+                    "safety_passed": receipt.safety_passed,
+                    "preview_only": receipt.preview_only,
+                    "deployment_ready": receipt.deployment_ready,
+                    "evidence_digest": receipt.evidence_digest,
+                }
+            else:
+                receipt_summary = {}
+
+            refused = preview_result.refused.value if preview_result.refused else None
+
+            result = _succeeded(
+                "compile_preview",
+                {
+                    "project_name": project_name,
+                    "operation_id": getattr(preview_result, "operation_id", ""),
+                    "compilation_successful": (
+                        preview_result.compiler_result.compilation_successful
+                        if preview_result.compiler_result
+                        else False
+                    ),
+                    "refused": refused,
+                    "receipt": receipt_summary,
+                },
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        except Exception as exc:
+            result = _failed("compile_preview", str(exc))
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+    def get_publication_ledger_summary(
+        self, *, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        """Return a content-light summary of the publication evidence ledger."""
+        cached = self._check_idempotency(
+            "get_publication_ledger_summary", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        pub = self._get_publication_service()
+        if pub is _UNAVAILABLE_SENTINEL:
+            result = _refused(
+                "get_publication_ledger_summary",
+                GatewayErrorKind.SERVICE_UNAVAILABLE,
+                "ProjectPagePublicationPreviewService (T1.2) is unavailable",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        try:
+            ledger = pub._ledger
+            event_count = ledger.count_events() if ledger else 0
+            reconstruction = (
+                ledger.load_receipts(authoritative=False) if ledger else None
+            )
+            if reconstruction:
+                result = _succeeded(
+                    "get_publication_ledger_summary",
+                    {
+                        "total_events": reconstruction.total_rows,
+                        "valid_rows": reconstruction.valid_rows,
+                        "corrupt_rows": reconstruction.corrupt_rows,
+                        "corruption_detected": reconstruction.corruption_detected,
+                        "warnings": reconstruction.reconstruction_warnings,
+                    },
+                )
+            else:
+                result = _succeeded(
+                    "get_publication_ledger_summary",
+                    {
+                        "total_events": event_count,
+                        "valid_rows": 0,
+                        "corrupt_rows": 0,
+                        "corruption_detected": False,
+                        "warnings": [],
+                    },
+                )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        except Exception as exc:
+            result = _failed("get_publication_ledger_summary", str(exc))
+            self._record_idempotency(idempotency_key, result)
+            return result
+
+    # ── T4.2: Investigation Timeline Service ─────────────────────────
+
+    def _get_timeline_service(self) -> Any:
+        if self._timeline_service is None:
+            try:
+                from rig_relay.investigation_timeline import (
+                    InvestigationEvidenceTimelineService,
+                )
+
+                self._timeline_service = InvestigationEvidenceTimelineService()
+                logger.debug("gateway: T4.2 investigation timeline service initialized")
+            except Exception as exc:
+                logger.warning(
+                    "gateway: T4.2 investigation timeline service unavailable — %s", exc
+                )
+                self._timeline_service = _UNAVAILABLE_SENTINEL
+        return self._timeline_service
+
+    def assemble_timeline(
+        self, *, idempotency_key: str | None = None
+    ) -> dict[str, Any]:
+        """Assemble an investigation evidence timeline from canonical sources.
+
+        Returns a content-light summary with event counts and degradation stats.
+        """
+        cached = self._check_idempotency("assemble_timeline", idempotency_key)
+        if cached is not None:
+            return cached
+
+        tl = self._get_timeline_service()
+        if tl is _UNAVAILABLE_SENTINEL:
+            result = _refused(
+                "assemble_timeline",
+                GatewayErrorKind.SERVICE_UNAVAILABLE,
+                "InvestigationEvidenceTimelineService (T4.2) is unavailable",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        try:
+            assembly_result = tl.assemble_timeline()
+            if assembly_result is None:
+                result = _refused(
+                    "assemble_timeline",
+                    GatewayErrorKind.DEPENDENCY_FAILED,
+                    "Timeline assembly returned None",
+                )
+                self._record_idempotency(idempotency_key, result)
+                return result
+
+            timeline = assembly_result.timeline
+            dg = getattr(timeline, "degradation_summary", None)
+            result = _succeeded(
+                "assemble_timeline",
+                {
+                    "timeline_id": timeline.timeline_id,
+                    "assembled_at": timeline.assembled_at,
+                    "event_count": timeline.event_count,
+                    "domain_coverage": timeline.domain_coverage,
+                    "verified_canonical_count": (
+                        dg.verified_canonical_count if dg else 0
+                    ),
+                    "corrupt_count": dg.corrupt_count if dg else 0,
+                    "missing_count": dg.missing_count if dg else 0,
+                    "assembly_warnings": assembly_result.warnings,
+                    "assembly_errors": assembly_result.errors,
+                },
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+        except Exception as exc:
+            result = _failed("assemble_timeline", str(exc))
             self._record_idempotency(idempotency_key, result)
             return result
 
