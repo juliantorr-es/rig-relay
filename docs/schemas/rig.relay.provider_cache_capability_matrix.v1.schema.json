@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.local/schemas/rig.relay.provider_cache_capability_matrix.v1.schema.json",
+  "title": "Provider Cache Capability Matrix",
+  "description": "Matrix of cloud-provider and local-inference prompt/context caching capabilities, current Rig Relay adapter support, privacy/retention facts, and evidence extraction maturity. Content-light: never stores raw prompts, secrets, or private code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "generated_at",
+    "research_date",
+    "providers",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.provider_cache_capability_matrix.v1"
+    },
+    "matrix_id": {
+      "type": "string",
+      "description": "Unique matrix identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this matrix was generated."
+    },
+    "research_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of official provider documentation review."
+    },
+    "providers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_kind",
+          "platform_kind",
+          "models_or_families",
+          "cache_support",
+          "cache_mode",
+          "cache_hit_field",
+          "cache_write_field",
+          "explicit_control_available",
+          "ttl_behavior",
+          "is_disableable",
+          "cache_eviction_behavior",
+          "data_isolation",
+          "retention_class",
+          "storage_medium",
+          "is_zdr_eligible",
+          "minimum_cacheable_tokens",
+          "cost_to_write",
+          "cost_to_read",
+          "current_rig_adapter_extracts_cache",
+          "current_rig_adapter_sets_cache",
+          "rig_evidence_maturity",
+          "confidential_context_recommendation"
+        ],
+        "properties": {
+          "provider_kind": {
+            "type": "string",
+            "enum": ["openai", "anthropic", "google_gemini", "google_vertex", "deepseek", "openrouter", "mistral", "local_inference"],
+            "description": "Cloud provider or inference surface."
+          },
+          "platform_kind": {
+            "type": "string",
+            "enum": ["first_party_api", "vertex_ai", "amazon_bedrock", "microsoft_foundry", "openrouter_gateway", "local_process"],
+            "description": "Platform variant."
+          },
+          "models_or_families": {
+            "type": "string",
+            "description": "Model families or models covered by this row, e.g. 'gpt-4o+', 'claude-4+', 'gemini-2.5+'."
+          },
+          "cache_support": {
+            "type": "string",
+            "enum": ["supported_active", "supported_opt_in", "supported_automatic", "unsupported", "unknown", "planned_future"],
+            "description": "Whether the provider/platform supports prompt/context caching."
+          },
+          "cache_mode": {
+            "type": "string",
+            "enum": [
+              "automatic_provider_managed",
+              "explicit_prefix",
+              "explicit_resource",
+              "automatic_and_explicit",
+              "local_runtime_kv",
+              "unsupported",
+              "disabled_when_available",
+              "unknown"
+            ],
+            "description": "The cache mode or modes supported."
+          },
+          "cache_hit_field": {
+            "type": "string",
+            "description": "API response field name for cache hit token count, e.g. 'cached_tokens', 'cache_read_input_tokens', 'cachedContentTokenCount'."
+          },
+          "cache_write_field": {
+            "type": ["string", "null"],
+            "description": "API response field name for cache write token count, e.g. 'cache_creation_input_tokens'. Null if not distinguished."
+          },
+          "explicit_control_available": {
+            "type": "boolean",
+            "description": "True if the user can explicitly request, manage, or disable caching."
+          },
+          "explicit_control_method": {
+            "type": ["string", "null"],
+            "description": "Mechanism: 'cache_control_block', 'prompt_cache_key', 'cached_content_resource', 'project_level_config', 'none'."
+          },
+          "ttl_behavior": {
+            "type": "string",
+            "description": "Human-readable TTL description, e.g. '5m default, 1h opt-in', '5-10m idle, max 1h', '24h implicit, 60m explicit default'."
+          },
+          "is_disableable": {
+            "type": "boolean",
+            "description": "True if the user can disable or avoid caching."
+          },
+          "disable_method": {
+            "type": ["string", "null"],
+            "description": "How: 'project_level_config', 'request_header', 'omit_cache_control', 'not_disableable'."
+          },
+          "cache_eviction_behavior": {
+            "type": "string",
+            "description": "How caches are evicted: 'idle_timeout', 'fixed_ttl', 'lru', 'manual_only', 'overflow_routing', 'unknown'."
+          },
+          "data_isolation": {
+            "type": "string",
+            "enum": ["organization", "workspace", "project", "no_isolation", "local_process", "unknown"],
+            "description": "Cache data isolation boundary."
+          },
+          "retention_class": {
+            "type": "string",
+            "enum": [
+              "in_memory_ephemeral",
+              "gpu_local_storage",
+              "managed_resource_ttl",
+              "provider_retained_unknown",
+              "retention_disabled",
+              "not_disclosed",
+              "local_runtime_only"
+            ],
+            "description": "Retention/storage classification."
+          },
+          "storage_medium": {
+            "type": "string",
+            "enum": ["volatile_gpu_memory", "gpu_local_disk", "provider_managed_storage", "local_disk", "unknown", "not_applicable"],
+            "description": "Physical storage medium for cached data."
+          },
+          "is_zdr_eligible": {
+            "type": "boolean",
+            "description": "True if caching is eligible for Zero Data Retention (ZDR) or equivalent privacy program."
+          },
+          "minimum_cacheable_tokens": {
+            "type": ["integer", "null"],
+            "description": "Minimum input tokens for cache eligibility. Null if unknown."
+          },
+          "cost_to_write": {
+            "type": "string",
+            "description": "Human-readable write cost, e.g. '1.25x base input' or 'free'."
+          },
+          "cost_to_read": {
+            "type": "string",
+            "description": "Human-readable read cost, e.g. '0.10x base input' or '90% discount'."
+          },
+          "current_rig_adapter_extracts_cache": {
+            "type": "boolean",
+            "description": "True if the current Rig Relay LLM backend extracts cache usage fields from responses."
+          },
+          "current_rig_adapter_sets_cache": {
+            "type": "boolean",
+            "description": "True if the current Rig Relay LLM backend sends cache control directives on requests."
+          },
+          "rig_evidence_maturity": {
+            "type": "string",
+            "enum": ["canonical", "production_ready", "partial", "development", "missing", "not_applicable"],
+            "description": "Maturity of Rig Relay's cache evidence extraction and recording for this provider."
+          },
+          "confidential_context_recommendation": {
+            "type": "string",
+            "enum": [
+              "safe_for_auto_cache",
+              "disclose_and_proceed",
+              "refuse_by_default",
+              "require_explicit_approval",
+              "never_allow",
+              "to_be_determined"
+            ],
+            "description": "Recommended disposition for confidential repository context with this provider's cache."
+          },
+          "official_documentation_urls": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Official documentation URLs consulted."
+          },
+          "research_notes": {
+            "type": ["string", "null"],
+            "description": "Researcher notes about caveats, access issues, or pending investigation."
+          }
+        }
+      },
+      "description": "Per-provider capability rows."
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true,
+      "description": "Never stores raw prompts, completions, provider payloads, secrets, or API keys."
+    }
+  }
+}

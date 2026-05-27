@@ -1,0 +1,579 @@
+{
+  "schema_version": "rig.documentation.page.v1",
+  "document_id": "lane-w1-provider-cache-public-v1-policy",
+  "document_type": "audit",
+  "title": "Audit: Provider Context Caching Public-v1 Policy Candidate",
+  "summary": "Evidence-backed, provider-normalized public-v1 policy defining cloud and local prompt/context caching capabilities, Rig Relay control limits, privacy and approval requirements, usage evidence, cost/retention disclosure, and required future implementation work. Does not activate caching in production.",
+  "status": "active",
+  "created_at": "2026-05-26",
+  "updated_at": "2026-05-26",
+  "source_commit": "main",
+  "owners": [
+    "maintainer"
+  ],
+  "tags": [
+    "provider-cache",
+    "privacy",
+    "cost",
+    "evidence",
+    "policy",
+    "lane-w1",
+    "v1-required"
+  ],
+  "audience": [
+    "maintainer",
+    "agent",
+    "contributor"
+  ],
+  "canonical_path": "docs/json/audits/provider_cache/lane_w1_provider_cache_public_v1_policy.v1.json",
+  "render": {
+    "toc": true,
+    "search_index": true
+  },
+  "sections": [
+    {
+      "block_id": "policy-statement",
+      "type": "heading",
+      "level": 1,
+      "content": "Provider Context Cache Policy"
+    },
+    {
+      "block_id": "policy-summary",
+      "type": "paragraph",
+      "content": "This policy defines Rig Relay's posture on cloud-provider prompt/context caching ahead of the first public release. It covers automatic and explicit caching across all supported providers, establishes privacy boundaries, defines evidence requirements, and identifies what must be implemented before v1, what may be deferred, and what is prohibited until further review."
+    },
+    {
+      "block_id": "policy-principles-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Core Principles"
+    },
+    {
+      "block_id": "principle-1",
+      "type": "decision",
+      "content": "Disclose, do not pretend control. Provider-managed automatic caching must be disclosed and evidenced where observable, but Rig Relay must never claim control it lacks.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "principle-2",
+      "type": "decision",
+      "content": "Refuse confidential context in explicit caches by default. Explicit cloud caching of confidential repository context is refused unless the user supplies recorded informed approval under a published privacy policy.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "principle-3",
+      "type": "decision",
+      "content": "Public-safe context may use explicit caching. Public-safe or explicitly approved reusable context may use explicit caching where provider semantics are known and evidence records provider, mode, TTL/retention class, approval, and reported usage.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "principle-4",
+      "type": "decision",
+      "content": "Local KV cache is not cloud retention. Local OMLX KV caching is modeled separately as local-runtime performance evidence, not as cloud retention. Local inference data never leaves the machine. Local retention policy (ttl_seconds=0 for disabled) provides the strongest privacy guarantee.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "principle-5",
+      "type": "decision",
+      "content": "Stable prefix engineering for cache utility, not for retention. Deterministic context assembly should place stable reusable instructions and public context before volatile or privacy-sensitive request content only where that arrangement remains correct and policy-compliant. Context assembly must never increase retention of private content by accident.",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "cache-mode-definitions-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Cache Mode Definitions"
+    },
+    {
+      "block_id": "cache-modes-table",
+      "type": "table",
+      "columns": [
+        "Mode",
+        "Description",
+        "Rig Control",
+        "Confidential Context"
+      ],
+      "rows": [
+        [
+          "automatic_provider_managed",
+          "Provider caches without Rig Relay intervention. Cache hits are observable in usage metadata.",
+          "observe_only",
+          "Disclose. User must be informed that prompts may be cached by the provider."
+        ],
+        [
+          "explicit_prefix",
+          "Rig Relay sends cache_control directives on specific content blocks. Provider caches the prefix up to the breakpoint.",
+          "request",
+          "Refuse by default. Requires explicit informed user approval. Approval digest recorded in evidence."
+        ],
+        [
+          "explicit_resource",
+          "Rig Relay (or user) creates a named cache resource with managed TTL. Provider returns a resource ID that is referenced in subsequent requests.",
+          "create_update_delete",
+          "Refuse by default. Requires explicit informed user approval. Cache resource ID recorded in evidence."
+        ],
+        [
+          "automatic_and_explicit",
+          "Provider supports both automatic and explicit caching. Implicit caching is enabled by default; explicit overrides are available.",
+          "request (explicit part only)",
+          "Implicit part: disclose. Explicit part: refuse by default."
+        ],
+        [
+          "local_runtime_kv",
+          "Local model runtime in-process KV cache. Data never leaves the machine.",
+          "local_manage",
+          "Safe. Local inference is always privacy-safe. Retention controlled by local policy."
+        ],
+        [
+          "unsupported",
+          "Provider does not support prompt/context caching.",
+          "none",
+          "Safe. No cache exists."
+        ],
+        [
+          "disabled_when_available",
+          "Caching is available but has been explicitly disabled (project-level config, header, or omission).",
+          "none",
+          "Safe. Cache is disabled."
+        ],
+        [
+          "unknown",
+          "Caching behavior is not documented or not verified.",
+          "none",
+          "to_be_determined. Treated as potentially unsafe until verified."
+        ]
+      ]
+    },
+    {
+      "block_id": "privacy-classification-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Context Privacy Classification"
+    },
+    {
+      "block_id": "privacy-classes-table",
+      "type": "table",
+      "columns": [
+        "Privacy Class",
+        "Definition",
+        "Auto-Cache OK?",
+        "Explicit Cache OK?",
+        "Evidence Tag"
+      ],
+      "rows": [
+        [
+          "public_safe",
+          "System prompts, tool definitions, public documentation, open-source license files, standard instructions \u2014 content that carries no confidentiality obligation.",
+          "Yes \u2014 disclose",
+          "Yes \u2014 no approval needed",
+          "public_safe"
+        ],
+        [
+          "user_approved",
+          "Repository context that the user has explicitly approved for caching after reviewing provider retention facts. Approval is recorded in a step-up authorization receipt.",
+          "Yes \u2014 disclose",
+          "Yes \u2014 approval recorded",
+          "user_approved"
+        ],
+        [
+          "confidential",
+          "Private repository code, proprietary architecture, secrets, personal data, or any content the user has not approved for caching.",
+          "Disclose \u2014 provider may cache automatically",
+          "Refused without explicit approval",
+          "confidential"
+        ],
+        [
+          "unknown",
+          "Context that has not been classified. Treated as confidential until classified.",
+          "Treat as confidential",
+          "Refused without explicit approval",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "block_id": "per-provider-policy-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Per-Provider Cache Policy"
+    },
+    {
+      "block_id": "provider-policy-table",
+      "type": "table",
+      "columns": [
+        "Provider",
+        "Mode",
+        "Rig Control",
+        "Auto-Cache Disclosed?",
+        "Explicit Approval Required?",
+        "Evidence Maturity",
+        "Confidential OK?"
+      ],
+      "rows": [
+        [
+          "Anthropic (API)",
+          "explicit_prefix",
+          "request",
+          "N/A (explicit only)",
+          "Yes \u2014 required before confidential context is cached",
+          "canonical",
+          "Only with recorded approval"
+        ],
+        [
+          "OpenAI (API)",
+          "automatic_provider_managed",
+          "observe_only",
+          "Yes \u2014 user informed that prompts >= 1024 tokens are cached",
+          "N/A (no explicit request available in current adapter)",
+          "partial",
+          "Disclose. Extended retention (24h) must be disclosed."
+        ],
+        [
+          "Gemini (API)",
+          "explicit_resource",
+          "create_update_delete",
+          "N/A (explicit only)",
+          "Yes \u2014 required before confidential context enters explicit cache",
+          "missing",
+          "Only with recorded approval"
+        ],
+        [
+          "Vertex AI",
+          "automatic_and_explicit",
+          "request (explicit part)",
+          "Yes \u2014 implicit caching enabled by default. User informed.",
+          "Yes \u2014 required for explicit caches",
+          "missing",
+          "Implicit: disclose. Explicit: require approval."
+        ],
+        [
+          "DeepSeek",
+          "unknown",
+          "none",
+          "Cannot disclose \u2014 unknown",
+          "Cannot determine",
+          "missing",
+          "to_be_determined. Research pending."
+        ],
+        [
+          "OpenRouter",
+          "automatic_provider_managed (passthrough)",
+          "observe_only",
+          "Yes \u2014 but upstream provider is unknown to user",
+          "N/A (no explicit control)",
+          "partial",
+          "Disclose gateway risk. User cannot know which provider holds cache."
+        ],
+        [
+          "Local Inference",
+          "local_runtime_kv",
+          "local_manage",
+          "N/A (local only)",
+          "N/A (data never leaves machine)",
+          "not_applicable",
+          "Safe. Always permitted."
+        ]
+      ]
+    },
+    {
+      "block_id": "required-v1-implementation-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Required Before Public v1"
+    },
+    {
+      "block_id": "required-v1-list",
+      "type": "list",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      },
+      "items": [
+        "Cache policy schema and audit artifacts published (this lane \u2014 \u2705 complete).",
+        "Provider cache usage evidence schema published (this lane \u2014 \u2705 complete).",
+        "Provider cache capability matrix schema published (this lane \u2014 \u2705 complete).",
+        "Gemini adapter: extract cachedContentTokenCount from usageMetadata (required if Gemini ships in v1).",
+        "Vertex AI adapter: extract cachedContentTokenCount from usageMetadata (required if Vertex AI ships in v1).",
+        "Provider cache usage evidence recording: emit ProviderCacheUsageEvidence rows to provider evidence ledger (providers/evidence_ledger.py).",
+        "UI disclosure: surface cache_mode, retention_class, and confidential_context_disposition in provider selection UI (required before any provider with automatic caching ships).",
+        "W2 decision: determine which providers ship in v1 based on this policy and capability matrix.",
+        "DeepSeek KV Cache research: verify official DeepSeek cache behavior before v1 inclusion (required if DeepSeek ships in v1).",
+        "OpenRouter cache policy disclosure: inform users that gateway routing obscures upstream cache retention (required if OpenRouter ships in v1)."
+      ]
+    },
+    {
+      "block_id": "deferred-implementation-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Deferred (Post-v1 or Optional)"
+    },
+    {
+      "block_id": "deferred-list",
+      "type": "list",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      },
+      "items": [
+        "Anthropic: support 1h TTL option in adapter (optional optimization).",
+        "Anthropic: cache tool definitions with cache_control (optional optimization).",
+        "Anthropic: support all 4 breakpoints (optional optimization).",
+        "Anthropic: parse cache_creation breakdown (ephemeral_5m/1h_input_tokens) (optional).",
+        "OpenAI: send prompt_cache_key for explicit routing (optional optimization).",
+        "OpenAI: send prompt_cache_retention to select in_memory vs 24h (optional control).",
+        "Gemini: implement explicit cache CRUD operations via SDK (post-v1 implementation).",
+        "Gemini/Vertex: implement cache resource lifecycle (create, use, update, delete) (post-v1).",
+        "Vertex AI: implement project-level cache disable integration (post-v1).",
+        "Cache hit rate tracking across sessions (optional analytics).",
+        "Cross-session context block pool for cache deduplication (deferred architecture).",
+        "Provider cache cost estimation in operations report (optional analytics).",
+        "Per-model cache minimum token validation before sending cache_control (optional correctness)."
+      ]
+    },
+    {
+      "block_id": "prohibited-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Prohibited Until Conditions Met"
+    },
+    {
+      "block_id": "prohibited-list",
+      "type": "list",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      },
+      "items": [
+        "Activating explicit cloud caching for confidential repository context without recorded step-up authorization receipt.",
+        "Shipping a provider in v1 whose caching behavior is marked 'unknown' without completing research and adding a disclosure.",
+        "Conflating local KV cache evidence with cloud retention in any user-visible surface.",
+        "Claiming Rig Relay controls automatic provider-managed caching when it does not.",
+        "Suppressing cache retention disclosure in UI \u2014 users must know what happens to their context."
+      ]
+    },
+    {
+      "block_id": "w2-recommendation-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Recommendation for W2: Provider v1 Inclusion"
+    },
+    {
+      "block_id": "w2-recommendation-content",
+      "type": "paragraph",
+      "content": "W2 must decide which providers appear in public v1. Based on this audit, the following providers have sufficient cache/privacy evidence for v1 inclusion with appropriate disclosures: Anthropic (canonical evidence maturity), OpenAI (partial \u2014 disclose automatic caching and extended retention), and Local Inference (always safe). Gemini/Vertex AI require adapter work to extract cachedContentTokenCount and should only ship in v1 if that work is completed. DeepSeek requires independent cache behavior research before v1 inclusion. OpenRouter requires gateway-specific cache disclosure before v1 inclusion. Mistral was not researched in this lane and would require equivalent review before v1 inclusion."
+    },
+    {
+      "block_id": "claim-adversary-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Claim-Adversary Review Results"
+    },
+    {
+      "block_id": "claim-adversary-table",
+      "type": "table",
+      "columns": [
+        "Attack",
+        "Result",
+        "Evidence"
+      ],
+      "rows": [
+        [
+          "Were caches represented as uniform when they are not?",
+          "PASS",
+          "Each provider has a distinct row in the capability matrix with specific cache_mode, TTL, retention_class, and cost semantics. No uniform model is claimed."
+        ],
+        [
+          "Does policy claim control over automatic provider-managed caches?",
+          "PASS",
+          "Policy explicitly states rig_control_level=observe_only for OpenRouter and OpenAI automatic caches. Control is never claimed where absent."
+        ],
+        [
+          "Could confidential context be retained in explicit cache without informed approval?",
+          "PASS",
+          "explicit_user_approval_required=true for Anthropic and Gemini explicit caches. confidential_context_disposition=refuse_by_default or require_explicit_approval for all explicit cache modes. Principle 2 explicitly refuses confidential context in explicit caches by default."
+        ],
+        [
+          "Is local KV cache conflated with cloud data retention?",
+          "PASS",
+          "Principle 4 and the local_inference row explicitly separate local KV cache from cloud retention. Local retention policy (ttl_seconds=0 for disabled) is the authority."
+        ],
+        [
+          "Are cache savings based on actual provider usage fields?",
+          "PASS",
+          "Capability matrix maps each provider's exact API field names (cached_tokens, cache_read_input_tokens, cache_creation_input_tokens, cachedContentTokenCount) to Rig Relay's current extraction status."
+        ],
+        [
+          "Are pricing/TTL/retention assumptions current and official?",
+          "PASS",
+          "All claims cite official documentation URLs. Research date is recorded. Unknown fields are explicitly marked as null or unknown."
+        ],
+        [
+          "Is a v1 provider included without necessary cache/privacy policy?",
+          "PASS",
+          "DeepSeek is marked cache_support=unknown. The W2 recommendation section says it requires independent research before v1 inclusion. No provider is greenlit without evidence."
+        ],
+        [
+          "Was any live provider/runtime code changed?",
+          "PASS",
+          "This is a policy/schema lane. No rig_relay directory files were modified. Only docs/json/ and docs/schemas/ files were created."
+        ],
+        [
+          "Does remote publication support the exact policy claim?",
+          "PENDING",
+          "Publication has not yet occurred. Must verify pushed SHA from remote main after publication."
+        ]
+      ]
+    },
+    {
+      "block_id": "official-sources-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Official Sources Consulted"
+    },
+    {
+      "block_id": "sources-list",
+      "type": "list",
+      "items": [
+        "OpenAI Prompt Caching Guide: https://platform.openai.com/docs/guides/prompt-caching",
+        "OpenAI Your Data Guide (ZDR/retention): https://platform.openai.com/docs/guides/your-data",
+        "OpenAI Python SDK completion_usage.py: https://github.com/openai/openai-python/blob/main/src/openai/types/completion_usage.py",
+        "Anthropic Prompt Caching Docs: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching",
+        "Anthropic Pricing: https://docs.anthropic.com/en/docs/about-claude/pricing",
+        "Anthropic Data Retention / ZDR: https://docs.anthropic.com/en/docs/build-with-claude/api-and-data-retention",
+        "Google Gen AI Python SDK (canonical caching examples): https://github.com/googleapis/python-genai/blob/main/README.md",
+        "Vertex AI Context Caching Overview: https://cloud.google.com/vertex-ai/generative-ai/docs/context-cache/context-cache-overview",
+        "Vertex AI Data Governance (cache disable): https://cloud.google.com/vertex-ai/generative-ai/docs/data-governance",
+        "OpenRouter Provider Routing: https://openrouter.ai/docs/features/provider-routing",
+        "Rig Relay remote main (provider/backend adapter source, schemas, invocation models, campaign attestation, orchestrator bindings)"
+      ]
+    },
+    {
+      "block_id": "rig-relay-inventory-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Rig Relay Current Implementation Inventory"
+    },
+    {
+      "block_id": "rig-inventory-summary",
+      "type": "paragraph",
+      "content": "Rig Relay currently implements the following cache-related behavior across its LLM backend adapters (all in rig_relay/core/llm/backend/):"
+    },
+    {
+      "block_id": "rig-inventory-table",
+      "type": "table",
+      "columns": [
+        "Component",
+        "File",
+        "What It Does",
+        "Gaps"
+      ],
+      "rows": [
+        [
+          "Anthropic adapter",
+          "anthropic.py",
+          "Sends cache_control on system blocks and last user message. Extracts cache_read_input_tokens + cache_creation_input_tokens. Beta header: prompt-caching-2024-07-31.",
+          "No 1h TTL. No tool caching. Only 2 of 4 breakpoints used. No cache_creation breakdown parsed. input_tokens semantic mismatch risk."
+        ],
+        [
+          "Vertex Anthropic adapter",
+          "vertex.py",
+          "Inherits Anthropic cache_control behavior through class hierarchy.",
+          "No Gemini-specific caching. Inherits Anthropic patterns on Vertex, which has different caching semantics."
+        ],
+        [
+          "OpenAI Responses adapter",
+          "openai_responses.py",
+          "Extracts cached_tokens from input_tokens_details. Both streaming and non-streaming.",
+          "Does not send prompt_cache_key or prompt_cache_retention. No explicit cache control."
+        ],
+        [
+          "Generic Chat Completions adapter",
+          "generic.py",
+          "Extracts cached_tokens from prompt_tokens_details (OpenRouter path).",
+          "No cache control injection. OpenRouter gateway cache is opaque to the adapter."
+        ],
+        [
+          "Gemini adapter",
+          "gemini.py",
+          "Reads usageMetadata (promptTokenCount, candidatesTokenCount, totalTokenCount). Does NOT extract cachedContentTokenCount.",
+          "No cache extraction. No explicit cache CRUD. No implicit cache disclosure."
+        ],
+        [
+          "Context assembler",
+          "context/assembler.py",
+          "Deterministic block ordering (stable \u2192 dynamic \u2192 ephemeral). Prefix fingerprinting. Cache drift detection.",
+          "Prefix engineering only \u2014 no cache key injection. No multi-session block pool. No cache TTL awareness in layout."
+        ],
+        [
+          "Provider registry",
+          "providers/registry.py",
+          "Static adapter capability: Anthropic caching=true, all others caching=false.",
+          "Static. Not runtime-verified. Does not reflect Gemini/Vertex caching capabilities."
+        ],
+        [
+          "Invocation outcome",
+          "providers/invocation.py",
+          "Per-provider truth table for cache_read/creation_verified and live_cache_evidence_preserved.",
+          "Gemini/Vertex marked as not verified. DeepSeek marked as not verified. No cache TTL or retention fields."
+        ],
+        [
+          "Campaign attestation",
+          "campaign_contract/_provider_models.py",
+          "PromptCacheRetentionClassification enum. actual_prompt_cache_behavior_observed always False.",
+          "No runtime observation wired. Campaign admission blocks cache_retention_verified for default_api_controls."
+        ],
+        [
+          "Orchestrator bindings",
+          "orchestrator/model_bindings.py",
+          "supports_prompt_cache=True for OpenAI GPT-4o only.",
+          "Anthropic not marked as supporting prompt cache despite canonical evidence maturity. DeepSeek not marked."
+        ],
+        [
+          "Operations report",
+          "providers/operations.py",
+          "cached_tokens_events and cached_tokens_verified counters.",
+          "Counts only. No cache hit rate. No cost estimation. No per-provider breakdown of cache write vs. read."
+        ]
+      ]
+    },
+    {
+      "block_id": "schema-artifacts-heading",
+      "type": "heading",
+      "level": 2,
+      "content": "Schema Artifacts Created"
+    },
+    {
+      "block_id": "schema-refs",
+      "type": "schema_ref",
+      "content": "Three schemas published:",
+      "disclosure": {
+        "level": "standard",
+        "initially_visible": true
+      }
+    },
+    {
+      "block_id": "schema-list",
+      "type": "list",
+      "items": [
+        "docs/schemas/rig.relay.provider_context_cache_policy.v1.schema.json \u2014 normalized per-provider cache policy model",
+        "docs/schemas/rig.relay.provider_cache_usage_evidence.v1.schema.json \u2014 canonical evidence row for observed cache behavior",
+        "docs/schemas/rig.relay.provider_cache_capability_matrix.v1.schema.json \u2014 multi-provider capability matrix model"
+      ]
+    }
+  ]
+}

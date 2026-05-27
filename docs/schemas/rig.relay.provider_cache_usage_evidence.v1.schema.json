@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.local/schemas/rig.relay.provider_cache_usage_evidence.v1.schema.json",
+  "title": "Provider Cache Usage Evidence",
+  "description": "Canonical evidence row recording observed cloud-provider prompt/context caching behavior and usage metadata for a single invocation. Content-light: never stores raw prompts, completions, provider payloads, secrets, or API keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "provider_kind",
+    "model_safe_id",
+    "privacy_class",
+    "cache_mode_observed",
+    "cache_hit_reported",
+    "observed_at",
+    "evidence_digest",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.provider_cache_usage_evidence.v1"
+    },
+    "evidence_id": {
+      "type": "string",
+      "description": "Unique evidence event identifier."
+    },
+    "provider_kind": {
+      "type": "string",
+      "enum": ["openai", "anthropic", "google_gemini", "google_vertex", "deepseek", "openrouter", "mistral", "openai_compatible", "local_inference"],
+      "description": "Cloud provider or platform that served this invocation."
+    },
+    "platform_kind": {
+      "type": ["string", "null"],
+      "enum": ["first_party_api", "vertex_ai", "amazon_bedrock", "microsoft_foundry", "openrouter_gateway", null],
+      "description": "Platform variant when the provider offers multiple caching surfaces."
+    },
+    "model_safe_id": {
+      "type": "string",
+      "description": "Content-light model identifier. Does not include API keys, secrets, or raw credentials."
+    },
+    "request_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the normalized request envelope. Null when request-digest extraction is deferred or unavailable."
+    },
+    "context_packet_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the sanitized context packet assembled for this invocation. Null when unavailable."
+    },
+    "privacy_class": {
+      "type": "string",
+      "enum": ["public_safe", "user_approved", "confidential", "unknown"],
+      "description": "Privacy classification of the context submitted to this invocation."
+    },
+    "cache_mode_requested": {
+      "type": ["string", "null"],
+      "enum": [
+        "automatic_provider_managed",
+        "explicit_prefix",
+        "explicit_resource",
+        "automatic_and_explicit",
+        "disabled_when_available",
+        "no_request_issued",
+        "unknown",
+        null
+      ],
+      "description": "Cache mode Rig Relay requested, if any. 'no_request_issued' means Rig Relay made no explicit cache request."
+    },
+    "cache_mode_observed": {
+      "type": "string",
+      "enum": [
+        "automatic_cache_hit",
+        "explicit_cache_hit",
+        "cache_write_detected",
+        "cache_write_and_read",
+        "no_cache_activity",
+        "cache_activity_unknown",
+        "caching_implicitly_active",
+        "caching_disabled"
+      ],
+      "description": "Cache behavior observed in the provider response. 'no_cache_activity' = usage fields present but zero. 'cache_activity_unknown' = no usage fields returned."
+    },
+    "cache_resource_safe_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the explicit cache resource identifier (e.g. Google cachedContent name), when one was referenced. Null for automatic caches or when not applicable."
+    },
+    "ttl_class": {
+      "type": ["string", "null"],
+      "description": "Observed or requested TTL class for this cache entry. Null when not applicable."
+    },
+    "cached_input_token_count": {
+      "type": ["integer", "null"],
+      "description": "Number of input tokens served from cache (cache hits). Maps to OpenAI cached_tokens, Anthropic cache_read_input_tokens, Gemini cachedContentTokenCount. Null when unavailable."
+    },
+    "cache_write_input_token_count": {
+      "type": ["integer", "null"],
+      "description": "Number of input tokens written to cache (cache creation). Maps to Anthropic cache_creation_input_tokens. Null when provider does not distinguish read from write."
+    },
+    "cache_hit_reported": {
+      "type": "boolean",
+      "description": "True when the provider reported a cache hit via usage metadata. False when usage fields are zero or absent. True does not guarantee the cache hit was complete."
+    },
+    "estimated_cost_effect_class": {
+      "type": "string",
+      "enum": [
+        "cache_hit_discount_applied",
+        "cache_write_surcharge_applied",
+        "standard_input_cost",
+        "unknown",
+        "not_applicable"
+      ],
+      "description": "Estimated cost effect for this invocation based on observed cache activity and known provider pricing."
+    },
+    "user_approval_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the step-up authorization receipt, if one was required and issued for cache use. Null when no approval was required."
+    },
+    "retention_disclosure_class": {
+      "type": "string",
+      "enum": [
+        "in_memory_ephemeral",
+        "gpu_local_storage",
+        "managed_resource_ttl",
+        "provider_retained_unknown",
+        "retention_disabled",
+        "not_disclosed"
+      ],
+      "description": "Retention class for this cache entry per provider documentation and observed evidence."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this evidence event was recorded."
+    },
+    "evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the canonical evidence row payload, excluding this field."
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true,
+      "description": "Never stores raw prompts, completions, provider payloads, secrets, or API keys."
+    }
+  }
+}

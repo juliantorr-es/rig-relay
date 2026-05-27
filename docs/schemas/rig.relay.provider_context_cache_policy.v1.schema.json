@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.local/schemas/rig.relay.provider_context_cache_policy.v1.schema.json",
+  "title": "Provider Context Cache Policy",
+  "description": "Normalized policy model describing a cloud provider's prompt/context caching behavior, Rig Relay's degree of control, privacy and approval requirements, and disclosure obligations. Content-light: never stores raw prompts, secrets, or private code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "provider_kind",
+    "model_capability_class",
+    "cache_mode",
+    "rig_control_level",
+    "confidential_context_disposition",
+    "explicit_user_approval_required",
+    "evidence_requirement",
+    "ui_disclosure_requirement",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.provider_context_cache_policy.v1"
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "Unique policy identifier for this provider-cache combination."
+    },
+    "provider_kind": {
+      "type": "string",
+      "enum": ["openai", "anthropic", "google_gemini", "google_vertex", "deepseek", "openrouter", "mistral", "openai_compatible", "local_inference"],
+      "description": "Cloud provider or platform."
+    },
+    "platform_kind": {
+      "type": ["string", "null"],
+      "enum": ["first_party_api", "vertex_ai", "amazon_bedrock", "microsoft_foundry", "openrouter_gateway", null],
+      "description": "Platform variant when the provider offers multiple surfaces with different caching behavior."
+    },
+    "model_capability_class": {
+      "type": "string",
+      "description": "Human-readable model capability class or family names covered by this policy. For per-model granularity, use multiple policy entries."
+    },
+    "cache_mode": {
+      "type": "string",
+      "enum": [
+        "automatic_provider_managed",
+        "explicit_prefix",
+        "explicit_resource",
+        "automatic_and_explicit",
+        "local_runtime_kv",
+        "unsupported",
+        "disabled_when_available",
+        "unknown"
+      ],
+      "description": "How caching operates for this provider-platform combination."
+    },
+    "rig_control_level": {
+      "type": "string",
+      "enum": ["none", "observe_only", "request", "create_update_delete", "local_manage"],
+      "description": "Rig Relay's maximum level of control over caching for this provider."
+    },
+    "stable_prefix_strategy": {
+      "type": "string",
+      "enum": ["optimal", "partial", "unavailable", "not_applicable"],
+      "description": "Whether Rig Relay can construct stable cacheable prefixes that survive conversation growth for this provider."
+    },
+    "minimum_cacheable_tokens": {
+      "type": ["integer", "null"],
+      "description": "Minimum input token count required for caching to activate for this provider/platform. Null if unknown or not applicable."
+    },
+    "ttl_classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ttl_duration", "cost_multiplier_class"],
+        "properties": {
+          "ttl_duration": {
+            "type": "string",
+            "description": "Human-readable TTL duration label, e.g. '5m', '1h', '24h', '60m', 'until_idle'."
+          },
+          "cost_multiplier_class": {
+            "type": "string",
+            "enum": ["none", "low_surcharge", "moderate_surcharge", "high_surcharge", "separate_storage"],
+            "description": "Rough cost classification for this TTL class."
+          }
+        }
+      },
+      "description": "Available TTL/shelf-life classes for cached content. Empty array if caching is unsupported or unknown."
+    },
+    "retention_or_storage_disclosure": {
+      "type": "string",
+      "description": "Human-readable summary of how the provider retains cached content. Includes storage medium (GPU memory, local disk, etc.), data isolation guarantees, and expiry behavior."
+    },
+    "confidential_context_disposition": {
+      "type": "string",
+      "enum": [
+        "safe_for_auto_cache",
+        "disclosed_auto_retention",
+        "requires_explicit_approval",
+        "refused_by_default",
+        "never_cacheable",
+        "unverified"
+      ],
+      "description": "Whether confidential repository context may appear in this provider's cache, and under what conditions."
+    },
+    "explicit_user_approval_required": {
+      "type": "boolean",
+      "description": "True if explicit informed user approval is required before confidential context enters this cache."
+    },
+    "usage_fields_available": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cached_tokens",
+          "cache_read_input_tokens",
+          "cache_creation_input_tokens",
+          "cached_content_token_count",
+          "cache_creation_breakdown",
+          "none"
+        ]
+      },
+      "description": "Which cache usage metadata fields the provider exposes in API responses."
+    },
+    "cost_semantics_class": {
+      "type": "string",
+      "enum": [
+        "cache_hit_discount",
+        "cache_write_surcharge",
+        "cache_write_free",
+        "cache_storage_fee",
+        "unknown",
+        "not_applicable"
+      ],
+      "description": "How the provider models cache cost: discount on hits, surcharge on writes, storage fees, or free."
+    },
+    "evidence_requirement": {
+      "type": "string",
+      "enum": [
+        "record_usage",
+        "record_and_verify",
+        "disclose_observed",
+        "disclose_uncontrolled",
+        "none",
+        "to_be_determined"
+      ],
+      "description": "What evidence Rig Relay must record for this cache mode. 'record_usage' = capture usage fields only. 'record_and_verify' = capture + compare against policy. 'disclose_observed' = note in audit. 'disclose_uncontrolled' = note provider controls caching without Rig Relay consent."
+    },
+    "ui_disclosure_requirement": {
+      "type": "string",
+      "enum": [
+        "none",
+        "info_only",
+        "highlight_cache_mode",
+        "warn_before_confidential_use",
+        "block_until_approved"
+      ],
+      "description": "Minimum UI disclosure level before a user submits context to this provider."
+    },
+    "is_disableable": {
+      "type": "boolean",
+      "description": "True if the user (or Rig Relay) can actively disable or avoid caching for this provider."
+    },
+    "disable_method": {
+      "type": ["string", "null"],
+      "description": "How caching can be disabled: 'project_level_config', 'request_header', 'feature_flag', 'not_disableable'."
+    },
+    "current_rig_adapter_support": {
+      "type": "string",
+      "enum": ["implemented", "partial", "missing", "not_applicable"],
+      "description": "Whether Rig Relay's current LLM backend adapter implements cache control or extraction for this provider."
+    },
+    "official_documentation_urls": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Primary official documentation URLs consulted for this policy entry."
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true,
+      "description": "Never stores raw prompts, completions, provider payloads, secrets, or API keys."
+    }
+  }
+}
