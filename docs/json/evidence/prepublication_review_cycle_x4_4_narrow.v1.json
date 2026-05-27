@@ -1,0 +1,269 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T08:35:00Z",
+  "lane_id": "X4",
+  "mission_id": "X4.4-NARROW",
+  "baseline_sha": "d7229f608d68ce5ce9ef6ab4a1608bf724b3b644",
+  "candidate_digest": "sha256:fe09bb89122e0162bb3f878cafe0946c6af7101275cf8ae8749e879f32f254f2",
+  "intended_boundary": "EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+  "intended_consumer_purpose": "A later X0 integration lane may render truthful Safari companion extension status, candidate artifact manifest evidence, and fail-closed diagnostic state from the native application boundary. Distribution, signing, notarization, Sparkle updates, and live Safari transport are explicitly deferred until future integration milestones.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "review_20260527_r1_x4_4_narrow",
+      "reviewed_candidate_digest": "sha256:fe09bb89122e0162bb3f878cafe0946c6af7101275cf8ae8749e879f32f254f2",
+      "production_paths_inspected": [
+        "docs/json/evidence/lane_x4_4_candidate_correction.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_4.v1.json",
+        "rig_relay/native/_diagnostics.py",
+        "rig_relay/native/_artifact_manifest.py",
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/native/models.py",
+        "rig_relay/native/__init__.py",
+        "macos/scripts/build-app.sh",
+        "macos/SafariExtension/RigRelayShell/RigRelayShell.xcodeproj/project.pbxproj",
+        "macos/SafariExtension/RigRelayShell/RigRelayShell Extension/Extension.entitlements",
+        "tests/native/test_artifact_manifest.py",
+        "tests/native/test_diagnostics.py",
+        "docs/schemas/rig.relay.native.artifact_manifest.v1.schema.json",
+        "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json",
+        "docs/schemas/rig.relay.builder_publication_record.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Original X4.4 prepublication review cycle existed in a prior checkpoint before publication",
+          "attack": "Check whether docs/json/evidence/prepublication_review_cycle_x4_4.v1.json exists in parent commit 76357cb87",
+          "evidence": "git show 76357cb87:docs/json/evidence/prepublication_review_cycle_x4_4.v1.json returns fatal: path does not exist in parent. git log --diff-filter=A confirms file first created in d7229f608.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Original X4.4 candidate_digest binds a real git checkpoint SHA",
+          "attack": "Check whether candidate_digest sha256:0c6bcae8... is a git commit SHA or maps to a real checkpoint",
+          "evidence": "candidate_digest is a 64-char hex sha256: hash, not a 40-char git SHA. No separate candidate checkpoint commit exists between 76357cb87 and d7229f608.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Original boundary 'LiveHandoff' atom is proven by end-to-end transport evidence",
+          "attack": "Check for live Safari-to-app message delivery proof, runtime transport tests, or handoff verification artifacts",
+          "evidence": "build_safari_native_blockers defaults live_transport_not_verified=True. No end-to-end transport test exists. SafariExtensionHost handler is compiled but real message delivery not proven.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Original boundary 'ReleaseArtifact' atom is proven by signing/notarization/Sparkle evidence",
+          "attack": "Check for Developer ID signing evidence, notarization submission proof, or Sparkle integration",
+          "evidence": "DistributionSigningState defaults to UNSIGNED. NotarizationState defaults to NOT_SUBMITTED. UpdateDeliveryState defaults to NOT_INTEGRATED. No signing identity, notary credentials, or Sparkle framework are configured.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "The corrected narrow boundary 'EmbeddedSafariExtension' atom is proven",
+          "attack": "Check whether build-app.sh actually invokes xcodebuild and copies .appex to PlugIns",
+          "evidence": "build-app.sh L114-118 invokes real xcodebuild; L165-167 copies .appex to PlugIns; set -euo pipefail on L2. Extension.entitlements declares app group.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "The corrected narrow boundary 'CandidateArtifactManifest' atom is proven",
+          "attack": "Check whether manifest is schema-versioned, collision-resistant, and properly framed",
+          "evidence": "_artifact_manifest.py uses CanonicalDistributionArtifactManifest with schema_version; manifest_digest excluded from hash; forward slashes enforced; symlink . and .. rejected. 31 adversarial tests pass.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "The corrected narrow boundary 'FailClosedDiagnostics' atom is proven",
+          "attack": "Check whether export_diagnostics raises DiagnosticExportBlocked when violations exist",
+          "evidence": "_diagnostics.py L304-311 raises DiagnosticExportBlocked; fallback uses [REDACTED] sentinel values only; export_text_summary takes already-validated bundles. Diagnostic tests use pytest.raises(DiagnosticExportBlocked).",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "The corrected narrow boundary 'TruthfulNativeProjectionDefaults' atom is proven",
+          "attack": "Check whether build_safari_native_projection defaults match actual product state",
+          "evidence": "_safari_x0_contract.py L80-85: safari_companion_state defaults to EXTENSION_BUILT, distribution_signing_state defaults to UNSIGNED, notarization_state defaults to NOT_SUBMITTED, update_delivery_state defaults to NOT_INTEGRATED. All truthful.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "The corrected candidate does not overclaim LiveHandoff",
+          "attack": "Check whether the new boundary identifier or consumer purpose contains live transport or handoff claims",
+          "evidence": "Boundary is 'EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary'. Consumer purpose explicitly defers live Safari transport. No handoff/live/transport language present.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "The corrected candidate does not overclaim ReleaseArtifact or distribution",
+          "attack": "Check whether the new boundary identifier or consumer purpose contains signing, notarization, Sparkle, or distribution claims",
+          "evidence": "Boundary explicitly excludes Signed, Notarized, DistributionReady, Sparkle, Update. Consumer purpose explicitly defers distribution, signing, notarization, and Sparkle updates.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "76 native tests pass without modification",
+          "attack": "Run test suite and check for failures",
+          "evidence": "uv run pytest tests/native/ -x -q: 76 passed in 6.03s. No test modifications needed.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Production code was not modified by this correction",
+          "attack": "Check git diff for any changes to rig_relay/native/ or macos/scripts/",
+          "evidence": "Only files changed are docs/json/evidence/lane_x4_4_candidate_correction.v1.json and docs/json/evidence/prepublication_review_cycle_x4_4_narrow.v1.json. No production code modified.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Correction record is self-consistent and documents all required fields",
+          "attack": "Check for missing required fields, internal contradictions, or evidence gaps",
+          "evidence": "Correction record contains original SHA, overclaimed atoms with reasons, chronology evidence with 5 proofs, narrowed boundary with 7 claim atoms, preserved implementation inventory, and test results.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X4.4-NARROW-R1-01",
+          "severity": "critical",
+          "violated_claim": "Original X4.4 prepublication review cycle chronology is truthful",
+          "evidence": "Review cycle record co-created with publication commit. File not present in parent 76357cb87. Uses non-git-sha candidate_digest. push_authorized self-awarded.",
+          "required_repair": "Record the original publication as invalidated for false chronology. Create append-only correction record.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.4-NARROW-R1-02",
+          "severity": "critical",
+          "violated_claim": "Original boundary LiveHandoff atom is proven",
+          "evidence": "No end-to-end runtime message-delivery proof. Code self-reports live transport not verified.",
+          "required_repair": "Remove LiveHandoff from boundary identifier. Defer live transport to future integration milestone.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.4-NARROW-R1-03",
+          "severity": "high",
+          "violated_claim": "Original boundary ReleaseArtifact atom is proven",
+          "evidence": "Signing defaults UNSIGNED. Notarization defaults NOT_SUBMITTED. Sparkle not integrated.",
+          "required_repair": "Remove ReleaseArtifact from boundary identifier. Replace with CandidateArtifactManifest which is proven.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "review_20260527_r2_x4_4_narrow",
+      "reviewed_candidate_digest": "sha256:fe09bb89122e0162bb3f878cafe0946c6af7101275cf8ae8749e879f32f254f2",
+      "production_paths_inspected": [
+        "docs/json/evidence/lane_x4_4_candidate_correction.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_4_narrow.v1.json",
+        "rig_relay/native/_diagnostics.py",
+        "rig_relay/native/_artifact_manifest.py",
+        "rig_relay/native/_safari_x0_contract.py",
+        "macos/scripts/build-app.sh",
+        "tests/native/test_artifact_manifest.py",
+        "tests/native/test_diagnostics.py",
+        "docs/schemas/rig.relay.native.artifact_manifest.v1.schema.json",
+        "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "The corrected boundary EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary is fully proven",
+          "attack": "Verify all 7 claim atoms independently: EmbeddedSafariExtension, CandidateArtifactManifest, FailClosedDiagnostics, TruthfulNativeProjectionDefaults, NoLiveHandoffClaim, NoReleaseDistributionClaim, ValidPrepublicationChronology",
+          "evidence": "build-app.sh invokes xcodebuild and embeds .appex (EmbeddedSafariExtension). _artifact_manifest.py produces schema-versioned framed manifest with 31 adversarial tests (CandidateArtifactManifest). _diagnostics.py raises DiagnosticExportBlocked on violations (FailClosedDiagnostics). _safari_x0_contract.py defaults to EXTENSION_BUILT/UNSIGNED/NOT_INTEGRATED (TruthfulNativeProjectionDefaults). Boundary name excludes LiveHandoff (NoLiveHandoffClaim). Boundary name excludes ReleaseArtifact/Signed/Notarized/Distribution (NoReleaseDistributionClaim). Original X4.4 chronology falsification documented with git archaeology (ValidPrepublicationChronology).",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Correction record does not claim to fix production code",
+          "attack": "Check correction record for claims about modifying implementation files",
+          "evidence": "production_code_unchanged field explicitly states 'No production implementation was modified by this correction.' preserved_implementation.tests_pass confirms 76/76 pass without modification.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "No lane collision — correction touches only X4 evidence files",
+          "attack": "Check git status for files outside X4-owned paths in the correction slice",
+          "evidence": "Only two files created: docs/json/evidence/lane_x4_4_candidate_correction.v1.json and docs/json/evidence/prepublication_review_cycle_x4_4_narrow.v1.json. Pre-existing dirty files (.opencode/agents/, tests/integrations/test_opencode_agents.py) are not touched.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Correction record validates as well-formed JSON",
+          "attack": "Parse the correction record and check for structural integrity",
+          "evidence": "Record contains all required fields: schema_version, correction_id, original_publication_sha, chronology_falsification with 5 evidence items, boundary_overclaim with 2 overclaimed atoms and 4 proven atoms, narrowed_boundary with identifier, consumer_purpose, and 7 claim atoms, preserved_implementation with file inventory and test results.",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        }
+      ],
+      "findings": [],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "X4.4-NARROW-R1-01",
+        "X4.4-NARROW-R1-02",
+        "X4.4-NARROW-R1-03"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/lane_x4_4_candidate_correction.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_4_narrow.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/native/ -x -q — 76/76 passed",
+        "Original X4.4 chronology falsified: review cycle co-created with publication commit d7229f608",
+        "Boundary narrowed to EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+        "All production code unchanged — evidence-only correction"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:fe09bb89122e0162bb3f878cafe0946c6af7101275cf8ae8749e879f32f254f2",
+    "admitted_boundary": "EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+    "permitted_consumer_purpose": "A later X0 integration lane may render truthful Safari companion extension status, candidate artifact manifest evidence, and fail-closed diagnostic state from the native application boundary. Distribution, signing, notarization, Sparkle updates, and live Safari transport are explicitly deferred until future integration milestones.",
+    "unclaimed_capabilities": [
+      "Live Safari end-to-end transport proof (not executed in this environment)",
+      "Developer ID signing (no signing identity verified)",
+      "Notarization submission/acceptance/stapling (not executed)",
+      "Sparkle 2 framework integration into SPM app (not integrated)",
+      "Appcast hosting and EdDSA key generation (not configured)",
+      "SPM app-side App Group entitlement wiring (app_group_not_configured)",
+      "Graceful xcodebuild-absence handling in build script",
+      "Developer ID certificate provisioning",
+      "Notarytool credentials configuration",
+      "Release-ready distribution artifact (signing, notarization, Sparkle)"
+    ],
+    "deferred_seams": [
+      "Live Safari extension enablement and transport testing",
+      "Developer ID Application certificate provisioning",
+      "Notarytool credentials configuration",
+      "Sparkle 2 framework integration into SPM app",
+      "Appcast hosting and EdDSA key generation",
+      "SPM app-side App Group entitlement wiring",
+      "Graceful xcodebuild-absence handling in build script"
+    ],
+    "review_round_count": 2,
+    "push_authorized": true
+  },
+  "status": "prepublication_admitted"
+}

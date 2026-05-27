@@ -1,0 +1,76 @@
+{
+  "schema_version": "rig.relay.lane_x4_4_candidate_correction.v1",
+  "generated_at": "2026-05-27T08:30:00Z",
+  "correction_id": "x4_4_correction_001",
+  "lane_id": "X4",
+  "original_publication_sha": "d7229f608d68ce5ce9ef6ab4a1608bf724b3b644",
+  "original_publication_timestamp": "2026-05-27T07:37:10Z",
+  "original_boundary": "EmbeddedSafariCompanionLiveHandoffAndReleaseArtifactBoundary",
+  "original_consumer_purpose": "A later X0 integration lane may render truthful Safari companion, native distribution, diagnostics, recovery and update status from a real native application boundary.",
+  "correction_kind": "boundary_overclaim_and_chronology_falsification",
+  "chronology_falsification": {
+    "finding": "The prepublication review cycle record was co-created with the publication commit and was not present in any prior checkpoint.",
+    "evidence": [
+      "git show 76357cb87:docs/json/evidence/prepublication_review_cycle_x4_4.v1.json returns 'fatal: path exists on disk, but not in 76357cb87'",
+      "git log --all --diff-filter=A confirms the file was first created in commit d7229f608",
+      "The parent commit 76357cb87 contains no review cycle record for X4.4",
+      "candidate_digest uses a sha256: hash, not a git commit SHA — no separate candidate checkpoint exists",
+      "final_admission.push_authorized was set to true in the same commit as the publication"
+    ],
+    "violated_rule": "Prepublication Falsifier Contract: 'a prepublication disposition is invalid if it is emitted after the candidate is pushed and described as prepublication admission'",
+    "result": "X4.4 original publication is invalidated for false chronology"
+  },
+  "boundary_overclaim": {
+    "finding": "The admitted boundary 'EmbeddedSafariCompanionLiveHandoffAndReleaseArtifactBoundary' contains unproven claim atoms.",
+    "overclaimed_atoms": [
+      {
+        "atom": "LiveHandoff",
+        "reason": "No end-to-end runtime message-delivery proof exists. Code self-reports live transport not verified (build_safari_native_blockers defaults live_transport_not_verified=True). The Safari extension message handler is compiled and embedded but real Safari-to-app message delivery has not been proven."
+      },
+      {
+        "atom": "ReleaseArtifact",
+        "reason": "Signing defaults to UNSIGNED. Notarization defaults to NOT_SUBMITTED. Sparkle update integration defaults to NOT_INTEGRATED. No signing identity, notary credentials, or Sparkle framework are configured. The actual capability is a candidate/build artifact manifest, not a release distribution artifact."
+      }
+    ],
+    "proven_atoms": [
+      "EmbeddedSafariExtension — build-app.sh invokes real xcodebuild and copies .appex to PlugIns",
+      "CandidateArtifactManifest — schema-versioned, collision-resistant manifest service",
+      "FailClosedDiagnostics — raises DiagnosticExportBlocked when violations exist",
+      "TruthfulNativeProjectionDefaults — EXTENSION_BUILT, UNSIGNED, NOT_INTEGRATED (not overclaimed)"
+    ]
+  },
+  "narrowed_boundary": {
+    "identifier": "EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+    "consumer_purpose": "A later X0 integration lane may render truthful Safari companion extension status, candidate artifact manifest evidence, and fail-closed diagnostic state from the native application boundary. Distribution, signing, notarization, Sparkle updates, and live Safari transport are explicitly deferred until future integration milestones.",
+    "claim_atoms": [
+      "EmbeddedSafariExtension",
+      "CandidateArtifactManifest",
+      "FailClosedDiagnostics",
+      "TruthfulNativeProjectionDefaults",
+      "NoLiveHandoffClaim",
+      "NoReleaseDistributionClaim",
+      "ValidPrepublicationChronology"
+    ]
+  },
+  "preserved_implementation": {
+    "files": [
+      "rig_relay/native/_artifact_manifest.py",
+      "rig_relay/native/_diagnostics.py",
+      "rig_relay/native/_safari_x0_contract.py",
+      "rig_relay/native/__init__.py",
+      "rig_relay/native/models.py",
+      "macos/scripts/build-app.sh",
+      "macos/SafariExtension/RigRelayShell/RigRelayShell.xcodeproj/project.pbxproj",
+      "macos/SafariExtension/RigRelayShell/RigRelayShell Extension/Extension.entitlements",
+      "tests/native/test_artifact_manifest.py",
+      "tests/native/test_diagnostics.py",
+      "docs/schemas/rig.relay.native.artifact_manifest.v1.schema.json"
+    ],
+    "tests_pass": "76 passed in 6.03s (uv run pytest tests/native/ -x -q)",
+    "production_code_unchanged": "No production implementation was modified by this correction. The original X4.4 implementations remain sound. Only the boundary naming and publication chronology evidence are corrected."
+  },
+  "corrected_review_cycle_path": "docs/json/evidence/prepublication_review_cycle_x4_4_narrow.v1.json",
+  "original_review_cycle_path": "docs/json/evidence/prepublication_review_cycle_x4_4.v1.json",
+  "original_review_cycle_sha256": "sha256:40dd2262c1d476942b08f5abf03f48a89face988dc8d31a775cddf6898925b5a",
+  "status": "candidate_local"
+}
