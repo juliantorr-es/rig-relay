@@ -9,8 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TimelineEventKind(StrEnum):
-    """Normalized event kinds for investigation timeline events."""
-
     SESSION_STARTED = "SESSION_STARTED"
     SESSION_REGISTERED = "SESSION_REGISTERED"
     SESSION_HEARTBEAT = "SESSION_HEARTBEAT"
@@ -59,11 +57,12 @@ class TimelineEventKind(StrEnum):
     EVIDENCE_DEGRADED = "EVIDENCE_DEGRADED"
     EVIDENCE_MISSING = "EVIDENCE_MISSING"
     EVIDENCE_CONTRADICTORY = "EVIDENCE_CONTRADICTORY"
+    EVIDENCE_CORRUPT = "EVIDENCE_CORRUPT"
+    EVIDENCE_UNVERIFIED = "EVIDENCE_UNVERIFIED"
+    EVIDENCE_UNSUPPORTED = "EVIDENCE_UNSUPPORTED"
 
 
 class AuthorityClassification(StrEnum):
-    """Provenance authority classification aligned with S2 gateway vocabulary."""
-
     CANONICAL_LIVE = "CANONICAL_LIVE"
     CANONICAL_DEGRADED = "CANONICAL_DEGRADED"
     CONTROLLED_BOUNDARY = "CONTROLLED_BOUNDARY"
@@ -74,9 +73,18 @@ class AuthorityClassification(StrEnum):
     CONTRADICTORY = "CONTRADICTORY"
 
 
-class SourceDomain(StrEnum):
-    """Canonical evidence domains that can contribute timeline events."""
+class VerificationClass(StrEnum):
+    """How the timeline event's relationship to its canonical source was verified."""
 
+    VERIFIED_CANONICAL = "VERIFIED_CANONICAL"
+    PARSED_UNVERIFIED = "PARSED_UNVERIFIED"
+    CANONICAL_DEGRADED = "CANONICAL_DEGRADED"
+    CORRUPT = "CORRUPT"
+    UNSUPPORTED = "UNSUPPORTED"
+    MISSING = "MISSING"
+
+
+class SourceDomain(StrEnum):
     OBSERVABILITY = "observability"
     COORDINATION = "coordination"
     RECEIPT_STORE = "receipt_store"
@@ -92,13 +100,6 @@ class SourceDomain(StrEnum):
 
 
 class InvestigationTimelineEvent(BaseModel):
-    """A normalized timeline event from a canonical evidence domain.
-
-    Each event preserves source provenance, authority classification,
-    and content-light safety while unifying diverse evidence domains
-    into a single chronological timeline.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = Field(
@@ -106,36 +107,24 @@ class InvestigationTimelineEvent(BaseModel):
     )
     event_id: str = Field(
         default_factory=lambda: f"tle_{uuid.uuid4().hex[:16]}",
-        description="Stable derived event ID.",
         pattern=r"^tle_[a-f0-9]{16}$",
     )
-    timeline_sequence: int = Field(
-        default=0, ge=0, description="Monotonic position in the assembled timeline."
+    timeline_sequence: int = Field(default=0, ge=0)
+    observed_at: str = Field()
+    event_kind: TimelineEventKind
+    source_domain: SourceDomain
+    source_event_id: str | None = Field(default=None)
+    source_digest: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    source_sequence: int | None = Field(default=None)
+    producer_digest: str | None = Field(
+        default=None, pattern=r"^(sha256:[a-f0-9]{64})?$"
     )
-    observed_at: str = Field(
-        description="ISO 8601 timestamp when this event was observed."
+    producer_digest_verified: bool = Field(default=False)
+    verification_class: VerificationClass = Field(
+        default=VerificationClass.PARSED_UNVERIFIED
     )
-    event_kind: TimelineEventKind = Field(description="Normalized event kind.")
-    source_domain: SourceDomain = Field(
-        description="Canonical evidence domain that produced this event."
-    )
-    source_event_id: str | None = Field(
-        default=None, description="Original event ID from the source domain."
-    )
-    source_digest: str = Field(
-        description="SHA256 digest of the source event or receipt.",
-        pattern=r"^sha256:[a-f0-9]{64}$",
-    )
-    source_sequence: int | None = Field(
-        default=None, description="Original sequence number from the source domain."
-    )
-    authority_classification: AuthorityClassification = Field(
-        description="Provenance authority classification."
-    )
-    degradation_detail: str | None = Field(
-        default=None,
-        description="Explanation when authority_classification is not CANONICAL_LIVE.",
-    )
+    authority_classification: AuthorityClassification = Field()
+    degradation_detail: str | None = Field(default=None)
     session_id: str | None = Field(default=None)
     project_id: str | None = Field(default=None)
     investigation_id: str | None = Field(default=None)
@@ -159,8 +148,6 @@ class InvestigationTimelineEvent(BaseModel):
 
 
 class InvestigationTimeline(BaseModel):
-    """A derived, disposable timeline assembled from canonical evidence domains."""
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = Field(
@@ -173,10 +160,7 @@ class InvestigationTimeline(BaseModel):
     investigation_id: str | None = Field(default=None)
     session_id: str | None = Field(default=None)
     project_id: str | None = Field(default=None)
-    assembled_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat(),
-        description="ISO 8601 timestamp of assembly.",
-    )
+    assembled_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     evidence_freshness_cutoff: str | None = Field(default=None)
     events: list[InvestigationTimelineEvent] = Field(default_factory=list)
     event_count: int = Field(default=0)
@@ -205,22 +189,21 @@ class InvestigationTimeline(BaseModel):
 
 
 class DegradationSummary(BaseModel):
-    """Counts of degradation markers in a timeline."""
-
     model_config = ConfigDict(extra="forbid")
 
     total_events: int = 0
-    canonical_live_count: int = 0
-    degraded_count: int = 0
+    verified_canonical_count: int = 0
+    parsed_unverified_count: int = 0
+    canonical_degraded_count: int = 0
+    corrupt_count: int = 0
+    unsupported_count: int = 0
     missing_count: int = 0
     contradictory_count: int = 0
-    corrupt_count: int = 0
     stale_count: int = 0
+    canonical_live_count: int = 0
 
 
 class TimelineEvidenceSource(BaseModel):
-    """Descriptor for an evidence source consumed during assembly."""
-
     model_config = ConfigDict(extra="forbid")
 
     source_domain: SourceDomain
@@ -229,11 +212,10 @@ class TimelineEvidenceSource(BaseModel):
     errors: int = 0
     schema_version: str | None = None
     status: str = "ok"
+    producer_digests_verified: int = 0
 
 
 class TimelineAssemblyResult(BaseModel):
-    """Result of a timeline assembly operation."""
-
     model_config = ConfigDict(extra="forbid")
 
     timeline: InvestigationTimeline
@@ -244,8 +226,6 @@ class TimelineAssemblyResult(BaseModel):
 
 
 class TimelineDegradationMarker(BaseModel):
-    """Typed marker for degraded, missing, or contradictory evidence."""
-
     model_config = ConfigDict(extra="forbid")
 
     degradation_kind: str
@@ -256,13 +236,6 @@ class TimelineDegradationMarker(BaseModel):
 
 
 class PostgresTimelineProjection(BaseModel):
-    """Typed content-light projection contract for PostgreSQL materialization.
-
-    This defines a flat row shape suitable for operational query persistence
-    without depending on unpublished T2 implementation. The contract ensures
-    deterministic rebuild from canonical evidence.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "rig.relay.investigation_timeline_postgres_projection.v1"
@@ -283,8 +256,6 @@ class PostgresTimelineProjection(BaseModel):
 
 
 class PostgresColumnDefinition(BaseModel):
-    """Definition of a column in the PostgreSQL projection."""
-
     model_config = ConfigDict(extra="forbid")
 
     column_name: str
@@ -294,8 +265,6 @@ class PostgresColumnDefinition(BaseModel):
 
 
 class PostgresIndexDefinition(BaseModel):
-    """Definition of an index for the PostgreSQL projection."""
-
     model_config = ConfigDict(extra="forbid")
 
     index_name: str
@@ -306,8 +275,6 @@ class PostgresIndexDefinition(BaseModel):
 
 
 class DuckDBAuthorityAssertion(BaseModel):
-    """Explicit assertion that DuckDB is read-side only."""
-
     model_config = ConfigDict(extra="forbid")
 
     read_side_only: bool = Field(default=True, frozen=True)
@@ -319,8 +286,6 @@ class DuckDBAuthorityAssertion(BaseModel):
 
 
 class DuckDBDatasetDescriptor(BaseModel):
-    """Descriptor for one exported dataset file."""
-
     model_config = ConfigDict(extra="forbid")
 
     dataset_name: str
@@ -332,8 +297,6 @@ class DuckDBDatasetDescriptor(BaseModel):
 
 
 class DuckDBViewDefinition(BaseModel):
-    """A DuckDB SQL view definition for analytical querying."""
-
     model_config = ConfigDict(extra="forbid")
 
     view_name: str
@@ -343,13 +306,6 @@ class DuckDBViewDefinition(BaseModel):
 
 
 class TimelineDuckDBExport(BaseModel):
-    """Analytical export contract for DuckDB read-side consumption.
-
-    DuckDB is a disposable analytical compiler — never treated as
-    canonical authority. This export is fully rebuildable from
-    canonical evidence ledgers.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "rig.relay.investigation_timeline_duckdb_export.v1"

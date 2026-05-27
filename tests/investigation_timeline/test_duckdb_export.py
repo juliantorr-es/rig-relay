@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -84,3 +85,28 @@ def test_duckdb_export_content_light_enforcement(assembled_timeline, tmp_path):
     ]
     for field in forbidden_fields:
         assert field not in content.lower()
+
+
+def test_duckdb_export_includes_verification_class(assembled_timeline, tmp_path):
+    export = build_duckdb_export(assembled_timeline, tmp_path)
+    assert export.rebuildable is True
+    events_path = tmp_path / "investigation_timeline_events.jsonl"
+    assert events_path.exists()
+
+    with events_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            assert "verification_class" in row, (
+                "exported dataset row must include verification_class field"
+            )
+            assert row["verification_class"] in {
+                "VERIFIED_CANONICAL",
+                "PARSED_UNVERIFIED",
+                "CANONICAL_DEGRADED",
+                "CORRUPT",
+                "UNSUPPORTED",
+                "MISSING",
+            }

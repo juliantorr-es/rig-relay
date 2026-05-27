@@ -1,10 +1,10 @@
-{"transition_id": "dt_001", "status": "prepared", "created_at": "2025-01-15T10:00:00Z", "transition_digest": "digest_aaa", "authorization_id": "auth_001"}
-{"transition_id": "dt_002", "status": "authorization_consumed", "created_at": "2025-01-15T10:00:10Z", "transition_digest": "digest_bbb", "authorization_id": "auth_001"}
-{"transition_id": "dt_003", "status": "projection_receipt_persisted", "created_at": "2025-01-15T10:00:20Z", "transition_digest": "digest_ccc", "authorization_id": "auth_001"}
-{"transition_id": "dt_004", "status": "manifest_applied", "created_at": "2025-01-15T10:00:30Z", "transition_digest": "digest_ddd", "authorization_id": "auth_001"}
-{"transition_id": "dt_005", "status": "disclosure_event_recorded", "created_at": "2025-01-15T10:00:40Z", "transition_digest": "digest_eee", "authorization_id": "auth_001"}
-{"transition_id": "dt_006", "status": "completed", "created_at": "2025-01-15T10:01:00Z", "transition_digest": "digest_fff", "authorization_id": "auth_001"}
-{"transition_id": "dt_007", "status": "refused", "created_at": "2025-01-15T10:01:10Z", "transition_digest": "digest_ggg", "authorization_id": "auth_002"}
-{"transition_id": "dt_008", "status": "conflict", "created_at": "2025-01-15T10:01:20Z", "transition_digest": "digest_hhh", "authorization_id": "auth_003"}
-{"transition_id": "dt_009", "status": "corrupt", "created_at": "2025-01-15T10:01:30Z", "transition_digest": "digest_iii", "authorization_id": "auth_004"}
-{"transition_id": "dt_010", "status": "recovery_required", "created_at": "2025-01-15T10:01:40Z", "transition_digest": "digest_jjj", "authorization_id": "auth_005"}
+{"transition_id":"dt_001","status":"prepared","created_at":"2025-01-15T10:00:00Z","transition_digest":"sha256:ba77d562af57761ba14a08c2576bb548282b38992b6fc1f8c9b0777470ada2d7","authorization_id":"auth_001"}
+{"transition_id":"dt_002","status":"authorization_consumed","created_at":"2025-01-15T10:00:10Z","transition_digest":"sha256:6961dc7a871ef6f834e131bfa739a782d45d298e9b7e3460d082812ce33dbaab","authorization_id":"auth_001"}
+{"transition_id":"dt_003","status":"projection_receipt_persisted","created_at":"2025-01-15T10:00:20Z","transition_digest":"sha256:8919a490bab6d714b3e29cc18cf8f228e151f2a514cbf2d86c4e3414469d769c","authorization_id":"auth_001"}
+{"transition_id":"dt_004","status":"manifest_applied","created_at":"2025-01-15T10:00:30Z","transition_digest":"sha256:3929ab6838844b0415fda4a8fd9bf0dc7fb0a37103a68aefbe1b13fa56409cd6","authorization_id":"auth_001"}
+{"transition_id":"dt_005","status":"disclosure_event_recorded","created_at":"2025-01-15T10:00:40Z","transition_digest":"sha256:dd105c3aab745cb9abdac91bca32bdd23bf811d78d08442573caeff28918f92f","authorization_id":"auth_001"}
+{"transition_id":"dt_006","status":"completed","created_at":"2025-01-15T10:01:00Z","transition_digest":"sha256:ffeeb361531c1380801f7ff730ee40b1c07497f43fb3b29303e7d997238333a9","authorization_id":"auth_001"}
+{"transition_id":"dt_007","status":"refused","created_at":"2025-01-15T10:01:10Z","transition_digest":"sha256:c887822f28e9cf1893c2ea77434bb2e16d71e0998c742b507738621b7560d4e7","authorization_id":"auth_002"}
+{"transition_id":"dt_008","status":"conflict","created_at":"2025-01-15T10:01:20Z","transition_digest":"sha256:4694e7605880237b0cb513010bd9dc19702a43b97833a4aa03f284c6f024831d","authorization_id":"auth_003"}
+{"transition_id":"dt_009","status":"corrupt","created_at":"2025-01-15T10:01:30Z","transition_digest":"sha256:d7512851e8c8465fd08af34026df9ced7867497928b5e1a899168cc66ced13fc","authorization_id":"auth_004"}
+{"transition_id":"dt_010","status":"recovery_required","created_at":"2025-01-15T10:01:40Z","transition_digest":"sha256:2b9f1079608ae750a9037e16354add275fb7d785de39f3a31273ba73d996ac17","authorization_id":"auth_005"}

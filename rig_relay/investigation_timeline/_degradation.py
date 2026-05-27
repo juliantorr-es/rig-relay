@@ -8,6 +8,7 @@ from rig_relay.investigation_timeline._models import (
     SourceDomain,
     TimelineDegradationMarker,
     TimelineEventKind,
+    VerificationClass,
 )
 
 
@@ -23,6 +24,7 @@ def build_missing_evidence_event(
         event_kind=TimelineEventKind.EVIDENCE_MISSING,
         source_domain=SourceDomain.TIMELINE_DEGRADED,
         source_digest=_placeholder_digest(domain.value, "missing"),
+        verification_class=VerificationClass.MISSING,
         authority_classification=AuthorityClassification.MISSING,
         degradation_detail=detail,
         investigation_id=investigation_id,
@@ -42,6 +44,7 @@ def build_degraded_evidence_event(
         event_kind=TimelineEventKind.EVIDENCE_DEGRADED,
         source_domain=SourceDomain.TIMELINE_DEGRADED,
         source_digest=_placeholder_digest(domain.value, "degraded"),
+        verification_class=VerificationClass.CANONICAL_DEGRADED,
         authority_classification=AuthorityClassification.CANONICAL_DEGRADED,
         degradation_detail=detail,
         investigation_id=investigation_id,
@@ -61,6 +64,7 @@ def build_contradictory_evidence_event(
         event_kind=TimelineEventKind.EVIDENCE_CONTRADICTORY,
         source_domain=SourceDomain.TIMELINE_DEGRADED,
         source_digest=_placeholder_digest(domain.value, "contradictory"),
+        verification_class=VerificationClass.CANONICAL_DEGRADED,
         authority_classification=AuthorityClassification.CONTRADICTORY,
         degradation_detail=detail,
         investigation_id=investigation_id,
@@ -125,4 +129,7 @@ def _classification_to_kind(cls: AuthorityClassification) -> str:
 def _placeholder_digest(domain: str, reason: str) -> str:
     import hashlib
 
-    return f"sha256:{hashlib.sha256(f'timeline_{domain}_{reason}_placeholder'.encode()).hexdigest()}"
+    return (
+        f"sha256:"
+        f"{hashlib.sha256(f'timeline_{domain}_{reason}_placeholder'.encode()).hexdigest()}"
+    )

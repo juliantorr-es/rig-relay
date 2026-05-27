@@ -37,6 +37,9 @@ def build_postgres_projection(
             "artifact_sha256": event.artifact_sha256,
             "commit_sha": event.commit_sha,
             "refusal_code": event.refusal_code,
+            "producer_digest": event.producer_digest,
+            "producer_digest_verified": event.producer_digest_verified,
+            "verification_class": event.verification_class.value,
             "content_light_guarantee": True,
         }
         rows.append(row)
@@ -193,6 +196,24 @@ def build_postgres_column_definitions() -> list[PostgresColumnDefinition]:
             description="Refusal reason code.",
         ),
         PostgresColumnDefinition(
+            column_name="producer_digest",
+            column_type="TEXT",
+            nullable=True,
+            description="Producer's canonical event/receipt digest.",
+        ),
+        PostgresColumnDefinition(
+            column_name="producer_digest_verified",
+            column_type="BOOLEAN",
+            nullable=True,
+            description="Whether the producer digest was cryptographically verified.",
+        ),
+        PostgresColumnDefinition(
+            column_name="verification_class",
+            column_type="TEXT NOT NULL",
+            nullable=False,
+            description="Source verification classification.",
+        ),
+        PostgresColumnDefinition(
             column_name="content_light_guarantee",
             column_type="BOOLEAN NOT NULL DEFAULT TRUE",
             nullable=False,
@@ -247,6 +268,11 @@ def build_postgres_indexing_requirements() -> list[PostgresIndexDefinition]:
             index_name="idx_timeline_refusal_code",
             columns=["refusal_code"],
             purpose="Refusal reason queries.",
+        ),
+        PostgresIndexDefinition(
+            index_name="idx_timeline_verification_class",
+            columns=["verification_class"],
+            purpose="Verification-class filtering.",
         ),
         PostgresIndexDefinition(
             index_name="idx_timeline_kind_observed",

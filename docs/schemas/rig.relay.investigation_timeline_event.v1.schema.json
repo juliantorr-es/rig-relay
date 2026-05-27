@@ -78,7 +78,10 @@
         "STORAGE_LIFECYCLE_EVENT",
         "EVIDENCE_DEGRADED",
         "EVIDENCE_MISSING",
-        "EVIDENCE_CONTRADICTORY"
+        "EVIDENCE_CONTRADICTORY",
+        "EVIDENCE_CORRUPT",
+        "EVIDENCE_UNVERIFIED",
+        "EVIDENCE_UNSUPPORTED"
       ]
     },
     "source_domain": {
@@ -199,6 +202,31 @@
     "refusal_code": {
       "type": "string",
       "description": "Refusal reason code, if the event represents a refusal."
+    },
+    "producer_digest": {
+      "type": "string",
+      "description": "Producer's canonical event/receipt digest, preserved from the source domain.",
+      "pattern": "^(sha256:[a-f0-9]{64})?$"
+    },
+    "producer_digest_verified": {
+      "type": "boolean",
+      "description": "Whether the producer digest was cryptographically verified against the source record."
+    },
+    "verification_class": {
+      "type": "string",
+      "description": "Source verification classification.",
+      "enum": [
+        "VERIFIED_CANONICAL",
+        "PARSED_UNVERIFIED",
+        "CANONICAL_DEGRADED",
+        "CORRUPT",
+        "UNSUPPORTED",
+        "MISSING"
+      ]
+    },
+    "source_sequence": {
+      "type": "integer",
+      "description": "Original sequence number from the source domain."
     },
     "content_light_guarantee": {
       "type": "boolean",

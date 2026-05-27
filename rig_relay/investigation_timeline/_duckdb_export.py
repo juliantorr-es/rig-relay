@@ -106,6 +106,9 @@ def _events_to_dict_rows(timeline: InvestigationTimeline) -> list[dict[str, obje
             "artifact_sha256": event.artifact_sha256,
             "commit_sha": event.commit_sha,
             "refusal_code": event.refusal_code,
+            "producer_digest": event.producer_digest,
+            "producer_digest_verified": event.producer_digest_verified,
+            "verification_class": event.verification_class.value,
         }
         rows.append(row)
     return rows
@@ -139,7 +142,7 @@ def _build_summary_rows(timeline: InvestigationTimeline) -> list[dict[str, objec
         "timeline_id": timeline.timeline_id,
         "total_events": ds.total_events,
         "canonical_live_count": ds.canonical_live_count,
-        "degraded_count": ds.degraded_count,
+        "canonical_degraded_count": ds.canonical_degraded_count,
         "missing_count": ds.missing_count,
         "contradictory_count": ds.contradictory_count,
         "corrupt_count": ds.corrupt_count,
@@ -269,6 +272,16 @@ def _build_view_definitions() -> list[DuckDBViewDefinition]:
             ),
             purpose="Event-kind distribution from pre-computed aggregates.",
             query_example="SELECT * FROM v_timeline_event_kind_distribution ORDER BY count DESC;",
+        ),
+        DuckDBViewDefinition(
+            view_name="v_timeline_verified_canonical",
+            sql=(
+                "CREATE OR REPLACE VIEW v_timeline_verified_canonical AS "
+                "SELECT * FROM investigation_timeline_events "
+                "WHERE verification_class = 'VERIFIED_CANONICAL'"
+            ),
+            purpose="Only events with verified canonical producer digests.",
+            query_example="SELECT * FROM v_timeline_verified_canonical ORDER BY timeline_sequence ASC;",
         ),
     ]
 

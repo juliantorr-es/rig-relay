@@ -25,6 +25,7 @@ from rig_relay.investigation_timeline._models import (
     TimelineDuckDBExport,
     TimelineEventKind,
     TimelineEvidenceSource,
+    VerificationClass,
 )
 from rig_relay.investigation_timeline._pg_contract import build_postgres_projection
 
@@ -46,6 +47,7 @@ __all__ = [
     "TimelineDuckDBExport",
     "TimelineEventKind",
     "TimelineEvidenceSource",
+    "VerificationClass",
     "build_duckdb_export",
     "build_postgres_projection",
     "enforce_content_light",

@@ -20,6 +20,7 @@ from rig_relay.investigation_timeline._models import (
     SourceDomain,
     TimelineAssemblyResult,
     TimelineEvidenceSource,
+    VerificationClass,
 )
 
 
@@ -229,17 +230,23 @@ def _build_degradation_summary(
 ) -> DegradationSummary:
     summary = DegradationSummary(total_events=len(events))
     for event in events:
-        match event.authority_classification:
-            case AuthorityClassification.CANONICAL_LIVE:
+        match event.verification_class:
+            case VerificationClass.VERIFIED_CANONICAL:
+                summary.verified_canonical_count += 1
                 summary.canonical_live_count += 1
-            case AuthorityClassification.MISSING:
-                summary.missing_count += 1
-            case AuthorityClassification.CONTRADICTORY:
-                summary.contradictory_count += 1
-            case AuthorityClassification.CORRUPT:
+            case VerificationClass.PARSED_UNVERIFIED:
+                summary.parsed_unverified_count += 1
+            case VerificationClass.CANONICAL_DEGRADED:
+                summary.canonical_degraded_count += 1
+            case VerificationClass.CORRUPT:
                 summary.corrupt_count += 1
-            case AuthorityClassification.STALE:
-                summary.stale_count += 1
-            case _:
-                summary.degraded_count += 1
+            case VerificationClass.UNSUPPORTED:
+                summary.unsupported_count += 1
+            case VerificationClass.MISSING:
+                summary.missing_count += 1
+
+        if event.authority_classification == AuthorityClassification.STALE:
+            summary.stale_count += 1
+        if event.authority_classification == AuthorityClassification.CONTRADICTORY:
+            summary.contradictory_count += 1
     return summary

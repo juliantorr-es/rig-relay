@@ -72,7 +72,10 @@ def test_postgres_query_capabilities_listed():
 
 def test_postgres_column_definitions_correct_count():
     columns = build_postgres_column_definitions()
-    assert len(columns) >= 23
+    assert len(columns) >= 27, (
+        f"expected >= 27 columns (24 original + 3 new: "
+        f"producer_digest, producer_digest_verified, verification_class), got {len(columns)}"
+    )
     column_names = {col.column_name for col in columns}
     assert "event_id" in column_names
     assert "timeline_sequence" in column_names
@@ -81,3 +84,6 @@ def test_postgres_column_definitions_correct_count():
     assert "source_domain" in column_names
     assert "authority_classification" in column_names
     assert "content_light_guarantee" in column_names
+    assert "producer_digest" in column_names
+    assert "producer_digest_verified" in column_names
+    assert "verification_class" in column_names

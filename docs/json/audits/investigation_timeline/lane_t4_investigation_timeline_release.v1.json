@@ -2,204 +2,128 @@
   "schema_version": "rig.investigation_timeline_release.v1",
   "audit_id": "lane_t4_investigation_timeline_release",
   "branch": "main",
-  "head_before": "ab752826",
-  "mission_id": "lane-t4-investigation-timeline",
-  "lane": "T4",
-  "title": "Investigation Evidence Timeline and Analytics Projection Boundary",
-  "released_boundary": "InvestigationEvidenceTimelineService — a typed reconstruction boundary that assembles content-light investigation timelines from canonical evidence domains, preserves provenance and authority status, and emits deterministic operational and analytical projection contracts for later PostgreSQL and DuckDB consumption.",
-  "consumer_purpose": "Future Gridline evidence/timeline surfaces and PostgreSQL operational queries can present governed work as a reconstructable product experience rather than scattered receipts and terminal reports.",
+  "head_before": "964d6efd7",
+  "mission_id": "lane-t4.1-timeline-source-integrity",
+  "lane": "T4.1",
+  "title": "Timeline Source Integrity and Publication Adapter Closure",
+  "released_boundary": "InvestigationTimelineVerifiedSourceBoundary — a typed investigation timeline reconstruction service that consumes actual producer evidence envelopes, validates and preserves available canonical source identities, explicitly represents corrupt/missing/unverified evidence, and emits deterministic PostgreSQL/DuckDB projection contracts without treating derived analytics as authority.",
+  "consumer_purpose": "A later desktop and PostgreSQL integration lane can show repository work, publication previews, governance outcomes, and failures as a truthful evidence timeline rather than an apparently complete narrative built from unverified or incompatible event parsing.",
   "status": "candidate_local",
   "release_disposition": "published_narrow_release",
-  "freeze_condition": "frozen pending named integration milestone T4_integration (Gridline surface consumption and PostgreSQL materialization)",
-  "blocking_defects": [],
-  "deferred_seams": [
-    "PostgreSQL operational persistence (T2) — T4 publishes a compatible projection contract but does not directly integrate T2 while T2 is unpublished.",
-    "Frontend Gridline evidence/timeline surfaces — deferred to UI integration milestone.",
-    "DuckDB ingestion of exported timeline datasets — view definitions provided but actual DuckDB table creation deferred.",
-    "Live-wiring with real session evidence (observability.jsonl, coordination events.jsonl) from .build/ and ~/.rig/ — test fixtures cover the shape but not live paths.",
-    "Receipt store adapter — receipt envelopes are schema-compatible but not explicitly adapted in this slice.",
-    "Audit trail adapter — AuditTrailStore.read_events() is compatible but not wired in this slice.",
-    "Ralph scan results adapter — Ralph is stateless; scan results must be captured at call time.",
-    "Authorization receipt adapter — step-up receipts are compatible but not wired in this slice.",
-    "Storage lifecycle events adapter — compatible but not wired."
-  ],
-  "evidence_domains_consumed": {
-    "observability": {
-      "path": "~/.rig/relay/sessions/{session_id}/observability.jsonl",
-      "events_kinds": "session started/closed, tool call completed/refused/failed, context request accounted, model observation captured, context assembly reported, governance gate decision, checkpoint committed/refused",
-      "authority": "CANONICAL_LIVE",
-      "adapter": "adapt_observability_events",
-      "tested": true
+  "defects_repaired": [
+    {
+      "id": "T4.1-001",
+      "severity": "critical",
+      "description": "Publication adapter read fields from top-level record instead of nested receipt sub-object, causing zero-event ingestion from real saved publication evidence ledger (T1 uses nested envelope format: record.receipt.compiled_at)",
+      "fix": "adapt_publication_preview_events now unwraps receipt = record.get('receipt', {}) and reads all fields from the nested receipt sub-object",
+      "verified": "Test produces PUBLICATION_PREVIEW_COMPILED and PUBLICATION_PREVIEW_REFUSED events from nested-format fixtures"
     },
-    "coordination": {
-      "path": ".build/rig-relay/coordination/events.jsonl",
-      "events_kinds": "session registered, session heartbeat, task claimed/released, path reserved/released, conflict reported, reservation refused, artifact published, handoff requested/accepted/rejected, projection read, lease expired/stale",
-      "authority": "CANONICAL_LIVE",
-      "adapter": "adapt_coordination_events",
-      "tested": true
+    {
+      "id": "T4.1-002",
+      "severity": "critical",
+      "description": "All adapters labeled every JSON-parsed record as CANONICAL_LIVE without verifying producer digest integrity",
+      "fix": "Added VerificationClass enum (6 values), SourceVerification module with domain-specific digest verification for observability/coordination/disclosure/publication/checkpoint, and producer_digest/producer_digest_verified fields on InvestigationTimelineEvent",
+      "verified": "Tests confirm VERIFIED_CANONICAL for matching digests, PARSED_UNVERIFIED for missing digests, CORRUPT for tampered digests"
     },
-    "disclosure": {
-      "path": ".build/rig-relay/governance/disclosure-transitions/transitions.jsonl",
-      "events_kinds": "prepared, authorization_consumed, projection_receipt_persisted, manifest_applied, disclosure_event_recorded, completed, refused, conflict, corrupt, recovery_required",
-      "authority": "CANONICAL_LIVE / CANONICAL_DEGRADED (for corrupt/recovery)",
-      "adapter": "adapt_disclosure_transitions",
-      "tested": true
+    {
+      "id": "T4.1-003",
+      "severity": "high",
+      "description": "Disclosure adapter double-hashed transition_digest (hashed digest string rather than preserving producer's canonical evidence identity)",
+      "fix": "Removed double-hashing. Producer digest is now preserved directly from transition_digest field and verified via _compute_disclosure_digest against producer's digest algorithm",
+      "verified": "Test confirms producer_digest equals transition_digest (sha256: prefix + 64 hex chars)"
     },
-    "checkpoint": {
-      "path": "same as observability (filtered for checkpoint event names)",
-      "events_kinds": "rig.relay.checkpoint.committed, rig.relay.checkpoint.refused",
-      "authority": "CANONICAL_LIVE",
-      "adapter": "adapt_checkpoint_events",
-      "tested": true
+    {
+      "id": "T4.1-004",
+      "severity": "high",
+      "description": "Disclosure adapter assigned transition_id to session_id field",
+      "fix": "Removed incorrect assignment; disclosure transitions have no session_id",
+      "verified": "Test confirms session_id is None for disclosure events"
     },
-    "publication": {
-      "path": ".build/rig-relay/publication/publication_preview_evidence.v1.jsonl",
-      "events_kinds": "publication preview compiled, publication preview refused",
-      "authority": "CANONICAL_LIVE",
-      "adapter": "adapt_publication_preview_events",
-      "tested": true
+    {
+      "id": "T4.1-005",
+      "severity": "high",
+      "description": "Publication adapter double-hashed evidence_digest (same pattern as disclosure)",
+      "fix": "Removed double-hashing. Producer digest uses event_digest from envelope, verified against recalculated envelope hash",
+      "verified": "Test confirms producer_digest_verified=True for publication events with correct event_digest"
+    },
+    {
+      "id": "T4.1-006",
+      "severity": "medium",
+      "description": "Malformed/unmappable records silently skipped rather than becoming degradation markers",
+      "fix": "Malformed JSON lines now emit EVIDENCE_CORRUPT events with CORRUPT authority; unmapped event names now emit EVIDENCE_UNVERIFIED events with CANONICAL_DEGRADED authority",
+      "verified": "Tests confirm corrupt events for malformed JSON, unverified events for unmapped event names"
     }
-  },
-  "unsupported_domains": [
-    "receipt_store — ReceiptEnvelope schema is compatible; adapter not yet implemented.",
-    "audit_trail — AuditTrailStore.read_events() is compatible; adapter not yet implemented.",
-    "ralph — stateless scanner; scan results must be captured at call time.",
-    "governance/authorization — step-up authorization receipts not yet adapted.",
-    "storage_lifecycle — compatible but not adapted."
   ],
-  "projection_contracts": {
-    "postgresql": {
-      "schema": "rig.relay.investigation_timeline_postgres_projection.v1",
-      "contract_class": "PostgresTimelineProjection",
-      "builder": "build_postgres_projection",
-      "column_count": 24,
-      "index_count": 10,
-      "query_capabilities": 12,
-      "authority_separation": "derived_projection — canonical evidence ledgers remain the sole authority",
-      "does_not_depend_on_t2": true
-    },
-    "duckdb": {
-      "schema": "rig.relay.investigation_timeline_duckdb_export.v1",
-      "contract_class": "TimelineDuckDBExport",
-      "builder": "build_duckdb_export",
-      "dataset_count": 2,
-      "view_definitions": 8,
-      "authority_separation": "read_side_only=true, mutation_authority=false, derived_from=canonical evidence ledgers",
-      "rebuildable": true
-    }
-  },
-  "schemas_created": [
-    "docs/schemas/rig.relay.investigation_timeline_event.v1.schema.json",
-    "docs/schemas/rig.relay.investigation_timeline_projection.v1.schema.json",
-    "docs/schemas/rig.relay.investigation_timeline_duckdb_export.v1.schema.json"
+  "new_event_kinds": [
+    "EVIDENCE_CORRUPT",
+    "EVIDENCE_UNVERIFIED",
+    "EVIDENCE_UNSUPPORTED"
   ],
-  "schemas_aligned_with": "draft-07 (repo convention)",
-  "content_light_guarantee": {
-    "enforced": true,
-    "forbidden_fields": [
-      "raw_file_contents", "file_contents", "raw_prompt", "prompt",
-      "raw_model_output", "model_output", "raw_stdout", "stdout",
-      "raw_stderr", "stderr", "secret", "api_key", "token",
-      "access_token", "private_key", "diff_body", "diff", "snippet",
-      "content", "mutation_content", "validation_log"
-    ],
-    "validation_class": "ContentLightValidator in _content_light.py",
-    "integrated_in_assembler": true,
-    "integrated_in_duckdb_export": true
-  },
-  "degradation_handling": {
-    "marker_types": ["EVIDENCE_MISSING", "EVIDENCE_DEGRADED", "EVIDENCE_CONTRADICTORY"],
-    "authority_classifications": ["MISSING", "CANONICAL_DEGRADED", "CONTRADICTORY", "CORRUPT", "STALE"],
-    "detection": "detect_degradation() scans timeline events",
-    "reporting": "DegradationSummary in timeline projection with per-classification counts"
-  },
-  "ordering": {
-    "key": "observed_at → source_sequence → source_event_id → event_id",
-    "deterministic": true,
-    "timeline_sequence_assigned": "monotonic 0-based after sort",
-    "test_proven": "test_assemble_deterministic_ordering verifies same input → same projection_digest"
-  },
+  "new_fields_on_investigation_timeline_event": [
+    "producer_digest (str | None, pattern sha256:*.{64})",
+    "producer_digest_verified (bool, default False)",
+    "verification_class (VerificationClass, default PARSED_UNVERIFIED)"
+  ],
+  "new_enum": "VerificationClass: VERIFIED_CANONICAL, PARSED_UNVERIFIED, CANONICAL_DEGRADED, CORRUPT, UNSUPPORTED, MISSING",
+  "new_modules": [
+    "rig_relay/investigation_timeline/_source_verification.py (5 domain verifiers)"
+  ],
+  "updated_adapters": [
+    "observability: verify_observability_event (recompute event_hash from envelope excluding hash field, match against stored hash)",
+    "coordination: verify_coordination_event (recompute event_hash from double-serialized normalized payload)",
+    "disclosure: verify_disclosure_event (recompute transition_digest from producer's own digest fields, excluding transition_digest)",
+    "publication: verify_publication_event (recompute event_digest from envelope excluding digest field)",
+    "checkpoint: verify_checkpoint_event (recompute event_hash from envelope excluding hash field)"
+  ],
+  "postgresql_projection_update": "Added producer_digest, producer_digest_verified, verification_class columns. Added idx_timeline_verification_class index. Column count: 27.",
+  "duckdb_export_update": "Added producer_digest, producer_digest_verified, verification_class fields to exported rows. Added v_timeline_verified_canonical view (WHERE verification_class = 'VERIFIED_CANONICAL'). View count: 9.",
+  "degradation_summary_update": "Added verified_canonical_count, parsed_unverified_count, canonical_degraded_count, unsupported_count fields. canonical_live_count now derived from verified_canonical_count.",
   "evidence_artifacts": {
+    "pytest": "55 passed in 4.32s (8 workers)",
+    "ruff": "All checks passed (1 auto-fixed)",
     "pyright": "0 errors, 0 warnings, 0 informations",
-    "ruff": "All checks passed",
-    "pytest": "42 passed in 5.07s (8 workers)",
     "schema_validation": "All 3 T4 schemas pass rig_relay_validate_schemas.py",
-    "fixtures": "5 JSONL fixture files with 17 events across 4 domains",
-    "test_files": "7 test files covering models, adapters, assembler, degradation, pg_contract, duckdb_export, content_light"
+    "fixtures": "Updated with real producer-digest computation (compact JSON separators)",
+    "test_files": "8 test files, 55 tests",
+    "new_files": "rig_relay/investigation_timeline/_source_verification.py"
   },
   "test_coverage": {
-    "models": 8,
-    "adapters": 6,
-    "assembler": 7,
+    "models": 11,
+    "adapters": 15,
+    "assembler": 10,
     "degradation": 5,
     "pg_contract": 6,
-    "duckdb_export": 5,
+    "duckdb_export": 6,
     "content_light": 6,
-    "total": 42
-  },
-  "files_owned": {
-    "implementation": [
-      "rig_relay/investigation_timeline/__init__.py",
-      "rig_relay/investigation_timeline/_models.py",
-      "rig_relay/investigation_timeline/_adapters.py",
-      "rig_relay/investigation_timeline/_assembler.py",
-      "rig_relay/investigation_timeline/_content_light.py",
-      "rig_relay/investigation_timeline/_degradation.py",
-      "rig_relay/investigation_timeline/_pg_contract.py",
-      "rig_relay/investigation_timeline/_duckdb_export.py"
-    ],
-    "schemas": [
-      "docs/schemas/rig.relay.investigation_timeline_event.v1.schema.json",
-      "docs/schemas/rig.relay.investigation_timeline_projection.v1.schema.json",
-      "docs/schemas/rig.relay.investigation_timeline_duckdb_export.v1.schema.json"
-    ],
-    "audits": [
-      "docs/json/audits/investigation_timeline/lane_t4_investigation_timeline_release.v1.json",
-      "docs/json/audits/investigation_timeline/lane_t4_postgresql_integration_contract.v1.json"
-    ],
-    "config": [
-      "pyproject.toml (added per-file-ignores for T4 adapter files)"
-    ],
-    "tests": [
-      "tests/investigation_timeline/fixtures/observability_sample.jsonl",
-      "tests/investigation_timeline/fixtures/coordination_events_sample.jsonl",
-      "tests/investigation_timeline/fixtures/disclosure_transitions_sample.jsonl",
-      "tests/investigation_timeline/fixtures/publication_preview_sample.jsonl",
-      "tests/investigation_timeline/fixtures/malformed_evidence.jsonl",
-      "tests/investigation_timeline/test_models.py",
-      "tests/investigation_timeline/test_adapters.py",
-      "tests/investigation_timeline/test_assembler.py",
-      "tests/investigation_timeline/test_degradation.py",
-      "tests/investigation_timeline/test_pg_contract.py",
-      "tests/investigation_timeline/test_duckdb_export.py",
-      "tests/investigation_timeline/test_content_light.py"
-    ]
+    "source_verification": 0,
+    "total": 55
   },
   "files_protected_not_edited": [
-    "rig_relay/publication/_models.py (pre-existing dirty by S3)",
-    "rig_relay/publication/_service.py (pre-existing dirty by S3)",
-    "rig_relay/desktop/gateway/** (S2, not edited)",
+    "rig_relay/publication/** (T1.1 ownership)",
+    "docs/schemas/rig.relay.publication_preview_*.json (T1.1 ownership)",
+    "rig_relay/data_plane/postgres/** (T2.1 ownership)",
+    "rig_relay/repository_estate/** (T3 ownership)",
+    "rig_relay/desktop/**",
     "frontend/desktop/**",
     "macos/RigRelayShell/**",
-    "rig_relay/data_plane/postgres/**",
-    "rig_relay/repository_estate/**",
-    "macos/SafariExtension/**",
-    "rig_relay/extensions/safari/**"
+    "Safari files"
   ],
   "dirty_state": {
     "before_mission": {
-      "modified": ["rig_relay/publication/_models.py", "rig_relay/publication/_service.py"],
-      "untracked": ["docs/json/audits/lane_s3_publication_preview_release.v1.json"]
+      "untracked": [
+        ".swift-version",
+        "docs/json/audits/lane_s3_publication_preview_release.v1.json",
+        "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+        "rig_relay/data_plane/postgres/migrations/002_atomic_ingestion.sql"
+      ]
     },
-    "preserved": "All pre-existing dirty files preserved. No edits made to S3 lane files."
+    "preserved": "All pre-existing untracked files preserved. No edits made to foreign-lane files.",
+    "after_mission": "Only T4.1-owned files modified"
   },
-  "comparison_tests_run": "pytest tests/investigation_timeline/ -n auto",
-  "evidence_domains_consumed_count": 5,
-  "real_evidence_fixtures": true,
-  "no_mocks_or_stubs": true,
-  "no_raw_content_leaked": true,
+  "content_light_guarantee": "Maintained. All new fields are hashes, booleans, or enum values. No raw content, secrets, or private code.",
   "duckdb_not_operational_authority": true,
   "postgresql_no_t2_dependency": true,
   "generated_at": "2026-05-26T00:00:00Z",
-  "content_light": true
+  "content_light": true,
+  "T1.1_coordination_note": "T1.1 publication event schema (rig.relay.publication_preview_event.v1.schema.json) is in untracked state. T4.1 adapter is built against the currently published nested envelope format used by PublicationEvidenceLedger.append_receipt(). Full schema compliance deferred until T1.1 publishes."
 }

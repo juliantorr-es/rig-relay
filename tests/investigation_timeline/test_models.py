@@ -12,6 +12,7 @@ from rig_relay.investigation_timeline._models import (
     PostgresTimelineProjection,
     SourceDomain,
     TimelineEventKind,
+    VerificationClass,
 )
 
 
@@ -101,7 +102,9 @@ def test_degradation_summary_defaults():
     summary = DegradationSummary()
     assert summary.total_events == 0
     assert summary.canonical_live_count == 0
-    assert summary.degraded_count == 0
+    assert summary.verified_canonical_count == 0
+    assert summary.parsed_unverified_count == 0
+    assert summary.canonical_degraded_count == 0
     assert summary.missing_count == 0
     assert summary.contradictory_count == 0
     assert summary.corrupt_count == 0
@@ -144,3 +147,40 @@ def test_timeline_event_kind_enum_covers_degradation():
     assert TimelineEventKind.EVIDENCE_DEGRADED.value == "EVIDENCE_DEGRADED"
     assert TimelineEventKind.EVIDENCE_MISSING.value == "EVIDENCE_MISSING"
     assert TimelineEventKind.EVIDENCE_CONTRADICTORY.value == "EVIDENCE_CONTRADICTORY"
+
+
+def test_verification_class_enum_exists():
+    assert hasattr(VerificationClass, "VERIFIED_CANONICAL")
+    assert hasattr(VerificationClass, "PARSED_UNVERIFIED")
+    assert hasattr(VerificationClass, "CANONICAL_DEGRADED")
+    assert hasattr(VerificationClass, "CORRUPT")
+    assert hasattr(VerificationClass, "UNSUPPORTED")
+    assert hasattr(VerificationClass, "MISSING")
+    assert VerificationClass.VERIFIED_CANONICAL.value == "VERIFIED_CANONICAL"
+    assert VerificationClass.PARSED_UNVERIFIED.value == "PARSED_UNVERIFIED"
+
+
+def test_investigation_timeline_event_has_producer_digest_field():
+    event = InvestigationTimelineEvent(
+        observed_at="2025-01-15T10:00:00Z",
+        event_kind=TimelineEventKind.TOOL_CALL_COMPLETED,
+        source_domain=SourceDomain.OBSERVABILITY,
+        source_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        authority_classification=AuthorityClassification.CANONICAL_LIVE,
+        producer_digest="sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    )
+    assert (
+        event.producer_digest
+        == "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    )
+
+
+def test_verification_class_defaults_to_parsed_unverified():
+    event = InvestigationTimelineEvent(
+        observed_at="2025-01-15T10:00:00Z",
+        event_kind=TimelineEventKind.TOOL_CALL_COMPLETED,
+        source_domain=SourceDomain.OBSERVABILITY,
+        source_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        authority_classification=AuthorityClassification.CANONICAL_LIVE,
+    )
+    assert event.verification_class == VerificationClass.PARSED_UNVERIFIED
