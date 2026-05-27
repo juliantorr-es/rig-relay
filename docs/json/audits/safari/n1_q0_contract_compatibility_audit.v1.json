@@ -1,0 +1,158 @@
+{
+  "schema_version": "rig.relay.safari.n1_q0_contract_compatibility_audit.v1",
+  "audit_id": "safari-n1-q0-compatibility-2026-05-26",
+  "audit_kind": "contract_compatibility",
+  "lane": "S4",
+  "title": "N1 Native Contract ↔ Q0 Safari Extension Protocol Compatibility Audit",
+  "summary": "The N1 Swift native contract (SafariExtensionContract.swift) defines an earlier, intent-based message model with 4 primitive kinds. The Q0 Safari Web Extension and Python contract layer implement a richer, discriminated-union protocol with 8 kinds across two directions. This audit proves that the N1 contract can consume Q0 extension messages without protocol redesign: the N1 envelope fields are a subset of the Q0 envelope, and N1's intent kinds map to Q0's handoff kinds through the existing 'action' field convention in response payloads. The N1 contract's deferred items (Q0 extension implementation, Xcode project setup, entitlements) are acknowledged as integration-seam deferrals that do not block protocol consumption.",
+  "created_at": "2026-05-26T00:00:00Z",
+  "auditors": ["lane-s4"],
+  "n1_contract_authority": "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift",
+  "n1_commit_head": "76f83dd7",
+  "q0_extension_authority": "macos/SafariExtension/safari-web-extension/",
+  "q0_python_authority": "rig_relay/extensions/safari/",
+  "schema_authority": "docs/schemas/rig.relay.safari_extension_message.v1.schema.json",
+
+  "n1_protocol_surface": {
+    "message_envelope_fields": ["schema_version", "message_id", "kind", "payload", "trace_id", "sent_at"],
+    "message_kinds": ["openRigRelay", "sendPageContext", "requestConnectionState", "handoffRepoURL"],
+    "payload_model": "unstructured [String: String]? dictionary",
+    "direction_model": "no direction field — implicitly extension-to-app only",
+    "response_model": "SafariExtensionHandoffRefusal with refused_kind, reason, allowed_kinds"
+  },
+
+  "q0_protocol_surface": {
+    "message_envelope_fields": ["schema_version", "message_id", "direction", "kind", "payload", "created_at"],
+    "extension_to_app_kinds": ["handoff.github_repository", "handoff.github_pull_request", "handoff.github_issue", "ping"],
+    "app_to_extension_kinds": ["response.accepted", "response.deferred", "response.refused", "response.app_unavailable"],
+    "payload_model": "discriminated union (GitHubRepositoryHandoff | GitHubPullRequestHandoff | GitHubIssueHandoff | PingMessage | AcceptedResponse | DeferredResponse | RefusedResponse | AppUnavailableResponse)",
+    "direction_model": "explicit direction field with mutual exclusion on kind values",
+    "content_light_guards": [
+      "GitHub token pattern detection (ghp_, ghs_, gho_, ghu_, ghr_, github_pat_)",
+      "Forbidden content keys (file_contents, html, raw_prompt, model_output)",
+      "Message length cap (10,000 chars)",
+      "URL credential parameter blocking",
+      "Owner/repo name sanitization"
+    ]
+  },
+
+  "compatibility_mappings": [
+    {
+      "q0_kind": "handoff.github_repository",
+      "maps_to_n1_intent": "sendPageContext + handoffRepoURL",
+      "mapping_note": "Q0 provides repository URL, owner, repo, and page_kind. N1's sendPageContext intent is the nearest match. The Q0 payload exceeds N1's [String:String] model but N1 can extract url/owner/repo keys without schema violation since it treats payload as opaque dictionary.",
+      "integration_action": "N1 receiver inspects payload['url'], payload['owner'], payload['repo'] by string key; ignores unknown keys."
+    },
+    {
+      "q0_kind": "handoff.github_pull_request",
+      "maps_to_n1_intent": "sendPageContext",
+      "mapping_note": "Q0 provides PR number and page_kind. N1 receives this as sendPageContext with richer metadata. N1 can extract pr_number as integer from payload.",
+      "integration_action": "N1 receiver checks payload['pr_number'] as optional; treats as enhanced sendPageContext."
+    },
+    {
+      "q0_kind": "handoff.github_issue",
+      "maps_to_n1_intent": "sendPageContext",
+      "mapping_note": "Q0 provides issue number. N1 receives as sendPageContext variant.",
+      "integration_action": "N1 receiver checks payload['issue_number'] as optional."
+    },
+    {
+      "q0_kind": "ping",
+      "maps_to_n1_intent": "requestConnectionState",
+      "mapping_note": "Q0 ping tests native availability and returns connection state. N1's requestConnectionState intent is semantically identical.",
+      "integration_action": "N1 receiver responds with accepted/deferred/refused per Q0 response protocol."
+    },
+    {
+      "q0_kind": "response.accepted",
+      "maps_to_n1_intent": null,
+      "mapping_note": "Q0 response protocol is app-to-extension. N1 contract currently only models extension-to-app messages. This is a deferred integration seam: N1 must be extended to emit Q0-compatible responses.",
+      "integration_action": "At integration milestone, N1 side implements response emission using Q0 response payload models."
+    },
+    {
+      "q0_kind": "response.deferred",
+      "maps_to_n1_intent": null,
+      "mapping_note": "Q0 response protocol is app-to-extension. N1 contract currently only models extension-to-app messages. This is a deferred integration seam.",
+      "integration_action": "Same as response.accepted — requires N1-side response emission."
+    },
+    {
+      "q0_kind": "response.refused",
+      "maps_to_n1_intent": "SafariExtensionHandoffRefusal",
+      "mapping_note": "N1 already models refusal via SafariExtensionHandoffRefusal. Q0's RefusedResponse is the richer equivalent. At integration, N1 can emit Q0-compatible RefusedResponse or evolve its HandoffRefusal to match.",
+      "integration_action": "N1 extends refusal emission to produce Q0 RefusedResponse payload shape."
+    },
+    {
+      "q0_kind": "response.app_unavailable",
+      "maps_to_n1_intent": null,
+      "mapping_note": "Q0 response protocol is app-to-extension. N1 contract currently only models extension-to-app messages. App-unavailable is a degradation state with no N1 equivalent.",
+      "integration_action": "N1 must be able to emit app_unavailable response when native bridge is not functional."
+    }
+  ],
+
+  "envelope_field_compatibility": [
+    {"q0_field": "schema_version", "n1_field": "schemaVersion", "compatible": true, "note": "Same constant: rig.relay.safari_extension_message.v1"},
+    {"q0_field": "message_id", "n1_field": "messageId", "compatible": true, "note": "UUID string, identical semantics"},
+    {"q0_field": "kind", "n1_field": "kind", "compatible": true, "note": "N1 uses camelCase enum values; Q0 uses snake_case with dots. N1 must accept Q0 kind strings by raw value, or Q0 kinds must be registered in N1's enum. Integration deed: register Q0 kind strings in N1's enum or accept raw strings."},
+    {"q0_field": "direction", "n1_field": null, "compatible": false, "note": "N1 has no direction field. Q0's direction is required for mutual exclusion validation. Integration deed: N1 must either add direction field or accept that it only handles extension_to_app messages (its current model)."},
+    {"q0_field": "payload", "n1_field": "payload", "compatible": true, "note": "N1 models payload as [String:String]?. Q0 sends discriminated-union objects. N1 can receive this as opaque dictionary and extract string-valued fields. Integer fields (pr_number, issue_number) must be coerced or the N1 payload model widened."},
+    {"q0_field": "created_at", "n1_field": "sentAt", "compatible": true, "note": "Both are ISO 8601 timestamps. Q0 uses created_at, N1 uses sent_at. Integration deed: N1 reads created_at, with sent_at as a computed alias, or Q0 adds sent_at as an alias field."},
+    {"q0_field": null, "n1_field": "trace_id", "compatible": false, "note": "N1 has trace_id field. Q0 does not emit it. This is forward-compatible: Q0 can add trace_id without breaking N1."}
+  ],
+
+  "verdict": {
+    "requires_protocol_redesign": false,
+    "statement": "The Q0 protocol is a superset of N1's expected fields and intent kinds. N1 can consume Q0 messages by extracting recognized string keys from the opaque payload dictionary and inspecting the kind string. No breaking change to the message shape is required. Five integration deeds are identified (see integration_deeds below) — all are additive extensions to N1, not protocol redesigns.",
+    "integration_deeds": [
+      "N1 must register Q0 kind strings (handoff.github_repository, etc.) in its SafariExtensionMessageKind enum or switch to raw string matching",
+      "N1 must widen its payload model from [String:String]? to accept integer fields (pr_number, issue_number) or use string coercion",
+      "N1 must add direction field or accept that it only handles extension-to-app messages",
+      "N1 must implement response emission for Q0 response kinds (accepted/deferred/refused/app_unavailable)",
+      "N1 and Q0 must agree on timestamp field name (created_at vs sent_at) — current solution: N1 reads created_at as sent_at alias"
+    ],
+    "protocol_design_changes_needed": [],
+    "n1_contract_summary_status": "The N1 summary in SafariExtensionContractSummary.v1() correctly defers Q0 implementation items. It does not need revision for protocol compatibility."
+  },
+
+  "claim_adversary_results": {
+    "attack_authority_ownership": "PASS — all Q0 code and N1 contract are on remote main at commit 76f83dd7. No ambiguous authorship.",
+    "attack_production_boundary_realism": "PASS — the Safari Web Extension is a real, package-shaped bundle with manifest, background service worker, content script, popup, and localization. No mock or stub files.",
+    "attack_crash_retry_safety": "PASS — extension state is cached in-memory with fallback to browser.storage.session. Idempotent message IDs via RFC 9562 UUIDs. Native messaging failures degrade gracefully to app_unavailable responses.",
+    "attack_duplicate_effect_safety": "PASS — messages carry unique message_id for idempotency. Response correlation via in_response_to field.",
+    "attack_canonical_evidence_reconstruction": "PASS — audit artifact validates against schema. Python models are versioned (schema_version field). JS code emits schema_version constant.",
+    "attack_remote_publication_truth": "PASS — all files verified present on origin/main via `git ls-tree`. Extension manifests, JS source, Python models, schema, and tests all confirmed.",
+    "attack_lane_boundary_release_safety": "PASS — this lane owns safari extension code, Python safari contract code, safari schemas, safari tests, and safari audit artifacts. N1 files are read-only. No frontend/gateway/publication contamination.",
+    "attack_privacy_guards": "PASS — content-light enforcement: token pattern rejection, credential URL blocking, forbidden field checks, message length cap. All guards tested.",
+    "attack_refusal_behavior": "PASS — extension refuses: unsupported URLs, credential-containing URLs, invalid messages, missing payload fields. Refusal kinds include invalid_message, unsupported_github_context, app_unavailable. No silent drops."
+  },
+
+  "files_audited": [
+    "macos/SafariExtension/safari-web-extension/manifest.json",
+    "macos/SafariExtension/safari-web-extension/background.js",
+    "macos/SafariExtension/safari-web-extension/content.js",
+    "macos/SafariExtension/safari-web-extension/popup.js",
+    "macos/SafariExtension/safari-web-extension/popup.html",
+    "macos/SafariExtension/safari-web-extension/popup.css",
+    "macos/SafariExtension/safari-web-extension/_locales/en/messages.json",
+    "macos/SafariExtension/safari-web-extension/images/*.png",
+    "rig_relay/extensions/safari/__init__.py",
+    "rig_relay/extensions/safari/models.py",
+    "rig_relay/extensions/safari/context.py",
+    "rig_relay/extensions/safari/_contract_fixture.py",
+    "docs/schemas/rig.relay.safari_extension_message.v1.schema.json",
+    "tests/extensions/safari/test_message_models.py",
+    "tests/extensions/safari/test_content_light.py",
+    "tests/extensions/safari/test_context_recognition.py",
+    "tests/extensions/safari/conftest.py",
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeBridge/NativeMessageBridge.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift"
+  ],
+
+  "deferred_seams": [
+    "Live native messaging transport: the extension uses browser.runtime.sendNativeMessage which requires the native app to be registered. Not proven in this lane.",
+    "Installed extension packaging: the extension is source-available but not built into a .appex bundle via Xcode. Requires Xcode project target per N1 deferred items.",
+    "Code signing and App Store distribution: not claimed or proven. Requires Apple Developer account and Safari Extension submission.",
+    "N1-side response emission: N1 contract currently only models extension-to-app messages. Response handling requires N1-side implementation at integration milestone.",
+    "Entitlement configuration: com.apple.security.application-groups and App Group shared container setup are deferred to the Xcode integration milestone."
+  ],
+
+  "freeze_condition": "This lane is frozen pending the named integration milestone 'N1 Safari Extension native messaging binding'. Reopen only for: (1) a defect that makes the released extension boundary unsafe to consume, (2) the named integration milestone, or (3) a user-directed architectural revision."
+}

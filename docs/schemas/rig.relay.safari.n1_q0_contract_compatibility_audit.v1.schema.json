@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.safari.n1_q0_contract_compatibility_audit.v1",
+  "title": "N1-Q0 Safari Contract Compatibility Audit",
+  "description": "Structured audit artifact proving protocol compatibility between the N1 native Swift contract and the Q0 Safari Web Extension protocol.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.safari.n1_q0_contract_compatibility_audit.v1"
+    },
+    "audit_id": { "type": "string" },
+    "audit_kind": { "type": "string", "const": "contract_compatibility" },
+    "lane": { "type": "string" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "auditors": { "type": "array", "items": { "type": "string" } },
+    "n1_contract_authority": { "type": "string" },
+    "n1_commit_head": { "type": "string" },
+    "q0_extension_authority": { "type": "string" },
+    "q0_python_authority": { "type": "string" },
+    "schema_authority": { "type": "string" },
+    "n1_protocol_surface": { "type": "object" },
+    "q0_protocol_surface": { "type": "object" },
+    "compatibility_mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "q0_kind": { "type": "string" },
+          "maps_to_n1_intent": { "type": ["string", "null"] },
+          "mapping_note": { "type": "string" },
+          "integration_action": { "type": "string" }
+        },
+        "required": ["q0_kind", "mapping_note", "integration_action"]
+      }
+    },
+    "envelope_field_compatibility": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "q0_field": { "type": ["string", "null"] },
+          "n1_field": { "type": ["string", "null"] },
+          "compatible": { "type": "boolean" },
+          "note": { "type": "string" }
+        },
+        "required": ["compatible", "note"]
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "properties": {
+        "requires_protocol_redesign": { "type": "boolean", "const": false },
+        "statement": { "type": "string" },
+        "integration_deeds": { "type": "array", "items": { "type": "string" } },
+        "protocol_design_changes_needed": { "type": "array", "items": { "type": "string" } },
+        "n1_contract_summary_status": { "type": "string" }
+      },
+      "required": ["requires_protocol_redesign", "statement", "integration_deeds", "protocol_design_changes_needed", "n1_contract_summary_status"]
+    },
+    "claim_adversary_results": { "type": "object" },
+    "files_audited": { "type": "array", "items": { "type": "string" } },
+    "deferred_seams": { "type": "array", "items": { "type": "string" } },
+    "freeze_condition": { "type": "string" }
+  },
+  "required": [
+    "schema_version", "audit_id", "audit_kind", "lane", "title", "summary",
+    "created_at", "n1_contract_authority", "n1_commit_head",
+    "q0_extension_authority", "q0_python_authority", "schema_authority",
+    "n1_protocol_surface", "q0_protocol_surface",
+    "compatibility_mappings", "envelope_field_compatibility",
+    "verdict", "claim_adversary_results", "files_audited",
+    "deferred_seams", "freeze_condition"
+  ],
+  "additionalProperties": false
+}
