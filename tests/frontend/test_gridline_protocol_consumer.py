@@ -546,13 +546,21 @@ class TestKeyboardNavigation:
 
 
 class TestIndexHtmlSource:
-    def test_fixture_scripts_are_gated(self, index_html_source):
-        """Fixture scripts must have data-fixture-only attribute for conditional unloading."""
-        assert "data-fixture-only" in index_html_source
+    def test_no_hardcoded_fixture_script_tags(self, index_html_source):
+        """Production index.html must NOT contain hard-coded <script src=\"js/fixtures/\"> tags
+        that would execute fixture JavaScript unconditionally. Fixture loading is now
+        conditionally injected only in fixture mode.
+        """
+        assert 'src="js/fixtures/' not in index_html_source
 
-    def test_fixture_unload_script_present(self, index_html_source):
-        """Production mode must unload fixture scripts."""
+    def test_conditional_injection_script_present(self, index_html_source):
+        """The conditional fixture injection script must exist with mode detection."""
         assert "__RIG_RELAY_FIXTURE_MODE__" in index_html_source
+        assert "fixture_mode" in index_html_source
+
+    def test_conditional_injection_creates_elements_not_parses(self, index_html_source):
+        """The injection script must use createElement (dynamic), not hard-coded tags."""
+        assert "document.createElement('script')" in index_html_source
 
     def test_adapter_script_loaded(self, index_html_source):
         """The Gridline adapter must be loaded."""
@@ -688,6 +696,167 @@ class TestProductionVsFixtureBehavior:
     def test_deferred_state_rendering(self, adapter_source):
         """When service is not available, surfaces must show deferred."""
         assert "deferred" in adapter_source
+
+
+# ── T0: Production Fixture Execution & Bundle Parity ───────────────
+
+
+class TestT0ProductionFixtureExecution:
+    def test_no_hardcoded_fixture_script_src_in_html(self, index_html_source):
+        """T0: Production index.html must NOT contain static <script src=\"js/fixtures/\">
+        tags. In S1 these tags executed before the unload script could remove them.
+        T0 replaces them with conditional createElement-based injection that only
+        activates in explicit fixture mode.
+        """
+        # The string 'src="js/fixtures/' must not appear as a static attribute.
+        # The fixture paths only appear inside the injection script as string values
+        # (not as src attributes on parser-inserted elements).
+        static_fixture_src = re.findall(
+            r'<script[^>]*\bsrc="js/fixtures/[^"]*"[^>]*>', index_html_source
+        )
+        assert len(static_fixture_src) == 0, (
+            f"Found {len(static_fixture_src)} static fixture script tags. "
+            "Fixture scripts must only be loaded via conditional createElement, "
+            "not hard-coded as parser-inserted src attributes."
+        )
+
+    def test_fixture_paths_only_inside_injection_script(self, index_html_source):
+        """T0: Fixture file paths must only appear in the conditional injection
+        script, never as parser-inserted <script src=\"...\"> attributes.
+        This guarantees scripts are never fetched or executed in production mode.
+        """
+        # Count occurrences of fixture paths
+        fixture_refs = list(re.finditer(r"js/fixtures/p0-fixture-", index_html_source))
+        # All references should be inside the injection script block
+        for m in fixture_refs:
+            # Get surrounding context — should be within a script block, not a src= attribute
+            context_start = max(0, m.start() - 30)
+            context_end = min(len(index_html_source), m.end() + 30)
+            context = index_html_source[context_start:context_end]
+            # If it's inside a src= attribute, the context will contain '<script...src='
+            if "src=" in index_html_source[context_start : m.start()]:
+                # Check if this src= belongs to a different element or is the injection
+                preceding = index_html_source[context_start : m.start()]
+                if not preceding.rstrip().endswith(("'", '"')):
+                    continue  # Not a src= value, fine
+            # The path should be inside a script tag or a JavaScript string
+            assert "p0-fixture-" in context, (
+                f"Fixture path at position {m.start()} appears in unexpected context: "
+                f"{context[:80]}"
+            )
+
+    def test_injection_script_checks_mode_before_loading(self, index_html_source):
+        """T0: The conditional injection script must check fixture_mode before
+        creating any script elements. In production mode, the if block never
+        executes.
+        """
+        assert "if (isFixtureMode)" in index_html_source, (
+            "Conditional injection script must have a mode check before loading fixtures"
+        )
+
+    def test_injection_script_uses_async_false(self, index_html_source):
+        """T0: Dynamically created fixture scripts must use async=false to ensure
+        synchronous execution before module scripts when in fixture mode.
+        """
+        assert (
+            "async = false" in index_html_source or "async=false" in index_html_source
+        ), "Dynamically injected fixture scripts must set async=false"
+
+
+class TestT0BundleParity:
+    def test_bundled_frontend_has_adapter(self):
+        """T0: The native bundled GridlineFrontend must include the S1 protocol adapter."""
+        bundled_adapter = (
+            ROOT
+            / "macos"
+            / "RigRelayShell"
+            / "Sources"
+            / "RigRelayShell"
+            / "Resources"
+            / "GridlineFrontend"
+            / "js"
+            / "protocol"
+            / "adapter.js"
+        )
+        assert bundled_adapter.exists(), (
+            f"Bundled adapter.js missing at {bundled_adapter}. "
+            "The native app would boot without the S1 protocol consumer."
+        )
+        # Content must match canonical
+        canonical_content = ADAPTER_PATH.read_text()
+        bundled_content = bundled_adapter.read_text()
+        assert canonical_content == bundled_content, (
+            "Bundled adapter.js differs from canonical. Run scripts/sync_gridline_frontend.sh"
+        )
+
+    def test_bundled_frontend_has_keyboard_nav(self):
+        """T0: The native bundled GridlineFrontend must include keyboardNav.js."""
+        bundled_kb = (
+            ROOT
+            / "macos"
+            / "RigRelayShell"
+            / "Sources"
+            / "RigRelayShell"
+            / "Resources"
+            / "GridlineFrontend"
+            / "js"
+            / "keyboardNav.js"
+        )
+        assert bundled_kb.exists(), (
+            f"Bundled keyboardNav.js missing at {bundled_kb}. "
+            "The native app would boot without keyboard navigation."
+        )
+        canonical_content = KEYBOARD_NAV_PATH.read_text()
+        bundled_content = bundled_kb.read_text()
+        assert canonical_content == bundled_content, (
+            "Bundled keyboardNav.js differs from canonical. Run scripts/sync_gridline_frontend.sh"
+        )
+
+    def test_bundled_index_html_matches_canonical(self):
+        """T0: Bundled index.html must match canonical index.html byte-for-byte."""
+        bundled_index = (
+            ROOT
+            / "macos"
+            / "RigRelayShell"
+            / "Sources"
+            / "RigRelayShell"
+            / "Resources"
+            / "GridlineFrontend"
+            / "index.html"
+        )
+        assert bundled_index.exists(), f"Bundled index.html missing at {bundled_index}"
+        canonical_content = INDEX_HTML_PATH.read_text()
+        bundled_content = bundled_index.read_text()
+        assert canonical_content == bundled_content, (
+            "Bundled index.html differs from canonical. Run scripts/sync_gridline_frontend.sh"
+        )
+
+    def test_bundled_index_has_no_static_fixture_tags(self):
+        """T0: Bundled index.html must not have static fixture script tags."""
+        bundled_index = (
+            ROOT
+            / "macos"
+            / "RigRelayShell"
+            / "Sources"
+            / "RigRelayShell"
+            / "Resources"
+            / "GridlineFrontend"
+            / "index.html"
+        )
+        content = bundled_index.read_text()
+        static_fixture_src = re.findall(
+            r'<script[^>]*\bsrc="js/fixtures/[^"]*"[^>]*>', content
+        )
+        assert len(static_fixture_src) == 0, (
+            f"Bundled index.html has {len(static_fixture_src)} static fixture script tags. "
+            "Native app would execute fixture scripts in production."
+        )
+
+    def test_sync_script_exists(self):
+        """T0: The sync script must exist for deterministic parity verification."""
+        sync_script = ROOT / "scripts" / "sync_gridline_frontend.sh"
+        assert sync_script.exists(), f"Sync script missing at {sync_script}"
+        assert sync_script.stat().st_mode & 0o111, "Sync script must be executable"
 
 
 # ── Helpers ────────────────────────────────────────────────────────

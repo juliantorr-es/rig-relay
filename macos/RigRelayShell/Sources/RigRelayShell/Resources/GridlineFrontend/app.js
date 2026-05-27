@@ -2,6 +2,8 @@
 import { state } from './js/state.js';
 import { TransportState, createTransportStateAuthority, STATUS_LABELS } from './js/transportState.js';
 import { renderStatusBar } from './js/status.js';
+import * as GridlineAdapter from './js/protocol/adapter.js';
+import { setupKeyboardNavigation } from './js/keyboardNav.js';
 let wsClient = null;
 let wsAuthFailed = false;
 let currentMode = 'operate';
@@ -39,6 +41,7 @@ function switchMode(mode) {
 const SURFACE_IDS = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview'];
 
 function switchSurface(surfaceId) {
+  // ── S1: Deactivate all surfaces first ───────────────────────────
   SURFACE_IDS.forEach(function(id) {
     var container = document.getElementById('surface-' + id);
     if (container) container.classList.remove('active');
@@ -46,12 +49,14 @@ function switchSurface(surfaceId) {
   document.querySelectorAll('#surface-nav .surface-tab').forEach(function(tab) {
     tab.classList.remove('active');
     tab.setAttribute('aria-selected', 'false');
+    tab.setAttribute('tabindex', '-1');
   });
 
   var activeTab = document.querySelector('#surface-nav .surface-tab[data-surface="' + surfaceId + '"]');
   if (activeTab) {
     activeTab.classList.add('active');
     activeTab.setAttribute('aria-selected', 'true');
+    activeTab.setAttribute('tabindex', '0');
   }
 
   var surfaceContainer = document.getElementById('surface-' + surfaceId);
@@ -62,7 +67,22 @@ function switchSurface(surfaceId) {
     if (mainGrid) mainGrid.style.display = 'none';
   }
 
-  renderSurfaceFixture(surfaceId);
+  // ── S1: Production mode — adapter renders based on projection state ──
+  // Fixture mode — explicit gate, adapter handles fixture rendering
+  // No silent fixture fallback in production mode.
+  var adapterMode = GridlineAdapter.getMode();
+  if (adapterMode === 'fixture') {
+    GridlineAdapter.renderFixtureSurface(surfaceId);
+  } else {
+    // In production mode, the adapter already renders all surfaces
+    // from the last accepted projection. Trigger a re-render to
+    // pick up any surface state changes.
+    GridlineAdapter._renderAllSurfaces();
+  }
+
+  // Emit surface-switched event for focus management
+  var event = new CustomEvent('surface-switched', { detail: { surfaceId: surfaceId } });
+  document.dispatchEvent(event);
 }
 
 function showCockpit() {
@@ -103,16 +123,34 @@ function renderEvidenceTag(status) {
   return '<span class="' + cls + '">' + escapeHtml(status) + '</span>';
 }
 
-// ── P0 Intent Stubs ──
-// Emit typed intents through bridge only. Never call authority locally.
-// These match the declared O0 intent contract.
+// ── P0 Intent Stubs (S1: upgraded) ──
+// Emit typed intents through the Gridline adapter.
+// Never call authority locally. These match the declared O0 intent contract.
 
 function emitP0Intent(intentName, params) {
+  // ── S1: Route through Gridline adapter for typed intent emission ──
+  // The adapter enforces production vs fixture mode and provenance tracking.
+  // Connect intents
+  if (intentName === 'studio_connect_workspace' || intentName === 'connect_workspace') {
+    return GridlineAdapter.emitConnectIntent(intentName, params);
+  }
+  // Repository estate intents
+  if (intentName === 'studio_discover_repositories' || intentName === 'studio_select_repository' ||
+      intentName === 'studio_import_repository' || intentName === 'discover_repositories') {
+    return GridlineAdapter.emitRepositoryEstateIntent(intentName, params);
+  }
+  // Project studio intents
+  if (intentName === 'studio_start_investigation' || intentName === 'studio_get_investigation' ||
+      intentName === 'studio_close_investigation' || intentName === 'start_investigation') {
+    return GridlineAdapter.emitProjectStudioIntent(intentName, params);
+  }
+
+  // Legacy fallback for non-studio intents
   var payload = {
     intent_name: intentName,
     parameters: params || {},
     source: 'p0_gridline_frontend',
-    fixture_backed: true,
+    fixture_backed: GridlineAdapter.isFixture(),
     authority: 'none_local'
   };
   if (wsClient && _appAuthority.isConnected()) {
@@ -125,6 +163,7 @@ function emitP0Intent(intentName, params) {
     });
   }
   console.log('[P0 Intent emitted]', intentName, JSON.stringify(payload).substring(0, 100));
+  return payload;
 }
 
 // ── Surface Fixture Rendering ──
@@ -1545,6 +1584,21 @@ function deriveWebSocketUrl({ pageProtocol, host, port, explicitUrl } = {}) {
   const resolvedPort = port || 9876;
   return `${scheme}://${resolvedHost}:${resolvedPort}`;
 }
+
+// ── S1: Global bridge for HTML inline handlers and keyboard nav ──────
+// Module-scoped functions exposed on window for backward compatibility
+// with inline onclick handlers and the keyboard navigation module.
+window.switchSurface = switchSurface;
+window.showCockpit = showCockpit;
+window.switchMode = switchMode;
+window.emitP0Intent = emitP0Intent;
+window.renderProjection = renderProjection;
+window.setWidgetHTML = setWidgetHTML;
+window.escapeHtml = escapeHtml;
+window.setStatusChip = renderStatusChip;
+window.renderEvidenceTag = renderEvidenceTag;
+window.runIntent = runIntent;
+window.renderSurfaceFixture = renderSurfaceFixture;
 
 document.addEventListener('DOMContentLoaded', function() {
   // Chat UI listeners

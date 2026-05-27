@@ -500,21 +500,25 @@
   </div>
 
   <!-- Fixture data layer — loaded only in explicit fixture/test mode -->
-  <script id="fixture-connect-script" data-fixture-only="1" src="js/fixtures/p0-fixture-connect.js"></script>
-  <script id="fixture-repository-estate-script" data-fixture-only="1" src="js/fixtures/p0-fixture-repository-estate.js"></script>
-  <script id="fixture-project-studio-script" data-fixture-only="1" src="js/fixtures/p0-fixture-project-studio.js"></script>
-  <script id="fixture-inference-studio-script" data-fixture-only="1" src="js/fixtures/p0-fixture-inference-studio.js"></script>
-  <script id="fixture-publish-preview-script" data-fixture-only="1" src="js/fixtures/p0-fixture-publish-preview.js"></script>
-
-  <!-- Unload fixture scripts if not in fixture mode (production default) -->
+  <!-- Production mode: no fixture script tags appear in source; no fixture JavaScript ever executes. -->
+  <!-- Fixture mode (?fixture_mode=1): scripts are dynamically injected synchronously before modules. -->
   <script>
     (function() {
       var params = new URLSearchParams(window.location.search);
-      var isFixtureMode = params.get('fixture_mode') === '1' || (window.__RIG_RELAY_FIXTURE_MODE__ === true);
-      if (!isFixtureMode) {
-        var scripts = document.querySelectorAll('script[data-fixture-only]');
-        for (var i = 0; i < scripts.length; i++) {
-          try { scripts[i].parentNode.removeChild(scripts[i]); } catch(e) {}
+      var isFixtureMode = params.get('fixture_mode') === '1' || window.__RIG_RELAY_FIXTURE_MODE__ === true;
+      if (isFixtureMode) {
+        var sources = [
+          'js/fixtures/p0-fixture-connect.js',
+          'js/fixtures/p0-fixture-repository-estate.js',
+          'js/fixtures/p0-fixture-project-studio.js',
+          'js/fixtures/p0-fixture-inference-studio.js',
+          'js/fixtures/p0-fixture-publish-preview.js'
+        ];
+        for (var i = 0; i < sources.length; i++) {
+          var s = document.createElement('script');
+          s.src = sources[i];
+          s.async = false;
+          document.head.appendChild(s);
         }
       }
     })();

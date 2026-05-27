@@ -89,25 +89,30 @@ struct WebKitWebView: NSViewRepresentable {
                 return
             }
 
-            // Allow initial local file load
-            if navigationAction.navigationType == .other && url.isFileURL {
+            // Refuse all remote URLs
+            guard url.isFileURL else {
+                decisionHandler(.cancel)
+                parent.onLoadStateChange(
+                    .unsupportedOrigin("Blocked remote: \(url.absoluteString.prefix(100))")
+                )
+                return
+            }
+
+            // Allowed: file URLs within the permitted frontend resource root.
+            // Use standardized URL paths to defeat sibling-prefix bypass
+            // (e.g. /allowed/root -> /allowed/rootBAD/file would pass raw hasPrefix).
+            let allowedPath = parent.allowedBaseURL.standardizedFileURL.path
+            let candidatePath = url.standardizedFileURL.path
+            if candidatePath == allowedPath
+                || candidatePath.hasPrefix(allowedPath + "/") {
                 decisionHandler(.allow)
                 return
             }
 
-            // Allow same-file reloads and subresource requests within allowed directory
-            if url.isFileURL {
-                let allowedPath = parent.allowedBaseURL.path
-                if url.path.hasPrefix(allowedPath) {
-                    decisionHandler(.allow)
-                    return
-                }
-            }
-
-            // Block everything else — no external navigation
+            // Block out-of-root file URLs
             decisionHandler(.cancel)
             parent.onLoadStateChange(
-                .unsupportedOrigin("Blocked: \(url.absoluteString.prefix(100))")
+                .unsupportedOrigin("Blocked out-of-root: \(url.absoluteString.prefix(100))")
             )
         }
 

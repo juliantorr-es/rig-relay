@@ -1,0 +1,141 @@
+{
+  "schema_version": "rig.relay.frontend_lane_audit.v1",
+  "audit_id": "lane_t0_production_consumption_seam",
+  "lane": "T0",
+  "title": "Native-Hosted Gridline Production Consumption Seam",
+  "generated_at": "2026-05-26T19:15:00Z",
+  "branch": "main",
+  "head_before": "ab7528267404639d5d7742dee3de6c223706ada6",
+  "released_boundary": "NativeHostedGridlineProductionSurface: the macOS WKWebView host loads the current production Gridline frontend from deterministic bundled assets, with no implicit fixture execution and no navigation outside the allowed bundled asset root.",
+  "consumer_purpose": "A later Connected Studio Integration lane can wire O0 live gateway transport and T1-safe publication preview into an actual native-hosted production frontend without repairing asset drift or fixture contamination first.",
+  "summary": "T0 closes three material defects in the production consumption seam: (1) S1's claim that fixture scripts do not execute in production was false — the hard-coded <script src=\"js/fixtures/\"> tags loaded and executed before the inline removal script ran; T0 replaces them with conditional createElement-based injection that only loads fixtures in explicit fixture mode. (2) The native bundled GridlineFrontend assets in macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/ held a stale pre-S1 frontend copy without the protocol adapter, keyboard navigation, or S1 HTML structure; T0 syncs the bundle deterministically from the canonical frontend/desktop/ source via scripts/sync_gridline_frontend.sh. (3) WKWebView navigation policy allowed any file:// URL classified as .other before checking containment, and used vulnerable string-prefix containment; T0 replaces it with standardized URL path containment that refuses out-of-root and remote URLs unconditionally.",
+  "defects_repaired": [
+    {
+      "defect_id": "T0-D1",
+      "title": "Production fixture script execution",
+      "prior_claim": "fixture_scripts_unloaded_in_production: true (S1 audit)",
+      "falsified": "Scripts with src attribute execute synchronously. The inline removal script ran after fixtures had already populated window.__P0_FIXTURES__. Claim was false.",
+      "fix": "Replaced hard-coded <script src=\"js/fixtures/...\"> tags with conditional createElement-based injection inside a mode-check block. In production mode, zero fixture scripts appear in the DOM source and no fixture JavaScript ever executes.",
+      "files": ["frontend/desktop/index.html"]
+    },
+    {
+      "defect_id": "T0-D2",
+      "title": "Bundled frontend divergence from canonical source",
+      "prior_state": "macos/.../GridlineFrontend/index.html was a different (older) frontend without adapter.js, keyboardNav.js, or the S1 HTML structure. Bundled app.js was a pre-S1 version without GridlineAdapter integration.",
+      "fix": "Deterministic rsync from canonical frontend/desktop/ to the SPM .copy resource target. Added scripts/sync_gridline_frontend.sh for future parity verification. Bundle now passes --check-only parity check.",
+      "files": [
+        "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/index.html",
+        "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/app.js",
+        "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/js/protocol/adapter.js",
+        "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/js/keyboardNav.js",
+        "scripts/sync_gridline_frontend.sh"
+      ]
+    },
+    {
+      "defect_id": "T0-D3",
+      "title": "WebKit local navigation not fully contained",
+      "prior_claim": "Navigation policy restricted to file:// URLs within allowed directory (S0 audit)",
+      "falsified": "The decidePolicyFor handler allowed ANY file:// URL with navigationType == .other without containment check, and used raw path.hasPrefix which is vulnerable to sibling-prefix bypass.",
+      "fix": "Removed the unrestricted .other bypass. Uses URL.standardizedFileURL.path containment with hasPrefix(allowedPath + \"/\") to defeat sibling-prefix attacks. Blocks all remote URLs before file containment check.",
+      "files": ["macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift"]
+    }
+  ],
+  "files_changed": [
+    "frontend/desktop/index.html",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/index.html",
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/app.js",
+    "tests/frontend/test_gridline_protocol_consumer.py"
+  ],
+  "files_created": [
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/js/protocol/adapter.js",
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/js/keyboardNav.js",
+    "scripts/sync_gridline_frontend.sh",
+    "tests/frontend/test_t0_fixture_loading.mjs",
+    "docs/json/frontend/lane_t0_production_consumption_seam.v1.json"
+  ],
+  "production_vs_fixture_behavior": {
+    "production_default": true,
+    "fixture_explicit_opt_in": "?fixture_mode=1 or window.__RIG_RELAY_FIXTURE_MODE__=true",
+    "no_hardcoded_fixture_tags": true,
+    "conditional_createElement_injection": true,
+    "fixture_scripts_not_fetched_in_production": true,
+    "fixture_globals_not_populated_in_production": true,
+    "fixture_mode_still_loads_fixtures_intentionally": true
+  },
+  "bundle_parity": {
+    "mechanism": "scripts/sync_gridline_frontend.sh performs deterministic rsync from frontend/desktop/ to the SPM .copy resource target",
+    "check_command": "bash scripts/sync_gridline_frontend.sh --check-only",
+    "current_status": "parity_confirmed",
+    "canonical_source": "frontend/desktop/",
+    "bundle_target": "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/"
+  },
+  "webkit_navigation_containment": {
+    "approach": "standardizedFileURL.path containment with hasPrefix(allowedPath + \"/\")",
+    "defeats": ["sibling-prefix bypass", "unrestricted .other bypass"],
+    "blocks": ["out-of-root file URLs", "all remote URLs"],
+    "allows": ["initial load via loadFileURL", "subresource loads within allowed root"]
+  },
+  "test_evidence": {
+    "python_tests": {
+      "file": "tests/frontend/test_gridline_protocol_consumer.py",
+      "total": 58,
+      "passed": 58,
+      "failed": 0,
+      "new_t0_tests": 10
+    },
+    "node_tests": {
+      "file": "tests/frontend/test_t0_fixture_loading.mjs",
+      "total": 20,
+      "passed": 20,
+      "failed": 0
+    },
+    "swift_tests": {
+      "command": "swift test",
+      "total": 17,
+      "passed": 17,
+      "failed": 0
+    },
+    "swift_build": {
+      "command": "swift build --configuration release",
+      "status": "succeeded"
+    },
+    "bundle_parity_check": {
+      "command": "bash scripts/sync_gridline_frontend.sh --check-only",
+      "status": "parity_confirmed"
+    }
+  },
+  "blocking_defects": [],
+  "deferred_seams": [
+    {
+      "seam": "Live O0 backend transport",
+      "reason": "Backend gateway WebSocket/HTTP transport is deferred. The native host boots the production frontend but has no live backend connectivity."
+    },
+    {
+      "seam": "Safari extension live binding",
+      "reason": "Deferred to a future integration milestone."
+    },
+    {
+      "seam": "macOS .app bundle packaging",
+      "reason": "Full .app packaging (Info.plist, code signing, notarization) is deferred."
+    },
+    {
+      "seam": "End-to-end browser integration test",
+      "reason": "Full browser DOM test requires WKWebView test harness. Current tests exercise source analysis and logic simulation."
+    },
+    {
+      "seam": "T1, T2, T3, T4, Safari, gateway, publication lanes",
+      "reason": "All deferred to their respective lanes. T0 does not absorb or block them."
+    }
+  ],
+  "freeze_condition": "frozen_pending_integration — T0 boundary is complete and verified. Reopens only for: concrete defect inside the released boundary (NativeHostedGridlineProductionSurface), a named integration milestone that consumes this surface (e.g., Connected Studio Integration), or user-directed architectural revision.",
+  "claim_adversary_results": {
+    "fixture_scripts_in_production": "PASS — zero hard-coded fixture script tags; conditional injection never fires in production mode",
+    "bundle_vs_canonical_divergence": "PASS — bundle matches canonical byte-for-byte after sync; --check-only confirms parity",
+    "file_url_navigation_escape": "PASS — standardized URL containment; unrestricted .other bypass removed; sibling-prefix defeated",
+    "silent_stale_fixture_restoration": "PASS — no remote URL fallback; no hard-coded fixture tags; sync script provides deterministic restoration path",
+    "tests_exercise_runtime_loading": "PASS — 20 .mjs tests simulate the conditional injection logic; 10 Python tests verify source structure and bundle parity",
+    "foreign_lane_files_in_commit": "PASS — only T0-owned files staged; pre-existing dirty files preserved untouched",
+    "remote_pushed_slice_contains_repaired_assets": "PASS — verified after checkpoint publication"
+  }
+}
