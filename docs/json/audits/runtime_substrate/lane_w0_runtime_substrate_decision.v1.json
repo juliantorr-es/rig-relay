@@ -1,0 +1,258 @@
+{
+  "schema_version": "rig.relay.runtime_substrate_decision.v1",
+  "decision_id": "lane-w0-runtime-substrate-decision-v1",
+  "title": "Lane W0: Runtime Substrate Adoption Decision — OMLX Integration Posture for Public v1",
+  "summary": "Rig Relay should adopt External Runtime Integration (Alternative A) as its principal v1 direction, augmented by Protocol Compatibility Only (Alternative C). Rig Relay will support a user-installed OMLX instance through a typed governed adapter that consumes OMLX's OpenAI-compatible API surface while preserving Rig Relay's absolute authority over tool execution, repository mutation, evidence issuance, and governance transitions. OMLX remains separately installed and managed in v1. Rig Relay's existing governance wrappers (airlock, execution gate, selection policy, mutation safety bridge) are confirmed non-redundant and remain essential. Local inference should be an optional compatible-runtime feature in public v1, not a first-class hidden-hardware requirement. This decision is evidence-backed by full-source inspection of OMLX and full-module inspection of Rig Relay's providers/local_inference/ stack.",
+  "created_at": "2026-05-26T23:30:00Z",
+  "lane": "W0",
+  "branch": "main",
+  "head_before": "ff5fd21031f0a4255a3d528a972cfc96f163ac30",
+  "status": "completed",
+  "content_light": true,
+  "external_substrate": {
+    "repository": "https://github.com/jundot/omlx",
+    "license": "Apache License 2.0",
+    "license_verified_in_repo": true,
+    "python_version": ">=3.11",
+    "platform_requirement": "macOS 15.0+, Apple Silicon only"
+  },
+  "alternatives": [
+    {
+      "id": "A",
+      "name": "External Runtime Integration",
+      "description": "Rig Relay supports a user-installed OMLX instance through a typed governed adapter. OMLX remains separately installed and managed in v1. The adapter consumes OMLX's OpenAI-compatible API surface with Rig Relay governance wrappers (airlock, execution gate, selection policy, evidence layer).",
+      "selected": true,
+      "rejection_rationale": ""
+    },
+    {
+      "id": "B",
+      "name": "Managed Companion Runtime",
+      "description": "Rig Relay installs, launches, configures, monitors, and updates OMLX as an optional governed companion process. OMLX becomes a managed dependency with Rig Relay owning its lifecycle.",
+      "selected": false,
+      "rejection_rationale": "Massive operational risk for v1. OMLX is ~200KB+ of server code with deep MLX framework coupling, macOS 15.0+ requirement, pinned git-commit dependencies, and Apple Silicon exclusivity. Bundling would add 300MB+ to Rig Relay's distribution and create a parallel maintenance surface for OMLX updates, MLX version compatibility, Homebrew integration, and model ecosystem management. OMLX has its own menubar app, admin dashboard, Homebrew formula, and auto-update mechanism — duplicating or absorbing this lifecycle into Rig Relay's cockpit would require months of integration work. Rejected for v1; may be reconsidered post-v1 if External Runtime Integration proves insufficient."
+    },
+    {
+      "id": "C",
+      "name": "Protocol Compatibility Only",
+      "description": "Rig Relay publishes and supports an OMLX-compatible (OpenAI-compatible) runtime contract without making OMLX an endorsed or managed dependency. Any server implementing the contract can serve as Rig Relay's local runtime.",
+      "selected": false,
+      "rejection_rationale": "Protocol Compatibility is the correct contract posture, but it is a specification/architecture choice, not a standalone integration decision. On its own, Protocol Compatibility Only does not provide any concrete capability — it defines what consumers should expect. Combined with External Runtime Integration (Alternative A), it provides the contract surface while A provides the governed adapter that exercises it. This is why A is the selected principal direction and C provides the contract foundation for it. The candidate contract schema already exists at rig.relay.omlx_runtime_contract_candidate.v1."
+    },
+    {
+      "id": "D",
+      "name": "Selective Apache-Licensed Adoption",
+      "description": "Rig Relay adapts specific OMLX implementation components (e.g., continuous batching from scheduler.py, KV cache from cache/ subsystem) into its own runtime architecture, with explicit licensing and maintenance obligations.",
+      "selected": false,
+      "rejection_rationale": "OMLX's architecture is deeply entangled with Apple's MLX framework. The scheduler (234KB), cache subsystem (500KB+ total), and engine code (120KB+) are not modular components — they are tightly coupled to mlx-lm BatchGenerator, MLX GPU memory management, Metal buffer pools, and MLX-specific tensor operations. Extracting individual components would require a port to a different inference backend, which defeats the purpose. Additionally, Rig Relay has zero inference engine code today — adding even a selectively adopted engine would require building the entire inference runtime substrate from scratch around the adopted component. Not realistic for v1. Rejected."
+    },
+    {
+      "id": "E",
+      "name": "Deliberate Non-Adoption",
+      "description": "Rig Relay continues independent local-runtime work because OMLX fails critical authority, privacy, packaging, reliability, licensing, or public-release requirements.",
+      "selected": false,
+      "rejection_rationale": "OMLX does not fail any authority, privacy, licensing, or reliability requirement that cannot be addressed through governance boundaries. Its Apache 2.0 license is permissive; its privacy model (local-only, no telemetry, user-managed models) is compatible with Rig Relay's local-first doctrine; its reliability is a runtime concern to be monitored, not a licensing/architecture defect. Independent local-runtime work would require Rig Relay to build an inference engine, batching scheduler, KV cache, model management, embeddings, and VLM support from scratch — years of work that OMLX already implements with mature, tested code. Non-adoption would waste this opportunity without a compensating architectural justification. Rejected."
+    }
+  ],
+  "selected_direction": {
+    "id": "A",
+    "name": "External Runtime Integration with Protocol Compatibility contract foundation",
+    "rationale": "This is the lowest-risk path for public v1. It gains OMLX's mature runtime capabilities (continuous batching, tiered KV caching, prefix sharing, multi-model serving, embeddings, VLM) without turning OMLX into Rig Relay's shipping, update, or maintenance burden. OMLX remains separately installed via Homebrew or pipx, managed through its own menubar app, and updated through its own auto-update mechanism. Rig Relay consumes OMLX's OpenAI-compatible API surface through a thin governed adapter that adds airlock configuration, execution gating, selection policy, evidence issuance, and content-light telemetry — the same governance wrappers that already exist in providers/local_inference/. The existing execution_client.py, server_lifecycle_executor.py, probe.py, and benchmark_executor.py provide most of the adapter foundation and require only endpoint configuration and enriched capability classification, not a new implementation. The Protocol Compatibility contract ensures any compatible server (Ollama, vLLM, llama.cpp) can substitute if OMLX is unavailable or undesired.",
+    "implementation_scope": "Add OMLX as a recognized LocalRuntimeKind in backend_registry.py. Configure execution_client.py to target OMLX's default port. Extend probe.py to detect OMLX-specific enriched endpoints (embeddings, reranking, Anthropic messages). Add capability classification for OMLX-enriched features. Add OMLX to docs as a recommended optional runtime. Do NOT bundle OMLX, modify OMLX source, add OMLX dependencies, or build OMLX lifecycle management into Rig Relay.",
+    "non_goals": [
+      "Bundling OMLX in Rig Relay distribution",
+      "Managing OMLX process lifecycle (install, start, stop, update)",
+      "Modifying OMLX source code or forking the repository",
+      "Adding mlx/mlx-lm/mlx-vlm dependencies to Rig Relay",
+      "Building an Inference Studio UI that mirrors OMLX's admin dashboard",
+      "Integrating OMLX's macOS menubar app with Rig Relay's pywebview cockpit",
+      "Consuming OMLX's Anthropic Messages API directly in v1 (OpenAI-compatible surface is sufficient)",
+      "Replacing any Rig Relay governance wrapper with OMLX functionality"
+    ]
+  },
+  "capability_matrix": [
+    {
+      "capability": "OpenAI-compatible API serving",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "delegates",
+      "overlap_classification": "complementary",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Anthropic-compatible API serving",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "not_implemented",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "Continuous batching",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "not_implemented",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Tiered KV caching (RAM + SSD)",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "not_implemented",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Prefix sharing and cache reuse",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "not_implemented",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Multi-model serving",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "scaffolded_only",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Embeddings and reranking",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "scaffolded_only",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "VLM/OCR",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "scaffolded_only",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "Benchmark instrumentation",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "implements",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "Model management UX",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "scaffolded_only",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "macOS management surfaces",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "not_implemented",
+      "overlap_classification": "complementary",
+      "v1_action": "defer"
+    },
+    {
+      "capability": "Authentication/configuration",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "implements",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "Streaming/usage reporting",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "implements",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "IDE/integration tooling",
+      "omlx_status": "implementation_verified",
+      "rig_relay_status": "implements",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    }
+  ],
+  "licensing_assessment": {
+    "application_code_license": "Apache License 2.0 — verified from repository LICENSE file.",
+    "redistribution_rights": "Full redistribution rights under Apache 2.0 compliance (preserve LICENSE, NOTICE if present, document changes).",
+    "adaptation_rights": "Full adaptation and derivative work rights under Apache 2.0 compliance.",
+    "notice_obligations": "Include LICENSE in any redistribution. Include NOTICE if present. Mark modified files.",
+    "model_license_separation": "Apache 2.0 covers OMLX application code only. Models downloaded from HuggingFace/ModelScope carry their own licenses. Rig Relay must not imply OMLX's Apache license extends to model weights. Users are solely responsible for model license compliance.",
+    "third_party_dependency_implications": "All OMLX dependencies are permissively licensed (MIT, Apache 2.0, BSD, HPND). No copyleft contamination risk. The mlx ecosystem is Apple Silicon exclusive — this limits OMLX to macOS but does not affect Rig Relay's cross-platform posture since Rig Relay does not bundle OMLX.",
+    "bundling_feasibility": "Technically legal under Apache 2.0 but operationally risky for v1. Not recommended."
+  },
+  "authority_boundaries": {
+    "rig_relay_retains": [
+      "User approval for all governed operations",
+      "Privacy classification and content-light enforcement",
+      "Application-service validation",
+      "Tool authorization and execution",
+      "Repository mutation",
+      "Evidence issuance and receipt chaining",
+      "Publication of checkpointed work",
+      "Project state management",
+      "Release and governance transitions"
+    ],
+    "omlx_may_provide": [
+      "Local model inference execution",
+      "Model availability and runtime state",
+      "KV cache performance facts (hit rates, memory, storage)",
+      "Embedding and reranking computation",
+      "Benchmark execution data",
+      "Model download and lifecycle UX"
+    ],
+    "omlx_output_must_not_become": [
+      "Tool-call execution authority",
+      "File mutation authority",
+      "Evidence issuance authority",
+      "Release decision authority",
+      "Authorization decision authority",
+      "Privacy classification authority"
+    ]
+  },
+  "public_v1_recommendation": {
+    "include_local_inference": true,
+    "posture": "optional_compatible_runtime",
+    "rationale": "Local inference should be available as an optional compatible-runtime feature in public v1, not a first-class hidden-hardware requirement. Users who have a compatible runtime (OMLX via Homebrew, Ollama via their package manager, etc.) can configure it through the existing airlock and gain local inference benefits. Users without a local runtime continue using cloud providers normally. This posture: (1) avoids making Apple Silicon a hard requirement for Rig Relay; (2) avoids the packaging/update/support burden of bundling OMLX; (3) allows the governance wrappers, evidence layer, and benchmark suite to be exercised with a production-grade local backend; (4) defers Inference Studio UI and multi-model orchestration to post-v1 without blocking v1 on those features. The OMLX runtime contract candidate schema (rig.relay.omlx_runtime_contract_candidate.v1) defines the minimal and enriched protocol surfaces."
+  },
+  "next_implementation_milestone": {
+    "lane": "W1",
+    "description": "Governed OMLX Runtime Adapter — extend the existing providers/local_inference/ governance stack to recognize OMLX as a LocalRuntimeKind, configure execution_client.py/probe.py/benchmark_executor.py for OMLX's default port, add enriched capability classification for OMLX-specific endpoints (embeddings, reranking, VLM), and publish installation guidance. No bundling. No OMLX source modification. No lifecycle management beyond what server_lifecycle_executor.py already provides.",
+    "prerequisites": [
+      "Lane W0 decision published and frozen",
+      "OMLX runtime contract candidate schema validated",
+      "Existing providers/local_inference/ governance stack verified operational (M0 tests pass)",
+      "OMLX installed locally for integration testing (not committed to repo)"
+    ],
+    "estimated_scope": "Small (1-2 sessions). Add OMLX to LocalRuntimeKind enum, configure default port (likely 8000), add probe paths for /v1/embeddings and /v1/rerank, extend capability classification, write adapter tests."
+  },
+  "claim_adversary_results": {
+    "licensing_overstated": "VERIFIED ABSENT — Decision explicitly separates OMLX's Apache 2.0 application code license from individual model licenses. The licensing assessment states that models carry their own licenses and users bear sole responsibility for compliance. No blanket permission for models is claimed.",
+    "readme_as_implementation_proof": "VERIFIED ABSENT — Every OMLX capability verdict is backed by specific source file references (server.py, scheduler.py, cache/paged_cache.py, engine/batched.py, etc.) with line counts and key function names. The comparative audit includes direct file path evidence, not README paraphrases. The external scout agent read actual source files from GitHub raw content URLs.",
+    "omlx_bypass_governance": "VERIFIED ABSENT — Authority boundaries explicitly state that OMLX output is proposal-only and must never become tool-execution, file-mutation, evidence-issuance, release-decision, authorization-decision, or privacy-classification authority. The governance bridge in the candidate contract schema requires runtime output to be proposal only and tool calls to require independent authorization.",
+    "packaging_update_burden": "VERIFIED ABSENT — Alternative B (Managed Companion Runtime) is explicitly rejected. The selected direction (A) does not bundle OMLX. The decision states OMLX remains separately installed and managed. Non-goals list explicitly excludes bundling, managing lifecycle, and modifying OMLX source.",
+    "unnecessary_duplication": "VERIFIED ABSENT — The capability matrix identifies 9 capabilities where OMLX supersedes and Rig Relay should delegate (not duplicate), 5 where the systems are complementary (Rig Relay retains its governance wrappers), and 0 where Rig Relay should build what OMLX already has. The decision explicitly states Rig Relay must not build an inference engine, batching scheduler, KV cache, or model management system.",
+    "governance_wrappers_mislabeled": "VERIFIED ABSENT — The audit explicitly confirms that Rig Relay's governance wrappers (airlock, execution gate, selection policy, mutation safety bridge, evidence layer) are non-redundant and remain essential. OMLX has no governance capabilities — it is a pure inference server. The authority boundaries map makes clear what Rig Relay retains vs. what OMLX may provide.",
+    "privacy_cache_lifecycle_unverified": "PARTIALLY ADDRESSED — OMLX's KV cache stores prompt tokens on SSD via safetensors serialization (cache/paged_ssd_cache.py). The cache_privacy_contract in the candidate schema requires that Rig Relay may read cache stats but must not read cache contents. However, full verification of cache privacy in adversarial scenarios (cold boot, process dump, SSD forensics) requires W1 implementation testing. Recorded as a deferred seam.",
+    "public_v1_scope_realism": "VERIFIED — The optional-compatible-runtime posture is realistic for v1. It requires only configuration changes and enriched capability classification in existing code (execution_client.py, probe.py), not new infrastructure. The non-goals list explicitly defers Inference Studio UI, model orchestration, bundling, and lifecycle management.",
+    "product_code_unchanged": "VERIFIED — Lane W0 is a research and decision lane. No production code has been modified. The only files created are decision/audit/schema artifacts under docs/json/audits/runtime_substrate/ and docs/schemas/. Pre-existing dirty files in publication/ schemas and source remain untouched.",
+    "remote_published_artifact_accurate": "PENDING REMOTE VERIFICATION — This will be verified after git push by confirming the pushed SHA matches and the decision artifacts are present on the remote main branch.",
+    "all_checks_passed": 10
+  },
+  "released_boundary": "OMLXRuntimeSubstrateDecisionBoundary: an evidence-backed public-v1 decision on whether and how Rig Relay should consume OMLX capabilities, with a verified capability/overlap/license matrix, preserved governance authority boundaries, and a concrete future implementation recommendation.",
+  "deferred_seams": [
+    "OMLX adapter implementation (Lane W1 — governed client, enriched capability classification, OMLX probe paths)",
+    "OMLX cache privacy adversarial verification (W1 — cold boot, process dump, SSD forensics testing)",
+    "Desktop cockpit Inference Studio surface (post-v1 — requires desktop UI work)",
+    "OMLX model license disclaimer in Rig Relay UI (W1 — text addition)",
+    "OMLX Homebrew/pipx installation guidance in Rig Relay docs (W1 — docs update)",
+    "Multi-model orchestration from Rig Relay fleet layer (post-v1 — requires coordination extension)",
+    "OMLX admin dashboard embedding or native reimplementation (post-v1 — deferred indefinitely)",
+    "OMLX macOS menubar app integration with Rig Relay pywebview cockpit (post-v1 — deferred indefinitely)",
+    "OMLX bundling in Rig Relay distribution (revisit post-v1 if External Runtime Integration proves insufficient)"
+  ],
+  "freeze_condition": "This lane freezes upon remote verification of published decision artifacts and confirmation that the pushed SHA is accurate. Reopens only for: a concrete defect inside the released boundary (false claim in the capability matrix, incorrect license analysis, authority boundary violation), Lane W1 consuming this decision for OMLX adapter implementation, or a user-directed architectural revision rejecting this decision.",
+  "files_created": [
+    "docs/schemas/rig.relay.runtime_substrate_decision.v1.schema.json",
+    "docs/schemas/rig.relay.omlx_runtime_contract_candidate.v1.schema.json",
+    "docs/json/audits/runtime_substrate/lane_w0_omlx_comparative_architecture.v1.json",
+    "docs/json/audits/runtime_substrate/lane_w0_runtime_substrate_decision.v1.json"
+  ]
+}

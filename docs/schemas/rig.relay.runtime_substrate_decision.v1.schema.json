@@ -1,0 +1,353 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.runtime_substrate_decision.v1.schema.json",
+  "title": "Runtime Substrate Decision",
+  "description": "Schema for a binding architectural decision on whether and how Rig Relay should consume external local-inference runtime capabilities.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.runtime_substrate_decision.v1"
+    },
+    "decision_id": {
+      "type": "string",
+      "description": "Unique identifier for this decision record."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title summarizing the decision."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph decision summary."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lane": {
+      "type": "string",
+      "description": "Lane identifier that produced this decision."
+    },
+    "branch": {
+      "type": "string"
+    },
+    "head_before": {
+      "type": "string",
+      "description": "Git commit SHA at decision start."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "completed", "published_narrow_release", "frozen_pending_integration"]
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "external_substrate": {
+      "type": "object",
+      "description": "Identification and licensing of the external runtime substrate under review.",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "GitHub repository URL."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier or full license name."
+        },
+        "license_verified_in_repo": {
+          "type": "boolean"
+        },
+        "python_version": {
+          "type": "string"
+        },
+        "platform_requirement": {
+          "type": "string"
+        }
+      },
+      "required": ["repository", "license", "license_verified_in_repo"]
+    },
+    "alternatives": {
+      "type": "array",
+      "description": "Decision alternatives considered.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Short identifier (A, B, C, D, E)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Descriptive name."
+          },
+          "description": {
+            "type": "string"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "rejection_rationale": {
+            "type": "string",
+            "description": "Required when selected is false."
+          }
+        },
+        "required": ["id", "name", "description", "selected"]
+      },
+      "minItems": 2
+    },
+    "selected_direction": {
+      "type": "object",
+      "description": "The chosen principal direction.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "implementation_scope": {
+          "type": "string"
+        },
+        "non_goals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["id", "name", "rationale"]
+    },
+    "capability_matrix": {
+      "type": "array",
+      "description": "Structured comparison of capabilities across OMLX and Rig Relay.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": "string"
+          },
+          "omlx_status": {
+            "type": "string",
+            "enum": ["implementation_verified", "documented_only", "not_found"]
+          },
+          "omlx_evidence": {
+            "type": "string"
+          },
+          "rig_relay_status": {
+            "type": "string",
+            "enum": ["implements", "delegates", "scaffolded_only", "not_implemented"]
+          },
+          "rig_relay_evidence": {
+            "type": "string"
+          },
+          "overlap_classification": {
+            "type": "string",
+            "enum": [
+              "omlx_supersedes",
+              "complementary",
+              "rig_relay_unique",
+              "both_absent",
+              "rig_relay_delegates_omlx_could_serve",
+              "omlx_overlaps_rig_governance"
+            ]
+          },
+          "v1_action": {
+            "type": "string",
+            "enum": ["consume", "delegate_to_adapter", "retain_as_governance", "defer", "abandon"]
+          }
+        },
+        "required": [
+          "capability",
+          "omlx_status",
+          "rig_relay_status",
+          "overlap_classification",
+          "v1_action"
+        ]
+      }
+    },
+    "licensing_assessment": {
+      "type": "object",
+      "properties": {
+        "application_code_license": {
+          "type": "string"
+        },
+        "redistribution_rights": {
+          "type": "string"
+        },
+        "adaptation_rights": {
+          "type": "string"
+        },
+        "notice_obligations": {
+          "type": "string"
+        },
+        "model_license_separation": {
+          "type": "string"
+        },
+        "third_party_dependency_implications": {
+          "type": "string"
+        },
+        "bundling_feasibility": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "application_code_license",
+        "redistribution_rights",
+        "model_license_separation"
+      ]
+    },
+    "authority_boundaries": {
+      "type": "object",
+      "description": "Demarcation of Rig Relay's non-negotiable authority domains.",
+      "properties": {
+        "rig_relay_retains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "omlx_may_provide": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "omlx_output_must_not_become": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["rig_relay_retains", "omlx_may_provide", "omlx_output_must_not_become"]
+    },
+    "public_v1_recommendation": {
+      "type": "object",
+      "properties": {
+        "include_local_inference": {
+          "type": "boolean"
+        },
+        "posture": {
+          "type": "string",
+          "enum": [
+            "first_class_supported",
+            "optional_compatible_runtime",
+            "hidden_post_v1",
+            "abandoned"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "required": ["include_local_inference", "posture", "rationale"]
+    },
+    "next_implementation_milestone": {
+      "type": "object",
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "estimated_scope": {
+          "type": "string"
+        }
+      },
+      "required": ["lane", "description"]
+    },
+    "claim_adversary_results": {
+      "type": "object",
+      "properties": {
+        "licensing_overstated": {
+          "type": "string"
+        },
+        "readme_as_implementation_proof": {
+          "type": "string"
+        },
+        "omlx_bypass_governance": {
+          "type": "string"
+        },
+        "packaging_update_burden": {
+          "type": "string"
+        },
+        "unnecessary_duplication": {
+          "type": "string"
+        },
+        "governance_wrappers_mislabeled": {
+          "type": "string"
+        },
+        "privacy_cache_lifecycle_unverified": {
+          "type": "string"
+        },
+        "public_v1_scope_realism": {
+          "type": "string"
+        },
+        "product_code_unchanged": {
+          "type": "string"
+        },
+        "remote_published_artifact_accurate": {
+          "type": "string"
+        },
+        "all_checks_passed": {
+          "type": "integer"
+        }
+      },
+      "required": ["all_checks_passed"]
+    },
+    "released_boundary": {
+      "type": "string"
+    },
+    "deferred_seams": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "freeze_condition": {
+      "type": "string"
+    },
+    "files_created": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "decision_id",
+    "title",
+    "created_at",
+    "lane",
+    "branch",
+    "head_before",
+    "status",
+    "content_light",
+    "external_substrate",
+    "alternatives",
+    "selected_direction",
+    "capability_matrix",
+    "licensing_assessment",
+    "authority_boundaries",
+    "public_v1_recommendation",
+    "next_implementation_milestone",
+    "claim_adversary_results",
+    "released_boundary",
+    "deferred_seams",
+    "freeze_condition"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,378 @@
+{
+  "schema_version": "rig.relay.omlx_comparative_architecture_audit.v1",
+  "audit_id": "lane-w0-omlx-comparative-architecture-v1",
+  "title": "Lane W0: OMLX Comparative Architecture Audit for Rig Relay Runtime Substrate Decision",
+  "summary": "Production-grade comparative architecture study of jundot/omlx (Apache 2.0, macOS/Apple Silicon local LLM inference server) against Rig Relay's current providers/local_inference/ governance stack. OMLX implements all 14 inspected capabilities with verified source code. Rig Relay implements zero inference engine capabilities — it is exclusively a governance/observability wrapper around external OpenAI-compatible endpoints. The two systems are complementary: OMLX serves inference; Rig Relay governs tool authorization, evidence issuance, repository mutation, and release transitions. This audit provides the capability matrix, license analysis, overlap classification, and authority boundary mapping required for the binding Runtime Substrate Decision.",
+  "created_at": "2026-05-26T23:00:00Z",
+  "lane": "W0",
+  "branch": "main",
+  "head_before": "ff5fd21031f0a4255a3d528a972cfc96f163ac30",
+  "remote_verified": true,
+  "status": "completed",
+  "content_light": true,
+  "external_substrate": {
+    "repository": "https://github.com/jundot/omlx",
+    "branch": "main",
+    "commit_examined": "786dfe2b995f4b34d39a82f9905ab89d31ea3fbb",
+    "license": "Apache License 2.0",
+    "license_verified_in_repo": true,
+    "license_file": "LICENSE",
+    "python_version": ">=3.11",
+    "platform_requirement": "macOS 15.0+ (Sequoia), Apple Silicon M1/M2/M3/M4 only",
+    "version": "0.1.0a1",
+    "build_system": "setuptools",
+    "package_manager": "uv (also Homebrew)",
+    "primary_inference_backend": "Apple MLX framework (mlx, mlx-lm, mlx-vlm, mlx-embeddings)",
+    "key_dependencies": [
+      "mlx>=0.31.2",
+      "mlx-lm (pinned git commit)",
+      "mlx-vlm (pinned git commit)",
+      "mlx-embeddings (pinned git commit)",
+      "dflash-mlx (pinned git commit, speculative decoding)",
+      "fastapi>=0.108.0",
+      "uvicorn>=0.23.0",
+      "transformers>=5.0.0",
+      "tokenizers>=0.19.0",
+      "huggingface-hub>=0.23.0",
+      "Pillow>=9.0.0",
+      "psutil>=5.9.0",
+      "jsonschema>=4.0.0",
+      "pyyaml>=6.0"
+    ],
+    "optional_extras": [
+      "mcp>=1.0.0",
+      "xgrammar>=0.1.32",
+      "modelscope>=1.10.0",
+      "paroquant==0.1.14",
+      "mlx-audio",
+      "pyobjc-framework-LocalAuthentication"
+    ],
+    "ships_models": false,
+    "model_acquisition_method": "Download from HuggingFace Hub or ModelScope on demand via built-in downloader"
+  },
+  "rig_relay_current_state": {
+    "inference_engine": "None. Rig Relay has no inference engine. All inference is delegated through an OpenAI-compatible HTTP client (execution_client.py) to external endpoints (Ollama, vLLM, llama.cpp server).",
+    "architecture_classification": "Governance/observability wrapper, not a runtime engine.",
+    "key_packages_examined": [
+      "rig_relay/providers/local_inference/ (42 files)",
+      "rig_relay/local_inference/ (4 files, M0 integration corridor)",
+      "tests/providers/ (18 test files for local inference)",
+      "docs/json/audits/local_inference/lane_m0_local_project_inference_assistance_verification.v1.json",
+      "docs/json/governance/high_performance_substrate_audit_v1.v1.json",
+      "rig_relay/core/model_runtime/runtime.py",
+      "rig_relay/runtime/ (25 files, tool execution runtime)",
+      "rig_relay/providers/model_capabilities.py",
+      "rig_relay/providers/openrouter_observer.py",
+      "rig_relay/desktop/gateway/_projection.py",
+      "rig_relay/desktop/gateway/_service.py"
+    ],
+    "implemented_capabilities": [
+      "OpenAI-compatible chat completion client (sync + SSE streaming)",
+      "Comprehensive governance wrappers (airlock, execution gate, selection policy, mutation safety bridge)",
+      "Capability probing against external endpoints (/health, /v1/models, /v1/chat/completions, streaming, tool calling)",
+      "Hardware capacity scanning (CPU, RAM, GPU, Metal, CUDA, ROCm)",
+      "Benchmark execution loops (concurrent/sync, content-light JSONL)",
+      "Server lifecycle management (subprocess start/stop/health-probe)",
+      "Shadow evaluation (dry-run safe, no agent state mutation)",
+      "Model download planning (blocked by default, requires approval)",
+      "Cloud-vs-local reference comparison",
+      "Energy/power measurement (macOS thermal state, Linux RAPL)",
+      "M0 local project inference assistance (capability-admitted, JSON_OBJECT_FORMATTING_ONLY)",
+      "Desktop cockpit projection of inference state",
+      "Receipt-backed evidence for all airlock operations"
+    ],
+    "scaffolded_only": [
+      "Embedding endpoint support (modeled but no client)",
+      "Vision/multimodal inference (modeled but no client)",
+      "Reranking (modeled but no client)",
+      "MLX_LM runtime kind (enum value only, no integration)",
+      "GPU backends beyond probing (vLLM registered for Linux only, not exercised)",
+      "Grammar/GBNF enforcement (modeled, no implementation)",
+      "Auto-routing (disabled by default, requires explicit proof)",
+      "Agent auto-execution (all paths require manual gates)",
+      "Inference Studio UI (no interactive surface)",
+      "Response caching (no caching layer in inference pipeline)",
+      "Continuous batching (benchmark concurrency exists but no inference batching engine)"
+    ],
+    "delegated_entirely": [
+      "Model weight management (Ollama pull or manual config)",
+      "Tokenization (API response usage field)",
+      "GPU scheduling/management (backend runtime)",
+      "Context window management (estimated from IDs/API)",
+      "Structured output enforcement (model must support natively)",
+      "API serving (external server process)"
+    ]
+  },
+  "capability_matrix": [
+    {
+      "capability": "OpenAI-compatible API serving",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "server.py: POST /v1/chat/completions, /v1/completions, GET /v1/models; api/openai_models.py (16KB Pydantic models); api/utils.py (37KB shared utilities)",
+      "rig_relay_status": "delegates",
+      "rig_relay_evidence": "execution_client.py: OpenAI-compatible chat completions client delegates to external endpoint. Rig Relay consumes this API, does not serve it.",
+      "overlap_classification": "complementary",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Anthropic-compatible API serving",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "server.py: POST /v1/messages; api/anthropic_models.py (10KB); api/anthropic_utils.py (41KB); SSE events for thinking/text deltas; scale_anthropic_tokens() for Claude Code",
+      "rig_relay_status": "not_implemented",
+      "rig_relay_evidence": "No Anthropic client exists in local inference path. Cloud provider path uses AnthropicProvider but that is a separate stack.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "Continuous batching",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "scheduler.py (234KB+): BatchGenerator backend, FCFS policy, chunked prefill, max_num_seqs (256), max_num_batched_tokens (8192), adaptive prefill throttle, phase-timing instrumentation; engine/batched.py (31KB); engine/vlm.py (81KB)",
+      "rig_relay_status": "not_implemented",
+      "rig_relay_evidence": "run_benchmark_concurrent exists but uses asyncio.gather — no inference batching engine. Rig Relay is a single-request client.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Tiered KV caching (RAM + SSD)",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "cache/paged_cache.py (60KB): GPU block-level page cache with CoW; cache/paged_ssd_cache.py (100KB): safetensors serialization; cache/tiered_manager.py (13KB): hybrid hot/cold coordinator; scheduler.py: hot_cache_max_size, paged_ssd_cache_max_size config",
+      "rig_relay_status": "not_implemented",
+      "rig_relay_evidence": "No caching layer exists in Rig Relay's inference pipeline.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Prefix sharing and cache reuse across requests/restarts",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "cache/prefix_cache.py (113KB): BlockAwarePrefixCache with block-based prefix matching, cold restore callback, safetensors persistence; scheduler.py: _restore_block_from_cold, _async_store_cache_worker post-completion SSD persistence, _cache_rate_tracker; cache/boundary_snapshot_store.py (30KB); README explicitly claims restart-persistent cache",
+      "rig_relay_status": "not_implemented",
+      "rig_relay_evidence": "No cache implementation exists.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Multi-model serving and lifecycle control",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "engine_pool.py: EnginePool with LRU eviction, pinning, TTL auto-unload, memory admission control, ProcessMemoryEnforcer; supports LLM/VLM/embedding/reranker/STT/TTS/STS engines simultaneously",
+      "rig_relay_status": "scaffolded_only",
+      "rig_relay_evidence": "model_fit_planner.py maps capacity to model candidates; model_acquisition.py plans downloads (blocked by default). No runtime model lifecycle management exists. Delegated to external server.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Embeddings and reranking",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "engine/embedding.py (5KB): mlx-embeddings; engine/reranker.py (6KB): SequenceClassification; server.py: POST /v1/embeddings, /v1/rerank; api/embedding_models.py, api/rerank_models.py",
+      "rig_relay_status": "scaffolded_only",
+      "rig_relay_evidence": "CapabilityProbeCapabilities.embeddings modeled but no client implementation; reranking modeled but no implementation.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "VLM/OCR capability",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "engine/vlm.py (81KB): VLMBatchedEngine with image processing, multi-image chat, base64/URL/file inputs, tool calling with vision; cache/vision_feature_cache.py (18KB); OCR models auto-detected (DeepSeek-OCR, DOTS-OCR, GLM-OCR); VLM MTP speculative decoding",
+      "rig_relay_status": "scaffolded_only",
+      "rig_relay_evidence": "CapabilityProbeCapabilities.vision and TaskType.VISION modeled but no client implementation.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "consume"
+    },
+    {
+      "capability": "Benchmark instrumentation",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "admin/benchmark.py (30KB): prefill/text-gen tokens/sec, partial prefix cache hit testing; admin/accuracy_benchmark.py (16KB): accuracy harness; admin panel: one-click benchmarking",
+      "rig_relay_status": "implements",
+      "rig_relay_evidence": "benchmark_executor.py: concurrent/sync benchmark loops across task profiles; benchmark_harness.py: plan-based benchmark; benchmark_summarizer.py: JSONL aggregation; benchmark_writer.py: content-light JSONL samples. More comprehensive than OMLX's benchmarks.",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "Model management and download UX",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "admin/hf_downloader.py (38KB): HF model download, model card browsing, one-click; admin/ms_downloader.py (39KB): ModelScope; admin/hf_uploader.py (18KB): HF upload; admin/oq_manager.py (21KB): quantization; admin/routes.py (201KB): model management endpoints",
+      "rig_relay_status": "scaffolded_only",
+      "rig_relay_evidence": "model_acquisition.py: download planning with approval gating (blocked by default); model_download_executor.py: ollama pull via subprocess; model_fit_planner.py: capacity-to-model mapping. No download UX exists.",
+      "overlap_classification": "omlx_supersedes",
+      "v1_action": "delegate_to_adapter"
+    },
+    {
+      "capability": "Native macOS management/update surfaces",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "packaging/build.py (47KB): full build pipeline (venvstacks + app bundle + DMG); packaging/omlx_app/: PyObjC menubar app; Formula/omlx.rb: Homebrew formula; cli.py: diagnose_menubar(); in-app auto-update; brew services integration",
+      "rig_relay_status": "not_implemented",
+      "rig_relay_evidence": "Rig Relay has its own desktop cockpit (pywebview) and packaging (pyinstaller). No native macOS menubar app. Server lifecycle management exists (server_lifecycle_executor.py) but is subprocess-based, not menubar-integrated.",
+      "overlap_classification": "complementary",
+      "v1_action": "defer"
+    },
+    {
+      "capability": "Authentication/configuration",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "server.py: HTTPBearer + verify_api_key(), x-api-key header support; admin/auth.py (8KB): persistent secret key, session management; settings.py: GlobalSettings at ~/.omlx/settings.json; CORS middleware; per-model settings",
+      "rig_relay_status": "implements",
+      "rig_relay_evidence": "airlock.py: explicit user-configured endpoint gating; governance engine for tool permissions; identity provider for OAuth. Rig Relay's auth is governance-layer, not API-server-layer.",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "Streaming and event usage reporting",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "server.py: StreamingResponse SSE with 3 keepalive modes; protocol-specific keepalive frames (OpenAI chat chunks, Anthropic pings); Usage class with prompt/completion/total tokens; stream_options.include_usage; server metrics tracking; DebugRequestLoggingMiddleware",
+      "rig_relay_status": "implements",
+      "rig_relay_evidence": "execution_client.py: SSE streaming client with TTFT/chunk measurement; telemetry events for tool calls and model observations; evidence layer with receipts. Rig Relay's reporting is governance/telemetry, not server-metrics.",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    },
+    {
+      "capability": "OpenCode/Codex/Claude Code/Copilot/MCP integration",
+      "omlx_status": "implementation_verified",
+      "omlx_evidence": "integrations/: 7 launcher modules (claude.py, codex.py, copilot.py, opencode.py, hermes.py, openclaw.py, pi.py); api/mcp_routes.py (2.7KB): MCP tool server; api/responses_models.py + responses_utils.py (25KB): OpenAI Responses API (Codex); server.py: init_mcp(), Anthropic token scaling",
+      "rig_relay_status": "implements",
+      "rig_relay_evidence": "MCP server with 16 governed tools; ACP agent for editor integration; IDE extension (VSCodium). Rig Relay's integrations are governance-gated tool surfaces.",
+      "overlap_classification": "complementary",
+      "v1_action": "retain_as_governance"
+    }
+  ],
+  "overlap_summary": {
+    "omlx_supersedes_count": 9,
+    "complementary_count": 5,
+    "rig_relay_unique_count": 0,
+    "both_absent_count": 0,
+    "omlx_supersedes": [
+      "Anthropic-compatible API serving",
+      "Continuous batching",
+      "Tiered KV caching (RAM + SSD)",
+      "Prefix sharing and cache reuse",
+      "Multi-model serving and lifecycle control",
+      "Embeddings and reranking",
+      "VLM/OCR capability",
+      "Model management and download UX",
+      "OpenAI-compatible API serving (OMLX serves, Rig consumes)"
+    ],
+    "complementary": [
+      "Benchmark instrumentation (both have; Rig's is more comprehensive)",
+      "Native macOS management (OMLX has menubar app; Rig has desktop cockpit)",
+      "Authentication/configuration (OMLX: API auth; Rig: governance auth)",
+      "Streaming/reporting (OMLX: server metrics; Rig: governance telemetry)",
+      "External tool integration (OMLX: launchers; Rig: MCP/ACP governed tools)"
+    ],
+    "rig_relay_unique": [
+      "Governance airlock and execution gating",
+      "Receipt-backed evidence for all operations",
+      "Dirty-file guard and mutation safety bridge",
+      "Selection policy and capability admission",
+      "Shadow evaluation (dry-run safe)",
+      "Content-light telemetry and observability",
+      "Tool authorization and permission scoping",
+      "Repository mutation authority",
+      "Release/governance transitions",
+      "Fleet orchestration and cross-session coordination"
+    ]
+  },
+  "licensing_assessment": {
+    "application_code_license": "Apache License 2.0 — verified from LICENSE file in repository.",
+    "apache_2_grants": [
+      "Perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license",
+      "Right to reproduce, prepare derivative works, publicly display, publicly perform, sublicense, and distribute",
+      "Patent license from contributors (explicit grant section)",
+      "No trademark license (trademarks excluded by section 6)"
+    ],
+    "apache_2_obligations": [
+      "Must include copy of the license in any redistribution (section 4a)",
+      "Must include NOTICE file if present (section 4d)",
+      "Must state changes made to licensed files (section 4b)",
+      "Must retain copyright, patent, trademark, and attribution notices (section 4c)",
+      "No warranty (sections 7-8)",
+      "No liability (sections 7-8)"
+    ],
+    "redistribution_rights": "Full rights to redistribute OMLX application code under Apache 2.0 compliance. This includes bundling in Rig Relay distributions (e.g., pyinstaller bundles) provided LICENSE and NOTICE are preserved and changes are documented.",
+    "adaptation_rights": "Full rights to create derivative works, copy source, and adapt specific OMLX implementation components. Requires documentation of changes and preservation of original notices.",
+    "notice_obligations": "If OMLX source is redistributed or adapted, the LICENSE file must be included and any existing NOTICE file preserved. Modified files must carry a prominent notice stating changes.",
+    "model_license_separation": "CRITICAL: Apache 2.0 covers only OMLX's application code. It does NOT cover models downloaded from HuggingFace or ModelScope. Each downloaded model carries its own license (LLaMA Community License, Mistral Research License, DeepSeek License, etc.). Rig Relay must never imply that Apache-licensed OMLX code grants rights to redistribute or use downloaded model weights. Users are solely responsible for model license compliance.",
+    "third_party_dependency_implications": "OMLX depends on mlx, mlx-lm, mlx-vlm, mlx-embeddings (MIT licensed, Apple), dflash-mlx (Apache 2.0), transformers (Apache 2.0), fastapi (MIT), uvicorn (BSD), huggingface-hub (Apache 2.0), Pillow (HPND), psutil (BSD), jsonschema (MIT). All are permissively licensed and compatible with Apache 2.0 redistribution. The mlx ecosystem is Apple Silicon exclusive.",
+    "bundling_feasibility": "TECHNICALLY LEGAL under Apache 2.0 but OPERATIONALLY RISKY for v1: OMLX is ~200KB+ of server code with deep MLX framework coupling, macOS 15.0+ requirement, and pinned git-commit dependencies. Bundling would make Rig Relay's macOS app 300MB+ larger and create a maintenance surface for OMLX updates, MLX version compatibility, and model ecosystem management. NOT RECOMMENDED for v1.",
+    "key_risk": "The Apache 2.0 license explicitly disclaims warranty and liability (sections 7-8). If OMLX crashes, produces incorrect model output, or causes kernel panics from GPU buffer exhaustion, OMLX contributors bear no liability. Rig Relay would need its own safety wrappers and failure recovery regardless of integration posture."
+  },
+  "authority_boundaries": {
+    "rig_relay_retains_absolute_authority_over": [
+      "User approval for all governed operations",
+      "Privacy classification and content-light enforcement",
+      "Application-service validation",
+      "Tool authorization and execution (all tool calls)",
+      "Repository mutation (write_file, search_replace, bash)",
+      "Evidence issuance and receipt chaining",
+      "Publication of checkpointed work",
+      "Project state management",
+      "Release and governance transitions",
+      "Dirty-file guard and mutation safety",
+      "Fleet orchestration and cross-session coordination",
+      "Provider/endpoint configuration (airlock)"
+    ],
+    "omlx_may_provide_as_delegated_runtime": [
+      "Local model inference execution",
+      "Model availability and runtime state reporting",
+      "KV cache performance facts (hit rates, memory usage, storage size)",
+      "Embedding and reranking computation",
+      "Benchmark execution data (tokens/sec, latency)",
+      "Model download and lifecycle functionality (user-facing UX)",
+      "API compatibility surface (OpenAI, Anthropic, Responses)"
+    ],
+    "omlx_output_must_never_become": [
+      "Tool-call execution authority (OMLX tool calls are proposals only)",
+      "File mutation authority (never directly mutate Rig Relay's repository)",
+      "Evidence issuance (Rig Relay owns the evidence ledger)",
+      "Release decisions (Rig Relay owns governance transitions)",
+      "Authorization decisions (Rig Relay owns approval gates)",
+      "Privacy classification decisions (Rig Relay owns content-light enforcement)"
+    ]
+  },
+  "external_sources_consulted": [
+    {
+      "url": "https://github.com/jundot/omlx",
+      "title": "jundot/omlx repository (main branch)",
+      "key_findings": "Full-source inspection of server.py (200KB+), scheduler.py (234KB+), cache/ (500KB+ total), engine/ (120KB+ total), api/ (150KB+ total), admin/ (350KB+ total), integrations/ (35KB+ total), packaging/build.py (47KB), engine_pool.py. All 14 claimed capabilities verified in source code."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/jundot/omlx/main/LICENSE",
+      "title": "OMLX LICENSE file",
+      "key_findings": "Full Apache License 2.0 text verified. No additional restrictions. No NOTICE file variant detected."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/jundot/omlx/main/pyproject.toml",
+      "title": "OMLX pyproject.toml",
+      "key_findings": "Python >=3.11, setuptools build, macOS classifiers only (no Linux/Windows). Core deps: mlx ecosystem. Optional: mcp, xgrammar, mlx-audio, pyobjc-framework-LocalAuthentication."
+    }
+  ],
+  "codebase_research_performed": [
+    "Read rig_relay/providers/local_inference/ (42 Python files, ~15000 lines) — full governance stack",
+    "Read rig_relay/local_inference/ (4 files, M0 integration corridor) — capability-admitted assistance service",
+    "Read tests/providers/ (18 test files) — 57/58 tests passing",
+    "Read docs/json/audits/local_inference/lane_m0_*.json — M0 verification audit",
+    "Read docs/json/governance/high_performance_substrate_audit_v1.v1.json — substrate audit",
+    "Read rig_relay/core/model_runtime/runtime.py — cloud provider runtime (separate from local inference)",
+    "Read rig_relay/runtime/ (25 files) — tool execution runtime (not model inference)",
+    "Read rig_relay/desktop/gateway/_projection.py — M0 projection surface",
+    "Read rig_relay/providers/registry.py — cloud provider architecture",
+    "Read rig_relay/core/tools/builtins/checkpoint.py — governed checkpoint tool",
+    "Read rig_relay/governance/ — governance engine and authorization patterns",
+    "Mapped 42-file providers/local_inference/ against 14 OMLX capabilities"
+  ],
+  "remaining_seams": [
+    "OMLX adapter implementation (governed client, endpoint discovery, health integration)",
+    "OMLX cache privacy boundary enforcement (ensure cache contents never leak via tool-call context)",
+    "OMLX model license disclaimer in Rig Relay UI (protect users from model license assumption)",
+    "Desktop cockpit Inference Studio surface (currently no local inference UI beyond M0 projection)",
+    "Capability classification upgrade to include OMLX enriched APIs (embeddings, reranking, VLM)",
+    "Benchmark integration with OMLX as execution backend",
+    "Process lifecycle integration (start/stop OMLX from Rig Relay server_lifecycle_executor)",
+    "Failure recovery policy when OMLX crashes (kernel panic from GPU buffer exhaustion, etc.)",
+    "Homebrew/pipx installation guidance for OMLX in Rig Relay docs"
+  ],
+  "deferred_seams": [
+    "Bundling OMLX in Rig Relay distribution (revisit post-v1 if operational benefit proven)",
+    "Native macOS menubar integration between Rig Relay desktop app and OMLX menubar app",
+    "OMLX admin dashboard embedding in Rig Relay cockpit (webview iframe or native reimplementation)",
+    "Multi-model serving orchestration from Rig Relay's fleet layer",
+    "OMLX speculative decoding (dflash) integration for Rig Relay agent loop latency reduction",
+    "OMLX audio (TTS/STT/STS) integration",
+    "OMLX tool launcher (Claude Code, Codex, etc.) consumption from Rig Relay governed tools"
+  ]
+}

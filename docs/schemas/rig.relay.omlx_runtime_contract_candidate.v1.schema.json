@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.omlx_runtime_contract_candidate.v1.schema.json",
+  "title": "OMLX Runtime Contract Candidate",
+  "description": "Candidate contract for what Rig Relay expects from an OMLX-compatible (or OpenAI-compatible) local inference runtime. This is a specification artifact, not an implementation. It defines the minimal protocol surface Rig Relay's governed adapter would consume, plus optional enriched surfaces for advanced capabilities.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.omlx_runtime_contract_candidate.v1"
+    },
+    "contract_id": {
+      "type": "string",
+      "description": "Unique identifier for this contract version."
+    },
+    "title": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "published", "deprecated"],
+      "description": "Candidate contracts are specifications only; published contracts gate implementation."
+    },
+    "derived_from_decision": {
+      "type": "string",
+      "description": "decision_id of the Runtime Substrate Decision that authorizes this contract."
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    },
+    "minimal_api_surface": {
+      "type": "object",
+      "description": "The minimal protocol surface Rig Relay requires from a compatible runtime. This is the OpenAI-compatible contract already supported by OMLX, Ollama, vLLM, and llama.cpp server.",
+      "properties": {
+        "health_endpoint": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "const": "GET" },
+            "path": { "type": "string" },
+            "expected_status": { "type": "integer" },
+            "expected_content_type": { "type": "string" }
+          },
+          "required": ["method", "path"]
+        },
+        "models_endpoint": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "const": "GET" },
+            "path": { "type": "string" },
+            "response_model": { "type": "string" }
+          },
+          "required": ["method", "path"]
+        },
+        "chat_completions_endpoint": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "const": "POST" },
+            "path": { "type": "string" },
+            "supports_streaming": { "type": "boolean" },
+            "stream_content_type": { "type": "string" },
+            "supports_tool_calling": { "type": "boolean" },
+            "supports_structured_output": { "type": "boolean" }
+          },
+          "required": ["method", "path"]
+        }
+      },
+      "required": ["health_endpoint", "models_endpoint", "chat_completions_endpoint"]
+    },
+    "enriched_api_surfaces": {
+      "type": "object",
+      "description": "Optional enriched surfaces that advanced runtimes (like OMLX) may expose. Absence does not block compatibility but reduces capability class.",
+      "properties": {
+        "embeddings_endpoint": {
+          "type": "object",
+          "properties": {
+            "available": { "type": "boolean" },
+            "path": { "type": "string" }
+          }
+        },
+        "rerank_endpoint": {
+          "type": "object",
+          "properties": {
+            "available": { "type": "boolean" },
+            "path": { "type": "string" }
+          }
+        },
+        "anthropic_messages_endpoint": {
+          "type": "object",
+          "properties": {
+            "available": { "type": "boolean" },
+            "path": { "type": "string" }
+          }
+        },
+        "runtime_health_api": {
+          "type": "object",
+          "description": "Enriched health/status beyond basic liveness.",
+          "properties": {
+            "available": { "type": "boolean" },
+            "provides_model_list": { "type": "boolean" },
+            "provides_memory_usage": { "type": "boolean" },
+            "provides_cache_stats": { "type": "boolean" },
+            "provides_gpu_metrics": { "type": "boolean" }
+          }
+        },
+        "server_metrics_endpoint": {
+          "type": "object",
+          "properties": {
+            "available": { "type": "boolean" },
+            "path": { "type": "string" }
+          }
+        }
+      }
+    },
+    "runtime_lifecycle_contract": {
+      "type": "object",
+      "description": "How Rig Relay may interact with the runtime process lifecycle. Optional — a separately managed runtime may not expose this.",
+      "properties": {
+        "managed_by_rig_relay": { "type": "boolean" },
+        "start_command": { "type": "string" },
+        "stop_signal": { "type": "string" },
+        "health_timeout_seconds": { "type": "integer" },
+        "default_port": { "type": "integer" },
+        "config_path": { "type": "string" }
+      }
+    },
+    "cache_privacy_contract": {
+      "type": "object",
+      "description": "What Rig Relay must know and must not consume from runtime cache state.",
+      "properties": {
+        "cache_location": { "type": "string" },
+        "cache_persists_across_restarts": { "type": "boolean" },
+        "cache_contains_prompt_text": { "type": "boolean" },
+        "rig_relay_may_read_cache_stats": { "type": "boolean" },
+        "rig_relay_may_not_read_cache_contents": { "type": "boolean" },
+        "cache_segregation_note": { "type": "string" }
+      },
+      "required": [
+        "cache_contains_prompt_text",
+        "rig_relay_may_read_cache_stats",
+        "rig_relay_may_not_read_cache_contents"
+      ]
+    },
+    "governance_bridge": {
+      "type": "object",
+      "description": "How runtime output bridges into Rig Relay's governed authority.",
+      "properties": {
+        "runtime_output_is_proposal_only": { "type": "boolean" },
+        "tool_calls_require_independent_authorization": { "type": "boolean" },
+        "file_mutations_require_governed_tools": { "type": "boolean" },
+        "runtime_never_directly_mutates_repository": { "type": "boolean" },
+        "evidence_emission_is_rig_relay_responsibility": { "type": "boolean" }
+      },
+      "required": [
+        "runtime_output_is_proposal_only",
+        "tool_calls_require_independent_authorization",
+        "runtime_never_directly_mutates_repository"
+      ]
+    },
+    "capability_classification": {
+      "type": "object",
+      "description": "How Rig Relay classifies runtime capability for admission decisions.",
+      "properties": {
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "class_id": { "type": "string" },
+              "label": { "type": "string" },
+              "requires": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "admits": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["class_id", "label"]
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "contract_id",
+    "title",
+    "created_at",
+    "status",
+    "content_light",
+    "minimal_api_surface",
+    "cache_privacy_contract",
+    "governance_bridge"
+  ],
+  "additionalProperties": false
+}
