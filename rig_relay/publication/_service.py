@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+import uuid as _uuid
 
 from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
 from rig_relay.publication._models import (
@@ -68,6 +69,7 @@ class ProjectPagePublicationPreviewService:
         repo_name: str = "",
         output_dir: Path | None = None,
         validate_schema: bool = False,
+        operation_id: str | None = None,
     ) -> PublicationPreviewResult:
         """Compile a publication preview from live producer-compatible input.
 
@@ -81,11 +83,16 @@ class ProjectPagePublicationPreviewService:
             repo_name: Repository name for URL construction.
             output_dir: Where to write static preview bundle.
             validate_schema: Whether to validate against publication schema.
+            operation_id: Caller-supplied operation identity for exactly-once
+                semantics. A retry of a prior request uses the same operation_id.
+                A distinct user action uses a new operation_id. If not provided,
+                a fresh UUID v4 is generated.
 
         Returns:
             PublicationPreviewResult with compiler output and evidence,
             or a refusal if input validation fails.
         """
+        op_id = operation_id or _uuid.uuid4().hex
         refusal = self._validate_inputs(
             profile=profile,
             readiness=readiness,
@@ -103,13 +110,7 @@ class ProjectPagePublicationPreviewService:
                 refusal_reasons=refusal.reasons,
             )
             receipt.evidence_digest = receipt.compute_digest()
-            operation_id = _build_operation_id(
-                profile=profile,
-                publication_policy=publication_policy,
-                refused=True,
-                refusal_code=refusal.refusal_code.value,
-            )
-            self._ledger.append_event(operation_id, receipt.model_dump())
+            self._ledger.append_event(op_id, receipt.model_dump())
             return PublicationPreviewResult(
                 compiler_result=self._empty_result(),
                 receipt=receipt,
@@ -164,10 +165,7 @@ class ProjectPagePublicationPreviewService:
             receipt.refusal_reasons = compiler_result.warnings
             receipt.evidence_digest = receipt.compute_digest()
 
-        operation_id = _build_operation_id(
-            profile=profile, publication_policy=publication_policy
-        )
-        self._ledger.append_event(operation_id, receipt.model_dump())
+        self._ledger.append_event(op_id, receipt.model_dump())
 
         return PublicationPreviewResult(
             compiler_result=compiler_result, receipt=receipt, refused=refused
@@ -314,19 +312,3 @@ def _profile_digest(profile: object) -> str:
             return str(result)
     candidate_id = getattr(profile, "candidate_id", "unknown")
     return _digest_sha256(f"profile:{candidate_id}")
-
-
-def _build_operation_id(
-    profile: object,
-    publication_policy: str,
-    refused: bool = False,
-    refusal_code: str | None = None,
-) -> str:
-    profile_digest = _profile_digest(profile)
-    if refused:
-        raw = (
-            f"refusal:{profile_digest}:{publication_policy}:{refusal_code or 'unknown'}"
-        )
-    else:
-        raw = f"compile:{profile_digest}:{publication_policy}"
-    return _digest_sha256(raw)

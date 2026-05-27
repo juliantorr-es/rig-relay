@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json",
   "title": "Rig Relay Publication Preview Receipt v1",
-  "description": "Content-light canonical evidence receipt for a publication preview compilation. Emitted for every compile or refusal outcome. Contains hashes and status — never raw file contents, private data, or deployment actions.",
+  "description": "Content-light canonical evidence receipt for a publication preview compilation. Requires all governance-significant fields for outcome reconstruction. Contains hashes and status — never raw file contents, private data, or deployment actions.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,7 +11,10 @@
     "compiled_at",
     "compilation_successful",
     "profile_candidate_digest",
-    "preview_only"
+    "preview_only",
+    "evidence_digest",
+    "safety_passed",
+    "deployment_ready"
   ],
   "properties": {
     "schema_version": {
@@ -37,16 +40,16 @@
     },
     "result_digest": {
       "type": ["string", "null"],
-      "description": "SHA256 digest of the compiler result, or null on refusal"
+      "description": "SHA256 digest of the compiler result. Required when compilation_successful is true."
     },
     "refusal_code": {
       "type": ["string", "null"],
-      "description": "PreviewRefusalCode value when compilation was refused, or null"
+      "description": "PreviewRefusalCode value when compilation was refused. Required when compilation_successful is false."
     },
     "refusal_reasons": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Human-readable reasons for refusal"
+      "description": "Human-readable reasons for refusal. Required when compilation_successful is false."
     },
     "safety_passed": {
       "type": "boolean",
@@ -67,5 +70,40 @@
       "type": "string",
       "description": "Deterministic SHA256 digest of the receipt itself"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "compilation_successful": { "const": true }
+        },
+        "required": ["compilation_successful"]
+      },
+      "then": {
+        "required": ["result_digest"],
+        "properties": {
+          "result_digest": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "compilation_successful": { "const": false }
+        },
+        "required": ["compilation_successful"]
+      },
+      "then": {
+        "required": ["refusal_code", "refusal_reasons"],
+        "properties": {
+          "refusal_code": { "type": "string" },
+          "refusal_reasons": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  ]
 }

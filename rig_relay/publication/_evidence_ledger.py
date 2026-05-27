@@ -1,7 +1,8 @@
 """Append-only content-light JSONL evidence ledger for publication preview receipts.
 
 Durable persistence with fcntl locking, schema validation, recursive
-content-light enforcement, operation-id idempotency, and typed
+content-light enforcement, lock-scoped operation-id deduplication,
+conflict detection, nested receipt digest validation, and typed
 corruption-communicating reconstruction.
 """
 
@@ -104,11 +105,6 @@ _RAW_PATH_PATTERN: _re.Pattern[str] = _re.compile(r"^(/[Uu]sers/|/[Hh]ome/|[A-Z]
 
 
 def _scan_recursive(data: Any, path: str) -> list[str]:
-    """Recursively scan any value for forbidden content.
-
-    Checks forbidden field names in dict keys, secret patterns
-    in string values, and raw path patterns.
-    """
     violations: list[str] = []
 
     if isinstance(data, dict):
@@ -136,17 +132,48 @@ def _assert_content_light(data: dict[str, Any]) -> None:
         raise ValueError(f"Receipt contains forbidden content: {violations[:10]}")
 
 
+def _verify_receipt_evidence_digest(receipt: dict[str, Any]) -> None:
+    stored = receipt.get("evidence_digest", "")
+    if not stored:
+        raise ValueError("Receipt missing evidence_digest")
+
+    from json import dumps
+
+    canonical = {
+        "schema_version": receipt.get("schema_version", ""),
+        "receipt_id": receipt.get("receipt_id", ""),
+        "compiled_at": receipt.get("compiled_at", ""),
+        "compilation_successful": receipt.get("compilation_successful"),
+        "profile_candidate_digest": receipt.get("profile_candidate_digest", ""),
+        "result_digest": receipt.get("result_digest"),
+        "refusal_code": receipt.get("refusal_code"),
+        "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
+        "safety_passed": receipt.get("safety_passed"),
+        "deployment_ready": receipt.get("deployment_ready"),
+        "preview_only": receipt.get("preview_only"),
+    }
+    payload = dumps(canonical, sort_keys=True, separators=(",", ":"))
+    computed = f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
+    if stored != computed:
+        raise ValueError(
+            f"Receipt evidence digest mismatch: stored={stored}, computed={computed}"
+        )
+
+
 class PublicationEvidenceLedger:
     """Append-only JSONL ledger for publication preview evidence events.
 
-    - Schema-validated: every event validates against the event schema
-      before append and after reconstruction.
-    - Idempotent: same operation_id will not produce a duplicate row.
+    - Schema-validated: every event validates against the event schema.
+    - Lock-safe deduplication: operation-id existence check happens
+      inside the fcntl lock scope, preventing concurrent duplicates.
+    - Conflict-aware: same operation_id with different receipt content
+      is refused as a conflict rather than silently ignored.
+    - Nested integrity: receipt evidence_digest is verified alongside
+      the outer event digest during reconstruction.
     - Recursively content-light: forbidden keys, secret patterns, and
       raw paths are rejected from anywhere in the event.
     - Typed reconstruction: corrupted rows are communicated via
       LedgerReconstruction, never silently dropped from authority.
-    - Thread-safe and process-safe via fcntl locking.
     """
 
     def __init__(self, ledger_path: Path | None = None) -> None:
@@ -160,14 +187,11 @@ class PublicationEvidenceLedger:
         """Persist a receipt as a schema-validated content-light event.
 
         Returns the event_digest for the recorded row.
-        If an event with the same operation_id already exists,
-        returns the existing event_digest (idempotent).
+        Deduplication and conflict detection happen inside the
+        fcntl lock scope — no check-before-lock race.
         """
         _assert_content_light(receipt_data)
-
-        existing_digest = self._find_existing_by_operation_id(operation_id)
-        if existing_digest is not None:
-            return existing_digest
+        _verify_receipt_evidence_digest(receipt_data)
 
         event = {
             "schema_version": EVENT_SCHEMA_VERSION,
@@ -185,6 +209,24 @@ class PublicationEvidenceLedger:
         with open(self._lock_path, "a") as lock_fd:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             try:
+                existing = self._find_under_lock(operation_id)
+                if existing is not None:
+                    _validate_event_against_schema(existing)
+                    _verify_event_digest(existing)
+                    existing_receipt = existing.get("receipt", {})
+                    _verify_receipt_evidence_digest(existing_receipt)
+
+                    # Conflict: same operation, different receipt content
+                    if _receipt_governance_digest(
+                        receipt_data
+                    ) != _receipt_governance_digest(existing_receipt):
+                        raise RuntimeError(
+                            f"Operation idempotency conflict: operation_id={operation_id} "
+                            f"already terminal with different receipt content"
+                        )
+
+                    return existing.get("event_digest", "")
+
                 with open(self._path, "a") as f:
                     f.write(line)
                     f.flush()
@@ -197,14 +239,11 @@ class PublicationEvidenceLedger:
     def load_receipts(self, authoritative: bool = False) -> LedgerReconstruction:
         """Load all persisted events with integrity verification.
 
-        When authoritative=True, any corruption prevents reconstruction
-        (emits warnings and refuse to produce an apparently clean list).
-        When authoritative=False (default), corrupt rows are reported
-        but valid receipts may be returned alongside corruption metadata.
+        Validates: event schema, event digest, receipt evidence_digest,
+        and content-light enforcement. Any failure classifies the row
+        as corrupt.
 
-        Returns a LedgerReconstruction typed result. Consumers MUST
-        inspect corruption_detected before treating receipts by
-        authority.
+        When authoritative=True, any corruption prevents reconstruction.
         """
         if not self._path.exists():
             return LedgerReconstruction()
@@ -230,8 +269,10 @@ class PublicationEvidenceLedger:
                 try:
                     _validate_event_against_schema(event)
                     _verify_event_digest(event)
-                    _assert_content_light(event.get("receipt", event))
-                    receipts.append(event.get("receipt", event))
+                    receipt = event.get("receipt", event)
+                    _verify_receipt_evidence_digest(receipt)
+                    _assert_content_light(receipt)
+                    receipts.append(receipt)
                     valid += 1
                 except (ValueError, RuntimeError, KeyError):
                     corrupt_lines.append(line_num)
@@ -264,7 +305,7 @@ class PublicationEvidenceLedger:
                 corrupt_lines=corrupt_lines,
                 corruption_detected=True,
                 reconstruction_warnings=[
-                    f"Authoritative reconstruction refused: "
+                    "Authoritative reconstruction refused: "
                     f"{corrupt_count} corrupt/tampered/invalid row(s) at lines "
                     f"{corrupt_lines[:10]}"
                 ],
@@ -291,11 +332,11 @@ class PublicationEvidenceLedger:
                     count += 1
         return count
 
-    def _find_existing_by_operation_id(self, operation_id: str) -> str | None:
-        """Find an existing event with the given operation_id.
+    def _find_under_lock(self, operation_id: str) -> dict[str, Any] | None:
+        """Find an existing event for the given operation_id.
 
-        Returns the event_digest if found, None otherwise.
-        Must be called under the fcntl lock for safety.
+        Must be called under fcntl LOCK_EX on _lock_path.
+        Returns the full parsed event dict or None.
         """
         if not self._path.exists():
             return None
@@ -308,7 +349,7 @@ class PublicationEvidenceLedger:
                     try:
                         event = json.loads(line)
                         _verify_event_digest(event)
-                        return event.get("event_digest", "")
+                        return event
                     except (json.JSONDecodeError, ValueError, KeyError):
                         continue
         return None
@@ -318,10 +359,13 @@ def _verify_event_digest(event: dict[str, Any]) -> None:
     stored = event.get("event_digest")
     if stored is None:
         return
-    # Preserve event_digest in the dict for schema validation;
-    # compute over a copy that excludes it.
     data = {k: v for k, v in event.items() if k != "event_digest"}
-    computed_digest = f"sha256:{hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}"
+    computed_digest = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(data, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
     if stored != computed_digest:
         raise ValueError(
             f"Event integrity failure: stored={stored}, computed={computed_digest}"
@@ -331,4 +375,25 @@ def _verify_event_digest(event: dict[str, Any]) -> None:
 def _compute_event_digest(event: dict[str, Any]) -> str:
     data = {k: v for k, v in event.items() if k != "event_digest"}
     payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
+
+
+def _receipt_governance_digest(receipt: dict[str, Any]) -> str:
+    """Compute a governance-scoped digest of receipt fields relevant
+    to conflict detection (outcome + binding fields only).
+    """
+    from json import dumps
+
+    canonical = {
+        "compilation_successful": receipt.get("compilation_successful"),
+        "profile_candidate_digest": receipt.get("profile_candidate_digest", ""),
+        "result_digest": receipt.get("result_digest"),
+        "refusal_code": receipt.get("refusal_code"),
+        "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
+        "safety_passed": receipt.get("safety_passed"),
+        "deployment_ready": receipt.get("deployment_ready"),
+        "preview_only": receipt.get("preview_only"),
+        "evidence_digest": receipt.get("evidence_digest", ""),
+    }
+    payload = dumps(canonical, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"

@@ -1,0 +1,101 @@
+{
+  "schema_version": "rig.relay.lane_release_report.v1",
+  "lane_id": "t1.2",
+  "title": "Publication Operation Identity and Concurrency-Safe Canonical Ledger Closure",
+  "released_boundary": "PublicationPreviewExactlyOnceEvidenceBoundary: a preview-only publication application-service evidence boundary that accepts explicit caller-supplied operation identities, persists schema-validated and outcome-complete canonical terminal events exactly once per operation under concurrent fcntl-locked retry, detects and refuses conflicting replays, validates nested receipt evidence digests on reconstruction, and enforces governance-significant field completeness via conditional JSON Schema constraints.",
+  "stated_consumer_purpose": "T4 timeline reconstruction and later desktop Publish Preview history can consume publication evidence with truthful action history, safe retry behavior, no duplicated or collapsed terminal outcomes, and guaranteed evidence integrity at both event and receipt levels.",
+  "push_sha": "(pending checkpoint)",
+  "remote_verified": false,
+  "branch": "main",
+  "head_before": "ff5fd21031f0a4255a3d528a972cfc96f163ac30",
+  "head_after": "(pending checkpoint)",
+  "dirty_state_before": "Pre-existing untracked: .swift-version, docs/json/audits/lane_s3_publication_preview_release.v1.json. No dirty tracked files.",
+  "dirty_state_after": "Same pre-existing files preserved. No other-lane files absorbed.",
+  "files_changed": [
+    "rig_relay/publication/_evidence_ledger.py",
+    "rig_relay/publication/_service.py",
+    "tests/publication/test_project_page_compiler.py",
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "files_created": [
+    "docs/json/audits/lane_t1_2_publication_operation_identity_concurrency_closure.v1.json"
+  ],
+  "files_deleted": [],
+  "tests_run": 96,
+  "tests_passed": 96,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "t1_t1_1_preserved_tests": 85,
+    "t1_2_concurrency_tests": 2,
+    "t1_2_conflict_tests": 1,
+    "t1_2_nested_digest_tamper_tests": 1,
+    "t1_2_schema_conditional_tests": 2,
+    "t1_2_upgraded_tests": 5
+  },
+  "evidence_artifacts": [
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "schema_validation_results": {
+    "event_schema": "updated — now requires evidence_digest, safety_passed, deployment_ready; conditional allOf for success (requires result_digest as string) and refusal (requires refusal_code+refusal_reasons non-empty array)",
+    "receipt_schema": "updated — now requires evidence_digest, safety_passed, deployment_ready; conditional allOf for success/refusal completeness",
+    "both_schemas": "pass jsonschema self-check and repo validator",
+    "pre_existing_infra_failures": 4,
+    "publication_schemas_failing": 0
+  },
+  "lint_type_results": {
+    "ruff": "0 errors",
+    "pyright": "0 errors, 0 warnings, 0 informations",
+    "ruff_format": "9 files left unchanged"
+  },
+  "producer_public_inputs_inspected": [
+    "rig_relay/publication/_evidence_ledger.py — identified check-before-lock race in _find_existing_by_operation_id()",
+    "rig_relay/publication/_service.py — identified content-derived operation_id collapsing distinct user actions",
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json — identified optional fields in receipt schema",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json — identified optional governance fields",
+    "rig_relay/desktop/gateway/_service.py — identified idempotency_key pattern used elsewhere"
+  ],
+  "external_research_consulted": [],
+  "completed_work": [
+    "Moved operation-id deduplication inside fcntl LOCK_EX scope: _find_under_lock() re-reads the ledger under the lock, eliminating the check-before-lock race",
+    "Added conflict detection: same operation_id with different receipt governance content raises RuntimeError('idempotency conflict')",
+    "Added _verify_receipt_evidence_digest(): recomputes and verifies the receipt's evidence_digest on every append and reconstruction",
+    "Added _receipt_governance_digest() for conflict comparison over outcome fields",
+    "Rewired compile_preview() to accept explicit caller-supplied operation_id parameter; defaults to fresh UUID v4 when not provided",
+    "Removed _build_operation_id() which derived operation identity from deterministic input content (collapsed distinct actions)",
+    "Updated event schema: required fields now include evidence_digest, safety_passed, deployment_ready; JSON Schema allOf conditionals require result_digest (non-null string) on success, refusal_code + refusal_reasons (non-empty array) on refusal",
+    "Updated receipt schema: same governance completeness constraints as event-level condensed receipt",
+    "Added 11 new production-boundary tests: 2 concurrency, 1 conflict, 1 nested digest tamper, 2 schema conditional, 5 upgraded tests",
+    "Preserved all T1 and T1.1 repairs: receipt digest binding, preview_only/deployment_ready guard, schema validation, recursive content-light, typed reconstruction, authoritative mode"
+  ],
+  "claim_adversary_results": {
+    "lock_scoped_dedup": "passed — concurrent threads with same operation_id append exactly one row",
+    "conflict_detection": "passed — same operation_id with different receipt content raises RuntimeError",
+    "nested_receipt_digest_validation": "passed — modifying safety_passed in receipt without recomputing evidence_digest detected",
+    "schema_success_conditional": "passed — null result_digest on success rejected",
+    "schema_refusal_conditional": "passed — null refusal_code on refusal rejected",
+    "preview_only_guard": "passed — preview_only always True, deployment_ready always False",
+    "digest_binding_intact": "passed — changing result_digest changes evidence_digest",
+    "recursive_content_light_intact": "passed — nested secrets still detected",
+    "distinct_operations_separate": "passed — test_service_distinct_operation_ids_produce_two_events",
+    "idempotent_same_operation": "passed — test_service_idempotent_duplicate_compile_no_extra_event + test_idempotency_same_operation_id_no_duplicate",
+    "no_deployment_authority": "passed — no GitHub Pages/HTTP/mutation code",
+    "no_cross_lane_absorption": "passed — only publication code, tests, and schemas staged"
+  },
+  "blocking_defects": [],
+  "intentionally_deferred_work": [
+    "Desktop frontend wiring (P0 Gridline Interface)",
+    "GitHub Pages deployment pipeline",
+    "Portfolio site compilation surface",
+    "Retry-with-different-result semantics at the service level (caller receives stored terminal result vs re-compile)",
+    "Ledger compaction/retention policies"
+  ],
+  "remaining_seams": [
+    "Desktop cockpit Publish Preview surface integration",
+    "T4 timeline adapter consumption",
+    "Operational retention/compaction policies"
+  ],
+  "freeze_condition": "Lane T1.2 is frozen pending the named integration milestone that wires the desktop Publish Preview surface to the exactly-once, conflict-detecting, nested-integrity-validated ProjectPagePublicationPreviewService and its canonical evidence ledger. Reopens only for a concrete defect inside the released concurrency/identity/schema/integrity boundary, the named integration milestone, or a user-directed architectural revision.",
+  "release_disposition": "published_narrow_release"
+}

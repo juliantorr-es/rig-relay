@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
   "title": "Rig Relay Publication Preview Event v1",
-  "description": "Append-only content-light canonical evidence event for a publication preview compilation. Envelope wraps a publication preview receipt plus operation-id for idempotency. Never stores raw file contents, private data, prompts, secrets, or deployment actions.",
+  "description": "Append-only content-light canonical evidence event for a publication preview compilation. Envelope wraps a publication preview receipt plus operation-id for idempotency. Requires full governance-significant receipt fields via conditional constraints. Never stores raw file contents, private data, prompts, secrets, or deployment actions.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,7 +19,7 @@
     },
     "operation_id": {
       "type": "string",
-      "description": "Stable operation identifier for idempotency. Same logically-equivalent compile request must produce same operation_id. Distinct compile requests must produce distinct operation_ids."
+      "description": "Caller-supplied operation identity for exactly-once semantics. A retry of a prior request uses the same operation_id. A distinct user action uses a new operation_id."
     },
     "created_at": {
       "type": "string",
@@ -28,7 +28,7 @@
     },
     "receipt": {
       "type": "object",
-      "description": "Publication preview evidence receipt. Must conform to rig.relay.publication_preview_receipt.v1 schema.",
+      "description": "Publication preview evidence receipt. Must conform to rig.relay.publication_preview_receipt.v1 schema with full governance-completeness constraints.",
       "additionalProperties": false,
       "required": [
         "schema_version",
@@ -36,7 +36,10 @@
         "compiled_at",
         "compilation_successful",
         "profile_candidate_digest",
-        "preview_only"
+        "preview_only",
+        "evidence_digest",
+        "safety_passed",
+        "deployment_ready"
       ],
       "properties": {
         "schema_version": {
@@ -62,16 +65,16 @@
         },
         "result_digest": {
           "type": ["string", "null"],
-          "description": "SHA256 digest of the compiler result, or null on refusal"
+          "description": "SHA256 digest of the compiler result. Required when compilation_successful is true."
         },
         "refusal_code": {
           "type": ["string", "null"],
-          "description": "PreviewRefusalCode value when compilation was refused, or null"
+          "description": "PreviewRefusalCode value when compilation was refused. Required when compilation_successful is false."
         },
         "refusal_reasons": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Human-readable reasons for refusal"
+          "description": "Human-readable reasons for refusal. Required when compilation_successful is false."
         },
         "safety_passed": {
           "type": "boolean",
@@ -92,7 +95,42 @@
           "type": "string",
           "description": "Deterministic SHA256 digest of the receipt itself"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "compilation_successful": { "const": true }
+            },
+            "required": ["compilation_successful"]
+          },
+          "then": {
+            "required": ["result_digest"],
+            "properties": {
+              "result_digest": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compilation_successful": { "const": false }
+            },
+            "required": ["compilation_successful"]
+          },
+          "then": {
+            "required": ["refusal_code", "refusal_reasons"],
+            "properties": {
+              "refusal_code": { "type": "string" },
+              "refusal_reasons": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
     },
     "event_digest": {
       "type": "string",
