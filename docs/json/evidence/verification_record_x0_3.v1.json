@@ -1,0 +1,159 @@
+{
+  "schema_version": "rig.relay.verification_record.v1",
+  "generated_at": "2026-05-27T08:00:00Z",
+  "subject_sha": "2d52f10e23b8d298dce5e9d4a0d9390a5a757505",
+  "builder_record_digest": "sha256:builder_publication_record_x0_3.v1.json at 3ed55f813 — builder claims published_candidate_boundary, 1 prepublication round, 0 blocking findings, prepublication_admitted",
+  "prepublication_review_cycle_digest": "No independent prepublication_review_cycle_x0_3.v1.json file exists. Builder self-attests review within the publication record. Other lanes (X1.4, X3.5, X4.4) each have standalone cycle records. This is an unproven claim — the review happened but cannot be independently verified from canonical files.",
+  "prepublication_review_round_count": 1,
+  "policy_applied": "Prepublication Falsifier Contract (docs/governance/prepublication-falsifier-contract.md), Lane Status Vocabulary (AGENTS.md §Lane Status Vocabulary), Reviewer Verification Record (AGENTS.md §Reviewer Verification Record)",
+  "consumer_purpose": "The native-hosted Gridline application may load and execute the canonical production frontend bundle, establish the already-modeled native/WebSocket bridge path, and render only those live surface states whose published producer contracts are actually safe to consume, with no fixture execution, no unsafe HTML rendering, and no JavaScript evaluation failure",
+  "files_inspected": [
+    "docs/json/evidence/builder_publication_record_x0_3.v1.json",
+    "frontend/desktop/app.js",
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/app.js",
+    "frontend/desktop/js/protocol/adapter.js",
+    "frontend/desktop/index.html",
+    "frontend/desktop/js/keyboardNav.js",
+    "scripts/sync_gridline_frontend.sh",
+    "tests/frontend/test_x0_3_production_executable_proof.mjs",
+    "tests/frontend/test_no_inner_html_for_untrusted_fields.mjs",
+    "tests/frontend/test_no_unsafe_html_sinks.py",
+    "tests/desktop/test_live_native_transport.py",
+    "tests/desktop/gateway/test_gateway_service.py",
+    "tests/desktop/gateway/test_gateway_authority.py",
+    "tests/desktop/gateway/test_gateway_content_light.py",
+    "frontend/desktop/js/widgets/operating_picture.js",
+    "frontend/desktop/js/tool_runtime_widget.js",
+    "frontend/desktop/js/widgets.js"
+  ],
+  "production_paths_exercised": [
+    "node -c frontend/desktop/app.js (syntax check: OK)",
+    "node tests/frontend/test_x0_3_production_executable_proof.mjs (63/63 PASSED)",
+    "node tests/frontend/test_no_inner_html_for_untrusted_fields.mjs (14/14 PASSED)",
+    "uv run pytest tests/frontend/test_no_unsafe_html_sinks.py -v (3/3 PASSED)",
+    "uv run pytest tests/desktop/gateway/ -v (67/67 PASSED)",
+    "uv run pytest tests/desktop/test_live_native_transport.py -v (3/3 PASSED)",
+    "bash scripts/sync_gridline_frontend.sh --check-only (OK: parity confirmed)"
+  ],
+  "falsifier_log": [
+    {
+      "assertion": "F1: Commit 2d52f10e2 exists in remote origin/main history",
+      "attempt": "git fetch origin main; git log --oneline origin/main | grep 2d52f10e2",
+      "result": "defeated",
+      "evidence": "2d52f10e2 found at position 5 in origin/main log. git show confirms 5 files, 1663 insertions, 690 deletions."
+    },
+    {
+      "assertion": "F1: Builder did not independently grant 'Consumer admission'",
+      "attempt": "rg 'Consumer admission granted' across entire docs/ and rig_relay/ trees",
+      "result": "defeated",
+      "evidence": "Phrase not found in any file. Builder correctly used 'published_candidate_boundary' vocabulary. No authority overclaim."
+    },
+    {
+      "assertion": "F1: Prepublication review cycle record exists independently",
+      "attempt": "find docs/json/evidence/ -name '*prepublication*x0_3*'",
+      "result": "succeeded",
+      "evidence": "No prepublication_review_cycle_x0_3.v1.json file exists. Other lanes (X1.4, X3.5, X4.4) each have standalone cycle records. Builder self-attests review within publication record. Claim of prepublication_admitted is unproven_material. NON-BLOCKING: boundary safety unaffected by chronicle gap."
+    },
+    {
+      "assertion": "F2: Frontend JavaScript is executable (no syntax errors, balanced delimiters)",
+      "attempt": "node -c frontend/desktop/app.js; run 63-assertion proof",
+      "result": "defeated",
+      "evidence": "node -c passes (no syntax errors). 63/63 proof assertions pass: 440/440 braces, 2095/2095 parens, 59/59 brackets, 5/5 import targets verified, 0 eval(), 0 new Function(), all 3 innerHTML authorized."
+    },
+    {
+      "assertion": "F2: Canonical and native embedded frontend are SHA256-identical",
+      "attempt": "shasum -a 256 both app.js paths at 2d52f10e2",
+      "result": "defeated",
+      "evidence": "SHA256 afdd22bca1579589838ea4eb278fc13a8cbcd6effb6edd786a509b69f147de0e matches exactly. sync_gridline_frontend.sh --check-only confirms parity."
+    },
+    {
+      "assertion": "F2: Native WebSocket transport bridge is functional",
+      "attempt": "Review test_live_native_transport.py (3 tests) and gateway tests (67 tests)",
+      "result": "defeated",
+      "evidence": "3/3 transport tests: null-origin connect+intent, null-origin rejection without flag, fixture-indicator-free projection. 67/67 gateway tests: projection building, authority checks, content-light enforcement. All exercise real WebSocket server + ProjectionWebSocketServer."
+    },
+    {
+      "assertion": "F3: innerHTML sinks in app.js are all authorized and safe",
+      "attempt": "Tally all innerHTML uses in app.js; verify each's provenance and authorization",
+      "result": "defeated",
+      "evidence": "3 innerHTML uses total: (1) setWidgetHTML body line 1190 — function definition only, zero callers anywhere; (2) renderChat line 1838 transcript.innerHTML = '' — empty string clearing; (3) clearChat line 1888 transcript.innerHTML = '' — empty string clearing. Proof test confirms 3 uses, 0 unauthorized."
+    },
+    {
+      "assertion": "F3: Untrusted data can reach setWidgetHTML innerHTML sink",
+      "attempt": "Trace all callers of setWidgetHTML across codebase",
+      "result": "defeated",
+      "evidence": "setWidgetHTML has ZERO callers: no calls in frontend/desktop/app.js (only definition + window exposure), no calls in any HTML, no calls in Python backend, no calls in test fixtures. No data path exists to reach this sink. Safe by isolation."
+    },
+    {
+      "assertion": "F3: Model output, repository content, tool results reach innerHTML",
+      "attempt": "Trace renderChat data path from projection → DOM",
+      "result": "defeated",
+      "evidence": "renderChat clears transcript with innerHTML = '' (empty string only), then creates div elements with textContent = msg.content for each message. No message content reaches innerHTML. Chat messages use textContent exclusively."
+    },
+    {
+      "assertion": "F4: Production tests exercise the real production bundle, not a DOM fixture",
+      "attempt": "Inspect test imports and file paths loaded at test time",
+      "result": "defeated",
+      "evidence": "test_x0_3_production_executable_proof.mjs loads real frontend/desktop/app.js (102,326 bytes, 2,517 lines) and real frontend/desktop/js/protocol/adapter.js. test_live_native_transport.py exercises real ProjectionWebSocketServer with real websockets. Gateway tests exercise real gateway service. No fixture-path only testing."
+    },
+    {
+      "assertion": "F4: Fixture mode activates by default (production proof is false)",
+      "attempt": "Run _detectMode with default window state (no flags, no URL params)",
+      "result": "defeated",
+      "evidence": "_detectMode returns 'production' by default. Fixture mode requires explicit URL param (fixture_mode=1) or window flag (__RIG_RELAY_FIXTURE_MODE__=true). 6 test cases verified: default→production, URL 1→fixture, URL 0→production, window true→fixture, window false→production, URL 0 overrides window true."
+    },
+    {
+      "assertion": "F4: Native embedded frontend differs from canonical source",
+      "attempt": "shasum -a 256 at 2d52f10e2; sync script --check-only",
+      "result": "defeated",
+      "evidence": "SHA256 afdd22bc... identical. sync_gridline_frontend.sh uses rsync --archive --delete with deterministic one-way sync. --check-only returns exit 0 (parity confirmed)."
+    },
+    {
+      "assertion": "F5: Storage audit latency makes the boundary unsafe",
+      "attempt": "Review whether ~20s latency in test_no_fixture_mode_indicator_in_projection affects frontend rendering or native transport safety",
+      "result": "defeated",
+      "evidence": "Latency is pre-existing in _storage_audit.py Path.resolve() filesystem walk, not introduced by X0.3. Frontend rendering and native transport boundary are unaffected. Correctly classified as deferred_adjacent_seam."
+    },
+    {
+      "assertion": "F5: DOM helper duplication between adapter.js and app.js creates inconsistent rendering",
+      "attempt": "Compare _makeEl, setText, escapeHtml, _clearEl, _strong, _tn implementations across files",
+      "result": "defeated",
+      "evidence": "All DOM helpers use consistent safe patterns (textContent only, no innerHTML). app.js and adapter.js use identical safety strategies. No inconsistent rendering behavior detected. Both use textContent exclusively for untrusted content."
+    }
+  ],
+  "untested_claims": [
+    "Live integrated deployment to actual RigRelayShell.app binary (tests verify WebSocket server + Python transport path, not pywebview→WKWebView integrated application launch)",
+    "setWidgetHTML consumption path (function exists but has zero callers — cannot verify trusted backend content reaches it because no call path exists; safe by isolation regardless)"
+  ],
+  "verified_boundary": "ConnectedStudioExecutableFrontendAndNativeTransportBoundary",
+  "downgraded_claims": [
+    "prepublication_admitted: no independent prepublication review cycle record exists for X0.3. Builder self-attests in publication record. The review happened (1 round, 0 blocking findings) but cannot be independently verified from canonical files. Non-blocking chronicle gap — boundary safety unaffected."
+  ],
+  "consumer_admission": {
+    "allowed_for": [
+      "Native-hosted Gridline application loading and executing the canonical production frontend bundle",
+      "Establishing the native/WebSocket bridge path as modeled",
+      "Rendering live surface states from published producer contracts",
+      "Safe DOM rendering with textContent for all untrusted content",
+      "Production mode execution (fixture mode gated behind explicit flags)"
+    ],
+    "allowed_only_as_pending_status_for": [
+      "O0 Bridge Aggregation milestone (live bridge consumption by native Swift host)",
+      "X1 PostgreSQL materialization (deferred, not yet released)",
+      "X2 Rigged Runtime consumption (deferred, not yet released)",
+      "X3 Deployment execution (deferred, not yet released)",
+      "X4 Safari consumption (deferred, not yet released)"
+    ],
+    "prohibited_for": [
+      "Direct consumption by any lane whose producer contracts are not published and verified",
+      "Execution in fixture mode without explicit URL param or window flag",
+      "Rendering untrusted content through innerHTML (all 3 uses are authorized: empty-string clearing x2, unreachable setWidgetHTML x1)",
+      "Loading of legacy widget files (operating_picture.js, tool_runtime_widget.js, widgets.js) in production path — these are not loaded by index.html"
+    ]
+  },
+  "resulting_status": "verified_narrow_release",
+  "freeze_decision": {
+    "freeze_status": "frozen_pending_integration",
+    "reason": "Boundary proven safe: executable frontend (63/63), native transport (3/3), gateway authority (67/67), SHA256 parity (afdd22bc), zero unsafe HTML sinks, zero unauthorized innerHTML. Freeze pending O0 Bridge Aggregation milestone (live bridge consumption of released X0 boundary by native Swift host). One chronicle repair recommended: produce independent prepublication_review_cycle_x0_3.v1.json (non-blocking, does not reopen lane)."
+  }
+}

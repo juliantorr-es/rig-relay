@@ -19,11 +19,7 @@ from rig_relay.core.logger import logger
 from rig_relay.data_plane.postgres._materialization_input import (
     PublicationMaterializationInput,
 )
-from rig_relay.data_plane.postgres._models import (
-    MaterializationReceipt,
-    RebuildReceipt,
-    compute_receipt_id,
-)
+from rig_relay.data_plane.postgres._models import MaterializationReceipt, RebuildReceipt
 from rig_relay.data_plane.postgres._store import PostgresOperationalProjectionStore
 
 
@@ -94,7 +90,16 @@ class PublicationMaterializer:
         total_count = reconstruction.total_rows
         now = datetime.now()
 
-        receipt_id = compute_receipt_id("materialize", "publication", now)
+        from rig_relay.data_plane.postgres._models import (
+            compute_deterministic_materialization_receipt_id,
+        )
+
+        source_digest_value = source_evidence_digest or _compute_evidence_sha256(
+            receipts
+        )
+        receipt_id = compute_deterministic_materialization_receipt_id(
+            "publication", source_digest_value
+        )
 
         successful_count = 0
         refused_count = 0
@@ -103,6 +108,7 @@ class PublicationMaterializer:
         duplicate_rows = 0
 
         with self._store.conn.transaction():
+            self._store.acquire_rebuild_lock("publication_history")
             with self._store.conn.cursor() as cur:
                 # ── 1. Materialize preview receipts ──
 
@@ -235,7 +241,8 @@ class PublicationMaterializer:
                     "successful_count, refused_count, safety_failed_count, "
                     "corrupt_receipt_count, reconstruction_healthy, built_at, "
                     "evidence_source_sha256, deterministic) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (receipt_id) DO NOTHING"
                 ).format(
                     psql.Identifier(self._schema), psql.Identifier("publication_builds")
                 )
@@ -272,18 +279,19 @@ class PublicationMaterializer:
     def rebuild(self, input_data: PublicationMaterializationInput) -> RebuildReceipt:
         """Clear and rebuild publication tables. Content-digest determinism.
 
-        Hashes all three publication materialization tables with primary-key
-        ordering and domain identification. Excludes non-semantic timestamps.
-        Reconstruction corruption state participates in determinism proof:
-        a rebuild over the same receipt subset but different corruption
-        state is not an equivalent publication-history projection.
+        Single atomic transaction: advisory lock, pre-digest, DELETE, materialize,
+        post-digest, and rebuild-receipt all commit together. Advisory lock
+        serializes same-domain rebuild/materialize operations.
         """
         from rig_relay.data_plane.postgres._materialization_input import (
             compute_multi_table_digest,
         )
+        from rig_relay.data_plane.postgres._models import (
+            compute_deterministic_rebuild_receipt_id,
+        )
 
         schema = self._schema
-        now = datetime.now()
+        source_digest = getattr(input_data, "source_evidence_digest", "")
 
         tables: list[tuple[str, list[str]]] = [
             ("publication_preview_receipts", ["receipt_id"]),
@@ -292,18 +300,22 @@ class PublicationMaterializer:
         ]
         exclude = ["materialized_at", "built_at", "receipt_id"]
 
-        digest_before = compute_multi_table_digest(
-            self._store.conn,
-            schema,
-            tables,
-            exclude_columns=exclude,
-            domain_name="publication_history",
+        rebuild_receipt_id = compute_deterministic_rebuild_receipt_id(
+            "publication", source_digest
         )
-        rows_before = self._count_publication_rows()
-
-        receipt_id = compute_receipt_id("rebuild", "publication", now)
 
         with self._store.conn.transaction():
+            self._store.acquire_rebuild_lock("publication_history")
+
+            digest_before = compute_multi_table_digest(
+                self._store.conn,
+                schema,
+                tables,
+                exclude_columns=exclude,
+                domain_name="publication_history",
+            )
+            rows_before = self._count_publication_rows()
+
             with self._store.conn.cursor() as cur:
                 for table in (
                     "publication_builds",
@@ -316,38 +328,40 @@ class PublicationMaterializer:
                         )
                     )
 
-        self.materialize(input_data)
+            self.materialize(input_data)
 
-        digest_after = compute_multi_table_digest(
-            self._store.conn,
-            schema,
-            tables,
-            exclude_columns=exclude,
-            domain_name="publication_history",
-        )
-        rows_after = self._count_publication_rows()
+            digest_after = compute_multi_table_digest(
+                self._store.conn,
+                schema,
+                tables,
+                exclude_columns=exclude,
+                domain_name="publication_history",
+            )
+            rows_after = self._count_publication_rows()
 
-        deterministic = digest_before == digest_after
+            deterministic = digest_before == digest_after
+            now = datetime.now()
 
-        receipt = RebuildReceipt(
-            receipt_id=receipt_id,
-            projection_name="publication",
-            rows_before=rows_before,
-            rows_after=rows_after,
-            rebuilt_at=now,
-            deterministic=deterministic,
-        )
+            receipt = RebuildReceipt(
+                receipt_id=rebuild_receipt_id,
+                projection_name="publication",
+                rows_before=rows_before,
+                rows_after=rows_after,
+                rebuilt_at=now,
+                deterministic=deterministic,
+            )
 
-        self._store._record_rebuild_receipt(receipt)
-        logger.info(
-            "Rebuild publication: %d -> %d rows, digest_before=%s digest_after=%s "
-            "deterministic=%s",
-            rows_before,
-            rows_after,
-            digest_before,
-            digest_after,
-            deterministic,
-        )
+            self._store.record_rebuild_receipt(receipt)
+            logger.info(
+                "Rebuild publication: %d -> %d rows, digest_before=%s digest_after=%s "
+                "deterministic=%s",
+                rows_before,
+                rows_after,
+                digest_before,
+                digest_after,
+                deterministic,
+            )
+
         return receipt
 
     def rebuild_from_ledger(

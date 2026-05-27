@@ -286,3 +286,36 @@ class TaskRefusal(BaseModel):
     reason: RefusalReason = RefusalReason.RUNTIME_NOT_CONFIGURED
     detail: str = ""
     timestamp: str = ""
+
+
+class BatchingStatus(StrEnum):
+    ACTIVE = "active_batch_generator"
+    FALLBACK_SERIALIZED = "fallback_serialized_fcfs"
+    UNAVAILABLE = "batch_generator_unavailable"
+
+
+class PoolEvictionReason(StrEnum):
+    LRU_LIMIT = "lru_model_limit"
+    MEMORY_PRESSURE = "memory_pressure"
+    IDLE_TTL = "idle_ttl_expired"
+    MANUAL = "manual"
+    SHUTDOWN = "shutdown"
+
+
+class ModelPoolState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    loaded_count: int = 0
+    max_models: int = 3
+    active_generations: int = 0
+    total_loads: int = 0
+    total_evictions: int = 0
+    last_eviction_reason: PoolEvictionReason | None = None
+
+
+class SSDCacheState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = False
+    cache_dir: str = ""
+    entries: int = 0
+    total_size_mb: float = 0.0
+    max_entries: int = 50

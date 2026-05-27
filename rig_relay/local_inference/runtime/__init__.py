@@ -1,20 +1,14 @@
 """rig_relay.local_inference.runtime — Rig-governed internal MLX-backed runtime.
 
-X2.4: Authority closure — coherent-locked evidence ledger, scheduler-owned
-execution, governed streaming admission, stateless tool-proposal preflight,
-real LRUPromptCache integration, scheduler lifecycle evidence, fail-closed
-schema validation, X0 consumer contract truthfulness repair.
+X2.5: Deferred capability implementation wave — coordinated thread lifecycle
+(B4), cache write-back + SSD persistence, continuous batching scheduler,
+multi-model pool manager, tool execution bridge.
 """
 
 from __future__ import annotations
 
+from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
 from rig_relay.local_inference.runtime._cache_authority import RiggedCacheAuthority
-from rig_relay.local_inference.runtime._engine import (
-    LoadedModel,
-    MlxNotAvailableError,
-    ModelNotLoadedError,
-    RiggedMlxEngine,
-)
 from rig_relay.local_inference.runtime._evidence import (
     EvidenceLedger,
     EvidenceLedgerError,
@@ -28,23 +22,28 @@ from rig_relay.local_inference.runtime._evidence import (
 )
 from rig_relay.local_inference.runtime._inventory import scan_model_inventory
 from rig_relay.local_inference.runtime._models import (
+    BatchingStatus,
     CapabilityPosture,
     ContextPrivacyClass,
     ExecutionStatus,
     FinishReason,
     LocalInferenceResponse,
     ModelInventoryEntry,
+    ModelPoolState,
     ModelTypeClass,
+    PoolEvictionReason,
     RefusalReason,
     RuntimeCachePolicy,
     RuntimeIdentity,
     RuntimeLifecycleState,
+    SSDCacheState,
     TaskAdmissionDecision,
     TaskAdmissionResult,
     TaskKind,
     TaskRefusal,
     ToolCallProposal,
 )
+from rig_relay.local_inference.runtime._pool import ModelPoolManager
 from rig_relay.local_inference.runtime._probe import (
     discover_runtime,
     probe_runtime_health,
@@ -52,6 +51,7 @@ from rig_relay.local_inference.runtime._probe import (
 )
 from rig_relay.local_inference.runtime._scheduler import (
     RequestState,
+    RiggedBatchScheduler,
     RiggedInferenceScheduler,
     ScheduledRequest,
 )
@@ -63,40 +63,43 @@ from rig_relay.local_inference.runtime._service import (
 )
 
 __all__ = [
+    "BatchingStatus",
     "CapabilityPosture",
     "ContextPrivacyClass",
     "EvidenceLedger",
     "EvidenceLedgerError",
     "ExecutionStatus",
     "FinishReason",
-    "LoadedModel",
     "LocalInferenceResponse",
-    "MlxNotAvailableError",
     "ModelInventoryEntry",
-    "ModelNotLoadedError",
+    "ModelPoolManager",
+    "ModelPoolState",
     "ModelTypeClass",
+    "PoolEvictionReason",
     "RefusalReason",
     "RequestState",
+    "RiggedBatchScheduler",
     "RiggedCacheAuthority",
     "RiggedInferenceScheduler",
     "RiggedLocalRuntime",
-    "RiggedMlxEngine",
     "RuntimeCachePolicy",
     "RuntimeIdentity",
     "RuntimeLifecycleState",
+    "SSDCacheState",
     "ScheduledRequest",
     "TaskAdmissionDecision",
     "TaskAdmissionResult",
     "TaskKind",
     "TaskRefusal",
     "ToolCallProposal",
+    "ToolExecutionBridge",
     "discover_runtime",
     "emit_cache_evidence",
     "emit_execution_receipt",
     "emit_lifecycle_event",
     "emit_refusal_receipt",
-    "emit_tool_proposal_evidence",
     "emit_scheduler_event",
+    "emit_tool_proposal_evidence",
     "get_runtime",
     "probe_runtime_health",
     "probe_runtime_models",

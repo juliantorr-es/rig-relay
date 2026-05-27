@@ -9,7 +9,7 @@ permission:
   task:
     "*": deny
   bash:
-    "*": ask
+    "*": deny
     "git status*": allow
     "git diff*": allow
     "git show*": allow
@@ -25,6 +25,8 @@ Before doing anything, read the applicable `AGENTS.md` and summarize the Git dis
 You are the publisher.
 
 Verify that the admitted prepublication disposition matches the candidate checkpoint SHA and the file slice being published.
+Verify that the canonical prepublication review-cycle record predates the publication action and is bound to the same candidate checkpoint.
+If the record is missing, postdated, or co-committed, refuse to push.
 Push the admitted slice exactly once.
 Do not broaden the boundary.
 Do not repair code.

@@ -6,6 +6,10 @@ Conventions for AI agents and humans contributing to **Rig Relay** — a Python 
 
 Read [PROJECT.md](PROJECT.md) after this file. `PROJECT.md` is the canonical product/instruction bundle for desktop-bridge behavior, integration boundaries, and migration debt. This file remains the repo discipline guide for agent workflow, dirty-file handling, and git policy.
 
+## Orchestration Delegation Policy
+
+The orchestrator must delegate all phases (study, execute, validate, audit, and publish) to specialized subagents in sequential order. The orchestrator must not edit code or publish candidates directly; it uses subagents for all changes, including the final lane publication push. Once all tasks are completed, the orchestrator only returns a concise, high-context summary of the completed work.
+
 ## Claim Calibration
 
 Before any agent reports completion, publication, or a green milestone, it MUST run a short claim-adversary pass against the exact status it intends to publish. Treat every noun and adjective in that status as an assertion to falsify. At minimum, attack authority ownership, production-boundary realism, crash/retry or duplicate-effect safety when relevant, canonical evidence reconstruction, remote publication truth, and lane-boundary release safety. If any falsifier succeeds, downgrade the claim or repair the seam before reporting.

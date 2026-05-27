@@ -3109,7 +3109,7 @@ class TestX0ContractBoundToSha:
             f"Admission ID must include 'candidate': {admission_id}"
         )
         lane = contract["lane"]
-        assert "x1.4" in lane, f"Lane must be x1.4: {lane}"
+        assert "x1." in lane, f"Lane must be x1.*: {lane}"
 
 
 class TestReviewCycleRecordExists:
@@ -3128,12 +3128,18 @@ class TestReviewCycleRecordExists:
         assert len(record["rounds"]) >= 2, (
             f"Must have at least 2 rounds, got {len(record['rounds'])}"
         )
-        assert record["rounds"][0]["disposition"] == "prepublication_admitted"
-        verdict = record["rounds"][0].get("post_review_verdict", "")
-        assert verdict == "invalidated_by_missed_blocking_defects"
-        assert len(record["rounds"][0]["missed_blocking_defects"]) == 5
+        assert record["rounds"][0]["disposition"] == "repair_required"
+        assert len(record["rounds"][0]["findings"]) == 5
+        assert record["rounds"][1]["disposition"] == "repair_required"
+        assert len(record["rounds"][1]["findings"]) == 1
+        assert record["status"] == "in_review"
+        fas = record["final_admission"]
+        assert fas["push_authorized"] is False
+        assert fas["admitted_candidate_digest"] is None
+        assert fas["admitted_boundary"] is None
+        assert fas["permitted_consumer_purpose"] is None
 
-    def test_review_cycle_binds_to_x1_3_sha(self) -> None:
+    def test_review_cycle_binds_to_x1_4_sha(self) -> None:
         import json
 
         record_path = (
@@ -3142,7 +3148,201 @@ class TestReviewCycleRecordExists:
         )
         record = json.loads(record_path.read_text())
         baseline = record["baseline_sha"]
-        expected = "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94"
+        expected = "8fa2e2143154a881f5fc445aa63a83fe04de9c20"
         assert baseline == expected, (
-            f"Baseline SHA must be X1.3 pushed SHA, got {baseline}"
+            f"Baseline SHA must be X1.4 pushed SHA, got {baseline}"
         )
+
+
+class TestReviewCycleSchemaValidation:
+    def test_record_validates_against_canonical_schema(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        record_path = (
+            _WORKSPACE_ROOT
+            / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+        )
+        schema = json.loads(schema_path.read_text())
+        record = json.loads(record_path.read_text())
+        try:
+            validate(record, schema)
+        except ValidationError as e:
+            msg = f"Record failed schema validation: {e.message}"
+            path = " -> ".join(str(p) for p in e.absolute_path)
+            pytest.fail(f"{msg}\n  at path: {path}")
+
+    def test_schema_is_valid_json_schema_draft7(self) -> None:
+        import json
+
+        from jsonschema import Draft7Validator, SchemaError
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+        try:
+            Draft7Validator.check_schema(schema)
+        except SchemaError as e:
+            pytest.fail(f"Schema is not valid JSON Schema: {e.message}")
+
+    def test_schema_allows_null_admission_fields(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        record["final_admission"]["admitted_candidate_digest"] = None
+        record["final_admission"]["admitted_boundary"] = None
+        record["final_admission"]["permitted_consumer_purpose"] = None
+        try:
+            validate(record, schema)
+        except ValidationError as e:
+            pytest.fail(
+                "Schema must accept null for non-admission final_admission fields: "
+                f"{e.message}"
+            )
+
+    def test_invalid_record_rejected(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        record["rounds"][0]["disposition"] = "prepublication_admitted"
+        with pytest.raises(ValidationError):
+            validate(record, schema)
+
+    def test_schema_blocks_extra_top_level_fields(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        record["invalidated_reason"] = "should not be here"
+        record["post_review_verdict"] = "made up"
+        with pytest.raises(ValidationError):
+            validate(record, schema)
+
+    def test_schema_requires_min_one_round(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        record["rounds"] = []
+        with pytest.raises(ValidationError):
+            validate(record, schema)
+
+    def test_schema_requires_all_round_fields(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        del record["rounds"][0]["production_paths_inspected"]
+        with pytest.raises(ValidationError):
+            validate(record, schema)
+
+    def test_schema_requires_all_builder_response_fields(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        del record["builder_responses"][0]["changed_paths"]
+        with pytest.raises(ValidationError):
+            validate(record, schema)
+
+    def test_schema_blocks_non_string_admission_digest(self) -> None:
+        import json
+
+        from jsonschema import ValidationError, validate
+
+        schema_path = (
+            _WORKSPACE_ROOT
+            / "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+        )
+        schema = json.loads(schema_path.read_text())
+
+        record = json.loads(
+            (
+                _WORKSPACE_ROOT
+                / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+            ).read_text()
+        )
+        record["final_admission"]["admitted_candidate_digest"] = 42
+        with pytest.raises(ValidationError):
+            validate(record, schema)

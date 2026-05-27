@@ -374,7 +374,30 @@ def compute_sha256(content: str) -> str:
 
 
 def compute_receipt_id(prefix: str, identity: str, timestamp: datetime) -> str:
-    """Generate a deterministic receipt ID."""
+    """Generate a receipt ID for occurrence-based events (NOT for materialization/rebuild receipts — use compute_deterministic_* for those)."""
     raw = f"{prefix}:{identity}:{timestamp.isoformat()}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{prefix}_{digest}"
+
+
+def compute_deterministic_materialization_receipt_id(
+    domain: str, source_evidence_digest: str
+) -> str:
+    """Generate a materialization receipt ID deterministically from evidence."""
+    raw = f"materialize:{domain}:{source_evidence_digest}"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"materialize_{domain}_{digest}"
+
+
+def compute_deterministic_rebuild_receipt_id(
+    projection_name: str, source_evidence_digest: str
+) -> str:
+    """Generate a rebuild receipt ID deterministically from evidence."""
+    raw = f"rebuild:{projection_name}:{source_evidence_digest}"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"rebuild_{projection_name}_{digest}"
+
+
+def compute_advisory_lock_key(domain: str) -> int:
+    """Compute a deterministic PostgreSQL advisory lock key for serialized domain access."""
+    return abs(hash(f"rig_relay:materialization:{domain}")) & 0x7FFFFFFF

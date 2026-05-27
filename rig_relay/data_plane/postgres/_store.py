@@ -511,7 +511,7 @@ class PostgresOperationalProjectionStore:
             deterministic=deterministic,
         )
 
-        self._record_rebuild_receipt(receipt)
+        self.record_rebuild_receipt(receipt)
         logger.info(
             "Rebuild %s: %d -> %d rows, deterministic=%s",
             projection_name,
@@ -521,7 +521,7 @@ class PostgresOperationalProjectionStore:
         )
         return receipt
 
-    def _record_rebuild_receipt(self, receipt: RebuildReceipt) -> None:
+    def record_rebuild_receipt(self, receipt: RebuildReceipt) -> None:
         """Record a rebuild receipt in the database."""
         schema = self.config.schema_name
         query = psql.SQL(
@@ -540,6 +540,27 @@ class PostgresOperationalProjectionStore:
                     receipt.rebuilt_at,
                     receipt.deterministic,
                 ),
+            )
+
+    def acquire_rebuild_lock(
+        self, projection_name: str, *, within_transaction: bool = True
+    ) -> None:
+        """Acquire an advisory lock serializing rebuilds for a projection domain.
+
+        Uses PostgreSQL advisory transaction lock (pg_advisory_xact_lock)
+        when within_transaction=True (lock held until transaction commit/rollback).
+        Within a transaction this prevents concurrent rebuilds or materializations
+        from interfering with domain projection state.
+
+        When within_transaction=False, uses pg_advisory_lock (session-level).
+        """
+        from rig_relay.data_plane.postgres._models import compute_advisory_lock_key
+
+        lock_key = compute_advisory_lock_key(projection_name)
+        func = "pg_advisory_xact_lock" if within_transaction else "pg_advisory_lock"
+        with self.conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("SELECT {}(%s)").format(psql.Identifier(func)), (lock_key,)
             )
 
     # ── NOTIFY signalling ──────────────────────────────────────────

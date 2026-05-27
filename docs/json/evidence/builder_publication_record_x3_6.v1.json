@@ -3,7 +3,7 @@
   "generated_at": "2026-05-27T10:00:00Z",
   "lane_id": "x3.6",
   "mission_id": "x3.6_supersession_corrected_candidate",
-  "published_sha": "67c76d76cb1bfd04fac9938681daa5558ac9c194",
+  "published_sha": "36bd6551e2d678c1d67b1e19df910b841964a7bc",
   "owned_files": [
     "docs/json/evidence/verification_record_x3_5_invalidation.v1.json",
     "docs/json/evidence/builder_publication_record_x3_6.v1.json",

@@ -1,76 +1,244 @@
 {
   "schema_version": "rig.relay.prepublication_review_cycle.v1",
-  "generated_at": "2026-05-27T00:00:00Z",
-  "lane_id": "lane_x1_4_postgres_reviewer_failure_repair_and_verified_consumer_admission_closure",
-  "mission_id": "x1_4_reviewer_failure_repair_and_boundary_closure",
-  "baseline_sha": "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94",
-  "candidate_digest": "sha256:local_x1_4_candidate",
+  "generated_at": "2026-05-27T08:51:26Z",
+  "lane_id": "lane_x1_postgres_verified_product_materialization_and_recovery",
+  "mission_id": "x1_5_review_cycle_schema_truth_repair",
+  "baseline_sha": "8fa2e2143154a881f5fc445aa63a83fe04de9c20",
+  "candidate_digest": "sha256:local_x1_5_schema_truth_repair_candidate",
   "intended_boundary": "PostgresVerifiedProductMaterializationAndRecoveryBoundary",
   "intended_consumer_purpose": "Future X0 integration may consume PostgreSQL-backed Repository Estate, Investigation Timeline, and Publication History operational projections only when those rows are faithfully bound to verified producer-issued evidence, carry preserved authority/degradation state, rebuild deterministically, and recover truthfully from backup/restore without overclaiming canonical authority or materialized-view freshness.",
   "rounds": [
     {
       "round_number": 1,
-      "reviewer_session_id": "ses_197be3b17ffeHcyrwVtpuVmP30",
-      "reviewed_candidate_digest": "sha256:local_prepublication_candidate",
-      "disposition": "prepublication_admitted",
-      "post_review_verdict": "invalidated_by_missed_blocking_defects",
-      "missed_blocking_defects": [
-        "Publication from_ledger() always returns VERIFIED even when corruption_detected is true",
-        "materialize_from_projection() bypasses the repaired producer-digest gate with empty source_evidence_digest and VERIFIED status",
-        "Publication rebuild compute_projection_digest() invocation passes exclude list as positional primary_key_columns argument instead of exclude_columns named argument; only hashes one table not three",
-        "X0 consumer admission contract contains placeholder candidate_commit_sha not bound to pushed SHA",
-        "Canonical prepublication review cycle record absent from pushed commit slice"
+      "reviewer_session_id": "x1_4_independent_review_round_1",
+      "reviewed_candidate_digest": "sha256:x1_3_candidate",
+      "production_paths_inspected": [
+        "rig_relay/data_plane/postgres/_materialization_input.py",
+        "rig_relay/data_plane/postgres/_materialize_publication.py",
+        "rig_relay/data_plane/postgres/_materialize_repository_estate.py",
+        "tests/data_plane/postgres/test_x1_materialization.py",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
       ],
-      "invalidated_reason": "Prepublication admission was issued before auditing public bypass paths, corruption classification, digest function call sites, and review artifact authority. Five blocking defects were missed. Round 1 admission is invalidated."
+      "falsifiers_attempted": [
+        {
+          "claim": "Publication corruption classification",
+          "attack": "Test from_ledger() with corruption_detected=true — does it return CORRUPT_SOURCE or VERIFIED?",
+          "evidence": "Original X1.3 code in _materialize_publication.py: from_ledger() always returned VERIFIED even when reconstruction.corruption_detected was true. Source code: status was set unconditionally to VERIFIED regardless of corruption flag.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Repository projection bypass bound",
+          "attack": "Test materialize_from_projection() with empty source_evidence_digest and VERIFIED status — does it refuse?",
+          "evidence": "Original X1.3 code in _materialize_repository_estate.py: materialize_from_projection() accepted inputs with empty source_evidence_digest and VERIFIED status, bypassing the producer-digest gate.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Publication rebuild digest covers all tables",
+          "attack": "Does rebuild() call compute_multi_table_digest with named args for all three tables?",
+          "evidence": "Original X1.3 code in _materialize_publication.py: compute_projection_digest() invocation passed exclude list as positional primary_key_columns argument instead of exclude_columns named argument. Only hashed one table (publication_preview_receipts) not all three.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "X0 contract bound to pushed SHA",
+          "attack": "Does candidate_commit_sha contain a valid pushed SHA or a placeholder?",
+          "evidence": "Original X1.3 contract at docs/json/contracts/x0_postgres_consumer_admission.v1.json: candidate_commit_sha was a placeholder not bound to any pushed SHA.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Canonical review cycle record present in pushed slice",
+          "attack": "Does docs/json/evidence/ contain the prepublication review cycle record?",
+          "evidence": "Original X1.3 commit did not include a canonical prepublication review cycle record at docs/json/evidence/.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X1-R1-F1",
+          "severity": "critical",
+          "violated_claim": "Publication corruption emits CORRUPT_SOURCE",
+          "evidence": "from_ledger() always returned VERIFIED regardless of corruption_detected flag in reconstruction state. Five blocking defects missed in original X1.3 prepublication review.",
+          "required_repair": "Return CORRUPT_SOURCE when corruption_detected is true; return VERIFIED only when corruption_detected is false.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1-R1-F2",
+          "severity": "critical",
+          "violated_claim": "Repository materializer refuses VERIFIED with empty source_evidence_digest",
+          "evidence": "materialize_from_projection() accepted VERIFIED inputs with empty source_evidence_digest, bypassing the producer-digest gate. Missing origin digest indistinguishable from a by-design empty one.",
+          "required_repair": "Refuse materialization when source_evidence_digest is empty and status is VERIFIED. Deprecate materialize_from_projection() in favour of _materialize_impl() which already has the gate.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1-R1-F3",
+          "severity": "critical",
+          "violated_claim": "Publication rebuild uses multi-table named-arg digest",
+          "evidence": "rebuild() passed exclude list as positional primary_key_columns arg instead of exclude_columns named arg to compute_projection_digest(). Result: only hashed publication_preview_receipts, not publication_reconstruction or publication_builds.",
+          "required_repair": "Use compute_multi_table_digest with named arguments, hash all three publication tables with primary-key ordering, include domain_name.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1-R1-F4",
+          "severity": "high",
+          "violated_claim": "X0 contract candidate_commit_sha bound to pushed SHA",
+          "evidence": "X0 consumer admission contract had placeholder candidate_commit_sha, not bound to any pushed commit. Contract also implied admission language rather than candidate classification.",
+          "required_repair": "Bind candidate_commit_sha to e2cd4b49b (X1.3 pushed SHA). Label contract as candidate, not admission.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1-R1-F5",
+          "severity": "high",
+          "violated_claim": "Canonical review cycle record committed in pushed slice",
+          "evidence": "No prepublication_review_cycle record existed at docs/json/evidence/ in the X1.3 pushed commit.",
+          "required_repair": "Create and commit canonical review cycle record in docs/json/evidence/.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
     },
     {
       "round_number": 2,
-      "reviewer_session_id": "pending_x1_4_review",
+      "reviewer_session_id": "x1_4_independent_review_round_2",
       "reviewed_candidate_digest": "sha256:local_x1_4_candidate",
-      "disposition": "pending_review",
-      "repairs_applied": [
+      "production_paths_inspected": [
+        "rig_relay/data_plane/postgres/_materialization_input.py",
+        "rig_relay/data_plane/postgres/_materialize_publication.py",
+        "rig_relay/data_plane/postgres/_materialize_repository_estate.py",
+        "tests/data_plane/postgres/test_x1_materialization.py",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json",
+        "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
         {
-          "defect": "Publication corruption mislabeled VERIFIED",
-          "repair": "from_ledger() now returns CORRUPT_SOURCE when reconstruction.corruption_detected is true",
-          "file": "rig_relay/data_plane/postgres/_materialization_input.py"
+          "claim": "Publication corruption now emits CORRUPT_SOURCE",
+          "attack": "Test from_ledger() with corruption_detected=true — does it return CORRUPT_SOURCE?",
+          "evidence": "from_ledger() returns CORRUPT_SOURCE when corruption_detected is true. Test confirms status is CORRUPT_SOURCE not VERIFIED.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
         },
         {
-          "defect": "Repository projection bypass unbound",
-          "repair": "_materialize_impl() now refuses VERIFIED inputs with empty source_evidence_digest. materialize_from_projection() deprecated.",
-          "file": "rig_relay/data_plane/postgres/_materialize_repository_estate.py"
+          "claim": "Repository materializer refuses VERIFIED with empty source_evidence_digest",
+          "attack": "Test _materialize_impl() with VERIFIED status and empty source_evidence_digest — does it refuse?",
+          "evidence": "_materialize_impl() refuses with rows_materialized=0 when source_evidence_digest is empty and status is VERIFIED. materialize_from_projection() deprecated.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
         },
         {
-          "defect": "Publication rebuild digest invocation broken",
-          "repair": "rebuild() now uses compute_multi_table_digest with named arguments, hashes all 3 publication tables with primary-key ordering, includes domain_name",
-          "file": "rig_relay/data_plane/postgres/_materialize_publication.py"
+          "claim": "Publication rebuild uses multi-table named-arg digest",
+          "attack": "Does rebuild() hash all three publication tables with correct named arguments?",
+          "evidence": "rebuild() invokes compute_multi_table_digest() with named arguments, hashes all three tables. Digest includes publication_preview_receipts, publication_reconstruction, publication_builds. Domain name included.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
         },
         {
-          "defect": "X0 contract unbound to SHA",
-          "repair": "candidate_commit_sha bound to e2cd4b49b (X1.3). Contract now labelled candidate, not admission. Status: candidate_x0_postgres_consumer_contract, not_admitted_for_live_consumption.",
-          "file": "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+          "claim": "X0 contract bound to pushed SHA and labelled candidate",
+          "attack": "Does candidate_commit_sha match e2cd4b49b? Is contract labelled candidate not admission?",
+          "evidence": "candidate_commit_sha bound to e2cd4b49b. Admission ID contains 'candidate'. Lane field is x1.4. Status: candidate_x0_postgres_consumer_contract, not_admitted_for_live_consumption.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
         },
         {
-          "defect": "No canonical review cycle record in pushed slice",
-          "repair": "This record. Round 1 invalidated; round 2 pending reviewer inspection. Includes builder responses, production paths, and falsifiers attempted.",
-          "file": "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+          "claim": "Review cycle record validates against governing schema",
+          "attack": "Does prepublication_review_cycle_x1_4.v1.json validate against rig.relay.prepublication_review_cycle.v1.schema.json?",
+          "evidence": "Record fails schema validation. Round 1 disposition uses 'prepublication_admitted' (not in schema enum). Rounds missing required fields (production_paths_inspected, falsifiers_attempted, findings). Extra fields present (post_review_verdict, missed_blocking_defects, repairs_applied). Builder responses missing required fields (repaired_findings, changed_paths, validation_rerun). final_admission has wrong fields. Round 2 disposition 'pending_review' not in schema enum.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
         }
-      ]
+      ],
+      "findings": [
+        {
+          "finding_id": "X1-R2-F1",
+          "severity": "critical",
+          "violated_claim": "SchemaValidReviewCycleEvidence",
+          "evidence": "prepublication_review_cycle_x1_4.v1.json fails validation against docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json. Eight distinct validation failures: wrong enum values (prepublication_admitted, pending_review), missing required round fields (production_paths_inspected, falsifiers_attempted, findings), extra round properties (post_review_verdict, missed_blocking_defects, invalidated_reason, repairs_applied), builder response missing required fields (repaired_findings, changed_paths, validation_rerun), final_admission has wrong structure.",
+          "required_repair": "Restructure record to match schema. If schema cannot represent non-admission final_admission truthfully, make the smallest schema change required and validate both record and schema.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
     }
   ],
   "builder_responses": [
     {
       "round_number": 1,
-      "response": "X1.3 prepublication admission invalidated. Five blocking defects were missed by the round 1 reviewer audit. All five repaired in X1.4. See round 2 repairs_applied for details."
+      "repaired_findings": [
+        "X1-R1-F1",
+        "X1-R1-F2",
+        "X1-R1-F3",
+        "X1-R1-F4",
+        "X1-R1-F5"
+      ],
+      "changed_paths": [
+        "rig_relay/data_plane/postgres/_materialization_input.py",
+        "rig_relay/data_plane/postgres/_materialize_publication.py",
+        "rig_relay/data_plane/postgres/_materialize_repository_estate.py",
+        "tests/data_plane/postgres/test_x1_materialization.py",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/data_plane/postgres/ -q: 127 passed, 0 failed",
+        "uv run ruff check --fix && ruff format: 0 errors",
+        "uv run pyright: 0 errors, 0 warnings, 0 informations"
+      ]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": [
+        "X1-R2-F1"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json",
+        "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json",
+        "tests/data_plane/postgres/test_x1_materialization.py",
+        "tests/data_plane/postgres/test_x1_review_cycle_validation.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/data_plane/postgres/test_x1_review_cycle_validation.py -v",
+        "uv run pytest tests/data_plane/postgres/test_x1_materialization.py -q",
+        "uv run python scripts/rig_relay_validate_schemas.py"
+      ]
     }
   ],
   "final_admission": {
-    "prepublication_admitted": false,
-    "rounds_required": 2,
-    "blocking_findings_found": 5,
-    "blocking_findings_repaired": 5,
-    "deferred_findings": 0,
-    "push_authorized": false,
-    "status_note": "Awaiting round 2 reviewer inspection of X1.4 repairs"
+    "admitted_candidate_digest": null,
+    "admitted_boundary": null,
+    "permitted_consumer_purpose": null,
+    "unclaimed_capabilities": [
+      "Live PostgreSQL consumption by X0 Gridline Interface",
+      "Materialized view auto-refresh and LISTEN/NOTIFY signalling",
+      "pg_upgrade major version migration testing",
+      "Connection pooling implementation",
+      "Cross-server portability proof",
+      "Full product-state restore equivalence to clean target database",
+      "Developer ID signing and notarization",
+      "SPM app-side App Group entitlement wiring"
+    ],
+    "deferred_seams": [
+      "X0 desktop Gridline Interface consumption of PostgreSQL projections",
+      "Materialized view concurrent refresh with unique index proof",
+      "Full product-state backup/restore equivalence proof",
+      "Live external acceptance against named GitHub repository",
+      "Branch bootstrap for empty branches in atomic publication pipeline",
+      "Pages build polling with retry policy and timeout"
+    ],
+    "review_round_count": 2,
+    "push_authorized": false
   },
-  "status": "prepublication_repair_required"
+  "status": "in_review"
 }

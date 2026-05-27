@@ -64,7 +64,11 @@ class LoadedModel:
 
 
 class RiggedMlxEngine:
-    """MLX-backed inference engine with serialized generation and streaming."""
+    """MLX-backed inference engine with serialized generation and streaming.
+
+    Delegates model storage to ModelPoolManager when configured.
+    Supports cache-augmented generation via RiggedCacheAuthority.
+    """
 
     def __init__(self) -> None:
         self._loaded_models: dict[str, LoadedModel] = {}
@@ -73,9 +77,14 @@ class RiggedMlxEngine:
         self._model_lock: threading.Lock = threading.Lock()
         self._gen_lock: threading.Lock = threading.Lock()
         self._cache_authority: Any | None = None
+        self._pool: Any | None = None
 
     def set_cache_authority(self, cache_authority: Any) -> None:
         self._cache_authority = cache_authority
+
+    def set_pool(self, pool: Any) -> None:
+        """Delegate model storage to a ModelPoolManager."""
+        self._pool = pool
 
     @property
     def is_mlx_available(self) -> bool:
@@ -122,6 +131,10 @@ class RiggedMlxEngine:
                 )
                 self._loaded_models[model_id_hash] = loaded
                 logger.info("Model loaded: %s (hash=%s)", display_id, model_id_hash)
+
+                if self._pool is not None:
+                    self._pool.load(model_path, model_id_hash, loaded)
+
                 return loaded
 
     def unload_model(self, model_id_hash: str) -> bool:
@@ -227,7 +240,8 @@ class RiggedMlxEngine:
 
             ("token", str)      — next text token
             ("done", dict)      — completion info: content, finish_reason,
-                                  tool_call_proposals, completion_tokens
+                                  tool_call_proposals, completion_tokens,
+                                  prompt_tokens (for cache write-back)
             ("error", str)      — error message
             ("cancelled", None) — cancelled via cancel_flag
 
@@ -245,12 +259,13 @@ class RiggedMlxEngine:
 
             cache_hit = False
             cached = None
+            prompt_tokens_for_cache: list[int] = []
 
             if self._cache_authority is not None and hasattr(tokenizer, "encode"):
                 try:
-                    prompt_tokens_list = cast(Any, tokenizer).encode(prompt)
+                    prompt_tokens_for_cache = cast(Any, tokenizer).encode(prompt)
                     cached, _ = self._cache_authority.fetch_cache(
-                        loaded.mlx_model, prompt_tokens_list
+                        loaded.mlx_model, prompt_tokens_for_cache
                     )
                     cache_hit = cached is not None
                 except Exception:
@@ -298,6 +313,7 @@ class RiggedMlxEngine:
                         "tool_call_proposals": tool_proposals,
                         "completion_tokens": len(accumulated),
                         "cache_hit": cache_hit,
+                        "prompt_tokens": prompt_tokens_for_cache,
                     },
                 ))
 

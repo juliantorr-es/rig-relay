@@ -1,8 +1,12 @@
 """Canonical governed evidence ledgers — locked, schema-validated, digest-chained.
 
 fcntl advisory locking on data file (same file for read and write).
-Schema validated via jsonschema. Digest-chained. Idempotent operation_id.
+Schema validated via jsonschema against canonical JSON Schema files under
+docs/schemas/. Digest-chained. Idempotent operation_id.
 Content-light: SHA256 hashes only.
+
+X2 repair: inline schema dicts replaced with loaded canonical JSON Schema
+files. Tool proposal evidence now writes to its own schema-validated ledger.
 """
 
 from __future__ import annotations
@@ -23,6 +27,20 @@ try:
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
+
+_SCHEMA_DIR_REL = "docs/schemas"
+
+
+def _resolve_schema_path(filename: str) -> Path:
+    p = Path(_SCHEMA_DIR_REL) / filename
+    if p.exists():
+        return p
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent
+    return repo_root / _SCHEMA_DIR_REL / filename
+
+
+def _load_canonical_schema(filename: str) -> dict[str, Any]:
+    return json.loads(_resolve_schema_path(filename).read_text("utf-8"))
 
 
 class EvidenceLedgerError(Exception):
@@ -249,53 +267,20 @@ class EvidenceLedger:
 
 _EVIDENCE_ROOT = Path(".build/rig-relay/evidence")
 
-_EXECUTION_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["receipt_id", "status", "content_light"],
-    "properties": {
-        "receipt_id": {"type": "string"},
-        "task_id_hash": {"type": "string"},
-        "status": {"type": "string"},
-        "content_light": {"const": True},
-    },
-}
-_LIFECYCLE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["schema_version", "event", "model_id_hash", "content_light"],
-    "properties": {
-        "schema_version": {"type": "string"},
-        "event": {"type": "string"},
-        "model_id_hash": {"type": "string"},
-        "content_light": {"const": True},
-    },
-}
-_CACHE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["schema_version", "content_light"],
-    "properties": {
-        "schema_version": {"type": "string"},
-        "content_light": {"const": True},
-    },
-}
-_SCHEDULER_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": [
-        "schema_version",
-        "operation_id",
-        "transition",
-        "from_state",
-        "to_state",
-        "content_light",
-    ],
-    "properties": {
-        "schema_version": {"type": "string"},
-        "operation_id": {"type": "string"},
-        "transition": {"type": "string"},
-        "from_state": {"type": "string"},
-        "to_state": {"type": "string"},
-        "content_light": {"const": True},
-    },
-}
+# Canonical schemas loaded from docs/schemas/ (published authority).
+_EXECUTION_SCHEMA = _load_canonical_schema(
+    "rig.relay.runtime_execution_event.v1.schema.json"
+)
+_LIFECYCLE_SCHEMA = _load_canonical_schema(
+    "rig.relay.runtime_lifecycle_event.v1.schema.json"
+)
+_CACHE_SCHEMA = _load_canonical_schema("rig.relay.runtime_cache_event.v1.schema.json")
+_SCHEDULER_SCHEMA = _load_canonical_schema(
+    "rig.relay.runtime_scheduler_event.v1.schema.json"
+)
+_TOOL_PROPOSAL_SCHEMA = _load_canonical_schema(
+    "rig.relay.runtime_tool_proposal_event.v1.schema.json"
+)
 
 _execution_ledger = EvidenceLedger(
     _EVIDENCE_ROOT / "runtime_execution_ledger.jsonl", _EXECUTION_SCHEMA
@@ -308,6 +293,9 @@ _cache_ledger = EvidenceLedger(
 )
 _scheduler_ledger = EvidenceLedger(
     _EVIDENCE_ROOT / "runtime_scheduler_ledger.jsonl", _SCHEDULER_SCHEMA
+)
+_tool_proposal_ledger = EvidenceLedger(
+    _EVIDENCE_ROOT / "runtime_tool_proposal_ledger.jsonl", _TOOL_PROPOSAL_SCHEMA
 )
 
 
@@ -334,7 +322,7 @@ def emit_cache_evidence(op_id: str, payload: dict[str, Any]) -> str:
 
 
 def emit_tool_proposal_evidence(op_id: str, payload: dict[str, Any]) -> str:
-    return _execution_ledger.append(
+    return _tool_proposal_ledger.append(
         op_id, "rig.relay.runtime.tool_proposals_detected", payload
     )
 
@@ -351,6 +339,7 @@ def reconstruct_ledgers() -> dict[str, list[dict[str, Any]]]:
         "lifecycle": _lifecycle_ledger.reconstruct(),
         "cache": _cache_ledger.reconstruct(),
         "scheduler": _scheduler_ledger.reconstruct(),
+        "tool_proposal": _tool_proposal_ledger.reconstruct(),
     }
 
 

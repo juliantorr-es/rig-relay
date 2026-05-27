@@ -8,6 +8,7 @@ Swift host (RigRelayShell.app).
 
 from __future__ import annotations
 
+from datetime import UTC
 import json
 
 import pytest
@@ -27,8 +28,9 @@ class TestNativeTransportBridge:
     @pytest.mark.asyncio
     async def test_null_origin_desktop_intent(self, unused_tcp_port: int) -> None:
         """WKWebView-style connection sends a governed intent."""
+        from datetime import datetime
+
         import websockets
-        from datetime import datetime, timezone
 
         server = ProjectionWebSocketServer(
             port=unused_tcp_port,
@@ -49,7 +51,7 @@ class TestNativeTransportBridge:
                     "schema_version": "rig.relay.desktop_intent_request.v1",
                     "intent_name": "get_developer_studio_projection",
                     "intent_id": "test-intent-001",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "parameters": {},
                 }
                 await ws.send(json.dumps(intent_msg))

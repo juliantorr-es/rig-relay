@@ -1,0 +1,73 @@
+{
+  "schema_version": "rig.relay.evidence_authority_correction.v1",
+  "correction_id": "x2-evidence-authority-correction-2026-05-27",
+  "title": "X2 Evidence-Authority Correction — Canonical Schema Authority Repair",
+  "created_at": "2026-05-27T20:00:00Z",
+  "lane": "X2",
+  "correction_type": "evidence_authority_repair",
+  "superseded_reference": {
+    "superseded_record_path": "docs/json/audits/runtime_substrate/lane_x2.4_verification_record.v1.json",
+    "superseded_subject_sha": "39a2715732c83a20ab5176a97f9ae0f8be6cc969",
+    "superseded_status": "verified_narrow_release",
+    "superseded_freeze": "frozen_pending_integration"
+  },
+  "supersession_reason": "independent_review_finding_evidence_schema_authority_mismatch",
+  "defect_detail": {
+    "defect_class": "canonical_schema_authority_mismatch",
+    "discovery_method": "independent_review",
+    "summary": "Published JSON Schema files under docs/schemas/ require more fields than the runtime inline schemas actually validate. The runtime claimed canonical governed evidence while enforcing weaker private schemas — only 3 required fields for execution receipts vs 9 in the published canonical schema, and only 2 required fields for cache events vs 5 in the published canonical schema. Additionally, tool proposal evidence was routed through the execution ledger validated against the wrong schema.",
+    "affected_schemas": [
+      {
+        "canonical": "docs/schemas/rig.relay.runtime_execution_event.v1.schema.json",
+        "inline_was": "required: [receipt_id, status, content_light]",
+        "canonical_requires": "required: [receipt_id, operation_id, task_id_hash, status, prompt_sha256, output_sha256, model_id_hash, content_light, schema_version]",
+        "additional_gap": "emitted payloads included cache_hit which is not in the canonical schema (additionalProperties: false)"
+      },
+      {
+        "canonical": "docs/schemas/rig.relay.runtime_cache_event.v1.schema.json",
+        "inline_was": "required: [schema_version, content_light]",
+        "canonical_requires": "required: [schema_version, content_light, evidence_id, runtime_kind, captured_at]"
+      },
+      {
+        "canonical": "docs/schemas/rig.relay.runtime_tool_proposal_event.v1.schema.json",
+        "inline_was": "not used — tool proposal evidence routed through execution ledger with execution schema",
+        "canonical_requires": "required: [schema_version, task_id_hash, proposal_count, content_light]"
+      }
+    ],
+    "scheduler_and_lifecycle_schemas": "matched — no divergence found"
+  },
+  "repair_applied": {
+    "repair_sha": "pending_prepublication_checkpoint",
+    "strategy": "Replace inline schema dicts with loaded canonical JSON Schema files from docs/schemas/. Add separate tool proposal ledger. Fix all emitted payloads to satisfy canonical required fields.",
+    "changed_files": [
+      "rig_relay/local_inference/runtime/_evidence.py",
+      "rig_relay/local_inference/runtime/_service.py",
+      "tests/local_inference/runtime/test_rigged_runtime_boundary.py",
+      "docs/json/evidence/lane_x2_evidence_authority_correction.v1.json"
+    ],
+    "key_changes": [
+      "_evidence.py: _load_canonical_schema + _resolve_schema_path helpers load schemas from published JSON files",
+      "_evidence.py: _TOOL_PROPOSAL_SCHEMA added, _tool_proposal_ledger created, emit_tool_proposal_evidence routes there",
+      "_evidence.py: reconstruct_ledgers includes tool_proposal ledger",
+      "_service.py: _build_execution_receipt_payload includes operation_id + schema_version, removes cache_hit",
+      "_service.py: refusal payloads include all 9 required canonical fields",
+      "_service.py: _handle_tool_proposals uses proposal_names_hash, proposal_args_hashes, routed_to_governance, counts",
+      "test: TestCanonicalSchemaAuthority: 7 tests prove schemas are canonical files, valid payloads pass, old weak payloads rejected",
+      "test: TestRealEvidenceEmission: rewritten to validate against canonical schemas"
+    ],
+    "tests_added": 11,
+    "tests_modified": 8,
+    "total_test_count": 82,
+    "pyright": "0 errors, 0 warnings",
+    "ruff": "clean"
+  },
+  "consumer_impact": {
+    "prior_consumer_contract_affected": false,
+    "X0_projection_fields_unchanged": true,
+    "runtime_behavior_preserved": true,
+    "evidence_ledger_paths_unchanged": true,
+    "tool_proposal_ledger_new": "runtime_tool_proposal_ledger.jsonl (net-new separate ledger)"
+  },
+  "resulting_status": "candidate_local — corrected candidate boundary, pending prepublication review",
+  "content_light_guarantee": "All evidence payloads remain content-light. No raw prompts, model outputs, file contents, or secrets in any evidence artifact."
+}

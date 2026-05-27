@@ -20,19 +20,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import signal
+from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from rig_relay.core.tool_result_runtime import ToolResultRuntime
-from rig_relay.core.tools._agent_outcome import MutationDisposition
-from rig_relay.core.types import LLMMessage
 from rig_relay.recovery.handoff import (
     build_mutation_handoff,
     build_read_only_handoff,
@@ -42,10 +38,7 @@ from rig_relay.recovery.intent_authority import (
     DurableRecoveryIntentAuthority,
     MaterializationRequest,
 )
-from rig_relay.recovery.intent_query import (
-    IntentQueryResult,
-    RecoveryIntentQueryService,
-)
+from rig_relay.recovery.intent_query import RecoveryIntentQueryService
 from rig_relay.recovery.models import RecoveryIntent
 from tests.conftest import build_test_agent_loop, build_test_vibe_config
 
@@ -335,7 +328,8 @@ class TestSchemaAdmission:
 class TestCrashDurability:
     def test_hard_exit_orphan_inert(self, tmp_path: Path) -> None:
         """Subprocess killed between payload write and receipt append:
-        orphaned payload is not authority on reload."""
+        orphaned payload is not authority on reload.
+        """
         data_dir = str(tmp_path / "authority")
         args = {"path": "/hard-exit"}
         pd = _payload_digest(args)
@@ -442,7 +436,8 @@ class TestLegacyBypassEliminated:
         self, tmp_path: Path
     ) -> None:
         """Even with caller intent, recovery execution refused without
-        canonical materialization when authority is configured."""
+        canonical materialization when authority is configured.
+        """
         authority, runtime = _make_runtime_with_authority(tmp_path)
 
         args = {"path": "/test"}

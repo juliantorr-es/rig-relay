@@ -230,13 +230,13 @@
       ],
       "properties": {
         "admitted_candidate_digest": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "admitted_boundary": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "permitted_consumer_purpose": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "unclaimed_capabilities": {
           "type": "array",

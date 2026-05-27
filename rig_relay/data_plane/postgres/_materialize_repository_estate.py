@@ -19,11 +19,7 @@ from psycopg import sql as psql
 from rig_relay.data_plane.postgres._materialization_input import (
     RepositoryEstateMaterializationInput,
 )
-from rig_relay.data_plane.postgres._models import (
-    MaterializationReceipt,
-    RebuildReceipt,
-    compute_receipt_id,
-)
+from rig_relay.data_plane.postgres._models import MaterializationReceipt, RebuildReceipt
 from rig_relay.data_plane.postgres._store import PostgresOperationalProjectionStore
 
 
@@ -74,16 +70,18 @@ class RepositoryEstateMaterializer:
     ) -> RebuildReceipt:
         """Clear and rebuild repository estate projection tables from canonical evidence.
 
-        Determinism is proven by comparing SHA256 content digests of the
-        materialized tables before and after rebuild, excluding non-semantic
-        operation timestamps and receipt IDs.
+        Single atomic transaction: advisory lock, pre-digest, DELETE, materialize,
+        post-digest, rebuild-receipt all commit together.
         """
         from rig_relay.data_plane.postgres._materialization_input import (
             compute_multi_table_digest,
         )
+        from rig_relay.data_plane.postgres._models import (
+            compute_deterministic_rebuild_receipt_id,
+        )
 
         schema = self.store.config.schema_name
-        now = datetime.now()
+        source_digest = getattr(input_data, "source_evidence_digest", "")
 
         tables: list[tuple[str, list[str]]] = [
             ("repository_observations", ["observation_id"]),
@@ -92,35 +90,52 @@ class RepositoryEstateMaterializer:
         ]
         exclude = ["materialized_at", "receipt_id", "built_at"]
 
-        digest_before = compute_multi_table_digest(
-            self.store.conn, schema, tables, exclude, domain_name="repository_estate"
+        rebuild_receipt_id = compute_deterministic_rebuild_receipt_id(
+            "repository_estate", source_digest
         )
-
-        rows_before = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
 
         with self.store.conn.transaction():
+            self.store.acquire_rebuild_lock("repository_estate")
+
+            digest_before = compute_multi_table_digest(
+                self.store.conn,
+                schema,
+                tables,
+                exclude,
+                domain_name="repository_estate",
+            )
+            rows_before = sum(
+                _fetch_count(self.store.conn, schema, t[0]) for t in tables
+            )
+
             self._clear_estate_tables(schema)
 
-        _receipt = self.materialize(input_data)
+            _receipt = self.materialize(input_data)
 
-        digest_after = compute_multi_table_digest(
-            self.store.conn, schema, tables, exclude, domain_name="repository_estate"
-        )
-        rows_after = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
+            digest_after = compute_multi_table_digest(
+                self.store.conn,
+                schema,
+                tables,
+                exclude,
+                domain_name="repository_estate",
+            )
+            rows_after = sum(
+                _fetch_count(self.store.conn, schema, t[0]) for t in tables
+            )
 
-        deterministic = digest_before == digest_after
+            deterministic = digest_before == digest_after
+            now_dt = datetime.now()
 
-        rebuild_receipt = RebuildReceipt(
-            receipt_id=compute_receipt_id(
-                "rebuild_repo_estate", "repository_estate", now
-            ),
-            projection_name="repository_estate",
-            rows_before=rows_before,
-            rows_after=rows_after,
-            rebuilt_at=now,
-            deterministic=deterministic,
-        )
-        self.store._record_rebuild_receipt(rebuild_receipt)
+            rebuild_receipt = RebuildReceipt(
+                receipt_id=rebuild_receipt_id,
+                projection_name="repository_estate",
+                rows_before=rows_before,
+                rows_after=rows_after,
+                rebuilt_at=now_dt,
+                deterministic=deterministic,
+            )
+            self.store.record_rebuild_receipt(rebuild_receipt)
+
         return rebuild_receipt
 
     def rebuild_from_service(self, service: Any) -> RebuildReceipt:
@@ -145,6 +160,8 @@ class RepositoryEstateMaterializer:
 
         source_status = getattr(input_data, "source_status", None)
         source_digest = getattr(input_data, "source_evidence_digest", "")
+
+        from rig_relay.data_plane.postgres._models import compute_receipt_id
 
         if source_status and str(source_status) == "missing_producer_digest":
             receipt_id = compute_receipt_id(
@@ -188,6 +205,7 @@ class RepositoryEstateMaterializer:
         corrupt_obs = getattr(projection, "corrupt_observation_count", 0)
 
         with self.store.conn.transaction():
+            self.store.acquire_rebuild_lock("repository_estate")
             repos_built = self._insert_registered_repositories(
                 schema, projection, summaries, now
             )
@@ -532,8 +550,12 @@ class RepositoryEstateMaterializer:
             changes_built,
         ) = built_counts
 
-        receipt_id = compute_receipt_id(
-            "materialize_repo_estate", "repository_estate", now
+        from rig_relay.data_plane.postgres._models import (
+            compute_deterministic_materialization_receipt_id,
+        )
+
+        receipt_id = compute_deterministic_materialization_receipt_id(
+            "repository_estate", source_evidence_digest
         )
         query = psql.SQL(
             "INSERT INTO {}.{} "
@@ -541,7 +563,8 @@ class RepositoryEstateMaterializer:
             "repositories_built, observations_built, workspace_instances_built, "
             "changes_built, corrupt_registration_count, corrupt_observation_count, "
             "built_at, evidence_source_sha256, deterministic) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (receipt_id) DO NOTHING"
         ).format(psql.Identifier(schema), psql.Identifier("repository_estate_builds"))
 
         with self.store.conn.cursor() as cur:

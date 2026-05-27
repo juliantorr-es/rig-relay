@@ -21,24 +21,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import signal
+from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from rig_relay.core.tool_result_runtime import ToolResultRuntime
-from rig_relay.core.tools._agent_outcome import MutationDisposition
 from rig_relay.core.types import LLMMessage
 from rig_relay.recovery.handoff import (
     build_mutation_handoff,
     build_read_only_handoff,
     build_refusal_handoff,
-    build_validation_handoff,
 )
 from rig_relay.recovery.intent_authority import DurableRecoveryIntentAuthority
 from rig_relay.recovery.intent_query import (
@@ -505,7 +501,8 @@ class TestB6_8_1_3_MaterializationExecutionSeparation:
         self, tmp_path: Path
     ) -> None:
         """When authority is configured but no materialized intent exists,
-        execution is refused — no fall-through to empty args."""
+        execution is refused — no fall-through to empty args.
+        """
         authority, runtime = _make_runtime_with_authority(tmp_path)
 
         pd = _sha256("p-not-mat")
@@ -529,7 +526,8 @@ class TestB6_8_1_3_MaterializationExecutionSeparation:
     @pytest.mark.asyncio
     async def test_handoff_without_intent_and_without_authority(self) -> None:
         """Without authority, handoff without intent falls through to
-        missing_payload_authority refusal (no empty-args execution)."""
+        missing_payload_authority refusal (no empty-args execution).
+        """
         config = build_test_vibe_config()
         loop = build_test_agent_loop(config=config)
         evidence = _CapturingEvidence()

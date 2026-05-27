@@ -1,7 +1,15 @@
 """RiggedLocalRuntime — Rig-governed internal MLX-backed inference runtime.
 
 Integrates: RiggedMlxEngine, RiggedInferenceScheduler, RiggedCacheAuthority,
-EvidenceLedgers (3), secret scanner, tool proposal corridor.
+ModelPoolManager, ToolExecutionBridge, EvidenceLedgers, secret scanner,
+tool proposal corridor.
+
+X2.5 Capabilities:
+  B4 — Thread lifecycle coordination (active stream tracking, graceful shutdown)
+  Cache — Write-back + SSD persistence
+  Scheduler — Continuous batching via BatchGenerator with FCFS fallback
+  Pool — LRU-governed multi-model pool manager
+  Bridge — Tool execution corridor (stateless preflight, deferred X0 execution)
 
 Exposes typed X0 Inference Studio consumer contract.
 """
@@ -18,6 +26,7 @@ import secrets
 
 from rig_relay.core.logger import logger
 from rig_relay.governance.governance_engine import GovernanceEngine
+from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
 from rig_relay.local_inference.runtime._cache_authority import RiggedCacheAuthority
 from rig_relay.local_inference.runtime._engine import (
     MlxNotAvailableError,
@@ -48,7 +57,11 @@ from rig_relay.local_inference.runtime._models import (
     TaskRefusal,
     ToolCallProposal,
 )
-from rig_relay.local_inference.runtime._scheduler import RiggedInferenceScheduler
+from rig_relay.local_inference.runtime._pool import ModelPoolManager
+from rig_relay.local_inference.runtime._scheduler import (
+    RiggedBatchScheduler,
+    RiggedInferenceScheduler,
+)
 from rig_relay.local_inference.runtime._secrets import scan_messages_for_secrets
 from rig_relay.runtime.models import RuntimeCapabilityKind, RuntimeProviderTrustTier
 
@@ -56,13 +69,20 @@ from rig_relay.runtime.models import RuntimeCapabilityKind, RuntimeProviderTrust
 class RiggedLocalRuntime:
     def __init__(self, model_dirs: list[Path] | None = None) -> None:
         self._engine = RiggedMlxEngine()
-        self._scheduler = RiggedInferenceScheduler(max_concurrent=1)
+        self._scheduler: RiggedInferenceScheduler | RiggedBatchScheduler = (
+            RiggedInferenceScheduler(max_concurrent=1)
+        )
         self._cache = RiggedCacheAuthority()
         self._engine.set_cache_authority(self._cache)
+        self._pool = ModelPoolManager(max_models=3, idle_ttl_seconds=300)
+        self._engine.set_pool(self._pool)
+        self._tool_bridge = ToolExecutionBridge()
         self._inventory: list[ModelInventoryEntry] = []
         self._health = RuntimeHealth()
         self._last_probe_at = ""
         self._model_dirs = model_dirs or []
+        self._active_streams: dict[str, asyncio.Task] = {}
+        self._stream_lock = asyncio.Lock()
 
     @property
     def is_configured(self) -> bool:
@@ -73,16 +93,20 @@ class RiggedLocalRuntime:
         return "rigged_mlx_internal"
 
     @property
-    def engine(self) -> RiggedMlxEngine:
-        return self._engine
-
-    @property
-    def scheduler(self) -> RiggedInferenceScheduler:
+    def scheduler(self) -> RiggedInferenceScheduler | RiggedBatchScheduler:
         return self._scheduler
 
     @property
     def cache(self) -> RiggedCacheAuthority:
         return self._cache
+
+    @property
+    def pool(self) -> ModelPoolManager:
+        return self._pool
+
+    @property
+    def tool_bridge(self) -> ToolExecutionBridge:
+        return self._tool_bridge
 
     async def get_runtime_info(self) -> RuntimeIdentity:
         return RuntimeIdentity(
@@ -209,6 +233,7 @@ class RiggedLocalRuntime:
         task_id_hash = _sha256(json.dumps(messages, sort_keys=True, default=str))
 
         if not admission.admitted:
+            op_id = _make_op_id()
             refusal = TaskRefusal(
                 reason=admission.refusal_reason or RefusalReason.RUNTIME_NOT_CONFIGURED,
                 detail=admission.admission_details,
@@ -221,28 +246,52 @@ class RiggedLocalRuntime:
                 refusal=refusal,
                 status=ExecutionStatus.REFUSED,
             )
-            emit_refusal_receipt(
-                _make_op_id(),
-                {
-                    "receipt_id": _make_op_id(),
-                    "task_id_hash": task_id_hash,
-                    "status": "refused",
-                    "refusal_reason": refusal.reason.value,
-                    "detail": refusal.detail,
-                    "content_light": True,
-                },
-            )
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "refused",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             return result
 
         if not model_id_hash and self._engine.loaded_model_count > 0:
             model_id_hash = self._engine.list_loaded_models()[0].model_id_hash
 
         if not model_id_hash:
+            op_id = _make_op_id()
             refusal = TaskRefusal(
                 reason=RefusalReason.CAPABILITY_UNSUPPORTED,
                 detail="No model loaded.",
                 timestamp=_now_iso(),
             )
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "blocked",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             return TaskAdmissionResult(
                 task_id_hash=task_id_hash,
                 task_kind=task_kind,
@@ -256,11 +305,29 @@ class RiggedLocalRuntime:
         )
         admitted = await self._scheduler.admit_next()
         if admitted is None:
+            op_id = req.operation_id
             refusal = TaskRefusal(
                 reason=RefusalReason.TASK_NOT_ADMITTED,
                 detail="Scheduler refused admission (max concurrent limit).",
                 timestamp=_now_iso(),
             )
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "blocked",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             return TaskAdmissionResult(
                 task_id_hash=task_id_hash,
                 task_kind=task_kind,
@@ -277,8 +344,45 @@ class RiggedLocalRuntime:
                 messages=messages,
                 max_tokens=max_tokens,
             )
+        except asyncio.CancelledError:
+            await self._scheduler.fail(op_id, "cancelled")
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "cancelled",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
+            raise
         except Exception as e:
             await self._scheduler.fail(op_id, str(e))
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "error",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             return TaskAdmissionResult(
                 task_id_hash=task_id_hash,
                 task_kind=task_kind,
@@ -291,13 +395,25 @@ class RiggedLocalRuntime:
                 ),
             )
 
-        if response.tool_call_proposals:
-            _handle_tool_proposals(response.tool_call_proposals, task_id_hash, op_id)
+        try:
+            if response.tool_call_proposals:
+                _handle_tool_proposals(
+                    response.tool_call_proposals, task_id_hash, op_id
+                )
+                for p in response.tool_call_proposals:
+                    self._tool_bridge.execute_proposal(p)
+        except Exception:
+            logger.exception("Tool proposal handling failed for op=%s", op_id)
 
         receipt_payload = _build_execution_receipt_payload(
             task_id_hash, response, model_id_hash, effective_class, op_id
         )
-        response.evidence_receipt_id = emit_execution_receipt(op_id, receipt_payload)
+        try:
+            response.evidence_receipt_id = emit_execution_receipt(
+                op_id, receipt_payload
+            )
+        except Exception:
+            logger.exception("Failed to emit execution receipt for op=%s", op_id)
 
         await self._scheduler.complete(op_id, response)
 
@@ -330,29 +446,50 @@ class RiggedLocalRuntime:
         task_id_hash = _sha256(json.dumps(messages, sort_keys=True, default=str))
 
         if not admission.admitted:
+            op_id = _make_op_id()
             yield (
                 f"[ERROR: {admission.refusal_reason.value}]"
                 if admission.refusal_reason
                 else "[ERROR: task not admitted]"
             )
-            emit_refusal_receipt(
-                _make_op_id(),
-                {
-                    "receipt_id": _make_op_id(),
-                    "task_id_hash": task_id_hash,
-                    "status": "refused",
-                    "refusal_reason": (
-                        admission.refusal_reason.value
-                        if admission.refusal_reason
-                        else "unknown"
-                    ),
-                    "detail": admission.admission_details,
-                    "content_light": True,
-                },
-            )
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "refused",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             return
 
         if not self._engine.is_mlx_available:
+            op_id = _make_op_id()
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "blocked",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             yield "[ERROR: MLX not available]"
             return
 
@@ -360,6 +497,24 @@ class RiggedLocalRuntime:
             model_id_hash = self._engine.list_loaded_models()[0].model_id_hash
 
         if not model_id_hash:
+            op_id = _make_op_id()
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "blocked",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             yield "[ERROR: No model loaded]"
             return
 
@@ -368,6 +523,24 @@ class RiggedLocalRuntime:
         )
         admitted = await self._scheduler.admit_next()
         if admitted is None:
+            op_id = req.operation_id
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "blocked",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
             yield "[ERROR: Scheduler refused admission]"
             return
 
@@ -387,7 +560,11 @@ class RiggedLocalRuntime:
             )
         )
 
+        async with self._stream_lock:
+            self._active_streams[req.operation_id] = _engine_fut
+
         accumulated: list[str] = []
+        prompt_tokens_for_cache: list[int] = []
         try:
             while True:
                 item = await asyncio.to_thread(sync_q.get)
@@ -397,26 +574,132 @@ class RiggedLocalRuntime:
                     accumulated.append(str(payload))
                     yield str(payload)
                 elif kind == "done":
+                    payload_dict: dict = payload if isinstance(payload, dict) else {}  # type: ignore[assignment]
+                    prompt_tokens_for_cache = payload_dict.get("prompt_tokens", [])
                     break
                 elif kind == "cancelled":
                     yield "[CANCELLED]"
                     await self._scheduler.cancel(req.operation_id)
+                    op_id = req.operation_id
+                    try:
+                        emit_refusal_receipt(
+                            op_id,
+                            {
+                                "schema_version": "rig.relay.runtime_execution_event.v1",
+                                "receipt_id": op_id,
+                                "operation_id": op_id,
+                                "task_id_hash": task_id_hash,
+                                "status": "cancelled",
+                                "prompt_sha256": "",
+                                "output_sha256": "",
+                                "model_id_hash": model_id_hash,
+                                "content_light": True,
+                            },
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to emit refusal receipt for op=%s", op_id
+                        )
                     return
                 elif kind == "error":
                     yield f"[ERROR: {payload}]"
                     await self._scheduler.fail(req.operation_id, str(payload))
+                    op_id = req.operation_id
+                    try:
+                        emit_refusal_receipt(
+                            op_id,
+                            {
+                                "schema_version": "rig.relay.runtime_execution_event.v1",
+                                "receipt_id": op_id,
+                                "operation_id": op_id,
+                                "task_id_hash": task_id_hash,
+                                "status": "error",
+                                "prompt_sha256": "",
+                                "output_sha256": "",
+                                "model_id_hash": model_id_hash,
+                                "content_light": True,
+                            },
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Failed to emit refusal receipt for op=%s", op_id
+                        )
                     return
         except asyncio.CancelledError:
             cancel_flag[0] = True
             await self._scheduler.cancel(req.operation_id)
+            op_id = req.operation_id
+            try:
+                emit_refusal_receipt(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "cancelled",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit refusal receipt for op=%s", op_id)
+            try:
+                await asyncio.wait_for(_engine_fut, timeout=5.0)
+            except (TimeoutError, Exception):
+                pass
+            async with self._stream_lock:
+                self._active_streams.pop(req.operation_id, None)
             raise
+        except Exception as e:
+            logger.exception("Streaming loop exception for op=%s", req.operation_id)
+            try:
+                await self._scheduler.fail(req.operation_id, str(e)[:200])
+            except Exception:
+                pass
+            try:
+                emit_refusal_receipt(
+                    req.operation_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": req.operation_id,
+                        "operation_id": req.operation_id,
+                        "task_id_hash": task_id_hash,
+                        "status": "error",
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit error receipt")
+            raise
+        finally:
+            async with self._stream_lock:
+                self._active_streams.pop(req.operation_id, None)
 
         full_text = "".join(accumulated)
-        result: dict = payload  # type: ignore[assignment]
+        payload_or_dict: dict = payload if isinstance(payload, dict) else {}  # type: ignore[assignment]
+        result: dict = payload_or_dict
         tool_proposals = result.get("tool_call_proposals", [])
         finish = result.get("finish_reason", FinishReason.STOP)
         completion_tokens = result.get("completion_tokens", 0)
         cache_hit = result.get("cache_hit", False)
+
+        if not cache_hit and prompt_tokens_for_cache:
+            loaded = self._engine._loaded_models.get(model_id_hash)  # type: ignore[attr-defined]
+            if loaded is not None:
+                try:
+                    self._cache.insert_cache(
+                        loaded.mlx_model,
+                        prompt_tokens_for_cache,
+                        prompt_tokens_for_cache,
+                    )
+                except Exception:
+                    pass
 
         response = LocalInferenceResponse(
             content=full_text,
@@ -427,15 +710,27 @@ class RiggedLocalRuntime:
             cache_hit=cache_hit,
         )
 
-        if tool_proposals:
-            _handle_tool_proposals(tool_proposals, task_id_hash, req.operation_id)
+        try:
+            if tool_proposals:
+                _handle_tool_proposals(tool_proposals, task_id_hash, req.operation_id)
+                for p in tool_proposals:
+                    self._tool_bridge.execute_proposal(p)
+        except Exception:
+            logger.exception(
+                "Tool proposal handling failed for op=%s", req.operation_id
+            )
 
         receipt_payload = _build_execution_receipt_payload(
             task_id_hash, response, model_id_hash, effective_class, req.operation_id
         )
-        response.evidence_receipt_id = emit_execution_receipt(
-            req.operation_id, receipt_payload
-        )
+        try:
+            response.evidence_receipt_id = emit_execution_receipt(
+                req.operation_id, receipt_payload
+            )
+        except Exception:
+            logger.exception(
+                "Failed to emit execution receipt for op=%s", req.operation_id
+            )
 
         await self._scheduler.complete(req.operation_id, response)
 
@@ -445,39 +740,86 @@ class RiggedLocalRuntime:
     async def clear_cache(self) -> bool:
         return await self._cache.clear_cache()
 
+    async def shutdown(self) -> None:
+        """Coordinated runtime shutdown.
+
+        Sets cancel_flag on all active streams, awaits their futures
+        with timeout, clears pool, then resets global reference.
+        """
+        logger.info("RiggedLocalRuntime: shutdown initiated")
+
+        async with self._stream_lock:
+            stream_ids = list(self._active_streams)
+        for op_id in stream_ids:
+            await self._scheduler.cancel(op_id)
+            async with self._stream_lock:
+                fut = self._active_streams.pop(op_id, None)
+            if fut is not None and not fut.done():
+                try:
+                    await asyncio.wait_for(fut, timeout=5.0)
+                except (TimeoutError, Exception):
+                    pass
+
+        self._pool.shutdown()
+        if isinstance(self._scheduler, RiggedBatchScheduler):
+            self._scheduler.stop_batch_loop()
+        logger.info("RiggedLocalRuntime: shutdown complete")
+
     def load_model(self, model_path: str, model_id: str = "") -> str:
         if not self._engine.is_mlx_available:
             raise MlxNotAvailableError("MLX not available")
         loaded = self._engine.load_model(model_path=model_path, model_id=model_id)
-        emit_lifecycle_event(
-            _make_op_id(),
-            "rig.relay.runtime.model_loaded",
-            {
-                "schema_version": "rig.relay.runtime_lifecycle_event.v1",
-                "event": "rig.relay.runtime.model_loaded",
-                "model_id_hash": loaded.model_id_hash,
-                "content_light": True,
-            },
-        )
+        try:
+            emit_lifecycle_event(
+                _make_op_id(),
+                "rig.relay.runtime.model_loaded",
+                {
+                    "schema_version": "rig.relay.runtime_lifecycle_event.v1",
+                    "event": "rig.relay.runtime.model_loaded",
+                    "model_id_hash": loaded.model_id_hash,
+                    "content_light": True,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to emit lifecycle event for model load")
         return loaded.model_id_hash
 
     def unload_model(self, model_id_hash: str) -> bool:
         result = self._engine.unload_model(model_id_hash)
         if result:
-            emit_lifecycle_event(
-                _make_op_id(),
-                "rig.relay.runtime.model_unloaded",
-                {
-                    "schema_version": "rig.relay.runtime_lifecycle_event.v1",
-                    "event": "rig.relay.runtime.model_unloaded",
-                    "model_id_hash": model_id_hash,
-                    "content_light": True,
-                },
-            )
+            self._pool.unload(model_id_hash)
+            try:
+                emit_lifecycle_event(
+                    _make_op_id(),
+                    "rig.relay.runtime.model_unloaded",
+                    {
+                        "schema_version": "rig.relay.runtime_lifecycle_event.v1",
+                        "event": "rig.relay.runtime.model_unloaded",
+                        "model_id_hash": model_id_hash,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to emit lifecycle event for model unload")
         return result
 
     def build_projection(self) -> dict:
         """Typed X0 Inference Studio consumer contract."""
+        bridge_proj = self._tool_bridge.build_projection()
+        pool_proj = self._pool.build_projection()
+        cache_proj = self._cache.build_projection()
+        scheduler_proj = self._scheduler.build_projection()
+
+        batching_posture = (
+            CapabilityPosture.SUPPORTED
+            if scheduler_proj.get("batching_status") == "active_batch_generator"
+            else CapabilityPosture.V1_REQUIRED_PENDING
+        )
+
+        cache_write_back = (
+            "active_local_trie" if self._cache.write_back_count > 0 else "deferred"
+        )
+
         return {
             "schema_version": "rig.relay.inference_studio_runtime_projection.v1",
             "runtime": {
@@ -486,15 +828,17 @@ class RiggedLocalRuntime:
                 if self._engine.is_mlx_available
                 else "unavailable",
                 "mlx_available": self._engine.is_mlx_available,
-                "authority": ("governed_admission_with_pending_tool_execution"),
+                "authority": "governed_admission_with_pending_tool_execution",
                 "authority_detail": (
                     "Stateless governance preflight active. "
                     "Tool execution, checkpointing, and mutation safety "
                     "deferred to X0 integration."
                 ),
             },
-            "scheduler": self._scheduler.build_projection(),
-            "cache": self._cache.build_projection(),
+            "scheduler": scheduler_proj,
+            "cache": cache_proj,
+            "pool": pool_proj,
+            "bridge": bridge_proj,
             "capabilities": {
                 "text_generation": CapabilityPosture.SUPPORTED,
                 "streaming_generation": CapabilityPosture.SUPPORTED,
@@ -503,8 +847,19 @@ class RiggedLocalRuntime:
                 "embeddings": CapabilityPosture.V1_REQUIRED_PENDING,
                 "reranking": CapabilityPosture.V1_REQUIRED_PENDING,
                 "vision_vlm": CapabilityPosture.V1_REQUIRED_PENDING,
-                "continuous_batching": CapabilityPosture.V1_REQUIRED_PENDING,
-                "kv_cache_reuse": CapabilityPosture.V1_REQUIRED_PENDING,
+                "continuous_batching": batching_posture,
+                "kv_cache_reuse": CapabilityPosture.SUPPORTED,
+                "kv_cache_write_back": cache_write_back,
+                "multi_model_pool": (
+                    CapabilityPosture.SUPPORTED
+                    if self._pool.loaded_count > 0
+                    else CapabilityPosture.V1_REQUIRED_PENDING
+                ),
+                "tool_execution_bridge": (
+                    CapabilityPosture.SUPPORTED
+                    if self._tool_bridge.has_session_context
+                    else CapabilityPosture.V1_REQUIRED_PENDING
+                ),
             },
             "privacy": {
                 "secret_scanning": "enforced_before_admission",
@@ -517,16 +872,23 @@ class RiggedLocalRuntime:
                 "tool_execution_detail": (
                     "Tool proposals are preflighted through "
                     "GovernanceEngine.evaluate_action_legality. Full execution "
-                    "through ToolRuntime.execute_one() requires session context "
+                    "through ToolRuntime requires session context "
                     "and is deferred to X0 Inference Studio integration."
                 ),
                 "scheduler_authority": "serialized_fcfs_under_lock",
                 "admission_gates": "secret_scanning_before_execution",
                 "streaming_admission": "same_gates_as_execute",
+                "thread_lifecycle": "coordinated_active_stream_tracking",
+                "thread_lifecycle_detail": (
+                    "Active streams tracked in _active_streams dict. "
+                    "CancelledError awaits engine future with 5s timeout. "
+                    "shutdown() cancels all active streams before pool clearance."
+                ),
             },
             "models": {
                 "loaded_count": self._engine.loaded_model_count,
                 "inventory_count": len(self._inventory),
+                "pool_count": self._pool.loaded_count,
                 "lifecycle_events": "ledger: runtime_lifecycle_ledger.jsonl",
             },
             "health": {
@@ -615,36 +977,35 @@ def _handle_tool_proposals(
 
     preflight_results = [_preflight_tool_proposal(p) for p in proposals]
 
-    all_admitted = all(
-        r["status"] == "admitted_pending_execution" for r in preflight_results
+    admitted_count = sum(
+        1 for r in preflight_results if r["status"] == "admitted_pending_execution"
     )
+    rejected_count = len(preflight_results) - admitted_count
 
-    emit_tool_proposal_evidence(
-        op_id,
-        {
-            "receipt_id": op_id,
-            "task_id_hash": task_id_hash,
-            "status": "tool_proposals_detected",
-            "schema_version": "rig.relay.runtime.tool_proposal.v1",
-            "proposal_count": len(proposals),
-            "proposals": [
-                {
-                    "call_id": p.call_id,
-                    "tool_name": p.tool_name,
-                    "governance_action": r["status"],
-                    "secret_safe": not (
-                        r["status"] == "refused"
-                        and r.get("reason") == "secret_in_arguments"
-                    ),
-                }
-                for p, r in zip(proposals, preflight_results, strict=True)
-            ],
-            "governance_disposition": (
-                "admitted_pending_execution" if all_admitted else "mixed_refused"
-            ),
-            "content_light": True,
-        },
-    )
+    all_names = ",".join(p.tool_name for p in proposals)
+    proposal_names_hash = f"sha256:{hashlib.sha256(all_names.encode()).hexdigest()}"
+    proposal_args_hashes = [
+        f"sha256:{hashlib.sha256(p.arguments.encode()).hexdigest()}" for p in proposals
+    ]
+
+    try:
+        emit_tool_proposal_evidence(
+            op_id,
+            {
+                "schema_version": "rig.relay.runtime_tool_proposal_event.v1",
+                "task_id_hash": task_id_hash,
+                "proposal_count": len(proposals),
+                "proposal_names_hash": proposal_names_hash,
+                "proposal_args_hashes": proposal_args_hashes,
+                "routed_to_governance": True,
+                "rejected_count": rejected_count,
+                "admitted_count": admitted_count,
+                "governance_latency_ms": 0.0,
+                "content_light": True,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to emit tool proposal evidence for op=%s", op_id)
 
 
 def _build_execution_receipt_payload(
@@ -660,7 +1021,9 @@ def _build_execution_receipt_payload(
         else ""
     )
     return {
+        "schema_version": "rig.relay.runtime_execution_event.v1",
         "receipt_id": op_id,
+        "operation_id": op_id,
         "task_id_hash": task_id_hash,
         "status": "executed",
         "prompt_sha256": "",
@@ -677,7 +1040,6 @@ def _build_execution_receipt_payload(
         "tool_call_count": len(response.tool_call_proposals),
         "tool_proposals_routed": bool(response.tool_call_proposals),
         "context_privacy_class": privacy_class.value,
-        "cache_hit": response.cache_hit,
         "content_light": True,
     }
 

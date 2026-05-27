@@ -1,8 +1,8 @@
 {
   "schema_version": "rig.relay.x0_postgres_consumer_admission.v1",
-  "admission_id": "candidate_x0_postgres_consumer_contract_x1_4_v1",
-  "issued_at": "2026-05-27T00:00:00Z",
-  "lane": "x1.4_postgres_verified_product_materialization_and_recovery",
+  "admission_id": "candidate_x0_postgres_consumer_contract_x1_5_v1",
+  "issued_at": "2026-05-27T12:00:00Z",
+  "lane": "x1.5_atomic_rebuild_idempotent_materialization_and_public_x0_consumer_boundary",
   "candidate_commit_sha": "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94",
   "postgresql_authority_classification": "derived_operational_projection",
   "prohibited_claims": [
@@ -13,7 +13,8 @@
     "Backup/restore proves full product-state equivalence without digest comparison",
     "Producer authority can be upgraded or flattened during materialization",
     "Missing producer digest can be substituted with an unstable hash",
-    "PostgreSQL manages local installation or connection pooling"
+    "PostgreSQL manages local installation or connection pooling",
+    "X0 queries PostgreSQL domain tables or materialized views directly instead of consuming a typed public X1 application-service projection"
   ],
   "domains": {
     "repository_estate": {
@@ -23,12 +24,13 @@
       "authority_preservation": "provenance_class, authority_state, corruption counts, and degradation metadata preserved as received from producer — no upgrading or flattening",
       "rebuild_integrity": "Deterministic rebuild via clear + re-materialize with schema-versioned, domain-bound canonical JSON digest manifests. Non-semantic columns (materialized_at, built_at, receipt_id) excluded by explicit justification.",
       "corruption_degradation_state": "Corrupt observations stored with provenance_class=corrupt_untrusted, authority_state=corrupt. Corruption events preserved from producer projection.",
-      "admission_for_x0": "Allowed for operational rendering. X0 may display registered_repositories, repository_observations, workspace_instances, and observation_changes as derived operational projections. Must display provenance_class and authority_state labels. Must NOT display as canonical facts or live state.",
+      "admission_for_x0": "Allowed for operational rendering through the X1 public typed application-service projection boundary ONLY. X0 must consume X1's public projection contract, not read PostgreSQL domain tables, materialized views, or private X1 implementation modules directly. X0 must display provenance_class and authority_state labels. Must NOT display as canonical facts or live state.",
       "prohibited": [
         "Display PostgreSQL rows as canonical repository facts",
         "Display workspace paths (only salted root_path_digest is stored)",
         "Claim real-time workspace state without explicit observation timestamp",
-        "Display raw repository hash as a navigable path"
+        "Display raw repository hash as a navigable path",
+        "Query PostgreSQL domain tables or materialized views directly"
       ]
     },
     "investigation_timeline": {
@@ -38,12 +40,13 @@
       "authority_preservation": "All 8 authority_classification values, 6 verification_class values, and degradation_detail text preserved from producer. Verified, corrupt, unverified, missing, and unsupported states remain distinguishable after PostgreSQL round-trip.",
       "rebuild_integrity": "Deterministic rebuild via delete + re-materialize with digest comparison. Schema-versioned manifests.",
       "corruption_degradation_state": "Degradation summary counts (verified_canonical, parsed_unverified, canonical_degraded, corrupt, unsupported, missing, contradictory, stale, canonical_live) preserved from T4.2 producer. Corrupt events stored with truthful degradation classification.",
-      "admission_for_x0": "Allowed for operational rendering. X0 may display timeline events as derived operational projections grouped by authority classification. Must display authority_classification, verification_class, and degradation_detail. Canonical evidence classification labels must be preserved. Must NOT relabel derived timeline rows as canonical evidence.",
+      "admission_for_x0": "Allowed for operational rendering through the X1 public typed application-service projection boundary ONLY. X0 must consume X1's public projection contract, not read PostgreSQL domain tables, materialized views, or private X1 implementation modules directly. Must display authority_classification, verification_class, and degradation_detail. Canonical evidence classification labels must be preserved. Must NOT relabel derived timeline rows as canonical evidence.",
       "prohibited": [
         "Relabel derived timeline rows as canonical evidence",
         "Flatten authority_classification to a single trust label",
         "Display timeline events without producer_digest_verified status",
-        "Claim timeline completeness without checking degradation_summary"
+        "Claim timeline completeness without checking degradation_summary",
+        "Query PostgreSQL domain tables or materialized views directly"
       ]
     },
     "publication_history": {
@@ -53,12 +56,13 @@
       "authority_preservation": "Compilation outcomes, safety results, refusal codes, deployment readiness, and preview-only flags preserved from T1.2 producer. Corruption state preserved in reconstruction. Ledger identity digest distinguishes known from unknown ledgers.",
       "rebuild_integrity": "Deterministic rebuild via clear + re-materialize using source-evidence-bound input. Schema-versioned manifests.",
       "corruption_degradation_state": "Corrupt rows preserved with reconstruction_warnings. Corrupt receipt rows refused during ledger load are counted but not stored (authoritative mode). Non-authoritative mode stores corrupt_rows count and corrupt_lines for visibility.",
-      "admission_for_x0": "Allowed for operational rendering. X0 may display publication_preview_receipts, reconstruction state, and build receipts as derived operational projections. Must display compilation_successful, safety_passed, refusal_code, and corruption_detected labels. Must NOT claim deployment readiness (always false for preview-only).",
+      "admission_for_x0": "Allowed for operational rendering through the X1 public typed application-service projection boundary ONLY. X0 must consume X1's public projection contract, not read PostgreSQL domain tables, materialized views, or private X1 implementation modules directly. Must display compilation_successful, safety_passed, refusal_code, and corruption_detected labels. Must NOT claim deployment readiness (always false for preview-only).",
       "prohibited": [
         "Display deployment_ready as true (always false for preview-only evidence)",
         "Claim publication receipts are canonical deployment records",
         "Display raw receipt payloads or evidence_digest values",
-        "Bypass corruption_detected flag when displaying reconstruction state"
+        "Bypass corruption_detected flag when displaying reconstruction state",
+        "Query PostgreSQL domain tables or materialized views directly"
       ]
     }
   },
@@ -78,16 +82,14 @@
       "refreshed_at": null,
       "auto_refresh": false,
       "staleness_acceptable_for_x0": false,
-      "description": "Materialized views are NOT auto-refreshed. They reflect the snapshot at the last explicit REFRESH MATERIALIZED VIEW call. X0 must NOT treat materialized view data as live or fresh. Concurrent refresh (REFRESH MATERIALIZED VIEW CONCURRENTLY) requires a unique index on each view; this is not yet proven or offered. X0 may query base tables directly instead."
+      "description": "Materialized views are NOT auto-refreshed. They reflect the snapshot at the last explicit REFRESH MATERIALIZED VIEW call. X0 must NOT treat materialized view data as live or fresh. Concurrent refresh (REFRESH MATERIALIZED VIEW CONCURRENTLY) requires a unique index on each view; this is not yet proven or offered."
     }
   },
   "operational_readiness": {
     "postgresql_required": true,
     "local_installation_not_managed": true,
     "available_actions": [
-      "query_repository_estate",
-      "query_investigation_timeline",
-      "query_publication_history",
+      "consume_public_x1_projection",
       "refresh_materialized_views_explicit",
       "create_backup",
       "restore_backup",

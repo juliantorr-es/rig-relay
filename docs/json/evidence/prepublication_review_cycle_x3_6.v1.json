@@ -1,0 +1,22 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T10:00:00Z",
+  "lane_id": "x3.6",
+  "mission_id": "x3.6_supersession_corrected_candidate",
+  "baseline_sha": "3ed55f813cf9bda934258ca69266400d46362f7f",
+  "candidate_digest": "36bd6551e2d678c1d67b1e19df910b841964a7bc",
+  "intended_boundary": "GovernedPagesCommitCorrelatedPublicationBoundary",
+  "intended_consumer_purpose": "A later X0 integration lane may render project-page publication state only from evidence-backed X3 application-service projections that distinguish preparation, authorization, content publication, Pages configuration, build correlation, verification, conflict, recovery, and external-acceptance status truthfully. Portfolio synthesis is explicitly excluded from this boundary.",
+  "rounds": [],
+  "builder_responses": [],
+  "final_admission": {
+    "admitted_candidate_digest": "",
+    "admitted_boundary": "",
+    "permitted_consumer_purpose": "",
+    "unclaimed_capabilities": [],
+    "deferred_seams": [],
+    "review_round_count": 0,
+    "push_authorized": false
+  },
+  "status": "in_review"
+}

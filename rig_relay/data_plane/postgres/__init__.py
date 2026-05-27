@@ -48,6 +48,9 @@ from rig_relay.data_plane.postgres._models import (
     RebuildReceipt,
     RestoreReceipt,
     SchemaVersionRecord,
+    compute_advisory_lock_key,
+    compute_deterministic_materialization_receipt_id,
+    compute_deterministic_rebuild_receipt_id,
 )
 from rig_relay.data_plane.postgres._store import PostgresOperationalProjectionStore
 
@@ -74,4 +77,7 @@ __all__ = [
     "SchemaVersionRecord",
     "TimelineMaterializationInput",
     "TimelineMaterializer",
+    "compute_advisory_lock_key",
+    "compute_deterministic_materialization_receipt_id",
+    "compute_deterministic_rebuild_receipt_id",
 ]

@@ -1,0 +1,133 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T09:00:00Z",
+  "lane_id": "lane_x0_publication_truth_correction",
+  "mission_id": "x0_publication_truth_correction",
+  "baseline_sha": "3ed55f81355a6f4fe2e2154c01a72c29b9a5e1b4",
+  "candidate_digest": "sha256:local_x0_corrected_candidate_3ed55f813",
+  "intended_boundary": "ConnectedStudioExecutableFrontendAndNativeTransportCandidateBoundary",
+  "intended_consumer_purpose": "The native-hosted Gridline application may load and execute the canonical production frontend bundle, establish the already-modeled native/WebSocket bridge path, and render only those live surface states whose published producer contracts are actually safe to consume, with no fixture execution, no unsafe HTML rendering, and no JavaScript evaluation failure",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "builder_x0_correction_initial_inspection",
+      "reviewed_candidate_digest": "sha256:local_x0_corrected_candidate_3ed55f813",
+      "production_paths_inspected": [
+        "docs/json/evidence/builder_publication_record_x0_3.v1.json (origin/main)",
+        "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json (origin/main for comparison)",
+        "docs/schemas/rig.relay.builder_publication_record.v1.schema.json",
+        "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json",
+        "docs/schemas/rig.relay.verification_record.v1.schema.json",
+        "docs/governance/prepublication-falsifier-contract.md",
+        "frontend/desktop/app.js (origin/main at 2d52f10e2 — setWidgetHTML inspection)",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json (origin/main)"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "X0.3 was published with prepublication_admitted chronology",
+          "attack": "Search origin/main for independent prepublication_review_cycle_x0_3 record",
+          "evidence": "No prepublication_review_cycle_x0_3.v1.json exists on origin/main. Only the builder publication record self-attests review. Other lanes (X1.4, X3.5, X4.4) each have standalone cycle records. Per prepublication-falsifier-contract.md: 'a prepublication disposition is invalid if it is emitted after the candidate is pushed and described as prepublication admission.'",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "X0.3 implementation survives all technical attacks",
+          "attack": "Verify implementation SHA 2d52f10e2 content: JS executability, SHA256 parity, transport tests, fixture gating, innerHTML audit",
+          "evidence": "SHA 2d52f10e2 on origin/main. node -c passes (no syntax errors). 63/63 executable JS proof. 67/67 gateway tests. 3/3 transport tests. SHA256 afdd22bca1579589838ea4eb278fc13a8cbcd6effb6edd786a509b69f147de0e matches canonical/bundled. Fixture mode gated. 3 innerHTML uses: setWidgetHTML (zero callers — unreachable dormant sink), transcript.innerHTML = '' (empty-string clearing x2). No untrusted data reaches any innerHTML sink.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "setWidgetHTML is authorized/trusted",
+          "attack": "Classify setWidgetHTML at app.js:1189: zero callers, zero data path",
+          "evidence": "setWidgetHTML has ZERO callers anywhere in the codebase (no calls in app.js, no calls in HTML, no calls in Python, no calls in tests). Unreachable dormant sink. Not authorized, not trusted — safe by isolation only. Classified as deferred removal.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Correction can use verified_narrow_release vocabulary",
+          "attack": "Verify builder authority: AGENTS.md §Lane Status Vocabulary reserves verified_narrow_release for reviewer-issued statuses only",
+          "evidence": "Builder may only emit candidate_local, published_candidate_boundary, published_candidate_blocked, or published_candidate_external_acceptance_pending. verified_narrow_release is reviewer-only. Using it would be an authority violation. Corrected candidate uses candidate_local only.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Historical X0.3 builder publication record is schema-valid",
+          "attack": "Validate docs/json/evidence/builder_publication_record_x0_3.v1.json against rig.relay.builder_publication_record.v1 schema",
+          "evidence": "Record uses non-schema fields (builder_session_id, builder_claim, released_boundary, consumer_purpose, explicitly_not_implemented, publication_status, pushed_sha, etc.) instead of schema-required fields (lane_id, mission_id, generated_at, decision_record, owned_files, etc.). This is a pre-existing discrepancy between the published record format and the canonical schema. Not blocking this correction — the correction creates a new schema-valid record.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "FIND-X0-CORR-001",
+          "severity": "critical",
+          "violated_claim": "X0.3 was prepublication-admitted with canonical chronology",
+          "evidence": "No independent prepublication_review_cycle_x0_3.v1.json exists on origin/main (confirmed by git ls-tree). The builder publication record self-attests prepublication_admitted and prepublication_review_rounds: 1. Per prepublication-falsifier-contract: a prepublication disposition is invalid if emitted after push. The cycle record must predate publication.",
+          "required_repair": "Create corrected candidate: ConnectedStudioExecutableFrontendAndNativeTransportCandidateBoundary with truthful status candidate_local, provide proper prepublication review cycle (this record), submit to prepublication-conductor for independent specialist review before any publication claim",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FIND-X0-CORR-002",
+          "severity": "medium",
+          "violated_claim": "setWidgetHTML is trusted or authorized",
+          "evidence": "setWidgetHTML at app.js:1189 has zero callers. Window-exposed at app.js:2464 but never invoked. No data path from any producer to this sink. Classified as unreachable dormant sink / deferred removal — not trusted, not authorized. Safe by isolation only.",
+          "required_repair": "Classify setWidgetHTML truthfully as unreachable dormant sink / deferred removal in builder publication record. Do not describe as trusted or authorized. Defer removal to a future lane.",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "FIND-X0-CORR-003",
+          "severity": "medium",
+          "violated_claim": "Historical X0.3 builder publication record is schema-valid",
+          "evidence": "docs/json/evidence/builder_publication_record_x0_3.v1.json on origin/main uses field names (builder_session_id, builder_claim, released_boundary, consumer_purpose, etc.) that do not match the canonical schema required fields (lane_id, mission_id, decision_record, etc.). This is a pre-existing discrepancy.",
+          "required_repair": "This correction creates a new schema-valid builder publication record. The historical record remains as a published artifact of record. Do not rewrite history — supersede with a new valid record.",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "repair_required"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "FIND-X0-CORR-001: Created corrected builder publication record with truthful status candidate_local, submitted to prepublication review gate"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/builder_publication_record_x0_corrected_candidate.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x0_corrected_candidate.v1.json (this record)"
+      ],
+      "validation_rerun": [
+        "uv run python scripts/rig_relay_validate_schemas.py (pending — schema validation against builder_publication_record and prepublication_review_cycle schemas)"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "",
+    "admitted_boundary": "ConnectedStudioExecutableFrontendAndNativeTransportCandidateBoundary",
+    "permitted_consumer_purpose": "The native-hosted Gridline application may load and execute the canonical production frontend bundle, establish the already-modeled native/WebSocket bridge path, and render only those live surface states whose published producer contracts are actually safe to consume, with no fixture execution, no unsafe HTML rendering, and no JavaScript evaluation failure",
+    "unclaimed_capabilities": [
+      "X2 runtime consumption",
+      "X3 deployment execution",
+      "X4 Safari consumption",
+      "X1 PostgreSQL materialization",
+      "O0 Bridge Aggregation (separate milestone, not claimed in this lane)",
+      "New publication-history APIs",
+      "New UI polish or visual redesign"
+    ],
+    "deferred_seams": [
+      "setWidgetHTML (app.js:1189): unreachable dormant sink — zero callers, deferred removal to future lane",
+      "historical builder_publication_record_x0_3.v1.json field naming vs. schema divergence — superseded by this record",
+      "Storage audit latency (~20s in tests) — pre-existing in _storage_audit.py, not a boundary defect"
+    ],
+    "review_round_count": 1,
+    "push_authorized": false
+  },
+  "status": "in_review"
+}

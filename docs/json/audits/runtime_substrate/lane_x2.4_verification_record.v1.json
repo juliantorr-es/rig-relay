@@ -1,0 +1,164 @@
+{
+  "schema_version": "rig.relay.verification_record.v1",
+  "generated_at": "2026-05-27T16:00:00Z",
+  "subject_sha": "39a2715732c83a20ab5176a97f9ae0f8be6cc969",
+  "builder_record_digest": "none_published",
+  "prepublication_review_cycle_digest": "none_published",
+  "prepublication_review_round_count": 1,
+  "policy_applied": "rig.relay.lane.x2.4.independent_remote_main_verification_pass",
+  "consumer_purpose": "Governed local inference runtime providing evidence-backed execution, governed streaming admission, stateless tool proposal preflight, and truthful X0 Inference Studio projection. Consumer is the X0 Inference Studio Gridline Interface integration milestone.",
+  "files_inspected": [
+    "rig_relay/local_inference/runtime/__init__.py",
+    "rig_relay/local_inference/runtime/_evidence.py",
+    "rig_relay/local_inference/runtime/_engine.py",
+    "rig_relay/local_inference/runtime/_scheduler.py",
+    "rig_relay/local_inference/runtime/_service.py",
+    "rig_relay/local_inference/runtime/_cache_authority.py",
+    "rig_relay/local_inference/runtime/_models.py",
+    "rig_relay/governance/governance_engine.py",
+    "docs/schemas/rig.relay.runtime_execution_event.v1.schema.json",
+    "docs/schemas/rig.relay.runtime_lifecycle_event.v1.schema.json",
+    "docs/schemas/rig.relay.runtime_cache_event.v1.schema.json",
+    "docs/schemas/rig.relay.runtime_tool_proposal_event.v1.schema.json",
+    "docs/schemas/rig.relay.runtime_scheduler_event.v1.schema.json",
+    "docs/json/audits/runtime_substrate/lane_x2.4_acceptance_proof.v1.json",
+    "docs/json/audits/runtime_substrate/lane_x2.4_omlx_comparative_audit.v1.json",
+    "tests/local_inference/runtime/test_rigged_runtime_boundary.py",
+    "tests/local_inference/test_models.py",
+    "tests/local_inference/test_projection.py",
+    "tests/local_inference/test_service.py",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "production_paths_exercised": [
+    "RiggedLocalRuntime.execute() → scheduler enqueue → admit → engine.generate (via asyncio.to_thread with _gen_lock)",
+    "RiggedLocalRuntime.stream_execute() → _classify_and_admit → scheduler → engine.stream_generate_sync → token yield",
+    "EvidenceLedger.append() → fcntl LOCK_EX → dedup → predecessor select → schema validate → write → flush → fsync → LOCK_UN",
+    "EvidenceLedger.reconstruct() → fcntl LOCK_SH → read → digest validate → chain validate → dup detect → schema validate",
+    "_preflight_tool_proposal() → _TOOL_CAPABILITY_MAP → scan_messages_for_secrets → GovernanceEngine.evaluate_action_legality()",
+    "_handle_tool_proposals() → preflight → emit_tool_proposal_evidence() → execution ledger append",
+    "RiggedLocalRuntime.build_projection() → truthful X0 consumer contract fields",
+    "RiggedCacheAuthority.fetch_cache() → LRUPromptCache fetch_nearest_cache → hit/miss tracking",
+    "RiggedInferenceScheduler state machine: queued → running → completed/refused/cancelled/failed with evidence"
+  ],
+  "falsifier_log": [
+    {
+      "assertion": "Boundary name 'RiggedInferenceStudioGovernedRuntimeBoundary' implies full governed tool execution",
+      "attempt": "Atomized boundary name: 'GovernedRuntime' implies runtime-governance. Inspected projection fields for tool_execution claim. Found truthful disclosure: 'stateless_preflight_admission_only' and 'governed_admission_with_pending_tool_execution'. Full ToolRuntime.execute_one() explicitly deferred in projection authority_detail.",
+      "result": "defeated",
+      "evidence": "Projection fields in _service.py lines 489-523 truthfully scope governance to admission/preflight. No false claim of full tool execution."
+    },
+    {
+      "assertion": "Evidence ledger append locking protects against concurrent writes",
+      "attempt": "4 threads × 10 concurrent operations with barrier synchronization. Verified chain integrity, complete op_id set, zero errors, zero duplicates.",
+      "result": "defeated",
+      "evidence": "10/10 entries produced linear chain, all op_ids accounted. fcntl LOCK_EX serialized concurrent threads."
+    },
+    {
+      "assertion": "Schema validation is fail-closed when jsonschema unavailable",
+      "attempt": "Set HAS_JSONSCHEMA=False. Attempted EvidenceLedger construction with schema. Verified EvidenceLedgerError raised for missing jsonschema when require_jsonschema=True.",
+      "result": "defeated",
+      "evidence": "Test test_schema_validation_fail_closed_no_jsonschema passes. EvidenceLedger refuses construction when schema present but jsonschema absent."
+    },
+    {
+      "assertion": "Schema validation rejects malformed payloads",
+      "attempt": "Appended payloads with wrong type (string for integer), missing required field (content_light), corrupt JSON, and digest mismatch. All four rejected with EvidenceLedgerError.",
+      "result": "defeated",
+      "evidence": "Type mismatch, missing required, corrupt JSON, and digest mismatch all raise EvidenceLedgerError. reconstruction correctly validates digest chains and detects duplicates."
+    },
+    {
+      "assertion": "Documented schemas are the canonical validation authority",
+      "attempt": "Cross-referenced documented execution and cache schemas against runtime inline validation schemas. Found: documented execution schema requires 9 fields but runtime validates only 3 (receipt_id, status, content_light). Documented cache schema requires 5 fields but runtime validates only 2 (schema_version, content_light). Lifecycle and scheduler schemas match exactly.",
+      "result": "succeeded",
+      "evidence": "Execution inline schema: required=['content_light','receipt_id','status'] vs documented: required=9 fields. Cache inline schema: required=['content_light','schema_version'] vs documented: required=5 fields. Runtime is fail-closed against its inline schemas but documented schemas are aspirational, not wired to runtime validation."
+    },
+    {
+      "assertion": "Scheduler routing is unavoidable through execute/stream_execute",
+      "attempt": "Verified execute() and stream_execute() both call scheduler.enqueue() → scheduler.admit_next() → engine via asyncio.to_thread → scheduler.complete(). Engine.generate() and engine.stream_generate_sync() are public but execute/stream_execute are the governance paths. engine property is exposed as public attribute.",
+      "result": "defeated",
+      "evidence": "Service methods are the authoritative governance entry points. Engine exposure is a layering concern but not a scheduler bypass for governed paths. Test test_execute_enqueues_through_scheduler confirms execute() path."
+    },
+    {
+      "assertion": "Generation lock covers full mlx_lm.generate() duration",
+      "attempt": "Created engine with fake model, blocked mlx_lm.generate with threading.Event. Verified _gen_lock.locked() is True while generate() is executing in thread, and False after completion and when idle.",
+      "result": "defeated",
+      "evidence": "test_generation_lock_covers_full_generate_call verifies lock held during generate(), released after. test_lock_not_held_when_idle verifies lock free at rest."
+    },
+    {
+      "assertion": "Streaming admission happens before any token yield",
+      "attempt": "Traced stream_execute() code path: _classify_and_admit (line 327) → if not admitted: yield error (lines 332-353) → scheduler enqueue/admit (366-374) → engine thread start (376-388) → token yield from queue (398). Verified secret-bearing messages yield error before engine is invoked.",
+      "result": "defeated",
+      "evidence": "Code path confirms _classify_and_admit runs before any asyncio.to_thread call and before first token yield. test_stream_execute_refuses_secrets verifies secret-bearing context yields single error token."
+    },
+    {
+      "assertion": "Tool proposals are preflighted through GovernanceEngine.evaluate_action_legality",
+      "attempt": "Verified _preflight_tool_proposal imports GovernanceEngine, calls evaluate_action_legality with intent_kind='tool_execution', requested_capabilities=[SHELL_PROPOSAL|FILE_WRITE_PROPOSAL|PATCH_PROPOSAL], provider_trust_tier='EXECUTOR_CANDIDATE', allow_mutation=True. Confirmed decision.decision.value is checked for 'allowed'.",
+      "result": "defeated",
+      "evidence": "Service line 583: GovernanceEngine.evaluate_action_legality is the authoritative governance call. test_bash_proposal_preflighted_through_governance and test_write_file_proposal_preflighted pass. Unknown tools get 'pending_review'. Secrets in arguments get 'refused'."
+    },
+    {
+      "assertion": "X0 projection fields truthfully represent X2 capability states",
+      "attempt": "Inspected build_projection() output: tool_execution='stateless_preflight_admission_only', authority='governed_admission_with_pending_tool_execution', capabilities set to SUPPORTED (text_generation, streaming_generation) and V1_REQUIRED_PENDING (all others). No false claims of completed integration, deployment, or UI wiring.",
+      "result": "defeated",
+      "evidence": "Projection tests (test_projection_admits_tool_pending, test_projection_authority_is_scoped, test_projection_no_routed_claim) all pass. No downstream consumption falsely claimed."
+    },
+    {
+      "assertion": "Concurrent evidence appends produce valid linear chain",
+      "attempt": "4 threads, 10 distinct operation_ids, barrier synchronization. Verified all 10 entries form a single linear digest chain with no forks, no duplicates, all op_ids present.",
+      "result": "defeated",
+      "evidence": "10/10 entries, chain integrity verified, all expected op_ids accounting for. Thread-safety under fcntl lock confirmed."
+    },
+    {
+      "assertion": "120+ tests pass on the claimed boundary",
+      "attempt": "Ran full test suite: tests/local_inference/runtime/test_rigged_runtime_boundary.py (73 tests) + tests/local_inference/test_models.py, test_projection.py, test_service.py (57 tests) = 130 passed, 1 skipped. Pyright: 0 errors, 0 warnings on 10 runtime files.",
+      "result": "defeated",
+      "evidence": "uv run pytest tests/local_inference/ -q: 130 passed, 1 skipped. uv run pyright rig_relay/local_inference/runtime/: errors=0, warnings=0, files=10."
+    },
+    {
+      "assertion": "Authorization receipt and status fields present in evidence payloads",
+      "attempt": "Verified refusal payload includes receipt_id and status. Verified execution receipt includes receipt_id and status. Verified tool proposal evidence includes receipt_id and status. Verified schema rejects payloads missing receipt_id or status.",
+      "result": "defeated",
+      "evidence": "test_refusal_payload_validates_against_execution_schema, test_tool_proposal_payload_validates_against_execution_schema, test_refusal_missing_receipt_id_rejected, test_refusal_missing_status_rejected all pass."
+    }
+  ],
+  "untested_claims": [
+    "Real Apple Silicon acceptance: Qwen3-0.6B-4bit execution proof claimed in acceptance_proof.v1.json but cannot be independently verified without Apple Silicon hardware. Acceptance proof documents its environment honestly.",
+    "Request reconstruction from corrupted evidence: tests prove reconstruction detects digest mismatch and chain breaks but do not exercise partial recovery scenarios.",
+    "Crash during fsync: no test simulates process termination mid-write to verify on-disk state is recoverable or at least detectable.",
+    "Cache write-back path: documented as deferred. LRPUPromptCache read-only reuse verified. Insert-after-generation path tested only as 'pending_low_level_api_integration'.",
+    "builder_publication_record: no canonical builder publication record exists on remote main for this lane. Builder compliance gap.",
+    "prepublication_review_cycle: no published prepublication review cycle record found on remote main. Builder compliance gap."
+  ],
+  "verified_boundary": "RiggedInferenceStudioGovernedRuntimeBoundary — narrowed to inference execution governance (admission, streaming, evidence, cache, scheduler, tool proposal preflight). Full tool execution through ToolRuntime.execute_one() explicitly excluded.",
+  "downgraded_claims": [
+    "Documented execution schema (9 required fields) overclaims relative to runtime inline validation (3 required fields). Runtime is fail-closed against inline schemas but documented schemas are aspirational, not the actual validation authority.",
+    "Documented cache schema (5 required fields) overclaims relative to runtime inline validation (2 required fields). Same gap as execution schema.",
+    "Acceptance proof phrase 'fail_closed_with_real_json_schema_files' is imprecise: scheduler and lifecycle use matching fields; execution and cache use narrower inline schemas, not the documented JSON schema files."
+  ],
+  "consumer_admission": {
+    "allowed_for": [
+      "X0 Inference Studio projection integration (read-only projection consumption)",
+      "Text generation with governed admission (execute path)",
+      "Streaming generation with governed admission (stream_execute path)",
+      "Stateless tool proposal preflight (proposal legality evaluation only)",
+      "Evidence ledger consumption (reconstruction, digest verification)",
+      "Cache statistics inspection (hit/miss counts, policy queries)"
+    ],
+    "allowed_only_as_pending_status_for": [
+      "Tool proposal execution (requires full ToolRuntime.execute_one() integration — deferred)",
+      "KV cache write-back (requires low-level generate_step API — deferred)",
+      "Continuous batching (requires BatchGenerator API integration — deferred)",
+      "SSD persistence (requires save_prompt_cache/load_prompt_cache — deferred)"
+    ],
+    "prohibited_for": [
+      "Claiming tool execution authority before ToolRuntime integration",
+      "Claiming full runtime governance before session-context gating is proven",
+      "Claiming routed-to-governance status before execution pipeline is complete",
+      "Claiming embedding, reranking, or VLM capability (all V1_REQUIRED_PENDING)"
+    ]
+  },
+  "resulting_status": "verified_narrow_release",
+  "freeze_decision": {
+    "freeze_status": "frozen_pending_integration",
+    "reason": "Boundary is published, production-proven for its stated consumer purpose (governed inference execution with evidence-backed admission, streaming, and tool proposal preflight), reconstructable from governing evidence, and free of safety defects inside the boundary. Documented schema specificity gap is deferred (neither blocks safe consumption nor falsifies the boundary claim). Deferred capabilities (full tool execution, cache write-back, continuous batching, SSD persistence, multi-model pools) do not make the released boundary unsafe. Freeze pending X0 Inference Studio Gridline Interface integration milestone or named consumer that wires the projection contract."
+  }
+}

@@ -807,7 +807,8 @@ class TestReadSideIntegrityVerification:
 
     def test_duplicate_digest_is_surfaced(self):
         """Two events sharing the same digest are detected as digest_mismatch
-        (the tampered event's recalculated digest won't match the injected one)."""
+        (the tampered event's recalculated digest won't match the injected one).
+        """
         outcome1 = _build_outcome("openai", "gpt-4o")
         persist_provider_event(outcome1, session_id="s-dup1", turn_id="t1")
         outcome1_copy = _build_outcome("openai", "gpt-4o")
@@ -833,7 +834,8 @@ class TestReadSideIntegrityVerification:
 
     def test_raw_injected_events_without_canonical_flag_bypass_verification(self):
         """from_test_events without canonical_source=True does not enforce
-        digest recomputation. This is the test-only escape hatch."""
+        digest recomputation. This is the test-only escape hatch.
+        """
         outcome = _build_outcome()
         persist_provider_event(outcome, session_id="s-raw", turn_id="t1")
 

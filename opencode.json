@@ -14,7 +14,7 @@
     "README.md",
     "pyproject.toml"
   ],
-  "default_agent": "build",
+  "default_agent": "orchestrator",
   "permission": {
     "read": {
       "*": "allow",
@@ -24,28 +24,38 @@
     },
     "glob": "allow",
     "grep": "allow",
-    "lsp": "allow",
-    "edit": "ask",
-    "bash": "ask",
+    "lsp": "deny",
+    "edit": "deny",
+    "bash": "deny",
     "task": {
       "*": "deny",
-      "builder": "allow",
-      "validator": "allow",
-      "repairer": "allow",
       "plan": "allow",
       "explore": "allow",
       "scout": "allow",
+      "execution": "allow",
+      "validator": "allow",
       "prepublication-conductor": "allow",
-      "claim-adversary": "allow"
+      "publisher": "allow",
+      "cleaner": "allow",
+      "repairer": "allow",
+      "claim-scope-adversary": "allow",
+      "evidence-adversary": "allow",
+      "production-proof-adversary": "allow",
+      "authority-adversary": "allow",
+      "recovery-adversary": "allow",
+      "claim-adversary": "allow",
+      "publication-truth-adversary": "allow",
+      "lane-collision-adversary": "allow",
+      "security-adversary": "allow",
+      "remote-main-reviewer": "allow"
     },
     "webfetch": "deny",
-    "websearch": "deny",
+    "websearch": "allow",
     "external_directory": "deny",
     "skill": {
-      "*": "ask",
-      "rig-*": "allow"
+      "*": "deny"
     },
-    "doom_loop": "ask"
+    "doom_loop": "deny"
   },
   "lsp": true,
   "formatter": {
