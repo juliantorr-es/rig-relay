@@ -1,4 +1,4 @@
-"""Developer studio gateway models — Lane O0.
+"""Developer studio gateway models — Lane S2 (hardened from O0).
 
 Typed aggregate projection aggregating J0/K0/L0/M0 service state into
 a single frontend-safe envelope. Every field carries explicit provenance:
@@ -9,6 +9,10 @@ state, or corrupt/untrusted state.
 Content-light: hashes, counts, statuses, labels, and SHA256 digests only.
 Never contains raw file contents, secrets, tokens, unrestricted paths,
 raw model payloads, or private identifying data.
+
+Each section carries an authority_state derived from canonical evidence
+(not from hardcoded labels). The GatewayAuthorityReport aggregates these
+into a single evidence-backed authority picture.
 """
 
 from __future__ import annotations
@@ -55,6 +59,8 @@ class J0ConnectionProjection(BaseModel):
 
     provenance: ProvenanceClass = ProvenanceClass.CANONICAL_FACT
     trust_state: TrustState = TrustState.CONTROLLED_BOUNDARY
+    authority_state: str = "controlled_boundary"
+    degraded_reason: str = ""
     connection_state: str = "disconnected"
     installation_id_hash: str = ""
     token_available: bool = False
@@ -91,6 +97,8 @@ class J0WorkspaceProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    authority_state: str = "missing"
+    degraded_reason: str = ""
     available: bool = False
     connection: J0ConnectionProjection = Field(default_factory=J0ConnectionProjection)
     repositories: list[J0RepositoryProjection] = Field(default_factory=list)
@@ -131,6 +139,8 @@ class K0OperatorProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    authority_state: str = "missing"
+    degraded_reason: str = ""
     available: bool = False
     active_sessions: list[K0SessionProjection] = Field(default_factory=list)
     total_sessions: int = 0
@@ -188,6 +198,8 @@ class L0ContextProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    authority_state: str = "missing"
+    degraded_reason: str = ""
     available: bool = False
     studies: list[L0StudyProjection] = Field(default_factory=list)
     intake_dependency_status: L0IntakeStatusProjection = Field(
@@ -241,6 +253,8 @@ class M0InferenceProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    authority_state: str = "missing"
+    degraded_reason: str = ""
     available: bool = False
     runtime_available: bool = False
     runtime_configured: bool = False

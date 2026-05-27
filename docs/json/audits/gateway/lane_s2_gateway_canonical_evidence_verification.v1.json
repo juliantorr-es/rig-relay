@@ -1,0 +1,70 @@
+{
+  "schema_version": "rig.relay.lane_publication_verification.v1",
+  "mission_id": "lane-s2-gateway-canonical-evidence-boundary",
+  "title": "Lane S2 — DeveloperStudioGateway Canonical Evidence and Production Intent Authority",
+  "released_boundary": "DeveloperStudioGatewayEvidenceBoundary: a Python application-service gateway that produces frontend-safe typed projections and intent outcomes reconstructed from canonical evidence and public producer authority. Every section carries an explicit authority_state derived from canonical evidence availability, freshness, and integrity. Content-light enforcement scans every projection before return. Provenance is counted by walking projection trees. Idempotency keys protect mutating intents from duplicate effects.",
+  "stated_consumer_purpose": "A later live integration lane can connect the frontend and native host to a backend surface whose state claims are actually evidenced.",
+  "freeze_status": "candidate_local_pending_promotion",
+  "release_disposition": "lane_s2_gateway_canonical_evidence_candidate_local_pending_promotion",
+  "post_promotion_freeze_target": "lane_s2_gateway_canonical_evidence_released_frozen_pending_frontend_integration",
+  "published_sha": null,
+  "branch": "main",
+  "head_before": "6bb2c40d2870eec0ccc0c8eb398d54d99609366f",
+  "head_after": null,
+  "remote_verified": false,
+  "exercised": true,
+  "files_changed": [
+    "rig_relay/desktop/gateway/__init__.py",
+    "rig_relay/desktop/gateway/_authority.py",
+    "rig_relay/desktop/gateway/_content_light.py",
+    "rig_relay/desktop/gateway/_intents.py",
+    "rig_relay/desktop/gateway/_models.py",
+    "rig_relay/desktop/gateway/_projection.py",
+    "rig_relay/desktop/gateway/_service.py",
+    "pyproject.toml",
+    "tests/desktop/gateway/test_gateway_authority.py"
+  ],
+  "foreign_lane_files_touched": 0,
+  "minimal_shared_registration_edits": [
+    "pyproject.toml: added per-file-ignores for gateway/_content_light.py and gateway/_authority.py (ruff PLR suppression)"
+  ],
+  "blocking_defects": [],
+  "deferred_seams": [
+    "STALE and CONTRADICTORY authority detection: ServiceAuthority enums STALE and CONTRADICTORY are defined but not wired into freshness/comparison checks. The framework is present but detection logic is deferred.",
+    "Persistent idempotency: the idempotency registry is in-memory only and resets on gateway singleton reset. This is safe for the long-lived desktop cockpit lifecycle but would need a persistent store for multi-session replay.",
+    "L0 live J0 intake wiring: L0 context projection still reports fixture-deferred when J0 and K0 boundaries are not live. The authority_state is honestly reported as fixture_deferred.",
+    "M0 live L0 context packet: M0 uses its own synthetic fixture for context packets. The lane L0→M0 sanitized packet consumption is deferred.",
+    "Live publication execution: Pages deployment actions are prepared but never executed. Approval and deployment deferred to N1/P0 integration.",
+    "Frontend consumption: The gateway projection is ready for frontend consumption but no frontend lane has yet wired it."
+  ],
+  "tests_run": 59,
+  "tests_passed": 59,
+  "tests_failed": 0,
+  "test_files": [
+    "tests/desktop/gateway/test_gateway_service.py (16 tests, unchanged from O0)",
+    "tests/desktop/gateway/test_gateway_authority.py (43 new tests)"
+  ],
+  "schema_validated": true,
+  "ruff_passed": true,
+  "pyright_status": "clean (0 errors, 0 warnings)",
+  "claim_adversary_results": {
+    "falsifiers_attempted": 9,
+    "falsifiers_succeeded": 0,
+    "checks": [
+      "Gateway is a fixture assembler, not evidence-backed — FALSE: all four services (J0/K0/L0/M0) are consumed through their published production public APIs. L0 intake fixture-deferred status is honestly reported as authority_state=fixture_deferred with degraded_reason.",
+      "Authority states are hardcoded, not evidence-derived — FALSE: ServiceAuthority is classified from canonical evidence checks (service availability, connection state, runtime availability). Each section carries authority_state + degraded_reason.",
+      "Provenance counting is hand-wavy — FALSE: _count_provenance_walk() recursively walks projection trees counting every provenance field. Previously hardcoded; now tree-traversal.",
+      "Content-light only exists on model — FALSE: enforce_content_light() scanner runs on every projection at build time, checking for tokens, paths, private IPs, forbidden field names, code content, and long strings. 0 violations on real projection.",
+      "Raw tokens leak through — FALSE: comprehensive token patterns (ghp_, github_pat_, sk-, AIza, Bearer) detected. Verified by 11 content-light tests including token, path, and field-name detection.",
+      "No idempotency for mutating intents — FALSE: all mutating intents accept idempotency_key. In-memory registry caches results for 600 seconds. Duplicate calls with same key return cached result.",
+      "Gateway silently swallows degradation — FALSE: every section has authority_state and degraded_reason. Missing services return MISSING with explanation. Fixture-deferred dependencies are explicitly reported.",
+      "No provenance on sub-objects — FALSE: _count_in_object now counts provenance on the object AND recurses into children, so J0ConnectionProjection's controlled_boundary_proof is counted alongside J0WorkspaceProjection's derived_projection.",
+      "Gateway bypasses J0/K0/L0/M0 authority — FALSE: all 14 intents route through published service public APIs. No intent creates or mutates authority directly."
+    ]
+  },
+  "evidence_artifacts": [
+    ".build/rig-relay/gateway/s2_authority_projection_dump.v1.json",
+    ".build/rig-relay/gateway/s2_claim_adversary_evidence.v1.json"
+  ],
+  "generated_at": "2026-05-27T02:00:00Z"
+}

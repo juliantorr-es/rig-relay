@@ -1,12 +1,22 @@
-"""Developer Studio Gateway — Lane O0.
+"""Developer Studio Gateway — Lane S2 (hardened from O0).
 
 Backend bridge corridor consuming published J0/K0/L0/M0 application
 services and exposing a single typed frontend-safe projection and
 intent protocol for P0 (web frontend) and N1 (WebKit host).
+
+Now evidence-backed: provenance is counted by walking projection trees;
+content-light enforcement runs on every projection; idempotency keys
+protect mutating intents from duplicate effects; explicit authority
+states classify each consumed service from canonical evidence.
 """
 
 from __future__ import annotations
 
+from rig_relay.desktop.gateway._authority import (
+    AuthorityEvidence,
+    GatewayAuthorityReport,
+    ServiceAuthority,
+)
 from rig_relay.desktop.gateway._intents import (
     execute_gateway_intent,
     get_gateway_service,
@@ -47,8 +57,10 @@ __all__ = [
     "K0_PROJECTION_BUILDER",
     "L0_PROJECTION_BUILDER",
     "M0_PROJECTION_BUILDER",
+    "AuthorityEvidence",
     "DeveloperStudioGatewayService",
     "DeveloperStudioProjection",
+    "GatewayAuthorityReport",
     "GatewayError",
     "GatewayErrorKind",
     "J0ConnectionProjection",
@@ -64,6 +76,7 @@ __all__ = [
     "M0RefusalEntry",
     "M0TaskSuitabilityEntry",
     "ProvenanceClass",
+    "ServiceAuthority",
     "StudioProvenanceSummary",
     "StudioServiceHealth",
     "TrustState",

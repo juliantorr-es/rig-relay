@@ -1,14 +1,19 @@
-"""Developer studio gateway intent handlers — Lane O0.
+"""Developer studio gateway intent handlers — Lane S2 (hardened from O0).
 
 Routes typed intents from the bridge frontend to the correct producer
 service through the DeveloperStudioGatewayService. Never bypasses J0/K0/
 L0/M0 authority. All intent payloads are validated before dispatch.
+
+Now supports idempotency keys for mutating intents: duplicate invocations
+with the same key return the cached result. Content-light enforcement
+runs on intent results where applicable.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from rig_relay.desktop.gateway._content_light import enforce_content_light
 from rig_relay.desktop.gateway._models import GatewayErrorKind
 from rig_relay.desktop.gateway._service import DeveloperStudioGatewayService
 
@@ -55,33 +60,43 @@ def execute_gateway_intent(
     All intents are read-only or safe-local. Mutation intents
     (Pages deployment, proposal approval, live publication) are
     explicitly refused. Never bypasses J0/K0/L0/M0 authority.
+
+    Idempotency keys prevent duplicate effects for mutating intents.
     """
     gw = gateway or get_gateway_service()
     params = parameters or {}
+    idempotency_key = params.get("idempotency_key")
 
     match intent_name:
         case "get_developer_studio_projection":
             proj = gw.build_projection()
-            result = proj.model_dump(mode="json")
-            return {
+            result_dict = proj.model_dump(mode="json")
+            violations = enforce_content_light(
+                result_dict, source_label="developer_studio_projection"
+            )
+            warnings = violations if violations else []
+            result = {
                 "status": "completed",
                 "intent_name": intent_name,
-                "data": result,
+                "data": result_dict,
                 "projection_refresh_recommended": False,
             }
+            if warnings:
+                result["warnings"] = warnings
+            return result
 
         # ── J0 intents ────────────────────────────────────────
         case "studio_connect_workspace":
-            return gw.connect_workspace()
+            return gw.connect_workspace(idempotency_key=idempotency_key)
 
         case "studio_discover_repositories":
-            return gw.discover_repositories()
+            return gw.discover_repositories(idempotency_key=idempotency_key)
 
         case "studio_select_repository":
             repo_hash = params.get("repository_hash", "")
             if not repo_hash:
                 return _refused_msg(intent_name, "repository_hash is required")
-            return gw.select_repository(repo_hash)
+            return gw.select_repository(repo_hash, idempotency_key=idempotency_key)
 
         case "studio_import_repository":
             repo_hash = params.get("repository_hash", "")
@@ -91,14 +106,18 @@ def execute_gateway_intent(
                 return _refused_msg(
                     intent_name, "repository_hash, owner, and repo are required"
                 )
-            return gw.import_repository(repo_hash, owner, repo)
+            return gw.import_repository(
+                repo_hash, owner, repo, idempotency_key=idempotency_key
+            )
 
         case "studio_inspect_publication_readiness":
             owner = params.get("owner", "")
             repo = params.get("repo", "")
             if not owner or not repo:
                 return _refused_msg(intent_name, "owner and repo are required")
-            return gw.inspect_publication_readiness(owner, repo)
+            return gw.inspect_publication_readiness(
+                owner, repo, idempotency_key=idempotency_key
+            )
 
         case "studio_prepare_pages_action":
             return gw.prepare_pages_action(
@@ -107,6 +126,7 @@ def execute_gateway_intent(
                 target_type=params.get("target_type", "project_page"),
                 source_branch=params.get("source_branch", ""),
                 source_path=params.get("source_path", "/"),
+                idempotency_key=idempotency_key,
             )
 
         # ── K0 intents ────────────────────────────────────────
@@ -122,19 +142,22 @@ def execute_gateway_intent(
                 head_sha=params.get("head_sha", ""),
                 branch=params.get("branch", ""),
                 agent_profile_name=params.get("agent_profile_name", "plan"),
+                idempotency_key=idempotency_key,
             )
 
         case "studio_get_investigation":
             session_id = params.get("session_id", "")
             if not session_id:
                 return _refused_msg(intent_name, "session_id is required")
-            return gw.get_investigation_projection(session_id)
+            return gw.get_investigation_projection(
+                session_id, idempotency_key=idempotency_key
+            )
 
         case "studio_close_investigation":
             session_id = params.get("session_id", "")
             if not session_id:
                 return _refused_msg(intent_name, "session_id is required")
-            return gw.close_investigation(session_id)
+            return gw.close_investigation(session_id, idempotency_key=idempotency_key)
 
         # ── L0 intents ────────────────────────────────────────
         case "studio_assemble_project_profile":
@@ -146,6 +169,7 @@ def execute_gateway_intent(
                 repository_root=params.get("repository_root", ""),
                 head_sha=params.get("head_sha", ""),
                 branch=params.get("branch", ""),
+                idempotency_key=idempotency_key,
             )
 
         case "studio_assemble_context_packet":
@@ -157,6 +181,7 @@ def execute_gateway_intent(
                 repository_root=params.get("repository_root", ""),
                 head_sha=params.get("head_sha", ""),
                 branch=params.get("branch", ""),
+                idempotency_key=idempotency_key,
             )
 
         # ── M0 intents ────────────────────────────────────────
@@ -175,13 +200,15 @@ def execute_gateway_intent(
                     intent_name,
                     f"task_kind must be one of: {', '.join(sorted(valid_kinds))}",
                 )
-            return gw.request_local_assistance(task_kind=task_kind)
+            return gw.request_local_assistance(
+                task_kind=task_kind, idempotency_key=idempotency_key
+            )
 
         case "studio_get_local_draft":
             draft_sha256 = params.get("draft_sha256", "")
             if not draft_sha256:
                 return _refused_msg(intent_name, "draft_sha256 is required")
-            return gw.get_local_draft(draft_sha256)
+            return gw.get_local_draft(draft_sha256, idempotency_key=idempotency_key)
 
         case _:
             return {

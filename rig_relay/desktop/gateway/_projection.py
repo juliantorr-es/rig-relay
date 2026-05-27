@@ -1,12 +1,17 @@
-"""Developer studio projection builders — Lane O0.
+"""Developer studio projection builders — Lane S2 (hardened from O0).
 
 Each builder consumes the published public API of exactly one service
-(J0/K0/L0/M0) and produces content-light projection models. Never reads
-authority ledgers or reproduces producer logic.
+(J0/K0/L0/M0) and produces content-light projection models with explicit
+evidence-backed authority states. Never reads authority ledgers or
+reproduces producer logic.
 
 All builders are pure functions that receive a gateway service reference
 and return typed projection models. Content-light: hashes, counts,
 statuses, and SHA256 digests only.
+
+Every builder now classifies the service authority from canonical evidence,
+not from hardcoded labels. Degraded states (missing, stale, corrupt,
+contradictory, fixture-deferred) are explicitly reported with reasons.
 """
 
 from __future__ import annotations
@@ -33,36 +38,64 @@ if TYPE_CHECKING:
     from rig_relay.desktop.gateway._service import DeveloperStudioGatewayService
 
 
+_UNAVAILABLE_SENTINEL = object()
+
+
 # ── J0 Projection Builder ──────────────────────────────────────────
 
 
 def J0_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> J0WorkspaceProjection:
-    """Build J0 workspace projection from published service public API."""
+    """Build J0 workspace projection from published service public API.
+
+    Authority states:
+    - canonical_live: J0 service loaded, credentials present, build_gridline_projection succeeds
+    - controlled_boundary: J0 service loaded but no credentials (GitHub App not installed)
+    - missing: J0 service cannot be imported or constructed
+    - corrupt: J0 service loaded but projection fails with an unexpected exception
+    """
     j0 = gateway._get_j0_service()
 
     if j0 is _UNAVAILABLE_SENTINEL or j0 is None:
         return J0WorkspaceProjection(
             available=False,
+            authority_state="missing",
+            degraded_reason="J0 workspace service cannot be loaded; GitHub App credentials not configured",
             connection=J0ConnectionProjection(
                 provenance=ProvenanceClass.CONTROLLED_BOUNDARY_PROOF,
                 trust_state=TrustState.CONTROLLED_BOUNDARY,
+                authority_state="missing",
+                degraded_reason="No J0 service available",
             ),
         )
+
+    connection = _build_j0_connection(j0)
 
     try:
         gridline = j0.build_gridline_projection()
         if gridline is None:
-            return J0WorkspaceProjection(available=False)
-    except Exception:
-        return J0WorkspaceProjection(available=False)
+            # Service is loaded but no data — controlled boundary
+            return J0WorkspaceProjection(
+                available=False,
+                authority_state="controlled_boundary",
+                degraded_reason="J0 service loaded but no gridline projection available; no repositories discovered",
+                connection=connection,
+            )
+    except Exception as exc:
+        return J0WorkspaceProjection(
+            available=False,
+            authority_state="corrupt",
+            degraded_reason=f"J0 build_gridline_projection raised: {exc}",
+            connection=connection,
+        )
 
-    connection = _build_j0_connection(j0)
     repos = _build_j0_repositories(j0, gridline)
 
     return J0WorkspaceProjection(
         available=True,
+        authority_state=connection.authority_state,
+        degraded_reason=connection.degraded_reason,
         connection=connection,
         repositories=repos,
         selected_count=gridline.selected_count,
@@ -79,24 +112,42 @@ def _build_j0_connection(j0: object) -> J0ConnectionProjection:
             return J0ConnectionProjection(
                 provenance=ProvenanceClass.CONTROLLED_BOUNDARY_PROOF,
                 trust_state=TrustState.CONTROLLED_BOUNDARY,
+                authority_state="controlled_boundary",
+                degraded_reason="No GitHub App connection established; run connect() first",
             )
+        token_available = bool(getattr(conn, "token_available", False))
+        live_verified = bool(getattr(conn, "token_available", False))
         return J0ConnectionProjection(
-            provenance=ProvenanceClass.CANONICAL_FACT,
+            provenance=(
+                ProvenanceClass.CANONICAL_FACT
+                if token_available
+                else ProvenanceClass.CONTROLLED_BOUNDARY_PROOF
+            ),
             trust_state=(
                 TrustState.TRUSTED_LIVE
-                if getattr(conn, "token_available", False)
+                if token_available
                 else TrustState.CONTROLLED_BOUNDARY
+            ),
+            authority_state=(
+                "canonical_live" if token_available else "controlled_boundary"
+            ),
+            degraded_reason=(
+                ""
+                if token_available
+                else "GitHub App installation token not available; controlled-boundary mode"
             ),
             connection_state=getattr(conn, "connection_state", "disconnected"),
             installation_id_hash=getattr(conn, "installation_id_hash", ""),
-            token_available=getattr(conn, "token_available", False),
+            token_available=token_available,
             accessible_repository_count=getattr(conn, "accessible_repository_count", 0),
-            live_installation_verified=bool(getattr(conn, "token_available", False)),
+            live_installation_verified=live_verified,
         )
-    except Exception:
+    except Exception as exc:
         return J0ConnectionProjection(
             provenance=ProvenanceClass.CONTROLLED_BOUNDARY_PROOF,
             trust_state=TrustState.CONTROLLED_BOUNDARY,
+            authority_state="corrupt",
+            degraded_reason=f"J0 connection access raised: {exc}",
         )
 
 
@@ -141,10 +192,24 @@ def _build_j0_repositories(
 def K0_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> K0OperatorProjection:
-    """Build K0 operator projection from gateway-tracked sessions."""
+    """Build K0 operator projection from gateway-tracked sessions.
+
+    K0 sessions live in gateway._k0_sessions (in-memory dict). This is
+    a derived projection, not a canonical store. Authority is derived
+    from the presence of live sessions.
+
+    Authority states:
+    - canonical_live: sessions exist with real AgentLoop investigation
+    - missing: no sessions registered
+    - fixture_deferred: (not applicable — K0 is its own service)
+    """
     sessions = gateway._k0_sessions
     if not sessions:
-        return K0OperatorProjection(available=False)
+        return K0OperatorProjection(
+            available=False,
+            authority_state="missing",
+            degraded_reason="No K0 operator sessions registered in gateway",
+        )
 
     active_list: list[K0SessionProjection] = []
     refused_count = 0
@@ -162,6 +227,7 @@ def K0_PROJECTION_BUILDER(
                 purpose=proj.get("purpose", ""),
                 status=proj.get("status", "opened"),
                 phase=proj.get("phase", "idle"),
+                agent_profile_name=proj.get("agent_profile_name", ""),
                 tool_call_count=sum(
                     t.get("call_count", 0) for t in (proj.get("tool_summary") or [])
                 ),
@@ -196,6 +262,8 @@ def K0_PROJECTION_BUILDER(
     total = len(sessions)
     return K0OperatorProjection(
         available=total > 0,
+        authority_state="canonical_live",
+        degraded_reason="",
         active_sessions=active_list,
         total_sessions=total,
         active_session_count=total - refused_count,
@@ -211,34 +279,75 @@ def K0_PROJECTION_BUILDER(
 def L0_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> L0ContextProjection:
-    """Build L0 context projection from published service."""
+    """Build L0 context projection from published service.
+
+    The L0 ProjectContextAssemblyService is a real production service
+    with deterministic repo extraction. However, its upstream intake is
+    fixture-deferred (J0 RepositoryIntakeService boundary not yet released)
+    and investigation evidence is fixture-deferred (K0 AgentLoop boundary
+    not yet released).
+
+    Authority states:
+    - canonical_degraded: L0 service available but intake/investigation are fixture-backed
+    - missing: L0 service cannot be loaded
+    - fixture_deferred: intake or investigation boundaries are fixture-only
+    """
     gateway._get_l0_service()  # ensure L0 is available
 
-    intake_status = L0IntakeStatusProjection(
-        provenance=ProvenanceClass.DERIVED_PROJECTION,
-        j0_intake_boundary="fixture",
-        k0_investigation_boundary="fixture",
-        j0_intake_available=False,
-        k0_investigation_available=False,
-    )
+    j0_boundary = "fixture"
+    j0_available = False
+    k0_boundary = "fixture"
+    k0_available = False
 
     k0_sessions = gateway._k0_sessions
     if k0_sessions:
-        intake_status.k0_investigation_available = True
-        intake_status.k0_investigation_boundary = "live"
+        k0_boundary = "live"
+        k0_available = True
 
     j0 = gateway._get_j0_service()
     if j0 is not _UNAVAILABLE_SENTINEL and j0 is not None:
         try:
             discovered = getattr(j0, "discovered_repos", {}) or {}
             if discovered:
-                intake_status.j0_intake_available = True
-                intake_status.j0_intake_boundary = "live"
+                j0_boundary = "live"
+                j0_available = True
         except Exception:
             pass
 
+    fixture_count = 0
+    if j0_boundary == "fixture":
+        fixture_count += 1
+    if k0_boundary == "fixture":
+        fixture_count += 1
+
+    if fixture_count == 0:
+        authority = "canonical_live"
+        reason = "All L0 dependencies are live"
+    elif fixture_count == 1:
+        authority = "canonical_degraded"
+        reason = (
+            f"One L0 dependency is fixture-backed: "
+            f"J0 intake={j0_boundary}, K0 investigation={k0_boundary}"
+        )
+    else:
+        authority = "fixture_deferred"
+        reason = (
+            f"L0 intake and investigation are fixture-deferred: "
+            f"J0 intake={j0_boundary}, K0 investigation={k0_boundary}"
+        )
+
+    intake_status = L0IntakeStatusProjection(
+        provenance=ProvenanceClass.DERIVED_PROJECTION,
+        j0_intake_boundary=j0_boundary,
+        k0_investigation_boundary=k0_boundary,
+        j0_intake_available=j0_available,
+        k0_investigation_available=k0_available,
+    )
+
     return L0ContextProjection(
         available=True,
+        authority_state=authority,
+        degraded_reason=reason,
         intake_dependency_status=intake_status,
         redaction_engine_available=True,
     )
@@ -250,27 +359,47 @@ def L0_PROJECTION_BUILDER(
 def M0_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> M0InferenceProjection:
-    """Build M0 inference projection from published service."""
+    """Build M0 inference projection from published service.
+
+    M0 LocalProjectInferenceService is a real production service making
+    real HTTP calls to Ollama/OAI-compatible endpoints. However, it is
+    candidate_local (not yet promoted to published_narrow_release).
+
+    Authority states:
+    - canonical_live: M0 service loaded, runtime configured and available
+    - canonical_degraded: M0 service loaded but runtime not configured
+    - missing: M0 service cannot be loaded
+    - fixture_deferred: context packet is M0-owned synthetic fixture
+    """
     m0 = gateway._get_m0_service()
 
     if m0 is _UNAVAILABLE_SENTINEL or m0 is None:
-        return M0InferenceProjection(available=False)
+        return M0InferenceProjection(
+            available=False,
+            authority_state="missing",
+            degraded_reason="M0 inference service cannot be loaded",
+        )
+
+    runtime_available = False
+    runtime_configured = False
+    runtime_kind = "unknown"
+    platform_class = "unknown"
 
     try:
         runtime_info = m0.get_runtime_info()
+        runtime_available = runtime_info.get("available", False)
+        runtime_configured = runtime_info.get("configured", False)
+        runtime_kind = runtime_info.get("runtime_kind", "unknown")
+        platform_class = runtime_info.get("platform_class", "unknown")
     except Exception:
-        return M0InferenceProjection(available=False)
-
-    runtime_available = runtime_info.get("available", False)
-    runtime_kind = runtime_info.get("runtime_kind", "unknown")
-    platform_class = runtime_info.get("platform_class", "unknown")
+        pass
 
     tasks = _build_m0_task_suitability(runtime_available, runtime_kind)
 
     try:
         from rig_relay.local_inference._projection import build_assistance_projection
 
-        build_assistance_projection(m0)  # ensure M0 projection is available
+        build_assistance_projection(m0)
     except Exception:
         pass
 
@@ -281,10 +410,24 @@ def M0_PROJECTION_BUILDER(
     total_refused = len(refusals)
     drafts_awaiting = sum(1 for d in drafts if d.requires_approval)
 
+    if runtime_available and runtime_configured:
+        authority = "canonical_live"
+        reason = ""
+    elif not runtime_configured:
+        authority = "canonical_degraded"
+        reason = "M0 local inference runtime is not configured; start a local Ollama/OAI endpoint"
+    else:
+        authority = "canonical_degraded"
+        reason = (
+            f"M0 runtime available={runtime_available}, configured={runtime_configured}"
+        )
+
     return M0InferenceProjection(
         available=True,
+        authority_state=authority,
+        degraded_reason=reason,
         runtime_available=runtime_available,
-        runtime_configured=runtime_info.get("configured", False),
+        runtime_configured=runtime_configured,
         runtime_kind=runtime_kind,
         platform_class=platform_class,
         task_suitability=tasks,
@@ -373,9 +516,3 @@ def _build_m0_refusals(m0: object) -> list[M0RefusalEntry]:
     except Exception:
         pass
     return refusals
-
-
-# ── Helpers ──────────────────────────────────────────────────────────
-
-
-_UNAVAILABLE_SENTINEL = object()
