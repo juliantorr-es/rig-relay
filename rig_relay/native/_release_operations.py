@@ -150,7 +150,7 @@ class ReleaseOperationsService:
                 evidence.warnings.append(f"Signing failed: {result.stderr[:200]}")
             else:
                 evidence.status = "signed"
-                evidence.bundle_sha256_after = "sha256:signed"
+                evidence.bundle_sha256_after = _hash_file_or_dir(app_path)
 
         except subprocess.TimeoutExpired:
             evidence.status = "failed"
@@ -189,7 +189,7 @@ class ReleaseOperationsService:
                 timeout=600,
                 cwd=str(self._macos_dir),
             )
-            evidence.bundle_sha256 = "sha256:submitted"
+            evidence.bundle_sha256 = _hash_file_or_dir(app_path)
             evidence.submitted_at = timestamp
 
             if result.returncode != 0:
@@ -246,3 +246,26 @@ class ReleaseOperationsService:
             evidence.warnings.append("xcrun stapler not available")
 
         return evidence
+
+
+def _hash_file_or_dir(path: Path) -> str:
+    """Hash a file or directory for content-light evidence binding."""
+    if not path.exists():
+        return "sha256:missing"
+    if path.is_dir():
+        hasher = hashlib.sha256()
+        for fpath in sorted(path.rglob("*")):
+            if fpath.is_file() and not fpath.is_symlink():
+                try:
+                    stat = fpath.stat()
+                    hasher.update(
+                        f"{fpath.relative_to(path)}:{stat.st_size}\n".encode()
+                    )
+                except (OSError, PermissionError):
+                    pass
+        return f"sha256:{hasher.hexdigest()}"
+    try:
+        content = path.read_bytes()
+        return f"sha256:{hashlib.sha256(content).hexdigest()}"
+    except (OSError, PermissionError):
+        return "sha256:unreadable"

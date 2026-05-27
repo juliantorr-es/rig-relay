@@ -23,7 +23,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 Julian Torres. AGPL-3.0-or-later.</string>
+	<string>Copyright © 2026 Rig Relay contributors. AGPL-3.0-or-later.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
@@ -32,18 +32,10 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
-	<key>SUPublicEDKey</key>
-	<string></string>
-	<key>SUFeedURL</key>
-	<string></string>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUScheduledCheckInterval</key>
-	<integer>86400</integer>
-	<key>SUShowReleaseNotes</key>
-	<true/>
+	<false/>
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
 	<key>SUVerifyUpdateBeforeExtraction</key>

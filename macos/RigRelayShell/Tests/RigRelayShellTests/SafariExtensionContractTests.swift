@@ -260,6 +260,56 @@ struct ContentLightValidationTests {
         let violations = validator.validateEnvelope(envelope)
         #expect(violations.isEmpty)
     }
+
+    @Test("X4.1 — Rejects forbidden key in nested payload")
+    func rejectsForbiddenKeyInNestedPayload() {
+        let validator = SafariExtensionContentLightValidator()
+        let violations = validator.validateJSON([
+            "kind": "handoff.github_repository",
+            "payload": [
+                "raw_prompt": "secret prompt content",
+                "url": "https://github.com/a/b",
+            ]
+        ])
+        #expect(violations.contains { $0.contains("raw_prompt") })
+    }
+
+    @Test("X4.1 — Rejects credential-bearing URL parameters")
+    func rejectsCredentialURLParams() {
+        let validator = SafariExtensionContentLightValidator()
+        let violations = validator.validateJSON([
+            "url": "https://example.com?access_token=ghp_secret"
+        ])
+        #expect(violations.contains { $0.contains("credential_url_parameter") })
+    }
+
+    @Test("X4.1 — Rejects token pattern in nested URL string")
+    func rejectsTokenInNestedField() {
+        let validator = SafariExtensionContentLightValidator()
+        let violations = validator.validateJSON([
+            "payload": [
+                "url": "https://github.com/owner/repo",
+                "message": "Use token ghp_1234567890abcdef"
+            ]
+        ])
+        #expect(violations.contains { $0.contains("payload.message") && $0.contains("token") })
+    }
+
+    @Test("X4.1 — Enforces 10,000-char message cap")
+    func enforcesMaxChars() {
+        let validator = SafariExtensionContentLightValidator()
+        let longString = String(repeating: "x", count: 10001)
+        let violations = validator.validateJSON(["message": longString])
+        #expect(violations.contains { $0.contains("character_length_cap") })
+    }
+
+    @Test("X4.1 — Passes message near but under cap")
+    func passesNearCap() {
+        let validator = SafariExtensionContentLightValidator()
+        let bodyText = String(repeating: "x", count: 9900)
+        let violations = validator.validateJSON(["message": bodyText])
+        #expect(!violations.contains { $0.contains("character_length_cap") })
+    }
 }
 
 @Suite("Response Builders")

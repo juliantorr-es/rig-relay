@@ -1,9 +1,0 @@
-{
-  "name": "com.rigrelay.RigRelayShell",
-  "description": "Rig Relay Safari Extension Native Messaging Host",
-  "path": "/Applications/RigRelayShell.app/Contents/MacOS/RigRelayShell",
-  "type": "stdio",
-  "allowed_origins": [
-    "safari-web-extension://*"
-  ]
-}

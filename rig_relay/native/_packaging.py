@@ -106,11 +106,23 @@ class PackagingService:
                 timeout=300,
                 cwd=str(self._macos_dir),
             )
-            evidence.build_sha256 = hashlib.sha256(result.stdout.encode()).hexdigest()
 
-            if result.returncode != 0:
+            app_dir = (
+                self._macos_dir
+                / "RigRelayShell"
+                / ".build"
+                / "bundle"
+                / "RigRelayShell.app"
+            )
+            if app_dir.exists() and app_dir.is_dir():
+                evidence.build_sha256 = _hash_directory(app_dir)
+            elif result.returncode != 0:
                 evidence.blocking_issues.append(f"Build failed: {result.stderr[:500]}")
             else:
+                evidence.build_sha256 = "sha256:built_no_bundle_found"
+                evidence.warnings.append(
+                    "Build completed but .app bundle not found at expected path"
+                )
                 if self._entitlements.exists():
                     evidence.entitlements_path = str(self._entitlements)
                     evidence.entitlements_sha256 = hashlib.sha256(
@@ -143,3 +155,29 @@ class PackagingService:
             if not (app_path / path).exists():
                 issues.append(f"Missing: {path}")
         return issues
+
+
+def _hash_directory(root: Path) -> str:
+    """Compute a deterministic SHA256 hash of a directory tree.
+
+    Walks files in sorted order, hashing each file's content.
+    Does not read binary files over 10 MB.
+    """
+    hasher = hashlib.sha256()
+    for fpath in sorted(root.rglob("*")):
+        if fpath.is_file() and not fpath.is_symlink():
+            try:
+                stat = fpath.stat()
+                if stat.st_size > 10 * 1024 * 1024:
+                    hasher.update(
+                        f"{fpath.relative_to(root)}:SIZE:{stat.st_size}\n".encode()
+                    )
+                    continue
+                rel = str(fpath.relative_to(root))
+                hasher.update(f"{rel}:{stat.st_size}\n".encode())
+                with fpath.open("rb") as f:
+                    while chunk := f.read(65536):
+                        hasher.update(chunk)
+            except (OSError, PermissionError):
+                hasher.update(f"{fpath.relative_to(root)}:UNREADABLE\n".encode())
+    return f"sha256:{hasher.hexdigest()}"

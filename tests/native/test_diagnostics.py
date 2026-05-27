@@ -60,6 +60,48 @@ def test_export_diagnostics_detects_tokens() -> None:
     )
     assert bundle.redacted is True
     assert len(bundle.content_light_violations) > 0
+    assert len(bundle.blocking) > 0
+
+
+def test_export_diagnostics_blocks_unsafe_status() -> None:
+    """X4.1: When unsafe content detected in signing_status, it is excluded."""
+    svc = DiagnosticExportService()
+    identity = AppPackageIdentity(
+        bundle_identifier="com.rigrelay.RigRelayShell",
+        bundle_name="Rig Relay",
+        short_version="0.1.0",
+        build_version="1",
+        minimum_system_version="14.0",
+        executable_path="test",
+        bundle_path="test",
+    )
+    bundle = svc.export_diagnostics(
+        app_identity=identity,
+        signing_status=SigningIdentityStatus(identities=["ghp_token_1234"]),
+    )
+    assert bundle.signing_status is None
+    assert len(bundle.blocking) > 0
+    assert any("blocked_export" in b for b in bundle.blocking)
+
+
+def test_export_diagnostics_scans_additional_health() -> None:
+    """X4.1: additional_health is scanned for violations."""
+    svc = DiagnosticExportService()
+    identity = AppPackageIdentity(
+        bundle_identifier="com.rigrelay.RigRelayShell",
+        bundle_name="Rig Relay",
+        short_version="0.1.0",
+        build_version="1",
+        minimum_system_version="14.0",
+        executable_path="test",
+        bundle_path="test",
+    )
+    bundle = svc.export_diagnostics(
+        app_identity=identity,
+        additional_health=[{"detail": "ghp_test_token_as_health"}],
+    )
+    assert len(bundle.content_light_violations) > 0
+    assert len(bundle.blocking) > 0
 
 
 def test_validate_export_no_violations() -> None:

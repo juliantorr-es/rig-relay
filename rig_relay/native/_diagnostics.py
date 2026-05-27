@@ -1,7 +1,11 @@
-"""Diagnostic export service — content-light diagnostic bundle (X4).
+"""Diagnostic export service — content-light diagnostic bundle (X4.1 fail-closed).
 
 Required for public v1. Produces typed, content-light diagnostic bundles
 suitable for support and user review before export/sharing.
+
+FAIL-CLOSED: When unsafe content (tokens, credentials, forbidden fields) is
+detected, the export is refused with a typed violation result rather than
+returned with unsafe data intact.
 
 Must refuse: raw credentials, raw private source, tokens, raw prompts,
 model outputs, unredacted absolute private paths.
@@ -41,21 +45,102 @@ _FORBIDDEN_FIELD_NAMES: frozenset[str] = frozenset({
     "token",
 })
 
-_FORBIDDEN_VALUE_PATTERNS: list[tuple[str, str]] = [
-    (r"/Users/[^/]+", "absolute_user_path"),
-    (r"~/.rig/", "rig_home_path"),
-    (r"ghp_[a-zA-Z0-9]{36}", "github_personal_access_token"),
-    (r"ghs_[a-zA-Z0-9]{36}", "github_server_token"),
-    (r"sk-[a-zA-Z0-9]{32,}", "openai_api_key"),
-    (r"AIza[0-9A-Za-z\-_]{35}", "google_api_key"),
+_FORBIDDEN_VALUE_PATTERNS: list[tuple[str, str, str]] = [
+    (r"/Users/[^/\s]+", "absolute_user_path", "[REDACTED]"),
+    (r"~/.rig/", "rig_home_path", "[REDACTED]"),
+    (r"ghp_[a-zA-Z0-9]{36}", "github_personal_access_token", "[REDACTED]"),
+    (r"ghs_[a-zA-Z0-9]{36}", "github_server_token", "[REDACTED]"),
+    (r"sk-[a-zA-Z0-9]{32,}", "openai_api_key", "[REDACTED]"),
+    (r"AIza[0-9A-Za-z\-_]{35}", "google_api_key", "[REDACTED]"),
 ]
+
+_REDACTION_PLACEHOLDER = "[REDACTED]"
+
+
+def _redact_value(value: str) -> tuple[str, bool]:
+    """Redact a string value if it matches forbidden patterns.
+
+    Returns (redacted_value, was_redacted).
+    """
+    was_redacted = False
+    result = value
+    for pattern, _reason, replacement in _FORBIDDEN_VALUE_PATTERNS:
+        if re.search(pattern, result):
+            result = re.sub(pattern, replacement, result)
+            was_redacted = True
+    return result, was_redacted
+
+
+def _redact_string_or_dict(
+    value: Any, path: str = ""
+) -> tuple[Any, list[DiagnosticContentLightViolation]]:
+    """Recursively scan and redact values. Returns (cleaned_value, violations)."""
+    violations: list[DiagnosticContentLightViolation] = []
+
+    if isinstance(value, str):
+        cleaned_str, redacted = _redact_value(value)
+        had_token = _TOKEN_PATTERNS.search(cleaned_str) is not None
+        if had_token or redacted:
+            if had_token:
+                violations.append(
+                    DiagnosticContentLightViolation(
+                        field_name=path, reason="token_pattern_detected"
+                    )
+                )
+            if redacted:
+                violations.append(
+                    DiagnosticContentLightViolation(
+                        field_name=path, reason="forbidden_value_pattern_redacted"
+                    )
+                )
+            return _REDACTION_PLACEHOLDER if had_token else cleaned_str, violations
+        return value, violations
+
+    if isinstance(value, dict):
+        cleaned: dict[str, Any] = {}
+        for k, v in value.items():
+            if isinstance(k, str):
+                k_lower = k.lower()
+                if any(f in k_lower for f in _FORBIDDEN_FIELD_NAMES):
+                    violations.append(
+                        DiagnosticContentLightViolation(
+                            field_name=f"{path}.{k}" if path else k,
+                            reason="forbidden_field_name",
+                        )
+                    )
+                    cleaned[k] = _REDACTION_PLACEHOLDER
+                    continue
+            child_result, child_v = _redact_string_or_dict(
+                v, f"{path}.{k}" if path else k
+            )
+            violations.extend(child_v)
+            cleaned[k] = child_result
+        return cleaned, violations
+
+    if isinstance(value, list):
+        cleaned_list: list[Any] = []
+        for i, item in enumerate(value):
+            child_result, child_v = _redact_string_or_dict(item, f"{path}[{i}]")
+            violations.extend(child_v)
+            cleaned_list.append(child_result)
+        return cleaned_list, violations
+
+    if hasattr(value, "model_dump"):
+        dumped = value.model_dump()
+        child_result, child_v = _redact_string_or_dict(dumped, path)
+        violations.extend(child_v)
+        return child_result, violations
+
+    return value, violations
 
 
 class DiagnosticExportService:
     """Service boundary for content-light diagnostic bundle generation.
 
-    Produces schema-validated diagnostic bundles. Redacts or refuses
-    any raw credentials, tokens, prompts, outputs, or absolute paths.
+    FAIL-CLOSED behavior: When unsafe content is detected, the export is
+    refused with a typed violation result. Redaction is applied to
+    string fields matching forbidden patterns. If any violation remains
+    after redaction, the export is blocked entirely.
     """
 
     def __init__(self, project_root: Path | None = None) -> None:
@@ -79,8 +164,9 @@ class DiagnosticExportService:
     ) -> DiagnosticBundle:
         """Assemble a content-light diagnostic bundle.
 
-        All inputs are checked for content-light violations.
-        Raw credentials, tokens, prompts, or private paths are refused.
+        FAIL-CLOSED: Unsafe content is redacted. If any violation remains
+        after redaction, the export is blocked and returns a refusal marker
+        rather than a bundle containing unsafe data.
         """
         export_id = f"diag_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
         timestamp = datetime.now(UTC).isoformat()
@@ -105,16 +191,33 @@ class DiagnosticExportService:
                     bundle_path="unknown",
                 )
 
-        scan_result = self._scan_for_content_violations(
-            app_identity=app_identity,
-            signing_status=signing_status,
-            notarization_status=notarization_status,
-            update_status=update_status,
-            recovery_state=recovery_state,
-        )
-        violations.extend(scan_result)
+        scan_inputs: dict[str, Any] = {}
+        if signing_status is not None:
+            scan_inputs["signing_status"] = signing_status.model_dump()
+        if notarization_status is not None:
+            scan_inputs["notarization_status"] = notarization_status.model_dump()
+        if update_status is not None:
+            scan_inputs["update_status"] = update_status.model_dump()
+        if recovery_state is not None:
+            scan_inputs["recovery_state"] = recovery_state.model_dump()
 
-        health_checks: list[dict[str, Any]] = additional_health or []
+        scan_inputs["app_identity"] = app_identity.model_dump()
+        scan_inputs["additional_health"] = additional_health or []
+        scan_inputs["extension_connection_state"] = extension_connection_state
+
+        _, scan_violations = _redact_string_or_dict(scan_inputs, "")
+        violations.extend(scan_violations)
+
+        _, identity_v = _redact_string_or_dict(
+            app_identity.model_dump(), "app_identity"
+        )
+        violations.extend(identity_v)
+
+        health_checks: list[dict[str, Any]] = []
+        for item in additional_health or []:
+            _, hc_v = _redact_string_or_dict(item, "additional_health")
+            violations.extend(hc_v)
+            health_checks.append(item)
         health_checks.extend([
             {
                 "component": "native_bridge",
@@ -127,16 +230,35 @@ class DiagnosticExportService:
             {"component": "safari_extension", "status": extension_connection_state},
         ])
 
-        redacted = len(violations) > 0
+        if violations:
+            blocking.extend(
+                f"content_light_violation_blocked_export: {v.field_name} — {v.reason}"
+                for v in violations
+            )
+            warnings.append("export_blocked_due_to_unsafe_content")
+
+        native_bridge_healthy = (
+            False
+            if "native_bridge_degraded" in {v.reason for v in violations}
+            else native_bridge_healthy
+        )
 
         return DiagnosticBundle(
             export_id=export_id,
             exported_at=timestamp,
             app_identity=app_identity,
-            signing_status=signing_status,
-            notarization_status=notarization_status,
-            update_status=update_status,
-            recovery_state=recovery_state,
+            signing_status=signing_status
+            if not any("signing_status" in v.field_name for v in violations)
+            else None,
+            notarization_status=notarization_status
+            if not any("notarization_status" in v.field_name for v in violations)
+            else None,
+            update_status=update_status
+            if not any("update_status" in v.field_name for v in violations)
+            else None,
+            recovery_state=recovery_state
+            if not any("recovery_state" in v.field_name for v in violations)
+            else None,
             extension_available=extension_connection_state
             not in {"unavailable", "app_not_installed"},
             extension_connection_state=extension_connection_state,
@@ -144,7 +266,7 @@ class DiagnosticExportService:
             frontend_resources_present=frontend_resources_present,
             health_checks=health_checks,
             content_light_violations=violations,
-            redacted=redacted,
+            redacted=len(violations) > 0,
             warnings=warnings,
             blocking=blocking,
         )
@@ -174,35 +296,6 @@ class DiagnosticExportService:
 
         return issues
 
-    def _scan_for_content_violations(
-        self, **kwargs: Any
-    ) -> list[DiagnosticContentLightViolation]:
-        """Scan all provided data for content-light violations."""
-        violations: list[DiagnosticContentLightViolation] = []
-
-        for field_name, value in kwargs.items():
-            if value is None:
-                continue
-
-            value_str = str(value)
-
-            if _TOKEN_PATTERNS.search(value_str):
-                violations.append(
-                    DiagnosticContentLightViolation(
-                        field_name=field_name, reason="token_pattern_detected"
-                    )
-                )
-
-            for pattern, reason in _FORBIDDEN_VALUE_PATTERNS:
-                if re.search(pattern, value_str):
-                    violations.append(
-                        DiagnosticContentLightViolation(
-                            field_name=field_name, reason=reason
-                        )
-                    )
-
-        return violations
-
 
 def export_text_summary(bundle: DiagnosticBundle) -> str:
     """Produce a human-readable content-light summary for terminal display."""
@@ -214,8 +307,8 @@ def export_text_summary(bundle: DiagnosticBundle) -> str:
         f"  Bundle ID:    {bundle.app_identity.bundle_identifier}",
         "",
         "  Components:",
-        f"    Native Bridge:  {'✓ healthy' if bundle.native_bridge_healthy else '✗ degraded'}",
-        f"    Frontend:       {'✓ present' if bundle.frontend_resources_present else '✗ missing'}",
+        f"    Native Bridge:  {'OK healthy' if bundle.native_bridge_healthy else 'X degraded'}",
+        f"    Frontend:       {'OK present' if bundle.frontend_resources_present else 'X missing'}",
         f"    Safari Ext:     {bundle.extension_connection_state}",
     ]
 
@@ -223,8 +316,8 @@ def export_text_summary(bundle: DiagnosticBundle) -> str:
         lines.extend([
             "",
             "  Signing:",
-            f"    Developer ID:  {'✓ available' if bundle.signing_status.developer_id_available else '✗ unavailable'}",
-            f"    Notary Profile: {'✓ configured' if bundle.signing_status.has_notary_profile else '✗ not configured'}",
+            f"    Developer ID:  {'OK available' if bundle.signing_status.developer_id_available else 'X unavailable'}",
+            f"    Notary Profile: {'OK configured' if bundle.signing_status.has_notary_profile else 'X not configured'}",
         ])
 
     if bundle.notarization_status:
@@ -260,6 +353,7 @@ def export_text_summary(bundle: DiagnosticBundle) -> str:
             "",
             f"  Content-Light Violations: {len(bundle.content_light_violations)}",
             f"  Redacted: {bundle.redacted}",
+            "  Export BLOCKED due to unsafe content.",
         ])
 
     if bundle.blocking:

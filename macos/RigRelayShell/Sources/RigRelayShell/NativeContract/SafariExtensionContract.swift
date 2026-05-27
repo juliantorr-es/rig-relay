@@ -25,8 +25,18 @@ enum SafariExtensionMessageSchema {
         "file_contents", "html", "raw_prompt", "model_output",
     ]
 
+    static let credentialParamNames: Set<String> = [
+        "access_token", "token", "client_secret", "api_key", "private_token",
+        "client_id", "code", "id_token", "refresh_token",
+    ]
+
     static let tokenPattern = try! NSRegularExpression(
         pattern: #"ghp_|ghs_|gho_|ghu_|ghr_|github_pat_"#,
+        options: []
+    )
+
+    static let credentialURLParamPattern = try! NSRegularExpression(
+        pattern: #"[?&](access_token|token|client_secret|api_key|private_token|client_id|id_token|refresh_token)="#,
         options: []
     )
 
@@ -495,14 +505,34 @@ struct SafariExtensionContentLightValidator: Sendable {
             violations.append("message_contains_github_token_pattern")
         }
 
+        if SafariExtensionMessageSchema.credentialURLParamPattern.firstMatch(in: rawString, range: range) != nil {
+            violations.append("message_contains_credential_url_parameter")
+        }
+
         for key in SafariExtensionMessageSchema.forbiddenPayloadKeys {
             if jsonDict[key] != nil {
                 violations.append("payload_contains_forbidden_key:\(key)")
             }
         }
 
-        if rawString.utf8.count > SafariExtensionMessageSchema.maxMessageLength * 4 {
-            violations.append("message_exceeds_utf8_byte_length")
+        if let innerDict = jsonDict["payload"] as? [String: Any] {
+            violations.append(contentsOf: _scanNested(dictionary: innerDict, path: "payload"))
+            if let owner = innerDict["owner"] as? String {
+                violations.append(contentsOf: _scanStringField(value: owner, path: "payload.owner"))
+            }
+            if let repo = innerDict["repo"] as? String {
+                violations.append(contentsOf: _scanStringField(value: repo, path: "payload.repo"))
+            }
+            if let url = innerDict["url"] as? String {
+                violations.append(contentsOf: _scanStringField(value: url, path: "payload.url"))
+            }
+            if let message = innerDict["message"] as? String {
+                violations.append(contentsOf: _scanStringField(value: message, path: "payload.message"))
+            }
+        }
+
+        if rawString.count > SafariExtensionMessageSchema.maxMessageLength {
+            violations.append("message_exceeds_character_length_cap:\(SafariExtensionMessageSchema.maxMessageLength)")
         }
 
         return violations
@@ -513,6 +543,49 @@ struct SafariExtensionContentLightValidator: Sendable {
             return ["unable_to_serialize"]
         }
         return validateJSON(dict)
+    }
+
+    private func _scanNested(dictionary: [String: Any], path: String) -> [String] {
+        var violations: [String] = []
+
+        for key in SafariExtensionMessageSchema.forbiddenPayloadKeys {
+            if dictionary[key] != nil {
+                violations.append("nested_payload_contains_forbidden_key:\(path).\(key)")
+            }
+        }
+
+        for (childKey, childValue) in dictionary {
+            let childPath = "\(path).\(childKey)"
+            if let nestedDict = childValue as? [String: Any] {
+                violations.append(contentsOf: _scanNested(dictionary: nestedDict, path: childPath))
+            } else if let nestedArray = childValue as? [Any] {
+                for (index, element) in nestedArray.enumerated() {
+                    if let nestedDict = element as? [String: Any] {
+                        violations.append(contentsOf: _scanNested(dictionary: nestedDict, path: "\(childPath)[\(index)]"))
+                    } else if let str = element as? String {
+                        violations.append(contentsOf: _scanStringField(value: str, path: "\(childPath)[\(index)]"))
+                    }
+                }
+            } else if let str = childValue as? String {
+                violations.append(contentsOf: _scanStringField(value: str, path: childPath))
+            }
+        }
+
+        return violations
+    }
+
+    private func _scanStringField(value: String, path: String) -> [String] {
+        var violations: [String] = []
+        let range = NSRange(value.startIndex..., in: value)
+
+        if SafariExtensionMessageSchema.tokenPattern.firstMatch(in: value, range: range) != nil {
+            violations.append("field_contains_token_pattern:\(path)")
+        }
+        if SafariExtensionMessageSchema.credentialURLParamPattern.firstMatch(in: value, range: range) != nil {
+            violations.append("field_contains_credential_url_parameter:\(path)")
+        }
+
+        return violations
     }
 }
 
