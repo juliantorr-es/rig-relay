@@ -26,6 +26,7 @@ from rig_relay.publication._evidence_ledger import (
     PublicationEvidenceLedger,
 )
 from rig_relay.publication._models import (
+    AuthorizationConsumer,
     LedgerReconstruction,
     PreviewEvidenceReceipt,
     PreviewRefusalCode,
@@ -38,6 +39,7 @@ from rig_relay.publication._models import (
     PublicationSafetyReport,
 )
 from rig_relay.publication._portfolio_service import PortfolioSynthesisService
+from rig_relay.publication._projection import build_publication_projection
 from rig_relay.publication._safety import (
     redact_unsafe_text,
     scan_project_page_output,
@@ -53,6 +55,7 @@ __all__ = [
     "LEDGER_DIR",
     "LEDGER_FILE",
     "ApprovedStaticPublicationBundle",
+    "AuthorizationConsumer",
     "AuthorizedPublicationTransitionPreparation",
     "ContentPublicationManifest",
     "DeploymentEvidenceLedger",
@@ -79,6 +82,7 @@ __all__ = [
     "PublicationTransitionPhase",
     "PublicationTransitionReceipt",
     "VerifiedApprovedProjectPublicationRecord",
+    "build_publication_projection",
     "redact_unsafe_text",
     "scan_project_page_output",
     "validate_publication_policy",

@@ -31,6 +31,7 @@ from rig_relay.publication._deployment_models import (
     _now_iso,
 )
 from rig_relay.publication._models import (
+    AuthorizationConsumer,
     PreviewEvidenceReceipt,
     ProjectPageCompilerResult,
 )
@@ -50,12 +51,12 @@ class GitHubPagesDeploymentService:
         ledger: DeploymentEvidenceLedger | None = None,
         token_getter: object | None = None,
         git_boundary: object | None = None,
-        auth_override: dict | None = None,
+        auth_consumer: AuthorizationConsumer | None = None,
     ) -> None:
         self._ledger = ledger or DeploymentEvidenceLedger()
         self._token_getter = token_getter
         self._git_boundary = git_boundary
-        self._auth_override = auth_override
+        self._auth_consumer = auth_consumer
 
     # ── Gate A: Publication Transition Preparation ─────────────────────
 
@@ -218,6 +219,13 @@ class GitHubPagesDeploymentService:
         op_id = transition_prep.publication_operation_id
         now = _now_iso()
 
+        source_branch = transition_prep.source_branch
+        target_id = (
+            _digest_sha256(f"{target_repo_owner}/{target_repo_name}/{source_branch}")
+            if target_repo_owner and target_repo_name
+            else ""
+        )
+
         bundle_obj = bundle
         if content_files and not bundle_obj:
             builder = ApprovedStaticPublicationBundle(
@@ -239,6 +247,7 @@ class GitHubPagesDeploymentService:
                     refusal=DeploymentRefusalCode.BUNDLE_DIGEST_MISMATCH,
                     reasons=validation["reasons"],
                     now=now,
+                    target_identity_digest=target_id,
                 )
 
         if not authorization_receipt_id:
@@ -249,6 +258,7 @@ class GitHubPagesDeploymentService:
                 refusal=DeploymentRefusalCode.AUTHORIZATION_MISSING,
                 reasons=["No content authorization receipt provided"],
                 now=now,
+                target_identity_digest=target_id,
             )
 
         if not target_repo_owner or not target_repo_name:
@@ -259,36 +269,33 @@ class GitHubPagesDeploymentService:
                 refusal=DeploymentRefusalCode.REPO_NOT_FOUND,
                 reasons=["Missing target repo"],
                 now=now,
+                target_identity_digest=target_id,
             )
 
         # ── Concurrency control: acquire branch-level publication lock (D1) ──
-        source_branch = transition_prep.source_branch
         content_digest_for_dedup = (
             bundle_obj.content_digest
             if bundle_obj and not bundle_obj.is_empty()
             else _digest_sha256(f"no-content:{op_id}")
         )
 
-        lock_acquired = self._ledger.acquire_branch_publication_lock(
+        async with self._ledger.branch_publication_lock(
             target_repo_owner, target_repo_name, source_branch
-        )
+        ) as lock_ctx:
+            if not lock_ctx.acquired:
+                return self._record_phase(
+                    op_id=op_id,
+                    prep=transition_prep,
+                    phase=PublicationTransitionPhase.REFUSED,
+                    refusal=DeploymentRefusalCode.CONCURRENT_PUBLICATION_CONFLICT,
+                    reasons=[
+                        f"Another publication is in progress for "
+                        f"{target_repo_owner}/{target_repo_name}:{source_branch}"
+                    ],
+                    now=now,
+                    target_identity_digest=target_id,
+                )
 
-        if not lock_acquired:
-            # Check lock file state to determine if same or different content
-            return self._record_phase(
-                op_id=op_id,
-                prep=transition_prep,
-                phase=PublicationTransitionPhase.REFUSED,
-                refusal=DeploymentRefusalCode.CONCURRENT_PUBLICATION_CONFLICT,
-                reasons=[
-                    f"Another publication is in progress for "
-                    f"{target_repo_owner}/{target_repo_name}:{source_branch}"
-                ],
-                now=now,
-            )
-
-        branch_lock_held = True
-        try:
             # ── Idempotency check under lock (D2) ──
             branch_state = self._ledger.check_branch_publication_state(
                 target_repo_owner,
@@ -308,6 +315,7 @@ class GitHubPagesDeploymentService:
                     git_publication_mode="atomic_git_commit",
                     recovery_required=False,
                     recovery_hint="Content already published (idempotent detection)",
+                    target_identity_digest=target_id,
                 )
 
             # ── Authorize content publication (Contents:write) ──────────
@@ -326,6 +334,7 @@ class GitHubPagesDeploymentService:
                     reasons=content_auth.get("reasons", []),
                     now=now,
                     auth_digest=content_auth.get("authorization_digest", ""),
+                    target_identity_digest=target_id,
                 )
 
             content_auth_digest = content_auth["authorization_digest"]
@@ -373,6 +382,7 @@ class GitHubPagesDeploymentService:
                         git_publication_mode=manifest.git_publication_mode,
                         recovery_required=True,
                         recovery_hint="Content commit created but ref not updated — remote conflict or ref update failed",
+                        target_identity_digest=target_id,
                     )
                 elif manifest.publication_partial:
                     return self._record_phase(
@@ -387,6 +397,7 @@ class GitHubPagesDeploymentService:
                         git_publication_mode=manifest.git_publication_mode,
                         recovery_required=True,
                         recovery_hint="Partial content publication; retry or verify",
+                        target_identity_digest=target_id,
                     )
                 else:
                     return self._record_phase(
@@ -404,6 +415,7 @@ class GitHubPagesDeploymentService:
                         git_publication_mode=manifest.git_publication_mode,
                         recovery_required=True,
                         recovery_hint="All files failed; retry content push",
+                        target_identity_digest=target_id,
                     )
 
             # ── Read Pages state (read-only, no mutation yet) ────────────
@@ -427,6 +439,7 @@ class GitHubPagesDeploymentService:
                     content_published=content_published,
                     recovery_required=True,
                     recovery_hint="Content published but Pages inspection failed; configure Pages manually",
+                    target_identity_digest=target_id,
                 )
 
             # ── Only configure Pages if content was published ───────────
@@ -443,6 +456,7 @@ class GitHubPagesDeploymentService:
                         content_published=True,
                         recovery_required=True,
                         recovery_hint="Content published but Pages configuration requires separate authorization",
+                        target_identity_digest=target_id,
                     )
 
                 pages_auth = await self._authorize_pages_configuration(
@@ -459,6 +473,7 @@ class GitHubPagesDeploymentService:
                         content_published=True,
                         recovery_required=True,
                         recovery_hint="Content published but Pages authorization refused",
+                        target_identity_digest=target_id,
                     )
 
                 pages_auth_digest = pages_auth["authorization_digest"]
@@ -484,6 +499,7 @@ class GitHubPagesDeploymentService:
                             content_published=True,
                             recovery_required=True,
                             recovery_hint="Content published but Pages creation failed",
+                            target_identity_digest=target_id,
                         )
                     pages_created = True
                     pages_phase = PublicationTransitionPhase.PAGES_CREATED
@@ -508,6 +524,7 @@ class GitHubPagesDeploymentService:
                             content_published=True,
                             recovery_required=True,
                             recovery_hint="Content published but Pages update failed",
+                            target_identity_digest=target_id,
                         )
                     pages_updated = True
                     pages_phase = PublicationTransitionPhase.PAGES_UPDATED
@@ -528,10 +545,8 @@ class GitHubPagesDeploymentService:
                 site_url=cfg_result.get("site_url", "")
                 if (pages_created or pages_updated)
                 else pages_state.get("html_url", ""),
+                target_identity_digest=target_id,
             )
-        finally:
-            if branch_lock_held:
-                self._ledger.release_branch_publication_lock()
 
     # ── Verify Publication ─────────────────────────────────────────────
 
@@ -635,6 +650,11 @@ class GitHubPagesDeploymentService:
             build_commit_matches_published=build_commit_matches,
             recovery_required=recovery,
             recovery_hint=hint,
+            target_identity_digest=_digest_sha256(
+                f"{target_repo_owner}/{target_repo_name}/{transition_prep.source_branch}"
+            )
+            if target_repo_owner and target_repo_name
+            else "",
         )
 
     # ── Status Contract ────────────────────────────────────────────────
@@ -708,6 +728,13 @@ class GitHubPagesDeploymentService:
                 continue
             if receipt_data.get("static_bundle_digest") != bundle_obj.content_digest:
                 continue
+            receipt_target = receipt_data.get("target_identity_digest", "")
+            if receipt_target:
+                target_digest = _digest_sha256(
+                    f"{target_repo_owner}/{target_repo_name}/{branch}"
+                )
+                if receipt_target != target_digest:
+                    continue
             published_sha = receipt_data.get("published_commit_sha", "")
             if not published_sha:
                 continue
@@ -829,6 +856,11 @@ class GitHubPagesDeploymentService:
                 content_manifest_digest=manifest.evidence_digest,
                 published_commit_sha=manifest.commit_sha,
                 git_publication_mode=manifest.git_publication_mode,
+                target_identity_digest=_digest_sha256(
+                    f"{target_repo_owner}/{target_repo_name}/{branch}"
+                )
+                if target_repo_owner and target_repo_name
+                else "",
             )
         return manifest
 
@@ -858,6 +890,7 @@ class GitHubPagesDeploymentService:
         build_commit_matches_published: bool = False,
         recovery_required: bool = False,
         recovery_hint: str = "",
+        target_identity_digest: str = "",
     ) -> PublicationTransitionReceipt:
         receipt_id = _digest_sha256(f"{op_id}:{phase.value}")[:22]
         reason_list = reasons or []
@@ -886,6 +919,8 @@ class GitHubPagesDeploymentService:
             refusal_reasons=reason_list,
             recovery_required=recovery_required,
             recovery_hint=recovery_hint,
+            target_identity_digest=target_identity_digest
+            or prep.target_repository_identity_digest,
             deployed_at=now or _now_iso(),
         )
         r.evidence_digest = r.compute_digest()
@@ -925,28 +960,14 @@ class GitHubPagesDeploymentService:
         operation_kind: str,
         transition_prep: AuthorizedPublicationTransitionPreparation,
     ) -> dict:
-        """Consume one Lane A authorization receipt for the given operation."""
-        if self._auth_override is not None:
-            return self._auth_override
-
-        try:
-            from rig_relay.integrations.github_provider._authorization_consumer import (
-                ConsumerOutcome,
-                GitHubAuthorizationConsumer,
-            )
-        except ImportError:
+        if self._auth_consumer is None:
             return {
                 "authorized": False,
                 "refusal_code": DeploymentRefusalCode.AUTHORIZATION_MISSING.value,
-                "reasons": ["GitHub auth consumer not available"],
+                "reasons": ["No authorization consumer configured"],
                 "authorization_digest": "",
             }
-
-        target = None
-        parts = transition_prep.target_repository_identity_digest
-        if parts and "/" not in parts:
-            target = parts
-
+        target_identity = transition_prep.target_repository_identity_digest
         payload: dict = {
             "publication_operation_id": transition_prep.publication_operation_id,
             "preparation_digest": transition_prep.preparation_digest,
@@ -955,34 +976,13 @@ class GitHubPagesDeploymentService:
             "source_path": transition_prep.source_path,
             "target_surface": transition_prep.target_surface,
         }
-        result = GitHubAuthorizationConsumer.validate_and_consume(
+        return await self._auth_consumer.authorize(
             authorization_id=authorization_id,
             operation_kind=operation_kind,
             request_payload=payload,
-            target_identity=target or "",
-            prior_evidence_digest=transition_prep.preparation_digest,
+            target_identity=target_identity,
+            prior_evidence_digest=transition_prep.preview_evidence_digest,
         )
-
-        outcome = result.outcome
-        authorized = outcome == ConsumerOutcome.AUTHORIZED.value
-        refusal_code_map: dict[str, str] = {
-            ConsumerOutcome.EXPIRED_RECEIPT.value: DeploymentRefusalCode.AUTHORIZATION_EXPIRED.value,
-            ConsumerOutcome.ALREADY_CONSUMED.value: DeploymentRefusalCode.AUTHORIZATION_REVOKED.value,
-            ConsumerOutcome.REQUEST_DIGEST_MISMATCH.value: DeploymentRefusalCode.AUTHORIZATION_DIGEST_MISMATCH.value,
-        }
-
-        return {
-            "authorized": authorized,
-            "refusal_code": refusal_code_map.get(
-                outcome, DeploymentRefusalCode.AUTHORIZATION_REVOKED.value
-            ),
-            "reasons": [result.error_detail]
-            if result.error_detail and not authorized
-            else [],
-            "authorization_digest": _digest_sha256(
-                f"auth:{authorization_id}:{outcome}"
-            ),
-        }
 
     # ── Private: Pages API ────────────────────────────────────────────
 
@@ -1280,6 +1280,11 @@ class GitHubPagesDeploymentService:
                     content_manifest_digest="",
                     published_commit_sha=commit_sha,
                     git_publication_mode="atomic_git_commit",
+                    target_identity_digest=_digest_sha256(
+                        f"{target_repo_owner}/{target_repo_name}/{branch}"
+                    )
+                    if target_repo_owner and target_repo_name
+                    else "",
                 )
         except Exception as e:
             manifest.failed_files = [{"path": "__commit__", "error": str(e)[:200]}]
@@ -1305,6 +1310,11 @@ class GitHubPagesDeploymentService:
                         content_manifest_digest=manifest.evidence_digest,
                         published_commit_sha=commit_sha,
                         git_publication_mode="atomic_git_commit",
+                        target_identity_digest=_digest_sha256(
+                            f"{target_repo_owner}/{target_repo_name}/{branch}"
+                        )
+                        if target_repo_owner and target_repo_name
+                        else "",
                     )
             else:
                 manifest.orphaned_commit_sha = commit_sha

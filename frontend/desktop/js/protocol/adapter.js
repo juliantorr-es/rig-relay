@@ -424,9 +424,9 @@ function _setInferenceStudioSurfaceState(proj) {
     runtime_available: is_.runtime_available || false,
     runtime_configured: is_.runtime_configured || false,
     runtime_kind: is_.runtime_kind || 'unknown',
-    omlx_strategy: is_.omlx_strategy || 'deferred_pending_x2_5_repair',
+    omlx_strategy: is_.omlx_strategy || 'pending_infrastructure_handoff',
     omlx_available: is_.omlx_available || false,
-    omlx_disclosure: is_.omlx_disclosure || 'OMLX Rigged runtime boundary published by X2.4; X0 consumption blocked pending X2.5 repair and independent remote verification.',
+    omlx_disclosure: is_.omlx_disclosure || 'Hardware-accelerated local inference is pending infrastructure integration and verification.',
     task_suitability_count: is_.task_suitability_count || 0,
     total_results: is_.total_results || 0,
     total_executed: is_.total_executed || 0,
@@ -478,7 +478,7 @@ function _renderConnectStatus(state) {
   if (!chip) return;
 
   var status = state.status || 'unavailable';
-  _setStatusChip(chip, status, _connectStatusLabel(status, state));
+  _setConsumerStatusChip(chip, status, _connectStatusLabel(status, state));
   if (detail) {
     var detailText = '';
     if (status === 'unavailable') detailText = 'No connection available. Backend bridge not yet established.';
@@ -540,24 +540,7 @@ function _renderConnectPublicationApproval(state) {
 }
 
 function _renderConnectFixtureBanner(state) {
-  // Remove old fixture banners
-  var banners = document.querySelectorAll('#surface-connect .fixture-banner, #surface-connect .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  var card = document.querySelector('#surface-connect .connect-card');
-  if (!card) return;
-
-  var banner = document.createElement('div');
-  if (_mode === 'production' && (state.status === 'unavailable' || state.status === 'deferred')) {
-    banner.className = 'production-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-    _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-  } else if (_mode === 'fixture' && state.status !== 'connected') {
-    banner.className = 'fixture-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-    _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-  }
-  card.appendChild(banner);
+  // Status rendering handled by _setConsumerStatusChip
 }
 
 function _renderRepositoryEstateSurface() {
@@ -568,24 +551,7 @@ function _renderRepositoryEstateSurface() {
 }
 
 function _setRepoFixtureBanner(state) {
-  var banners = document.querySelectorAll('#surface-repository-estate .fixture-banner, #surface-repository-estate .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  var content = document.querySelector('#surface-repository-estate .surface-content');
-  if (!content) return;
-
-  var banner = document.createElement('div');
-  if (_mode === 'production' && state.status === 'unavailable') {
-    banner.className = 'production-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-    _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-    content.appendChild(banner);
-  } else if (_mode === 'fixture') {
-    banner.className = 'fixture-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-    _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-    content.appendChild(banner);
-  }
+  // Status rendering handled by _setConsumerStatusChip
 }
 
 function _renderRepoList(state) {
@@ -659,24 +625,7 @@ function _renderProjectStudioSurface() {
 }
 
 function _setStudioFixtureBanner(state) {
-  var banners = document.querySelectorAll('#surface-project-studio .fixture-banner, #surface-project-studio .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  var content = document.querySelector('#surface-project-studio .surface-content');
-  if (!content) return;
-
-  var banner = document.createElement('div');
-  if (_mode === 'production' && (state.status === 'unavailable' || state.status === 'deferred')) {
-    banner.className = 'production-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-    _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-    content.appendChild(banner);
-  } else if (_mode === 'fixture') {
-    banner.className = 'fixture-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-    _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-    content.appendChild(banner);
-  }
+  // Status rendering handled by _setConsumerStatusChip
 }
 
 function _renderStudioOperator(state) {
@@ -824,24 +773,7 @@ function _renderInferenceStudioSurface() {
 }
 
 function _setInferenceFixtureBanner(state) {
-  var banners = document.querySelectorAll('#surface-inference-studio .fixture-banner, #surface-inference-studio .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  var content = document.querySelector('#surface-inference-studio .surface-content');
-  if (!content) return;
-
-  var banner = document.createElement('div');
-  if (_mode === 'production' && (state.status === 'unavailable' || state.status === 'deferred')) {
-    banner.className = 'production-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-    _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-    content.appendChild(banner);
-  } else if (_mode === 'fixture') {
-    banner.className = 'fixture-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-    _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-    content.appendChild(banner);
-  }
+  // Status rendering handled by _setConsumerStatusChip
 }
 
 function _renderInferenceRuntime(state) {
@@ -859,7 +791,7 @@ function _renderInferenceRuntime(state) {
   }
 
   var available = state.runtime_available;
-  _setStatusChip(irEl.querySelector('.status-chip') || irEl, available ? 'available' : 'offline',
+  _setConsumerStatusChip(irEl.querySelector('.status-chip') || irEl, available ? 'available' : 'offline',
     available ? 'Runtime Available' : 'Runtime Offline');
   var detail = irEl.querySelector('.status-detail');
   if (detail) _setText(detail, (available ? 'Local inference ready (' + _escapeHtml(state.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
@@ -957,7 +889,7 @@ function _renderInferenceRefusals(state) {
 function _buildOMLXDisclosure(state) {
   var div = _makeEl('div', 'omlx-disclosure');
   div.style.cssText = 'margin-top:10px;padding:10px 14px;background:rgba(198,144,38,0.08);border:1px solid rgba(198,144,38,0.15);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--warning-color)';
-  var header = _makeEl('strong', '', 'OMLX Rigged Expansion');
+  var header = _makeEl('strong', '', 'Hardware-Accelerated Inference');
   div.appendChild(header);
   var statusLine = _makeEl('div', 'status-detail');
   statusLine.style.marginTop = '4px';
@@ -975,24 +907,7 @@ function _renderPublishPreviewSurface() {
 }
 
 function _setPublishFixtureBanner(state) {
-  var banners = document.querySelectorAll('#surface-publish-preview .fixture-banner, #surface-publish-preview .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  var content = document.querySelector('#surface-publish-preview .surface-content');
-  if (!content) return;
-
-  var banner = document.createElement('div');
-  if (_mode === 'production' && state.status === 'unavailable') {
-    banner.className = 'production-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-    _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-    content.appendChild(banner);
-  } else if (_mode === 'fixture') {
-    banner.className = 'fixture-banner';
-    banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-    _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-    content.appendChild(banner);
-  }
+  // Status rendering handled by _setConsumerStatusChip
 }
 
 function _renderPublishReadiness(state) {
@@ -1009,7 +924,7 @@ function _renderPublishReadiness(state) {
   var repos = state.publishable_repositories || [];
   var studies = state.studies || [];
   var canPublish = repos.length > 0;
-  _setStatusChip(readinessEl.querySelector('.status-chip') || readinessEl, canPublish ? 'available' : 'deferred',
+  _setConsumerStatusChip(readinessEl.querySelector('.status-chip') || readinessEl, canPublish ? 'available' : 'deferred',
     canPublish ? repos.length + ' repositories publishable' : 'Not Ready');
   var detail = readinessEl.querySelector('.status-detail');
   if (detail) _setText(detail, repos.length + ' repositories ready, ' + studies.length + ' studies available.');
@@ -1082,26 +997,7 @@ function _renderTimelineSurface() {
   var tlDegradation = _getEl('timeline-degradation');
   var tlDomains = _getEl('timeline-domains');
 
-  // Remove old fixture banners
-  var banners = document.querySelectorAll('#surface-timeline .fixture-banner, #surface-timeline .production-banner');
-  for (var i = 0; i < banners.length; i++) banners[i].remove();
-
-  // Add production/fixture banner
-  var content = document.querySelector('#surface-timeline .surface-content');
-  if (content) {
-    var banner = document.createElement('div');
-    if (_mode === 'production' && (state.status === 'unavailable' || state.status === 'deferred')) {
-      banner.className = 'production-banner';
-      banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(83,155,245,0.08);border:1px solid rgba(83,155,245,0.15);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--info-color);text-align:center';
-      _setText(banner, '\u2139\uFE0F Production mode \u2014 live bridge projection not yet received');
-      content.appendChild(banner);
-    } else if (_mode === 'fixture') {
-      banner.className = 'fixture-banner';
-      banner.style.cssText = 'margin-top:16px;padding:8px 14px;background:rgba(198,144,38,0.1);border:1px solid rgba(198,144,38,0.2);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--warning-color);text-align:center';
-      _setText(banner, '\u26A0 Fixture-backed projection \u2014 not live service data');
-      content.appendChild(banner);
-    }
-  }
+  // Status rendering handled by _setConsumerStatusChip
 
   // Timeline events
   if (tlEvents) {
@@ -1275,17 +1171,33 @@ function _renderEvidenceTag(status) {
   return '<span class="' + cls + '">' + _escapeHtml(status) + '</span>';
 }
 
-// ── Status chip helper ──────────────────────────────────────────────
+// ── Consumer status chip helper ─────────────────────────────────────
 
-function _setStatusChip(el, status, label) {
-  if (!el) return;
-  var cls = 'status-chip';
-  if (status === 'connected' || status === 'granted' || status === 'synced' || status === 'cloned' || status === 'ok' || status === 'available') cls += ' connected';
-  else if (status === 'disconnected' || status === 'refused' || status === 'failed' || status === 'error') cls += ' disconnected';
-  else if (status === 'deferred' || status === 'blocked' || status === 'warning') cls += ' deferred';
-  else cls += ' pending';
-  el.className = cls;
-  _setText(el, label || status);
+function _setConsumerStatusChip(container, statusValue, statusDetail) {
+  if (!container) return;
+  var mapping = {
+    'available':            { cls: 'available',       label: 'Available' },
+    'derived':              { cls: 'derived',         label: 'Derived' },
+    'setup_required':       { cls: 'setup-required',  label: 'Setup Required' },
+    'verification_pending': { cls: 'setup-required',  label: 'Verification Pending' },
+    'unavailable':          { cls: 'unavailable',     label: 'Unavailable' },
+    'signing_required':     { cls: 'setup-required',  label: 'Signing Required' },
+    'connection_required':  { cls: 'setup-required',  label: 'Connection Required' },
+    'error':                { cls: 'error',           label: 'Error' },
+    'blocked':              { cls: 'blocked',         label: 'Blocked' },
+  };
+  var entry = mapping[statusValue] || { cls: 'pending', label: statusValue || 'Unknown' };
+  container.className = 'status-chip ' + entry.cls;
+  _setText(container, entry.label);
+  if (statusDetail) {
+    var detail = container.querySelector('.status-detail');
+    if (!detail) {
+      detail = document.createElement('span');
+      detail.className = 'status-detail';
+      container.appendChild(detail);
+    }
+    _setText(detail, statusDetail);
+  }
 }
 
 function _connectStatusLabel(status, state) {

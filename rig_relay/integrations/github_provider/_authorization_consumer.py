@@ -426,10 +426,72 @@ def all_github_capability_contracts() -> list[GitHubCapabilityContract]:
     return list(_OPERATION_CONTRACTS.values())
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ── Publication AuthorizationConsumer Protocol Adapter ──────────────────
+# ═══════════════════════════════════════════════════════════════════════
+
+
+_AUTHORIZED_OUTCOME = "authorized"
+
+_OUTCOME_TO_REFUSAL: dict[str, str] = {
+    "missing_authorization": "authorization_missing",
+    "expired_receipt": "authorization_expired",
+    "already_consumed": "authorization_revoked",
+    "invalid_receipt": "authorization_missing",
+    "request_digest_mismatch": "authorization_digest_mismatch",
+    "action_mismatch": "authorization_digest_mismatch",
+    "target_mismatch": "authorization_digest_mismatch",
+    "provider_mismatch": "authorization_digest_mismatch",
+    "stale_evidence": "evidence_digest_mismatch",
+    "integrity_tampered": "evidence_receipt_corrupt",
+    "sentinel_excluded": "evidence_receipt_corrupt",
+    "not_found": "evidence_receipt_absent",
+    "corrupt": "evidence_receipt_corrupt",
+    "github_token_unavailable": "authorization_missing",
+    "github_permission_missing": "authorization_missing",
+    "remote_request_failed": "authorization_revoked",
+    "remote_verification_failed": "authorization_revoked",
+    "remote_outcome_indeterminate": "authorization_revoked",
+    "unknown_error": "authorization_revoked",
+}
+
+
+class GitHubAuthorizationConsumerAdapter:
+    """Adapts GitHubAuthorizationConsumer to rig_relay.publication._models.AuthorizationConsumer protocol."""
+
+    def __init__(self) -> None:
+        self._consumer = GitHubAuthorizationConsumer()
+
+    async def authorize(
+        self,
+        *,
+        authorization_id: str,
+        operation_kind: str,
+        request_payload: dict[str, object],
+        target_identity: str,
+        prior_evidence_digest: str,
+    ) -> dict[str, object]:
+        result = self._consumer.validate_and_consume(
+            authorization_id=authorization_id,
+            operation_kind=operation_kind,
+            request_payload=request_payload,
+            target_identity=target_identity,
+            prior_evidence_digest=prior_evidence_digest,
+        )
+        refusal_code = _OUTCOME_TO_REFUSAL.get(result.outcome, "authorization_revoked")
+        return {
+            "authorized": result.outcome == _AUTHORIZED_OUTCOME,
+            "refusal_code": refusal_code,
+            "reasons": [result.error_detail] if result.error_detail else [],
+            "authorization_digest": result.evidence_digest or "",
+        }
+
+
 __all__ = [
     "ConsumerOutcome",
     "ConsumerResult",
     "GitHubAuthorizationConsumer",
+    "GitHubAuthorizationConsumerAdapter",
     "GitHubCapabilityContract",
     "all_github_capability_contracts",
     "compute_request_digest",

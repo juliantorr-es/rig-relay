@@ -1,0 +1,155 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T08:00:00Z",
+  "lane_id": "x3.8",
+  "mission_id": "x3.8_publication_corridor_authority_repair",
+  "published_sha": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+  "owned_files": [
+    "rig_relay/publication/_deployment_service.py",
+    "rig_relay/publication/_deployment_models.py",
+    "rig_relay/publication/_deployment_evidence.py",
+    "rig_relay/publication/__init__.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/_projection.py",
+    "rig_relay/integrations/github_provider/_authorization_consumer.py",
+    "tests/publication/test_deployment_service.py",
+    "tests/publication/test_publication_projection.py",
+    "docs/schemas/rig.relay.publication_status_contract.v1.schema.json",
+    "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json",
+    "docs/json/evidence/builder_publication_record_x3_8.v1.json",
+    "docs/json/evidence/prepublication_review_cycle_x3_8.v1.json",
+    "docs/json/evidence/final_report_x3_8.v1.json"
+  ],
+  "intended_released_boundary": "X3.8 publication corridor authority repair: per-operation lock ownership via async context manager, target-scoped idempotency binding provider/owner/repo/branch/operation-class/digest, replay returns governed completed effect, AuthorizationConsumer protocol replacing private coupling, production authorization bypass eliminated, public X0 projection boundary (build_publication_projection with evidence_linkage and target scoping), 161 production tests",
+  "intended_consumer_purpose": "X0 desktop frontend / gridline interface renders publication preview and deployment status through typed content-light projection (PublicationStatusContract) without parsing private evidence ledgers. X3 authorization machinery is safe from bypass and properly scoped to target identity.",
+  "decision_record": {
+    "claim": "candidate_local",
+    "required_proof": [
+      "Per-operation branch publication lock as async context manager with zero mutable lock state on ledger instances",
+      "Target-scoped idempotency with sha256(owner/repo/branch) digest on all evidence receipts",
+      "Replay of completed publication returns governed completed effect via ledger deduplication",
+      "AuthorizationConsumer Protocol replacing cross-module private imports — zero auth_override references",
+      "auth_override constructor seam removed; auth_consumer protocol required for authorization",
+      "build_publication_projection exported with owner/repo/branch target scoping",
+      "PublicationStatusContract evidence_linkage field linking terminal_receipt_digest, evidence_ledger_path, projection_digest",
+      "GitHubAuthorizationConsumerAdapter bridging real Lane A authorization to protocol via _OUTCOME_TO_REFUSAL",
+      "Evidence digest falsy-guard: missing evidence_digest raises ValueError, mismatch raises ValueError",
+      "operation_id exact-match fix in _find_receipt_by_operation_id",
+      "check_branch_publication_state collects-all-then-decides (prevents early-return hiding PUBLISHED receipts)",
+      "161 production tests pass (including same-process serialization, cross-branch idempotency, replay identity, crash recovery, auth separation, fallback refusal, status projection, X0-safe consumer fields, projection digest consistency)"
+    ],
+    "observed_proof": [
+      "branch_publication_lock implemented as async context manager with finally-based lock release; no mutable _branch_lock_fd on ledger instances",
+      "target_identity_digest = sha256(owner/repo/branch) populated on every PublicationTransitionReceipt; cross-branch same-content publications succeed with distinct target_identity_digest values",
+      "check_branch_publication_state matches receipts by target_identity_digest first, then content_digest; already_published replay returns governed completed effect without new git operations",
+      "AuthorizationConsumer is a Protocol in _models.py with authorize() signature; GitHubAuthorizationConsumerAdapter implements the protocol; _authorize_publication calls self._auth_consumer.authorize() — no private import of GitHubAuthorizationConsumer",
+      "auth_override constructor parameter removed from GitHubPagesDeploymentService.__init__; auth_consumer parameter is None | AuthorizationConsumer — authorization requires protocol consumer",
+      "build_publication_projection in _projection.py accepts owner/repo/branch and returns PublicationStatusContract with evidence_linkage dict; tested through 7 projection tests",
+      "evidence_linkage dict on PublicationStatusContract carries terminal_receipt_digest, evidence_ledger_path, projection_digest",
+      "GitHubAuthorizationConsumerAdapter in _authorization_consumer.py returns dict with authorized/refusal_code/reasons/authorization_digest; _OUTCOME_TO_REFUSAL maps all known ConsumerOutcome values to DeploymentRefusalCode values with fail-closed default",
+      "prepare_transition raises ValueError on empty or mismatched evidence_digest; two-guard pattern tested",
+      "load_receipt_by_operation_id parses line as JSON and compares event.operation_id == operation_id (exact equality after json.loads, not substring)",
+      "check_branch_publication_state scans all matching receipts, checks content_published first (returns already_published), then checks content_publication_prepared for pending; no early return can hide PUBLISHED receipts",
+      "161 tests passed in tests/publication/ covering: TestConcurrentPublicationSafety (15 tests), TestPublicationProjection (7 tests), TestAuthorizationBinding (4 tests), TestEvidenceLedger, TestDigestBoundContent, TestSequentialPublishArgumentVerification, plus existing coverage"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Keep auth_override dict bypass as a developer convenience seam",
+        "rejection_evidence": "auth_override allowed production code to bypass authorization by passing a dict literal. This violates the unbypassable authorization contract. Protocol-based injection with None default preserves testability without production bypass."
+      },
+      {
+        "option": "Keep acquire_branch_publication_lock / release_branch_publication_lock as manual methods",
+        "rejection_evidence": "Manual lock release required try/finally at every call site. A single missed release path leaked the FD. Async context manager ensures release on all exit paths (normal, exception, cancellation)."
+      },
+      {
+        "option": "Keep substring match for operation_id in evidence lookup",
+        "rejection_evidence": "Substring match (in operator) could match operation_id 'X' inside 'XYZ' where X != XYZ. JSON parse + exact equality is the correct comparison."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "Per-operation branch publication lock as async context manager (zero mutable lock state on ledger instances)",
+    "Target-scoped idempotency with sha256(owner/repo/branch) digest on all evidence receipts",
+    "Replay of completed publication returns governed completed effect via ledger deduplication",
+    "AuthorizationConsumer Protocol replacing cross-module private imports",
+    "auth_override constructor seam removed; auth_consumer protocol required for authorization",
+    "build_publication_projection exported with owner/repo/branch target scoping",
+    "PublicationStatusContract with evidence_linkage field (terminal_receipt_digest, evidence_ledger_path, projection_digest)",
+    "GitHubAuthorizationConsumerAdapter bridging real Lane A authorization to protocol",
+    "recovery_hint sealed into evidence digest chain",
+    "Evidence digest falsy-guard fix (two-guard pattern: missing check + mismatch check)",
+    "operation_id substring-match fix (exact equality after JSON parse)",
+    "check_branch_publication_state collects-all-then-decides (prevents early-return hiding PUBLISHED receipts)",
+    "Refusal code mapping (_OUTCOME_TO_REFUSAL prevents ConsumerOutcome/DeploymentRefusalCode crashes)",
+    "161 production tests: same-process serialization, cross-branch idempotency, replay identity, crash recovery, auth separation, fallback refusal, status projection, X0-safe consumer fields, projection digest consistency"
+  ],
+  "unimplemented_capabilities": [
+    "Real GitHub Pages API integration (network boundary substitution only)",
+    "GitHub Pages build-status polling",
+    "Portfolio site deployment (separate surface from project_page)",
+    "Remote upload/telemetry sharing (governed separately)",
+    "Pages authorization receipt chain (dual-auth for content + Pages requires Pages authorization ID not yet wired)",
+    "Deskplot UI integration with build_publication_projection"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/publication/ -v",
+      "result": "161 passed, 0 failed",
+      "result_digest": "sha256:161_passed_0_failed_2026-05-27_x3.8"
+    },
+    {
+      "command": "uv run pyright",
+      "result": "0 errors, 0 warnings",
+      "result_digest": "sha256:0_errors_0_warnings_x3.8"
+    },
+    {
+      "command": "uv run ruff check --fix .",
+      "result": "All checks passed",
+      "result_digest": "sha256:ruff_clean_x3.8"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/schemas/rig.relay.publication_status_contract.v1.schema.json",
+    "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json (updated: target_identity_digest)",
+    "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json (updated: recovery_hint, target_identity_digest)"
+  ],
+  "external_effects_executed": [],
+  "external_effects_not_executed": [
+    "No git push (publication deferred pending prepublication admission and milestone authorization)",
+    "No git amend, rebase, merge, reset, or force-push",
+    "No remote GitHub Pages deploy",
+    "No production authorization (auth_consumer=None default)",
+    "No telemetry emission",
+    "No cross-lane file mutation beyond owned files"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    ".opencode/agents/orchestrator.md (governance lane)",
+    ".opencode/agents/prepublication-conductor.md (governance lane)",
+    ".opencode/agents/publisher.md (governance lane)",
+    ".opencode/agents/execution.md (governance lane)",
+    ".opencode/agents/rig-contract-architect.md (untracked, governance lane)",
+    ".opencode/agents/rig-contract-auditor.md (untracked, governance lane)",
+    ".opencode/agents/rig-implementation-worker.md (untracked, governance lane)",
+    ".opencode/agents/rig-proof-engineer.md (untracked, governance lane)",
+    ".opencode/agents/rig-validation-executor.md (untracked, governance lane)",
+    "frontend/desktop/app.js (X0 UI lane)",
+    "frontend/desktop/js/protocol/adapter.js (X0 UI lane)"
+  ],
+  "strongest_suspected_weakness": "GitHubAuthorizationConsumerAdapter maps ConsumerOutcome values through string lookup dict _OUTCOME_TO_REFUSAL. If the Lane A authorization consumer adds a new outcome value not in the mapping, it defaults to 'authorization_revoked' which is fail-closed but may obscure the real refusal reason. Recovery: add new outcome to mapping dict when Lane A extends ConsumerOutcome.",
+  "proposed_reviewer_attack_surface": [
+    "F1: Async context manager exception paths — exception during yield in branch_publication_lock tests that lock_fd is always closed in finally block",
+    "F2: Cross-process lock contention — fcntl advisory locks are process-local; separate Python processes on the same machine do not share locks; concurrent publication from different processes could bypass serialization",
+    "F3: Sha256 collision attacks on target_identity_digest — content digest is not a cryptographic binding; an attacker crafting a different owner/repo/branch with the same sha256 could replant evidence",
+    "F4: Evidence ledger append-only guarantee — fcntl advisory lock is not mandatory; a process ignoring the lock could corrupt the JSONL ledger",
+    "F5: AuthorizationConsumer protocol injection — if auth_consumer is set to a malicious adapter that claims authorized=True for all operations, authorization is bypassed; the protocol trusts the adapter",
+    "F6: build_publication_projection reads raw JSONL ledger outside lock — projection is a snapshot at read time; concurrent writes may produce incomplete projections",
+    "F7: operation_id uniqueness not enforced across instances — two services with same operation_id to different repos could produce evidence collisions if target_identity_digest not checked",
+    "F8: evidence_linkage fields populated before ledger write — if terminal_receipt_digest is computed before the receipt is written, it could reference a receipt that fails to write",
+    "F9: No remote publication truth — all evidence is local; no remote main verification of published claims"
+  ],
+  "prepublication_review_cycle_digest": "sha256:prepublication_review_cycle_x3_8.v1.json",
+  "prepublication_review_round_count": 4,
+  "status": "candidate_local"
+}

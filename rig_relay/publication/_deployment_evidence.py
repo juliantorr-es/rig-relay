@@ -7,6 +7,8 @@ reporting, conflict based on governed content not untrusted strings.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 import fcntl
 import hashlib
@@ -164,14 +166,17 @@ def _verify_receipt_digest(receipt: dict[str, Any]) -> None:
         "refusal_code": receipt.get("refusal_code"),
         "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
         "recovery_required": receipt.get("recovery_required", False),
+        "recovery_hint": receipt.get("recovery_hint", ""),
+        "target_identity_digest": receipt.get("target_identity_digest", ""),
         "deployed_at": receipt.get("deployed_at", ""),
     }
     payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
     computed = f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
-    if stored and stored != computed:
+    if not stored:
+        raise ValueError("Receipt missing evidence_digest")
+    if stored != computed:
         raise ValueError(
-            f"Receipt evidence digest mismatch: stored={stored[:20]}..., "
-            f"computed={computed[:20]}..."
+            f"Receipt evidence digest mismatch: stored={stored!r} != computed={computed!r}"
         )
 
 
@@ -207,43 +212,48 @@ class DeploymentEvidenceLedger:
         self._path = ledger_path
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
-        self._branch_lock_fd = None
-        self._branch_lock_path: Path | None = None
 
-    def acquire_branch_publication_lock(
+    @asynccontextmanager
+    async def branch_publication_lock(
         self, owner: str, repo: str, branch: str
-    ) -> bool:
-        """Acquire fcntl lock for branch-level publication serialization.
+    ) -> AsyncIterator[Any]:
+        """Async context manager for branch-level publication serialization.
 
         Lock files live in <ledger_dir>/locks/ keyed by sha256(owner/repo:branch).
-        Returns True if lock acquired, False if another process holds it.
+        Acquires fcntl lock (non-blocking). Yields a context object with
+        ``acquired`` bool — False when another process holds the lock.
         """
         lock_dir = self._path.parent / "locks"
         lock_dir.mkdir(parents=True, exist_ok=True)
         lock_id = _digest_sha256(f"{owner}/{repo}:{branch}")
-        self._branch_lock_path = lock_dir / f"{lock_id}.lock"
+        lock_path = lock_dir / f"{lock_id}.lock"
+
+        acquired = False
+        lock_fd = None
         try:
-            self._branch_lock_fd = open(self._branch_lock_path, "w")
-            fcntl.flock(self._branch_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
+            lock_fd = open(lock_path, "w")
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
         except (BlockingIOError, OSError):
-            if self._branch_lock_fd:
+            if lock_fd is not None:
                 try:
-                    self._branch_lock_fd.close()
+                    lock_fd.close()
                 except OSError:
                     pass
-            self._branch_lock_fd = None
-            return False
+            lock_fd = None
 
-    def release_branch_publication_lock(self) -> None:
-        if self._branch_lock_fd is not None:
-            try:
-                fcntl.flock(self._branch_lock_fd, fcntl.LOCK_UN)
-                self._branch_lock_fd.close()
-            except (ValueError, OSError):
-                pass
-            self._branch_lock_fd = None
-        self._branch_lock_path = None
+        try:
+            yield type("_BranchLockCtx", (), {"acquired": acquired})()
+        finally:
+            if lock_fd is not None:
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                except (ValueError, OSError):
+                    pass
+                try:
+                    lock_fd.close()
+                except (ValueError, OSError):
+                    pass
 
     def check_branch_publication_state(
         self, owner: str, repo: str, branch: str, content_digest: str
@@ -262,11 +272,24 @@ class DeploymentEvidenceLedger:
         }
 
         reconstruction = self.load_receipts()
+        matching_receipts: list[dict] = []
         for receipt_data in reconstruction.get("receipts", []):
             receipt_sbd = receipt_data.get("static_bundle_digest", "")
             if receipt_sbd != content_digest:
                 continue
 
+            receipt_target = receipt_data.get("target_identity_digest", "")
+            if receipt_target and owner and repo:
+                target_digest = _digest_sha256(f"{owner}/{repo}/{branch}")
+                if receipt_target != target_digest:
+                    continue
+
+            matching_receipts.append(receipt_data)
+
+        if not matching_receipts:
+            return result
+
+        for receipt_data in matching_receipts:
             if receipt_data.get("content_published"):
                 result["already_published"] = True
                 result["pending_commit_sha"] = receipt_data.get(
@@ -275,6 +298,7 @@ class DeploymentEvidenceLedger:
                 result["status"] = "already_published"
                 return result
 
+        for receipt_data in matching_receipts:
             if receipt_data.get("transition_phase") == "content_publication_prepared":
                 result["pending_commit_sha"] = receipt_data.get(
                     "published_commit_sha", ""
@@ -443,6 +467,8 @@ class DeploymentEvidenceLedger:
                     try:
                         event = json.loads(line)
                         _verify_event_digest(event)
+                        if event.get("operation_id") != operation_id:
+                            continue
                         return event
                     except (json.JSONDecodeError, ValueError, KeyError):
                         continue

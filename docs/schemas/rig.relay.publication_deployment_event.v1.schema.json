@@ -62,6 +62,7 @@
         "preview_evidence_digest", "transition_phase", "evidence_digest"
       ]
     },
+    "target_identity_digest": { "type": "string" },
     "event_digest": { "type": "string" }
   },
   "required": [

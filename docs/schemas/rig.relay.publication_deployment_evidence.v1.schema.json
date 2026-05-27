@@ -43,6 +43,7 @@
     "recovery_required": { "type": "boolean" },
     "recovery_hint": { "type": "string" },
     "deployed_at": { "type": "string" },
+    "target_identity_digest": { "type": "string" },
     "evidence_digest": { "type": "string" }
   },
   "required": [

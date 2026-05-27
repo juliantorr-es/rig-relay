@@ -1,0 +1,75 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "lane": "x2.6",
+  "candidate_sha": "<will be filled after checkpoint>",
+  "builder_claim": "Governed local inference runtime with evidence, FCFS serialized scheduling, SSD cache persistence, model pool authority, tool proposal preflight bridge, cancellation safety, honest terminal outcome taxonomy, and X0-facing projection surface.",
+  "required_proof": "All 9 mission tasks satisfied: evidence fail-closed, honest terminal outcomes, cancellation safety, FCFS scheduling proven, SSD cache hardened, pool authority enforced, tool bridge truthful, X0 projection released, hostile pass defeated.",
+  "observed_proof": "106 tests passing (pyright clean, ruff clean). 3-round prepublication review: 14 blocking findings found, 14 repaired. 8/9 attack domains defeated, 1/9 unproven (not material).",
+  "alternatives_rejected": [
+    {"alternative": "Implement real continuous batching (BatchGenerator)", "reason": "Deferred — requires external prefill + multi-request decode integration. FCFS serialized is the honest production capability."},
+    {"alternative": "Wire full ToolRuntime execution", "reason": "Deferred to X0 Inference Studio integration milestone."},
+    {"alternative": "Enable SSD cache by default", "reason": "SSD cache is opt-in — off by default. Path safety and corruption recovery are enforced when enabled."}
+  ],
+  "released_boundary": "GovernedLocalInferenceRuntimeWithEvidenceSchedulingCachePersistenceModelPoolToolBridgeAndCancellationBoundary",
+  "consumer_purpose": "Governed, evidenced, cancellable, FCFS-scheduled, cache-persistent, model-pool-managed local inference runtime with tool proposal preflight for future X0 Inference Studio consumption.",
+  "implemented_capabilities": [
+    "Fail-closed evidence emission — execution receipt failure prevents EXECUTED status",
+    "Honest terminal outcome taxonomy — EXECUTED, BLOCKED, REFUSED, CANCELLED, ERROR, RUNTIME_UNAVAILABLE",
+    "Cancellation safety — cancel_signal Event stops engine threads; reset_cancel_signal enables reuse",
+    "FCFS serialized scheduling — queue ordering, concurrency, cancellation, failure, evidence reconstruction",
+    "SSD cache persistence — path safety, corruption recovery, content-light evidence, LRU eviction",
+    "Model pool authority — acquire/release tracking, active-generation guard, pending unloads, force shutdown",
+    "Tool proposal preflight — governance preflight through bridge; explicit statuses (refused, pending_review, admitted_pending_execution, refused_by_governance, pending_session_context)",
+    "X0 projection surface — 16-section typed dict projection with evidence health, terminal outcomes, queue/batch, cache, pool, bridge, tool, cancellation, privacy, governance, models, health, capabilities",
+    "Post-shutdown admission gating",
+    "RuntimeNotConfiguredError for public API consistency"
+  ],
+  "capabilities_left_unimplemented": [
+    "Real continuous batching (MLX BatchGenerator integration)",
+    "Full tool execution through ToolRuntime (requires X0 session context)",
+    "Multi-model streaming concurrency (max_concurrent=1)",
+    "SSD cache enabled by default (opt-in only)",
+    "Desktop cockpit direct consumption (projection is dict, not wired to cockpit surface)"
+  ],
+  "tests_run_digest": {
+    "total": 106,
+    "passed": 106,
+    "failed": 0,
+    "test_file": "tests/local_inference/runtime/test_rigged_runtime_boundary.py",
+    "test_classes": 26,
+    "last_run": "2026-05-27T00:00:00Z",
+    "pyright": "0 errors, 0 warnings",
+    "ruff": "all checks passed"
+  },
+  "schemas_produced": [],
+  "schemas_modified": [
+    "docs/schemas/rig.relay.runtime_execution_event.v1.schema.json — added status enum"
+  ],
+  "external_effects_executed": [],
+  "external_effects_not_executed": [
+    "Google Drive upload (telemetry not in scope)",
+    "Git push (requires milestone authorization)",
+    "Model download (requires network)",
+    "Real Apple Silicon execution (requires MLX hardware)"
+  ],
+  "dirty_or_foreign_paths_excluded": [],
+  "strongest_suspected_weakness": "Pool resource leak on stream cancellation between acquire and try boundary was fixed (BLOCK-2, round 2). No known remaining resource leaks. Strongest surviving: RuntimeNotConfiguredError class was planned but not implemented — RefusalReason enum covers equivalent semantics.",
+  "proposed_reviewer_attack_surface": [
+    "Evidence emission failure during concurrent cancellation races",
+    "SSD cache integrity after crash-during-fsync (not tested due to platform requirement)",
+    "Model pool pending_unloads set growth without bound (cleared on shutdown only)",
+    "stream_execute() evidence emission failure not visible to stream consumer (yielded but consumer may disconnect)"
+  ],
+  "prepublication_review_digest": {
+    "rounds": 3,
+    "round_1_blocking": 9,
+    "round_1_repaired": 9,
+    "round_2_blocking": 5,
+    "round_2_repaired": 5,
+    "round_3_disposition": "prepublication_admitted",
+    "domains_defeated": 8,
+    "domains_unproven": 1
+  },
+  "publication_status": "candidate_local",
+  "created_at": "2026-05-27T00:00:00Z"
+}

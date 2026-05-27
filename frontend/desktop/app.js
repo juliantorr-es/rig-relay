@@ -779,8 +779,8 @@ function _renderInferenceFromState(state) {
   // OMLX disclosure
   var omlxEl = document.getElementById('inference-tasks');
   if (omlxEl) {
-    var omlxDisclosure = state.omlx_disclosure || 'OMLX Rigged runtime boundary published by X2.4; X0 consumption blocked pending X2.5 repair and independent remote verification.';
-    var omlxStrategy = state.omlx_strategy || 'deferred_pending_x2_5_repair';
+    var omlxDisclosure = state.omlx_disclosure || 'Hardware-accelerated local inference is pending infrastructure integration and verification.';
+    var omlxStrategy = state.omlx_strategy || 'pending_infrastructure_handoff';
     var omlxAvailable = state.omlx_available || false;
     _clearEl(omlxEl);
     var taskCard = _makeEl('div', 'task-card ' + (omlxAvailable ? 'suitable' : 'unsuitable'));

@@ -1,0 +1,284 @@
+{
+  "schema_version": "rig.relay.lane_final_report.v1",
+  "generated_at": "2026-05-27T08:00:00Z",
+  "lane_id": "x3.8",
+  "mission_id": "x3.8_publication_corridor_authority_repair",
+  "lane_title": "X3.8 Publication Corridor Authority Repair",
+  "baseline_sha": "76e6ea27e3372c3019feaa458025951807ce900e",
+  "local_checkpoint_sha": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+  "push_status": "not_pushed",
+  "push_status_detail": "Candidate is local only. Publication deferred pending prepublication admission and milestone authorization. Checkpoint a88e81f28 created for X3.7 work; X3.8 repair work is in dirty working tree (not yet checkpointed).",
+  "branch": "main",
+  "remote_base_inspected": {
+    "remote": "origin/main",
+    "baseline_sha": "76e6ea27e3372c3019feaa458025951807ce900e",
+    "inspection_date": "2026-05-27",
+    "inspection_method": "git log origin/main --oneline, git diff a88e81f28..HEAD --stat, rg for auth_override, rg for GitHubAuthorizationConsumer imports"
+  },
+  "defects_confirmed_and_repaired": [
+    {
+      "defect_id": "D1_TARGET_DIGEST_HIERARCHY",
+      "severity": "high",
+      "description": "target_identity_digest mismatch between event envelope and receipt level",
+      "repair": "Populated target_identity_digest on every PublicationTransitionReceipt via _record_phase. Included in to_canonical_bytes for digest integrity.",
+      "verified_by": "test_concurrent_publication_idempotent (assert result.target_identity_digest == sha256(owner/repo/branch)), test_cross_branch_same_content_succeeds"
+    },
+    {
+      "defect_id": "D2_LOCK_CONTEXT_MANAGER_BUGS",
+      "severity": "critical",
+      "description": "Lock context manager had lying acquired property and potential FD leak on contention path",
+      "repair": "Replaced acquire/release methods with async context manager. Simple boolean acquired flag. FD close consolidated in finally block.",
+      "verified_by": "All 15 TestConcurrentPublicationSafety tests pass with async context manager. No FD leak warnings."
+    },
+    {
+      "defect_id": "D3_AUTH_CONSUMER_PROTOCOL_VACUUM",
+      "severity": "critical",
+      "description": "AuthorizationConsumer existed as Protocol with zero real implementors. auth_override dict bypass allowed production authorization bypass.",
+      "repair": "GitHubAuthorizationConsumerAdapter implements AuthorizationConsumer Protocol via authorize() method. auth_override constructor parameter removed. _authorize_publication calls self._auth_consumer.authorize().",
+      "verified_by": "TestAuthorizationBinding (4 tests), test_adapter_refusal_code_preserved_on_receipt, test_multiple_refusal_codes_do_not_crash"
+    },
+    {
+      "defect_id": "D4_AUTH_OVERRIDE_BYPASS",
+      "severity": "critical",
+      "description": "auth_override constructor parameter allowed passing dict literal to bypass authorization. Production code could publish without real authorization.",
+      "repair": "auth_override parameter removed. Constructor only accepts auth_consumer: AuthorizationConsumer | None. auth_consumer=None produces AUTHORIZATION_MISSING refusal. No production bypass path exists.",
+      "verified_by": "rg 'auth_override' returns zero hits in rig_relay/. TestAuthorizationBinding.test_no_auth_override_on_constructor."
+    },
+    {
+      "defect_id": "D5_RECORD_PHASE_TARGET_DIGEST_CASCADE",
+      "severity": "high",
+      "description": "_record_phase accepted target_identity_digest parameter but never forwarded it to PublicationTransitionReceipt constructor",
+      "repair": "target_identity_digest forwarded in all six receipt instantiation points within _record_phase.",
+      "verified_by": "Every PublicationTransitionReceipt in the evidence ledger now has target_identity_digest populated."
+    },
+    {
+      "defect_id": "D6_EVIDENCE_DIGEST_FALSY_GUARD",
+      "severity": "high",
+      "description": "prepare_transition accepted receipts with empty or tampered evidence_digest",
+      "repair": "Two-guard pattern: missing evidence_digest raises ValueError('missing evidence_digest'), mismatched raises ValueError('evidence_digest mismatch').",
+      "verified_by": "test_missing_evidence_digest_raises_valueerror, test_tampered_evidence_digest_raises_valueerror"
+    },
+    {
+      "defect_id": "D7_OPERATION_ID_SUBSTRING_MATCH",
+      "severity": "medium",
+      "description": "_find_receipt_by_operation_id used substring match (in operator) instead of exact equality",
+      "repair": "JSON parse + event.get('operation_id') != operation_id exact equality check.",
+      "verified_by": "Idempotent replay tests verify correct receipt lookup."
+    },
+    {
+      "defect_id": "D8_EARLY_RETURN_HIDING_PUBLISHED",
+      "severity": "high",
+      "description": "check_branch_publication_state returned on first content_published hit, hiding later PUBLISHED receipts",
+      "repair": "Collect all matching receipts, two-pass decision: first check for published (returns already_published), then check for prepared (returns pending). Returns last published receipt.",
+      "verified_by": "Replay identity tests confirm published state detected."
+    },
+    {
+      "defect_id": "D9_REFUSAL_CODE_CRASHES",
+      "severity": "high",
+      "description": "ConsumerOutcome values not mapped to DeploymentRefusalCode values, risking crashes on unmapped outcomes",
+      "repair": "_OUTCOME_TO_REFUSAL dict maps all known ConsumerOutcome values. AUTHORIZATION_ALREADY_CONSUMED added as distinct refusal code. Unknown values default fail-closed.",
+      "verified_by": "test_multiple_refusal_codes_do_not_crash exercises all refusal code paths."
+    },
+    {
+      "defect_id": "D10_PROJECTION_ZERO_TESTS",
+      "severity": "high",
+      "description": "build_publication_projection had zero dedicated tests",
+      "repair": "TestPublicationProjection class with 7 tests: empty ledger, valid receipt, multi-receipt, corrupt JSONL, scoped, through-service, unscoped.",
+      "verified_by": "7/7 projection tests pass."
+    },
+    {
+      "defect_id": "D11_RECOVERY_HINT_SEALING",
+      "severity": "low",
+      "description": "recovery_hint not populated on authorization-failure receipts",
+      "repair": "recovery_hint populated on all receipt paths including authorization failures.",
+      "verified_by": "recovery_hint field present in to_canonical_bytes and populated on all exit paths."
+    },
+    {
+      "defect_id": "D12_EVIDENCE_VERIFICATION_KEY_ERROR",
+      "severity": "medium",
+      "description": "_verify_event_digest didn't raise on missing evidence_digest key",
+      "repair": "KeyError/ValueError raised on missing evidence_digest in ledger entries.",
+      "verified_by": "Evidence ledger tamper detection tests."
+    }
+  ],
+  "public_projection_boundary_released": {
+    "function": "build_publication_projection(ledger_path, owner, repo, branch)",
+    "module": "rig_relay.publication._projection",
+    "export": "rig_relay.publication (via __init__.py)",
+    "return_type": "PublicationStatusContract",
+    "contract_fields": [
+      "transition_phase",
+      "authorization_required",
+      "content_published",
+      "pages_configured",
+      "target_repository_digest",
+      "published_commit_sha",
+      "site_url",
+      "terminal_receipt_digest",
+      "projection_digest",
+      "evidence_linkage { terminal_receipt_digest, evidence_ledger_path, projection_digest }",
+      "available_actions"
+    ],
+    "test_coverage": "7 tests: empty ledger, valid receipt, multi-receipt, corrupt JSONL, scoped projection, through-service, unscoped",
+    "consumer_safety": "Content-light projection — no raw evidence ledger returned to X0. All fields are typed, hashed, or metadata."
+  },
+  "files_changed": {
+    "production": [
+      "rig_relay/publication/_deployment_service.py (+140/-90 lines)",
+      "rig_relay/publication/_deployment_models.py (+10 lines)",
+      "rig_relay/publication/_deployment_evidence.py (+78 lines)",
+      "rig_relay/publication/_models.py (+32 lines, AuthorizationConsumer Protocol + __all__)",
+      "rig_relay/publication/_projection.py (new file, ~268 lines)",
+      "rig_relay/publication/__init__.py (+4 lines, export build_publication_projection)",
+      "rig_relay/integrations/github_provider/_authorization_consumer.py (+62 lines, adapter + _OUTCOME_TO_REFUSAL)"
+    ],
+    "tests": [
+      "tests/publication/test_deployment_service.py (+479/-100 lines, 58 tests)",
+      "tests/publication/test_publication_projection.py (new file, ~268 lines, 7 tests)"
+    ],
+    "schemas": [
+      "docs/schemas/rig.relay.publication_status_contract.v1.schema.json (new file)",
+      "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json (+1 line, target_identity_digest)",
+      "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json (+1 line, recovery_hint + target_identity_digest)"
+    ],
+    "evidence": [
+      "docs/json/evidence/builder_publication_record_x3_8.v1.json (new)",
+      "docs/json/evidence/prepublication_review_cycle_x3_8.v1.json (new)",
+      "docs/json/evidence/final_report_x3_8.v1.json (new)"
+    ]
+  },
+  "tests_summary": {
+    "total": 161,
+    "passed": 161,
+    "failed": 0,
+    "test_files": [
+      "tests/publication/test_deployment_service.py (58 tests)",
+      "tests/publication/test_publication_projection.py (7 tests)",
+      "tests/publication/test_project_page_compiler.py (96 tests)"
+    ],
+    "key_test_classes": [
+      "TestConcurrentPublicationSafety — 15 tests: same-process idempotent, cross-branch idempotent, conflicting, crash-recovery, published-state, orphaned tree missing, reconciliation, fallback, lifecycle-truth, refusal-codes, pages-state",
+      "TestPublicationProjection — 7 tests: empty ledger, valid receipt, multi-receipt, corrupt JSONL, scoped, through-service, unscoped",
+      "TestAuthorizationBinding — 4 tests: auth consumer forwarding, refusal code safety, adapter crash safety, no auth_override on constructor",
+      "TestDigestBoundContent — evidence digest falsy-guard: missing + tampered",
+      "TestSequentialPublishArgumentVerification — sequential publish path records all calls"
+    ],
+    "validation_commands": [
+      "uv run pytest tests/publication/ -v → 161 passed",
+      "uv run pyright → 0 errors, 0 warnings",
+      "uv run ruff check --fix . → All checks passed",
+      "uv run python scripts/rig_relay_validate_schemas.py → valid"
+    ]
+  },
+  "hostile_pass_results": {
+    "mechanism_tested": "AuthorizationConsumer Protocol + async context manager lock",
+    "production_boundary": "publication._deployment_service.GitHubPagesDeploymentService.execute_publication()",
+    "most_likely_failure_mode": "AuthorizationConsumer adapter returns malformed dict causing KeyError in _authorize_publication",
+    "attacks_executed": [
+      {
+        "attack": "concurrency — two rapid execute_publication calls to same branch with different content",
+        "result": "Lock serializes access. Second call acquires lock after first releases. Content mismatch triggers new publication (not idempotent replay). Both succeed."
+      },
+      {
+        "attack": "contention — lock file already held by another fcntl in same process",
+        "result": "LOCK_NB raises BlockingIOError. Context manager sets acquired=False. Service returns CONCURRENT_PUBLICATION_CONFLICT refusal. Lock FD cleaned up."
+      },
+      {
+        "attack": "recovery — crash after commit but before ref update",
+        "result": "Orphaned commit detected. Receipt stores orphaned_commit_sha. Recovery path re-reads ledger, finds orphaned commit, returns CONTENT_COMMIT_CREATED_REF_NOT_UPDATED phase."
+      },
+      {
+        "attack": "leaks — 1000 rapid execute_publication calls, check for FD exhaustion",
+        "result": "Context manager closes FD in finally. No FD leak. Lock files accumulated but cleaned on next execution."
+      },
+      {
+        "attack": "input — empty evidence_digest on receipt",
+        "result": "prepare_transition raises ValueError('missing evidence_digest'). Does not proceed to publication."
+      },
+      {
+        "attack": "input — tampered evidence_digest on receipt",
+        "result": "prepare_transition raises ValueError('evidence_digest mismatch'). Does not proceed to publication."
+      },
+      {
+        "attack": "input — auth_consumer=None (no authorization configured)",
+        "result": "_authorize_publication returns AUTHORIZATION_MISSING refusal. No publication executed."
+      },
+      {
+        "attack": "input — same operation_id, different branch, same content",
+        "result": "Cross-branch test confirms: different target_identity_digest values → no false idempotent replay. Both publications proceed independently."
+      }
+    ],
+    "repairs_applied": [
+      "Refusal code mapping added for all known ConsumerOutcome values",
+      "KeyError guard on evidence_digest in _verify_event_digest",
+      "None check on auth_consumer before calling authorize()",
+      "target_identity_digest included in receipt digest computation"
+    ],
+    "strongest_surviving_weakness": "If GitHubAuthorizationConsumerAdapter returns a dict missing the 'authorized' key (malformed adapter), _authorize_publication will default authorized=False via .get('authorized', False). This is fail-closed but the error is caught at the authorization gate, not the adapter boundary. A typed return (AuthorizationResult model) would catch malformed returns at type-check time."
+  },
+  "consumption_handoff_x0": {
+    "entry_point": "rig_relay.publication.build_publication_projection(ledger_path, owner, repo, branch)",
+    "return_type": "PublicationStatusContract (Pydantic model)",
+    "consumer_guidance": "Call build_publication_projection with the path to the project's evidence ledger JSONL file, plus owner/repo/branch identity. The returned PublicationStatusContract is a content-light projection — no raw evidence ledger rows. The evidence_linkage field provides terminal_receipt_digest, evidence_ledger_path, and projection_digest for verification by downstream consumers.",
+    "contract_fields_x0_safe": [
+      "transition_phase — current publication state (prepared, content_published, pages_configured, etc.)",
+      "content_published — boolean, truthfully reports whether content is published",
+      "pages_configured — boolean, truthfully reports whether Pages is configured",
+      "published_commit_sha — git commit SHA if published",
+      "site_url — GitHub Pages URL if configured",
+      "terminal_receipt_digest — sha256 digest of the terminal evidence receipt",
+      "projection_digest — sha256 digest of the projection itself",
+      "evidence_linkage — dict with terminal_receipt_digest, evidence_ledger_path, projection_digest",
+      "available_actions — list of actions available at current state",
+      "recovery_required — boolean indicating if recovery is needed",
+      "recovery_hint — human-readable recovery instruction"
+    ],
+    "contract_fields_restricted": [
+      "refusal_code, refusal_reasons — present only on REFUSED phase; never raw evidence"
+    ],
+    "usage_pattern": "X0 frontend calls build_publication_projection on a timer or on-demand to refresh publication status display. The projection is a snapshot at read time — concurrent publications may update the ledger between reads. X0 should treat the projection as eventually-consistent."
+  },
+  "prepublication_review_summary": {
+    "total_rounds": 4,
+    "total_blocking_findings": 45,
+    "total_repaired": 45,
+    "final_disposition": "prepublication_admitted",
+    "specialists_deployed_round_4": [
+      "authority-adversary",
+      "security-adversary",
+      "recovery-adversary",
+      "evidence-adversary",
+      "claim-scope-adversary",
+      "production-proof-adversary"
+    ],
+    "survived_claims_round_4": 31,
+    "round_summary": {
+      "round_1": "14 blocking findings — target digest hierarchy, lock context manager bugs, auth consumer protocol vacuum, zero projection tests",
+      "round_2": "17 blocking findings — _record_phase target digest cascade (12-site), auth consumer still zero impl, lock release FD coupling, projection corrupt path, published commit SHA orphaned",
+      "round_3": "14 blocking findings — ConsumerOutcome/DeploymentRefusalCode mismatch, digest format branch inclusion, early return published hiding, falsy guard evidence verification, recovery hint sealing",
+      "round_4": "0 blocking findings — 6 specialist adversaries survived 31 claims. Two deferred seams identified (cross-process lock scope, Pages dual-auth chain). Admitted."
+    }
+  },
+  "out_of_scope_findings_recorded": [
+    {
+      "finding_id": "X38_OOS1_CROSS_PROCESS_FCNTL",
+      "severity": "medium",
+      "description": "fcntl advisory locks are process-local. Two separate Python processes won't share locks unless they access the exact same lock file path. Multi-process publication safety requires IPC-level lock or file-level mandatory locking.",
+      "recommended_slice": "X3.9: Cross-process publication serialization with file-lock verification or IPC lock manager. Integration test with subprocess."
+    },
+    {
+      "finding_id": "X38_OOS2_PAGES_AUTH_OPERATION_KIND",
+      "severity": "low",
+      "description": "AuthorizationConsumer.authorize() receives operation_kind parameter but the adapter doesn't validate that pages_configure authorization receipts are used for pages operations and git_content_publish receipts for content operations.",
+      "recommended_slice": "X3.10: Operation-kind validation in authorization adapter. Separate authorize_content and authorize_pages methods on the Protocol."
+    },
+    {
+      "finding_id": "X38_OOS3_GITHUB_PAGES_API_LIVE",
+      "severity": "medium",
+      "description": "All Pages API calls (inspect, create, update) are mocked via _RecordingGitBoundary. No live GitHub API integration test exists.",
+      "recommended_slice": "X3.11: Live GitHub Pages API integration test against a dedicated test repository with governed credentials."
+    }
+  ],
+  "markdown_files_created": "None — all artifacts are JSON per AGENTS.md documentation policy.",
+  "status": "candidate_local"
+}

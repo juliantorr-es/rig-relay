@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.relay.x0_consumer_boundary_handoff.v1",
+  "lane": "x2.6",
+  "consumer": "X0 Inference Studio Gridline Interface",
+  "status": "prepublication_admitted_candidate_local",
+  "created_at": "2026-05-27T00:00:00Z",
+  "projection_method": "RiggedLocalRuntime.build_projection()",
+  "projection_fields": {
+    "runtime": {
+      "fields": ["kind", "platform", "mlx_available", "authority", "authority_detail"],
+      "safe_ui_interpretation": "Show as runtime status badge (available/unavailable/configured). 'authority_detail' may contain technical governance text for tooltip.",
+      "unavailable_semantics": "mlx_available=false means MLX not installed on this machine. Runtime unavailable."
+    },
+    "health": {
+      "fields": ["state", "gpu_available", "last_probe", "shutdown_complete", "last_shutdown_warnings"],
+      "safe_ui_interpretation": "Show state as health badge (Healthy/Degraded/Unconfigured/Error). Display GPU availability. Show shutdown_complete as 'Runtime inactive' when true.",
+      "unavailable_semantics": "state=UNCONFIGURED means MLX not available. state=DEGRADED means inventory scan failed. shutdown_complete=true means runtime was shut down — needs restart."
+    },
+    "terminal_outcomes": {
+      "fields": ["executed_count", "blocked_count", "refused_count", "cancelled_count", "error_count", "runtime_unavailable_count", "reconstruction_available"],
+      "safe_ui_interpretation": "Show as summary counts in a dashboard card. Totals are from evidence ledger reconstruction. Only display when reconstruction_available=true.",
+      "unavailable_semantics": "reconstruction_available=false means evidence ledgers are missing, corrupt, or empty. Hide counter display."
+    },
+    "evidence_health": {
+      "fields": ["execution_ledger_exists", "lifecycle_ledger_exists", "cache_ledger_exists", "tool_proposal_ledger_exists", "scheduler_ledger_exists", "execution_ledger_lines", "scheduler_ledger_lines", "last_write_at", "reconstruction_available"],
+      "safe_ui_interpretation": "Show as green/red status dots for each ledger. Show line counts. last_write_at is ISO timestamp. reconstruction_available gates all evidence-dependent views.",
+      "unavailable_semantics": "All ledger_exists=false means no evidence written yet. Normal for fresh install."
+    },
+    "queue_health": {
+      "fields": ["queue_depth", "running_count", "total_processed"],
+      "safe_ui_interpretation": "Show as 'Queue: N queued, M running, T processed' dashboard card.",
+      "unavailable_semantics": "All zeros means idle scheduler."
+    },
+    "scheduler": {
+      "fields": ["scheduler_state", "batching_status", "batch_engine", "queue_depth", "running_count", "total_processed", "active_operations"],
+      "safe_ui_interpretation": "Show batching_status as badge (fcfs_serialized, active_batch_generator, fallback_serialized, unavailable). batch_engine explains the active engine. active_operations lists current op IDs.",
+      "unavailable_semantics": "batching_status=unavailable means scheduler not configured."
+    },
+    "cache": {
+      "fields": ["cache_capability", "cache_privacy", "cache_stats", "clear_available", "ssd_cache"],
+      "safe_ui_interpretation": "Show cache_stats hit/miss counts. ssd_cache section shows SSD persistence status. Display privacy class.",
+      "unavailable_semantics": "ssd_cache.enabled=false means SSD persistence is not configured."
+    },
+    "pool": {
+      "fields": ["pool_state", "pool_models"],
+      "safe_ui_interpretation": "Show loaded model count, max capacity, active/pending unload counts.",
+      "unavailable_semantics": "loaded_count=0 means no models loaded."
+    },
+    "bridge": {
+      "fields": ["session_context_bound", "mode", "mode_detail"],
+      "safe_ui_interpretation": "Show whether session context is bound. mode_detail explains execution capability.",
+      "unavailable_semantics": "mode=stateless_preflight_only means tool execution deferred to X0 integration."
+    },
+    "tool_proposal_status": {
+      "fields": ["session_bound", "execution_mode", "pending_proposals_count"],
+      "safe_ui_interpretation": "Show as 'Tool execution: available/deferred' badge.",
+      "unavailable_semantics": "execution_mode=stateless_preflight_only means proposals detected but not executed."
+    },
+    "cancellation_refusal_summary": {
+      "fields": ["admission_refusals", "scheduler_blocks", "cancellations", "engine_failures", "evidence_gap_warnings"],
+      "safe_ui_interpretation": "Show as dashboard summary counts. High cancellation/error counts indicate problems.",
+      "unavailable_semantics": "All zeros or unavailable when reconstruction_available=false."
+    },
+    "capabilities": {
+      "fields": ["text_generation", "streaming_generation", "tool_calling", "structured_output", "embeddings", "reranking", "vision_vlm", "continuous_batching", "kv_cache_reuse", "kv_cache_write_back", "multi_model_pool", "tool_execution_bridge"],
+      "safe_ui_interpretation": "Show as feature grid. SUPPORTED=green, V1_REQUIRED_PENDING=yellow, DEFERRED=grey, active_local_trie=green, deferred=grey.",
+      "unavailable_semantics": "Values may be CapabilityPosture enum values or special strings like 'active_local_trie' or 'deferred'. Render all non-SUPPORTED as pending/deferred."
+    },
+    "privacy": {
+      "fields": ["secret_scanning", "private_local_context", "secret_bearing_context", "secrets_scanner_active", "cache_privacy_class", "content_light_evidence", "degraded_status"],
+      "safe_ui_interpretation": "Show privacy status. degraded_status=operational is normal. degraded_status=degraded means warnings present.",
+      "unavailable_semantics": "degraded_status=degraded indicates one of: load/unload evidence failure, SSD integrity warning, or shutdown warnings."
+    },
+    "governance": {
+      "fields": ["evidence", "tool_execution", "scheduler_authority", "admission_gates", "streaming_admission", "thread_lifecycle"],
+      "safe_ui_interpretation": "Display as governance status section with descriptive text labels.",
+      "unavailable_semantics": "All governance fields are descriptive strings. No unavailable state — always present."
+    },
+    "models": {
+      "fields": ["loaded_count", "inventory_count", "pool_count", "lifecycle_events"],
+      "safe_ui_interpretation": "Show model counts. 'lifecycle_events' is ledger filename reference.",
+      "unavailable_semantics": "All zeros means no models discovered or loaded."
+    }
+  },
+  "evidence_backing": {
+    "evidence_ledgers": ["runtime_execution_ledger.jsonl", "runtime_lifecycle_ledger.jsonl", "runtime_cache_ledger.jsonl", "runtime_scheduler_ledger.jsonl", "runtime_tool_proposal_ledger.jsonl"],
+    "evidence_root": ".build/rig-relay/evidence",
+    "reconstruction_api": "RiggedLocalRuntime.reconstruct_evidence()",
+    "content_light_guarantee": true
+  },
+  "prepublication_review": {
+    "rounds": 3,
+    "blocking_findings_total": 14,
+    "blocking_findings_repaired": 14,
+    "disposition": "prepublication_admitted"
+  }
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -309,9 +309,39 @@ class LedgerReconstruction(BaseModel):
     reconstruction_warnings: list[str] = Field(default_factory=list)
 
 
+class AuthorizationConsumer(Protocol):
+    async def authorize(
+        self,
+        *,
+        authorization_id: str,
+        operation_kind: str,
+        request_payload: dict[str, object],
+        target_identity: str,
+        prior_evidence_digest: str,
+    ) -> dict[str, object]: ...
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
 def _digest_sha256(content: str) -> str:
     return f"sha256:{hashlib.sha256(content.encode()).hexdigest()}"
+
+
+__all__ = [
+    "AuthorizationConsumer",
+    "LedgerReconstruction",
+    "PreviewEvidenceReceipt",
+    "PreviewRefusalCode",
+    "ProjectPageCompilerInput",
+    "ProjectPageCompilerResult",
+    "ProjectPagePreviewReport",
+    "ProjectPagePublicationProjection",
+    "ProposedContentSummary",
+    "PublicationPreviewRefusal",
+    "PublicationPreviewResult",
+    "PublicationReadinessSummary",
+    "PublicationSafetyReport",
+    "WithheldSummary",
+]

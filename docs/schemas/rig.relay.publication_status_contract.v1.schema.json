@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_status_contract.v1",
+  "title": "Publication Status Contract",
+  "description": "X0-consumable typed publication surface state. Distinguishes all transition phases with explicit field coverage so the desktop frontend can render Publish Preview and deployment status without parsing private ledgers.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_status.v1"
+    },
+    "publication_operation_id": {
+      "type": "string",
+      "description": "Identifies the publication operation this contract describes."
+    },
+    "transition_phase": {
+      "type": "string",
+      "enum": [
+        "prepared",
+        "authorization_required",
+        "authorized",
+        "pages_configuration_unchanged",
+        "pages_created",
+        "pages_updated",
+        "content_publication_started",
+        "content_publication_partial",
+        "content_publication_prepared",
+        "content_published",
+        "content_commit_created_ref_not_updated",
+        "build_requested",
+        "build_pending",
+        "published_verified",
+        "refused",
+        "failed",
+        "recovery_required"
+      ],
+      "description": "Current transition phase of the publication lifecycle."
+    },
+    "target_repository_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the target repository identity (owner/repo)."
+    },
+    "target_surface": {
+      "type": "string",
+      "description": "Target publication surface (e.g., project_page)."
+    },
+    "authorization_required": {
+      "type": "boolean",
+      "description": "Whether step-up authorization is required before mutation."
+    },
+    "authorization_status": {
+      "type": "string",
+      "enum": ["pending", "accepted", "refused", "expired", "revoked"],
+      "description": "Current authorization state for this publication operation."
+    },
+    "pages_configured": {
+      "type": "boolean",
+      "description": "Whether GitHub Pages has been configured for this repo."
+    },
+    "content_published": {
+      "type": "boolean",
+      "description": "Whether content has been pushed to the target branch."
+    },
+    "content_publication_mode": {
+      "type": "string",
+      "enum": ["none", "atomic_git_commit", "atomic_git_commit_recovery", "sequential_put_file"],
+      "description": "How content was published to the target branch."
+    },
+    "published_commit_sha": {
+      "type": "string",
+      "description": "SHA of the published commit on the target branch."
+    },
+    "build_status": {
+      "type": "string",
+      "description": "Pages build status (queued, building, built, errored, or empty)."
+    },
+    "build_commit_sha": {
+      "type": "string",
+      "description": "Commit SHA that Pages is building from."
+    },
+    "build_commit_matches_published": {
+      "type": "boolean",
+      "description": "Whether the Pages build commit matches the published content commit."
+    },
+    "published_verified": {
+      "type": "boolean",
+      "description": "Whether the publication has been remotely verified."
+    },
+    "refusal_code": {
+      "type": ["string", "null"],
+      "description": "Structured refusal code if the publication was refused."
+    },
+    "recovery_required": {
+      "type": "boolean",
+      "description": "Whether manual recovery is required."
+    },
+    "status_message": {
+      "type": "string",
+      "description": "Human-readable status message for the current phase."
+    },
+    "available_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Actions the user can take from the current phase."
+    },
+    "projection_digest": {
+      "type": "string",
+      "description": "SHA256 digest of this projection itself."
+    },
+    "terminal_receipt_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the terminal evidence receipt."
+    },
+    "evidence_linkage": {
+      "type": "object",
+      "description": "Content-light evidence linkage for X0 auditability.",
+      "properties": {
+        "terminal_receipt_digest": {
+          "type": "string",
+          "description": "SHA256 digest of the terminal evidence receipt."
+        },
+        "evidence_ledger_path": {
+          "type": "string",
+          "description": "Relative path to the evidence ledger file. Content-light: path only, no contents."
+        },
+        "projection_digest": {
+          "type": "string",
+          "description": "SHA256 digest of this projection itself."
+        }
+      },
+      "required": ["terminal_receipt_digest", "evidence_ledger_path", "projection_digest"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "publication_operation_id",
+    "transition_phase",
+    "authorization_required",
+    "authorization_status",
+    "pages_configured",
+    "content_published",
+    "content_publication_mode",
+    "published_verified",
+    "recovery_required",
+    "status_message",
+    "evidence_linkage"
+  ],
+  "additionalProperties": false
+}

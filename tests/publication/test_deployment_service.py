@@ -53,6 +53,30 @@ from rig_relay.publication import (
 from rig_relay.publication._deployment_models import _digest_sha256, _now_iso
 
 
+class _FakeAuthorizationConsumer:
+    def __init__(self, *, authorized: bool = True, refusal_code: str = "") -> None:
+        self._authorized = authorized
+        self._refusal_code = refusal_code
+
+    async def authorize(
+        self,
+        *,
+        authorization_id: str,
+        operation_kind: str,
+        request_payload: dict[str, object],
+        target_identity: str,
+        prior_evidence_digest: str,
+    ) -> dict[str, object]:
+        return {
+            "authorized": self._authorized,
+            "refusal_code": self._refusal_code,
+            "reasons": [] if self._authorized else ["test refusal"],
+            "authorization_digest": "test_auth_digest",
+            "authorization_id": authorization_id,
+            "operation_kind": operation_kind,
+        }
+
+
 def _make_valid_profile(
     candidate_id: str = "cand-x32", project_name: str = "X3.2 Test"
 ) -> PublishableProjectProfileCandidate:
@@ -304,6 +328,46 @@ class TestDigestBoundContent:
         assert manifest.publication_partial is True
         assert manifest.publication_complete is False
         assert manifest.evidence_digest
+
+    def test_missing_evidence_digest_raises_valueerror(self) -> None:
+        preview = _compile_genuine_preview()
+        compiler_result = preview.compiler_result
+        good_receipt = preview.receipt
+
+        receipt_no_digest = PreviewEvidenceReceipt(
+            receipt_id="r-no-digest",
+            compiled_at=_now_iso(),
+            compilation_successful=True,
+            profile_candidate_digest=good_receipt.profile_candidate_digest,
+            result_digest=good_receipt.result_digest,
+            safety_passed=True,
+            refusal_code=None,
+            evidence_digest="",
+        )
+        service = GitHubPagesDeploymentService()
+        with pytest.raises(ValueError, match="missing evidence_digest"):
+            service.prepare_transition(
+                compiler_result,
+                preview_receipt=receipt_no_digest,
+                target_repo_owner="test-owner",
+                target_repo_name="test-repo",
+            )
+
+    def test_tampered_evidence_digest_raises_valueerror(self) -> None:
+        preview = _compile_genuine_preview()
+        compiler_result = preview.compiler_result
+        good_receipt = preview.receipt
+
+        receipt_copy = good_receipt.model_copy()
+        receipt_copy.evidence_digest = "sha256:mallory-was-here"
+        service = GitHubPagesDeploymentService()
+        with pytest.raises(ValueError, match="evidence_digest mismatch"):
+            service.prepare_transition(
+                compiler_result,
+                preview_receipt=receipt_copy,
+                target_repo_owner="test-owner",
+                target_repo_name="test-repo",
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -943,6 +1007,7 @@ class _RecordingGitBoundary:
         self.tree_calls: list[dict] = []
         self.commit_calls: list[dict] = []
         self.ref_update_calls: list[dict] = []
+        self.put_file_calls: list[dict] = []
         self.get_base_ref_calls: list[str] = []
         self.get_commit_tree_calls: list[str] = []
         self._ref_update_succeeds = ref_update_succeeds
@@ -997,6 +1062,17 @@ class _RecordingGitBoundary:
             return self._commit_tree_result
         return {"tree_sha": f"sha256:tree-for-{commit_sha}"}
 
+    async def put_file_contents(
+        self, path: str, branch: str, message: str, content: str
+    ) -> dict:
+        self.put_file_calls.append({
+            "path": path,
+            "branch": branch,
+            "message": message,
+            "content_hash": _digest_sha256(content),
+        })
+        return {"success": True}
+
 
 class TestConcurrentPublicationSafety:
     """X3.7 D1-D4: concurrency serialization, idempotency, recovery."""
@@ -1011,12 +1087,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1046,6 +1117,9 @@ class TestConcurrentPublicationSafety:
             )
 
             assert result1.content_published is True
+            assert result1.target_identity_digest == _digest_sha256(
+                "owner/repo/gh-pages"
+            )
             commit_calls_before = len(git_boundary.commit_calls)
 
             # Second attempt with identical content
@@ -1060,7 +1134,87 @@ class TestConcurrentPublicationSafety:
             )
 
             assert result2.content_published is True
+            assert result2.target_identity_digest == _digest_sha256(
+                "owner/repo/gh-pages"
+            )
             assert len(git_boundary.commit_calls) == commit_calls_before
+            assert result2.target_identity_digest == result1.target_identity_digest
+            # Idempotent return reflects CONTENT_PUBLISHED — receipt_id
+            # legitimately differs from the final phase receipt of the
+            # first execution. Verify no new git operations.
+            assert result2.transition_phase == "content_published"
+
+    # ── Test A2: Cross-branch same content ─────────────────────────
+
+    def test_cross_branch_same_content_succeeds(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Same Content</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep_a = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-cross-branch-a",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("owner/repo"),
+                source_branch="branch-A",
+                source_path="/",
+            )
+            prep_a.compute_digest()
+
+            result_a = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep_a,
+                    bundle,
+                    authorization_receipt_id="auth-cross-a",
+                    target_repo_owner="owner",
+                    target_repo_name="repo",
+                )
+            )
+            assert result_a.content_published is True
+            assert result_a.target_identity_digest == _digest_sha256(
+                "owner/repo/branch-A"
+            )
+
+            prep_b = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-cross-branch-b",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("owner/repo"),
+                source_branch="branch-B",
+                source_path="/",
+            )
+            prep_b.compute_digest()
+
+            result_b = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep_b,
+                    bundle,
+                    authorization_receipt_id="auth-cross-b",
+                    target_repo_owner="owner",
+                    target_repo_name="repo",
+                )
+            )
+            assert result_b.content_published is True
+            assert result_b.target_identity_digest == _digest_sha256(
+                "owner/repo/branch-B"
+            )
+
+            assert result_a.target_identity_digest != result_b.target_identity_digest
+            assert result_a.receipt_id != result_b.receipt_id
+            assert result_a.refusal_code is None
+            assert result_b.refusal_code is None
 
     # ── Test B: Conflicting-operation concurrency ─────────────────
 
@@ -1072,12 +1226,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle1 = ApprovedStaticPublicationBundle(
@@ -1105,6 +1254,7 @@ class TestConcurrentPublicationSafety:
                 )
             )
             assert result1.content_published is True
+            assert result1.target_identity_digest == _digest_sha256("o/r/gh-pages")
 
             # Second publication with different content to same branch
             bundle2 = ApprovedStaticPublicationBundle(
@@ -1132,6 +1282,7 @@ class TestConcurrentPublicationSafety:
             )
 
             assert result2.content_published is True
+            assert result2.target_identity_digest == _digest_sha256("o/r/gh-pages")
 
     # ── Test C: Crash before ref update — recovery ────────────────
 
@@ -1145,12 +1296,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1215,6 +1361,86 @@ class TestConcurrentPublicationSafety:
                 )
             )
             assert recovery_result.content_published is True
+            assert recovery_result.target_identity_digest == _digest_sha256(
+                "o/r/gh-pages"
+            )
+
+    # ── Test X3.8/PP-ADV-003: Orphaned publication error paths ─────
+
+    def test_orphaned_commit_tree_missing_returns_error(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary_crash = _RecordingGitBoundary(
+                ref_update_succeeds=False, ref_update_fails_with=409
+            )
+            service_crash = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary_crash,
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Orphaned Commit Vanish</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-orphan-vanish",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            crash_result = asyncio.get_event_loop().run_until_complete(
+                service_crash.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-crash",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert crash_result.recovery_required is True
+            assert crash_result.published_commit_sha
+
+            recovery_git = _RecordingGitBoundary(
+                ref_update_succeeds=True, commit_tree_result={"tree_sha": ""}
+            )
+            service_recovery = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=recovery_git,
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
+            )
+
+            recovery_prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-orphan-vanish-recover",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            recovery_prep.compute_digest()
+
+            recovery_result = asyncio.get_event_loop().run_until_complete(
+                service_recovery.execute_publication(
+                    recovery_prep,
+                    bundle,
+                    authorization_receipt_id="auth-recover",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert recovery_result.transition_phase == (
+                PublicationTransitionPhase.CONTENT_COMMIT_CREATED_REF_NOT_UPDATED.value
+            )
+            assert recovery_result.recovery_required is True
+            assert recovery_result.content_published is False
 
     # ── Test D: Crash after ref update — reconciliation ──────────
 
@@ -1226,12 +1452,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1259,6 +1480,7 @@ class TestConcurrentPublicationSafety:
                 )
             )
             assert result.content_published is True
+            assert result.target_identity_digest == _digest_sha256("o/r/gh-pages")
 
             # Reconciliation: check evidence ledger
             reconstruction = ledger.load_receipts()
@@ -1309,6 +1531,96 @@ class TestConcurrentPublicationSafety:
                 result.refusal_code == DeploymentRefusalCode.AUTHORIZATION_MISSING.value
             )
 
+    # ── Test X3.8/PP-ADV-001: Adapter refusal code safety ──────────
+
+    def test_adapter_refusal_code_preserved_on_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            auth_consumer = _FakeAuthorizationConsumer(
+                authorized=False, refusal_code="authorization_revoked"
+            )
+            service = GitHubPagesDeploymentService(
+                ledger=ledger, git_boundary=git_boundary, auth_consumer=auth_consumer
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Refusal Test</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-refusal-code",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-refusal",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result.transition_phase == PublicationTransitionPhase.REFUSED.value
+            assert result.content_published is False
+            assert result.refusal_code == "authorization_revoked"
+
+    def test_multiple_refusal_codes_do_not_crash(self) -> None:
+        refusal_codes = ["authorization_expired", "authorization_revoked"]
+        for code in refusal_codes:
+            with tempfile.TemporaryDirectory() as d:
+                ev_path = Path(d) / "evidence.jsonl"
+                ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+                git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+                auth_consumer = _FakeAuthorizationConsumer(
+                    authorized=False, refusal_code=code
+                )
+                service = GitHubPagesDeploymentService(
+                    ledger=ledger,
+                    git_boundary=git_boundary,
+                    auth_consumer=auth_consumer,
+                )
+
+                bundle = ApprovedStaticPublicationBundle(
+                    files={"index.html": "<h1>Multi Refusal</h1>"},
+                    target_surface="project_page",
+                )
+                bundle.compute_content_digest()
+
+                prep = AuthorizedPublicationTransitionPreparation(
+                    publication_operation_id=f"op-refusal-{code}",
+                    preview_evidence_digest="sha256:prev",
+                    static_bundle_digest=bundle.content_digest,
+                    target_repository_identity_digest=_digest_sha256("o/r"),
+                    source_branch="gh-pages",
+                    source_path="/",
+                )
+                prep.compute_digest()
+
+                result = asyncio.get_event_loop().run_until_complete(
+                    service.execute_publication(
+                        prep,
+                        bundle,
+                        authorization_receipt_id="auth-multi",
+                        target_repo_owner="o",
+                        target_repo_name="r",
+                    )
+                )
+                assert (
+                    result.transition_phase == PublicationTransitionPhase.REFUSED.value
+                )
+                assert result.content_published is False
+                assert result.refusal_code == code
+
     # ── Test F: Sequential fallback refused for public_release ────
 
     def test_fallback_refused_for_public_release_policy(self) -> None:
@@ -1323,12 +1635,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1376,12 +1683,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1411,6 +1713,7 @@ class TestConcurrentPublicationSafety:
                 )
             )
             assert result.content_published is True
+            assert result.target_identity_digest == _digest_sha256("o/r/gh-pages")
 
     # ── Test G: Lifecycle truth ───────────────────────────────────
 
@@ -1428,12 +1731,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1462,6 +1760,7 @@ class TestConcurrentPublicationSafety:
                 )
             )
             assert result.content_published is True
+            assert result.target_identity_digest == _digest_sha256("o/r/gh-pages")
             assert len(git_boundary.ref_update_calls) >= 1
 
     def test_pages_configured_independent_of_published(self) -> None:
@@ -1522,12 +1821,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1565,12 +1859,7 @@ class TestConcurrentPublicationSafety:
             service = GitHubPagesDeploymentService(
                 ledger=ledger,
                 git_boundary=git_boundary,
-                auth_override={
-                    "authorized": True,
-                    "refusal_code": None,
-                    "reasons": [],
-                    "authorization_digest": "sha256:test-auth-override",
-                },
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
             )
 
             bundle = ApprovedStaticPublicationBundle(
@@ -1635,3 +1924,85 @@ class TestConcurrentPublicationSafety:
             DeploymentRefusalCode.FALLBACK_REFUSED_FOR_POLICY.value
             == "fallback_refused_for_policy"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# X3.8/PP-ADV-004: Sequential publish argument verification
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _RecordingSequentialGitBoundary:
+    """Test double with only put_file_contents for sequential publish path."""
+
+    def __init__(self) -> None:
+        self.put_file_calls: list[dict] = []
+
+    async def put_file_contents(
+        self, path: str, branch: str, message: str, content: str
+    ) -> dict:
+        self.put_file_calls.append({
+            "path": path,
+            "branch": branch,
+            "message": message,
+            "content_hash": _digest_sha256(content),
+        })
+        return {"success": True}
+
+
+class TestSequentialPublishArgumentVerification:
+    def test_sequential_publish_records_all_calls_and_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingSequentialGitBoundary()
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_consumer=_FakeAuthorizationConsumer(authorized=True),
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={
+                    "index.html": "<h1>Sequential</h1>",
+                    "style.css": "body { color: red; }",
+                    "app.js": "console.log('hi');",
+                },
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+            expected_files = sorted(bundle.files.keys())
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-seq-verify",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+                publication_policy="developer_approved",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-seq",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+
+            assert result.content_published is True
+            assert result.target_identity_digest == _digest_sha256("o/r/gh-pages")
+
+            called_paths = sorted(c["path"] for c in git_boundary.put_file_calls)
+            assert called_paths == expected_files
+
+            for call in git_boundary.put_file_calls:
+                assert call["branch"] == "gh-pages"
+                assert "Deploy" in call["message"]
+                assert call["path"] in bundle.files
+                assert call["content_hash"] == _digest_sha256(
+                    bundle.files[call["path"]]
+                )

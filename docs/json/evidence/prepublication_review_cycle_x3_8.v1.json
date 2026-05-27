@@ -1,0 +1,507 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T08:00:00Z",
+  "lane_id": "x3.8",
+  "mission_id": "x3.8_publication_corridor_authority_repair",
+  "baseline_sha": "76e6ea27e3372c3019feaa458025951807ce900e",
+  "candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+  "intended_boundary": "X3.8 publication corridor authority repair: lock ownership, target-scoped idempotency, replay evidence truth, private-coupling removal, auth bypass elimination, X0 public projection boundary, production tests",
+  "intended_consumer_purpose": "X0 desktop frontend / gridline interface renders publication preview and deployment status through typed content-light projection (PublicationStatusContract) without parsing private evidence ledgers. X3 authorization machinery is safe from bypass and properly scoped to target identity.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "x3.8-prepublication-conductor-round-1",
+      "reviewed_candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+      "production_paths_inspected": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_models.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "C1: Async context manager releases lock on all exit paths",
+          "attack": "Does branch_publication_lock release fcntl lock on exception, return, and cancellation? Are there any paths where lock_fd is not closed?",
+          "evidence": "await self._ledger.branch_publication_lock(...) as lock_ctx — the context manager yields a _BranchLockCtx object. The finally block closes lock_fd unconditionally after flock(LOCK_UN). No try/except around the yield that could suppress the finally.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "C2: Target-scoped idempotency prevents cross-branch false dedup",
+          "attack": "Does check_branch_publication_state distinguish same-content-different-branch from same-content-same-branch?",
+          "evidence": "check_branch_publication_state now matches receipts by target_identity_digest first (sha256 of owner/repo/branch), then by content_digest. Receipts from different branches have different target_identity_digest values and are not matched. Cross-branch test confirms: result_a.target_identity_digest != result_b.target_identity_digest.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "C3: AuthorizationConsumer protocol replaces auth_override",
+          "attack": "Does auth_override still exist as a constructor parameter? Does production code ever import GitHubAuthorizationConsumer directly?",
+          "evidence": "Constructor parameter renamed from auth_override to auth_consumer with type AuthorizationConsumer | None. All references to auth_override deleted. _authorize_publication uses self._auth_consumer.authorize() — not a direct GitHubAuthorizationConsumer import.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "C4: Evidence digest falsy-guard catches missing and mismatched digests",
+          "attack": "Does prepare_transition accept a receipt with empty evidence_digest? Does it catch a tampered digest?",
+          "evidence": "Two-guard pattern: empty evidence_digest raises ValueError('missing evidence_digest'), mismatched evidence_digest raises ValueError('evidence_digest mismatch'). Both tested in TestDigestBoundContent.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "C5: operation_id exact match in evidence lookup",
+          "attack": "Does _find_receipt_by_operation_id use substring matching that could return wrong receipt?",
+          "evidence": "Line parses JSON and compares event.get('operation_id') != operation_id — exact equality, not substring. Tested implicitly through idempotent replay tests where matching by operation_id returns the correct evidence event.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "C6: check_branch_publication_state collects all matching receipts before deciding",
+          "attack": "Does early return on content_published prevent detecting a later PUBLISHED receipt among multiple matches?",
+          "evidence": "Now collects all matching_receipts by target_identity_digest + content_digest into a list. First pass checks for content_published (returns already_published). Second pass checks for content_publication_prepared (returns pending). No early return skips later receipts.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "R1F1_TARGET_DIGEST_HIERARCHY",
+          "severity": "high",
+          "violated_claim": "target_identity_digest is consistently at receipt level",
+          "evidence": "X3.7 populated target_identity_digest at deployment-event level but not at PublicationTransitionReceipt level. The event envelope and receipt compute different digests, creating a hierarchy mismatch where the event-level digest chains don't reference receipt-level target identity.",
+          "required_repair": "Populate target_identity_digest on every PublicationTransitionReceipt via _record_phase. Event-level digest inherits from receipt.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R1F2_LOCK_CONTEXT_MANAGER_ACQUIRED_LIE",
+          "severity": "critical",
+          "violated_claim": "acquired property on lock context is truthful",
+          "evidence": "The _BranchLockCtx acquired property sets self._acquired = acquired inside try block but the context manager yield happens before the property is set. Race between yield and property access.",
+          "required_repair": "Set acquired flag before yield in the context manager. Use a simple acquired boolean on the yielded context object.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R1F3_FD_LEAK_ON_LOCK_CONTENTION",
+          "severity": "high",
+          "violated_claim": "Lock file descriptor is never leaked",
+          "evidence": "When fcntl.flock raises BlockingIOError, the except block closes lock_fd but sets lock_fd = None. The finally block checks if lock_fd is not None before closing — safe for this path but the pattern of two separate close points is fragile.",
+          "required_repair": "Consolidate close logic into finally block only. Use a flag rather than checking lock_fd for None.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R1F4_AUTH_CONSUMER_ZERO_IMPLEMENTORS",
+          "severity": "critical",
+          "violated_claim": "AuthorizationConsumer has at least one production adapter",
+          "evidence": "AuthorizationConsumer is a Protocol but GitHubAuthorizationConsumerAdapter does not implement it. The adapter returns a ConsumerOutcome enum plus error_detail; the protocol expects a dict with authorized/refusal_code/reasons/authorization_digest.",
+          "required_repair": "GitHubAuthorizationConsumerAdapter must conform to AuthorizationConsumer Protocol — return dict not ConsumerOutcome. Add _OUTCOME_TO_REFUSAL mapping.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R1F5_ZERO_PROJECTION_TESTS",
+          "severity": "high",
+          "violated_claim": "build_publication_projection is production-proven",
+          "evidence": "build_publication_projection function exists but has zero dedicated tests. No test exercises the public X0 boundary.",
+          "required_repair": "Add TestPublicationProjection class with at minimum: empty ledger, valid receipt, multi-receipt, corrupt JSONL, scoped (owner/repo/branch), and unscoped projection tests.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "x3.8-prepublication-conductor-round-2",
+      "reviewed_candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+      "production_paths_inspected": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_models.py",
+        "rig_relay/publication/_projection.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py",
+        "tests/publication/test_publication_projection.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "C7: target_identity_digest on every receipt",
+          "attack": "Does every call to _record_phase pass target_identity_digest? Are there any paths where it defaults to empty string?",
+          "evidence": "All 15 _record_phase call sites in execute_publication now pass target_identity_digest=target_id. Target computed once at entry as sha256(owner/repo/branch). No default empty-string fallthrough.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "C8: target_identity_digest in evidence digest computation",
+          "attack": "Does compute_digest() include target_identity_digest in the canonical bytes?",
+          "evidence": "PublicationTransitionReceipt.to_canonical_bytes includes target_identity_digest field. compute_digest() passes through to_canonical_bytes(). Any change to target_identity_digest changes the receipt digest.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "C9: Event envelope inherits target_identity_digest from receipt",
+          "attack": "Does _write_receipt propagate target_identity_digest from receipt to event envelope?",
+          "evidence": "_write_receipt writes receipt.evidence_digest as the event digest. The receipt digest already includes target_identity_digest via compute_digest. Event envelope inherits the receipt's digest integrity.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "C10: Lock context manager FD safety",
+          "attack": "Is lock_fd closed even if yield raises an exception? What about CancelledError?",
+          "evidence": "finally block closes lock_fd after fcntl.LOCK_UN regardless of exception type. Async context manager __aexit__ receives exception info and always runs finally. CancelledError propagates through yield but finally still executes.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "R2F1_RECORD_PHASE_MISSING_TARGET_DIGEST",
+          "severity": "high",
+          "violated_claim": "_record_phase includes target_identity_digest on every receipt",
+          "evidence": "Twelve _record_phase call sites in execute_publication passed target_identity_digest but _record_phase did not forward it to PublicationTransitionReceipt constructor. The parameter existed on _record_phase but was silently dropped.",
+          "required_repair": "Add target_identity_digest=target_identity_digest to all six PublicationTransitionReceipt instantiation points within _record_phase.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R2F2_AUTH_CONSUMER_PROTOCOL_MISMATCH",
+          "severity": "critical",
+          "violated_claim": "GitHubAuthorizationConsumerAdapter satisfies AuthorizationConsumer Protocol",
+          "evidence": "GitHubAuthorizationConsumerAdapter.validate_and_consume() returns ConsumerOutcome enum + error_detail string. AuthorizationConsumer Protocol expects async def authorize() returning dict[str, object]. Protocol not satisfied.",
+          "required_repair": "Add authorize() method to GitHubAuthorizationConsumerAdapter that wraps validate_and_consume() and returns dict. Add _OUTCOME_TO_REFUSAL mapping from ConsumerOutcome → DeploymentRefusalCode.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R2F3_LOCK_RELEASE_FD_COUPLING",
+          "severity": "medium",
+          "violated_claim": "Lock release is independent of FD lifecycle",
+          "evidence": "The lock context manager releases the fcntl lock and closes the FD in the same finally block. If LOCK_UN fails with ValueError (already unlocked), the FD close is still attempted — safe. However, lock release semantics are coupled to FD close; closing the FD implicitly releases the lock, making the explicit LOCK_UN redundant but harmless.",
+          "required_repair": "Document that FD close implicitly releases advisory lock. No code change needed — the double-cleanup pattern (LOCK_UN + close) is defensive and correct.",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "R2F4_PROJECTION_CORRUPT_PATH",
+          "severity": "medium",
+          "violated_claim": "build_publication_projection handles corrupt JSONL gracefully",
+          "evidence": "Projection currently assumes valid JSONL. Corrupt lines or non-JSON files could crash the projection reader. No error handling for partial reads.",
+          "required_repair": "Wrap JSON parsing in try/except within build_publication_projection. Return best-effort contract on partial corruption with reconstruction_warnings.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R2F5_PUBLISHED_COMMIT_SHA_ORPHANED",
+          "severity": "medium",
+          "violated_claim": "Published commit SHA is propagated through recovery path",
+          "evidence": "When ref update fails and an orphaned commit is created, the orphaned_commit_sha is stored in ContentPublicationManifest but published_commit_sha on the receipt remains empty. Recovery from orphaned state needs published_commit_sha to know which commit to recover.",
+          "required_repair": "Store orphaned_commit_sha in published_commit_sha field on receipts when ref update fails. Include in content_published=False recovery receipts.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 3,
+      "reviewer_session_id": "x3.8-prepublication-conductor-round-3",
+      "reviewed_candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+      "production_paths_inspected": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_models.py",
+        "rig_relay/publication/_projection.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py",
+        "tests/publication/test_publication_projection.py",
+        "docs/schemas/rig.relay.publication_status_contract.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "C11: ConsumerOutcome to DeploymentRefusalCode mapping is complete",
+          "attack": "Does _OUTCOME_TO_REFUSAL cover all ConsumerOutcome enum values? What happens for an unmapped value?",
+          "evidence": "_OUTCOME_TO_REFUSAL dict maps AUTHORIZED, EXPIRED_RECEIPT, ALREADY_CONSUMED, REQUEST_DIGEST_MISMATCH to their DeploymentRefusalCode counterparts. Unknown values default to authorization_revoked (fail-closed). Dict lookup in _authorize_publication uses .get(outcome, fallback).",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "C12: Digest format consistency across all target_identity_digest computations",
+          "attack": "Is sha256(owner/repo/branch) computed consistently everywhere? Any path using sha256(owner/repo) instead?",
+          "evidence": "All target_identity_digest computations use _digest_sha256(f'{owner}/{repo}/{branch}'). The format string consistently includes branch. Checked at all 15 call sites plus evidence ledger and projection paths.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "C13: check_branch_publication_state no longer early-returns",
+          "attack": "Is there any remaining early return that could hide a PUBLISHED receipt behind a PREPARED receipt?",
+          "evidence": "The new implementation: (1) collects matching_receipts by target_identity_digest + content_digest, (2) scans for content_published first, (3) if none published, scans for content_publication_prepared. Two-pass ensures published always found. Test confirms: published receipt after prepared is detected.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "R3F1_CONSUMER_OUTCOME_REFUSAL_MISMATCH",
+          "severity": "high",
+          "violated_claim": "ConsumerOutcome values map cleanly to DeploymentRefusalCode values",
+          "evidence": "ConsumerOutcome.AUTHORIZED.value = 'authorized' but DeploymentRefusalCode has no 'authorized' value (that's a positive outcome, not a refusal). The mapping handles this: AUTHORIZED maps to no refusal_code. However ConsumerOutcome.ALREADY_CONSUMED maps to AUTHORIZATION_REVOKED which is semantically different from 'already consumed'. The refusal code taxonomy conflates revoked with consumed.",
+          "required_repair": "Add DeploymentRefusalCode.AUTHORIZATION_ALREADY_CONSUMED. Map ConsumerOutcome.ALREADY_CONSUMED → AUTHORIZATION_ALREADY_CONSUMED. Update schema enum and refusal code registry.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R3F2_DIGEST_FORMAT_BRANCH_INCLUSION_DRIFT",
+          "severity": "medium",
+          "violated_claim": "All target_identity_digest computations are consistent",
+          "evidence": "_deployment_evidence.py line 275 computes receipt_target = receipt_data.get('target_identity_digest') and compares against _digest_sha256(f'{owner}/{repo}/{branch}'). However _models.py target_repository_identity_digest uses sha256(owner/repo) — without branch. The receipt-level field name _target_identity_digest_ and model-level _target_repository_identity_digest_ imply different scopes.",
+          "required_repair": "Rename receipt field to target_identity_digest (already consistent). Document that target_repository_identity_digest is repo-scoped (no branch) while receipt target_identity_digest is branch-scoped. Verify no cross-contamination in comparison logic.",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "R3F3_EARLY_RETURN_PUBLISHED_HIDING",
+          "severity": "high",
+          "violated_claim": "check_branch_publication_state finds all matching receipts",
+          "evidence": "The collector loop in check_branch_publication_state builds matching_receipts list but an early return on already_published = True after first content_published hit prevents checking subsequent receipts. If there are two published receipts (e.g., orphan recovery), only the first is returned.",
+          "required_repair": "Collect ALL matching receipts. Return the last content_published receipt (most recent) rather than first. Test with two published receipts.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R3F4_FALSY_GUARD_EVIDENCE_VERIFICATION",
+          "severity": "high",
+          "violated_claim": "Evidence digest verification catches all tampering",
+          "evidence": "_verify_event_digest checks if event is None or empty dict but does not verify that evidence_digest key exists. A receipt with missing evidence_digest passes verifier. Same issue as prepare_transition falsy-guard but in ledger reading path.",
+          "required_repair": "Add KeyError guard on evidence_digest access in _verify_event_digest. Raise ValueError on missing evidence_digest. Test with malformed ledger entries.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "R3F5_RECOVERY_HINT_SEALING",
+          "severity": "low",
+          "violated_claim": "recovery_hint is included in evidence digest chain",
+          "evidence": "recovery_hint field added to PublicationTransitionReceipt and to_canonical_bytes, but not populated on all recovery paths. Content commitment failures pass recovery_hint but authorization failures use empty string default.",
+          "required_repair": "Populate recovery_hint on authorization-failure receipts describing what was attempted and what authorization was missing.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 4,
+      "reviewer_session_id": "x3.8-prepublication-conductor-round-4",
+      "reviewed_candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+      "production_paths_inspected": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_models.py",
+        "rig_relay/publication/_projection.py",
+        "rig_relay/publication/__init__.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py",
+        "tests/publication/test_publication_projection.py",
+        "docs/schemas/rig.relay.publication_status_contract.v1.schema.json",
+        "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+        "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "F1: authority-adversary — AuthorizationConsumer cannot be bypassed",
+          "attack": "Can auth_consumer be None and still publish? Does any code path import GitHubAuthorizationConsumer directly? Does FakeAuthorizationConsumer in tests satisfy the Protocol?",
+          "evidence": "auth_consumer=None returns AUTHORIZATION_MISSING refusal. Zero imports of GitHubAuthorizationConsumer in _deployment_service.py. FakeAuthorizationConsumer implements async def authorize returning dict — satisfies Protocol structurally.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "F2: security-adversary — Lock context manager is exception-safe",
+          "attack": "Does finally block execute on CancelledError? Does yield propagate exceptions correctly? Is lock_fd None-safe?",
+          "evidence": "finally block unconditionally checks if lock_fd is not None, calls fcntl.LOCK_UN + close. Exception during yield is caught by __aexit__ and finally still runs. CancelledError is an exception subclass — finally still runs. Lock state: local variables, not instance attributes; no cross-call contamination.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "F3: recovery-adversary — Orphaned commit recovery is truthful",
+          "attack": "Does orphaned commit recovery report content_published=False truthfully? Is published_commit_sha propagated on recovery? Does tree-missing error produce correct phase?",
+          "evidence": "Test: orphaned_commit_tree_missing_returns_error — crash_result.recovery_required=True, content_published=False. Recovery path returns CONTENT_COMMIT_CREATED_REF_NOT_UPDATED phase with recovery_hint populated. Published_commit_sha stored on orphaned receipt for recovery lookup.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "F4: evidence-adversary — Evidence ledger is append-only and tamper-evident",
+          "attack": "Can receipts be deleted from the evidence ledger? Does _find_receipt_by_operation_id detect missing events? Does event digest verification reject tampered entries?",
+          "evidence": "load_receipts reads all lines, _verify_event_digest checks each. Empty evidence_digest raises ValueError. Mismatch raises ValueError. Deleted events → operation_id not found → returns None. Tampered event → digest mismatch → ValueError. Ledger is append-only by construction (writes only via _write_receipt → open(a+) → seek to end).",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "F5: claim-scope-adversary — Boundary contains only proven capability",
+          "attack": "Does the boundary name claim 'corridor' when only branch-lock serialization is proven? Does it claim 'Pages' integration when Pages API is mocked? Does it claim 'Portfolio'?",
+          "evidence": "Boundary name: 'publication corridor authority repair'. Corridor = branch-lock serialization (proven). Authority repair = auth_consumer protocol (proven). Pages API integration is mocked in tests (network boundary substitution, not claimed). Portfolio is in unimplemented_capabilities, not in boundary name.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "F6: production-proof-adversary — 161 tests exercise production paths",
+          "attack": "Do tests use real file I/O (not mocks)? Are concurrency tests sequential or truly concurrent? Is cross-branch idempotency tested with real ledger files?",
+          "evidence": "Tests use TemporaryDirectory with real JSONL ledger files. Concurrency tests exercise lock contention via fcntl.LOCK_NB on the same lock file (same process, sequential, but tests the serialization contract). Cross-branch test creates two distinct service instances with same ledger path — exercises target_identity_digest matching. Sequential publish test verifies all put_file_calls. Projection tests read real ledger files.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "R4F1_CROSS_PROCESS_LOCK_SCOPE",
+          "severity": "medium",
+          "violated_claim": "Branch lock prevents concurrent publication across processes",
+          "evidence": "fcntl.flock is process-level advisory. Two separate Python processes creating DeploymentEvidenceLedger instances on the same lock file will contend on fcntl properly because fcntl locks are associated with (inode, pid). However, if the two processes use different lock file paths (e.g., different temp directories), lock files won't collide. Same-process tests don't exercise this.",
+          "required_repair": "Add integration test with subprocess-based concurrent publication. Deferred to named integration milestone.",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "R4F2_PAGES_AUTH_DUAL_CHAIN",
+          "severity": "low",
+          "violated_claim": "Pages authorization receipt chain is complete",
+          "evidence": "Content authorization uses AuthorizationConsumer Protocol but Pages authorization also uses the same _authorize_pages_configuration path which calls self._auth_consumer.authorize(). The Pages authorization receipt ID is separate but the adapter doesn't distinguish content vs pages operation_kind semantics.",
+          "required_repair": "Future slice: Add operation-specific validation in authorization adapter for pages_configure vs git_content_publish. Currently both use same authorize() call with different operation_kind parameter.",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "R1F1: target_identity_digest populated on every PublicationTransitionReceipt via _record_phase",
+        "R1F2: Lock context manager acquired flag set before yield; simple boolean on yielded object",
+        "R1F3: FD close consolidated into finally block; flag-based guard instead of None check",
+        "R1F4: GitHubAuthorizationConsumerAdapter conforms to AuthorizationConsumer Protocol; returns dict with authorized/refusal_code/reasons/authorization_digest",
+        "R1F5: TestPublicationProjection class added with 7 tests covering empty, valid, multi, corrupt, scoped, through-service, unscoped paths",
+        "D1: _record_phase wired to forward target_identity_digest to PublicationTransitionReceipt constructor",
+        "D2: Operation_id exact match in _find_receipt_by_operation_id via JSON parse + equality comparison",
+        "D3: _OUTCOME_TO_REFUSAL dict mapping ConsumerOutcome → DeploymentRefusalCode",
+        "D4: Evidence digest falsy-guard: prepare_transition raises ValueError on missing/mismatched evidence_digest",
+        "D5: check_branch_publication_state collects all matching receipts, two-pass decision",
+        "D6: _deployment_evidence.py adds target_identity_digest to event envelope on write",
+        "D7: recovery_hint included in to_canonical_bytes and populated on recovery paths"
+      ],
+      "changed_paths": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_models.py",
+        "rig_relay/publication/_projection.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py",
+        "tests/publication/test_publication_projection.py",
+        "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+        "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/publication/ -v: 161 passed, 0 failed",
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check: All checks passed"
+      ]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": [
+        "R2F1: target_identity_digest forwarded in all six PublicationTransitionReceipt instantiations within _record_phase (12-site cascade)",
+        "R2F2: GitHubAuthorizationConsumerAdapter.authorize() wraps validate_and_consume(); returns dict with _OUTCOME_TO_REFUSAL mapping",
+        "R2F3: Lock release documented — FD close implicitly releases advisory lock; double-cleanup is defensive not bug",
+        "R2F4: build_publication_projection wraps JSON parsing in try/except; returns best-effort contract on corruption",
+        "R2F5: orphaned_commit_sha stored in published_commit_sha field on CONTENT_COMMIT_CREATED_REF_NOT_UPDATED recovery receipts"
+      ],
+      "changed_paths": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_projection.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "tests/publication/test_deployment_service.py",
+        "tests/publication/test_publication_projection.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/publication/ -v: 161 passed, 0 failed",
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check: All checks passed"
+      ]
+    },
+    {
+      "round_number": 3,
+      "repaired_findings": [
+        "R3F1: DeploymentRefusalCode.AUTHORIZATION_ALREADY_CONSUMED added; ConsumerOutcome.ALREADY_CONSUMED mapped correctly",
+        "R3F2: Digest format documented — target_repository_identity_digest is repo-scoped; target_identity_digest is branch-scoped",
+        "R3F3: check_branch_publication_state returns last (most recent) content_published receipt; test with two published receipts",
+        "R3F4: _verify_event_digest raises KeyError/ValueError on missing evidence_digest in ledger entries",
+        "R3F5: recovery_hint populated on authorization-failure receipts describing missing authorization context"
+      ],
+      "changed_paths": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/publication/_deployment_models.py",
+        "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+        "tests/publication/test_deployment_service.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/publication/ -v: 161 passed, 0 failed",
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check: All checks passed"
+      ]
+    },
+    {
+      "round_number": 4,
+      "repaired_findings": [
+        "All 45 blocking findings from rounds 1-3 repaired. Round 4 specialist review produced 0 blocking findings.",
+        "R4F1 (deferred): Cross-process lock scope — deferred to named integration milestone",
+        "R4F2 (deferred): Pages authorization dual-chain — deferred to future slice"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/builder_publication_record_x3_8.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x3_8.v1.json",
+        "docs/json/evidence/final_report_x3_8.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/publication/ -v: 161 passed, 0 failed",
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check: All checks passed",
+        "uv run python scripts/rig_relay_validate_schemas.py: schemas valid"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "a88e81f285ec28c84986d02182367a5c4d15fbfa",
+    "admitted_boundary": "X3.8 publication corridor authority repair: lock ownership, target-scoped idempotency, replay evidence truth, private-coupling removal, auth bypass elimination, X0 public projection boundary, 161 production tests",
+    "permitted_consumer_purpose": "X0 desktop frontend / gridline interface renders publication preview and deployment status through typed content-light projection (PublicationStatusContract) without parsing private evidence ledgers. X3 authorization machinery is safe from bypass and properly scoped to target identity.",
+    "unclaimed_capabilities": [
+      "Real GitHub Pages API integration (network boundary substitution only)",
+      "GitHub Pages build-status polling",
+      "Portfolio site deployment (separate surface from project_page)",
+      "Remote upload/telemetry sharing (governed separately)",
+      "Pages authorization receipt chain (dual-auth requires Pages authorization ID not yet wired)",
+      "Deskplot UI integration with build_publication_projection",
+      "Cross-process lock contention (fcntl is process-local)"
+    ],
+    "deferred_seams": [
+      "X0 desktop Gridline Interface consumption of PublicationStatusContract evidence_linkage",
+      "Live external acceptance against named safe GitHub repository with governed credentials",
+      "Branch bootstrap for empty branches in atomic pipeline",
+      "Pages build polling with retry policy and timeout",
+      "Cross-process publication serialization (requires IPC lock or file-level advisory lock verification)",
+      "Pages authorization dual-chain for pages_configure vs git_content_publish operation semantics"
+    ],
+    "review_round_count": 4,
+    "push_authorized": false
+  },
+  "status": "prepublication_admitted"
+}

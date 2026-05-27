@@ -266,6 +266,7 @@ class PublicationTransitionReceipt(BaseModel):
     refusal_reasons: list[str] = Field(default_factory=list)
     recovery_required: bool = False
     recovery_hint: str = ""
+    target_identity_digest: str = ""
     deployed_at: str = ""
     evidence_digest: str = ""
 
@@ -296,6 +297,8 @@ class PublicationTransitionReceipt(BaseModel):
             "refusal_code": self.refusal_code,
             "refusal_reasons": sorted(self.refusal_reasons),
             "recovery_required": self.recovery_required,
+            "recovery_hint": self.recovery_hint,
+            "target_identity_digest": self.target_identity_digest,
             "deployed_at": self.deployed_at,
         }
         p = json.dumps(c, sort_keys=True, separators=(",", ":"))
@@ -401,6 +404,13 @@ class PublicationStatusContract(BaseModel):
     available_actions: list[str] = Field(default_factory=list)
     projection_digest: str = ""
     terminal_receipt_digest: str = ""
+    evidence_linkage: dict[str, str] = Field(
+        default_factory=lambda: {
+            "terminal_receipt_digest": "",
+            "evidence_ledger_path": "",
+            "projection_digest": "",
+        }
+    )
 
 
 def _now_iso() -> str:
