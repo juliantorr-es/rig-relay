@@ -22,6 +22,11 @@ from __future__ import annotations
 
 from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
 from rig_relay.data_plane.postgres._config import PostgresConnectionConfig
+from rig_relay.data_plane.postgres._materialization_input import (
+    PublicationMaterializationInput,
+    RepositoryEstateMaterializationInput,
+    TimelineMaterializationInput,
+)
 from rig_relay.data_plane.postgres._materialize_publication import (
     PublicationMaterializer,
 )
@@ -58,10 +63,13 @@ __all__ = [
     "PostgresConnectionConfig",
     "PostgresOperationalProjectionStore",
     "ProjectionBuildReceipt",
+    "PublicationMaterializationInput",
     "PublicationMaterializer",
     "RebuildReceipt",
+    "RepositoryEstateMaterializationInput",
     "RepositoryEstateMaterializer",
     "RestoreReceipt",
     "SchemaVersionRecord",
+    "TimelineMaterializationInput",
     "TimelineMaterializer",
 ]

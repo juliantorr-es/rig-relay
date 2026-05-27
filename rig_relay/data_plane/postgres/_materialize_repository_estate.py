@@ -16,6 +16,9 @@ from typing import Any
 
 from psycopg import sql as psql
 
+from rig_relay.data_plane.postgres._materialization_input import (
+    RepositoryEstateMaterializationInput,
+)
 from rig_relay.data_plane.postgres._models import (
     MaterializationReceipt,
     RebuildReceipt,
@@ -40,16 +43,25 @@ class RepositoryEstateMaterializer:
 
     # ── Public API ─────────────────────────────────────────────────────
 
-    def materialize(self, service: Any) -> MaterializationReceipt:
-        """Materialize from a live RepositoryEstateService.
+    def materialize(
+        self, input_data: RepositoryEstateMaterializationInput
+    ) -> MaterializationReceipt:
+        """Materialize from a public-boundary-safe materialization input."""
+        return self._materialize_impl(
+            input_data.projection,
+            input_data.registration_events,
+            input_data.observation_events,
+        )
 
-        Calls service.build_projection() then materializes all evidence
-        rows into PostgreSQL projection tables.
+    def materialize_from_service(self, service: Any) -> MaterializationReceipt:
+        """Materialize from a live RepositoryEstateService (public API only).
+
+        Uses RepositoryEstateMaterializationInput.from_service() which
+        reads the projection through build_projection() and evidence
+        JSONL ledgers from the filesystem. Never accesses service._store.
         """
-        projection = service.build_projection()
-        raw_registrations = service._store.read_all_registrations()
-        raw_observations = service._store.read_all_observations()
-        return self._materialize_impl(projection, raw_registrations, raw_observations)
+        input_data = RepositoryEstateMaterializationInput.from_service(service)
+        return self.materialize(input_data)
 
     def materialize_from_projection(
         self,
@@ -66,46 +78,65 @@ class RepositoryEstateMaterializer:
             projection, raw_registrations or [], raw_observations or []
         )
 
-    def rebuild(self, service: Any) -> RebuildReceipt:
+    def rebuild(
+        self, input_data: RepositoryEstateMaterializationInput
+    ) -> RebuildReceipt:
         """Clear and rebuild repository estate projection tables from canonical evidence.
 
-        Returns a RebuildReceipt comparing rows_before vs rows_after.
+        Determinism is proven by comparing SHA256 content digests of the
+        materialized tables before and after rebuild, excluding non-semantic
+        operation timestamps and receipt IDs.
         """
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_multi_table_digest,
+        )
+
         schema = self.store.config.schema_name
+        now = datetime.now()
 
-        with self.store.conn.cursor() as cur:
-            changes_before = _fetch_count(cur, schema, "repository_observation_changes")
-            obs_before = _fetch_count(cur, schema, "repository_observations")
-            ws_before = _fetch_count(cur, schema, "repository_workspace_instances")
-            builds_before = _fetch_count(cur, schema, "repository_estate_builds")
+        tables = [
+            "repository_observations",
+            "repository_workspace_instances",
+            "repository_observation_changes",
+        ]
+        exclude = ["materialized_at", "receipt_id", "built_at"]
 
-        rows_before = changes_before + obs_before + ws_before + builds_before
+        digest_before = compute_multi_table_digest(
+            self.store.conn, schema, tables, exclude
+        )
+
+        # Count rows for diagnostics
+        rows_before = sum(_fetch_count(self.store.conn, schema, t) for t in tables)
 
         with self.store.conn.transaction():
             self._clear_estate_tables(schema)
 
-        _receipt = self.materialize(service)
+        _receipt = self.materialize(input_data)
 
-        with self.store.conn.cursor() as cur:
-            changes_after = _fetch_count(cur, schema, "repository_observation_changes")
-            obs_after = _fetch_count(cur, schema, "repository_observations")
-            ws_after = _fetch_count(cur, schema, "repository_workspace_instances")
-            builds_after = _fetch_count(cur, schema, "repository_estate_builds")
+        digest_after = compute_multi_table_digest(
+            self.store.conn, schema, tables, exclude
+        )
+        rows_after = sum(_fetch_count(self.store.conn, schema, t) for t in tables)
 
-        rows_after = changes_after + obs_after + ws_after + builds_after
+        deterministic = digest_before == digest_after
 
         rebuild_receipt = RebuildReceipt(
             receipt_id=compute_receipt_id(
-                "rebuild_repo_estate", "repository_estate", datetime.now()
+                "rebuild_repo_estate", "repository_estate", now
             ),
             projection_name="repository_estate",
             rows_before=rows_before,
             rows_after=rows_after,
-            rebuilt_at=datetime.now(),
-            deterministic=(rows_before == rows_after),
+            rebuilt_at=now,
+            deterministic=deterministic,
         )
         self.store._record_rebuild_receipt(rebuild_receipt)
         return rebuild_receipt
+
+    def rebuild_from_service(self, service: Any) -> RebuildReceipt:
+        """Rebuild from a live service (convenience wrapper)."""
+        input_data = RepositoryEstateMaterializationInput.from_service(service)
+        return self.rebuild(input_data)
 
     # ── Core materialization ───────────────────────────────────────────
 
@@ -237,7 +268,7 @@ class RepositoryEstateMaterializer:
                     getattr(summary, "latest_observation_at", "")
                 ),
                 getattr(summary, "provenance", "canonical_fact"),
-                getattr(projection, "authority_state", "canonical_live"),
+                "controlled_boundary",
                 "",
                 now,
             )
@@ -322,8 +353,8 @@ class RepositoryEstateMaterializer:
                         len(git_facts.get("instruction_files", [])),
                         payload.get("previous_observation_digest", "") or "",
                         payload.get("observation_digest", ""),
-                        "canonical_fact",
-                        "canonical_live",
+                        "derived_projection",
+                        "controlled_boundary",
                         payload.get("observation_digest", ""),
                         payload.get("content_light_guarantee", True),
                         now,

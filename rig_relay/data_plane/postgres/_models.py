@@ -311,7 +311,19 @@ class RestoreReceipt(BaseModel):
     )
     canonical_equivalence_verified: bool = Field(
         default=False,
-        description="Whether restored rows match canonical evidence identifiers",
+        description=(
+            "DEPRECATED: use verified_equivalence_level instead. "
+            "Set to True when schema_migration_metadata verification passes. "
+            "Does NOT prove full product-state equivalence."
+        ),
+    )
+    verified_equivalence_level: str = Field(
+        default="none",
+        description=(
+            "Level of equivalence verification: 'none', 'schema_migration_metadata', "
+            "or 'full_product_state'. Only 'full_product_state' proves domain table "
+            "content equivalence via digest comparison."
+        ),
     )
     verification_method: str = Field(
         default="", description="How equivalence was verified"

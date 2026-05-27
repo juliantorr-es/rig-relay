@@ -16,13 +16,16 @@ from typing import Any
 from psycopg import sql as psql
 
 from rig_relay.core.logger import logger
+from rig_relay.data_plane.postgres._materialization_input import (
+    PublicationMaterializationInput,
+    compute_projection_digest,
+)
 from rig_relay.data_plane.postgres._models import (
     MaterializationReceipt,
     RebuildReceipt,
     compute_receipt_id,
 )
 from rig_relay.data_plane.postgres._store import PostgresOperationalProjectionStore
-from rig_relay.publication._models import LedgerReconstruction
 
 
 class PublicationMaterializer:
@@ -46,34 +49,39 @@ class PublicationMaterializer:
         self._schema = store.config.schema_name
 
     def materialize(
-        self,
-        ledger: Any,  # PublicationEvidenceLedger
+        self, input_data: PublicationMaterializationInput
     ) -> MaterializationReceipt:
-        """Materialize all preview receipts from the evidence ledger.
+        """Materialize from a public-boundary-safe materialization input."""
+        return self._materialize_impl(
+            input_data.reconstruction, input_data.ledger_identity_digest
+        )
 
-        Calls ledger.load_receipts(authoritative=False) and then
-        materializes the reconstruction into PostgreSQL tables
-        within a single transaction.
+    def materialize_from_ledger(
+        self, ledger: Any, ledger_path_digest: str = ""
+    ) -> MaterializationReceipt:
+        """Materialize from a PublicationEvidenceLedger (public API only).
+
+        Uses PublicationMaterializationInput.from_ledger() which calls
+        ledger.load_receipts() — the public API contract. Never accesses
+        ledger._path or other private internals.
         """
-        reconstruction = ledger.load_receipts(authoritative=False)
-        ledger_path_hash = _hash_ledger_path(ledger._path)
-        return self._materialize_impl(reconstruction, ledger_path_hash)
+        input_data = PublicationMaterializationInput.from_ledger(
+            ledger, ledger_path_digest
+        )
+        return self.materialize(input_data)
 
     def materialize_from_reconstruction(
-        self,
-        reconstruction: Any,  # LedgerReconstruction
+        self, reconstruction: Any
     ) -> MaterializationReceipt:
         """Materialize receipts from an already-loaded reconstruction.
 
         Used when the caller has already obtained a LedgerReconstruction
-        and wants to materialize it without reloading the ledger. The
-        ledger_path_hash is not available in this path; reconstruction
-        state is stored without a path reference.
+        and wants to materialize it without reloading the ledger.
         """
         return self._materialize_impl(reconstruction, "")
 
     def _materialize_impl(
-        self, reconstruction: LedgerReconstruction, ledger_path_hash: str
+        self, reconstruction: Any, ledger_path_hash: str
     ) -> MaterializationReceipt:
         """Core materialization logic — idempotent, single-transaction."""
         receipts = reconstruction.receipts
@@ -139,8 +147,8 @@ class PublicationMaterializer:
                             receipt_dict.get("operation_id", ""),
                             receipt_dict.get("source_event_id", ""),
                             receipt_dict.get("source_event_digest", ""),
-                            "canonical_fact",
-                            "canonical_live",
+                            "derived_projection",
+                            "controlled_boundary",
                             True,
                             now,
                         ),
@@ -253,20 +261,17 @@ class PublicationMaterializer:
             deterministic=False,
         )
 
-    def rebuild(
-        self,
-        ledger: Any,  # PublicationEvidenceLedger
-    ) -> RebuildReceipt:
-        """Clear and rebuild all publication materialized rows from ledger.
-
-        1. Counts existing rows in publication tables.
-        2. Deletes all rows.
-        3. Re-materializes from ledger.
-        4. Compares rows_before vs rows_after.
-        5. Returns RebuildReceipt with deterministic comparison.
-        """
-        rows_before = self._count_publication_rows()
+    def rebuild(self, input_data: PublicationMaterializationInput) -> RebuildReceipt:
+        """Clear and rebuild publication tables. Content-digest determinism."""
+        schema = self._schema
         now = datetime.now()
+        exclude = ["materialized_at", "built_at"]
+
+        digest_before = compute_projection_digest(
+            self._store.conn, schema, "publication_preview_receipts", exclude
+        )
+        rows_before = self._count_publication_rows()
+
         receipt_id = compute_receipt_id("rebuild", "publication", now)
 
         with self._store.conn.transaction():
@@ -278,14 +283,18 @@ class PublicationMaterializer:
                 ):
                     cur.execute(
                         psql.SQL("DELETE FROM {}.{}").format(
-                            psql.Identifier(self._schema), psql.Identifier(table)
+                            psql.Identifier(schema), psql.Identifier(table)
                         )
                     )
 
-        self.materialize(ledger)
+        self.materialize(input_data)
 
+        digest_after = compute_projection_digest(
+            self._store.conn, schema, "publication_preview_receipts", exclude
+        )
         rows_after = self._count_publication_rows()
-        deterministic = rows_before == rows_after
+
+        deterministic = digest_before == digest_after
 
         receipt = RebuildReceipt(
             receipt_id=receipt_id,
@@ -298,12 +307,24 @@ class PublicationMaterializer:
 
         self._store._record_rebuild_receipt(receipt)
         logger.info(
-            "Rebuild publication: %d -> %d rows, deterministic=%s",
+            "Rebuild publication: %d -> %d rows, digest_before=%s digest_after=%s "
+            "deterministic=%s",
             rows_before,
             rows_after,
+            digest_before,
+            digest_after,
             deterministic,
         )
         return receipt
+
+    def rebuild_from_ledger(
+        self, ledger: Any, ledger_path_digest: str = ""
+    ) -> RebuildReceipt:
+        """Rebuild from a live ledger (convenience wrapper)."""
+        input_data = PublicationMaterializationInput.from_ledger(
+            ledger, ledger_path_digest
+        )
+        return self.rebuild(input_data)
 
     def _count_publication_rows(self) -> int:
         """Count total rows across all three publication materialization tables."""
@@ -323,12 +344,6 @@ class PublicationMaterializer:
                 if row:
                     total += int(row[0])
         return total
-
-
-def _hash_ledger_path(path: Any) -> str:
-    """Compute a salted SHA256 hash of the ledger file path."""
-    raw = str(path)
-    return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
 def _empty_ledger_hash() -> str:

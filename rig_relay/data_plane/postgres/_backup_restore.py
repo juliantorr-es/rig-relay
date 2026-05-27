@@ -1,9 +1,11 @@
-"""PostgreSQL backup and restore application service.
+"""PostgreSQL operational-schema backup and restore application service.
 
-Uses official PostgreSQL tooling (pg_dump, pg_restore) rather than
-inventing a proprietary dump format. Produces content-light receipts
-that contain no raw connection strings, passwords, or backup file
-contents.
+Uses official PostgreSQL tooling (pg_dump, pg_restore). Backs up
+the operational schema only (not the full PostgreSQL installation).
+Restore requires a compatible prepared PostgreSQL environment.
+
+Receipts are content-light — no raw connection strings, passwords,
+or backup file contents.
 """
 
 from __future__ import annotations
@@ -37,22 +39,18 @@ class BackupNotFoundError(Exception): ...
 
 
 class PostgresBackupService:
-    """Application service for PostgreSQL backup and restore operations.
+    """Application service for PostgreSQL operational-schema backup and restore.
 
-    Uses official PostgreSQL tooling (pg_dump, pg_restore) rather than
-    inventing a proprietary dump format. Produces content-light receipts
-    that contain no raw connection strings, passwords, or backup file
-    contents.
+    Uses official PostgreSQL tooling (pg_dump, pg_restore). Backs up
+    the operational schema only (not the full PostgreSQL installation).
+    Restore requires a compatible prepared PostgreSQL environment.
 
-    Backup excludes secrets-bearing tables (e.g., _migrations error_message
-    is metadata, not secrets). The pg_dump --exclude-table-data flag is
-    used where appropriate to exclude operational snapshot data that may
-    contain runtime secrets.
+    Backup scope: operational schema archive generation.
+    NOT implemented: full local PostgreSQL installation recovery,
+    major-version pg_upgrade migration, cross-server portability.
 
-    Authority: PostgreSQL backups are operational state preservation.
-    Canonical evidence ledgers remain the authoritative rebuild source.
-    A PostgreSQL backup restore does not replace canonical evidence
-    restoration/rebuild.
+    Receipts are content-light — no raw connection strings, passwords,
+    or backup file contents.
     """
 
     _FORMAT_MAP: ClassVar[dict[str, str]] = {
@@ -76,6 +74,10 @@ class PostgresBackupService:
         self, *, format: str = "custom", verify: bool = True
     ) -> BackupReceipt:
         """Create a PostgreSQL backup of the operational schema.
+
+        The ``--schema`` flag limits backup to the operational schema.
+        Full-database and cluster-level backups require pg_dumpall or
+        a broader pg_dump invocation.
 
         Args:
             format: Backup format — one of "custom", "plain", "tar", "directory".
@@ -250,20 +252,22 @@ class PostgresBackupService:
         migration_version = self._get_migration_version()
         tables_restored, rows_restored = self._count_tables_and_rows()
 
-        canonical_equivalence_verified = False
+        schema_metadata_restored = False
         verification_method = ""
         if verify_equivalence:
-            canonical_equivalence_verified = self._verify_canonical_equivalence()
-            verification_method = "checked _schema_version and _migrations records"
+            schema_metadata_restored = self._verify_schema_migration_metadata()
+            verification_method = (
+                "checked _schema_version and _migrations rows present after restore"
+            )
 
         receipt_id = compute_receipt_id("restore", backup_sha256, datetime.now())
 
         logger.info(
-            "Backup restored: %d tables, %d rows, version %d, equivalence=%s",
+            "Backup restored: %d tables, %d rows, version %d, schema_metadata=%s",
             tables_restored,
             rows_restored,
             migration_version,
-            canonical_equivalence_verified,
+            schema_metadata_restored,
         )
 
         return RestoreReceipt(
@@ -274,7 +278,10 @@ class PostgresBackupService:
             tables_restored=tables_restored,
             rows_restored=rows_restored,
             migration_version_restored=migration_version,
-            canonical_equivalence_verified=canonical_equivalence_verified,
+            canonical_equivalence_verified=schema_metadata_restored,
+            verified_equivalence_level=(
+                "schema_migration_metadata" if schema_metadata_restored else "none"
+            ),
             verification_method=verification_method,
             errors=errors,
         )
@@ -413,8 +420,14 @@ class PostgresBackupService:
             logger.debug("Could not count tables and rows", exc_info=True)
             return 0, 0
 
-    def _verify_canonical_equivalence(self) -> bool:
-        """Check that schema authority records are present after restore."""
+    def _verify_schema_migration_metadata(self) -> bool:
+        """Check that schema authority and migration metadata are present after restore.
+
+        This verifies that the schema migration tracking tables survived
+        the restore. It does NOT prove domain table content equivalence.
+        For full product-state equivalence verification, compare domain
+        table content digests against a pre-backup digest manifest.
+        """
         try:
             conn = connect(self.config)
             try:
@@ -444,7 +457,7 @@ class PostgresBackupService:
             finally:
                 conn.close()
         except Exception:
-            logger.debug("Could not verify canonical equivalence", exc_info=True)
+            logger.debug("Could not verify schema migration metadata", exc_info=True)
             return False
 
     @staticmethod

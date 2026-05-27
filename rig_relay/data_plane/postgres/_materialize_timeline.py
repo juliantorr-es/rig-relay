@@ -15,6 +15,7 @@ the sole authority.
 from __future__ import annotations
 
 from datetime import datetime
+import hashlib
 from typing import Any
 
 from psycopg import sql as psql
@@ -134,6 +135,12 @@ class TimelineMaterializer:
         now = datetime.now()
         rows = projection.rows if hasattr(projection, "rows") else []
 
+        digest_input = hashlib.sha256(
+            (
+                projection.timeline_id if hasattr(projection, "timeline_id") else ""
+            ).encode()
+        ).hexdigest()
+
         degradation = _compute_degradation_counts(rows)
         receipt = MaterializationReceipt(
             receipt_id=compute_receipt_id("timeline", projection.projection_id, now),
@@ -143,7 +150,7 @@ class TimelineMaterializer:
             corrupt_rows=0,
             duplicate_rows=0,
             built_at=now,
-            evidence_source_sha256="",
+            evidence_source_sha256=f"sha256:{digest_input}",
             deterministic=True,
         )
 
@@ -204,14 +211,23 @@ class TimelineMaterializer:
         """Rebuild the timeline from canonical evidence.
 
         Deletes all timeline_events and timeline_builds rows, then
-        re-materializes from the service. Compares rows_before and
-        rows_after to determine determinism.
+        re-materializes from the service. Compares SHA256 content
+        digests before and after (excluding materialized_at) to
+        determine determinism.
 
         Returns a RebuildReceipt with the comparison.
         """
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_projection_digest,
+        )
+
         schema = self.store.config.schema_name
         now = datetime.now()
+        exclude = ["materialized_at"]
 
+        digest_before = compute_projection_digest(
+            self.store.conn, schema, "timeline_events", exclude
+        )
         rows_before = _count_timeline_events(self.store.conn, schema)
 
         receipt_id = compute_receipt_id("rebuild_timeline", "timeline", now)
@@ -232,6 +248,9 @@ class TimelineMaterializer:
 
             _ = self.materialize(service)
 
+            digest_after = compute_projection_digest(
+                self.store.conn, schema, "timeline_events", exclude
+            )
             rows_after = _count_timeline_events(self.store.conn, schema)
         except Exception as e:
             logger.error("Timeline rebuild failed: %s", e)
@@ -244,7 +263,7 @@ class TimelineMaterializer:
                 deterministic=False,
             )
 
-        deterministic = rows_before == rows_after
+        deterministic = digest_before == digest_after
 
         receipt = RebuildReceipt(
             receipt_id=receipt_id,
@@ -256,9 +275,12 @@ class TimelineMaterializer:
         )
 
         logger.info(
-            "Timeline rebuilt: %d -> %d rows, deterministic=%s",
+            "Timeline rebuilt: %d -> %d rows, digest_before=%s digest_after=%s "
+            "deterministic=%s",
             rows_before,
             rows_after,
+            digest_before,
+            digest_after,
             deterministic,
         )
 
