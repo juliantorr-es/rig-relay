@@ -1,0 +1,402 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+  "title": "Rig Relay Repository Context Release v1",
+  "description": "Canonical evidence artifact produced after quarantine, intake, structural indexing, dependency classification, risk assessment, and safe validation probing. Declares a repository safe and useful for agent workspace allocation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "repository_root",
+    "lifecycle_state",
+    "safe_validation_results",
+    "degraded",
+    "context_confidence",
+    "released_at",
+    "content_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.repository_context_release.v1"
+    },
+    "release_id": {
+      "type": "string",
+      "description": "Unique identifier for this context release."
+    },
+    "repository_root": {
+      "type": "string",
+      "description": "Absolute path to the repository root."
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "remote_selected",
+        "cloned_quarantined",
+        "instructions_discovered",
+        "structure_indexed",
+        "dependencies_classified",
+        "execution_risks_reviewed",
+        "safe_validation_probed",
+        "context_released",
+        "workspace_eligible",
+        "degraded"
+      ],
+      "description": "Current lifecycle state of the repository context pipeline."
+    },
+    "quarantine": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/QuarantineInfo"
+        }
+      ],
+      "description": "Quarantine metadata; null for local repositories."
+    },
+    "instruction_map_digest": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/InstructionMapDigest"
+        }
+      ],
+      "description": "Instruction map digest; set after INSTRUCTIONS_DISCOVERED."
+    },
+    "structural_index_digest": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/StructuralIndexDigest"
+        }
+      ],
+      "description": "Structural index digest; set after STRUCTURE_INDEXED."
+    },
+    "dependency_risk_summary": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/DependencyRiskSummary"
+        }
+      ],
+      "description": "Dependency risk summary; set after DEPENDENCIES_CLASSIFIED."
+    },
+    "execution_risk_summary": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/ExecutionRiskSummary"
+        }
+      ],
+      "description": "Execution risk summary; set after EXECUTION_RISKS_REVIEWED."
+    },
+    "safe_validation_results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SafeValidationResult"
+      },
+      "description": "Results of admitted safe validation commands."
+    },
+    "workspace_eligibility": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/WorkspaceEligibility"
+        }
+      ],
+      "description": "Workspace eligibility assessment; set after workspace eligibility check."
+    },
+    "restrictions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable runtime restrictions derived from risk assessment."
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Conditions or defects preventing lifecycle advancement."
+    },
+    "degraded": {
+      "type": "boolean",
+      "description": "True when one or more lifecycle stages failed or produced degraded results."
+    },
+    "degradation_reasons": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable reasons for degradation."
+    },
+    "context_confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Estimated confidence in the completeness and correctness of this context release (0.0 to 1.0)."
+    },
+    "released_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this context release was emitted."
+    },
+    "content_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of the canonical release JSON (excluding this field)."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Evidence references mapping stage names to evidence digests."
+    }
+  },
+  "definitions": {
+    "QuarantineInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quarantine_path",
+        "cloned_at",
+        "source_head_sha",
+        "is_read_only"
+      ],
+      "properties": {
+        "quarantine_path": {
+          "type": "string",
+          "description": "Absolute path where the repository was cloned into quarantine."
+        },
+        "cloned_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the clone completed."
+        },
+        "source_url": {
+          "type": ["string", "null"],
+          "description": "Remote URL the repository was cloned from."
+        },
+        "source_branch": {
+          "type": ["string", "null"],
+          "description": "Branch cloned from the remote."
+        },
+        "source_head_sha": {
+          "type": "string",
+          "description": "Full SHA of the commit at clone time."
+        },
+        "is_read_only": {
+          "type": "boolean",
+          "description": "True when the quarantine path is read-only."
+        }
+      }
+    },
+    "InstructionMapDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instruction_file_count",
+        "nested_instruction_count",
+        "rule_directory_count",
+        "scope_conflicts",
+        "map_sha256"
+      ],
+      "properties": {
+        "instruction_file_count": {
+          "type": "integer",
+          "description": "Total count of instruction files discovered."
+        },
+        "nested_instruction_count": {
+          "type": "integer",
+          "description": "Count of nested instruction files within scope chains."
+        },
+        "rule_directory_count": {
+          "type": "integer",
+          "description": "Count of rule directories discovered."
+        },
+        "scope_conflicts": {
+          "type": "integer",
+          "description": "Number of instruction scope conflicts detected."
+        },
+        "top_level_kinds": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" },
+          "description": "Count of each InstructionKind among top-level instruction files."
+        },
+        "map_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 hex digest of the canonical instruction map."
+        }
+      }
+    },
+    "StructuralIndexDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_count",
+        "symbol_count",
+        "exported_symbol_count",
+        "parser_errors",
+        "index_digest"
+      ],
+      "properties": {
+        "module_count": {
+          "type": "integer",
+          "description": "Total number of modules indexed."
+        },
+        "symbol_count": {
+          "type": "integer",
+          "description": "Total number of symbols indexed."
+        },
+        "exported_symbol_count": {
+          "type": "integer",
+          "description": "Total number of exported symbols across all modules."
+        },
+        "language_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" },
+          "description": "Module count per language kind."
+        },
+        "parser_errors": {
+          "type": "integer",
+          "description": "Total count of module files that failed to parse."
+        },
+        "index_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Matches StructuralIndex.index_digest for the index this digest represents."
+        }
+      }
+    },
+    "DependencyRiskSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_dependencies",
+        "production_count",
+        "dev_count",
+        "risk_count",
+        "classification_digest"
+      ],
+      "properties": {
+        "total_dependencies": {
+          "type": "integer",
+          "description": "Total dependency count across all dependency sets."
+        },
+        "production_count": {
+          "type": "integer",
+          "description": "Count of production dependencies."
+        },
+        "dev_count": {
+          "type": "integer",
+          "description": "Count of development dependencies."
+        },
+        "risk_count": {
+          "type": "integer",
+          "description": "Count of dependencies classified with risk above NONE."
+        },
+        "package_managers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Detected package manager kinds."
+        },
+        "classification_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Matches ClassifiedDependencies.classification_digest."
+        }
+      }
+    },
+    "ExecutionRiskSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_scripts_assessed",
+        "blocked_count",
+        "dangerous_count",
+        "safe_count",
+        "report_digest"
+      ],
+      "properties": {
+        "total_scripts_assessed": {
+          "type": "integer",
+          "description": "Total number of scripts and manifests assessed."
+        },
+        "blocked_count": {
+          "type": "integer",
+          "description": "Number of assessments that are blocked from execution."
+        },
+        "dangerous_count": {
+          "type": "integer",
+          "description": "Number of assessments with DANGEROUS or REJECTED risk level."
+        },
+        "safe_count": {
+          "type": "integer",
+          "description": "Number of assessments with SAFE risk level and no detections."
+        },
+        "report_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Matches ExecutionRiskReport.report_digest."
+        }
+      }
+    },
+    "SafeValidationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "exit_code",
+        "output_digest",
+        "latency_ms",
+        "passed"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The admitted validation command that was executed."
+        },
+        "exit_code": {
+          "type": "integer",
+          "description": "Exit code of the executed command."
+        },
+        "output_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 hex digest of combined stdout and stderr."
+        },
+        "latency_ms": {
+          "type": "integer",
+          "description": "Wall-clock execution latency in milliseconds."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "True when the command exited successfully with expected output."
+        }
+      }
+    },
+    "WorkspaceEligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible",
+        "blockers"
+      ],
+      "properties": {
+        "eligible": {
+          "type": "boolean",
+          "description": "True when the repository meets all workspace eligibility criteria."
+        },
+        "blockers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Human-readable reasons blocking workspace eligibility."
+        },
+        "recommended_workspace_kind": {
+          "type": ["string", "null"],
+          "description": "Recommended workspace kind: read_only, managed_write, etc."
+        },
+        "path_policy": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "string" },
+          "description": "Per-path policy mapping: path -> read, write, or forbidden."
+        }
+      }
+    }
+  }
+}

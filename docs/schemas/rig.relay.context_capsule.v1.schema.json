@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.context_capsule.v1.schema.json",
+  "title": "Rig Relay Context Capsule v1",
+  "description": "Compact, content-light context capsule consumed by Y3 agent context assembly. Provides a freshness-checkable summary derived from the repository context release suitable for fast agent context assembly without re-indexing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "capsule_id",
+    "repository_root",
+    "released_context_digest",
+    "instruction_scope_text_length",
+    "structural_index_digest",
+    "module_count",
+    "symbol_count",
+    "confidence",
+    "fresh",
+    "generated_at",
+    "capsule_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.context_capsule.v1"
+    },
+    "capsule_id": {
+      "type": "string",
+      "description": "Unique identifier for this context capsule."
+    },
+    "repository_root": {
+      "type": "string",
+      "description": "Absolute path to the repository root."
+    },
+    "released_context_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of the RepositoryContextRelease this capsule derives from."
+    },
+    "instruction_scope_text_length": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total character length of instruction scope text across all discovered files."
+    },
+    "structural_index_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest matching StructuralIndex.index_digest."
+    },
+    "module_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of modules in the structural index."
+    },
+    "symbol_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of symbols in the structural index."
+    },
+    "dependency_summary": {
+      "type": "object",
+      "description": "Content-light dependency counts summary.",
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "production": { "type": "integer", "minimum": 0 },
+        "dev": { "type": "integer", "minimum": 0 },
+        "risk": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "safe_commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Admitted safe validation commands available for agent use."
+    },
+    "restrictions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable runtime restrictions inherited from context release."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence from context release (0.0 to 1.0)."
+    },
+    "fresh": {
+      "type": "boolean",
+      "description": "True when this capsule matches the latest context release; false when stale."
+    },
+    "stale_since": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this capsule became stale, or null if fresh."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this capsule was generated."
+    },
+    "capsule_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of the canonical capsule JSON."
+    }
+  }
+}

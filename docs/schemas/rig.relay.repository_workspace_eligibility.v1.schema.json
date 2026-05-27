@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.repository_workspace_eligibility.v1.schema.json",
+  "title": "Rig Relay Repository Workspace Eligibility v1",
+  "description": "Standalone workspace eligibility assessment consumed by Y1 workspace allocation. Determines whether a repository is safe and ready for agent workspace creation, with path-level policy for read, write, and forbidden operations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "eligible",
+    "blockers",
+    "recommended_workspace_kind",
+    "evaluated_at",
+    "eligibility_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.repository_workspace_eligibility.v1"
+    },
+    "release_id": {
+      "type": "string",
+      "description": "Unique identifier linking to the RepositoryContextRelease that produced this assessment."
+    },
+    "eligible": {
+      "type": "boolean",
+      "description": "True when the repository meets all workspace eligibility criteria."
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable reasons blocking workspace eligibility."
+    },
+    "recommended_workspace_kind": {
+      "type": ["string", "null"],
+      "description": "Recommended workspace kind: read_only, managed_write, etc."
+    },
+    "path_policy": {
+      "type": ["object", "null"],
+      "additionalProperties": { "type": "string" },
+      "description": "Per-path policy mapping: path -> read, write, or forbidden."
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when eligibility was evaluated."
+    },
+    "eligibility_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of the canonical eligibility assessment JSON."
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.repository_readiness.v1.schema.json",
+  "title": "Rig Relay Repository Readiness v1",
+  "description": "Compact Y0 repository readiness projection. Provides a lightweight status snapshot consumed by Gridline and dashboard surfaces to determine whether a repository is ready for agent work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository_root",
+    "lifecycle_state",
+    "context_released",
+    "workspace_eligible",
+    "degraded",
+    "blocker_count",
+    "context_confidence",
+    "projection_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.repository_readiness.v1"
+    },
+    "repository_root": {
+      "type": "string",
+      "description": "Absolute path to the repository root."
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "remote_selected",
+        "cloned_quarantined",
+        "instructions_discovered",
+        "structure_indexed",
+        "dependencies_classified",
+        "execution_risks_reviewed",
+        "safe_validation_probed",
+        "context_released",
+        "workspace_eligible",
+        "degraded"
+      ],
+      "description": "Current lifecycle state of the repository context pipeline."
+    },
+    "context_released": {
+      "type": "boolean",
+      "description": "True when a context release has been emitted for this repository."
+    },
+    "workspace_eligible": {
+      "type": "boolean",
+      "description": "True when the workspace eligibility assessment reports eligible."
+    },
+    "degraded": {
+      "type": "boolean",
+      "description": "True when one or more lifecycle stages failed or produced degraded results."
+    },
+    "blocker_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of active blockers preventing lifecycle advancement."
+    },
+    "context_confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Estimated confidence in the context release (0.0 to 1.0)."
+    },
+    "last_released_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the most recent context release, or null if never released."
+    },
+    "release_digest": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of the current context release, or null if never released."
+    },
+    "projection_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hex digest of this projection."
+    }
+  }
+}
