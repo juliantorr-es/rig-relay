@@ -1,0 +1,305 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T18:00:00Z",
+  "lane_id": "lane_x1_6_cross_process_materialization_authority_and_x0_repository_estate_release",
+  "mission_id": "x1_6_cross_process_materialization_authority",
+  "baseline_sha": "51d96318081beb17b648a2b6b5bc4bfd4f4cef9c",
+  "candidate_digest": "sha256:local_x1_6_round1_candidate",
+  "intended_boundary": "SHA256-based deterministic PostgreSQL advisory lock keys for 3 projection domains; X0ProjectionSurface typed read-only Python module surface with 6 truthful availability states; TimelineMaterializer.rebuild() as single atomic transaction with deterministic receipt IDs, record_rebuild_receipt, and ON CONFLICT idempotency",
+  "intended_consumer_purpose": "X0 Gridline Interface / desktop cockpit consumption through X0ProjectionSurface typed application-service boundary",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "x1_6_claim_evidence_recovery_security_review_round_1",
+      "reviewed_candidate_digest": "sha256:local_x1_6_round1_candidate",
+      "production_paths_inspected": [
+        "rig_relay/data_plane/postgres/_models.py",
+        "rig_relay/data_plane/postgres/_materialize_timeline.py",
+        "rig_relay/data_plane/postgres/_store.py",
+        "rig_relay/data_plane/postgres/_x0_projection.py",
+        "rig_relay/data_plane/postgres/__init__.py",
+        "tests/data_plane/postgres/test_x1_6_cross_process.py",
+        "tests/data_plane/postgres/test_x1_5_repair.py",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "SHA256 advisory lock key is deterministic across processes",
+          "attack": "Does compute_advisory_lock_key use Python hash() (randomized) or SHA256 (deterministic)?",
+          "evidence": "_models.py:401-409 uses hashlib.sha256 of a fixed domain-tagged string, producing signed bigint from first 8 bytes of digest. No timestamp, nonce, or process-dependent input.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "X0ProjectionSurface prevents raw table access",
+          "attack": "Do X0ProjectionSurface methods return raw psycopg rows or content-light Pydantic models/dicts?",
+          "evidence": "All public methods return ProjectionDomainStatus objects or content-light dicts with sha256 digests, integer counts, and status labels. No raw SQL rows cross the boundary.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "X0ProjectionSurface produces all 8 declared availability states",
+          "attack": "Does _determine_availability() have code paths for all 8 states?",
+          "evidence": "Only 4 states reachable: unavailable, corrupt_source, available, degraded. States derived, rebuilding, rebuilt, refused are dead labels in _VALID_AVAILABILITY.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "TimelineMaterializer.rebuild() matches PublicationMaterializer.rebuild() pattern",
+          "attack": "Does timeline rebuild use deterministic receipt IDs, call record_rebuild_receipt, run in single atomic transaction?",
+          "evidence": "Timeline rebuild uses timestamp-based compute_receipt_id instead of deterministic, never calls record_rebuild_receipt, DELETEs and materialize in separate transactions, digest comparison outside transaction.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "24 production-boundary tests prove cross-process serialization",
+          "attack": "Do concurrency tests use subprocess or threading?",
+          "evidence": "All concurrency tests use threading.Thread within a single Python process. Thread-safe does not prove cross-process.",
+          "outcome": "unproven",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Timeline rebuild receipt IDs are deterministic from evidence",
+          "attack": "Does TimelineMaterializer use compute_deterministic_rebuild_receipt_id or timestamp-based compute_receipt_id?",
+          "evidence": "Uses timestamp-based compute_receipt_id at line 242. _models.py:377 docstring explicitly warns compute_receipt_id is NOT for materialization/rebuild receipts.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Timeline rebuild persists receipt to rebuild_receipts table",
+          "attack": "Does TimelineMaterializer.rebuild() call record_rebuild_receipt?",
+          "evidence": "No record_rebuild_receipt call found in _materialize_timeline.py. Rebuild receipt is constructed and returned but never persisted.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Timeline rebuild runs in single atomic transaction",
+          "attack": "Are DELETEs and materialize in the same transaction?",
+          "evidence": "DELETEs commit in Transaction 1 (lines 245-257). materialize() runs outside Transaction 1 at line 259. Crash between DELETE commit and materialize causes permanent data loss.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "Timeline materialize acquires advisory lock",
+          "attack": "Does materialize_from_projection() acquire acquire_rebuild_lock?",
+          "evidence": "No advisory lock acquired. Publication and estate materializers both acquire the lock inside their transactions.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "record_rebuild_receipt is idempotent for replay",
+          "attack": "Does record_rebuild_receipt have ON CONFLICT DO NOTHING?",
+          "evidence": "Plain INSERT with no ON CONFLICT. Deterministic rebuilds with same evidence produce same receipt_id causing UniqueViolation on replay.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X1_6-R1-F1",
+          "severity": "medium",
+          "violated_claim": "X0ProjectionSurface produces all 8 declared availability states",
+          "evidence": "_determine_availability() produces only 4 of 8 declared states. Derived, rebuilding, rebuilt, refused are unreachable dead labels.",
+          "required_repair": "Either add production code paths for all 8 states or reduce _VALID_AVAILABILITY to the 6 truthful states: unavailable, refused, corrupt_source, degraded, derived, rebuilt.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F2",
+          "severity": "critical",
+          "violated_claim": "TimelineMaterializer.rebuild() matches PublicationMaterializer pattern",
+          "evidence": "Timeline rebuild diverges in four ways: timestamp-based receipt IDs, no record_rebuild_receipt call, split transactions, digest comparison outside transaction.",
+          "required_repair": "Rewrite TimelineMaterializer.rebuild() as single atomic transaction following PublicationMaterializer pattern with compute_deterministic_rebuild_receipt_id, record_rebuild_receipt inside transaction, and ON CONFLICT clauses.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F3",
+          "severity": "critical",
+          "violated_claim": "Timeline rebuild receipt IDs are deterministic from evidence",
+          "evidence": "_materialize_timeline.py:155 uses timestamp-based compute_receipt_id for materialize receipt. _materialize_timeline.py:242 uses timestamp-based compute_receipt_id for rebuild receipt.",
+          "required_repair": "Replace compute_receipt_id with compute_deterministic_materialization_receipt_id and compute_deterministic_rebuild_receipt_id respectively, binding to source evidence digest.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F4",
+          "severity": "critical",
+          "violated_claim": "Timeline rebuild persists receipt to rebuild_receipts table",
+          "evidence": "TimelineMaterializer.rebuild() never calls record_rebuild_receipt. Receipt is ephemeral — not visible to X0ProjectionSurface.get_rebuild_history().",
+          "required_repair": "Add self.store.record_rebuild_receipt(receipt) inside the rebuild transaction, before return.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F5",
+          "severity": "critical",
+          "violated_claim": "Timeline rebuild runs in single atomic transaction",
+          "evidence": "DELETEs commit in Transaction 1 at line 245-257. materialize() runs in separate Transaction 2 at line 259. Crash between DELETE commit and materialize causes permanent data loss.",
+          "required_repair": "Move all rebuild operations into a single with self.store.conn.transaction() block matching PublicationMaterializer.rebuild() pattern.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F6",
+          "severity": "critical",
+          "violated_claim": "Timeline materialize acquires advisory lock",
+          "evidence": "materialize_from_projection() never calls acquire_rebuild_lock. No serialization of concurrent timeline operations.",
+          "required_repair": "Add self.store.acquire_rebuild_lock('investigation_timeline') inside materialize_from_projection() transaction.",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X1_6-R1-F7",
+          "severity": "high",
+          "violated_claim": "record_rebuild_receipt is idempotent for replay",
+          "evidence": "_store.py:527-531 uses plain INSERT without ON CONFLICT. rebuild_receipts table has receipt_id TEXT PRIMARY KEY.",
+          "required_repair": "Add ON CONFLICT (receipt_id) DO NOTHING to record_rebuild_receipt INSERT. Also add ON CONFLICT to _insert_timeline_build.",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "x1_6_prepublication_conductor_round_2",
+      "reviewed_candidate_digest": "sha256:local_x1_6_round2_candidate",
+      "production_paths_inspected": [
+        "rig_relay/data_plane/postgres/_models.py",
+        "rig_relay/data_plane/postgres/_materialize_timeline.py",
+        "rig_relay/data_plane/postgres/_store.py",
+        "rig_relay/data_plane/postgres/_x0_projection.py",
+        "rig_relay/data_plane/postgres/__init__.py",
+        "tests/data_plane/postgres/test_x1_6_cross_process.py",
+        "tests/data_plane/postgres/test_x1_5_repair.py",
+        "tests/data_plane/postgres/test_x1_materialization.py",
+        "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "X0ProjectionSurface produces all 6 availability states truthfully",
+          "attack": "Does _determine_availability() have reachable code paths for all 6 states?",
+          "evidence": "_determine_availability() at _x0_projection.py:56-78 produces all 6 states: unavailable (None build_row), refused (0 rows, no corrupt), corrupt_source (has_corrupt), degraded (!deterministic), derived (deterministic, no rebuild), rebuilt (deterministic, has rebuild). _has_rebuild_records() queries rebuild_receipts table.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "TimelineMaterializer.rebuild() is single atomic transaction",
+          "attack": "Are advisory lock, DELETEs, materialize, digest comparison, and record_rebuild_receipt all in one transaction?",
+          "evidence": "_materialize_timeline.py:261-301 wraps all operations in single with self.store.conn.transaction(). Advisory lock acquired at line 262. DELETEs at lines 268-280. materialize at line 282. digest comparison at lines 284-289. record_rebuild_receipt at line 299.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Timeline rebuild uses deterministic receipt IDs",
+          "attack": "Does rebuild() use compute_deterministic_rebuild_receipt_id?",
+          "evidence": "_materialize_timeline.py:257 uses compute_deterministic_rebuild_receipt_id('timeline', source_evidence_digest). source_evidence_digest computed from service.build_postgres_projection() output.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Timeline rebuild persists receipt to rebuild_receipts table",
+          "attack": "Does rebuild() call record_rebuild_receipt?",
+          "evidence": "_materialize_timeline.py:299 calls self.store.record_rebuild_receipt(receipt) inside the transaction.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Timeline materialize acquires advisory lock",
+          "attack": "Does materialize_from_projection() acquire acquire_rebuild_lock?",
+          "evidence": "_materialize_timeline.py:189 calls self.store.acquire_rebuild_lock('investigation_timeline') inside the transaction.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "record_rebuild_receipt is idempotent",
+          "attack": "Does record_rebuild_receipt have ON CONFLICT DO NOTHING?",
+          "evidence": "_store.py:531 now has ON CONFLICT (receipt_id) DO NOTHING. _insert_timeline_build at _materialize_timeline.py:389 has ON CONFLICT (receipt_id) DO NOTHING.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "122 tests pass on real PostgreSQL substrate",
+          "attack": "Do tests use mocks or real PostgreSQL? Do any tests fail?",
+          "evidence": "pytest reports 122 passed, 0 failed. conftest.py creates disposable real PostgreSQL databases. All 3 test files use migrated_store fixture with real psycopg connections.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Cross-domain advisory locks do not contend",
+          "attack": "Do distinct domains produce distinct lock keys?",
+          "evidence": "test_x1_6_cross_process.py:83-88 proves compute_advisory_lock_key returns distinct values for 'publication_history', 'repository_estate', 'investigation_timeline'.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        }
+      ],
+      "findings": [],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "X1_6-R1-F1",
+        "X1_6-R1-F2",
+        "X1_6-R1-F3",
+        "X1_6-R1-F4",
+        "X1_6-R1-F5",
+        "X1_6-R1-F6",
+        "X1_6-R1-F7"
+      ],
+      "changed_paths": [
+        "rig_relay/data_plane/postgres/_models.py",
+        "rig_relay/data_plane/postgres/_materialize_timeline.py",
+        "rig_relay/data_plane/postgres/_store.py",
+        "rig_relay/data_plane/postgres/_x0_projection.py",
+        "rig_relay/data_plane/postgres/__init__.py",
+        "tests/data_plane/postgres/test_x1_6_cross_process.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest: 122 passed, 0 failed",
+        "uv run ruff check --fix && ruff format: all clean",
+        "uv run pyright: 0 errors, 0 warnings, 0 informations"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:local_x1_6_round2_candidate",
+    "admitted_boundary": "SHA256-based deterministic PostgreSQL advisory lock keys for 3 projection domains; X0ProjectionSurface typed read-only Python module surface with 6 truthful availability states (unavailable, refused, corrupt_source, degraded, derived, rebuilt); TimelineMaterializer.rebuild() as single atomic transaction following PublicationMaterializer pattern with deterministic rebuild receipt IDs, record_rebuild_receipt inside transaction, and ON CONFLICT (receipt_id) DO NOTHING on timeline_events, timeline_builds, and rebuild_receipts for idempotent replay safety",
+    "permitted_consumer_purpose": "X0 Gridline Interface / desktop cockpit consumption through X0ProjectionSurface typed application-service boundary. X0 must not query PostgreSQL domain tables, materialized views, or private X1 implementation modules directly.",
+    "unclaimed_capabilities": [
+      "PostgreSQL connection pooling",
+      "pg_upgrade major version testing",
+      "Cross-server portability",
+      "LISTEN/NOTIFY live refresh signalling",
+      "Materialized view auto-refresh",
+      "Full product-state restore equivalence to clean target",
+      "X0 desktop UI integration of projection surface"
+    ],
+    "deferred_seams": [
+      "PostgreSQL connection pooling",
+      "pg_upgrade major version testing",
+      "Cross-server portability",
+      "LISTEN/NOTIFY full integration",
+      "Materialized view auto-refresh with CONCURRENTLY",
+      "X0 desktop UI wiring consuming X0ProjectionSurface methods",
+      "Legacy _store.rebuild() timestamp-based receipt IDs (not called by domain materializers)"
+    ],
+    "review_round_count": 2,
+    "push_authorized": true
+  },
+  "status": "prepublication_admitted"
+}

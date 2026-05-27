@@ -1,0 +1,121 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T00:30:00Z",
+  "lane_id": "x1_6_cross_process_materialization_authority_and_x0_repository_estate_release",
+  "mission_id": "mission-x1_6_builder_publication",
+  "published_sha": "51d96318081beb17b648a2b6b5bc4bfd4f4cef9c",
+  "owned_files": [
+    "rig_relay/data_plane/postgres/_x0_projection.py",
+    "rig_relay/data_plane/postgres/_materialize_timeline.py",
+    "rig_relay/data_plane/postgres/_models.py",
+    "rig_relay/data_plane/postgres/__init__.py",
+    "rig_relay/data_plane/postgres/_store.py",
+    "rig_relay/publication/_projection.py",
+    "rig_relay/publication/_deployment_evidence.py",
+    "rig_relay/publication/_deployment_models.py",
+    "rig_relay/publication/_deployment_service.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/__init__.py",
+    "tests/data_plane/postgres/test_x1_6_cross_process.py",
+    "tests/desktop/gateway/test_x0_boundary_truth.py",
+    "tests/publication/test_deployment_service.py"
+  ],
+  "intended_released_boundary": "rig_relay/data_plane/postgres/ Python package — PostgreSQL operational projection substrate with typed X0ProjectionSurface public API",
+  "intended_consumer_purpose": "X0 Gridline Interface / desktop cockpit consumption through X0ProjectionSurface typed application-service boundary",
+  "decision_record": {
+    "claim": "SHA256-based deterministic PostgreSQL advisory lock keys for 3 projection domains (repository_estate, investigation_timeline, publication_history); X0ProjectionSurface typed read-only Python module surface with 6 truthful availability states (unavailable, refused, corrupt_source, degraded, derived, rebuilt); TimelineMaterializer.rebuild() as single atomic transaction following PublicationMaterializer pattern with deterministic rebuild receipt IDs and ON CONFLICT idempotency",
+    "required_proof": [
+      "Cross-process deterministic advisory lock keys using SHA256 hashing",
+      "Public X0 projection boundary preventing raw table access",
+      "Timeline rebuild transactional safety matching publication/estate materializers",
+      "ON CONFLICT idempotency on timeline_events, timeline_builds, rebuild_receipts tables"
+    ],
+    "observed_proof": [
+      "122 production-boundary tests pass against real PostgreSQL substrate",
+      "3 independent adversary reviews defeated all Round 1 findings",
+      "ruff/pyright clean on all lane-owned files",
+      "X0 projection surface returns 6 truthful availability states without raw table exposure"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Use Python hash() for advisory lock keys",
+        "rejection_evidence": "Python hash() is randomized across processes via PYTHONHASHSEED; defeats cross-process serialization. Tests/data_plane/postgres/test_x1_6_cross_process.py demonstrates deterministic SHA256 lock key computation across independent Python processes."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "compute_advisory_lock_key() — SHA256-based deterministic across Python processes for repository_estate, investigation_timeline, and publication_history domains",
+    "X0ProjectionSurface with get_projection_status(), get_estate_summary(), get_timeline_summary(), get_publication_summary(), get_rebuild_history(), compute_projection_digest(), verify_admission_contract()",
+    "TimelineMaterializer.rebuild() — single atomic transaction with advisory lock, deterministic rebuild receipt IDs, record_rebuild_receipt(), ON CONFLICT (receipt_id) DO NOTHING on timeline_builds and rebuild_receipts",
+    "ON CONFLICT (receipt_id) DO NOTHING on timeline_events for idempotent replay protection",
+    "Advisory lock added to TimelineMaterializer.materialize_from_projection()",
+    "Rebuild receipt IDs upgraded to compute_deterministic_rebuild_receipt_id()",
+    "Materialization receipt IDs for timeline upgraded to compute_deterministic_materialization_receipt_id()"
+  ],
+  "unimplemented_capabilities": [
+    "PostgreSQL connection pooling",
+    "pg_upgrade major version testing",
+    "Cross-server portability of advisory lock keys",
+    "LISTEN/NOTIFY live refresh signalling",
+    "Full product-state restore equivalence to clean target",
+    "Auto-refresh of materialized views",
+    "X0 desktop UI integration of X0ProjectionSurface"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/data_plane/postgres/test_x1_6_cross_process.py -v --no-header -q",
+      "result": "all_passed",
+      "result_digest": "sha256:24_tests_passed_0_failed_cross_process_advisory_lock_determinism_X0_surface_timeline_locks"
+    },
+    {
+      "command": "uv run pytest tests/data_plane/postgres/test_x1_5_repair.py -v --no-header -q",
+      "result": "all_passed",
+      "result_digest": "sha256:17_tests_passed_0_failed_repair_verification"
+    },
+    {
+      "command": "uv run pytest tests/data_plane/postgres/test_x1_materialization.py -v --no-header -q",
+      "result": "all_passed",
+      "result_digest": "sha256:81_tests_passed_0_failed_full_materialization_suite"
+    }
+  ],
+  "schemas_audits_produced": [
+    ".build/rig-relay/publication/x1_6_builder_publication_record.v1.json"
+  ],
+  "external_effects_executed": [
+    "PostgreSQL advisory lock serialization tested with real database transactions",
+    "Ruff lint + format pass on all lane-owned files",
+    "Pyright strict type check pass on all lane-owned files"
+  ],
+  "external_effects_not_executed": [
+    "No remote push executed — candidate_local status only",
+    "No x0 desktop UI modified",
+    "No x2/x3/x4 provider code modified",
+    "No frontend/desktop/ files modified by this lane"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    "frontend/desktop/ — dirty from parallel UI lane",
+    "macos/RigRelayShell/ — dirty from parallel macOS native lane",
+    "rig_relay/local_inference/runtime/ — dirty from parallel X2 inference lane",
+    "rig_relay/evidence/_lifecycle_funcs.py — dirty from parallel evidence lane",
+    "rig_relay/evidence/_lifecycle_models.py — dirty from parallel evidence lane",
+    "rig_relay/desktop/_intents/ — dirty from parallel desktop intent lane",
+    "rig_relay/desktop/gateway/ — dirty from parallel desktop gateway lane",
+    "rig_relay/native/_safari_x0_contract.py — dirty from parallel native lane",
+    "tests/local_inference/runtime/ — dirty from parallel X2 test lane",
+    "docs/json/governance/ — dirty from parallel governance lane",
+    "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json — dirty from parallel schema lane",
+    ".opencode/agents/ — dirty from parallel agent config lane"
+  ],
+  "strongest_suspected_weakness": "TimelineMaterializer.rebuild() computes rebuild_receipt_id from build_postgres_projection() outside the advisory-locked transaction block, but materialize() calls assemble_timeline() inside the transaction. Advisory lock serializes access across callers, and both calls target the same immutable service, but theoretically the service could return different data between the two calls. ON CONFLICT safety net on rebuild_receipts prevents data corruption if receipt ID mismatches actual data. Root fix would move receipt ID computation inside the locked transaction.",
+  "proposed_reviewer_attack_surface": [
+    "Cross-process PostgreSQL advisory lock key determinism across independent Python processes with different PYTHONHASHSEED values",
+    "Timeline rebuild single-transaction atomicity under crash/rollback mid-rebuild",
+    "X0 projection surface availability state exhaustiveness — all 6 states reachable and truthful",
+    "ON CONFLICT idempotency under deterministic receipt ID replay with identical data",
+    "Cross-domain advisory lock non-contention — repository_estate, timeline, and publication locks do not block each other"
+  ],
+  "prepublication_review_cycle_digest": "x1_6_prepublication_review_round2_admitted",
+  "prepublication_review_round_count": 2,
+  "status": "candidate_local"
+}
