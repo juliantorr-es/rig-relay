@@ -64,7 +64,7 @@ def test_export_diagnostics_detects_tokens() -> None:
 
 
 def test_export_diagnostics_blocks_unsafe_status() -> None:
-    """X4.1: When unsafe content detected in signing_status, it is excluded."""
+    """X4.2: Token value is redacted; signing_status object remains but with cleaned values."""
     svc = DiagnosticExportService()
     identity = AppPackageIdentity(
         bundle_identifier="com.rigrelay.RigRelayShell",
@@ -79,7 +79,9 @@ def test_export_diagnostics_blocks_unsafe_status() -> None:
         app_identity=identity,
         signing_status=SigningIdentityStatus(identities=["ghp_token_1234"]),
     )
-    assert bundle.signing_status is None
+    assert bundle.signing_status is not None
+    assert bundle.signing_status.identities == ["[REDACTED]"]
+    assert len(bundle.content_light_violations) > 0
     assert len(bundle.blocking) > 0
     assert any("blocked_export" in b for b in bundle.blocking)
 

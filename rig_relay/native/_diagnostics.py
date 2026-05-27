@@ -149,6 +149,32 @@ class DiagnosticExportService:
         )
         self._macos_dir = self._repo_root / "macos"
 
+    def _redact_and_reconstruct(
+        self,
+        value: Any,
+        path: str,
+        model_class: type,
+        violations: list[DiagnosticContentLightViolation],
+    ) -> Any:
+        """Redact a value and reconstruct it as a Pydantic model if possible.
+
+        Returns the redacted model instance, or None if reconstruction failed.
+        Side-effects: appends violations.
+        """
+        cleaned, new_v = _redact_string_or_dict(value, path)
+        violations.extend(new_v)
+        if not isinstance(cleaned, dict):
+            return None
+        try:
+            return model_class.model_validate(cleaned)
+        except Exception:
+            violations.append(
+                DiagnosticContentLightViolation(
+                    field_name=path, reason="model_reconstruction_failed"
+                )
+            )
+            return None
+
     def export_diagnostics(
         self,
         *,
@@ -191,34 +217,66 @@ class DiagnosticExportService:
                     bundle_path="unknown",
                 )
 
-        scan_inputs: dict[str, Any] = {}
-        if signing_status is not None:
-            scan_inputs["signing_status"] = signing_status.model_dump()
-        if notarization_status is not None:
-            scan_inputs["notarization_status"] = notarization_status.model_dump()
-        if update_status is not None:
-            scan_inputs["update_status"] = update_status.model_dump()
-        if recovery_state is not None:
-            scan_inputs["recovery_state"] = recovery_state.model_dump()
-
-        scan_inputs["app_identity"] = app_identity.model_dump()
-        scan_inputs["additional_health"] = additional_health or []
-        scan_inputs["extension_connection_state"] = extension_connection_state
-
-        _, scan_violations = _redact_string_or_dict(scan_inputs, "")
-        violations.extend(scan_violations)
-
-        _, identity_v = _redact_string_or_dict(
-            app_identity.model_dump(), "app_identity"
+        safe_identity = (
+            self._redact_and_reconstruct(
+                app_identity.model_dump(),
+                "app_identity",
+                AppPackageIdentity,
+                violations,
+            )
+            or app_identity
         )
-        violations.extend(identity_v)
 
-        health_checks: list[dict[str, Any]] = []
+        safe_signing = (
+            self._redact_and_reconstruct(
+                signing_status.model_dump(),
+                "signing_status",
+                SigningIdentityStatus,
+                violations,
+            )
+            if signing_status is not None
+            else None
+        )
+        safe_notarize = (
+            self._redact_and_reconstruct(
+                notarization_status.model_dump(),
+                "notarization_status",
+                NotarizationEvidence,
+                violations,
+            )
+            if notarization_status is not None
+            else None
+        )
+        safe_update = (
+            self._redact_and_reconstruct(
+                update_status.model_dump(),
+                "update_status",
+                UpdateEvidenceStatus,
+                violations,
+            )
+            if update_status is not None
+            else None
+        )
+        safe_recovery = (
+            self._redact_and_reconstruct(
+                recovery_state.model_dump(),
+                "recovery_state",
+                RecoveryEvidence,
+                violations,
+            )
+            if recovery_state is not None
+            else None
+        )
+
+        safe_health: list[dict[str, Any]] = []
+
         for item in additional_health or []:
-            _, hc_v = _redact_string_or_dict(item, "additional_health")
+            cleaned_item, hc_v = _redact_string_or_dict(item, "additional_health")
             violations.extend(hc_v)
-            health_checks.append(item)
-        health_checks.extend([
+            if isinstance(cleaned_item, dict):
+                safe_health.append(cleaned_item)
+
+        safe_health.extend([
             {
                 "component": "native_bridge",
                 "status": "healthy" if native_bridge_healthy else "degraded",
@@ -237,34 +295,20 @@ class DiagnosticExportService:
             )
             warnings.append("export_blocked_due_to_unsafe_content")
 
-        native_bridge_healthy = (
-            False
-            if "native_bridge_degraded" in {v.reason for v in violations}
-            else native_bridge_healthy
-        )
-
         return DiagnosticBundle(
             export_id=export_id,
             exported_at=timestamp,
-            app_identity=app_identity,
-            signing_status=signing_status
-            if not any("signing_status" in v.field_name for v in violations)
-            else None,
-            notarization_status=notarization_status
-            if not any("notarization_status" in v.field_name for v in violations)
-            else None,
-            update_status=update_status
-            if not any("update_status" in v.field_name for v in violations)
-            else None,
-            recovery_state=recovery_state
-            if not any("recovery_state" in v.field_name for v in violations)
-            else None,
+            app_identity=safe_identity,
+            signing_status=safe_signing,
+            notarization_status=safe_notarize,
+            update_status=safe_update,
+            recovery_state=safe_recovery,
             extension_available=extension_connection_state
             not in {"unavailable", "app_not_installed"},
             extension_connection_state=extension_connection_state,
             native_bridge_healthy=native_bridge_healthy,
             frontend_resources_present=frontend_resources_present,
-            health_checks=health_checks,
+            health_checks=safe_health,
             content_light_violations=violations,
             redacted=len(violations) > 0,
             warnings=warnings,

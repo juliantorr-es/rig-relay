@@ -160,19 +160,25 @@ class PackagingService:
 def _hash_directory(root: Path) -> str:
     """Compute a deterministic SHA256 hash of a directory tree.
 
-    Walks files in sorted order, hashing each file's content.
-    Does not read binary files over 10 MB.
+    Walks all files in sorted order, hashing every file's complete bytes
+    regardless of size. Symlink targets are recorded by path. Unreadable
+    files are recorded as UNREADABLE.
+
+    This is the canonical artifact-manifest digest algorithm for all
+    release evidence (packaging, signing, notarization, stapling, update).
     """
     hasher = hashlib.sha256()
     for fpath in sorted(root.rglob("*")):
-        if fpath.is_file() and not fpath.is_symlink():
+        if fpath.is_symlink():
+            try:
+                target = fpath.readlink()
+                hasher.update(f"SYMLINK:{fpath.relative_to(root)}:{target}\n".encode())
+            except OSError:
+                hasher.update(f"SYMLINK:{fpath.relative_to(root)}:BROKEN\n".encode())
+            continue
+        if fpath.is_file():
             try:
                 stat = fpath.stat()
-                if stat.st_size > 10 * 1024 * 1024:
-                    hasher.update(
-                        f"{fpath.relative_to(root)}:SIZE:{stat.st_size}\n".encode()
-                    )
-                    continue
                 rel = str(fpath.relative_to(root))
                 hasher.update(f"{rel}:{stat.st_size}\n".encode())
                 with fpath.open("rb") as f:

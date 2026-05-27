@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rig Relay Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-icon" aria-hidden="true"></div>
+      <h1 class="header-title">Rig Relay</h1>
+    </header>
+
+    <!-- Repository Status -->
+    <section class="status-section" id="repo-status-section">
+      <div class="status-row">
+        <span class="status-indicator" id="repo-status-dot"></span>
+        <span class="status-text" id="repo-status-text">Loading&hellip;</span>
+      </div>
+      <div class="status-detail" id="repo-status-detail"></div>
+    </section>
+
+    <!-- App Connection Status -->
+    <section class="status-section" id="app-status-section">
+      <div class="status-row">
+        <span class="status-indicator" id="app-status-dot"></span>
+        <span class="status-text" id="app-status-text">Not checked</span>
+      </div>
+      <div class="status-detail" id="app-status-detail"></div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="actions-section" id="actions-section">
+      <button class="action-button primary-action" id="btn-open" disabled>
+        Open in Rig Relay
+      </button>
+      <button class="action-button" id="btn-study" disabled>
+        Study This Repository
+      </button>
+      <button class="action-button" id="btn-status" disabled>
+        View Project Status
+      </button>
+    </section>
+
+    <!-- Response / Refusal Area -->
+    <section class="response-section" id="response-section" hidden>
+      <div class="response-text" id="response-text"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <span class="footer-text">Rig Relay Companion v0.1.0</span>
+    </footer>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

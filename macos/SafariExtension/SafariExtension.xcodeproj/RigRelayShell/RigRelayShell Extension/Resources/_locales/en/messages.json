@@ -1,0 +1,50 @@
+{
+  "extension_name": {
+    "message": "Rig Relay Companion"
+  },
+  "extension_description": {
+    "message": "Recognizes GitHub repository pages and provides a handoff from Safari to the Rig Relay native macOS application."
+  },
+  "action_open_in_app": {
+    "message": "Open in Rig Relay"
+  },
+  "action_study_repository": {
+    "message": "Study This Repository"
+  },
+  "action_view_project_status": {
+    "message": "View Project Status"
+  },
+  "status_loading": {
+    "message": "Loading\u2026"
+  },
+  "status_repository_detected": {
+    "message": "Repository detected"
+  },
+  "status_no_github_context": {
+    "message": "No GitHub context"
+  },
+  "status_app_connected": {
+    "message": "Rig Relay connected"
+  },
+  "status_app_connecting": {
+    "message": "App connecting\u2026"
+  },
+  "status_app_unavailable": {
+    "message": "App unavailable"
+  },
+  "status_not_checked": {
+    "message": "Not checked"
+  },
+  "status_app_not_running": {
+    "message": "App not running"
+  },
+  "response_app_unavailable_message": {
+    "message": "Rig Relay app is not running. Launch it and try again."
+  },
+  "response_handoff_accepted": {
+    "message": "Handoff accepted. Rig Relay is opening the repository."
+  },
+  "footer_version": {
+    "message": "Rig Relay Companion v0.1.0"
+  }
+}
