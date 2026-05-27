@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rigrelay.dev/schemas/rig.relay.investigation_timeline_projection.v1.schema.json",
+  "title": "Investigation Timeline Projection v1",
+  "description": "A derived, disposable timeline projection assembled from canonical evidence domains.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "timeline_id",
+    "assembled_at",
+    "events",
+    "domain_coverage",
+    "degradation_summary",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.investigation_timeline_projection.v1"
+    },
+    "timeline_id": {
+      "type": "string",
+      "description": "Stable identifier for this timeline assembly.",
+      "pattern": "^tl_[a-f0-9]{16}$"
+    },
+    "investigation_id": {
+      "type": "string",
+      "description": "Investigation identifier."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Primary session identifier."
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Project/workspace identifier."
+    },
+    "assembled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of assembly."
+    },
+    "evidence_freshness_cutoff": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Evidence newer than this cutoff was not included."
+    },
+    "events": {
+      "type": "array",
+      "description": "Normalized timeline events in chronological order.",
+      "items": {
+        "$ref": "rig.relay.investigation_timeline_event.v1.schema.json"
+      }
+    },
+    "event_count": {
+      "type": "integer",
+      "description": "Total number of events in the timeline."
+    },
+    "domain_coverage": {
+      "type": "object",
+      "description": "Map of evidence domain -> events contributed.",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "unsupported_domains": {
+      "type": "array",
+      "description": "Domains that were requested but could not be read.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "degradation_summary": {
+      "type": "object",
+      "description": "Counts of degradation markers in the timeline.",
+      "required": [
+        "total_events",
+        "canonical_live_count",
+        "degraded_count",
+        "missing_count",
+        "contradictory_count",
+        "corrupt_count",
+        "stale_count"
+      ],
+      "properties": {
+        "total_events": { "type": "integer" },
+        "canonical_live_count": { "type": "integer" },
+        "degraded_count": { "type": "integer" },
+        "missing_count": { "type": "integer" },
+        "contradictory_count": { "type": "integer" },
+        "corrupt_count": { "type": "integer" },
+        "stale_count": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true
+    },
+    "projection_digest": {
+      "type": "string",
+      "description": "SHA256 of the canonical JSON representation of this projection.",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

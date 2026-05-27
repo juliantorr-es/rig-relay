@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rigrelay.dev/schemas/rig.relay.investigation_timeline_duckdb_export.v1.schema.json",
+  "title": "Investigation Timeline DuckDB Export Contract v1",
+  "description": "A disposable analytical export of timeline event datasets for DuckDB read-side consumption, rebuildable from canonical evidence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "export_id",
+    "generated_at",
+    "datasets",
+    "row_counts",
+    "authority_separation",
+    "content_light_guarantee",
+    "rebuildable"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.investigation_timeline_duckdb_export.v1"
+    },
+    "export_id": {
+      "type": "string",
+      "description": "Stable export identifier."
+    },
+    "timeline_id": {
+      "type": "string",
+      "description": "Source timeline identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "datasets": {
+      "type": "array",
+      "description": "Exported dataset files.",
+      "items": {
+        "type": "object",
+        "required": ["dataset_name", "relative_path", "row_count", "dataset_sha256"],
+        "properties": {
+          "dataset_name": { "type": "string" },
+          "relative_path": { "type": "string" },
+          "row_count": { "type": "integer" },
+          "dataset_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "schema_version": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "row_counts": {
+      "type": "object",
+      "description": "Row counts per dataset.",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "view_definitions": {
+      "type": "array",
+      "description": "DuckDB SQL view definitions for common analytical queries.",
+      "items": {
+        "type": "object",
+        "required": ["view_name", "sql", "purpose"],
+        "properties": {
+          "view_name": { "type": "string" },
+          "sql": { "type": "string" },
+          "purpose": { "type": "string" },
+          "query_example": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "authority_separation": {
+      "type": "object",
+      "description": "Confirmation that DuckDB is read-side only.",
+      "required": ["read_side_only", "mutation_authority", "rebuild_procedure"],
+      "properties": {
+        "read_side_only": { "type": "boolean", "const": true },
+        "mutation_authority": { "type": "boolean", "const": false },
+        "derived_from": { "type": "string" },
+        "rebuild_procedure": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true
+    },
+    "rebuildable": {
+      "type": "boolean",
+      "const": true,
+      "description": "This export is fully rebuildable from canonical evidence."
+    }
+  },
+  "additionalProperties": false
+}

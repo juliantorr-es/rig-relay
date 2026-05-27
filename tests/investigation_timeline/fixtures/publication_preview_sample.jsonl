@@ -1,0 +1,4 @@
+{"compiled_at": "2025-01-15T10:00:00Z", "receipt_id": "pub_001", "compilation_successful": true, "refusal_code": null, "safety_passed": true, "deployment_ready": true, "evidence_digest": "evidence_digest_aaa"}
+{"compiled_at": "2025-01-15T10:00:30Z", "receipt_id": "pub_002", "compilation_successful": true, "refusal_code": null, "safety_passed": true, "deployment_ready": false, "evidence_digest": "evidence_digest_bbb"}
+{"compiled_at": "2025-01-15T10:01:00Z", "receipt_id": "pub_003", "compilation_successful": false, "refusal_code": "safety_check_failed", "safety_passed": false, "deployment_ready": false, "evidence_digest": "evidence_digest_ccc"}
+{"compiled_at": "2025-01-15T10:01:30Z", "receipt_id": "pub_004", "compilation_successful": false, "refusal_code": "content_light_violation", "safety_passed": false, "deployment_ready": false, "evidence_digest": "evidence_digest_ddd"}

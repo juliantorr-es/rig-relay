@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rigrelay.dev/schemas/rig.relay.investigation_timeline_event.v1.schema.json",
+  "title": "Investigation Timeline Event v1",
+  "description": "A normalized timeline event representing a governed observation from a canonical evidence domain.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "timeline_sequence",
+    "observed_at",
+    "event_kind",
+    "source_domain",
+    "source_digest",
+    "authority_classification",
+    "content_light_guarantee"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.investigation_timeline_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Stable derived event ID for this timeline position.",
+      "pattern": "^tle_[a-f0-9]{16}$"
+    },
+    "timeline_sequence": {
+      "type": "integer",
+      "description": "Monotonic position in the assembled timeline.",
+      "minimum": 0
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this event was observed."
+    },
+    "event_kind": {
+      "type": "string",
+      "description": "Normalized event kind.",
+      "enum": [
+        "SESSION_STARTED",
+        "SESSION_REGISTERED",
+        "SESSION_HEARTBEAT",
+        "SESSION_CLOSED",
+        "TOOL_CALL_COMPLETED",
+        "TOOL_CALL_REFUSED",
+        "TOOL_CALL_FAILED",
+        "COORDINATION_TASK_CLAIMED",
+        "COORDINATION_TASK_RELEASED",
+        "COORDINATION_PATH_RESERVED",
+        "COORDINATION_PATH_RELEASED",
+        "COORDINATION_CONFLICT_REPORTED",
+        "COORDINATION_RESERVATION_REFUSED",
+        "COORDINATION_ARTIFACT_PUBLISHED",
+        "COORDINATION_HANDOFF_REQUESTED",
+        "COORDINATION_HANDOFF_ACCEPTED",
+        "COORDINATION_HANDOFF_REJECTED",
+        "COORDINATION_PROJECTION_READ",
+        "COORDINATION_LEASE_EXPIRED",
+        "COORDINATION_LEASE_STALE",
+        "CHECKPOINT_COMMITTED",
+        "CHECKPOINT_REFUSED",
+        "PUBLICATION_PREVIEW_COMPILED",
+        "PUBLICATION_PREVIEW_REFUSED",
+        "DISCLOSURE_TRANSITION_INITIATED",
+        "DISCLOSURE_TRANSITION_ADVANCED",
+        "DISCLOSURE_TRANSITION_COMPLETED",
+        "DISCLOSURE_TRANSITION_REFUSED",
+        "AUTHORIZATION_REQUESTED",
+        "AUTHORIZATION_GRANTED",
+        "AUTHORIZATION_REFUSED",
+        "GOVERNANCE_DECISION_RECORDED",
+        "AUDIT_EVENT_RECORDED",
+        "OBSERVATION_CAPTURED",
+        "RALPH_SCAN_COMPLETED",
+        "CONTEXT_ASSEMBLY_REPORTED",
+        "STORAGE_LIFECYCLE_EVENT",
+        "EVIDENCE_DEGRADED",
+        "EVIDENCE_MISSING",
+        "EVIDENCE_CONTRADICTORY"
+      ]
+    },
+    "source_domain": {
+      "type": "string",
+      "description": "Canonical evidence domain that produced this event.",
+      "enum": [
+        "observability",
+        "coordination",
+        "receipt_store",
+        "audit_trail",
+        "disclosure",
+        "checkpoint",
+        "publication",
+        "tool_receipt_index",
+        "ralph",
+        "governance",
+        "storage_lifecycle",
+        "timeline_degraded"
+      ]
+    },
+    "source_event_id": {
+      "type": "string",
+      "description": "Original event ID from the source domain, if available."
+    },
+    "source_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the source event or receipt.",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "authority_classification": {
+      "type": "string",
+      "description": "Provenance authority classification aligned with S2 gateway vocabulary.",
+      "enum": [
+        "CANONICAL_LIVE",
+        "CANONICAL_DEGRADED",
+        "CONTROLLED_BOUNDARY",
+        "FIXTURE_DEFERRED",
+        "MISSING",
+        "STALE",
+        "CORRUPT",
+        "CONTRADICTORY"
+      ]
+    },
+    "degradation_detail": {
+      "type": "string",
+      "description": "Explanation when authority_classification is not CANONICAL_LIVE."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier from source domain, if available."
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Project/workspace identifier, if available."
+    },
+    "investigation_id": {
+      "type": "string",
+      "description": "Investigation identifier this event belongs to."
+    },
+    "parent_session_id": {
+      "type": "string",
+      "description": "Parent session identifier, if available."
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Task identifier from source domain, if available."
+    },
+    "outcome": {
+      "type": "string",
+      "description": "Outcome label for this event.",
+      "enum": [
+        "completed",
+        "blocked",
+        "refused",
+        "failed",
+        "granted",
+        "released",
+        "expired",
+        "stale",
+        "resolved",
+        "unresolved",
+        "false_positive",
+        "useful",
+        "irrelevant",
+        "committed",
+        "compiled",
+        "deployment_ready",
+        "preview_only",
+        null
+      ]
+    },
+    "status": {
+      "type": "string",
+      "description": "Status label, where domain-appropriate."
+    },
+    "latency_ms": {
+      "type": "number",
+      "description": "Wall-clock latency in milliseconds, if available."
+    },
+    "path_count": {
+      "type": "integer",
+      "description": "Number of paths affected, if applicable."
+    },
+    "artifact_kind": {
+      "type": "string",
+      "description": "Artifact kind, if the event produced or referenced an artifact."
+    },
+    "artifact_sha256": {
+      "type": "string",
+      "description": "SHA256 of a produced or referenced artifact.",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Git commit SHA, if applicable.",
+      "pattern": "^[a-f0-9]{7,40}$"
+    },
+    "refusal_code": {
+      "type": "string",
+      "description": "Refusal reason code, if the event represents a refusal."
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true,
+      "description": "Assertion that this event contains no raw file contents, prompts, model outputs, secrets, or private code."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,6 @@
+{"event_name": "rig.relay.session.started", "event_id": "evt_ok", "session_id": "s-abc", "created_at": "2025-01-15T10:00:00Z", "sequence": 1, "payload": {"status": "success"}, "parent_session_id": null}
+this is not valid json at all
+{"event_name": "rig.relay.tool.call_completed", "event_id": "evt_ok2", "session_id": "s-abc", "created_at": "2025-01-15T10:00:05Z", "sequence": 2, "payload": {"status": "success", "tool_name": "read_file", "latency_ms": 45.2}, "parent_session_id": null}
+
+{invalid json here too}
+{"event_name": "rig.relay.session.closed", "event_id": "evt_ok3", "session_id": "s-abc", "created_at": "2025-01-15T10:01:00Z", "sequence": 3, "payload": {"status": "closed"}, "parent_session_id": null}
