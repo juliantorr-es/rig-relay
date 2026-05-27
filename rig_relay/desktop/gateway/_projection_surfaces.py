@@ -7,23 +7,30 @@ authority states. Never reads authority ledgers or reproduces producer logic.
 
 from __future__ import annotations
 
-import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
-from rig_relay.core.logger import logger
 from rig_relay.desktop.gateway._models import ProvenanceClass, TrustState
 from rig_relay.desktop.gateway._models_surfaces import (
+    AnalyticsReportsSurfaceProjection,
     ConnectSurfaceProjection,
     EstateChangeEntry,
     EstateCorruptionEntry,
     EstateRepositoryEntry,
+    FleetWorkspacesSurfaceProjection,
+    HarnessProfileSurfaceProjection,
     InferenceStudioSurfaceProjection,
     ProviderConnectionEntry,
+    PublishPreviewEvidenceSummary,
     PublishPreviewSurfaceProjection,
     RepositoryEstateSurfaceProjection,
+    RepositoryReadinessSurfaceProjection,
     SurfaceStatus,
     TimelineEventEntry,
     TimelineSurfaceProjection,
+)
+from rig_relay.desktop.gateway._projection import (
+    _UNAVAILABLE_SENTINEL,
+    _merge_safari_fields,
 )
 
 if TYPE_CHECKING:
@@ -186,23 +193,160 @@ def _build_provider_entries(
     return entries
 
 
+# ── X1.6 X0ProjectionSurface availability helpers ─────
+
+
+def _derive_x0_availability(x0_surface: Any, domain: str) -> dict[str, Any]:
+    """Derive availability vocabulary from X0ProjectionSurface for a domain.
+
+    Returns availability vocabulary: unavailable, refused, corrupt_source,
+    degraded, derived, rebuilt, connection_required.
+
+    Distinguishes unavailable backend (connection refused, timeout) from
+    actual evidence corruption (digest mismatch, corrupt chain links).
+    An unreachable database is not corrupt evidence.
+    """
+    if x0_surface is None or x0_surface is _UNAVAILABLE_SENTINEL:
+        return {
+            "status": "unavailable",
+            "reason": "X0ProjectionSurface cannot be loaded",
+        }
+    try:
+        statuses = x0_surface.get_projection_status()
+        domain_status = statuses.get(domain)
+        if domain_status is None:
+            return {
+                "status": "unavailable",
+                "reason": f"Domain {domain} not configured",
+            }
+        raw_status = domain_status.availability
+        # Only mark corrupt_source if the domain status explicitly reports
+        # corruption evidence (digest mismatch, invalid reconstruction).
+        if raw_status == "corrupt_source":
+            return {
+                "status": "corrupt_source",
+                "reason": f"Evidence corruption detected in {domain}",
+                "rows_materialized": domain_status.rows_materialized,
+                "corrupt_rows": domain_status.corrupt_rows,
+                "deterministic": domain_status.deterministic,
+                "latest_build_at": domain_status.latest_build_at or "",
+                "authority_state": domain_status.authority_state,
+            }
+        if raw_status == "degraded":
+            return {
+                "status": "degraded",
+                "reason": f"Degraded projection for {domain}",
+                "rows_materialized": domain_status.rows_materialized,
+                "corrupt_rows": domain_status.corrupt_rows,
+                "deterministic": domain_status.deterministic,
+                "latest_build_at": domain_status.latest_build_at or "",
+                "authority_state": domain_status.authority_state,
+            }
+        # Otherwise: derived, rebuilt, refused, unavailable
+        return {
+            "status": raw_status if raw_status else "derived",
+            "status_detail": domain_status.authority_state,
+            "rows_materialized": domain_status.rows_materialized,
+            "corrupt_rows": domain_status.corrupt_rows,
+            "deterministic": domain_status.deterministic,
+            "latest_build_at": domain_status.latest_build_at or "",
+            "authority_state": domain_status.authority_state,
+        }
+    except Exception as exc:
+        error_msg = str(exc).lower()
+        if any(
+            term in error_msg
+            for term in (
+                "connection",
+                "connect",
+                "timeout",
+                "refused",
+                "unreachable",
+                "not found",
+                "does not exist",
+                "could not translate",
+            )
+        ):
+            return {
+                "status": "connection_required",
+                "reason": f"Backend unreachable: {exc}",
+            }
+        return {"status": "unavailable", "reason": f"Backend error: {exc}"}
+
+
 # ── Repository Estate Surface Projection Builder ──────
 
 
 def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> RepositoryEstateSurfaceProjection:
-    """Build Repository Estate surface from T3.1 RepositoryEstateService."""
+    """Build Repository Estate surface from T3.1 RepositoryEstateService.
+
+    X1.6 — Falls back to X0ProjectionSurface when primary service is
+    unavailable, providing availability-derived status metadata.
+    """
     estate = gateway._get_repository_estate_service()
 
-    if estate is None:
+    # X1.6 — Wire X0ProjectionSurface availability vocabulary
+    x0_surface = gateway._get_x0_projection_surface()
+    x0_availability = _derive_x0_availability(x0_surface, "repository_estate")
+
+    if estate is None or estate is _UNAVAILABLE_SENTINEL:
+        x0_status = x0_availability.get("status", "unavailable")
+        # Only try X0 fallback when the backend is truly reachable
+        if x0_status not in (
+            "unavailable",
+            "corrupt_source",
+            "refused",
+            "connection_required",
+            "degraded",
+        ):
+            summary = {}
+            try:
+                summary = x0_surface.get_estate_summary()
+            except Exception:
+                pass
+            repo_count = summary.get("registered_repositories", 0)
+            return RepositoryEstateSurfaceProjection(
+                available=repo_count > 0,
+                authority_state="canonical_degraded",
+                trust_state=TrustState.TRUSTED_LIVE,
+                degraded_reason=(
+                    f"RepositoryEstateService unavailable; X0 projection "
+                    f"available ({x0_availability['status']}, "
+                    f"{summary.get('registered_repositories', 0)} repos)"
+                ),
+                surface_status=(
+                    SurfaceStatus.DERIVED.value
+                    if repo_count > 0
+                    else SurfaceStatus.VERIFICATION_PENDING.value
+                ),
+                status_detail=(
+                    f"[X0: {x0_availability['status']}] "
+                    f"Repository estate projection derived from backend "
+                    f"data plane"
+                ),
+            )
+        # X0 unavailable/connection_required/corrupt_source/degraded/refused
+        if x0_status == "corrupt_source":
+            surface_status = SurfaceStatus.ERROR.value
+            status_detail = (
+                f"[X0: corrupt_source] Evidence corruption detected — "
+                f"{x0_availability.get('reason', 'integrity failure')}"
+            )
+        elif x0_status == "connection_required":
+            surface_status = SurfaceStatus.CONNECTION_REQUIRED.value
+            status_detail = "X0 backend is unreachable — data plane connection required"
+        else:
+            surface_status = SurfaceStatus.SETUP_REQUIRED.value
+            status_detail = f"[X0: {x0_status}] Backend not reachable"
         return RepositoryEstateSurfaceProjection(
             available=False,
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
-            degraded_reason="RepositoryEstateService (T3.1) cannot be loaded",
-            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
-            status_detail="Repository estate service is being verified",
+            degraded_reason=f"RepositoryEstateService (T3.1) cannot be loaded [X0: {x0_status}]",
+            surface_status=surface_status,
+            status_detail=status_detail,
         )
 
     try:
@@ -331,34 +475,146 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
 def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> PublishPreviewSurfaceProjection:
-    """Build Publish Preview surface — integration-blocked on public history API.
+    """Build Publish Preview surface from X3.8 PublicationStatusContract."""
+    # Try X3.8 publication projection first
+    try:
+        from rig_relay.publication._projection import build_publication_projection
 
-    T1.2 does not expose a public history projection API. The PublicationEvidenceLedger
-    is a producer-internal store. The gateway must not interpret canonical publication
-    evidence without a published consumer boundary.
+        pub_contract = build_publication_projection()
+        if pub_contract is not None:
+            return _build_from_publication_contract(pub_contract, gateway)
+    except Exception:
+        pass
 
-    Integration contract required (T1.2 / X3.2):
-        ProjectPagePublicationPreviewService.build_preview_history(operation_id=None)
-            -> PublicationPreviewHistoryProjection
-        Required fields: authority_state, operation_count, terminal_success_count,
-        terminal_refusal_count, corruption_detected, reconstruction_status,
-        latest_events (content-light), deployment_authority_available.
-    """
+    # Fallback: try T1.2 service
     pub = gateway._get_publication_service()
+    if pub is not None and pub is not _UNAVAILABLE_SENTINEL:
+        try:
+            preview = pub.build_preview()
+            if preview is not None:
+                return _build_from_preview(preview, gateway)
+        except Exception:
+            pass
 
-    if pub is None:
-        return PublishPreviewSurfaceProjection(
-            available=False,
-            authority_state="missing",
-            trust_state=TrustState.DEFERRED,
-            degraded_reason="ProjectPagePublicationPreviewService (T1.2) cannot be loaded",
-            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
-            status_detail="Publication preview is awaiting upstream handoff",
-        )
+    # Unavailable fallback
+    return PublishPreviewSurfaceProjection(
+        available=False,
+        authority_state="missing",
+        trust_state=TrustState.DEFERRED,
+        degraded_reason=(
+            "Publication projection unavailable: X3.8 PublicationStatusContract "
+            "not found and T1.2 preview service not available"
+        ),
+        surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+        status_detail="Publication preview is awaiting upstream handoff",
+    )
+
+
+# ── Publish Preview helper builders ───────────────────
+
+
+def _build_from_publication_contract(
+    pub_contract: Any, gateway: DeveloperStudioGatewayService
+) -> PublishPreviewSurfaceProjection:
+    """Build PublishPreviewSurfaceProjection from X3.8 PublicationStatusContract."""
+    status = getattr(pub_contract, "transition_phase", "unavailable")
+
+    surface_status = _map_publication_status_to_surface(status)
+    authority = _map_publication_status_to_authority(status)
+
+    return PublishPreviewSurfaceProjection(
+        available=status not in ("unavailable", "corrupt_source"),
+        authority_state=authority,
+        trust_state=(
+            TrustState.TRUSTED_LIVE
+            if authority == "canonical_live"
+            else TrustState.DEFERRED
+        ),
+        degraded_reason=getattr(pub_contract, "status_message", ""),
+        surface_status=surface_status,
+        status_detail=f"Publication status: {status}",
+        operation_id=getattr(pub_contract, "publication_operation_id", ""),
+        last_result_status=status,
+        preview_result=_build_preview_evidence(pub_contract),
+        ledger_total_events=(
+            1 if getattr(pub_contract, "available_actions", None) else 0
+        ),
+        ledger_valid_rows=(
+            1
+            if getattr(pub_contract, "published_verified", False)
+            and not getattr(pub_contract, "refusal_code", None)
+            else 0
+        ),
+        ledger_corrupt_rows=(
+            1
+            if getattr(pub_contract, "refusal_code", None)
+            and not getattr(pub_contract, "published_verified", False)
+            else 0
+        ),
+        ledger_corruption_detected=getattr(pub_contract, "refusal_code", None)
+        is not None,
+        publishable_repository_count=0,
+        deployment_available=status == "content_published",
+        deployment_deferred_reason=_map_deployment_reason(status),
+        content_light_guarantee=True,
+        # X3.8 publication contract fields
+        publication_preparation_available=status == "prepared",
+        authorization_status_field=getattr(
+            pub_contract, "authorization_status", "unavailable"
+        ),
+        authorization_receipt_digest=getattr(pub_contract, "evidence_linkage", {}).get(
+            "terminal_receipt_digest", ""
+        ),
+        content_commit_prepared=status
+        in ("content_published", "published_verified", "build_pending"),
+        ref_update_complete=getattr(pub_contract, "published_verified", False),
+        pages_configuration_state=(
+            "configured"
+            if getattr(pub_contract, "pages_configured", False)
+            else "unavailable"
+        ),
+        build_status_field=getattr(pub_contract, "build_status", "unavailable"),
+        published_verification_complete=getattr(
+            pub_contract, "published_verified", False
+        ),
+        conflict_detected=status == "refused",
+        recovery_available=getattr(pub_contract, "recovery_required", False),
+        external_acceptance_state=(
+            "verified"
+            if getattr(pub_contract, "published_verified", False)
+            else "pending"
+        ),
+    )
+
+
+def _build_from_preview(
+    preview: Any, gateway: DeveloperStudioGatewayService
+) -> PublishPreviewSurfaceProjection:
+    """Build PublishPreviewSurfaceProjection from T1.2 preview result."""
+    receipt = getattr(preview, "receipt", None)
+    preview_result = None
+    if receipt is not None:
+        try:
+            preview_result = PublishPreviewEvidenceSummary(
+                receipt_id=getattr(receipt, "receipt_id", ""),
+                compiled_at=getattr(receipt, "compiled_at", ""),
+                compilation_successful=getattr(
+                    receipt, "compilation_successful", False
+                ),
+                profile_candidate_digest=getattr(
+                    receipt, "profile_candidate_digest", ""
+                ),
+                safety_passed=getattr(receipt, "safety_passed", False),
+                preview_only=getattr(receipt, "preview_only", True),
+                deployment_ready=getattr(receipt, "deployment_ready", False),
+                evidence_digest=getattr(receipt, "evidence_digest", ""),
+            )
+        except Exception:
+            pass
 
     publishable_count = 0
     j0 = gateway._get_j0_service()
-    if j0 is not None:
+    if j0 is not None and j0 is not _UNAVAILABLE_SENTINEL:
         try:
             gridline = j0.build_gridline_projection()
             if gridline:
@@ -368,32 +624,29 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
 
     if publishable_count > 0:
         surface_status = SurfaceStatus.BLOCKED.value
-        status_detail = "Publication integration is pending upstream verification"
         authority = "integration_blocked"
-        trust = TrustState.DEFERRED
-        reason = (
-            "Publishable repositories exist but publication evidence "
-            "consumption is blocked pending upstream infrastructure "
-            "verification."
-        )
     else:
         surface_status = SurfaceStatus.VERIFICATION_PENDING.value
-        status_detail = "No publishable repositories available"
         authority = "missing"
-        trust = TrustState.DEFERRED
-        reason = "No publishable repositories and no public publication history API"
 
     return PublishPreviewSurfaceProjection(
         available=publishable_count > 0,
         authority_state=authority,
-        trust_state=trust,
-        degraded_reason=reason,
+        trust_state=TrustState.DEFERRED,
+        degraded_reason=(
+            "Publishable repositories exist but publication evidence "
+            "consumption is blocked pending upstream infrastructure "
+            "verification."
+        )
+        if publishable_count > 0
+        else "No publishable repositories and no public publication history API",
         surface_status=surface_status,
-        status_detail=status_detail,
-        ledger_total_events=0,
-        ledger_valid_rows=0,
-        ledger_corrupt_rows=0,
-        ledger_corruption_detected=False,
+        status_detail=(
+            "Publication integration is pending upstream verification"
+            if publishable_count > 0
+            else "No publishable repositories available"
+        ),
+        preview_result=preview_result,
         publishable_repository_count=publishable_count,
         deployment_available=False,
         deployment_deferred_reason=(
@@ -403,21 +656,168 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
     )
 
 
+def _map_publication_status_to_surface(status: str) -> str:
+    mapping = {
+        "prepared": SurfaceStatus.SETUP_REQUIRED.value,
+        "authorization_required": SurfaceStatus.SETUP_REQUIRED.value,
+        "authorized": SurfaceStatus.AVAILABLE.value,
+        "refused": SurfaceStatus.BLOCKED.value,
+        "content_commit_created_ref_not_updated": SurfaceStatus.AVAILABLE.value,
+        "content_published": SurfaceStatus.AVAILABLE.value,
+        "pages_configuration_unchanged": SurfaceStatus.SETUP_REQUIRED.value,
+        "build_requested": SurfaceStatus.VERIFICATION_PENDING.value,
+        "build_pending": SurfaceStatus.VERIFICATION_PENDING.value,
+        "published_verified": SurfaceStatus.AVAILABLE.value,
+        "failed": SurfaceStatus.ERROR.value,
+        "recovery_required": SurfaceStatus.ERROR.value,
+        "content_publication_started": SurfaceStatus.VERIFICATION_PENDING.value,
+        "content_publication_partial": SurfaceStatus.ERROR.value,
+        "content_publication_prepared": SurfaceStatus.AVAILABLE.value,
+        "pages_created": SurfaceStatus.AVAILABLE.value,
+        "pages_updated": SurfaceStatus.AVAILABLE.value,
+    }
+    return mapping.get(status, SurfaceStatus.VERIFICATION_PENDING.value)
+
+
+def _map_publication_status_to_authority(status: str) -> str:
+    if status in (
+        "content_published",
+        "published_verified",
+        "pages_created",
+        "pages_updated",
+    ):
+        return "canonical_live"
+    if status in (
+        "authorized",
+        "content_commit_created_ref_not_updated",
+        "build_requested",
+        "build_pending",
+        "content_publication_started",
+        "content_publication_prepared",
+    ):
+        return "canonical_degraded"
+    if status in ("failed", "recovery_required"):
+        return "corrupt"
+    if status in ("refused",):
+        return "refused"
+    return "missing"
+
+
+def _map_deployment_reason(status: str) -> str:
+    reasons = {
+        "prepared": "Publication not yet prepared",
+        "authorization_required": "Step-up authorization required",
+        "authorization_refused": "Authorization was refused",
+        "content_commit_created_ref_not_updated": "Content prepared but not yet pushed",
+        "content_published": "",
+        "pages_configuration_unchanged": "GitHub Pages configuration required",
+        "build_requested": "GitHub Pages build pending",
+        "build_pending": "GitHub Pages build pending",
+        "published_verified": "",
+        "failed": "Publication conflict detected",
+        "recovery_required": "Publication recovery required",
+        "content_publication_started": "Publication in progress",
+        "content_publication_partial": "Publication partially completed",
+    }
+    return reasons.get(status, "Publication not available")
+
+
+def _build_preview_evidence(pub_contract: Any) -> PublishPreviewEvidenceSummary | None:
+    try:
+        evidence_linkage = getattr(pub_contract, "evidence_linkage", {}) or {}
+        return PublishPreviewEvidenceSummary(
+            receipt_id=evidence_linkage.get("terminal_receipt_digest", ""),
+            compiled_at=evidence_linkage.get("evidence_ledger_path", ""),
+            compilation_successful=not getattr(pub_contract, "refusal_code", None),
+            profile_candidate_digest=getattr(pub_contract, "projection_digest", ""),
+            safety_passed=not getattr(pub_contract, "refusal_code", None),
+            preview_only=True,
+            deployment_ready=getattr(pub_contract, "transition_phase", "")
+            == "content_published",
+            evidence_digest=getattr(pub_contract, "projection_digest", ""),
+        )
+    except Exception:
+        return None
+
+
 # ── Timeline History Surface Projection Builder ────────
 
 
 def TIMELINE_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> TimelineSurfaceProjection:
-    """Build Timeline History surface from T4.2 InvestigationEvidenceTimelineService."""
+    """Build Timeline History surface from T4.2 InvestigationEvidenceTimelineService.
+
+    X1.6 — Falls back to X0ProjectionSurface when primary service is
+    unavailable, providing availability-derived status metadata.
+    """
     tl = gateway._get_timeline_service()
 
-    if tl is None:
+    # X1.6 — Wire X0ProjectionSurface availability vocabulary
+    x0_surface = gateway._get_x0_projection_surface()
+    x0_availability = _derive_x0_availability(x0_surface, "investigation_timeline")
+
+    if tl is None or tl is _UNAVAILABLE_SENTINEL:
+        x0_status = x0_availability.get("status", "unavailable")
+        # Only try X0 fallback when the backend is truly reachable
+        if x0_status not in (
+            "unavailable",
+            "corrupt_source",
+            "refused",
+            "connection_required",
+            "degraded",
+        ):
+            summary = {}
+            try:
+                summary = x0_surface.get_timeline_summary()
+            except Exception:
+                pass
+            event_count = summary.get("total_events", 0)
+            return TimelineSurfaceProjection(
+                available=event_count > 0,
+                authority_state="canonical_degraded",
+                trust_state=TrustState.TRUSTED_LIVE,
+                degraded_reason=(
+                    f"InvestigationEvidenceTimelineService unavailable; "
+                    f"X0 projection available ({x0_availability['status']}, "
+                    f"{event_count} events)"
+                ),
+                surface_status=(
+                    SurfaceStatus.DERIVED.value
+                    if event_count > 0
+                    else SurfaceStatus.VERIFICATION_PENDING.value
+                ),
+                status_detail=(
+                    f"[X0: {x0_availability['status']}] "
+                    f"Timeline projection derived from backend data plane"
+                ),
+                corrupt_count=summary.get("corrupt", 0),
+                missing_count=summary.get("missing", 0),
+                contradictory_count=summary.get("contradictory", 0),
+                stale_count=summary.get("stale", 0),
+                unsupported_count=summary.get("unsupported", 0),
+                verified_canonical_count=summary.get("verified_canonical", 0),
+            )
+        # X0 unavailable/connection_required/corrupt_source/degraded/refused
+        if x0_status == "corrupt_source":
+            surface_status = SurfaceStatus.ERROR.value
+            status_detail = (
+                f"[X0: corrupt_source] Evidence corruption detected — "
+                f"{x0_availability.get('reason', 'integrity failure')}"
+            )
+        elif x0_status == "connection_required":
+            surface_status = SurfaceStatus.CONNECTION_REQUIRED.value
+            status_detail = "X0 backend is unreachable — data plane connection required"
+        else:
+            surface_status = SurfaceStatus.SETUP_REQUIRED.value
+            status_detail = f"[X0: {x0_status}] Backend not reachable"
         return TimelineSurfaceProjection(
             available=False,
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
-            degraded_reason="InvestigationEvidenceTimelineService (T4.2) cannot be loaded",
+            degraded_reason=f"InvestigationEvidenceTimelineService (T4.2) cannot be loaded [X0: {x0_status}]",
+            surface_status=surface_status,
+            status_detail=status_detail,
         )
 
     try:
@@ -632,95 +1032,86 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
         trust = TrustState.TRUSTED_LIVE
         reason = "No local inference runtime configured"
 
-    return _merge_safari_surface_fields(
-        InferenceStudioSurfaceProjection(
-            available=True,
-            authority_state=authority,
-            trust_state=trust,
-            degraded_reason=reason,
-            surface_status=surface_status,
-            status_detail=status_detail,
-            runtime_available=runtime_available,
-            runtime_configured=runtime_configured,
-            runtime_kind=runtime_kind,
-            platform_class=platform_class,
-            omlx_strategy="pending_infrastructure_handoff",
-            omlx_available=False,
-            omlx_disclosure=(
-                "Hardware-accelerated local inference is pending "
-                "infrastructure integration and verification."
-            ),
-            task_suitability_count=4,
-            total_results=total_results,
-            total_executed=total_executed,
-            total_refused=total_refused,
-            drafts_awaiting_review=drafts_awaiting,
-            native_schema_capability_claimed=False,
-            native_schema_capability_proven=False,
-            grammar_capability_claimed=False,
-            grammar_capability_proven=False,
-        )
+    return cast(
+        InferenceStudioSurfaceProjection,
+        _merge_safari_fields(
+            InferenceStudioSurfaceProjection(
+                available=True,
+                authority_state=authority,
+                trust_state=trust,
+                degraded_reason=reason,
+                surface_status=surface_status,
+                status_detail=status_detail,
+                runtime_available=runtime_available,
+                runtime_configured=runtime_configured,
+                runtime_kind=runtime_kind,
+                platform_class=platform_class,
+                omlx_strategy="pending_infrastructure_handoff",
+                omlx_available=False,
+                omlx_disclosure=(
+                    "Hardware-accelerated local inference is pending "
+                    "infrastructure integration and verification."
+                ),
+                task_suitability_count=4,
+                total_results=total_results,
+                total_executed=total_executed,
+                total_refused=total_refused,
+                drafts_awaiting_review=drafts_awaiting,
+                native_schema_capability_claimed=False,
+                native_schema_capability_proven=False,
+                grammar_capability_claimed=False,
+                grammar_capability_proven=False,
+            )
+        ),
     )
 
 
-def _merge_safari_surface_fields(
-    model: InferenceStudioSurfaceProjection,
-) -> InferenceStudioSurfaceProjection:
-    try:
-        from rig_relay.native._safari_x0_contract import build_safari_native_projection
+# ── Y1-Y4 Deferred Surface Projection Builders ──────
 
-        native = build_safari_native_projection()
-        return model.model_copy(
-            update={
-                "safari_companion_state": native.safari_companion_state,
-                "safari_extension_built": native.safari_extension_built,
-                "safari_distribution_signing_state": native.safari_distribution_signing_state,
-                "safari_notarization_state": native.safari_notarization_state,
-                "safari_update_delivery_state": native.safari_update_delivery_state,
-                "safari_diagnostic_export_state": native.safari_diagnostic_export_state,
-                "safari_diagnostic_export_blocked": native.safari_diagnostic_export_blocked,
-                "safari_recovery_action_state": native.safari_recovery_action_state,
-                "safari_artifact_manifest_available": native.safari_artifact_manifest_available,
-                "safari_running": native.safari_running,
-                "safari_extension_installed": native.safari_extension_installed,
-                "safari_extension_enabled": native.safari_extension_enabled,
-                "safari_extension_error": native.safari_extension_error,
-                "safari_build_environment": native.build_environment,
-                "safari_projection_generated_at": native.generated_at,
-            }
-        )
-    except (
-        ImportError,
-        OSError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-    ):
-        return model.model_copy(
-            update={
-                "safari_companion_state": "error",
-                "safari_diagnostic_export_state": "error",
-                "safari_diagnostic_export_blocked": True,
-            }
-        )
-    except Exception as exc:
-        logger.warning(
-            "Unexpected exception merging safari fields into "
-            "Inference Studio surface projection: %s",
-            exc,
-        )
-        return model.model_copy(
-            update={
-                "safari_companion_state": "error",
-                "safari_diagnostic_export_state": "error",
-                "safari_diagnostic_export_blocked": True,
-            }
-        )
+
+def REPOSITORY_READINESS_SURFACE_PROJECTION_BUILDER(
+    gateway: DeveloperStudioGatewayService,
+) -> RepositoryReadinessSurfaceProjection:
+    """Repository Readiness surface — deferred to Y1."""
+    return RepositoryReadinessSurfaceProjection()
+
+
+def FLEET_WORKSPACES_SURFACE_PROJECTION_BUILDER(
+    gateway: DeveloperStudioGatewayService,
+) -> FleetWorkspacesSurfaceProjection:
+    """Fleet Workspaces surface — deferred to Y2."""
+    return FleetWorkspacesSurfaceProjection()
+
+
+def HARNESS_PROFILE_SURFACE_PROJECTION_BUILDER(
+    gateway: DeveloperStudioGatewayService,
+) -> HarnessProfileSurfaceProjection:
+    """Harness Profile surface — deferred to Y3."""
+    return HarnessProfileSurfaceProjection()
+
+
+def ANALYTICS_REPORTS_SURFACE_PROJECTION_BUILDER(
+    gateway: DeveloperStudioGatewayService,
+) -> AnalyticsReportsSurfaceProjection:
+    """Analytics & Reports surface — deferred to Y4."""
+    return AnalyticsReportsSurfaceProjection()
 
 
 __all__ = [
+    "ANALYTICS_REPORTS_SURFACE_PROJECTION_BUILDER",
     "CONNECT_SURFACE_PROJECTION_BUILDER",
+    "FLEET_WORKSPACES_SURFACE_PROJECTION_BUILDER",
+    "HARNESS_PROFILE_SURFACE_PROJECTION_BUILDER",
     "INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER",
     "PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER",
     "REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER",
+    "REPOSITORY_READINESS_SURFACE_PROJECTION_BUILDER",
     "TIMELINE_SURFACE_PROJECTION_BUILDER",
+    "_build_from_preview",
+    "_build_from_publication_contract",
+    "_build_preview_evidence",
+    "_derive_x0_availability",
+    "_map_deployment_reason",
+    "_map_publication_status_to_authority",
+    "_map_publication_status_to_surface",
 ]

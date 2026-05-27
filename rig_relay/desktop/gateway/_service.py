@@ -47,10 +47,14 @@ from rig_relay.desktop.gateway._projection import (
     M0_PROJECTION_BUILDER,
 )
 from rig_relay.desktop.gateway._projection_surfaces import (
+    ANALYTICS_REPORTS_SURFACE_PROJECTION_BUILDER,
     CONNECT_SURFACE_PROJECTION_BUILDER,
+    FLEET_WORKSPACES_SURFACE_PROJECTION_BUILDER,
+    HARNESS_PROFILE_SURFACE_PROJECTION_BUILDER,
     INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER,
     PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER,
     REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER,
+    REPOSITORY_READINESS_SURFACE_PROJECTION_BUILDER,
     TIMELINE_SURFACE_PROJECTION_BUILDER,
 )
 
@@ -89,6 +93,7 @@ class DeveloperStudioGatewayService:
         self._repository_estate_service: Any = None
         self._publication_service: Any = None
         self._timeline_service: Any = None
+        self._x0_projection_surface: Any = None
 
     # ── Lazy service accessors ───────────────────────────────────────
 
@@ -182,6 +187,14 @@ class DeveloperStudioGatewayService:
         timeline_surface = TIMELINE_SURFACE_PROJECTION_BUILDER(self)
         inference_studio_surface = INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(self)
 
+        # Y1-Y4 surface projections — deferred stubs
+        repository_readiness_surface = REPOSITORY_READINESS_SURFACE_PROJECTION_BUILDER(
+            self
+        )
+        fleet_workspaces_surface = FLEET_WORKSPACES_SURFACE_PROJECTION_BUILDER(self)
+        harness_profile_surface = HARNESS_PROFILE_SURFACE_PROJECTION_BUILDER(self)
+        analytics_reports_surface = ANALYTICS_REPORTS_SURFACE_PROJECTION_BUILDER(self)
+
         health = StudioServiceHealth(
             j0_workspace=_service_health_label(j0),
             k0_operator=_service_health_label(k0),
@@ -202,6 +215,10 @@ class DeveloperStudioGatewayService:
             publish_preview_surface=publish_preview_surface,
             timeline_surface=timeline_surface,
             inference_studio_surface=inference_studio_surface,
+            repository_readiness_surface=repository_readiness_surface,
+            fleet_workspaces_surface=fleet_workspaces_surface,
+            harness_profile_surface=harness_profile_surface,
+            analytics_reports_surface=analytics_reports_surface,
             service_health=health,
             provenance_summary=provenance,
         )
@@ -1214,6 +1231,54 @@ class DeveloperStudioGatewayService:
                 )
                 self._timeline_service = _UNAVAILABLE_SENTINEL
         return self._timeline_service
+
+    # ── X1.6: X0ProjectionSurface ────────────────────────────────────
+
+    def _get_x0_projection_surface(self) -> Any:
+        if self._x0_projection_surface is not _UNAVAILABLE_SENTINEL:
+            if self._x0_projection_surface is not None:
+                return self._x0_projection_surface
+            try:
+                from rig_relay.data_plane.postgres import (
+                    PostgresConnectionConfig,
+                    PostgresOperationalProjectionStore,
+                )
+                from rig_relay.data_plane.postgres._x0_projection import (
+                    X0ProjectionSurface,
+                )
+
+                config = PostgresConnectionConfig()
+                store = PostgresOperationalProjectionStore(config)
+                self._x0_projection_surface = X0ProjectionSurface(store)
+                logger.debug("X0ProjectionSurface initialized")
+            except ImportError:
+                logger.debug(
+                    "X0ProjectionSurface unavailable — data plane module not importable"
+                )
+                self._x0_projection_surface = _UNAVAILABLE_SENTINEL
+            except Exception as exc:
+                error_msg = str(exc).lower()
+                if any(
+                    term in error_msg
+                    for term in (
+                        "connection",
+                        "connect",
+                        "timeout",
+                        "refused",
+                        "unreachable",
+                        "could not translate",
+                    )
+                ):
+                    logger.debug(
+                        "X0ProjectionSurface unavailable — backend not reachable: %s",
+                        exc,
+                    )
+                else:
+                    logger.warning("X0ProjectionSurface construction failed: %s", exc)
+                self._x0_projection_surface = _UNAVAILABLE_SENTINEL
+        if self._x0_projection_surface is _UNAVAILABLE_SENTINEL:
+            return _UNAVAILABLE_SENTINEL
+        return self._x0_projection_surface
 
     def assemble_timeline(
         self, *, idempotency_key: str | None = None
