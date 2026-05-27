@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 import subprocess
 
+from rig_relay.native._evidence_hash import hash_artifact
 from rig_relay.native.models import AppPackageEvidence, AppPackageIdentity
 
 
@@ -115,7 +116,7 @@ class PackagingService:
                 / "RigRelayShell.app"
             )
             if app_dir.exists() and app_dir.is_dir():
-                evidence.build_sha256 = _hash_directory(app_dir)
+                evidence.build_sha256 = hash_artifact(app_dir)
             elif result.returncode != 0:
                 evidence.blocking_issues.append(f"Build failed: {result.stderr[:500]}")
             else:
@@ -155,35 +156,3 @@ class PackagingService:
             if not (app_path / path).exists():
                 issues.append(f"Missing: {path}")
         return issues
-
-
-def _hash_directory(root: Path) -> str:
-    """Compute a deterministic SHA256 hash of a directory tree.
-
-    Walks all files in sorted order, hashing every file's complete bytes
-    regardless of size. Symlink targets are recorded by path. Unreadable
-    files are recorded as UNREADABLE.
-
-    This is the canonical artifact-manifest digest algorithm for all
-    release evidence (packaging, signing, notarization, stapling, update).
-    """
-    hasher = hashlib.sha256()
-    for fpath in sorted(root.rglob("*")):
-        if fpath.is_symlink():
-            try:
-                target = fpath.readlink()
-                hasher.update(f"SYMLINK:{fpath.relative_to(root)}:{target}\n".encode())
-            except OSError:
-                hasher.update(f"SYMLINK:{fpath.relative_to(root)}:BROKEN\n".encode())
-            continue
-        if fpath.is_file():
-            try:
-                stat = fpath.stat()
-                rel = str(fpath.relative_to(root))
-                hasher.update(f"{rel}:{stat.st_size}\n".encode())
-                with fpath.open("rb") as f:
-                    while chunk := f.read(65536):
-                        hasher.update(chunk)
-            except (OSError, PermissionError):
-                hasher.update(f"{fpath.relative_to(root)}:UNREADABLE\n".encode())
-    return f"sha256:{hasher.hexdigest()}"

@@ -6,8 +6,7 @@ import hashlib
 import os
 from pathlib import Path
 
-from rig_relay.native._packaging import _hash_directory
-from rig_relay.native._release_operations import _hash_file_or_dir
+from rig_relay.native._evidence_hash import hash_artifact
 
 
 def test_hash_directory_uses_file_bytes() -> None:
@@ -22,8 +21,8 @@ def test_hash_directory_uses_file_bytes() -> None:
     (d1 / "b.txt").write_text("AAA")
     (d2 / "b.txt").write_text("BBB")
 
-    h1 = _hash_directory(d1)
-    h2 = _hash_directory(d2)
+    h1 = hash_artifact(d1)
+    h2 = hash_artifact(d2)
     assert h1 != h2
 
     for p in [d1, d2]:
@@ -50,8 +49,8 @@ def test_hash_directory_changes_with_large_file_content() -> None:
     with large_b.open("wb") as f:
         f.write(chunk_b)
 
-    h1 = _hash_directory(d1)
-    h2 = _hash_directory(d2)
+    h1 = hash_artifact(d1)
+    h2 = hash_artifact(d2)
     assert h1 != h2
     assert h1.startswith("sha256:")
 
@@ -70,7 +69,7 @@ def test_hash_directory_handles_symlinks() -> None:
         symlink_path.unlink()
     os.symlink(d / "real.txt", symlink_path)
 
-    h = _hash_directory(d)
+    h = hash_artifact(d)
     assert h.startswith("sha256:")
 
     for f in d.glob("*"):
@@ -81,20 +80,20 @@ def test_hash_directory_handles_symlinks() -> None:
 def test_hash_file_or_dir_single_file() -> None:
     f = Path("/tmp/x4_test_single.txt")
     f.write_text("test content")
-    h = _hash_file_or_dir(f)
+    h = hash_artifact(f)
     expected = hashlib.sha256(b"test content").hexdigest()
     assert h == f"sha256:{expected}"
     f.unlink()
 
 
 def test_hash_file_or_dir_missing() -> None:
-    h = _hash_file_or_dir(Path("/nonexistent/path"))
+    h = hash_artifact(Path("/nonexistent/path"))
     assert h == "sha256:missing"
 
 
 def test_hash_directory_empty_dir() -> None:
     d = Path("/tmp/x4_test_empty")
     d.mkdir(exist_ok=True)
-    h = _hash_directory(d)
+    h = hash_artifact(d)
     assert h.startswith("sha256:")
     d.rmdir()

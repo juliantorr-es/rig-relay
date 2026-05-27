@@ -45,13 +45,13 @@ _FORBIDDEN_FIELD_NAMES: frozenset[str] = frozenset({
     "token",
 })
 
-_FORBIDDEN_VALUE_PATTERNS: list[tuple[str, str, str]] = [
-    (r"/Users/[^/\s]+", "absolute_user_path", "[REDACTED]"),
-    (r"~/.rig/", "rig_home_path", "[REDACTED]"),
-    (r"ghp_[a-zA-Z0-9]{36}", "github_personal_access_token", "[REDACTED]"),
-    (r"ghs_[a-zA-Z0-9]{36}", "github_server_token", "[REDACTED]"),
-    (r"sk-[a-zA-Z0-9]{32,}", "openai_api_key", "[REDACTED]"),
-    (r"AIza[0-9A-Za-z\-_]{35}", "google_api_key", "[REDACTED]"),
+_FORBIDDEN_VALUE_PATTERNS: list[tuple[str, str]] = [
+    (r"/Users/[^/\s]+", "absolute_user_path"),
+    (r"~/.rig/", "rig_home_path"),
+    (r"ghp_[a-zA-Z0-9]{36}", "github_personal_access_token"),
+    (r"ghs_[a-zA-Z0-9]{36}", "github_server_token"),
+    (r"sk-[a-zA-Z0-9]{32,}", "openai_api_key"),
+    (r"AIza[0-9A-Za-z\-_]{35}", "google_api_key"),
 ]
 
 _REDACTION_PLACEHOLDER = "[REDACTED]"
@@ -61,14 +61,13 @@ def _redact_value(value: str) -> tuple[str, bool]:
     """Redact a string value if it matches forbidden patterns.
 
     Returns (redacted_value, was_redacted).
+    When a pattern matches, the entire value is replaced with the redaction
+    placeholder — never a partial match.
     """
-    was_redacted = False
-    result = value
-    for pattern, _reason, replacement in _FORBIDDEN_VALUE_PATTERNS:
-        if re.search(pattern, result):
-            result = re.sub(pattern, replacement, result)
-            was_redacted = True
-    return result, was_redacted
+    for pattern, _reason in _FORBIDDEN_VALUE_PATTERNS:
+        if re.search(pattern, value):
+            return _REDACTION_PLACEHOLDER, True
+    return value, False
 
 
 def _redact_string_or_dict(
@@ -217,15 +216,30 @@ class DiagnosticExportService:
                     bundle_path="unknown",
                 )
 
-        safe_identity = (
-            self._redact_and_reconstruct(
-                app_identity.model_dump(),
-                "app_identity",
-                AppPackageIdentity,
-                violations,
-            )
-            or app_identity
+        safe_identity = self._redact_and_reconstruct(
+            app_identity.model_dump(), "app_identity", AppPackageIdentity, violations
         )
+        if safe_identity is None:
+            violations.append(
+                DiagnosticContentLightViolation(
+                    field_name="app_identity",
+                    reason="redaction_or_reconstruction_failed_identity_refused",
+                )
+            )
+            safe_identity = AppPackageIdentity(
+                bundle_identifier="[REDACTED]",
+                bundle_name="[REDACTED]",
+                short_version="0",
+                build_version="0",
+                minimum_system_version="0",
+                executable_path="[REDACTED]",
+                bundle_path="[REDACTED]",
+            )
+        sc_extension_state = _redact_string_or_dict(
+            extension_connection_state, "extension_connection_state"
+        )[0]
+        if not isinstance(sc_extension_state, str):
+            sc_extension_state = "unavailable"
 
         safe_signing = (
             self._redact_and_reconstruct(
@@ -285,7 +299,7 @@ class DiagnosticExportService:
                 "component": "frontend_resources",
                 "status": "present" if frontend_resources_present else "missing",
             },
-            {"component": "safari_extension", "status": extension_connection_state},
+            {"component": "safari_extension", "status": sc_extension_state},
         ])
 
         if violations:
@@ -303,9 +317,9 @@ class DiagnosticExportService:
             notarization_status=safe_notarize,
             update_status=safe_update,
             recovery_state=safe_recovery,
-            extension_available=extension_connection_state
+            extension_available=sc_extension_state
             not in {"unavailable", "app_not_installed"},
-            extension_connection_state=extension_connection_state,
+            extension_connection_state=sc_extension_state,
             native_bridge_healthy=native_bridge_healthy,
             frontend_resources_present=frontend_resources_present,
             health_checks=safe_health,

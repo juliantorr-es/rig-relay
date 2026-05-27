@@ -7,8 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
-from typing import Any
 
+from rig_relay.native._evidence_hash import hash_artifact
 from rig_relay.native.models import (
     NotarizationEvidence,
     NotarizationStatus,
@@ -151,7 +151,7 @@ class ReleaseOperationsService:
                 evidence.warnings.append(f"Signing failed: {result.stderr[:200]}")
             else:
                 evidence.status = "signed"
-                evidence.bundle_sha256_after = _hash_file_or_dir(app_path)
+                evidence.bundle_sha256_after = hash_artifact(app_path)
 
         except subprocess.TimeoutExpired:
             evidence.status = "failed"
@@ -190,7 +190,7 @@ class ReleaseOperationsService:
                 timeout=600,
                 cwd=str(self._macos_dir),
             )
-            evidence.bundle_sha256 = _hash_file_or_dir(app_path)
+            evidence.bundle_sha256 = hash_artifact(app_path)
             evidence.submitted_at = timestamp
 
             if result.returncode != 0:
@@ -227,7 +227,7 @@ class ReleaseOperationsService:
 
     def staple_ticket(self, app_path: Path) -> NotarizationEvidence:
         """Staple the notarization ticket to the app bundle."""
-        bundle_hash = _hash_file_or_dir(app_path)
+        bundle_hash = hash_artifact(app_path)
 
         evidence = NotarizationEvidence(
             bundle_sha256=bundle_hash, status=NotarizationStatus.ACCEPTED
@@ -243,59 +243,10 @@ class ReleaseOperationsService:
             evidence.ticket_stapled = result.returncode == 0
             if evidence.ticket_stapled:
                 evidence.status = NotarizationStatus.STAPLED
-                evidence.bundle_sha256 = _hash_file_or_dir(app_path)
+                evidence.bundle_sha256 = hash_artifact(app_path)
             else:
                 evidence.warnings.append(f"Staple failed: {result.stderr[:200]}")
         except (subprocess.TimeoutExpired, FileNotFoundError):
             evidence.warnings.append("xcrun stapler not available")
 
         return evidence
-
-
-def _hash_symlink(hasher: Any, fpath: Path, root: Path) -> None:
-    try:
-        target = fpath.readlink()
-        hasher.update(f"SYMLINK:{fpath.relative_to(root)}:{target}\n".encode())
-    except OSError:
-        hasher.update(f"SYMLINK:{fpath.relative_to(root)}:BROKEN\n".encode())
-
-
-def _hash_file(hasher: object, fpath: Path, root: Path) -> None:
-    try:
-        stat = fpath.stat()
-        rel = str(fpath.relative_to(root))
-        hasher.update(f"{rel}:{stat.st_size}\n".encode())
-        with fpath.open("rb") as f:
-            while chunk := f.read(65536):
-                hasher.update(chunk)
-    except (OSError, PermissionError):
-        hasher.update(f"{fpath.relative_to(root)}:UNREADABLE\n".encode())
-
-
-def _hash_file_or_dir(path: Path) -> str:
-    """Hash a file or directory for content-light evidence binding.
-
-    Uses the canonical artifact-manifest digest algorithm:
-      - Full file bytes, no size caps
-      - Sorted walk for directories
-      - Symlink targets recorded
-      - Unreadable files recorded as UNREADABLE
-    """
-    if not path.exists():
-        return "sha256:missing"
-    if path.is_dir():
-        hasher = hashlib.sha256()
-        for fpath in sorted(path.rglob("*")):
-            if fpath.is_symlink():
-                _hash_symlink(hasher, fpath, path)
-                continue
-            if fpath.is_file():
-                _hash_file(hasher, fpath, path)
-        return f"sha256:{hasher.hexdigest()}"
-    if path.is_file():
-        try:
-            content = path.read_bytes()
-            return f"sha256:{hashlib.sha256(content).hexdigest()}"
-        except (OSError, PermissionError):
-            return "sha256:unreadable"
-    return "sha256:unsupported"
