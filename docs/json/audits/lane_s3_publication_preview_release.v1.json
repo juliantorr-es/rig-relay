@@ -1,0 +1,100 @@
+{
+  "schema_version": "rig.relay.lane_release_report.v1",
+  "lane_id": "s3",
+  "title": "Live Publication Preview Application Boundary",
+  "released_boundary": "ProjectPagePublicationPreviewService: a preview-only application-service boundary that consumes publishable project state from live L0 PublishableProjectProfileCandidate and J0 PublicationReadiness/PagesActionPreparation instances, and produces deterministic public-safe preview results with canonical evidence and refusal semantics.",
+  "stated_consumer_purpose": "A later desktop integration milestone can connect the Publish Preview surface to a real safe preview application service rather than raw compiler fixtures.",
+  "push_sha": "b57156f3ce0cc4c5d5e8a90ccb33f5b9354fe330",
+  "remote_verified": true,
+  "branch": "main",
+  "head_before": "e952b629851d2329d9c1b0c2d50797612bcc5813",
+  "head_after": "b57156f3ce0cc4c5d5e8a90ccb33f5b9354fe330",
+  "dirty_state_before": "Pre-existing dirty files from lanes S0, S2, S4 in frontend/desktop/ and rig_relay/desktop/gateway/",
+  "dirty_state_after": "Same pre-existing dirty files preserved. No other-lane files absorbed into S3 commit.",
+  "files_changed": [
+    "pyproject.toml",
+    "rig_relay/publication/__init__.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/_safety.py",
+    "tests/publication/test_project_page_compiler.py"
+  ],
+  "files_created": [
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json",
+    "rig_relay/publication/_service.py"
+  ],
+  "files_deleted": [],
+  "tests_run": 59,
+  "tests_passed": 59,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "existing_compiler_tests": 28,
+    "new_service_boundary_tests": 17,
+    "enhanced_safety_tests": 7,
+    "evidence_receipt_tests": 4,
+    "determinism_tests": 2,
+    "no_deployment_tests": 3,
+    "schema_mismatch_tests": 1
+  },
+  "evidence_artifacts": [
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "schema_validation_results": {
+    "new_schema": "passed",
+    "pre_existing_failures": 2,
+    "pre_existing_failing_schemas": [
+      "rig.relay.fleet_coordination_event.v1.schema.json",
+      "rig.relay.safari_extension_message.v1.schema.json"
+    ]
+  },
+  "lint_type_results": {
+    "ruff": "0 errors",
+    "pyright": "0 errors",
+    "ruff_format": "8 files left unchanged"
+  },
+  "producer_public_inputs_inspected": [
+    "rig_relay/context_engine/models.py — PublishableProjectProfileCandidate (L0)",
+    "rig_relay/context_engine/provenance.py — ApprovalStatus, PrivacyDisposition",
+    "rig_relay/integrations/github_provider/_workspace_models.py — PublicationReadiness, PagesActionPreparation (J0)",
+    "rig_relay/context_engine/assembler.py — ProjectContextAssemblyService.assemble_profile_candidate()"
+  ],
+  "external_research_consulted": [],
+  "completed_work": [
+    "Created ProjectPagePublicationPreviewService in _service.py — typed application-service boundary",
+    "Added PreviewEvidenceReceipt, PreviewRefusalCode, PublicationPreviewRefusal, PublicationPreviewResult models",
+    "Enhanced _safety.py with deployment overclaim detection (7 patterns: deploy to production, published to pages, live at https://, deployed successfully, auto-deploy, CI/CD pipeline deployed, publication complete)",
+    "Added mistral_key regex pattern to secret detection",
+    "Created rig.relay.publication_preview_receipt.v1.schema.json schema",
+    "Rewrote tests to use real L0 model construction (PublishableProjectProfileCandidate) instead of dict fixtures",
+    "Added 17 new service-boundary tests covering refusal, evidence, determinism, safety, schema mismatch",
+    "Updated __init__.py to export new service and models",
+    "Added pyproject.toml per-file-ignores for publication/_safety.py and publication/_service.py"
+  ],
+  "intentionally_deferred_work": [
+    "Desktop frontend wiring (P0 Gridline Interface consumption of preview results)",
+    "GitHub Pages deployment pipeline (separate authority, out of scope)",
+    "Live GitHub Pages API integration for publication_readiness (J0 boundary consumed as typed model, API calls deferred)",
+    "Cross-lane integration testing with P0 desktop gateway",
+    "Portfolio site compilation surface (project_page only in this lane)"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "Desktop cockpit Publish Preview surface → ProjectPagePublicationPreviewService wiring (P0 integration milestone)",
+    "GitHub Pages deployment action (requires separate deployment authority, not preview-only)",
+    "Portfolio site compilation (multi-project synthesis, requires DeveloperCorpusIndex)"
+  ],
+  "blocking_defects": [],
+  "claim_adversary_results": {
+    "authority_ownership": "passed",
+    "production_boundary_realism": "passed",
+    "crash_retry_safety": "passed",
+    "canonical_evidence_reconstruction": "passed",
+    "remote_publication_truth": "passed",
+    "lane_boundary_release_safety": "passed",
+    "no_deployment_overclaim": "passed",
+    "no_implicit_approval": "passed",
+    "test_coverage": "passed"
+  },
+  "freeze_condition": "Lane S3 is frozen pending the named integration milestone that wires the desktop Publish Preview surface to ProjectPagePublicationPreviewService. Reopens only for a concrete defect inside this boundary, the named integration milestone, or a user-directed architectural revision.",
+  "release_disposition": "published_narrow_release",
+  "pyproject_toml_shared_boundary_note": "pyproject.toml contains pre-existing per-file-ignores from lanes S2/S4 (rig_relay/desktop/gateway/_content_light.py, rig_relay/desktop/gateway/_authority.py) which were in the working tree before this lane began. These are additive per-file-ignores only and do not affect lane-boundary safety."
+}

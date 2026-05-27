@@ -20,14 +20,25 @@ Once the boundary is remotely verified and survives a final boundary-scoped clai
 
 ## Lane Status Vocabulary
 
-Use only these release dispositions:
+Use only these release dispositions, and respect role authority:
 
-- `candidate_local`: implementation exists locally but is not published.
-- `published_narrow_release`: the declared boundary is remotely published and safe for its stated purpose; deferred seams remain.
-- `blocked_release`: a specific defect inside the declared boundary prevents safe publication or consumption.
+- Builder-issued statuses:
+  - `candidate_local`: implementation exists locally but is not published.
+  - `published_candidate_boundary`: the builder has published the candidate slice and its publication record.
+  - `published_candidate_blocked`: the candidate slice is published but a declared blocker remains inside the candidate boundary.
+  - `published_candidate_external_acceptance_pending`: the candidate slice is published and awaiting independent verification.
+- Reviewer-issued statuses:
+  - `verified_narrow_release`: the declared boundary is verified, safe for its stated purpose, and admitted for the named consumer.
+  - `verified_with_blocking_defects`: the reviewed slice is published, but a boundary defect still blocks safe consumption.
+  - `downgraded_candidate_repair_required`: the builder claim is overstated and needs repair before verification.
 - `frozen_pending_integration`: the narrow boundary is published and verified; no further isolated lane work is authorized until a named integration milestone consumes or extends it.
+- Prepublication review dispositions:
+  - `prepublication_admitted`: the candidate boundary survived internal review and may be published after authorization.
+  - `prepublication_repair_required`: the candidate boundary has blocking findings inside the declared boundary and must be repaired before publication.
+  - `prepublication_blocked_external_dependency`: the candidate boundary is blocked by an external dependency that cannot be repaired locally.
 
 Do not use status identifiers that imply global closure, complete authority, or finished end-to-end integration when the release is intentionally narrow.
+Builders may never award reviewer-only statuses. Reviewers may downgrade builder claims, but they may not widen the candidate boundary into an unrelated architecture.
 
 ## Multiple parallel agents
 
@@ -201,28 +212,70 @@ All built-in tools must pass through security guards. When adding a new tool or 
 - Never use `git commit --amend`, `git push --force`, or `git push --force-with-lease`.
 - Always create new commits and push with a plain `git push`.
 - If a push is rejected due to upstream changes, rebase onto the updated remote branch — never merge and never force-push.
-- **Agent checkpoint commits**: Agents may create local checkpoint commits for session-owned files using the `checkpoint` tool to preserve proven work. Once a lane's release summary is published and a named milestone grants publication authorization, the checkpointed slice must be pushed for remote review. Agents may NOT push, amend, rebase, merge, reset, clean, or commit files outside their mission scope. See `docs/governance/cross-session-coordination.md`.
+- **Agent checkpoint commits**: Agents may create local checkpoint commits for session-owned files using the `checkpoint` tool to preserve proven work. Once the internal prepublication review loop has admitted the candidate boundary and a named milestone grants publication authorization, the checkpointed slice must be pushed for remote review exactly once. Agents may NOT push, amend, rebase, merge, reset, clean, or commit files outside their mission scope. See `docs/governance/cross-session-coordination.md`.
 - Direct `git commit` and `git add` via bash are blocked. Use the `checkpoint` tool instead.
 - **Stash**: `git stash` is only permitted for temporary testing with immediate `git stash pop`. Never use stash to discard or hide changes from parallel agent lanes.
 
 ## Checkpoint Publication And Review
 
 - Local checkpoint commits are the mechanism for preserving proven, mission-owned work sets.
-- Publishing a checkpointed commit is separate from authoring it; publication is only allowed after the release summary is published and a named milestone grants explicit review authorization.
+- Publishing a checkpointed commit is separate from authoring it; publication is only allowed after the internal prepublication review loop has admitted the candidate boundary and a named milestone grants explicit review authorization.
 - Only the released or narrowly published slice should be pushed for review. Do not use the publication step to widen the lane or bundle unrelated work.
 - Review tooling may inspect the published checkpointed slice, but broader integration work remains deferred unless the released boundary is unsafe or false.
 
-## Release Summary
+## Prepublication Review Loop
 
-Every final mission report must include a concise but explanatory summary that says:
+Before final publication, the builder must spawn a designated contract-auditor reviewer subagent against the completed candidate slice. The reviewer inspects the declared boundary, consumer purpose, candidate diff, production path, tests, evidence artifacts, and upstream/downstream contracts.
 
-- what changed;
-- which choices were made and why;
-- what codebase research was performed;
-- what external sources were consulted, if any;
-- how that research led to the conclusion.
+The reviewer report is append-only and may not be edited or rewritten by the builder. If the reviewer issues any blocking finding inside the declared boundary, the builder must repair it, record a builder response, and resubmit for another review round. Repeat until the reviewer emits `prepublication_admitted` or an actionable external blocker.
 
-Keep the summary short enough to scan, but not so short that it hides the reasoning behind the release. If no external research was needed, say so explicitly.
+The final publication summary must include the number of reviewer rounds, blocking findings found and repaired, the admitted candidate boundary, the pushed SHA, and the post-push remote verification status.
+
+## Builder Publication Record
+
+Builder sessions publish a structured publication record, not a self-awarded release verdict. The canonical artifact is `docs/schemas/rig.relay.builder_publication_record.v1.schema.json`.
+
+The record MUST capture:
+
+- the builder claim;
+- the required proof the lane was trying to satisfy;
+- the observed proof actually obtained;
+- the alternatives rejected and the evidence for each rejection;
+- the intended released boundary and consumer purpose;
+- the implemented capabilities and the capabilities explicitly left unimplemented;
+- the tests actually run and their result digests;
+- the schemas and audits produced;
+- the external effects actually executed and the effects explicitly not executed;
+- the known dirty or foreign paths excluded from the slice;
+- the strongest suspected weakness;
+- the proposed reviewer attack surface;
+- the prepublication review cycle digest and review round count;
+- the publication status, which MUST stay within the builder-issued candidate statuses.
+
+Builders do not write a reasoning essay in lieu of evidence. They record decision facts.
+
+## Reviewer Verification Record
+
+Reviewer sessions publish a structured verification record, not a replay of the builder's story. The canonical artifact is `docs/schemas/rig.relay.verification_record.v1.schema.json`.
+
+The record MUST capture:
+
+- the subject SHA under review;
+- the builder publication record digest;
+- the prepublication review cycle digest and review round count;
+- the policy applied;
+- the consumer purpose being verified;
+- the files inspected from remote main;
+- the production paths exercised;
+- the falsifiers attempted, succeeded, and defeated with evidence;
+- the untested claims;
+- the verified boundary;
+- the downgraded claims;
+- the consumer admission decision;
+- the resulting reviewer-issued status;
+- the freeze decision.
+
+Only reviewers may award verified or frozen statuses. Reviewers read remote main, not the builder's local self-assessment.
 
 ## Dirty-file preservation
 
@@ -352,28 +405,12 @@ If no schema exists for the report kind, add or extend a schema first. Do not fa
 
 Final responses in chat may use Markdown for readability, but any persisted final report must also be written as JSON, JSONL, or CSV. A chat-formatted Markdown summary is not a substitute for the canonical artifact.
 
-Required persisted final report shape:
+Required persisted records:
 
-- summary
-- branch
-- head_before
-- head_after
-- dirty_state_before
-- dirty_state_after
-- files_changed
-- files_created
-- files_deleted
-- tests_run
-- tests_intentionally_skipped
-- test_classifications
-- evidence_artifacts
-- schema_validation_results
-- telemetry_and_redaction_implications
-- dependency_changes
-- completed_work
-- intentionally_deferred_work
-- discovered_out_of_scope_risks
-- remaining_seams
+- Builders must persist `docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json`.
+- Builders must persist `docs/schemas/rig.relay.builder_publication_record.v1.schema.json`.
+- Reviewers must persist `docs/schemas/rig.relay.verification_record.v1.schema.json`.
+- Any optional human-readable note is non-authoritative and must not replace the structured record. If included, it must report the pushed SHA, the review round count, and the remote verification status.
 
 When an agent finds an existing Markdown report in a directory where structured artifacts are required, it must not add more Markdown beside it. It must either migrate that content into the canonical structured format as part of the mission, or record a structured out-of-scope finding explaining the migration slice needed. Do not delete old Markdown reports until the migration rules below are satisfied.
 

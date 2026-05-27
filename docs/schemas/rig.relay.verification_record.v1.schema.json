@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.verification_record.v1.schema.json",
+  "title": "Verification Record v1",
+  "description": "Canonical reviewer-issued verification record that independently grades a published candidate boundary.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "subject_sha",
+    "builder_record_digest",
+    "prepublication_review_cycle_digest",
+    "prepublication_review_round_count",
+    "policy_applied",
+    "consumer_purpose",
+    "files_inspected",
+    "production_paths_exercised",
+    "falsifier_log",
+    "untested_claims",
+    "verified_boundary",
+    "downgraded_claims",
+    "consumer_admission",
+    "resulting_status",
+    "freeze_decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.verification_record.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject_sha": {
+      "type": "string"
+    },
+    "builder_record_digest": {
+      "type": "string"
+    },
+    "prepublication_review_cycle_digest": {
+      "type": "string"
+    },
+    "prepublication_review_round_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "policy_applied": {
+      "type": "string"
+    },
+    "consumer_purpose": {
+      "type": "string"
+    },
+    "files_inspected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "production_paths_exercised": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "falsifier_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assertion",
+          "attempt",
+          "result",
+          "evidence"
+        ],
+        "properties": {
+          "assertion": {
+            "type": "string"
+          },
+          "attempt": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "defeated",
+              "succeeded"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "untested_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verified_boundary": {
+      "type": "string"
+    },
+    "downgraded_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "consumer_admission": {
+      "type": "object",
+      "required": [
+        "allowed_for",
+        "allowed_only_as_pending_status_for",
+        "prohibited_for"
+      ],
+      "properties": {
+        "allowed_for": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_only_as_pending_status_for": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prohibited_for": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resulting_status": {
+      "type": "string",
+      "enum": [
+        "verified_narrow_release",
+        "verified_with_blocking_defects",
+        "downgraded_candidate_repair_required",
+        "frozen_pending_integration"
+      ]
+    },
+    "freeze_decision": {
+      "type": "object",
+      "required": [
+        "freeze_status",
+        "reason"
+      ],
+      "properties": {
+        "freeze_status": {
+          "type": "string",
+          "enum": [
+            "frozen_pending_integration",
+            "not_frozen"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.builder_publication_record.v1.schema.json",
+  "title": "Builder Publication Record v1",
+  "description": "Canonical candidate publication record produced by an implementation lane before independent verification.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "lane_id",
+    "mission_id",
+    "published_sha",
+    "owned_files",
+    "intended_released_boundary",
+    "intended_consumer_purpose",
+    "decision_record",
+    "implemented_capabilities",
+    "unimplemented_capabilities",
+    "tests_run",
+    "schemas_audits_produced",
+    "external_effects_executed",
+    "external_effects_not_executed",
+    "known_dirty_foreign_paths_excluded",
+    "strongest_suspected_weakness",
+    "proposed_reviewer_attack_surface",
+    "prepublication_review_cycle_digest",
+    "prepublication_review_round_count",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.builder_publication_record.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lane_id": {
+      "type": "string"
+    },
+    "mission_id": {
+      "type": "string"
+    },
+    "published_sha": {
+      "type": "string"
+    },
+    "owned_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "intended_released_boundary": {
+      "type": "string"
+    },
+    "intended_consumer_purpose": {
+      "type": "string"
+    },
+    "decision_record": {
+      "type": "object",
+      "required": [
+        "claim",
+        "required_proof",
+        "observed_proof",
+        "alternative_rejected",
+        "verdict"
+      ],
+      "properties": {
+        "claim": {
+          "type": "string"
+        },
+        "required_proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observed_proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "alternative_rejected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "option",
+              "rejection_evidence"
+            ],
+            "properties": {
+              "option": {
+                "type": "string"
+              },
+              "rejection_evidence": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "candidate_local",
+            "published_candidate_boundary",
+            "published_candidate_blocked",
+            "published_candidate_external_acceptance_pending"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "implemented_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unimplemented_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "command",
+          "result",
+          "result_digest"
+        ],
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "result_digest": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "schemas_audits_produced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "external_effects_executed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "external_effects_not_executed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "known_dirty_foreign_paths_excluded": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "strongest_suspected_weakness": {
+      "type": "string"
+    },
+    "proposed_reviewer_attack_surface": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prepublication_review_cycle_digest": {
+      "type": "string"
+    },
+    "prepublication_review_round_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "candidate_local",
+        "published_candidate_boundary",
+        "published_candidate_blocked",
+        "published_candidate_external_acceptance_pending"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

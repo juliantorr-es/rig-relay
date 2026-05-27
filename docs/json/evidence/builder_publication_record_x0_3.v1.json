@@ -1,0 +1,105 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "builder_session_id": "x0-3",
+  "builder_claim": "published_candidate_boundary",
+  "required_proof": "ConnectedStudioExecutableFrontendAndNativeTransportBoundary — repair production frontend JavaScript execution, eliminate unsafe HTML sinks, prove canonical/bundled parity, and verify live native transport",
+  "observed_proof": "All 7 repair gates satisfied: 11 orphaned blocks removed, innerHTML eliminated from production paths (33→3 authorized), 63/63 executable JS proof assertions pass, 67/67 gateway tests pass, 3/3 live transport tests pass, canonical→bundled sync verified, surface authority matrix audited clean (0 X1/X2/X3/X4 authority violations)",
+  "alternatives_rejected": [
+    "Leave legacy fixture-path innerHTML unreachable-but-present: rejected per 'prefer removal' doctrine",
+    "Broad aesthetic refactor of surface renderers: rejected per 'narrow repair only' constraint",
+    "Timeout as non-blocking infrastructure: rejected — investigated root cause (storage audit 23s walk), classified as deferred_adjacent_seam with evidence"
+  ],
+  "released_boundary": "ConnectedStudioExecutableFrontendAndNativeTransportBoundary",
+  "consumer_purpose": "The native-hosted Gridline application may load and execute the canonical production frontend bundle, establish the already-modeled native/WebSocket bridge path, and render only those live surface states whose published producer contracts are actually safe to consume, with no fixture execution, no unsafe HTML rendering, and no JavaScript evaluation failure",
+  "implemented_capabilities": [
+    "Repaired production frontend JavaScript (11 orphaned duplicate legacy innerHTML blocks removed)",
+    "Eliminated all production-path unsafe HTML sinks (33→3 innerHTML; only setWidgetHTML + transcript clearing remain authorized)",
+    "Converted displayIntentResult, renderIdentityStatus, handleIdentityIntentResult, renderProgressTimeline, handleConsentIntentResult to safe DOM",
+    "Removed legacy fixture-path innerHTML from all 6 surface renderers",
+    "Removed HTML-string row() helper (dead code after safe DOM conversion)",
+    "Added executable JS proof (63 assertions covering boot, XSS neutralization, production mode, innerHTML authorization)",
+    "Updated no-unsafe-sinks regression test with app.js coverage",
+    "Updated no-innerHTML test assertions for DOM-safe _row() helper",
+    "Synced canonical→bundled frontend parity (SHA256 afdd22bc verified)",
+    "Proved live native transport (3/3 tests, null-origin connect, projection, fixture indicator)"
+  ],
+  "explicitly_not_implemented": [
+    "X2 runtime consumption",
+    "X3 deployment execution or deployment-status integration",
+    "X4 Safari consumption",
+    "X1 PostgreSQL materialization",
+    "New publication-history APIs",
+    "New UI polish or visual redesign",
+    "New surfaces",
+    "New capability claims"
+  ],
+  "tests_run": [
+    "node -c frontend/desktop/app.js (SYNTAX OK)",
+    "node tests/frontend/test_x0_3_production_executable_proof.mjs (63/63 PASSED)",
+    "node tests/frontend/test_no_inner_html_for_untrusted_fields.mjs (14/14 PASSED)",
+    "uv run pytest tests/frontend/test_no_unsafe_html_sinks.py -v (3/3 PASSED)",
+    "uv run pytest tests/desktop/gateway/ -v (67/67 PASSED, 1 warning)",
+    "uv run pytest tests/desktop/test_live_native_transport.py -v (3/3 PASSED)",
+    "bash scripts/sync_gridline_frontend.sh --check-only (OK: parity confirmed)",
+    "ruff check tests/frontend/test_no_unsafe_html_sinks.py (All checks passed)",
+    "pyright tests/frontend/test_no_unsafe_html_sinks.py (0 errors, 0 warnings)"
+  ],
+  "schemas_and_audits_produced": [
+    "docs/json/evidence/builder_publication_record_x0_3.v1.json (this record)"
+  ],
+  "external_effects_executed": [
+    "git push origin main (2d52f10e2 → origin/main confirmed)"
+  ],
+  "external_effects_not_executed": [
+    "No checkpoint.amend or force-push",
+    "No cross-lane file push (pre-existing dirty files from X2.4, X4.3/X4.4, governance lanes preserved unstaged)",
+    "No fixture execution in production mode",
+    "No deployment or remote telemetry"
+  ],
+  "known_dirty_foreign_paths": [
+    "AGENTS.md (governance lane)",
+    "PROJECT.md (governance lane)",
+    "docs/governance/cross-session-coordination.md",
+    "docs/governance/delegate-fleet-orchestration.md",
+    "docs/governance/reviewer-orchestrator.md",
+    "docs/schemas/rig.relay.mission_report.v1.schema.json",
+    "rig_relay/local_inference/runtime/_engine.py (X2.4 lane)",
+    "rig_relay/local_inference/runtime/_evidence.py (X2.4 lane)",
+    "rig_relay/local_inference/runtime/_service.py (X2.4 lane)",
+    "rig_relay/native/__init__.py (X4.3/X4.4 lane)",
+    "rig_relay/native/_diagnostics.py (X4.3/X4.4 lane)",
+    "rig_relay/native/_safari_x0_contract.py (X4.3/X4.4 lane)",
+    "rig_relay/native/models.py (X4.3/X4.4 lane)",
+    "tests/local_inference/runtime/test_rigged_runtime_boundary.py (X2.4 lane)",
+    "tests/native/test_diagnostics.py (X4.3/X4.4 lane)",
+    "Unstaged untracked: .swift-version, docs/schemas/rig.relay.*.schema.json (governance lane), docs/json/audits/ (S3 lane), macos/RigRelayShell/.swiftpm/"
+  ],
+  "strongest_suspected_weakness": "test_no_fixture_mode_indicator_in_projection takes ~20s due to storage audit filesystem walk — pre-existing performance concern in rig_relay/evidence/_storage_audit.py, not a boundary defect. Classified as deferred_adjacent_seam by reviewer.",
+  "proposed_reviewer_attack_surface": [
+    "F1: JavaScript boot executability (syntax, balanced braces)",
+    "F2: Absence of orphaned duplicate code (function-local variable refs at module scope)",
+    "F3: Absence of reachable unsafe HTML sinks (innerHTML, outerHTML, insertAdjacentHTML)",
+    "F4: Fixture-free production mode (default mode, no silent fixture fallback)",
+    "F5: Canonical/bundled parity (SHA256 match, sync script check)",
+    "F6: Live transport realism (null-origin, auth, projection, intent dispatch)",
+    "F7: Authority-state truth (unavailable/deferred rendering, no X1/X2/X3/X4 live consumption)",
+    "F8: No consumption of unverified producer candidates",
+    "F9: No cross-lane file absorption (commit contains only X0.3-owned files)",
+    "F10: Candidate digest matches admitted slice"
+  ],
+  "prepublication_review_rounds": 1,
+  "prepublication_review_findings": {
+    "blocking": 0,
+    "deferred_adjacent_seam": 1,
+    "deferred_finding_detail": "test_no_fixture_mode_indicator_in_projection latency (~20s) caused by storage audit Path.resolve() filesystem walk. Pre-existing in _storage_audit.py, not an X0.3 boundary defect."
+  },
+  "prepublication_disposition": "prepublication_admitted",
+  "publication_status": "published_candidate_boundary",
+  "pushed_sha": "2d52f10e2",
+  "remote_verification": "origin/main confirmed at 2d52f10e2. Changed file slice: frontend/desktop/app.js, macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/app.js, tests/frontend/test_no_inner_html_for_untrusted_fields.mjs, tests/frontend/test_no_unsafe_html_sinks.py, tests/frontend/test_x0_3_production_executable_proof.mjs. 5 files, 1663 insertions, 690 deletions.",
+  "key_artifact_hashes": {
+    "app_js_sha256": "afdd22bca1579589838ea4eb278fc13a8cbcd6effb6edd786a509b69f147de0e",
+    "x0_3_proof_sha256": "6d2e98d1df722a817d6770001c0edf21de8bb1764e2c4e660b42767e3b4ddfc1"
+  },
+  "created_at": "2026-05-27T00:00:00Z"
+}

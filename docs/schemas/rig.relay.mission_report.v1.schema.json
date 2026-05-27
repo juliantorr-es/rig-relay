@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.mission_report.v1.schema.json",
   "title": "Mission Report v1",
-  "description": "Canonical mission report matching the required persisted final report shape defined in AGENTS.md.",
+  "description": "Legacy mission report shape. Prefer the structured builder publication record and reviewer verification record defined in AGENTS.md.",
   "type": "object",
   "required": [
     "schema_version",

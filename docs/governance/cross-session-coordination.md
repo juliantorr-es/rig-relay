@@ -230,7 +230,7 @@ This provides clean local save points while keeping publication as a separate mi
 ### Policy
 
 - Agents may create local checkpoint commits for session-owned, mission-scoped files.
-- Agents must push checkpointed commits for mission-owned files once the release summary is published and a named milestone grants publication authorization. Agents may NOT push ad hoc, and they may not amend, rebase, merge, reset, clean, stash, restore, or commit unrelated files.
+- Agents must push checkpointed commits for mission-owned files exactly once after the internal prepublication review loop has admitted the candidate boundary and a named milestone grants publication authorization. Agents may NOT push ad hoc, and they may not amend, rebase, merge, reset, clean, stash, restore, or commit unrelated files.
 - Direct `git commit` and `git add` via bash are blocked — use the `checkpoint` tool instead.
 - Publication is a separate authority from checkpointing. The milestone-authorized publisher may be a human or an agent acting on the named review slice; the published commit must remain within the mission-owned checkpointed boundary.
 
@@ -378,4 +378,4 @@ packet schemas, security boundaries, and bootstrap implementation status.
 
 ## Governance Principle
 
-**Agents can checkpoint, then publish only the checkpointed slice after the release summary is published and milestone authorization is granted.**
+**Agents can checkpoint, then publish only the checkpointed slice exactly once after the internal prepublication review loop has admitted the candidate boundary and milestone authorization is granted.**

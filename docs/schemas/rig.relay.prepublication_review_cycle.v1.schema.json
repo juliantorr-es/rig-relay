@@ -1,0 +1,274 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.prepublication_review_cycle.v1.schema.json",
+  "title": "Prepublication Review Cycle v1",
+  "description": "Append-only internal review cycle used before a candidate boundary is published.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "lane_id",
+    "mission_id",
+    "baseline_sha",
+    "candidate_digest",
+    "intended_boundary",
+    "intended_consumer_purpose",
+    "rounds",
+    "builder_responses",
+    "final_admission",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.prepublication_review_cycle.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lane_id": {
+      "type": "string"
+    },
+    "mission_id": {
+      "type": "string"
+    },
+    "baseline_sha": {
+      "type": "string"
+    },
+    "candidate_digest": {
+      "type": "string"
+    },
+    "intended_boundary": {
+      "type": "string"
+    },
+    "intended_consumer_purpose": {
+      "type": "string"
+    },
+    "rounds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "round_number",
+          "reviewer_session_id",
+          "reviewed_candidate_digest",
+          "production_paths_inspected",
+          "falsifiers_attempted",
+          "findings",
+          "disposition"
+        ],
+        "properties": {
+          "round_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reviewer_session_id": {
+            "type": "string"
+          },
+          "reviewed_candidate_digest": {
+            "type": "string"
+          },
+          "production_paths_inspected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "falsifiers_attempted": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "claim",
+                "attack",
+                "evidence",
+                "outcome",
+                "severity",
+                "blocking"
+              ],
+              "properties": {
+                "claim": {
+                  "type": "string"
+                },
+                "attack": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "string"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "defeated",
+                    "succeeded",
+                    "unproven"
+                  ]
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "blocking": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "finding_id",
+                "severity",
+                "violated_claim",
+                "evidence",
+                "required_repair",
+                "classification"
+              ],
+              "properties": {
+                "finding_id": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "violated_claim": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "string"
+                },
+                "required_repair": {
+                  "type": "string"
+                },
+                "classification": {
+                  "type": "string",
+                  "enum": [
+                    "blocking_inside_declared_boundary",
+                    "deferred_adjacent_seam",
+                    "out_of_scope_observation"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "repair_required",
+              "admitted",
+              "blocked_external_dependency"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "builder_responses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "round_number",
+          "repaired_findings",
+          "changed_paths",
+          "validation_rerun"
+        ],
+        "properties": {
+          "round_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "repaired_findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "changed_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "validation_rerun": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "final_admission": {
+      "type": "object",
+      "required": [
+        "admitted_candidate_digest",
+        "admitted_boundary",
+        "permitted_consumer_purpose",
+        "unclaimed_capabilities",
+        "deferred_seams",
+        "review_round_count",
+        "push_authorized"
+      ],
+      "properties": {
+        "admitted_candidate_digest": {
+          "type": "string"
+        },
+        "admitted_boundary": {
+          "type": "string"
+        },
+        "permitted_consumer_purpose": {
+          "type": "string"
+        },
+        "unclaimed_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deferred_seams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_round_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "push_authorized": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_review",
+        "prepublication_admitted",
+        "prepublication_repair_required",
+        "prepublication_blocked_external_dependency"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

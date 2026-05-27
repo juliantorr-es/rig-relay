@@ -83,11 +83,29 @@ A child mission closes when its explicitly declared boundary is published, produ
 
 The reviewer MUST distinguish:
 
-- `candidate_local` from `published_narrow_release`;
-- `published_narrow_release` from `frozen_pending_integration`;
+- builder-issued `candidate_local` and `published_candidate_*` statuses from reviewer-issued `verified_*` and `frozen_pending_integration` statuses;
+- `verified_narrow_release` from `verified_with_blocking_defects`;
 - blocked release defects from deferred integration seams.
 
-A claim-adversary pass for a child mission is boundary-scoped. It attacks the released boundary and its stated consumer purpose only. The reviewer MUST NOT require unrelated seams, stronger future architecture, or broader integration as a condition of closing a truthful narrow release.
+A claim-adversary pass for a child mission is boundary-scoped. It attacks the released boundary and its stated consumer purpose only. The reviewer MUST NOT require unrelated seams, stronger future architecture, or broader integration as a condition of closing a truthful narrow release. The reviewer reads remote main, compares the builder publication record to the source of truth, and may award verified or frozen status only from that independent verification pass.
+
+### Prepublication Review Loop
+
+Before publication, the reviewer acts as a contract auditor. The reviewer inspects the declared boundary, consumer purpose, candidate diff, production path, tests, evidence artifacts, and upstream/downstream contracts.
+
+The reviewer may emit only:
+
+- `prepublication_admitted`;
+- `prepublication_repair_required`;
+- `prepublication_blocked_external_dependency`.
+
+Every finding must be classified as:
+
+- `blocking_inside_declared_boundary`;
+- `deferred_adjacent_seam`;
+- `out_of_scope_observation`.
+
+Only `blocking_inside_declared_boundary` findings block publication. The review report is append-only and may not be edited or rewritten by the builder. If the reviewer repairs the candidate slice, the builder must record a response and resubmit a new round.
 
 ### Reviewer Never Bypasses Git Policy
 
@@ -206,7 +224,7 @@ You must inspect coordination state before launching new work.
 You must avoid overlapping write scopes.
 You must aggregate child final reports before deciding the next mission.
 You must never push ad hoc, merge, rebase, reset, clean, stash, or bypass checkpoint policy.
-You may authorize publication of a checkpointed slice only after a named milestone has been reached, the release summary is published, and the slice is ready for external review.
+You may authorize publication of a checkpointed slice only after a named milestone has been reached, the internal prepublication review loop has emitted `prepublication_admitted`, and the slice is ready for external review.
 You must prioritize product-facing integration once safe narrow releases exist.
 You must not keep reopening a lane merely because a stronger architecture is discoverable.
 You must distinguish released, deferred, blocked, and frozen states.

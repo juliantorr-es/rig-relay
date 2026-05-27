@@ -156,8 +156,8 @@ A work item cannot exceed its spec scope.
 
 Human oversight is the authority boundary:
 
-- Checkpointed commits must be published for upstream consumption once the release summary is published and a named milestone grants publication authorization.
-- Agents create checkpoints for session-owned files; once the release summary is published and a named milestone grants publication authorization, the agent or milestone-authorized publication step must publish the checkpointed slice.
+- Checkpointed commits must be published for upstream consumption exactly once after the internal prepublication review loop has admitted the candidate boundary and a named milestone grants publication authorization.
+- Agents create checkpoints for session-owned files; once the internal prepublication review loop has admitted the candidate boundary and a named milestone grants publication authorization, the agent or milestone-authorized publication step must publish the checkpointed slice exactly once.
 - If the parent convergence report recommends human review, the reviewer pauses and
   presents the evidence.
 - The reviewer never bypasses Git policy or dirty-file guard.
@@ -172,7 +172,7 @@ Every child result and parent convergence report MUST clearly distinguish:
 4. Blocking defects that make the released boundary unsafe or false.
 5. Freeze status.
 
-The report MUST NOT describe a deferred seam as a blocker unless the seam invalidates the released boundary. The report MUST NOT declare a lane released while its tracked audit or canonical status artifact still says `candidate_local` or `blocked_release`.
+The report MUST NOT describe a deferred seam as a blocker unless the seam invalidates the released boundary. The report MUST NOT declare a lane released while its tracked audit or canonical status artifact still says `candidate_local`, `published_candidate_*`, or `blocked_release`.
 
 ### Validation Stages
 
