@@ -36,6 +36,7 @@ from rig_relay.local_inference.runtime._evidence import (
     emit_execution_receipt,
     emit_lifecycle_event,
     emit_refusal_receipt,
+    emit_stream_terminal_event,
     emit_tool_proposal_evidence,
     reconstruct_ledgers,
 )
@@ -51,6 +52,7 @@ from rig_relay.local_inference.runtime._models import (
     RuntimeHealth,
     RuntimeIdentity,
     RuntimeLifecycleState,
+    StreamTerminalState,
     TaskAdmissionDecision,
     TaskAdmissionResult,
     TaskKind,
@@ -563,6 +565,22 @@ class RiggedLocalRuntime:
         async with self._stream_lock:
             self._active_streams[req.operation_id] = _engine_fut
 
+        try:
+            emit_stream_terminal_event(
+                req.operation_id,
+                {
+                    "schema_version": "rig.relay.runtime_stream_terminal_event.v1",
+                    "operation_id": req.operation_id,
+                    "terminal_state": "provisional",
+                    "content_light": True,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "Failed to emit provisional stream terminal event for op=%s",
+                req.operation_id,
+            )
+
         accumulated: list[str] = []
         prompt_tokens_for_cache: list[int] = []
         try:
@@ -723,16 +741,39 @@ class RiggedLocalRuntime:
         receipt_payload = _build_execution_receipt_payload(
             task_id_hash, response, model_id_hash, effective_class, req.operation_id
         )
+        evidence_emitted = False
         try:
             response.evidence_receipt_id = emit_execution_receipt(
                 req.operation_id, receipt_payload
             )
+            evidence_emitted = True
         except Exception:
             logger.exception(
                 "Failed to emit execution receipt for op=%s", req.operation_id
             )
 
-        await self._scheduler.complete(req.operation_id, response)
+        if evidence_emitted:
+            response.stream_terminal_state = StreamTerminalState.TERMINALIZED
+            try:
+                emit_stream_terminal_event(
+                    req.operation_id,
+                    {
+                        "schema_version": "rig.relay.runtime_stream_terminal_event.v1",
+                        "operation_id": req.operation_id,
+                        "terminal_state": "terminalized",
+                        "evidence_receipt_id": response.evidence_receipt_id,
+                        "content_light": True,
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to emit stream terminal event for op=%s", req.operation_id
+                )
+            await self._scheduler.complete(req.operation_id, response)
+        else:
+            response.stream_terminal_state = StreamTerminalState.EVIDENCE_FAILED
+            yield "[EVIDENCE_UNAVAILABLE]"
+            await self._scheduler.fail(req.operation_id, "evidence_emission_failed")
 
     async def cancel_generation(self, op_id: str) -> bool:
         return await self._scheduler.cancel(op_id)
@@ -883,6 +924,15 @@ class RiggedLocalRuntime:
                     "Active streams tracked in _active_streams dict. "
                     "CancelledError awaits engine future with 5s timeout. "
                     "shutdown() cancels all active streams before pool clearance."
+                ),
+                "streaming_terminal_evidence": "provisional_then_terminalized",
+                "streaming_terminal_evidence_detail": (
+                    "Provisional evidence event emitted before first token yield. "
+                    "After token accumulation, execution receipt is emitted. "
+                    "On success, terminalized event recorded and "
+                    "scheduler.complete() called. On failure, yields "
+                    "[EVIDENCE_UNAVAILABLE] terminal signal and calls "
+                    "scheduler.fail() with evidence_emission_failed."
                 ),
             },
             "models": {

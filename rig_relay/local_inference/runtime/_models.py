@@ -99,6 +99,19 @@ class FinishReason(StrEnum):
     ERROR = "error"
 
 
+class StreamTerminalState(StrEnum):
+    """Provisional-then-terminal streaming evidence contract.
+
+    provisional    — streaming began, evidence not yet secured
+    terminalized   — execution receipt emitted, generation is verified
+    evidence_failed — receipt emission failed, generation is UNVERIFIED
+    """
+
+    PROVISIONAL = "provisional"
+    TERMINALIZED = "terminalized"
+    EVIDENCE_FAILED = "evidence_failed"
+
+
 class ToolCallProposal(BaseModel):
     """Parsed tool call from model output — proposal only, never executed directly."""
 
@@ -128,6 +141,7 @@ class LocalInferenceResponse(BaseModel):
     model_id_hash: str = ""
     cache_hit: bool = False
     evidence_receipt_id: str = ""
+    stream_terminal_state: StreamTerminalState | None = None
 
 
 class LocalInferenceEvidenceReceipt(BaseModel):

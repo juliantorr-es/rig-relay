@@ -333,6 +333,35 @@ def emit_scheduler_event(op_id: str, event_type: str, payload: dict[str, Any]) -
     )
 
 
+_STREAM_TERMINAL_ROOT = Path(".build/rig-relay/evidence")
+_STREAM_TERMINAL_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["schema_version", "operation_id", "terminal_state", "content_light"],
+    "properties": {
+        "schema_version": {"type": "string"},
+        "operation_id": {"type": "string"},
+        "terminal_state": {
+            "type": "string",
+            "enum": ["provisional", "terminalized", "evidence_failed"],
+        },
+        "evidence_receipt_id": {"type": "string"},
+        "content_light": {"const": True},
+    },
+    "additionalProperties": False,
+}
+
+_stream_terminal_ledger = EvidenceLedger(
+    _STREAM_TERMINAL_ROOT / "runtime_stream_terminal_ledger.jsonl",
+    _STREAM_TERMINAL_SCHEMA,
+)
+
+
+def emit_stream_terminal_event(op_id: str, payload: dict[str, Any]) -> str:
+    return _stream_terminal_ledger.append(
+        op_id, "rig.relay.runtime.stream_terminalized", payload
+    )
+
+
 def reconstruct_ledgers() -> dict[str, list[dict[str, Any]]]:
     return {
         "execution": _execution_ledger.reconstruct(),
@@ -340,6 +369,7 @@ def reconstruct_ledgers() -> dict[str, list[dict[str, Any]]]:
         "cache": _cache_ledger.reconstruct(),
         "scheduler": _scheduler_ledger.reconstruct(),
         "tool_proposal": _tool_proposal_ledger.reconstruct(),
+        "stream_terminal": _stream_terminal_ledger.reconstruct(),
     }
 
 
