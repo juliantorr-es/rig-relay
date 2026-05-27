@@ -15,7 +15,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from rig_relay.publication._deployment_models import PublicationTransitionReceipt
+from rig_relay.publication._deployment_models import (
+    PublicationTransitionReceipt,
+    _digest_sha256,
+)
 
 DEPLOYMENT_LEDGER_DIR = Path(".build/rig-relay/publication")
 DEPLOYMENT_LEDGER_FILE = "publication_deployment_evidence.v1.jsonl"
@@ -204,6 +207,85 @@ class DeploymentEvidenceLedger:
         self._path = ledger_path
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
+        self._branch_lock_fd = None
+        self._branch_lock_path: Path | None = None
+
+    def acquire_branch_publication_lock(
+        self, owner: str, repo: str, branch: str
+    ) -> bool:
+        """Acquire fcntl lock for branch-level publication serialization.
+
+        Lock files live in <ledger_dir>/locks/ keyed by sha256(owner/repo:branch).
+        Returns True if lock acquired, False if another process holds it.
+        """
+        lock_dir = self._path.parent / "locks"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        lock_id = _digest_sha256(f"{owner}/{repo}:{branch}")
+        self._branch_lock_path = lock_dir / f"{lock_id}.lock"
+        try:
+            self._branch_lock_fd = open(self._branch_lock_path, "w")
+            fcntl.flock(self._branch_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except (BlockingIOError, OSError):
+            if self._branch_lock_fd:
+                try:
+                    self._branch_lock_fd.close()
+                except OSError:
+                    pass
+            self._branch_lock_fd = None
+            return False
+
+    def release_branch_publication_lock(self) -> None:
+        if self._branch_lock_fd is not None:
+            try:
+                fcntl.flock(self._branch_lock_fd, fcntl.LOCK_UN)
+                self._branch_lock_fd.close()
+            except (ValueError, OSError):
+                pass
+            self._branch_lock_fd = None
+        self._branch_lock_path = None
+
+    def check_branch_publication_state(
+        self, owner: str, repo: str, branch: str, content_digest: str
+    ) -> dict:
+        """Check if content is already published or pending for this branch.
+
+        Scans evidence ledger for events matching the content digest.
+        Returns dict with: already_published, pending_commit_sha,
+        conflicting_operation_id, status.
+        """
+        result: dict = {
+            "already_published": False,
+            "pending_commit_sha": None,
+            "conflicting_operation_id": None,
+            "status": "clean",
+        }
+
+        reconstruction = self.load_receipts()
+        for receipt_data in reconstruction.get("receipts", []):
+            receipt_sbd = receipt_data.get("static_bundle_digest", "")
+            if receipt_sbd != content_digest:
+                continue
+
+            if receipt_data.get("content_published"):
+                result["already_published"] = True
+                result["pending_commit_sha"] = receipt_data.get(
+                    "published_commit_sha", ""
+                )
+                result["status"] = "already_published"
+                return result
+
+            if receipt_data.get("transition_phase") == "content_publication_prepared":
+                result["pending_commit_sha"] = receipt_data.get(
+                    "published_commit_sha", ""
+                )
+                result["conflicting_operation_id"] = receipt_data.get(
+                    "operation_id", ""
+                )
+                result["status"] = "pending"
+                return result
+
+        return result
 
     def append_event(
         self, operation_id: str, receipt: PublicationTransitionReceipt

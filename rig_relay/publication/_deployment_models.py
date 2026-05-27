@@ -41,6 +41,8 @@ class DeploymentRefusalCode(StrEnum):
     CONTENT_PUSH_FAILED = "content_push_failed"
     CONTENT_PUSH_PARTIAL = "content_push_partial"
     REPO_NOT_FOUND = "repo_not_found"
+    CONCURRENT_PUBLICATION_CONFLICT = "concurrent_publication_conflict"
+    FALLBACK_REFUSED_FOR_POLICY = "fallback_refused_for_policy"
 
 
 class PublicationTransitionPhase(StrEnum):
@@ -52,6 +54,7 @@ class PublicationTransitionPhase(StrEnum):
     PAGES_UPDATED = "pages_updated"
     CONTENT_PUBLICATION_STARTED = "content_publication_started"
     CONTENT_PUBLICATION_PARTIAL = "content_publication_partial"
+    CONTENT_PUBLICATION_PREPARED = "content_publication_prepared"
     CONTENT_PUBLISHED = "content_published"
     CONTENT_COMMIT_CREATED_REF_NOT_UPDATED = "content_commit_created_ref_not_updated"
     BUILD_REQUESTED = "build_requested"

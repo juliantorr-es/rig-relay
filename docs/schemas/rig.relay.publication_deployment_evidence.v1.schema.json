@@ -19,6 +19,7 @@
         "prepared", "authorization_required", "authorized",
         "pages_configuration_unchanged", "pages_created", "pages_updated",
         "content_publication_started", "content_publication_partial",
+        "content_publication_prepared",
         "content_published", "content_commit_created_ref_not_updated",
         "build_requested", "build_pending",
         "published_verified", "refused", "failed", "recovery_required"

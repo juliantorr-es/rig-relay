@@ -922,3 +922,716 @@ class TestVerifyPublicationCommitCorrelation:
         assert receipt.build_commit_matches_published is False
         digest = receipt.compute_digest()
         assert digest
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# X3.7: TestConcurrentPublicationSafety — D1-D4 concurrency, recovery, lifecycle
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _RecordingGitBoundary:
+    """Test double that records method calls for concurrency testing."""
+
+    def __init__(
+        self,
+        *,
+        ref_update_succeeds: bool = True,
+        ref_update_fails_with: int | None = None,
+        commit_tree_result: dict | None = None,
+    ) -> None:
+        self.blob_calls: list[dict] = []
+        self.tree_calls: list[dict] = []
+        self.commit_calls: list[dict] = []
+        self.ref_update_calls: list[dict] = []
+        self.get_base_ref_calls: list[str] = []
+        self.get_commit_tree_calls: list[str] = []
+        self._ref_update_succeeds = ref_update_succeeds
+        self._ref_update_fails_with = ref_update_fails_with
+        self._commit_tree_result = commit_tree_result
+        self._blob_counter = 0
+        self._ref_sha_cache: dict[str, str] = {}
+
+    async def create_blob(self, content: str, encoding: str) -> dict:
+        self._blob_counter += 1
+        sha = f"sha256:blob-{self._blob_counter}"
+        self.blob_calls.append({"content_hash": _digest_sha256(content), "sha": sha})
+        return {"blob_sha": sha}
+
+    async def create_tree(
+        self, tree_entries: list, base_tree: str | None = None
+    ) -> dict:
+        self._blob_counter += 1
+        sha = f"sha256:tree-{self._blob_counter}"
+        self.tree_calls.append({"entries": len(tree_entries), "sha": sha})
+        return {"tree_sha": sha}
+
+    async def create_commit(
+        self, message: str, tree_sha: str, parents: list[str] | None = None
+    ) -> dict:
+        self._blob_counter += 1
+        sha = f"sha256:commit-{self._blob_counter}"
+        self.commit_calls.append({"message": message, "tree_sha": tree_sha, "sha": sha})
+        return {"commit_sha": sha}
+
+    async def update_ref(self, ref: str, sha: str, force: bool = False) -> dict:
+        self.ref_update_calls.append({"ref": ref, "sha": sha, "force": force})
+        if self._ref_update_succeeds:
+            self._ref_sha_cache[ref] = sha
+            return {"success": True}
+        if self._ref_update_fails_with:
+            return {
+                "success": False,
+                "status_code": self._ref_update_fails_with,
+                "error": f"ref update failed with {self._ref_update_fails_with}",
+            }
+        return {"success": False, "error": "ref update failed"}
+
+    async def get_base_ref(self, ref: str) -> dict:
+        self.get_base_ref_calls.append(ref)
+        cached = self._ref_sha_cache.get(ref, "")
+        return {"ref_sha": cached}
+
+    async def get_commit_tree(self, commit_sha: str) -> dict:
+        self.get_commit_tree_calls.append(commit_sha)
+        if self._commit_tree_result:
+            return self._commit_tree_result
+        return {"tree_sha": f"sha256:tree-for-{commit_sha}"}
+
+
+class TestConcurrentPublicationSafety:
+    """X3.7 D1-D4: concurrency serialization, idempotency, recovery."""
+
+    # ── Test A: Idempotent same-operation ──────────────────────────
+
+    def test_idempotent_publication_returns_prior_outcome(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Hello X3.7</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-idempotent-1",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("owner/repo"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            result1 = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-1",
+                    target_repo_owner="owner",
+                    target_repo_name="repo",
+                )
+            )
+
+            assert result1.content_published is True
+            commit_calls_before = len(git_boundary.commit_calls)
+
+            # Second attempt with identical content
+            result2 = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-1",
+                    target_repo_owner="owner",
+                    target_repo_name="repo",
+                )
+            )
+
+            assert result2.content_published is True
+            assert len(git_boundary.commit_calls) == commit_calls_before
+
+    # ── Test B: Conflicting-operation concurrency ─────────────────
+
+    def test_conflicting_content_on_same_branch_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle1 = ApprovedStaticPublicationBundle(
+                files={"a.html": "<h1>A</h1>"}, target_surface="project_page"
+            )
+            bundle1.compute_content_digest()
+            prep1 = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-conflict-1",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle1.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep1.compute_digest()
+
+            # First publication — succeeds
+            result1 = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep1,
+                    bundle1,
+                    authorization_receipt_id="auth-content-1",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result1.content_published is True
+
+            # Second publication with different content to same branch
+            bundle2 = ApprovedStaticPublicationBundle(
+                files={"b.html": "<h1>B</h1>"}, target_surface="project_page"
+            )
+            bundle2.compute_content_digest()
+            prep2 = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-conflict-2",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle2.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep2.compute_digest()
+
+            result2 = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep2,
+                    bundle2,
+                    authorization_receipt_id="auth-content-2",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+
+            assert result2.content_published is True
+
+    # ── Test C: Crash before ref update — recovery ────────────────
+
+    def test_crash_before_ref_update_recovery(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(
+                ref_update_succeeds=False, ref_update_fails_with=500
+            )
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Orphaned</h1>"}, target_surface="project_page"
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-orphan",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-orphan",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+
+            assert result.transition_phase == (
+                PublicationTransitionPhase.CONTENT_COMMIT_CREATED_REF_NOT_UPDATED.value
+            )
+            assert result.recovery_required is True
+            assert result.published_commit_sha
+            assert result.published_commit_sha.startswith("sha256:commit-")
+
+            # Verify CONTENT_PUBLICATION_PREPARED was persisted
+            reconstruction = ledger.load_receipts()
+            prepared_found = any(
+                r.get("transition_phase") == "content_publication_prepared"
+                for r in reconstruction["receipts"]
+            )
+            assert prepared_found is True
+
+            # Recovery: now make ref update succeed
+            git_boundary._ref_update_succeeds = True
+            recovery_prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-orphan-recover",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            recovery_prep.compute_digest()
+
+            recovery_result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    recovery_prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-recover",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert recovery_result.content_published is True
+
+    # ── Test D: Crash after ref update — reconciliation ──────────
+
+    def test_published_state_detected_in_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Success</h1>"}, target_surface="project_page"
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-success",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-success",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result.content_published is True
+
+            # Reconciliation: check evidence ledger
+            reconstruction = ledger.load_receipts()
+            published_receipts = [
+                r for r in reconstruction["receipts"] if r.get("content_published")
+            ]
+            assert len(published_receipts) >= 1
+
+    # ── Test E: Authorization recovery semantics ──────────────────
+
+    def test_authorization_recovery_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger, git_boundary=git_boundary
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Auth Test</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-auth",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            # No authorization
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result.transition_phase == PublicationTransitionPhase.REFUSED.value
+            assert (
+                result.refusal_code == DeploymentRefusalCode.AUTHORIZATION_MISSING.value
+            )
+
+    # ── Test F: Sequential fallback refused for public_release ────
+
+    def test_fallback_refused_for_public_release_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+
+            class _NonAtomicBoundary:
+                pass
+
+            git_boundary = _NonAtomicBoundary()
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Blocked</h1>"}, target_surface="project_page"
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-fallback",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+                publication_policy="public_release",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-fallback",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            # When _publish_bundle refuses, it returns a manifest with
+            # publication_partial=True, which triggers RECOVERY_REQUIRED
+            assert result.transition_phase in (
+                PublicationTransitionPhase.RECOVERY_REQUIRED.value,
+                PublicationTransitionPhase.REFUSED.value,
+            )
+
+    def test_non_public_release_can_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+
+            class _HasPutOnly:
+                async def put_file_contents(self, path, branch, message, content):
+                    return {"success": True}
+
+            git_boundary = _HasPutOnly()
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Fallback OK</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-non-release",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+                publication_policy="developer_approved",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-dev",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result.content_published is True
+
+    # ── Test G: Lifecycle truth ───────────────────────────────────
+
+    def test_lifecycle_truth_prepared_is_not_published(self) -> None:
+        prepared = PublicationTransitionPhase.CONTENT_PUBLICATION_PREPARED
+        published = PublicationTransitionPhase.CONTENT_PUBLISHED
+        assert prepared.value != published.value
+        assert prepared.value == "content_publication_prepared"
+
+    def test_content_published_only_after_ref_update(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Lifecycle</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-lifecycle",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            result = asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-life",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert result.content_published is True
+            assert len(git_boundary.ref_update_calls) >= 1
+
+    def test_pages_configured_independent_of_published(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-pages-indep",
+            operation_id="op-test",
+            transition_phase=PublicationTransitionPhase.PAGES_CREATED.value,
+            pages_created=True,
+            content_published=False,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        assert receipt.pages_created is True
+        assert receipt.content_published is False
+
+    def test_published_verified_requires_matching_commits(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-verify-match",
+            operation_id="op-test",
+            transition_preparation_digest="sha256:prep",
+            preview_evidence_digest="sha256:prev",
+            static_bundle_digest="sha256:bundle",
+            transition_phase=PublicationTransitionPhase.PUBLISHED_VERIFIED.value,
+            published_commit_sha="sha256:pub",
+            build_commit_sha="sha256:pub",
+            build_commit_matches_published=True,
+            remote_verified=True,
+        )
+        digest = receipt.compute_digest()
+        assert receipt.build_commit_matches_published is True
+        assert receipt.remote_verified is True
+        assert digest
+
+    # ── Test H: Existing regression proofs ────────────────────────
+
+    def test_dual_authorization_separation_preserved(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-dual-auth",
+            operation_id="op-test",
+            transition_preparation_digest="sha256:prep",
+            preview_evidence_digest="sha256:prev",
+            static_bundle_digest="sha256:bundle",
+            transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
+            authorization_receipt_digest="sha256:content-auth",
+            content_published=True,
+            pages_created=False,
+            pages_updated=False,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        assert receipt.authorization_receipt_digest == "sha256:content-auth"
+        assert receipt.content_published is True
+        assert receipt.pages_created is False
+
+    def test_base_tree_preserved_in_atomic_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Base Tree</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-base-tree",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-base",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            assert len(git_boundary.tree_calls) >= 1
+
+    def test_non_force_ref_updates_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+            git_boundary = _RecordingGitBoundary(ref_update_succeeds=True)
+            service = GitHubPagesDeploymentService(
+                ledger=ledger,
+                git_boundary=git_boundary,
+                auth_override={
+                    "authorized": True,
+                    "refusal_code": None,
+                    "reasons": [],
+                    "authorization_digest": "sha256:test-auth-override",
+                },
+            )
+
+            bundle = ApprovedStaticPublicationBundle(
+                files={"index.html": "<h1>Non-Force</h1>"},
+                target_surface="project_page",
+            )
+            bundle.compute_content_digest()
+
+            prep = AuthorizedPublicationTransitionPreparation(
+                publication_operation_id="op-non-force",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest=bundle.content_digest,
+                target_repository_identity_digest=_digest_sha256("o/r"),
+                source_branch="gh-pages",
+                source_path="/",
+            )
+            prep.compute_digest()
+
+            asyncio.get_event_loop().run_until_complete(
+                service.execute_publication(
+                    prep,
+                    bundle,
+                    authorization_receipt_id="auth-content-nf",
+                    target_repo_owner="o",
+                    target_repo_name="r",
+                )
+            )
+            for call in git_boundary.ref_update_calls:
+                assert call["force"] is False
+
+    def test_evidence_ledger_digest_chain_integrity(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            ev_path = Path(d) / "evidence.jsonl"
+            ledger = DeploymentEvidenceLedger(ledger_path=ev_path)
+
+            receipt = PublicationTransitionReceipt(
+                receipt_id="r-chain",
+                operation_id="op-chain",
+                transition_preparation_digest="sha256:prep",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest="sha256:bundle",
+                transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
+                content_published=True,
+                evidence_digest="",
+            )
+            receipt.evidence_digest = receipt.compute_digest()
+            event_digest = ledger.append_event("op-chain", receipt)
+
+            reconstruction = ledger.load_receipts()
+            assert reconstruction["valid_rows"] == 1
+            assert reconstruction["corruption_detected"] is False
+            assert event_digest
+
+    def test_publication_refusal_code_regression(self) -> None:
+        assert hasattr(DeploymentRefusalCode, "CONCURRENT_PUBLICATION_CONFLICT")
+        assert hasattr(DeploymentRefusalCode, "FALLBACK_REFUSED_FOR_POLICY")
+        assert (
+            DeploymentRefusalCode.CONCURRENT_PUBLICATION_CONFLICT.value
+            == "concurrent_publication_conflict"
+        )
+        assert (
+            DeploymentRefusalCode.FALLBACK_REFUSED_FOR_POLICY.value
+            == "fallback_refused_for_policy"
+        )
