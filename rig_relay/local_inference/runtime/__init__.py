@@ -1,23 +1,12 @@
 """rig_relay.local_inference.runtime — Rig-governed internal MLX-backed runtime.
 
-Typed application-service boundary for MLX-backed model loading, governed
-inference with visible responses, durable evidence ledgers, model inventory,
-and capability reporting for Inference Studio consumption.
-
-Two-layer design:
-  LocalInferenceResponse     — authorized visible content for UI/session consumer
-  LocalInferenceEvidenceReceipt — content-light evidence for canonical ledger
-
-Content-light throughout: evidence uses SHA256 hashes, never raw prompts,
-completions, secrets, or private content.
-
-OMLX-informed: model classification taxonomy, cache evidence metrics schema,
-capability probe structure, MLX thread safety patterns, tool-call family parsing.
-Apache 2.0 attribution in source files and THIRD_PARTY_NOTICES.md.
+X2.3: Scheduler, cache authority, tool proposal corridor, X0 consumer contract,
+canonical evidence with schema validation, locking, and idempotency.
 """
 
 from __future__ import annotations
 
+from rig_relay.local_inference.runtime._cache_authority import RiggedCacheAuthority
 from rig_relay.local_inference.runtime._engine import (
     LoadedModel,
     MlxNotAvailableError,
@@ -26,7 +15,7 @@ from rig_relay.local_inference.runtime._engine import (
 )
 from rig_relay.local_inference.runtime._evidence import (
     EvidenceLedger,
-    build_evidence_receipt,
+    EvidenceLedgerError,
     emit_cache_evidence,
     emit_execution_receipt,
     emit_lifecycle_event,
@@ -36,20 +25,15 @@ from rig_relay.local_inference.runtime._evidence import (
 )
 from rig_relay.local_inference.runtime._inventory import scan_model_inventory
 from rig_relay.local_inference.runtime._models import (
-    CacheEvidenceMetrics,
-    CachePrivacyClass,
     CapabilityPosture,
     ContextPrivacyClass,
-    EnrichedRuntimeCapabilities,
     ExecutionStatus,
     FinishReason,
-    LocalInferenceEvidenceReceipt,
     LocalInferenceResponse,
     ModelInventoryEntry,
     ModelTypeClass,
     RefusalReason,
     RuntimeCachePolicy,
-    RuntimeHealth,
     RuntimeIdentity,
     RuntimeLifecycleState,
     TaskAdmissionDecision,
@@ -63,6 +47,10 @@ from rig_relay.local_inference.runtime._probe import (
     probe_runtime_health,
     probe_runtime_models,
 )
+from rig_relay.local_inference.runtime._scheduler import (
+    RequestState,
+    RiggedInferenceScheduler,
+)
 from rig_relay.local_inference.runtime._secrets import scan_messages_for_secrets
 from rig_relay.local_inference.runtime._service import (
     RiggedLocalRuntime,
@@ -70,27 +58,26 @@ from rig_relay.local_inference.runtime._service import (
     reset_runtime,
 )
 
-__all__: list[str] = [
-    "CacheEvidenceMetrics",
-    "CachePrivacyClass",
+__all__ = [
     "CapabilityPosture",
     "ContextPrivacyClass",
-    "EnrichedRuntimeCapabilities",
     "EvidenceLedger",
+    "EvidenceLedgerError",
     "ExecutionStatus",
     "FinishReason",
     "LoadedModel",
-    "LocalInferenceEvidenceReceipt",
     "LocalInferenceResponse",
     "MlxNotAvailableError",
     "ModelInventoryEntry",
     "ModelNotLoadedError",
     "ModelTypeClass",
     "RefusalReason",
+    "RequestState",
+    "RiggedCacheAuthority",
+    "RiggedInferenceScheduler",
     "RiggedLocalRuntime",
     "RiggedMlxEngine",
     "RuntimeCachePolicy",
-    "RuntimeHealth",
     "RuntimeIdentity",
     "RuntimeLifecycleState",
     "TaskAdmissionDecision",
@@ -98,7 +85,6 @@ __all__: list[str] = [
     "TaskKind",
     "TaskRefusal",
     "ToolCallProposal",
-    "build_evidence_receipt",
     "discover_runtime",
     "emit_cache_evidence",
     "emit_execution_receipt",

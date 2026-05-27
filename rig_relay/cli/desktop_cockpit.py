@@ -1177,7 +1177,11 @@ class _OnboardingAPI:
 
 
 def _open_window(
-    ws_port: int | None, mode: str = "runtime", server_only: bool = False
+    ws_port: int | None,
+    mode: str = "runtime",
+    server_only: bool = False,
+    auth_token: str | None = None,
+    allow_null_origin: bool = False,
 ) -> None:
     """Open pywebview window with single bridge server for HTTPS + WSS."""
     import time
@@ -1199,7 +1203,7 @@ def _open_window(
         else None
     )
 
-    ws_token = _generate_ws_token()
+    ws_token = auth_token if auth_token else _generate_ws_token()
     bridge_port = ws_port or DEFAULT_WS_PORT
 
     # ── Start single bridge server ───────────────────────────────────
@@ -1234,6 +1238,7 @@ def _open_window(
         ),
         build_root=BUILD_ROOT,
         pywebview_loopback_mode=True,
+        allow_null_origin=allow_null_origin,
     )
 
     bridge = DesktopBridgeServer(
@@ -1442,6 +1447,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_WS_PORT,
         help=f"Port for WebSocket projection stream (default: {DEFAULT_WS_PORT}).",
     )
+    parser.add_argument(
+        "--auth-token",
+        type=str,
+        default=None,
+        help="Pre-shared WebSocket auth token (auto-generated if not provided).",
+    )
+    parser.add_argument(
+        "--allow-null-origin",
+        action="store_true",
+        help="Allow WebSocket connections with Origin: null (WKWebView from file:// origins).",
+    )
 
     # Dev/debug subcommands (not product surface — blocked from RC evidence)
     sub = parser.add_subparsers(dest="command", help="Sub-commands")
@@ -1523,7 +1539,13 @@ def main(argv: list[str] | None = None) -> int:
         _dry_run(ws_port or DEFAULT_WS_PORT)
         return 0
 
-    _open_window(ws_port, mode=args.mode, server_only=args.server_only)
+    _open_window(
+        ws_port,
+        mode=args.mode,
+        server_only=args.server_only,
+        auth_token=args.auth_token,
+        allow_null_origin=args.allow_null_origin,
+    )
     return 0
 
 

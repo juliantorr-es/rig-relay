@@ -1,0 +1,104 @@
+{
+  "schema_version": "rig.relay.runtime_audit.v1",
+  "audit_id": "lane-x2.3-x2.2-hostile-audit-v1",
+  "title": "X2.3 Hostile Audit of X2.2 Published Runtime Claims",
+  "created_at": "2026-05-27T06:00:00Z",
+  "lane": "X2.3",
+  "audited_commit": "37934eae2",
+  "audited_branch": "origin/main",
+  "findings": {
+    "critical": [
+      {
+        "id": "C1-EVIDENCE-SCHEMA-FALSE",
+        "claim": "_evidence.py docstring: 'schema-validated'",
+        "reality": "No jsonschema import. _validate() checks only isinstance(payload, dict) and content_light presence. Schema names stored but never validated. Schema files do not exist at referenced paths.",
+        "repair": "Implement schema validation before append using jsonschema. Create schema files for all three ledger types."
+      },
+      {
+        "id": "C2-EVIDENCE-LOCK-MISMATCH",
+        "claim": "_evidence.py: 'Thread-safe and process-safe via fcntl advisory locking'",
+        "reality": "Writer locks .lock file (LOCK_EX). Readers lock data file directly (LOCK_SH). No mutual exclusion between readers and writers.",
+        "repair": "Lock the same file from both writer and reader paths."
+      },
+      {
+        "id": "C3-ENGINE-GENLOCK-FALSE",
+        "claim": "build_projection(): 'generation_lock: serialized'",
+        "reality": "gen_lock wraps only model dict lookup in both generate() and stream_generate(). Actual mlx_lm calls run unlocked.",
+        "repair": "Extend lock to cover entire generation call, or implement proper scheduler serialization."
+      },
+      {
+        "id": "C4-STREAM-NO-ADMISSION",
+        "claim": "stream_execute() provides governed generation",
+        "reality": "Does not call _classify_and_admit() or scan_messages_for_secrets(). Secret-bearing messages pass through streaming path unimpeded.",
+        "repair": "Run admission gates before streaming, same as execute()."
+      },
+      {
+        "id": "C5-THREADING-LOCK-ASYNC",
+        "claim": "Thread-safe engine",
+        "reality": "threading.Lock used inside async def. Blocks asyncio event loop on contention.",
+        "repair": "Use asyncio.Lock or dedicated executor thread."
+      }
+    ],
+    "high": [
+      {
+        "id": "H1-EVIDENCE-NO-IDEMPOTENCY",
+        "claim": "Canonical evidence ledger",
+        "reality": "No operation identity, idempotency key, or duplicate detection. Repeated append() creates distinct entries.",
+        "repair": "Add operation_id and idempotency check."
+      },
+      {
+        "id": "H2-EVIDENCE-NO-SCHEMA-FILES",
+        "claim": "Schema names referenced in EvidenceLedger constructors",
+        "reality": "No schema files exist at docs/schemas/ for local inference evidence.",
+        "repair": "Create schema files."
+      },
+      {
+        "id": "H3-NO-SCHEDULER",
+        "reality": "No request queue, priority, batching, rate limiting. Only serialized model lookup.",
+        "repair": "Implement RiggedInferenceScheduler."
+      },
+      {
+        "id": "H4-NO-CACHE",
+        "reality": "get_cache_policy() returns a policy model. No cache hit/miss tracking, eviction, or reuse.",
+        "repair": "Implement cache authority boundary with truthful status."
+      },
+      {
+        "id": "H5-NO-CONSUMER-CONTRACT",
+        "reality": "build_projection() returns raw dict. No typed consumer contract for X0.",
+        "repair": "Publish typed X0 consumer contract."
+      },
+      {
+        "id": "H6-GENLOCK-THREADING",
+        "reality": "threading.Lock used inside async def. Blocks event loop on contention.",
+        "repair": "Use asyncio.Lock or dedicated executor thread."
+      },
+      {
+        "id": "H7-PARTIAL-JSON-ERROR",
+        "reality": "Partial final write raises raw json.JSONDecodeError, not EvidenceLedgerError.",
+        "repair": "Wrap in EvidenceLedgerError."
+      }
+    ],
+    "medium": [
+      {
+        "id": "M1-STREAM-BLOCKING",
+        "reality": "mlx_lm.stream_generate() is synchronous generator. Blocks event loop during token generation.",
+        "repair": "Run generation in dedicated executor thread."
+      },
+      {
+        "id": "M2-SECRETS-NO-RECURSE",
+        "reality": "_extract_content() does not recursively walk nested dicts/arrays.",
+        "repair": "Add recursive content extraction."
+      },
+      {
+        "id": "M3-NOTICES-MISSING-ROW",
+        "reality": "THIRD_PARTY_NOTICES.md missing 5th pattern row for _ensure_mlx_stream().",
+        "repair": "Add row."
+      },
+      {
+        "id": "M4-NO-ACCEPTANCE-ARTIFACT",
+        "reality": ".build/ is gitignored. No published acceptance artifact exists remotely.",
+        "repair": "Publish acceptance artifact under committed evidence path."
+      }
+    ]
+  }
+}

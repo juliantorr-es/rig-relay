@@ -6,6 +6,9 @@ import WebKit
 enum HostState: Sendable, Equatable {
     case uninitialized
     case booting
+    case launchingBackend
+    case backendHealthy
+    case backendFailed(String)
     case resolvingResources
     case resourceNotFound(String)
     case resourceMalformed(String)
@@ -21,6 +24,9 @@ enum HostState: Sendable, Equatable {
         switch self {
         case .uninitialized: "Starting..."
         case .booting: "Booting..."
+        case .launchingBackend: "Launching Backend..."
+        case .backendHealthy: "Backend Running"
+        case .backendFailed(let msg): "Backend Failed: \(msg)"
         case .resolvingResources: "Resolving Resources..."
         case .resourceNotFound: "Resources Not Found"
         case .resourceMalformed: "Resources Corrupt"
@@ -36,7 +42,9 @@ enum HostState: Sendable, Equatable {
 
     var iconName: String {
         switch self {
-        case .uninitialized, .booting, .resolvingResources: "arrow.triangle.2.circlepath"
+        case .uninitialized, .booting, .launchingBackend, .resolvingResources: "arrow.triangle.2.circlepath"
+        case .backendHealthy: "checkmark.shield"
+        case .backendFailed: "xmark.shield"
         case .resourceNotFound, .resourceMalformed: "doc.questionmark"
         case .loadingFrontend: "globe"
         case .frontendReady: "checkmark.circle"
@@ -50,7 +58,7 @@ enum HostState: Sendable, Equatable {
 
     var isTerminal: Bool {
         switch self {
-        case .resourceNotFound, .resourceMalformed, .frontendLoadFailed,
+        case .backendFailed, .resourceNotFound, .resourceMalformed, .frontendLoadFailed,
              .bridgeUnavailable, .unsupportedOrigin, .error: true
         default: false
         }
@@ -70,8 +78,16 @@ final class AppState: ObservableObject {
         allowedBundleId: "com.rigrelay.RigRelayShell.SafariExtension"
     )
     let extensionStatusVM: ExtensionStatusViewModel
+    let backendManager = PythonBackendManager(
+        port: 9876,
+        commandPath: "uv",
+        autoLaunch: false
+    )
 
     var resourceLocator: ResourceLocator { ResourceLocator() }
+
+    // Weak ref to the WebView for JS injection
+    weak var webView: WKWebView?
 
     init() {
         self.extensionStatusVM = ExtensionStatusViewModel(
@@ -79,11 +95,81 @@ final class AppState: ObservableObject {
         )
     }
 
+    // ── Boot Sequence ───────────────────────────────────
+
+    func boot() {
+        guard hostState == .uninitialized else { return }
+        hostState = .booting
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self else { return }
+            self.hostState = .launchingBackend
+            Task { @MainActor in await self.launchBackend() }
+        }
+    }
+
+    private func launchBackend() async {
+        if case .launchingBackend = hostState {
+            // OK
+        } else {
+            return
+        }
+
+        await backendManager.launch()
+
+        // Wait for backend to become healthy or fail
+        // The health state is published; we observe it
+        // For now, poll briefly
+        for _ in 0..<60 { // 30 second timeout
+            if backendManager.state == .healthy {
+                hostState = .backendHealthy
+                injectRuntimeConfig()
+                // Proceed to resource resolution
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    self?.hostState = .resolvingResources
+                }
+                return
+            }
+            if case .failed = backendManager.state {
+                let reason: String
+                if case .failed(let msg) = backendManager.state { reason = msg }
+                else { reason = "Unknown failure" }
+                hostState = .backendFailed(reason)
+                return
+            }
+            if case .crashed = backendManager.state {
+                let code: Int32
+                if case .crashed(let c) = backendManager.state { code = c }
+                else { code = -1 }
+                hostState = .backendFailed("Backend crashed with exit code \(code)")
+                return
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+        }
+        hostState = .backendFailed("Backend health timeout")
+    }
+
+    private func injectRuntimeConfig() {
+        guard let webView else { return }
+        let configJSON = backendManager.runtimeConfigJSON
+        let escapedConfig = configJSON
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+        let js = """
+        window.__RIG_RELAY_RUNTIME_CONFIG__ = \(configJSON);
+        """
+        webView.evaluateJavaScript(js) { _, error in
+            if let error {
+                NSLog("[AppState] Runtime config injection failed: \(error.localizedDescription)")
+            } else {
+                NSLog("[AppState] Runtime config injected successfully")
+            }
+        }
+    }
+
     // ── Frontend URL Resolution (bundled resources only) ──
 
     func resolvedFrontendFileURL() -> URL? {
         let loc = resourceLocator
-        hostState = .resolvingResources
 
         guard let url = loc.gridlineFrontendIndexURL else {
             hostState = .resourceNotFound("No bundled Gridline frontend found in Resources/GridlineFrontend/")
@@ -136,17 +222,27 @@ final class AppState: ObservableObject {
             )
         }
 
+        let transportKind: String
+        if backendManager.state.isHealthy {
+            transportKind = "native_loopback_bridge"
+        } else if backendManager.state == .launching {
+            transportKind = "backend_launching"
+        } else {
+            transportKind = "local_file"
+        }
+
         let payload = BootstrapPayload(
             resourceLoadResult: resourceResult,
             bridgeAvailable: true,
             supportedCapabilityKinds: [
                 "host_state_query",
-                "extension_status_query"
+                "extension_status_query",
+                "websocket_transport",
             ],
             refusalReasons: resourceResult.indexHTMLFound ? [] : ["frontend_resources_missing"],
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
             buildCommitSHA: nil,
-            transportStatus: "local_file"
+            transportStatus: transportKind
         )
 
         return BootstrapMessage(
@@ -225,10 +321,11 @@ final class AppState: ObservableObject {
     // ── Retry ────────────────────────────────────────
 
     func retryLoading() {
-        // Reset to booting — never silently restore server assumption
+        // Stop backend and reset — never silently restore server assumption
+        backendManager.stop()
         hostState = .booting
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-            self?.hostState = .resolvingResources
+            self?.hostState = .launchingBackend
         }
     }
 }

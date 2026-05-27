@@ -8,6 +8,7 @@ struct WebKitWebView: NSViewRepresentable {
     let readAccessURL: URL
     let messageBridge: NativeMessageBridge
     let onLoadStateChange: (HostState) -> Void
+    let onWebViewCreated: ((WKWebView) -> Void)?
     let allowedBaseURL: URL
 
     func makeCoordinator() -> Coordinator {
@@ -37,6 +38,9 @@ struct WebKitWebView: NSViewRepresentable {
 
         // Configure message bridge against this web view
         messageBridge.configure(for: webView)
+
+        // Notify app state so it can inject runtime config
+        onWebViewCreated?(webView)
 
         return webView
     }

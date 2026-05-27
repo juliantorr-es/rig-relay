@@ -393,6 +393,7 @@ class DesktopBridgeServer:
             golden_handshake_id=self._golden_handshake_id,
             missing_origin_allowed=False,
             pywebview_loopback_mode=self._config.pywebview_loopback_mode,
+            allow_null_origin=self._config.allow_null_origin,
         )
         report.add_ok(
             "bridge:05", "create WS server", message="ProjectionWebSocketServer ready"

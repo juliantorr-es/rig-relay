@@ -17,6 +17,9 @@ struct ContentView: View {
                     onLoadStateChange: { newState in
                         appState.hostState = newState
                     },
+                    onWebViewCreated: { webView in
+                        appState.webView = webView
+                    },
                     allowedBaseURL: readAccessURL
                 )
                 .opacity(appState.hostState == .frontendReady ? 1 : 0)
@@ -38,10 +41,7 @@ struct ContentView: View {
         }
         .onAppear {
             if appState.hostState == .uninitialized {
-                appState.hostState = .booting
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak appState] in
-                    appState?.hostState = .resolvingResources
-                }
+                appState.boot()
             }
         }
     }

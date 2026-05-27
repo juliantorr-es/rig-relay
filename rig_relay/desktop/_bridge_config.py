@@ -60,6 +60,7 @@ class DesktopBridgeConfig:
         chat_state_provider: Any | None = None,
         chat_message_handler: Any | None = None,
         pywebview_loopback_mode: bool = False,
+        allow_null_origin: bool = False,
     ) -> None:
         self.host = host
         self.port = port
@@ -73,6 +74,7 @@ class DesktopBridgeConfig:
         self.chat_state_provider = chat_state_provider
         self.chat_message_handler = chat_message_handler
         self.pywebview_loopback_mode = pywebview_loopback_mode
+        self.allow_null_origin = allow_null_origin
 
 
 class DesktopBridgeRuntimeConfig:
