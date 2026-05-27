@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.session_resolution_receipt.v1.schema.json",
+  "title": "Session Resolution Receipt v1",
+  "description": "Canonical schema for a session resolution receipt. Content-light: never includes raw prompts, file contents, secrets, or model outputs.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.session_resolution_receipt.v1"
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session this receipt belongs to"
+    },
+    "provider": {
+      "type": "string",
+      "description": "Provider identifier (openai, anthropic, etc.)"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Model identifier"
+    },
+    "task_role": {
+      "type": "string",
+      "enum": [
+        "implementation",
+        "architecture_planning",
+        "code_review_adversarial",
+        "audit_review",
+        "ui_native_task",
+        "restricted_sensitive_inspection"
+      ]
+    },
+    "selected_profile_id": {
+      "type": "string",
+      "description": "ID of the selected profile"
+    },
+    "selected_profile_version": {
+      "type": "string",
+      "description": "Version of the selected profile"
+    },
+    "resolution_confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "is_user_override": {
+      "type": "boolean"
+    },
+    "required_capabilities_check": {
+      "type": "object",
+      "description": "Map of capability names to passed/failed/unknown",
+      "additionalProperties": { "type": "string" }
+    },
+    "context_envelope_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the context envelope"
+    },
+    "workspace_identity_ref": {
+      "type": "string",
+      "description": "Reference to workspace identity"
+    },
+    "authority_evidence_posture": {
+      "type": "string",
+      "const": "governed"
+    },
+    "profile_evaluation_status": {
+      "type": "string",
+      "enum": ["experimental", "candidate", "verified", "deprecated"]
+    },
+    "user_override_state": {
+      "type": "string",
+      "enum": ["none", "active", "disabled"]
+    },
+    "resolved_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of resolution"
+    },
+    "receipt_digest": {
+      "type": "string",
+      "description": "SHA256 digest of the canonical receipt JSON"
+    }
+  },
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "session_id",
+    "provider",
+    "model_id",
+    "task_role",
+    "selected_profile_id",
+    "selected_profile_version",
+    "resolution_confidence",
+    "authority_evidence_posture",
+    "profile_evaluation_status",
+    "resolved_at",
+    "receipt_digest"
+  ],
+  "additionalProperties": false
+}

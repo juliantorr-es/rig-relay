@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.provider_harness_compatibility_profile.v1.schema.json",
+  "title": "Provider Harness Compatibility Profile v1",
+  "description": "Canonical schema for a typed, versioned provider-harness compatibility profile. Content-light: never includes raw API keys, secrets, file contents, or prompts.",
+  "type": "object",
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Unique profile identifier, e.g. 'openai.codex.compatible_engineering.v1'"
+    },
+    "profile_version": {
+      "type": "string",
+      "description": "Semantic version of this profile"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable display name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description of what this profile provides and when to use it"
+    },
+    "provider_families": {
+      "type": "array",
+      "description": "Provider families this profile applies to",
+      "items": { "type": "string" }
+    },
+    "model_patterns": {
+      "type": "array",
+      "description": "Regex patterns for model IDs this profile matches",
+      "items": { "type": "string" }
+    },
+    "supported_roles": {
+      "type": "array",
+      "description": "Task roles this profile supports",
+      "items": {
+        "type": "string",
+        "enum": [
+          "implementation",
+          "architecture_planning",
+          "code_review_adversarial",
+          "audit_review",
+          "ui_native_task",
+          "restricted_sensitive_inspection"
+        ]
+      }
+    },
+    "required_capabilities": {
+      "type": "object",
+      "description": "Required model capabilities for this profile to be applicable",
+      "properties": {
+        "requires_tool_use": { "type": "boolean" },
+        "requires_streaming": { "type": "boolean" },
+        "requires_structured_output": { "type": "boolean" },
+        "requires_thinking": { "type": "boolean" },
+        "requires_vision": { "type": "boolean" },
+        "requires_embeddings": { "type": "boolean" },
+        "min_context_window": { "type": "integer" },
+        "min_output_tokens": { "type": "integer" },
+        "max_input_price_per_million": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "context_envelope_strategy": {
+      "type": "string",
+      "enum": ["rig_governed", "codex_compatible", "claude_compatible", "copilot_compatible"]
+    },
+    "instruction_rendering_strategy": {
+      "type": "string",
+      "enum": ["rig_default", "codex", "claude", "copilot"]
+    },
+    "tool_dialect_strategy": {
+      "type": "string",
+      "enum": ["rig_native", "openai_function_calling", "anthropic_tool_use", "model_driven"]
+    },
+    "reasoning_effort_posture": {
+      "type": "object",
+      "properties": {
+        "supports_effort_control": { "type": "boolean" },
+        "default_effort": { "type": ["string", "null"] },
+        "available_efforts": { "type": "array", "items": { "type": "string" } },
+        "adaptive_reasoning": { "type": "boolean" },
+        "uses_keyword_triggers": { "type": "boolean" },
+        "max_thinking_tokens": { "type": ["integer", "null"] },
+        "effort_persists_across_sessions": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "caching_posture": {
+      "type": "object",
+      "properties": {
+        "caching_active": { "type": "boolean" },
+        "cache_mechanism": { "type": "string" },
+        "cache_ttl_seconds": { "type": "integer" },
+        "prefix_stable_content": { "type": "string" },
+        "suffix_dynamic_content": { "type": "string" },
+        "supports_extended_cache": { "type": "boolean" },
+        "cache_cost_discount_pct": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "workspace_subagent_posture": {
+      "type": "object",
+      "properties": {
+        "supports_subagents": { "type": "boolean" },
+        "subagent_context_isolation": { "type": "boolean" },
+        "max_parallel_subagents": { "type": "integer" },
+        "subagent_model_selection": { "type": "string" },
+        "supports_worktrees": { "type": "boolean" },
+        "supports_background_agents": { "type": "boolean" },
+        "subagent_recursion_allowed": { "type": "boolean" },
+        "subagent_tool_scoping": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "description": "Things this profile explicitly does NOT claim",
+      "items": { "type": "string" }
+    },
+    "evaluation_status": {
+      "type": "string",
+      "enum": ["experimental", "candidate", "verified", "deprecated"]
+    },
+    "authority_rule": {
+      "type": "string",
+      "description": "What this profile may shape vs never authorize"
+    },
+    "profile_digest": {
+      "type": "string",
+      "description": "SHA256 digest of canonical serialization (excludes this field)"
+    }
+  },
+  "required": [
+    "profile_id",
+    "profile_version",
+    "display_name",
+    "description",
+    "provider_families",
+    "model_patterns",
+    "supported_roles",
+    "required_capabilities",
+    "context_envelope_strategy",
+    "instruction_rendering_strategy",
+    "tool_dialect_strategy",
+    "evaluation_status",
+    "authority_rule",
+    "profile_digest"
+  ],
+  "additionalProperties": false
+}
