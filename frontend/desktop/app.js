@@ -779,8 +779,8 @@ function _renderInferenceFromState(state) {
   // OMLX disclosure
   var omlxEl = document.getElementById('inference-tasks');
   if (omlxEl) {
-    var omlxDisclosure = state.omlx_disclosure || 'OMLX Rigged runtime expansion is pending X2 integration milestone.';
-    var omlxStrategy = state.omlx_strategy || 'post_v1';
+    var omlxDisclosure = state.omlx_disclosure || 'OMLX Rigged runtime boundary published by X2.4; X0 consumption blocked pending X2.5 repair and independent remote verification.';
+    var omlxStrategy = state.omlx_strategy || 'deferred_pending_x2_5_repair';
     var omlxAvailable = state.omlx_available || false;
     _clearEl(omlxEl);
     var taskCard = _makeEl('div', 'task-card ' + (omlxAvailable ? 'suitable' : 'unsuitable'));

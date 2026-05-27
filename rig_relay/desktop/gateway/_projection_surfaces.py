@@ -339,9 +339,10 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         authority = "integration_blocked"
         trust = TrustState.DEFERRED
         reason = (
-            "Publishable repositories exist but publication evidence history "
-            "requires a public T1.2 history projection API. See integration "
-            "contract: T1.2/X3.2 public history projection boundary."
+            "Publishable repositories exist but X0 publication evidence "
+            "consumption is blocked: X3.5 publication boundary is published "
+            "(PublicationStatusContract) but X0 consumption is deferred "
+            "pending X3.7 repair and independent remote verification."
         )
     else:
         authority = "missing"
@@ -360,7 +361,9 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         publishable_repository_count=publishable_count,
         deployment_available=False,
         deployment_deferred_reason=(
-            "Deployment authority owned by X3; not available in this release"
+            "X3.5 publication boundary published (PublicationStatusContract); "
+            "X0 consumption deferred pending X3.7 repair and independent "
+            "remote verification."
         ),
         content_light_guarantee=True,
     )
@@ -519,11 +522,12 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
             degraded_reason="M0 inference service cannot be loaded",
-            omlx_strategy="v1_pending_x2_integration",
+            omlx_strategy="deferred_pending_x2_5_repair",
             omlx_available=False,
             omlx_disclosure=(
-                "OMLX Rigged runtime integration is pending X2 v1 delivery. "
-                "Local inference currently supports Ollama-compatible endpoints only."
+                "OMLX Rigged runtime boundary published by X2.4; "
+                "X0 consumption blocked pending X2.5 repair and independent "
+                "remote verification."
             ),
         )
 
@@ -584,11 +588,12 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
         runtime_configured=runtime_configured,
         runtime_kind=runtime_kind,
         platform_class=platform_class,
-        omlx_strategy="v1_pending_x2_integration",
+        omlx_strategy="deferred_pending_x2_5_repair",
         omlx_available=False,
         omlx_disclosure=(
-            "OMLX Rigged runtime integration is pending X2 v1 delivery. "
-            "Local inference currently supports Ollama-compatible endpoints only."
+            "OMLX Rigged runtime boundary published by X2.4; "
+            "X0 consumption blocked pending X2.5 repair and independent "
+            "remote verification."
         ),
         task_suitability_count=4,
         total_results=total_results,

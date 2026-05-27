@@ -179,7 +179,9 @@ class PublishPreviewSurfaceProjection(BaseModel):
     publishable_repository_count: int = 0
     deployment_available: bool = False
     deployment_deferred_reason: str = (
-        "Deployment authority owned by X3; not available in this release"
+        "X3.5 publication boundary published (PublicationStatusContract); "
+        "X0 consumption deferred pending X3.7 repair and independent "
+        "remote verification."
     )
     content_light_guarantee: bool = True
 
@@ -261,11 +263,12 @@ class InferenceStudioSurfaceProjection(BaseModel):
     runtime_configured: bool = False
     runtime_kind: str = "unknown"
     platform_class: str = "unknown"
-    omlx_strategy: str = "v1_pending_x2_integration"
+    omlx_strategy: str = "deferred_pending_x2_5_repair"
     omlx_available: bool = False
     omlx_disclosure: str = (
-        "OMLX Rigged runtime integration is pending X2 v1 delivery. "
-        "Local inference currently supports Ollama-compatible endpoints only."
+        "OMLX Rigged runtime boundary published by X2.4; "
+        "X0 consumption blocked pending X2.5 repair and independent "
+        "remote verification."
     )
     task_suitability_count: int = 0
     total_results: int = 0

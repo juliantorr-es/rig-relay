@@ -424,9 +424,9 @@ function _setInferenceStudioSurfaceState(proj) {
     runtime_available: is_.runtime_available || false,
     runtime_configured: is_.runtime_configured || false,
     runtime_kind: is_.runtime_kind || 'unknown',
-    omlx_strategy: is_.omlx_strategy || 'post_v1',
+    omlx_strategy: is_.omlx_strategy || 'deferred_pending_x2_5_repair',
     omlx_available: is_.omlx_available || false,
-    omlx_disclosure: is_.omlx_disclosure || 'OMLX Rigged runtime expansion is pending X2 integration milestone.',
+    omlx_disclosure: is_.omlx_disclosure || 'OMLX Rigged runtime boundary published by X2.4; X0 consumption blocked pending X2.5 repair and independent remote verification.',
     task_suitability_count: is_.task_suitability_count || 0,
     total_results: is_.total_results || 0,
     total_executed: is_.total_executed || 0,
@@ -851,6 +851,10 @@ function _renderInferenceRuntime(state) {
   if (state.status === 'unavailable' || state.status === 'deferred') {
     _clearEl(irEl);
     irEl.appendChild(_makeEl('span', 'status-chip disconnected', 'Inference Unavailable'));
+    // Show OMLX disclosure even when surface is deferred
+    if (state.omlx_strategy && state.omlx_disclosure) {
+      irEl.appendChild(_buildOMLXDisclosure(state));
+    }
     return;
   }
 
@@ -859,6 +863,11 @@ function _renderInferenceRuntime(state) {
     available ? 'Runtime Available' : 'Runtime Offline');
   var detail = irEl.querySelector('.status-detail');
   if (detail) _setText(detail, (available ? 'Local inference ready (' + _escapeHtml(state.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
+
+  // OMLX disclosure — truthful blocked/deferred state from backend projection
+  if (state.omlx_strategy && state.omlx_disclosure) {
+    irEl.appendChild(_buildOMLXDisclosure(state));
+  }
 }
 
 function _renderInferenceTasks(state) {
@@ -938,6 +947,23 @@ function _renderInferenceRefusals(state) {
       refusalList.appendChild(item);
     }
   }
+}
+
+// ── OMLX disclosure renderer ─────────────────────────────────────────
+// Renders truthful blocked/deferred OMLX status from backend projection.
+// Used by _renderInferenceRuntime when the surface state carries omlx_strategy
+// and omlx_disclosure from the backend's InferenceStudioSurfaceProjection.
+
+function _buildOMLXDisclosure(state) {
+  var div = _makeEl('div', 'omlx-disclosure');
+  div.style.cssText = 'margin-top:10px;padding:10px 14px;background:rgba(198,144,38,0.08);border:1px solid rgba(198,144,38,0.15);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--warning-color)';
+  var header = _makeEl('strong', '', 'OMLX Rigged Expansion');
+  div.appendChild(header);
+  var statusLine = _makeEl('div', 'status-detail');
+  statusLine.style.marginTop = '4px';
+  statusLine.textContent = 'Strategy: ' + _escapeHtml(state.omlx_strategy || 'unknown') + '. ' + _escapeHtml(state.omlx_disclosure || '');
+  div.appendChild(statusLine);
+  return div;
 }
 
 function _renderPublishPreviewSurface() {

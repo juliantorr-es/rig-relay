@@ -40,6 +40,7 @@ from rig_relay.desktop.gateway._models import (
     StudioServiceHealth,
 )
 from rig_relay.desktop.gateway._projection import (
+    _UNAVAILABLE_SENTINEL,
     J0_PROJECTION_BUILDER,
     K0_PROJECTION_BUILDER,
     L0_PROJECTION_BUILDER,
@@ -1440,8 +1441,6 @@ def _classify_m0_authority(m0: object) -> AuthorityEvidence:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
-
-_UNAVAILABLE_SENTINEL = object()
 
 
 def _service_health_label(section: Any) -> str:
