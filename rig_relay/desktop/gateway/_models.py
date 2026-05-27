@@ -273,6 +273,29 @@ class M0InferenceProjection(BaseModel):
     grammar_capability_claimed: bool = False
     grammar_capability_proven: bool = False
 
+    safari_companion_state: str = "unavailable"
+    safari_extension_built: bool = False
+    safari_distribution_signing_state: str = "unsigned"
+    safari_notarization_state: str = "not_submitted"
+    safari_update_delivery_state: str = "not_integrated"
+    safari_diagnostic_export_state: str = "ready"
+    safari_diagnostic_export_blocked: bool = False
+    safari_recovery_action_state: str = "healthy"
+    safari_artifact_manifest_available: bool = False
+    safari_running: bool = False
+    safari_extension_installed: bool = False
+    safari_extension_enabled: bool = False
+    safari_extension_error: str | None = None
+    safari_build_environment: dict[str, bool] = {
+        "xcode_available": False,
+        "signing_identity_found": False,
+        "app_bundle_exists": False,
+        "extension_appex_exists": False,
+        "notarytool_available": False,
+    }
+
+    safari_projection_generated_at: str | None = None
+
 
 # ── Aggregate Developer Studio Projection ──────────────────────────
 

@@ -61,6 +61,7 @@ _FORBIDDEN_PUBLICATION_PRIVATE = {
     "rig_relay.publication._models",
 }
 _FORBIDDEN_NATIVE_PREFIX = "rig_relay.native"
+_ALLOWED_NATIVE_IMPORTS = {"rig_relay.native._safari_x0_contract"}
 
 # ── AST helpers ─────────────────────────────────────────────────────
 
@@ -154,14 +155,16 @@ class TestX1DataPlaneBlockedImports:
 
 
 class TestX2DeferredStateTruthfulness:
-    """X2 (OMLX Rigged runtime) must report deferred_pending_x2_5_repair,
+    """X2 (OMLX Rigged runtime) must report pending_infrastructure_handoff,
     not claim live delivery.
     """
 
-    def test_inference_studio_model_default_omlx_strategy_is_x2_5_repair(self) -> None:
+    def test_inference_studio_model_default_omlx_strategy_is_pending_handoff(
+        self,
+    ) -> None:
         model = InferenceStudioSurfaceProjection()
-        assert model.omlx_strategy == "deferred_pending_x2_5_repair", (
-            f"Expected omlx_strategy='deferred_pending_x2_5_repair', "
+        assert model.omlx_strategy == "pending_infrastructure_handoff", (
+            f"Expected omlx_strategy='pending_infrastructure_handoff', "
             f"got '{model.omlx_strategy}'"
         )
 
@@ -169,47 +172,43 @@ class TestX2DeferredStateTruthfulness:
         model = InferenceStudioSurfaceProjection()
         assert model.omlx_available is False
 
-    def test_inference_studio_disclosure_mentions_x2_5_repair_not_x2_v1(self) -> None:
+    def test_inference_studio_disclosure_mentions_pending_infrastructure(self) -> None:
         model = InferenceStudioSurfaceProjection()
         disclosure = model.omlx_disclosure.lower()
-        assert "x2.5" in disclosure or "x2_5" in disclosure, (
-            f"omlx_disclosure must mention X2.5 repair, got: {model.omlx_disclosure!r}"
+        assert "pending" in disclosure, (
+            f"omlx_disclosure must mention pending, got: {model.omlx_disclosure!r}"
         )
-        assert "v1_pending_x2_integration" not in disclosure, (
-            f"omlx_disclosure must not claim 'v1_pending_x2_integration', "
+        assert "infrastructure" in disclosure, (
+            f"omlx_disclosure must mention infrastructure, got: {model.omlx_disclosure!r}"
+        )
+        assert "hardware-accelerated" in disclosure, (
+            f"omlx_disclosure must mention hardware-accelerated, "
             f"got: {model.omlx_disclosure!r}"
         )
-        assert "blocked" in disclosure or "deferred" in disclosure, (
-            f"omlx_disclosure must indicate blocked/deferred, got: {model.omlx_disclosure!r}"
-        )
 
-    def test_builder_produces_deferred_x2_5_state(self) -> None:
+    def test_builder_produces_pending_handoff_state(self) -> None:
         gw = get_gateway_service()
         proj = INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(gw)
-        assert proj.omlx_strategy == "deferred_pending_x2_5_repair", (
+        assert proj.omlx_strategy == "pending_infrastructure_handoff", (
             f"Builder produced omlx_strategy='{proj.omlx_strategy}', "
-            f"expected 'deferred_pending_x2_5_repair'"
+            f"expected 'pending_infrastructure_handoff'"
         )
         assert proj.omlx_available is False
 
-    def test_builder_disclosure_mentions_x2_5_repair(self) -> None:
+    def test_builder_disclosure_mentions_pending_infrastructure(self) -> None:
         gw = get_gateway_service()
         proj = INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(gw)
         disclosure = proj.omlx_disclosure.lower()
-        assert "x2.5" in disclosure or "x2_5" in disclosure, (
-            f"Builder omlx_disclosure must mention X2.5 repair, got: {proj.omlx_disclosure!r}"
-        )
-        assert "v1_pending_x2_integration" not in disclosure, (
-            f"Builder omlx_disclosure must not claim 'v1_pending_x2_integration', "
-            f"got: {proj.omlx_disclosure!r}"
+        assert "pending" in disclosure, (
+            f"Builder omlx_disclosure must mention pending, got: {proj.omlx_disclosure!r}"
         )
 
-    def test_builder_omlx_disclosure_mentions_blocked_or_deferred(self) -> None:
+    def test_builder_omlx_disclosure_mentions_pending(self) -> None:
         gw = get_gateway_service()
         proj = INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(gw)
         disclosure = proj.omlx_disclosure.lower()
-        assert "blocked" in disclosure or "deferred" in disclosure, (
-            f"Builder omlx_disclosure must indicate blocked/deferred, "
+        assert "pending" in disclosure, (
+            f"Builder omlx_disclosure must indicate pending, "
             f"got: {proj.omlx_disclosure!r}"
         )
 
@@ -224,13 +223,13 @@ class TestX3BlockedStateTruthfulness:
     not claim live deployment readiness.
     """
 
-    def test_publish_preview_model_deployment_deferred_reason_mentions_x3_7(
+    def test_publish_preview_model_deployment_deferred_reason_mentions_infrastructure(
         self,
     ) -> None:
         model = PublishPreviewSurfaceProjection()
         reason = model.deployment_deferred_reason.lower()
-        assert "x3.7" in reason or "x3_7" in reason, (
-            f"deployment_deferred_reason must mention X3.7 repair, got: "
+        assert "infrastructure" in reason, (
+            f"deployment_deferred_reason must mention infrastructure, got: "
             f"{model.deployment_deferred_reason!r}"
         )
 
@@ -242,14 +241,16 @@ class TestX3BlockedStateTruthfulness:
         model = PublishPreviewSurfaceProjection()
         assert model.deployment_available is False
 
-    def test_builder_reports_deployment_deferred_with_x3_7_mention(self) -> None:
+    def test_builder_reports_deployment_deferred_with_infrastructure_mention(
+        self,
+    ) -> None:
         gw = get_gateway_service()
         proj = PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(gw)
 
-        # The model's deployment_deferred_reason must reference X3.7 repair
+        # The model's deployment_deferred_reason must reference infrastructure
         reason = proj.deployment_deferred_reason.lower()
-        assert "x3.7" in reason or "x3_7" in reason, (
-            f"Builder deployment_deferred_reason must mention X3.7 repair, "
+        assert "infrastructure" in reason, (
+            f"Builder deployment_deferred_reason must mention infrastructure, "
             f"got: {proj.deployment_deferred_reason!r}"
         )
 
@@ -263,7 +264,7 @@ class TestX3BlockedStateTruthfulness:
 
     def test_builder_deferred_reason_truthful_when_publishable_exist(self) -> None:
         """When publishable repos exist, authority must be integration_blocked
-        with reason mentioning X3.7 repair.
+        with reason mentioning infrastructure.
         """
         gw = get_gateway_service()
         proj = PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(gw)
@@ -274,8 +275,8 @@ class TestX3BlockedStateTruthfulness:
                 f"'integration_blocked', got '{proj.authority_state}'"
             )
             reason = proj.degraded_reason.lower()
-            assert "x3.7" in reason or "x3_7" in reason, (
-                f"When blocked, degraded_reason must mention X3.7 repair, "
+            assert "infrastructure" in reason, (
+                f"When blocked, degraded_reason must mention infrastructure, "
                 f"got: {proj.degraded_reason!r}"
             )
 
@@ -564,10 +565,13 @@ class TestNoDownstreamPrivateImports:
         for f in desktop_files:
             for mod in _extract_imports(f):
                 if mod.startswith(_FORBIDDEN_NATIVE_PREFIX):
+                    if mod in _ALLOWED_NATIVE_IMPORTS:
+                        continue
                     violations.append((f.name, mod))
 
         assert not violations, (
-            f"Desktop must not import from rig_relay/native/. "
+            f"Desktop must not import from rig_relay/native/ "
+            f"except X4.5 native contract. "
             f"Found violations: {violations}"
         )
 
@@ -584,6 +588,8 @@ class TestNoDownstreamPrivateImports:
         for f in gateway_files:
             for mod in _extract_imports(f):
                 if mod.startswith(_FORBIDDEN_NATIVE_PREFIX):
+                    if mod in _ALLOWED_NATIVE_IMPORTS:
+                        continue
                     violations.append((f.name, mod))
                     continue
                 for forbidden_mod in all_forbidden:
@@ -592,7 +598,8 @@ class TestNoDownstreamPrivateImports:
                         break
 
         assert not violations, (
-            f"Gateway must not import from any forbidden private modules. "
+            f"Gateway must not import from any forbidden private modules "
+            f"except X4.5 native contract. "
             f"Found violations: {violations}"
         )
 

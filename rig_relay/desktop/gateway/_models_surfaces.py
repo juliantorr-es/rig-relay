@@ -6,11 +6,25 @@ Content-light: hashes, counts, statuses, labels, and SHA256 digests only.
 
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from rig_relay.desktop.gateway._models import ProvenanceClass, TrustState
 
 # ── Provider Connection (for Connect surface) ────────
+
+
+class SurfaceStatus(StrEnum):
+    AVAILABLE = "available"
+    DERIVED = "derived"
+    SETUP_REQUIRED = "setup_required"
+    VERIFICATION_PENDING = "verification_pending"
+    UNAVAILABLE = "unavailable"
+    SIGNING_REQUIRED = "signing_required"
+    CONNECTION_REQUIRED = "connection_required"
+    ERROR = "error"
+    BLOCKED = "blocked"
 
 
 class ProviderConnectionEntry(BaseModel):
@@ -43,6 +57,8 @@ class ConnectSurfaceProjection(BaseModel):
     authority_state: str = "missing"
     degraded_reason: str = ""
     available: bool = False
+    surface_status: str = SurfaceStatus.SETUP_REQUIRED.value
+    status_detail: str = "Connect a provider and workspace to begin"
     providers: list[ProviderConnectionEntry] = Field(default_factory=list)
     providers_configured: int = 0
     providers_total: int = 0
@@ -115,6 +131,8 @@ class RepositoryEstateSurfaceProjection(BaseModel):
     authority_state: str = "missing"
     degraded_reason: str = ""
     available: bool = False
+    surface_status: str = SurfaceStatus.VERIFICATION_PENDING.value
+    status_detail: str = "Repository estate service is being verified"
     registered_repositories: list[EstateRepositoryEntry] = Field(default_factory=list)
     total_registered: int = 0
     local_only_count: int = 0
@@ -168,6 +186,8 @@ class PublishPreviewSurfaceProjection(BaseModel):
     authority_state: str = "missing"
     degraded_reason: str = ""
     available: bool = False
+    surface_status: str = SurfaceStatus.VERIFICATION_PENDING.value
+    status_detail: str = "Publication preview is awaiting upstream handoff"
     operation_id: str = ""
     last_result_status: str = "none"
     preview_result: PublishPreviewEvidenceSummary | None = None
@@ -179,9 +199,7 @@ class PublishPreviewSurfaceProjection(BaseModel):
     publishable_repository_count: int = 0
     deployment_available: bool = False
     deployment_deferred_reason: str = (
-        "X3.5 publication boundary published (PublicationStatusContract); "
-        "X0 consumption deferred pending X3.7 repair and independent "
-        "remote verification."
+        "Publication integration is pending upstream infrastructure verification."
     )
     content_light_guarantee: bool = True
 
@@ -224,6 +242,8 @@ class TimelineSurfaceProjection(BaseModel):
     authority_state: str = "missing"
     degraded_reason: str = ""
     available: bool = False
+    surface_status: str = SurfaceStatus.VERIFICATION_PENDING.value
+    status_detail: str = "Timeline service is being verified"
     timeline_id: str = ""
     assembled_at: str = ""
     investigation_id: str | None = None
@@ -259,16 +279,17 @@ class InferenceStudioSurfaceProjection(BaseModel):
     authority_state: str = "missing"
     degraded_reason: str = ""
     available: bool = False
+    surface_status: str = SurfaceStatus.VERIFICATION_PENDING.value
+    status_detail: str = "Inference Studio service is being verified"
     runtime_available: bool = False
     runtime_configured: bool = False
     runtime_kind: str = "unknown"
     platform_class: str = "unknown"
-    omlx_strategy: str = "deferred_pending_x2_5_repair"
+    omlx_strategy: str = "pending_infrastructure_handoff"
     omlx_available: bool = False
     omlx_disclosure: str = (
-        "OMLX Rigged runtime boundary published by X2.4; "
-        "X0 consumption blocked pending X2.5 repair and independent "
-        "remote verification."
+        "Hardware-accelerated local inference is pending "
+        "infrastructure integration and verification."
     )
     task_suitability_count: int = 0
     total_results: int = 0
@@ -279,6 +300,31 @@ class InferenceStudioSurfaceProjection(BaseModel):
     native_schema_capability_proven: bool = False
     grammar_capability_claimed: bool = False
     grammar_capability_proven: bool = False
+    # X4.5 — Safari native companion projection fields
+    safari_companion_state: str = "unavailable"
+    safari_distribution_signing_state: str = "unsigned"
+    safari_notarization_state: str = "not_submitted"
+    safari_update_delivery_state: str = "not_integrated"
+    safari_diagnostic_export_state: str = "ready"
+    safari_diagnostic_export_blocked: bool = False
+    safari_recovery_action_state: str = "healthy"
+    safari_extension_built: bool = False
+    safari_artifact_manifest_available: bool = False
+    safari_running: bool = False
+    safari_extension_installed: bool = False
+    safari_extension_enabled: bool = False
+    safari_extension_error: str | None = None
+    safari_build_environment: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "xcode_available": False,
+            "signing_identity_found": False,
+            "app_bundle_exists": False,
+            "extension_appex_exists": False,
+            "notarytool_available": False,
+        }
+    )
+
+    safari_projection_generated_at: str | None = None
 
 
 __all__ = [
@@ -292,6 +338,7 @@ __all__ = [
     "PublishPreviewRefusalEntry",
     "PublishPreviewSurfaceProjection",
     "RepositoryEstateSurfaceProjection",
+    "SurfaceStatus",
     "TimelineEventEntry",
     "TimelineSurfaceProjection",
 ]

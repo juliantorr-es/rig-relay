@@ -1,0 +1,492 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T18:30:00Z",
+  "lane_id": "x4.5",
+  "mission_id": "x4.5_repair_round1",
+  "baseline_sha": "4dbec565b",
+  "candidate_digest": "sha256:f54491a5d376737aab015dc5f3ed651d03e68916d5cc17d74c9aede0f9d2d549",
+  "intended_boundary": "SafariCompanionNativeDetectionBoundary",
+  "intended_consumer_purpose": "X0 desktop cockpit Gridline Interface can consume truthful Safari companion build/setup-required/detection status through the projection stream",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "x4_5_r1_prepublication_reviewer",
+      "reviewed_candidate_digest": "sha256:candidate_local_x4_5",
+      "production_paths_inspected": [
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/desktop/gateway/_models.py",
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "rig_relay/desktop/gateway/_projection.py",
+        "rig_relay/desktop/gateway/_projection_surfaces.py",
+        "pyproject.toml",
+        "tests/native/test_safari_x0_contract.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+        "tests/desktop/gateway/test_x0_boundary_truth.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "safari_recovery_action_state default is 'healthy'",
+          "attack": "Search all field defaults in models and merge functions",
+          "evidence": "M0InferenceProjection default, InferenceStudioSurfaceProjection default, _merge_safari_fields fallback, _merge_safari_surface_fields fallback, _derive_recovery_action_state return all use 'healthy'",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "build_safari_native_projection returns typed Pydantic model",
+          "attack": "Check return type annotation and verify model_dump() keys",
+          "evidence": "Function returns SafariNativeProjection with ConfigDict(extra='forbid'), 13 field tests verify typed access",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Boundary name is truthful",
+          "attack": "Check for overclaiming atoms: Embedded, CandidateArtifactManifest",
+          "evidence": "Boundary renamed to SafariCompanionNativeDetectionBoundary — no structural or manifest-service overclaims",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Fail-closed exception handling is detectable",
+          "attack": "Raise unexpected exception via patched build_safari_native_projection",
+          "evidence": "test_m0_projection_fail_closed_on_unexpected_exception verifies safari_companion_state='error' and safari_diagnostic_export_blocked=True",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X4.5-R1-F1",
+          "severity": "medium",
+          "violated_claim": "safari_recovery_action_state uses valid enum value",
+          "evidence": "Prior code used 'no_recovery_needed' which is not a valid RecoveryActionState value",
+          "required_repair": "Change to 'healthy' in all 4 gateway locations plus _derive_recovery_action_state return",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F2",
+          "severity": "high",
+          "violated_claim": "check_safari_extension_enabled() is wired into projection",
+          "evidence": "build_safari_native_projection did not call check_safari_extension_enabled(); safari_running/extension_installed/extension_enabled fields absent",
+          "required_repair": "Add check_safari_extension_enabled() call and new projection fields: safari_running, safari_extension_installed, safari_extension_enabled, safari_extension_error",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F3",
+          "severity": "high",
+          "violated_claim": "Contract module is test-covered",
+          "evidence": "No test file exists for _safari_x0_contract.py",
+          "required_repair": "Create tests/native/test_safari_x0_contract.py with 7 tests covering typed model, field completeness, content-light, override, and build_environment",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F4",
+          "severity": "high",
+          "violated_claim": "Builder publication record exists",
+          "evidence": "No builder publication record for the corrected X4.5 boundary",
+          "required_repair": "Create docs/json/evidence/builder_publication_record_x4_5.v1.json and prepublication_review_cycle_x4_5.v1.json",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F5",
+          "severity": "high",
+          "violated_claim": "Gateway field-mapping is test-covered",
+          "evidence": "No tests verify that _merge_safari_fields maps native projection fields to M0/Surface models",
+          "required_repair": "Create tests/desktop/gateway/test_x4_5_safari_projection_wiring.py with patched build_safari_native_projection tests",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F6",
+          "severity": "low",
+          "violated_claim": "Lane labeling is self-consistent",
+          "evidence": "Module docstring says X4.3/X4.6 but code was committed under X4.4 boundary; true increment is X4.5",
+          "required_repair": "Update all docstrings and self-references to X4.5",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F7",
+          "severity": "high",
+          "violated_claim": "build_environment is included in projection",
+          "evidence": "build_environment detection not present in projection output",
+          "required_repair": "Add build_environment sub-dict with xcode_available, signing_identity_found, app_bundle_exists, extension_appex_exists, notarytool_available",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F8",
+          "severity": "high",
+          "violated_claim": "check_safari_extension_enabled is wired",
+          "evidence": "check_safari_extension_enabled() function not called in build_safari_native_projection",
+          "required_repair": "Wire check_safari_extension_enabled() results into projection and model fields",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F9",
+          "severity": "high",
+          "violated_claim": "Fail-closed is detectable",
+          "evidence": "Broad except Exception in merge functions hides unexpected failures; no logging on unexpected exceptions",
+          "required_repair": "Narrow to (ImportError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired); add except Exception with logger.warning; set safari_diagnostic_export_blocked=True and safari_companion_state='error'",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F10",
+          "severity": "high",
+          "violated_claim": "Native projection is typed",
+          "evidence": "build_safari_native_projection returns raw dict not Pydantic model; consumers use dict[key] access",
+          "required_repair": "Define SafariNativeProjection Pydantic model; return typed instance; update consumers to use attribute access",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F11",
+          "severity": "high",
+          "violated_claim": "Builder publication record is complete",
+          "evidence": "No publication record with implemented/unimplemented capabilities, test results, dirty file inventory",
+          "required_repair": "Create builder_publication_record_x4_5.v1.json",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F12",
+          "severity": "high",
+          "violated_claim": "check_safari_extension_enabled returns correct structure",
+          "evidence": "Function may not return expected keys or may return inconsistent structure on error",
+          "required_repair": "Ensure check_safari_extension_enabled() always returns dict with safari_running, extension_installed, extension_enabled, error keys and catches unexpected exceptions",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F13",
+          "severity": "medium",
+          "violated_claim": "Prepublication review cycle is documented",
+          "evidence": "No review cycle record summarizing the 16 findings",
+          "required_repair": "Create prepublication_review_cycle_x4_5.v1.json with Round 1 findings summarized into 3 thematic groups",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F14",
+          "severity": "medium",
+          "violated_claim": "Enum state reachability is documented",
+          "evidence": "SafariCompanionState enum lacks documentation on which states are reachable through detection vs override",
+          "required_repair": "Add reachability documentation comment on SafariCompanionState class and _derive_companion_state_from_detection",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F15",
+          "severity": "high",
+          "violated_claim": "Boundary name is truthful",
+          "evidence": "EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary overclaims 'Embedded' (structural guarantee) and 'CandidateArtifactManifest' (manifest service)",
+          "required_repair": "Rename to SafariCompanionNativeDetectionBoundary",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "X4.5-R1-F16",
+          "severity": "high",
+          "violated_claim": "Boundary name reflects proven capabilities",
+          "evidence": "Boundary name includes atoms not yet proven in all environments",
+          "required_repair": "Rename to SafariCompanionNativeDetectionBoundary; update all docstrings and comments",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "prepublication_repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "x4_5_r2_prepublication_reviewer",
+      "reviewed_candidate_digest": "sha256:f54491a5d376737aab015dc5f3ed651d03e68916d5cc17d74c9aede0f9d2d549",
+      "production_paths_inspected": [
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/desktop/gateway/_models.py",
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "rig_relay/desktop/gateway/_projection.py",
+        "rig_relay/desktop/gateway/_projection_surfaces.py",
+        "tests/native/test_safari_x0_contract.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+        "docs/json/evidence/builder_publication_record_x4_5.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_5.v1.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Surface model has all detection fields",
+          "attack": "Count fields in InferenceStudioSurfaceProjection vs M0InferenceProjection",
+          "evidence": "5 missing fields (safari_running, safari_extension_installed, safari_extension_enabled, safari_extension_error, safari_build_environment) absent from surface model",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "check_safari_extension_enabled signals defaults failures",
+          "attack": "Examine except clause for 'defaults' subprocess failures",
+          "evidence": "pass silently swallows defaults failures; no error signal flows to consumers",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Projection is content-light (no raw paths, no tracebacks)",
+          "attack": "Check error strings for path separators and traceback content",
+          "evidence": "str(exc) assigned to safari_extension_error can contain raw paths and tracebacks; violates content-light guarantee",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Surface test covers all detection fields",
+          "attack": "Review test assertions in test_inference_studio_surface_receives_safari_fields",
+          "evidence": "Only safari_companion_state asserted; 5 detection fields not tested",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Content-light and error-path tests are complete",
+          "attack": "Review test coverage for content-light enforcement and error paths",
+          "evidence": "test_projection_content_light does not check safari_extension_error for paths; no tests for defaults-missing or unexpected exception sanitization paths",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Evidence hashes are computed from real test output",
+          "attack": "Inspect result_digest and prepublication_review_cycle_digest fields",
+          "evidence": "All result_digest fields and prepublication_review_cycle_digest are all-zero placeholder hashes",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Review cycle has Round 2 entry",
+          "attack": "Check rounds[] length and review_round_count",
+          "evidence": "rounds[] contains only Round 1; review_round_count is 1",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "FS-01",
+          "severity": "high",
+          "violated_claim": "Surface model matches M0 model fields",
+          "evidence": "InferenceStudioSurfaceProjection missing 5 detection fields (safari_running, safari_extension_installed, safari_extension_enabled, safari_extension_error, safari_build_environment); safari_recovery_action_state defaulted to 'no_recovery_needed' instead of 'healthy'; comment labeled 'X4.6' instead of 'X4.5'",
+          "required_repair": "Add 5 missing fields with same types and defaults as _models.py; fix recovery default to 'healthy'; fix lane label to 'X4.5'",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-02",
+          "severity": "medium",
+          "violated_claim": "check_safari_extension_enabled signals all failure paths",
+          "evidence": "pass silently swallows defaults read failures; no error signal flows to consumers",
+          "required_repair": "Replace pass with result['error'] = 'defaults read failed: cannot check Safari extension state'",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-03",
+          "severity": "high",
+          "violated_claim": "Projection fields are content-light",
+          "evidence": "str(exc) assigned to safari_extension_error leaks raw exception strings (paths, tracebacks); pgrep return code not checked before setting safari_running=True",
+          "required_repair": "Replace str(exc) with 'unexpected error during safari extension check'; add pgrep.returncode == 0 check before setting safari_running",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-04",
+          "severity": "medium",
+          "violated_claim": "Surface test asserts all detection fields",
+          "evidence": "test_inference_studio_surface_receives_safari_fields only asserts safari_companion_state",
+          "required_repair": "Add assertions for safari_running, safari_extension_installed, safari_extension_enabled, safari_extension_error, safari_build_environment",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-05",
+          "severity": "high",
+          "violated_claim": "Content-light and error-path coverage complete",
+          "evidence": "No safari_extension_error content-light check; no defaults-missing error path test; no unexpected exception sanitization test",
+          "required_repair": "Expand test_projection_content_light to check safari_extension_error for paths/multiline; add test_check_safari_extension_enabled_error_on_defaults_missing; add test_check_safari_extension_enabled_sanitizes_unexpected_exception",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-06",
+          "severity": "medium",
+          "violated_claim": "Evidence hashes are computed from real output",
+          "evidence": "All 4 result_digest fields and prepublication_review_cycle_digest are all-zero placeholder hashes",
+          "required_repair": "Run tests, pipe output to temp files, compute SHA256 of each output, replace placeholder result_digest values; compute SHA256 of builder_publication_record_x4_5.v1.json for prepublication_review_cycle_digest",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "FS-07",
+          "severity": "medium",
+          "violated_claim": "Review cycle documents all review rounds",
+          "evidence": "rounds[] has only Round 1; review_round_count is 1; candidate_digest is placeholder",
+          "required_repair": "Add Round 2 entry documenting 7 blocking findings; update review_round_count to 2; compute SHA256 of builder_publication_record_x4_5.v1.json for candidate_digest",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "prepublication_repair_required"
+    },
+    {
+      "round_number": 3,
+      "reviewer_session_id": "x4_5_r3_prepublication_reviewer",
+      "reviewed_candidate_digest": "sha256:f54491a5d376737aab015dc5f3ed651d03e68916d5cc17d74c9aede0f9d2d549",
+      "production_paths_inspected": [
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "rig_relay/desktop/gateway/_models.py",
+        "rig_relay/desktop/gateway/_projection.py",
+        "rig_relay/desktop/gateway/_projection_surfaces.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Surface model carries safari_diagnostic_export_state field",
+          "attack": "Search InferenceStudioSurfaceProjection for safari_diagnostic_export_state",
+          "evidence": "safari_diagnostic_export_blocked (bool) present but safari_diagnostic_export_state (str) absent",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "merge functions carry safari_diagnostic_export_state",
+          "attack": "Search _merge_safari_fields and _merge_safari_surface_fields for safari_diagnostic_export_state",
+          "evidence": "Both merge functions omit safari_diagnostic_export_state in success and error paths",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Contract model field parity with surface model",
+          "attack": "Compare SafariNativeProjection fields with InferenceStudioSurfaceProjection fields",
+          "evidence": "SafariNativeProjection has safari_diagnostic_export_state (str) and safari_diagnostic_export_blocked (bool) as distinct fields; surface model carries boolean but omits state string",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "X4.5-R3-F1",
+          "severity": "high",
+          "violated_claim": "Surface model has all detection fields including safari_diagnostic_export_state",
+          "evidence": "InferenceStudioSurfaceProjection missing safari_diagnostic_export_state field. Contract model SafariNativeProjection has both safari_diagnostic_export_state (str) and safari_diagnostic_export_blocked (bool) as distinct fields. Surface model carries boolean but omits state string.",
+          "required_repair": "Add safari_diagnostic_export_state field to InferenceStudioSurfaceProjection; add field mapping in _merge_safari_surface_fields success and error paths; add field mapping in _merge_safari_fields success and error paths; add test assertions in wiring tests",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "prepublication_repair_required",
+      "blocking_findings_count": 1,
+      "findings_summary": "Missing safari_diagnostic_export_state field from surface model (InferenceStudioSurfaceProjection) and merge function (_merge_safari_surface_fields). Contract model SafariNativeProjection has both safari_diagnostic_export_state (str) and safari_diagnostic_export_blocked (bool) as distinct fields. Surface model carries boolean but omits state string.",
+      "repaired_in_round": true
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "X4.5-R1-F1: Changed all 5 locations to 'healthy'",
+        "X4.5-R1-F2: Wired check_safari_extension_enabled() and added 4 new fields",
+        "X4.5-R1-F3: Created tests/native/test_safari_x0_contract.py (7 tests)",
+        "X4.5-R1-F4: Created builder_publication_record_x4_5.v1.json and prepublication_review_cycle_x4_5.v1.json",
+        "X4.5-R1-F5: Created tests/desktop/gateway/test_x4_5_safari_projection_wiring.py (5 tests)",
+        "X4.5-R1-F6: Updated all docstrings from X4.3/X4.6 to X4.5",
+        "X4.5-R1-F7: Added build_environment sub-dict with 5 capability keys",
+        "X4.5-R1-F8: Wired check_safari_extension_enabled() results into projection",
+        "X4.5-R1-F9: Narrowed exception handling + added logger.warning on unexpected exceptions + fail-closed defaults",
+        "X4.5-R1-F10: Defined SafariNativeProjection Pydantic model; build_safari_native_projection returns typed instance",
+        "X4.5-R1-F11: Created builder publication record with full capability inventory",
+        "X4.5-R1-F12: check_safari_extension_enabled() always returns 4-key dict; unexpected exceptions caught",
+        "X4.5-R1-F13: Created prepublication review cycle record with 16 findings in 3 thematic groups",
+        "X4.5-R1-F14: Added SafariCompanionState reachability documentation",
+        "X4.5-R1-F15: Renamed boundary to SafariCompanionNativeDetectionBoundary",
+        "X4.5-R1-F16: Updated all boundary references in changed files"
+      ],
+      "changed_paths": [
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/desktop/gateway/_models.py",
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "rig_relay/desktop/gateway/_projection.py",
+        "rig_relay/desktop/gateway/_projection_surfaces.py",
+        "pyproject.toml",
+        "tests/native/test_safari_x0_contract.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+        "tests/desktop/gateway/test_x0_boundary_truth.py",
+        "docs/json/evidence/builder_publication_record_x4_5.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_5.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pyright (all changed): 0 errors, 0 warnings",
+        "uv run ruff check --fix (all changed): All checks passed",
+        "uv run pytest tests/native/test_safari_x0_contract.py",
+        "uv run pytest tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+        "uv run pytest tests/desktop/gateway/test_x0_boundary_truth.py",
+        "uv run pytest tests/native/"
+      ]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": [
+        "FS-01: Added 5 missing detection fields to InferenceStudioSurfaceProjection; fixed safari_recovery_action_state default from 'no_recovery_needed' to 'healthy'; fixed lane label from 'X4.6' to 'X4.5'",
+        "FS-02: Replaced pass with result['error'] = 'defaults read failed: cannot check Safari extension state'",
+        "FS-03: Replaced str(exc) with 'unexpected error during safari extension check'; added pgrep.returncode == 0 check",
+        "FS-04: Added 5 assertion for detection fields in test_inference_studio_surface_receives_safari_fields",
+        "FS-05: Expanded test_projection_content_light to verify safari_extension_error has no paths/multiline; added test_check_safari_extension_enabled_error_on_defaults_missing; added test_check_safari_extension_enabled_sanitizes_unexpected_exception",
+        "FS-06: Computed SHA256 of each test command output and replaced placeholder result_digest values; computed SHA256 of builder_publication_record_x4_5.v1.json for prepublication_review_cycle_digest",
+        "FS-07: Added Round 2 entry to rounds[] documenting 7 blocking findings; updated review_round_count to 2; set candidate_digest to SHA256 of builder_publication_record"
+      ],
+      "changed_paths": [
+        "rig_relay/native/_safari_x0_contract.py",
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "tests/native/test_safari_x0_contract.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+        "docs/json/evidence/builder_publication_record_x4_5.v1.json",
+        "docs/json/evidence/prepublication_review_cycle_x4_5.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pyright (all changed): 0 errors, 0 warnings",
+        "uv run ruff check --fix (all changed): All checks passed",
+        "uv run pytest tests/native/test_safari_x0_contract.py (9 passed)",
+        "uv run pytest tests/desktop/gateway/test_x4_5_safari_projection_wiring.py (5 passed)",
+        "uv run pytest tests/desktop/gateway/test_x0_boundary_truth.py (31 passed)",
+        "uv run pytest tests/native/ (85 passed)"
+      ]
+    },
+    {
+      "round_number": 3,
+      "repaired_findings": [
+        "safari_diagnostic_export_state added to _models.py line 281, _models_surfaces.py line 308, _merge_safari_fields() and _merge_safari_surface_fields() success and error paths, 7 new assertions in wiring tests"
+      ],
+      "changed_paths": [
+        "rig_relay/desktop/gateway/_models.py",
+        "rig_relay/desktop/gateway/_models_surfaces.py",
+        "rig_relay/desktop/gateway/_projection.py",
+        "rig_relay/desktop/gateway/_projection_surfaces.py",
+        "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py"
+      ],
+      "validation_rerun": [
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check --fix: All checks passed",
+        "uv run pytest tests/desktop/gateway/ -x -q: all tests pass"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:f54491a5d376737aab015dc5f3ed651d03e68916d5cc17d74c9aede0f9d2d549",
+    "admitted_boundary": "SafariCompanionNativeDetectionBoundary",
+    "permitted_consumer_purpose": "X0 desktop cockpit Gridline Interface can consume truthful Safari companion build/setup-required/detection status through the projection stream",
+    "unclaimed_capabilities": [
+      "Live Safari end-to-end transport proof",
+      "Developer ID signing",
+      "Notarization submission/acceptance/stapling",
+      "Sparkle 2 framework integration",
+      "Appcast hosting and EdDSA key generation",
+      "SPM app-side App Group entitlement wiring"
+    ],
+    "deferred_seams": [
+      "Live Safari transport verification (requires test infrastructure)",
+      "Distribution signing (requires Developer ID certificate)",
+      "Notarization (requires notarytool credentials)",
+      "Sparkle update delivery (requires SPM integration)",
+      "App Group entitlement wiring (requires Xcode project modification)",
+      "Non-macOS platform Safari detection (pgrep/defaults not available)"
+    ],
+    "review_round_count": 3,
+    "push_authorized": false
+  },
+  "status": "prepublication_admitted"
+}

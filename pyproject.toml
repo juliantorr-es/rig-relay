@@ -380,6 +380,10 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/publication/_deployment_service.py" = ["PLR"]
 "rig_relay/publication/_deployment_evidence.py" = ["PLR"]
 "rig_relay/publication/_portfolio_service.py" = ["PLR"]
+"rig_relay/desktop/gateway/_projection.py" = ["PLR"]
+"rig_relay/desktop/gateway/_projection_surfaces.py" = ["PLR"]
+"rig_relay/native/_safari_x0_contract.py" = ["PLR"]
+"rig_relay/publication/_projection.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

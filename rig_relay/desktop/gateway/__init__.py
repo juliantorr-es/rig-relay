@@ -55,6 +55,7 @@ from rig_relay.desktop.gateway._models_surfaces import (
     PublishPreviewRefusalEntry,
     PublishPreviewSurfaceProjection,
     RepositoryEstateSurfaceProjection,
+    SurfaceStatus,
     TimelineEventEntry,
     TimelineSurfaceProjection,
 )
@@ -115,6 +116,7 @@ __all__ = [
     "ServiceAuthority",
     "StudioProvenanceSummary",
     "StudioServiceHealth",
+    "SurfaceStatus",
     "TimelineEventEntry",
     "TimelineSurfaceProjection",
     "TrustState",

@@ -16,8 +16,10 @@ contradictory, fixture-deferred) are explicitly reported with reasons.
 
 from __future__ import annotations
 
+import subprocess
 from typing import TYPE_CHECKING
 
+from rig_relay.core.logger import logger
 from rig_relay.desktop.gateway._models import (
     J0ConnectionProjection,
     J0RepositoryProjection,
@@ -422,26 +424,78 @@ def M0_PROJECTION_BUILDER(
             f"M0 runtime available={runtime_available}, configured={runtime_configured}"
         )
 
-    return M0InferenceProjection(
-        available=True,
-        authority_state=authority,
-        degraded_reason=reason,
-        runtime_available=runtime_available,
-        runtime_configured=runtime_configured,
-        runtime_kind=runtime_kind,
-        platform_class=platform_class,
-        task_suitability=tasks,
-        total_results=total_results,
-        total_executed=total_executed,
-        total_refused=total_refused,
-        drafts_awaiting_review=drafts_awaiting,
-        drafts=drafts,
-        refusals=refusals,
-        native_schema_capability_claimed=False,
-        native_schema_capability_proven=False,
-        grammar_capability_claimed=False,
-        grammar_capability_proven=False,
+    return _merge_safari_fields(
+        M0InferenceProjection(
+            available=True,
+            authority_state=authority,
+            degraded_reason=reason,
+            runtime_available=runtime_available,
+            runtime_configured=runtime_configured,
+            runtime_kind=runtime_kind,
+            platform_class=platform_class,
+            task_suitability=tasks,
+            total_results=total_results,
+            total_executed=total_executed,
+            total_refused=total_refused,
+            drafts_awaiting_review=drafts_awaiting,
+            drafts=drafts,
+            refusals=refusals,
+            native_schema_capability_claimed=False,
+            native_schema_capability_proven=False,
+            grammar_capability_claimed=False,
+            grammar_capability_proven=False,
+        )
     )
+
+
+def _merge_safari_fields(model: M0InferenceProjection) -> M0InferenceProjection:
+    try:
+        from rig_relay.native._safari_x0_contract import build_safari_native_projection
+
+        native = build_safari_native_projection()
+        return model.model_copy(
+            update={
+                "safari_companion_state": native.safari_companion_state,
+                "safari_extension_built": native.safari_extension_built,
+                "safari_distribution_signing_state": native.safari_distribution_signing_state,
+                "safari_notarization_state": native.safari_notarization_state,
+                "safari_update_delivery_state": native.safari_update_delivery_state,
+                "safari_diagnostic_export_state": native.safari_diagnostic_export_state,
+                "safari_diagnostic_export_blocked": native.safari_diagnostic_export_blocked,
+                "safari_recovery_action_state": native.safari_recovery_action_state,
+                "safari_artifact_manifest_available": native.safari_artifact_manifest_available,
+                "safari_running": native.safari_running,
+                "safari_extension_installed": native.safari_extension_installed,
+                "safari_extension_enabled": native.safari_extension_enabled,
+                "safari_extension_error": native.safari_extension_error,
+                "safari_build_environment": native.build_environment,
+                "safari_projection_generated_at": native.generated_at,
+            }
+        )
+    except (
+        ImportError,
+        OSError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
+        return model.model_copy(
+            update={
+                "safari_companion_state": "error",
+                "safari_diagnostic_export_state": "error",
+                "safari_diagnostic_export_blocked": True,
+            }
+        )
+    except Exception as exc:
+        logger.warning(
+            "Unexpected exception merging safari fields into M0 projection: %s", exc
+        )
+        return model.model_copy(
+            update={
+                "safari_companion_state": "error",
+                "safari_diagnostic_export_state": "error",
+                "safari_diagnostic_export_blocked": True,
+            }
+        )
 
 
 def _build_m0_task_suitability(

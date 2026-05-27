@@ -1,0 +1,166 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T18:30:00Z",
+  "lane_id": "x4.5",
+  "mission_id": "x4.5_repair_round1",
+  "published_sha": "candidate_local",
+  "owned_files": [
+    "rig_relay/native/_safari_x0_contract.py",
+    "rig_relay/desktop/gateway/_models.py",
+    "rig_relay/desktop/gateway/_models_surfaces.py",
+    "rig_relay/desktop/gateway/_projection.py",
+    "rig_relay/desktop/gateway/_projection_surfaces.py",
+    "pyproject.toml",
+    "tests/native/test_safari_x0_contract.py",
+    "tests/desktop/gateway/test_x4_5_safari_projection_wiring.py",
+    "tests/desktop/gateway/test_x0_boundary_truth.py",
+    "docs/json/evidence/builder_publication_record_x4_5.v1.json",
+    "docs/json/evidence/prepublication_review_cycle_x4_5.v1.json"
+  ],
+  "intended_released_boundary": "SafariCompanionNativeDetectionBoundary",
+  "intended_consumer_purpose": "X0 desktop cockpit Gridline Interface can consume truthful Safari companion build/setup-required/detection status through the projection stream",
+  "decision_record": {
+    "claim": "The X4.5 implementation repairs 16 blocking findings from the Round 1 prepublication review of the X4.4 narrow boundary. The boundary is renamed from EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary to SafariCompanionNativeDetectionBoundary to remove structural and manifest-service overclaims. The native contract module now returns a typed Pydantic model (SafariNativeProjection), wires build_environment detection and check_safari_extension_enabled() into the projection, uses fail-closed exception handling, documents enum state reachability, and is consumed by the M0 and Inference Studio projection builders.",
+    "required_proof": [
+      "safari_recovery_action_state defaults to 'healthy' not 'no_recovery_needed' in 5 locations",
+      "build_safari_native_projection returns SafariNativeProjection (typed Pydantic model) not raw dict",
+      "check_safari_extension_enabled() is wired into projection with safari_running, safari_extension_installed, safari_extension_enabled, safari_extension_error",
+      "build_environment sub-dict present with xcode_available, signing_identity_found, app_bundle_exists, extension_appex_exists, notarytool_available",
+      "_merge_safari_fields and _merge_safari_surface_fields use narrow exception handling (ImportError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired)",
+      "Unexpected exceptions in merge functions set safari_companion_state='error' and safari_diagnostic_export_blocked=True (fail-closed)",
+      "SafariCompanionState reachability documented in source",
+      "Boundary renamed from EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary to SafariCompanionNativeDetectionBoundary",
+      "Self-references updated from X4.3/X4.6 to X4.5",
+      "7 contract tests pass",
+      "Gateway wiring tests pass with fail-closed coverage",
+      "Existing 31 boundary truth tests continue to pass"
+    ],
+    "observed_proof": [
+      "RecoveryActionState.HEALTHY = 'healthy' used in SafariNativeProjection model field default, _derive_recovery_action_state, and both merge functions",
+      "build_safari_native_projection returns SafariNativeProjection instance; 9 contract tests validate model_dump() keys and typed access",
+      "check_safari_extension_enabled() calls pgrep + defaults read with timeouts; test_check_safari_extension_enabled_returns_dict verifies 4-key dict",
+      "build_environment detection performs real subprocess checks for xcodebuild, security find-identity, and xcrun notarytool; test_build_environment_keys_present verifies 5 keys",
+      "_merge_safari_fields uses except (ImportError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) for expected failures; except Exception for unexpected with logger.warning",
+      "test_m0_projection_fail_closed_on_unexpected_exception verifies safari_companion_state='error' and safari_diagnostic_export_blocked=True on RuntimeError",
+      "SafariCompanionState docstring documents reachability: UNAVAILABLE default, EXTENSION_BUILT/EMBEDDED via detection, INSTALLED_*/CONNECTED/HANDOFF_*/LIVE_TRANSPORT_* via explicit override",
+      "Boundary name changed from EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary to SafariCompanionNativeDetectionBoundary — no 'Embedded' structural guarantee, no 'CandidateArtifactManifest' manifest service claim",
+      "Module docstring updated: X4.3 → X4.5, EmbeddedSafariExtension... → SafariCompanionNativeDetectionBoundary",
+      "uv run pytest tests/native/test_safari_x0_contract.py passes",
+      "uv run pytest tests/desktop/gateway/test_x4_5_safari_projection_wiring.py passes",
+      "Existing test_x0_boundary_truth.py updated to allow rig_relay.native._safari_x0_contract import"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Keep boundary name EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+        "rejection_evidence": "'Embedded' overclaims structural guarantee not proven in all environments. 'CandidateArtifactManifest' overclaims manifest service responsibility that belongs to X4.4 narrow boundary artifacts. Prepublication Falsifier Contract prohibits boundary atoms that exceed proven capability."
+      },
+      {
+        "option": "Keep broad except Exception in merge functions",
+        "rejection_evidence": "Broad except Exception masks unexpected failures and makes fail-closed undetectable. Narrowing to ImportError/OSError/subprocess.CalledProcessError/subprocess.TimeoutExpired and adding logger.warning on unexpected exceptions makes fail-closed detectable."
+      },
+      {
+        "option": "Keep raw dict return from build_safari_native_projection",
+        "rejection_evidence": "Untyped dict prevents pyright validation on consumer side. Typed Pydantic model enables attribute access (.safari_companion_state) and schema validation."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "SafariCompanionNativeDetectionBoundary — renamed from overclaiming EmbeddedSafariExtensionWithCandidateArtifactManifestBoundary",
+    "TypedProjection — SafariNativeProjection Pydantic model replaces raw dict",
+    "build_environment detection — real subprocess checks for xcodebuild, security, xcrun notarytool",
+    "check_safari_extension_enabled wiring — pgrep Safari + defaults read Extension state",
+    "Fail-closed exception handling — narrow except clauses + logger.warning on unexpected errors",
+    "Gateway consumption — _merge_safari_fields and _merge_safari_surface_fields wired into M0/Surface builders",
+    "Enum state reachability documentation — SafariCompanionState reachability documented in source",
+    "Correct recovery default — 'healthy' not 'no_recovery_needed' in all 5 locations",
+    "Lane labeling correction — X4.3/X4.6 → X4.5"
+  ],
+  "unimplemented_capabilities": [
+    "Live Safari end-to-end transport proof (deferred — requires live Safari + handoff test infrastructure)",
+    "Developer ID signing (deferred — no signing identity verified)",
+    "Notarization submission/acceptance/stapling (deferred — no notarytool credentials)",
+    "Sparkle 2 framework integration (deferred — not integrated into SPM app)",
+    "Appcast hosting and EdDSA key generation (deferred)",
+    "SPM app-side App Group entitlement wiring (deferred — app_group_not_configured)",
+    "Real pgrep-based Safari runtime detection on non-macOS platforms (returns False defaults)"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/native/test_safari_x0_contract.py -x -q",
+      "result": "9 contract tests",
+      "result_digest": "sha256:b0e6a44ed85abf7e551644361d2dd6e068a05399a7352a02779f8583fcc54c9b"
+    },
+    {
+      "command": "uv run pytest tests/desktop/gateway/test_x4_5_safari_projection_wiring.py -x -q",
+      "result": "5 gateway wiring tests",
+      "result_digest": "sha256:abb39344495cd911952ef1e946d564c55eb3754464eb13103c7ed842ed4d4d43"
+    },
+    {
+      "command": "uv run pytest tests/desktop/gateway/test_x0_boundary_truth.py -x -q",
+      "result": "31 boundary truth tests (updated for X4.5 native import allowance)",
+      "result_digest": "sha256:c08ab7d0efd22476fb766025eb864861272530ed2d7f89ba16324ab0ac42c0cf"
+    },
+    {
+      "command": "uv run pytest tests/native/ -x -q",
+      "result": "85 native infrastructure tests",
+      "result_digest": "sha256:757258b04301e25795ac1ae0c74113197d905873573c836679f575a0320eb847"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/json/evidence/builder_publication_record_x4_5.v1.json",
+    "docs/json/evidence/prepublication_review_cycle_x4_5.v1.json"
+  ],
+  "external_effects_executed": [
+    "build_safari_native_projection performs real subprocess detection (xcodebuild, security, etc.)",
+    "check_safari_extension_enabled performs real pgrep/defaults read",
+    "Gateway projection builders consume native contract via lazy import",
+    "9 contract tests + 5 gateway wiring tests",
+    "31 boundary truth tests updated and passing",
+    "85 native infrastructure tests (pre-existing + 2 added)",
+    "Prepublication review Round 1 (16 findings) and Round 2 (7 findings) documented"
+  ],
+  "external_effects_not_executed": [
+    "No push to origin/main (candidate_local, HEAD at 496cfa911)",
+    "No Developer ID signing",
+    "No notarization submission or stapling",
+    "No Sparkle 2 framework integration",
+    "No remote upload or telemetry",
+    "No live Safari extension transport testing",
+    "No cross-lane file mutation beyond owned files",
+    "No checkpoint commit or amend"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    ".opencode/agents/execution.md (governance lane)",
+    ".opencode/agents/orchestrator.md (governance lane)",
+    ".opencode/agents/prepublication-conductor.md (governance lane)",
+    ".opencode/agents/publisher.md (governance lane)",
+    "docs/json/governance/*.json (governance lane, 37+ files)",
+    "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json (X3 lane)",
+    "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json (X3 lane)",
+    "docs/schemas/rig.relay.runtime_execution_event.v1.schema.json (X2 lane)",
+    "frontend/desktop/* (X0 rendering lane)",
+    "macos/RigRelayShell/**/*.swift (macOS host lane)",
+    "pyproject.toml (governance + one pre-existing PLR exemption change)",
+    "rig_relay/core/_error.py (core lane)",
+    "rig_relay/core/_helpers.py (core lane)",
+    "rig_relay/core/_models.py (core lane)",
+    "rig_relay/data_plane/postgres/* (X1 lane)",
+    "rig_relay/desktop/gateway/_models_surfaces.py (SurfaceStatus additions from parallel lane)",
+    "rig_relay/desktop/gateway/_projection_surfaces.py (SurfaceStatus/additions from parallel lane — preserved)"
+  ],
+  "strongest_suspected_weakness": "check_safari_extension_enabled() calls pgrep and defaults read on Safari domain — subprocess latency and privacy review deferred. The defaults read command accesses com.apple.Safari.Extensions which may trigger macOS privacy prompts. On non-macOS platforms the function returns all-False defaults without error.",
+  "proposed_reviewer_attack_surface": [
+    "F1: Does check_safari_extension_enabled() return correct False defaults on non-macOS?",
+    "F2: Does the defaults read command trigger macOS TCC privacy prompts?",
+    "F3: Does the lazy import pattern survive pyright strict checking?",
+    "F4: Are the fail-closed exception paths actually exercised when xcodebuild/security/notarytool are absent?",
+    "F5: Does SafariNativeProjection reject extra fields (extra='forbid')?",
+    "F6: Do the merge functions correctly handle None vs False for safari_extension_error?",
+    "F7: Is the boundary name truthful: SafariCompanionNativeDetectionBoundary — no overclaimed Embedded/CandidateArtifactManifest atoms?",
+    "F8: Do the 31 boundary truth tests still pass with the updated native import allowance?"
+  ],
+  "prepublication_review_cycle_digest": "sha256:0178fd1dfe1d98443db3e75224ab1129deb7154eeb1afcb35a103433124872c6",
+  "prepublication_review_round_count": 3,
+  "status": "published_candidate_boundary"
+}

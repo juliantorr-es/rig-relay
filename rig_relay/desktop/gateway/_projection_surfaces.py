@@ -7,8 +7,10 @@ authority states. Never reads authority ledgers or reproduces producer logic.
 
 from __future__ import annotations
 
+import subprocess
 from typing import TYPE_CHECKING
 
+from rig_relay.core.logger import logger
 from rig_relay.desktop.gateway._models import ProvenanceClass, TrustState
 from rig_relay.desktop.gateway._models_surfaces import (
     ConnectSurfaceProjection,
@@ -19,6 +21,7 @@ from rig_relay.desktop.gateway._models_surfaces import (
     ProviderConnectionEntry,
     PublishPreviewSurfaceProjection,
     RepositoryEstateSurfaceProjection,
+    SurfaceStatus,
     TimelineEventEntry,
     TimelineSurfaceProjection,
 )
@@ -63,18 +66,26 @@ def CONNECT_SURFACE_PROJECTION_BUILDER(
 
     available = providers_configured > 0 or ws_token
     if available and ws_token:
+        surface_status = SurfaceStatus.AVAILABLE.value
+        status_detail = "Connected and ready"
         authority = "canonical_live"
         trust = TrustState.TRUSTED_LIVE
         reason = ""
     elif providers_configured > 0:
+        surface_status = SurfaceStatus.AVAILABLE.value
+        status_detail = f"{providers_configured} providers configured"
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         reason = "Providers configured but workspace not connected"
     elif ws_token:
+        surface_status = SurfaceStatus.SETUP_REQUIRED.value
+        status_detail = "Add a provider to begin"
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         reason = "Workspace connected but no providers configured"
     else:
+        surface_status = SurfaceStatus.SETUP_REQUIRED.value
+        status_detail = "Connect a provider and workspace to begin"
         authority = "missing"
         trust = TrustState.DEFERRED
         reason = "No providers configured and workspace not connected"
@@ -84,6 +95,8 @@ def CONNECT_SURFACE_PROJECTION_BUILDER(
         authority_state=authority,
         trust_state=trust,
         degraded_reason=reason,
+        surface_status=surface_status,
+        status_detail=status_detail,
         providers=providers_list,
         providers_configured=providers_configured,
         providers_total=providers_total,
@@ -188,6 +201,8 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
             degraded_reason="RepositoryEstateService (T3.1) cannot be loaded",
+            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+            status_detail="Repository estate service is being verified",
         )
 
     try:
@@ -198,6 +213,8 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
                 authority_state="missing",
                 trust_state=TrustState.DEFERRED,
                 degraded_reason="RepositoryEstateService returned None projection",
+                surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+                status_detail="Repository estate service is being verified",
             )
     except Exception as exc:
         return RepositoryEstateSurfaceProjection(
@@ -205,6 +222,8 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
             authority_state="corrupt",
             trust_state=TrustState.CORRUPT,
             degraded_reason=f"RepositoryEstateService.build_projection raised: {exc}",
+            surface_status=SurfaceStatus.ERROR.value,
+            status_detail="Could not load repository data",
         )
 
     repos = []
@@ -275,11 +294,21 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
     elif authority_state == "corrupt":
         trust = TrustState.CORRUPT
 
+    repo_count = len(repos)
+    if repo_count > 0:
+        surface_status = SurfaceStatus.AVAILABLE.value
+        status_detail = f"{repo_count} repositories registered"
+    else:
+        surface_status = SurfaceStatus.DERIVED.value
+        status_detail = "No repositories registered"
+
     return RepositoryEstateSurfaceProjection(
         available=getattr(proj, "available", False),
         authority_state=authority_state,
         trust_state=trust,
         degraded_reason=getattr(proj, "degraded_reason", ""),
+        surface_status=surface_status,
+        status_detail=status_detail,
         registered_repositories=repos,
         total_registered=getattr(proj, "total_registered", 0),
         local_only_count=getattr(proj, "local_only_count", 0),
@@ -323,6 +352,8 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
             degraded_reason="ProjectPagePublicationPreviewService (T1.2) cannot be loaded",
+            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+            status_detail="Publication preview is awaiting upstream handoff",
         )
 
     publishable_count = 0
@@ -336,15 +367,18 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
             pass
 
     if publishable_count > 0:
+        surface_status = SurfaceStatus.BLOCKED.value
+        status_detail = "Publication integration is pending upstream verification"
         authority = "integration_blocked"
         trust = TrustState.DEFERRED
         reason = (
-            "Publishable repositories exist but X0 publication evidence "
-            "consumption is blocked: X3.5 publication boundary is published "
-            "(PublicationStatusContract) but X0 consumption is deferred "
-            "pending X3.7 repair and independent remote verification."
+            "Publishable repositories exist but publication evidence "
+            "consumption is blocked pending upstream infrastructure "
+            "verification."
         )
     else:
+        surface_status = SurfaceStatus.VERIFICATION_PENDING.value
+        status_detail = "No publishable repositories available"
         authority = "missing"
         trust = TrustState.DEFERRED
         reason = "No publishable repositories and no public publication history API"
@@ -354,6 +388,8 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         authority_state=authority,
         trust_state=trust,
         degraded_reason=reason,
+        surface_status=surface_status,
+        status_detail=status_detail,
         ledger_total_events=0,
         ledger_valid_rows=0,
         ledger_corrupt_rows=0,
@@ -361,9 +397,7 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         publishable_repository_count=publishable_count,
         deployment_available=False,
         deployment_deferred_reason=(
-            "X3.5 publication boundary published (PublicationStatusContract); "
-            "X0 consumption deferred pending X3.7 repair and independent "
-            "remote verification."
+            "Publication integration is pending upstream infrastructure verification."
         ),
         content_light_guarantee=True,
     )
@@ -455,22 +489,32 @@ def TIMELINE_SURFACE_PROJECTION_BUILDER(
     unsupported_count = getattr(dg, "unsupported_count", 0) if dg else 0
 
     if assembly_errors or corrupt_count > 0:
+        surface_status = SurfaceStatus.ERROR.value
+        status_detail = "Timeline contains evidence integrity issues"
         authority = "corrupt"
         trust = TrustState.CORRUPT
         degraded_reason = "Timeline contains corrupt evidence"
     elif missing_count > 0 or stale_count > 0:
+        surface_status = SurfaceStatus.DERIVED.value
+        status_detail = "Timeline assembled with partial evidence"
         authority = "canonical_degraded"
         trust = TrustState.DEFERRED
         degraded_reason = "Timeline has missing or stale evidence"
     elif contradictory_count > 0:
+        surface_status = SurfaceStatus.DERIVED.value
+        status_detail = "Timeline contains contradictory evidence"
         authority = "canonical_degraded"
         trust = TrustState.REFUSED
         degraded_reason = "Timeline contains contradictory evidence"
     elif unsupported_count > 0:
+        surface_status = SurfaceStatus.DERIVED.value
+        status_detail = "Timeline has unsupported evidence domains"
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         degraded_reason = "Timeline has unsupported evidence domains"
     else:
+        surface_status = SurfaceStatus.AVAILABLE.value
+        status_detail = f"{len(events)} events assembled"
         authority = "canonical_live"
         trust = TrustState.TRUSTED_LIVE
         degraded_reason = ""
@@ -480,6 +524,8 @@ def TIMELINE_SURFACE_PROJECTION_BUILDER(
         authority_state=authority,
         trust_state=trust,
         degraded_reason=degraded_reason,
+        surface_status=surface_status,
+        status_detail=status_detail,
         timeline_id=getattr(timeline, "timeline_id", ""),
         assembled_at=getattr(timeline, "assembled_at", ""),
         investigation_id=getattr(timeline, "investigation_id", None),
@@ -522,12 +568,13 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
             degraded_reason="M0 inference service cannot be loaded",
-            omlx_strategy="deferred_pending_x2_5_repair",
+            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+            status_detail="Inference Studio service is being verified",
+            omlx_strategy="pending_infrastructure_handoff",
             omlx_available=False,
             omlx_disclosure=(
-                "OMLX Rigged runtime boundary published by X2.4; "
-                "X0 consumption blocked pending X2.5 repair and independent "
-                "remote verification."
+                "Hardware-accelerated local inference is pending "
+                "infrastructure integration and verification."
             ),
         )
 
@@ -567,44 +614,107 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
         pass
 
     if runtime_available and runtime_configured:
+        surface_status = SurfaceStatus.AVAILABLE.value
+        status_detail = "Local runtime ready"
         authority = "canonical_live"
         trust = TrustState.TRUSTED_LIVE
         reason = ""
     elif runtime_configured:
+        surface_status = SurfaceStatus.SETUP_REQUIRED.value
+        status_detail = "Runtime configured but not responding"
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         reason = "Local inference runtime configured but not available"
     else:
+        surface_status = SurfaceStatus.VERIFICATION_PENDING.value
+        status_detail = "Inference Studio service is being verified"
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         reason = "No local inference runtime configured"
 
-    return InferenceStudioSurfaceProjection(
-        available=True,
-        authority_state=authority,
-        trust_state=trust,
-        degraded_reason=reason,
-        runtime_available=runtime_available,
-        runtime_configured=runtime_configured,
-        runtime_kind=runtime_kind,
-        platform_class=platform_class,
-        omlx_strategy="deferred_pending_x2_5_repair",
-        omlx_available=False,
-        omlx_disclosure=(
-            "OMLX Rigged runtime boundary published by X2.4; "
-            "X0 consumption blocked pending X2.5 repair and independent "
-            "remote verification."
-        ),
-        task_suitability_count=4,
-        total_results=total_results,
-        total_executed=total_executed,
-        total_refused=total_refused,
-        drafts_awaiting_review=drafts_awaiting,
-        native_schema_capability_claimed=False,
-        native_schema_capability_proven=False,
-        grammar_capability_claimed=False,
-        grammar_capability_proven=False,
+    return _merge_safari_surface_fields(
+        InferenceStudioSurfaceProjection(
+            available=True,
+            authority_state=authority,
+            trust_state=trust,
+            degraded_reason=reason,
+            surface_status=surface_status,
+            status_detail=status_detail,
+            runtime_available=runtime_available,
+            runtime_configured=runtime_configured,
+            runtime_kind=runtime_kind,
+            platform_class=platform_class,
+            omlx_strategy="pending_infrastructure_handoff",
+            omlx_available=False,
+            omlx_disclosure=(
+                "Hardware-accelerated local inference is pending "
+                "infrastructure integration and verification."
+            ),
+            task_suitability_count=4,
+            total_results=total_results,
+            total_executed=total_executed,
+            total_refused=total_refused,
+            drafts_awaiting_review=drafts_awaiting,
+            native_schema_capability_claimed=False,
+            native_schema_capability_proven=False,
+            grammar_capability_claimed=False,
+            grammar_capability_proven=False,
+        )
     )
+
+
+def _merge_safari_surface_fields(
+    model: InferenceStudioSurfaceProjection,
+) -> InferenceStudioSurfaceProjection:
+    try:
+        from rig_relay.native._safari_x0_contract import build_safari_native_projection
+
+        native = build_safari_native_projection()
+        return model.model_copy(
+            update={
+                "safari_companion_state": native.safari_companion_state,
+                "safari_extension_built": native.safari_extension_built,
+                "safari_distribution_signing_state": native.safari_distribution_signing_state,
+                "safari_notarization_state": native.safari_notarization_state,
+                "safari_update_delivery_state": native.safari_update_delivery_state,
+                "safari_diagnostic_export_state": native.safari_diagnostic_export_state,
+                "safari_diagnostic_export_blocked": native.safari_diagnostic_export_blocked,
+                "safari_recovery_action_state": native.safari_recovery_action_state,
+                "safari_artifact_manifest_available": native.safari_artifact_manifest_available,
+                "safari_running": native.safari_running,
+                "safari_extension_installed": native.safari_extension_installed,
+                "safari_extension_enabled": native.safari_extension_enabled,
+                "safari_extension_error": native.safari_extension_error,
+                "safari_build_environment": native.build_environment,
+                "safari_projection_generated_at": native.generated_at,
+            }
+        )
+    except (
+        ImportError,
+        OSError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
+        return model.model_copy(
+            update={
+                "safari_companion_state": "error",
+                "safari_diagnostic_export_state": "error",
+                "safari_diagnostic_export_blocked": True,
+            }
+        )
+    except Exception as exc:
+        logger.warning(
+            "Unexpected exception merging safari fields into "
+            "Inference Studio surface projection: %s",
+            exc,
+        )
+        return model.model_copy(
+            update={
+                "safari_companion_state": "error",
+                "safari_diagnostic_export_state": "error",
+                "safari_diagnostic_export_blocked": True,
+            }
+        )
 
 
 __all__ = [
