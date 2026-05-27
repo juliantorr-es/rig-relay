@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import hashlib
+import json as _json
 from typing import Any
 
 from psycopg import sql as psql
@@ -24,7 +25,7 @@ from rig_relay.core.logger import logger
 from rig_relay.data_plane.postgres._models import (
     MaterializationReceipt,
     RebuildReceipt,
-    compute_receipt_id,
+    compute_deterministic_materialization_receipt_id,
 )
 from rig_relay.data_plane.postgres._store import PostgresOperationalProjectionStore
 
@@ -152,7 +153,9 @@ class TimelineMaterializer:
 
         degradation = _compute_degradation_counts(rows)
         receipt = MaterializationReceipt(
-            receipt_id=compute_receipt_id("timeline", projection.projection_id, now),
+            receipt_id=compute_deterministic_materialization_receipt_id(
+                "investigation_timeline", digest_hex
+            ),
             domain="timeline",
             source_evidence_count=len(rows),
             rows_materialized=0,
@@ -183,6 +186,7 @@ class TimelineMaterializer:
         )
 
         with self.store.conn.transaction():
+            self.store.acquire_rebuild_lock("investigation_timeline")
             with self.store.conn.cursor() as cur:
                 events_built = 0
                 duplicate_rows = 0
@@ -217,43 +221,56 @@ class TimelineMaterializer:
     # ── Rebuild ─────────────────────────────────────────────────────
 
     def rebuild(self, service: Any) -> RebuildReceipt:
-        """Rebuild the timeline from canonical evidence.
-
-        Deletes all timeline_events and timeline_builds rows, then
-        re-materializes from the service. Compares SHA256 content
-        digests before and after (excluding materialized_at) to
-        determine determinism.
-
-        Returns a RebuildReceipt with the comparison.
-        """
         from rig_relay.data_plane.postgres._materialization_input import (
             compute_projection_digest,
+        )
+        from rig_relay.data_plane.postgres._models import (
+            compute_deterministic_rebuild_receipt_id,
         )
 
         schema = self.store.config.schema_name
         now = datetime.now()
         exclude = ["materialized_at"]
 
-        digest_before = compute_projection_digest(
-            self.store.conn, schema, "timeline_events", exclude
-        )
-        rows_before = _count_timeline_events(self.store.conn, schema)
-
-        receipt_id = compute_receipt_id("rebuild_timeline", "timeline", now)
-
+        source_evidence_digest = ""
         try:
-            with self.store.conn.transaction():
-                with self.store.conn.cursor() as cur:
-                    cur.execute(
-                        psql.SQL("DELETE FROM {}.{}").format(
-                            psql.Identifier(schema), psql.Identifier("timeline_builds")
-                        )
+            projection = service.build_postgres_projection()
+            rows = (
+                projection.get("timeline_events", [])
+                if isinstance(projection, dict)
+                else []
+            )
+        except Exception:
+            rows = []
+        if rows:
+            source_evidence_digest = (
+                "sha256:"
+                + hashlib.sha256(_json.dumps(rows, sort_keys=True).encode()).hexdigest()
+            )
+
+        rebuild_receipt_id = compute_deterministic_rebuild_receipt_id(
+            "timeline", source_evidence_digest
+        )
+
+        with self.store.conn.transaction():
+            self.store.acquire_rebuild_lock("investigation_timeline")
+
+            digest_before = compute_projection_digest(
+                self.store.conn, schema, "timeline_events", exclude
+            )
+            rows_before = _count_timeline_events(self.store.conn, schema)
+
+            with self.store.conn.cursor() as cur:
+                cur.execute(
+                    psql.SQL("DELETE FROM {}.{}").format(
+                        psql.Identifier(schema), psql.Identifier("timeline_builds")
                     )
-                    cur.execute(
-                        psql.SQL("DELETE FROM {}.{}").format(
-                            psql.Identifier(schema), psql.Identifier("timeline_events")
-                        )
+                )
+                cur.execute(
+                    psql.SQL("DELETE FROM {}.{}").format(
+                        psql.Identifier(schema), psql.Identifier("timeline_events")
                     )
+                )
 
             _ = self.materialize(service)
 
@@ -261,37 +278,29 @@ class TimelineMaterializer:
                 self.store.conn, schema, "timeline_events", exclude
             )
             rows_after = _count_timeline_events(self.store.conn, schema)
-        except Exception as e:
-            logger.error("Timeline rebuild failed: %s", e)
-            return RebuildReceipt(
-                receipt_id=receipt_id,
+
+            deterministic = digest_before == digest_after
+
+            receipt = RebuildReceipt(
+                receipt_id=rebuild_receipt_id,
                 projection_name="timeline",
                 rows_before=rows_before,
-                rows_after=0,
+                rows_after=rows_after,
                 rebuilt_at=now,
-                deterministic=False,
+                deterministic=deterministic,
             )
 
-        deterministic = digest_before == digest_after
+            self.store.record_rebuild_receipt(receipt)
 
-        receipt = RebuildReceipt(
-            receipt_id=receipt_id,
-            projection_name="timeline",
-            rows_before=rows_before,
-            rows_after=rows_after,
-            rebuilt_at=now,
-            deterministic=deterministic,
-        )
-
-        logger.info(
-            "Timeline rebuilt: %d -> %d rows, digest_before=%s digest_after=%s "
-            "deterministic=%s",
-            rows_before,
-            rows_after,
-            digest_before,
-            digest_after,
-            deterministic,
-        )
+            logger.info(
+                "Timeline rebuilt: %d -> %d rows, digest_before=%s digest_after=%s "
+                "deterministic=%s",
+                rows_before,
+                rows_after,
+                digest_before,
+                digest_after,
+                deterministic,
+            )
 
         return receipt
 
@@ -370,7 +379,8 @@ def _insert_timeline_build(
         "corrupt_count, unsupported_count, missing_count, "
         "contradictory_count, stale_count, "
         "built_at, evidence_source_sha256, deterministic"
-        ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+        "ON CONFLICT (receipt_id) DO NOTHING"
     ).format(psql.Identifier(schema), psql.Identifier("timeline_builds"))
 
     cur.execute(

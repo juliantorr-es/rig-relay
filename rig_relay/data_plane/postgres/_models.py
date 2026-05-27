@@ -399,5 +399,11 @@ def compute_deterministic_rebuild_receipt_id(
 
 
 def compute_advisory_lock_key(domain: str) -> int:
-    """Compute a deterministic PostgreSQL advisory lock key for serialized domain access."""
-    return abs(hash(f"rig_relay:materialization:{domain}")) & 0x7FFFFFFF
+    """Compute a deterministic PostgreSQL advisory lock key for serialized domain access.
+
+    Uses SHA256 (not Python hash()) so the same domain produces the same
+    lock key across independent Python processes and database connections.
+    PostgreSQL advisory locks accept the full signed bigint range (-2^63 to 2^63-1).
+    """
+    digest = hashlib.sha256(f"rig_relay:materialization:{domain}".encode()).digest()
+    return int.from_bytes(digest[:8], "big", signed=True)

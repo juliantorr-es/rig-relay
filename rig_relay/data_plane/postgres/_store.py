@@ -527,7 +527,7 @@ class PostgresOperationalProjectionStore:
         query = psql.SQL(
             "INSERT INTO {}.{} "
             "(receipt_id, projection_name, rows_before, rows_after, rebuilt_at, deterministic) "
-            "VALUES (%s, %s, %s, %s, %s, %s)"
+            "VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (receipt_id) DO NOTHING"
         ).format(psql.Identifier(schema), psql.Identifier("rebuild_receipts"))
         with self.conn.cursor() as cur:
             cur.execute(
