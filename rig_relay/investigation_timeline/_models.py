@@ -130,6 +130,7 @@ class InvestigationTimelineEvent(BaseModel):
     investigation_id: str | None = Field(default=None)
     parent_session_id: str | None = Field(default=None)
     task_id: str | None = Field(default=None)
+    operation_id: str | None = Field(default=None)
     outcome: str | None = Field(default=None)
     status: str | None = Field(default=None)
     latency_ms: float | None = Field(default=None)

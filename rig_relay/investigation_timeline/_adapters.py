@@ -405,6 +405,7 @@ def adapt_publication_preview_events(
 
                 receipt = record.get("receipt", {})
 
+                operation_id = record.get("operation_id")
                 compiled_at = receipt.get("compiled_at", "")
                 receipt_id = receipt.get("receipt_id", "")
                 compilation_successful = receipt.get("compilation_successful", False)
@@ -463,6 +464,7 @@ def adapt_publication_preview_events(
                     verification_class=verification,
                     authority_classification=authority,
                     investigation_id=investigation_id,
+                    operation_id=operation_id,
                     outcome=outcome,
                     status="deployment_ready" if deployment_ready else "preview_only",
                     refusal_code=refusal_code,

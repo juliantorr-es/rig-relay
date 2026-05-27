@@ -98,6 +98,7 @@ def _events_to_dict_rows(timeline: InvestigationTimeline) -> list[dict[str, obje
             "project_id": event.project_id,
             "parent_session_id": event.parent_session_id,
             "task_id": event.task_id,
+            "operation_id": event.operation_id,
             "outcome": event.outcome,
             "status": event.status,
             "latency_ms": event.latency_ms,

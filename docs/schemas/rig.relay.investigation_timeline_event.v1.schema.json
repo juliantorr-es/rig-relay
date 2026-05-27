@@ -149,6 +149,10 @@
       "type": "string",
       "description": "Task identifier from source domain, if available."
     },
+    "operation_id": {
+      "type": "string",
+      "description": "Exactly-once operation identifier from source domain."
+    },
     "outcome": {
       "type": "string",
       "description": "Outcome label for this event.",

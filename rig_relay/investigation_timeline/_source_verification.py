@@ -47,15 +47,13 @@ def verify_coordination_event(
     try:
         recalculated = (
             "sha256:"
-            + hashlib.sha256(
-                _compact_json(_compact_json(payload)).encode("utf-8")
-            ).hexdigest()
+            + hashlib.sha256(_compact_json(payload).encode("utf-8")).hexdigest()
         )
     except Exception:
         return VerificationClass.PARSED_UNVERIFIED, event_hash, False
     if recalculated == event_hash:
         return VerificationClass.VERIFIED_CANONICAL, event_hash, True
-    return VerificationClass.PARSED_UNVERIFIED, event_hash, False
+    return VerificationClass.CORRUPT, event_hash, False
 
 
 def verify_disclosure_event(record: dict) -> tuple[VerificationClass, str | None, bool]:
@@ -70,7 +68,7 @@ def verify_disclosure_event(record: dict) -> tuple[VerificationClass, str | None
         return VerificationClass.PARSED_UNVERIFIED, transition_digest, False
     if recalculated == transition_digest:
         return VerificationClass.VERIFIED_CANONICAL, transition_digest, True
-    return VerificationClass.PARSED_UNVERIFIED, transition_digest, False
+    return VerificationClass.CORRUPT, transition_digest, False
 
 
 def _compute_disclosure_digest(record: dict) -> str:
@@ -115,7 +113,7 @@ def verify_publication_event(
         return VerificationClass.PARSED_UNVERIFIED, event_digest, False
     if recalculated == event_digest:
         return VerificationClass.VERIFIED_CANONICAL, event_digest, True
-    return VerificationClass.PARSED_UNVERIFIED, event_digest, False
+    return VerificationClass.CORRUPT, event_digest, False
 
 
 def _compute_publication_envelope_digest(event: dict) -> str:
@@ -140,7 +138,7 @@ def verify_checkpoint_event(record: dict) -> tuple[VerificationClass, str | None
         return VerificationClass.PARSED_UNVERIFIED, event_hash, False
     if recalculated == event_hash:
         return VerificationClass.VERIFIED_CANONICAL, event_hash, True
-    return VerificationClass.PARSED_UNVERIFIED, event_hash, False
+    return VerificationClass.CORRUPT, event_hash, False
 
 
 DOMAIN_VERIFIERS: dict[SourceDomain, object] = {}

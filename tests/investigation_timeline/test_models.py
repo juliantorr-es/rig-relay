@@ -184,3 +184,15 @@ def test_verification_class_defaults_to_parsed_unverified():
         authority_classification=AuthorityClassification.CANONICAL_LIVE,
     )
     assert event.verification_class == VerificationClass.PARSED_UNVERIFIED
+
+
+def test_investigation_timeline_event_accepts_operation_id():
+    event = InvestigationTimelineEvent(
+        observed_at="2025-01-15T10:00:00Z",
+        event_kind=TimelineEventKind.PUBLICATION_PREVIEW_COMPILED,
+        source_domain=SourceDomain.PUBLICATION,
+        source_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        authority_classification=AuthorityClassification.CANONICAL_LIVE,
+        operation_id="op_001",
+    )
+    assert event.operation_id == "op_001"

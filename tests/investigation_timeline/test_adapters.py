@@ -150,6 +150,58 @@ def test_adapt_unmapped_event_produces_unverified_event():
     assert "unknown" in (unverified[0].degradation_detail or "")
 
 
+def test_adapt_publication_preserves_operation_id():
+    fixture_path = FIXTURES_DIR / "publication_preview_sample.jsonl"
+    events, errors = adapt_publication_preview_events(fixture_path)
+    assert len(events) > 0, "must produce events with operation_id"
+    operation_ids = {e.operation_id for e in events if e.operation_id is not None}
+    assert "op_001" in operation_ids
+    assert "op_002" in operation_ids
+
+
+def test_adapt_coordination_verifier_returns_corrupt_on_mismatch(tmp_path):
+    coord_path = tmp_path / "coord_corrupt.jsonl"
+    coord_path.write_text(
+        '{"event_name":"coord.session.registered","event_id":"evt_001",'
+        '"session_id":"s-abc","created_at":"2025-01-15T10:00:00Z",'
+        '"payload":{"status":"registered","outcome":"registered"},'
+        '"event_hash":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}\n'
+    )
+    events, errors = adapt_coordination_events(coord_path)
+    assert len(events) > 0
+    assert events[0].verification_class == VerificationClass.CORRUPT
+
+
+def test_adapt_publication_verifier_returns_corrupt_on_mismatch(tmp_path):
+    pub_path = tmp_path / "pub_corrupt.jsonl"
+    pub_path.write_text(
+        '{"schema_version":"rig.relay.publication_preview_event.v1",'
+        '"receipt":{"schema_version":"rig.relay.publication_preview_receipt.v1",'
+        '"receipt_id":"sha256:aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111aaa111",'
+        '"compiled_at":"2026-05-01T10:00:00Z","compilation_successful":true,'
+        '"safety_passed":true,"deployment_ready":false,"preview_only":true},'
+        '"event_digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}\n'
+    )
+    events, errors = adapt_publication_preview_events(pub_path)
+    assert len(events) > 0
+    assert events[0].verification_class == VerificationClass.CORRUPT
+
+
+def test_adapt_disclosure_verifier_returns_corrupt_on_mismatch(tmp_path):
+    disc_path = tmp_path / "disc_corrupt.jsonl"
+    disc_path.write_text(
+        '{"transition_id":"dt_001","status":"prepared",'
+        '"created_at":"2025-01-15T10:00:00Z","authorization_id":"auth_001",'
+        '"schema_version":"rig.relay.disclosure_transition.v1",'
+        '"evidence_digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+        '"projection_id":"proj_001","disclosure_class":"standard","sequence":1,'
+        '"transition_digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}\n'
+    )
+    events, errors = adapt_disclosure_transitions(disc_path)
+    assert len(events) > 0
+    assert events[0].verification_class == VerificationClass.CORRUPT
+
+
 def test_adapt_missing_file_returns_errors():
     nonexistent_path = FIXTURES_DIR / "does_not_exist.jsonl"
     events, errors = adapt_observability_events(nonexistent_path)

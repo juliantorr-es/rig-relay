@@ -29,6 +29,7 @@ def build_postgres_projection(
             "investigation_id": event.investigation_id,
             "parent_session_id": event.parent_session_id,
             "task_id": event.task_id,
+            "operation_id": event.operation_id,
             "outcome": event.outcome,
             "status": event.status,
             "latency_ms": event.latency_ms,
@@ -146,6 +147,12 @@ def build_postgres_column_definitions() -> list[PostgresColumnDefinition]:
             column_type="TEXT",
             nullable=True,
             description="Task identifier.",
+        ),
+        PostgresColumnDefinition(
+            column_name="operation_id",
+            column_type="TEXT",
+            nullable=True,
+            description="Exactly-once operation identifier from producer domain.",
         ),
         PostgresColumnDefinition(
             column_name="outcome",
@@ -273,6 +280,11 @@ def build_postgres_indexing_requirements() -> list[PostgresIndexDefinition]:
             index_name="idx_timeline_verification_class",
             columns=["verification_class"],
             purpose="Verification-class filtering.",
+        ),
+        PostgresIndexDefinition(
+            index_name="idx_timeline_operation_id",
+            columns=["operation_id"],
+            purpose="Operation-identity queries.",
         ),
         PostgresIndexDefinition(
             index_name="idx_timeline_kind_observed",
