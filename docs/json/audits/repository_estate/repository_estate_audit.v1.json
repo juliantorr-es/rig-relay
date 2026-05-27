@@ -1,0 +1,79 @@
+{
+  "schema_version": "rig.relay.audit_event.v1",
+  "audit_id": "t3_repository_estate_audit_20260527",
+  "audit_kind": "claim_adversary_pass",
+  "subject": "RepositoryEstateService — Lane T3 released boundary",
+  "created_at": "2026-05-27T00:00:00Z",
+  "released_boundary": "RepositoryEstateService: typed application service that registers local repositories, emits append-only content-light repository observation evidence, detects observable state changes truthfully, and produces reconstructable projections for later PostgreSQL and Gridline consumption.",
+  "stated_consumer_purpose": "A later integration lane can persist repository-estate projections through the PostgreSQL operational data plane and render real Repository Estate state in the native desktop app.",
+  "claim_adversary_results": {
+    "authority_bypass": {
+      "claim": "Registration/observation bypasses application-service authority.",
+      "attack_result": "REFUTED. All product actions enter through RepositoryEstateService — a typed application service. No CLI entry point, no tool wrapper, no frontend path exists.",
+      "evidence": "tests/repository_estate/test_service.py — all 25 tests exercise the real application-service boundary."
+    },
+    "content_leak": {
+      "claim": "Private source content or raw paths leak into evidence/projection.",
+      "attack_result": "REFUTED. root_path_digest is SHA256 of the resolved path. repository_hash is compound SHA256. git_facts contains only counts, digests, and labels. instruction_files contain only kind, path_digest, content_sha256. dirty_counts are pure integers. remotes contain url_digest not raw URLs.",
+      "evidence": "test_observation_has_no_raw_file_content explicitly verifies '# Agent instructions' and 'def hello()' are absent from observation payload. test_registration_has_no_raw_paths verifies 'root_path' field does not exist."
+    },
+    "false_authorization": {
+      "claim": "Observation is falsely represented as authorization.",
+      "attack_result": "REFUTED. Observation is explicitly read-only (git --no-optional-locks). No mutation capability is attached. ObservationStatus enum has no 'authorized' value.",
+      "evidence": "rig_relay/repository_estate/_service.py uses resolve_git_*() from digestion/identity.py which enforces --no-optional-locks."
+    },
+    "false_change": {
+      "claim": "Duplicate observations create false change events.",
+      "attack_result": "REFUTED. test_repeated_unchanged_observation_is_deterministic proves unchanged status. Change detection is based on actual git fact comparison via _detect_changes_direct().",
+      "evidence": "tests/repository_estate/test_service.py tests for unchanged, changed, dirty, branch change, detached HEAD."
+    },
+    "evidence_reconstruction": {
+      "claim": "Append-only evidence cannot reconstruct the projection.",
+      "attack_result": "REFUTED. build_projection() reads from append-only JSONL files and reconstructs a deterministic projection. test_projection_from_evidence proves reconstruction.",
+      "evidence": "tests/repository_estate/test_service.py::test_projection_from_evidence passes."
+    },
+    "fake_git_tests": {
+      "claim": "Tests use fake Git repositories or mocks.",
+      "attack_result": "REFUTED. All tests use real git init on temp directories. No mocks, no stubs, no ghosts. Conforms to 'NO MOCKS. NO STUBS. NO GHOSTS' doctrine.",
+      "evidence": "tests/repository_estate/conftest.py uses subprocess.run(['git', '--no-optional-locks', 'init', '-b', 'main'])."
+    },
+    "cross_lane_breach": {
+      "claim": "Lane secretly wires through unpublished T2 or edits live frontend/gateway boundary.",
+      "attack_result": "REFUTED. No files in rig_relay/desktop/gateway/ were modified. No files in rig_relay/data_plane/postgres/ were modified. Only a PLR per-file-ignore was added to pyproject.toml.",
+      "evidence": "git diff shows only T3-owned files: rig_relay/repository_estate/*, tests/repository_estate/*, docs/schemas/rig.relay.repository_estate_*.json, docs/json/audits/repository_estate/*, pyproject.toml (PLR exemption only)."
+    },
+    "publication_integrity": {
+      "claim": "Remote pushed slice does not support the stated release.",
+      "attack_result": "PENDING_VERIFICATION. Will verify SHA after push. Local tests all pass (25/25). Ruff + pyright clean.",
+      "evidence": "pytest: 25 passed. ruff: all checks passed. pyright: 0 errors, 0 warnings."
+    }
+  },
+  "schema_validation": {
+    "rig.relay.repository_estate_registration.v1": "valid",
+    "rig.relay.repository_estate_observation.v1": "valid"
+  },
+  "production_substrate_proofs": {
+    "registration_of_real_repo": "test_register_clean_repo_succeeds — PASS",
+    "refusal_of_non_repo_path": "test_register_non_repository_path_refused — PASS",
+    "deterministic_identity": "test_register_same_repo_is_idempotent — PASS",
+    "unchanged_observation": "test_repeated_unchanged_observation_is_deterministic — PASS",
+    "dirty_observation": "test_dirty_observation_detects_change — PASS",
+    "branch_change": "test_observe_detects_branch_change — PASS",
+    "detached_head": "test_detached_head_is_recorded — PASS",
+    "no_raw_file_content": "test_observation_has_no_raw_file_content — PASS",
+    "projection_reconstruction": "test_projection_from_evidence — PASS",
+    "duplicate_registration_safety": "test_duplicate_registration_is_safe — PASS",
+    "evidence_envelope": "test_registration_evidence_has_correct_envelope — PASS"
+  },
+  "blocking_defects": [],
+  "deferred_seams": [
+    "PostgreSQL materialization — deferred to T2 integration lane",
+    "Gridline desktop UI consumption — deferred to future milestone",
+    "Desktop gateway intent integration — deferred to future milestone",
+    "Path-to-hash durable registry for observation without explicit root_path — deferred to future iteration",
+    "GitHub remote backing identity resolution from url_digest — deferred (digestion already handles this for intake)",
+    "Large repository observation performance (subprocess per observation) — acceptable for alpha"
+  ],
+  "freeze_condition": "Lane T3 freezes pending named integration milestone that consumes RepositoryEstateProjection through PostgreSQL operational data plane or Gridline Interface.",
+  "status": "candidate_local"
+}
