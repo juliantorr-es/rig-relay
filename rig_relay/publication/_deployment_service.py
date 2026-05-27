@@ -382,6 +382,8 @@ class GitHubPagesDeploymentService:
                     pages_updated=pages_updated,
                     content_published=True,
                     content_manifest_digest=manifest.evidence_digest,
+                    published_commit_sha=manifest.commit_sha,
+                    git_publication_mode=manifest.git_publication_mode,
                     site_url=cfg_result.get("site_url", "")
                     if (pages_created or pages_updated)
                     else pages_state.get("html_url", ""),
@@ -397,6 +399,8 @@ class GitHubPagesDeploymentService:
                     pages_updated=pages_updated,
                     content_published=False,
                     content_manifest_digest=manifest.evidence_digest,
+                    published_commit_sha=manifest.commit_sha,
+                    git_publication_mode=manifest.git_publication_mode,
                     recovery_required=True,
                     recovery_hint="Partial content publication; retry or verify remaining files",
                 )
@@ -414,6 +418,8 @@ class GitHubPagesDeploymentService:
                     pages_created=pages_created,
                     pages_updated=pages_updated,
                     content_manifest_digest=manifest.evidence_digest,
+                    published_commit_sha=manifest.commit_sha,
+                    git_publication_mode=manifest.git_publication_mode,
                     recovery_required=True,
                     recovery_hint="All files failed; retry content push",
                 )
@@ -441,9 +447,12 @@ class GitHubPagesDeploymentService:
         target_repo_owner: str = "",
         target_repo_name: str = "",
     ) -> PublicationTransitionReceipt:
-        """Poll remote Pages build status and verify.
+        """Poll remote Pages build status and verify with commit correlation.
 
-        Gate C: verification is durably appended.
+        Gate C: verification is durably appended. Calls Pages latest-build
+        API to correlate the build commit with the published content commit.
+        Only returns PUBLISHED_VERIFIED when build_status == "built" AND
+        the build commit matches the published content commit.
         """
         if (
             not receipt.pages_created
@@ -454,11 +463,44 @@ class GitHubPagesDeploymentService:
 
         status = await self._inspect_pages_state(target_repo_owner, target_repo_name)
 
-        if status.get("build_status") == "built":
+        build_commit_sha = ""
+        published_commit = receipt.published_commit_sha
+        build_commit_matches = False
+
+        # Fetch latest build to correlate commit identity when available
+        if self._git_boundary and hasattr(
+            self._git_boundary, "get_pages_builds_latest"
+        ):
+            try:
+                latest_build = await self._git_boundary.get_pages_builds_latest()
+                build_commit_sha = latest_build.get("build_commit", "")
+                if (
+                    published_commit
+                    and build_commit_sha
+                    and published_commit == build_commit_sha
+                ):
+                    build_commit_matches = True
+            except Exception:
+                pass
+
+        if (
+            status.get("build_status") == "built"
+            and build_commit_matches
+            and published_commit
+        ):
             phase = PublicationTransitionPhase.PUBLISHED_VERIFIED
             verified = True
             recovery = False
             hint = ""
+        elif status.get("build_status") == "built" and published_commit:
+            phase = PublicationTransitionPhase.CONTENT_PUBLISHED
+            verified = False
+            recovery = False
+            hint = (
+                f"Build status is 'built' but commit does not match "
+                f"published {published_commit[:12]}... vs build "
+                f"{build_commit_sha[:12]}... — correlation pending"
+            )
         elif status.get("build_status") == "errored":
             phase = PublicationTransitionPhase.RECOVERY_REQUIRED
             verified = False
@@ -485,12 +527,16 @@ class GitHubPagesDeploymentService:
             pages_updated=receipt.pages_updated,
             content_published=receipt.content_published,
             content_manifest_digest=receipt.content_publication_manifest_digest,
+            published_commit_sha=published_commit,
+            git_publication_mode=receipt.git_publication_mode,
             site_url=status.get("html_url", ""),
             build_status=status.get("build_status", ""),
             remote_verified=verified,
             verification_digest=status.get(
                 "verification_digest", status.get("evidence_digest", "")
             ),
+            build_commit_sha=build_commit_sha,
+            build_commit_matches_published=build_commit_matches,
             recovery_required=recovery,
             recovery_hint=hint,
         )
@@ -502,7 +548,22 @@ class GitHubPagesDeploymentService:
         receipt: PublicationTransitionReceipt,
         transition_prep: AuthorizedPublicationTransitionPreparation,
     ) -> PublicationStatusContract:
-        """Gate F: Build X0-consumable status projection."""
+        """Gate F: Build X0-consumable typed publication surface state.
+
+        All fields populated from durable evidence — no empty defaults.
+        """
+        git_mode = receipt.git_publication_mode or "none"
+        published_sha = receipt.published_commit_sha or ""
+        build_sha = receipt.build_commit_sha or ""
+        build_matches = receipt.build_commit_matches_published
+
+        digest_raw = (
+            f"{receipt.operation_id}:{receipt.transition_phase}:"
+            f"{published_sha}:{build_sha}:{build_matches}:"
+            f"{transition_prep.target_surface}"
+        )
+        evidence_digest = _digest_sha256(digest_raw)
+
         return PublicationStatusContract(
             publication_operation_id=receipt.operation_id,
             transition_phase=receipt.transition_phase,
@@ -514,11 +575,17 @@ class GitHubPagesDeploymentService:
             ),
             pages_configured=receipt.pages_created or receipt.pages_updated,
             content_published=receipt.content_published,
-            build_status=receipt.pages_build_status,
+            content_publication_mode=git_mode,
+            published_commit_sha=published_sha,
+            build_status=receipt.pages_build_status or "",
+            build_commit_sha=build_sha,
+            build_commit_matches_published=build_matches,
             published_verified=receipt.remote_verified,
             refusal_code=receipt.refusal_code,
             recovery_required=receipt.recovery_required,
             status_message=_phase_message(receipt.transition_phase),
+            available_actions=_available_actions(receipt.transition_phase),
+            evidence_digest=evidence_digest,
         )
 
     # ── Private: Phase recording ───────────────────────────────────────
@@ -537,10 +604,14 @@ class GitHubPagesDeploymentService:
         pages_updated: bool = False,
         content_published: bool = False,
         content_manifest_digest: str = "",
+        published_commit_sha: str = "",
+        git_publication_mode: str = "none",
         site_url: str = "",
         build_status: str = "",
         remote_verified: bool = False,
         verification_digest: str = "",
+        build_commit_sha: str = "",
+        build_commit_matches_published: bool = False,
         recovery_required: bool = False,
         recovery_hint: str = "",
     ) -> PublicationTransitionReceipt:
@@ -561,8 +632,12 @@ class GitHubPagesDeploymentService:
             pages_updated=pages_updated,
             content_publication_manifest_digest=content_manifest_digest,
             content_published=content_published,
+            published_commit_sha=published_commit_sha,
+            git_publication_mode=git_publication_mode,
             remote_verified=remote_verified,
             remote_verification_digest=verification_digest,
+            build_commit_sha=build_commit_sha,
+            build_commit_matches_published=build_commit_matches_published,
             refusal_code=refusal.value if refusal else None,
             refusal_reasons=reason_list,
             recovery_required=recovery_required,
@@ -610,7 +685,7 @@ class GitHubPagesDeploymentService:
         }
         result = GitHubAuthorizationConsumer.validate_and_consume(
             authorization_id=authorization_id,
-            operation_kind="pages_publish",
+            operation_kind="git_content_publish",
             request_payload=payload,
             target_identity=target or "",
             prior_evidence_digest=transition_prep.preparation_digest,
@@ -857,6 +932,8 @@ class GitHubPagesDeploymentService:
                 manifest.publication_partial = len(published) > 0
                 manifest.compute_digest()
                 return manifest
+            manifest.commit_sha = commit_sha
+            manifest.git_publication_mode = "atomic_git_commit"
         except Exception as e:
             manifest.failed_files = [{"path": "__commit__", "error": str(e)[:200]}]
             manifest.published_files = published
@@ -870,7 +947,11 @@ class GitHubPagesDeploymentService:
             if ref_result.get("success", False):
                 manifest.published_files = published
                 manifest.publication_complete = True
+                manifest.commit_sha = commit_sha
+                manifest.git_publication_mode = "atomic_git_commit"
             else:
+                manifest.commit_sha = commit_sha
+                manifest.git_publication_mode = "atomic_git_commit"
                 status = ref_result.get("status_code", 0)
                 if status == 409:
                     manifest.failed_files = [
@@ -909,6 +990,7 @@ class GitHubPagesDeploymentService:
         """Fallback: sequential per-file push via Contents API."""
         published: list[str] = []
         failed: list[dict] = []
+        manifest.git_publication_mode = "sequential_put_file"
 
         for file_path in expected:
             content = bundle_obj.files[file_path]
@@ -958,6 +1040,29 @@ def _phase_message(phase: str) -> str:
         "recovery_required": "Recovery required",
     }
     return messages.get(phase, phase)
+
+
+def _available_actions(phase: str) -> list[str]:
+    phase_actions: dict[str, list[str]] = {
+        "prepared": ["authorize", "cancel"],
+        "authorization_required": ["authorize", "cancel"],
+        "authorized": ["configure_pages", "publish_content", "cancel"],
+        "pages_configuration_unchanged": [
+            "publish_content",
+            "verify_publication",
+            "cancel",
+        ],
+        "pages_created": ["publish_content", "verify_publication", "cancel"],
+        "pages_updated": ["publish_content", "verify_publication", "cancel"],
+        "content_published": ["verify_publication", "cancel"],
+        "build_requested": ["verify_publication", "cancel"],
+        "build_pending": ["verify_publication", "cancel"],
+        "published_verified": [],
+        "refused": ["retry_publication", "cancel"],
+        "failed": ["retry_publication", "cancel"],
+        "recovery_required": ["retry_publication", "verify_publication", "cancel"],
+    }
+    return phase_actions.get(phase, ["inspect"])
 
 
 __all__ = ["GitHubPagesDeploymentService"]

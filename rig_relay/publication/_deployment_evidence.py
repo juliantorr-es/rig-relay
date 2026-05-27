@@ -109,8 +109,14 @@ def _compute_governance_digest(receipt: dict[str, Any]) -> str:
         "pages_created": receipt.get("pages_created", False),
         "pages_updated": receipt.get("pages_updated", False),
         "content_published": receipt.get("content_published", False),
+        "published_commit_sha": receipt.get("published_commit_sha", ""),
+        "git_publication_mode": receipt.get("git_publication_mode", "none"),
         "build_initiated": receipt.get("build_initiated", False),
         "remote_verified": receipt.get("remote_verified", False),
+        "build_commit_sha": receipt.get("build_commit_sha", ""),
+        "build_commit_matches_published": receipt.get(
+            "build_commit_matches_published", False
+        ),
         "refusal_code": receipt.get("refusal_code"),
         "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
         "preview_evidence_digest": receipt.get("preview_evidence_digest", ""),
@@ -143,9 +149,15 @@ def _verify_receipt_digest(receipt: dict[str, Any]) -> None:
             "content_publication_manifest_digest", ""
         ),
         "content_published": receipt.get("content_published", False),
+        "published_commit_sha": receipt.get("published_commit_sha", ""),
+        "git_publication_mode": receipt.get("git_publication_mode", "none"),
         "build_initiated": receipt.get("build_initiated", False),
         "remote_verified": receipt.get("remote_verified", False),
         "remote_verification_digest": receipt.get("remote_verification_digest", ""),
+        "build_commit_sha": receipt.get("build_commit_sha", ""),
+        "build_commit_matches_published": receipt.get(
+            "build_commit_matches_published", False
+        ),
         "refusal_code": receipt.get("refusal_code"),
         "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
         "recovery_required": receipt.get("recovery_required", False),

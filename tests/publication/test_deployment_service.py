@@ -30,6 +30,10 @@ from rig_relay.context_engine.models import (
     TechnologySignals,
 )
 from rig_relay.context_engine.provenance import ApprovalStatus, PrivacyDisposition
+from rig_relay.governance.remote_action_authorization import RemoteActionClass
+from rig_relay.integrations.github_provider._authorization_consumer import (
+    operation_kind_to_action_class,
+)
 from rig_relay.publication import (
     ApprovedStaticPublicationBundle,
     AuthorizedPublicationTransitionPreparation,
@@ -43,6 +47,7 @@ from rig_relay.publication import (
     ProjectPagePublicationPreviewService,
     PublicationStatusContract,
     PublicationTransitionPhase,
+    PublicationTransitionReceipt,
     VerifiedApprovedProjectPublicationRecord,
 )
 from rig_relay.publication._deployment_models import _digest_sha256, _now_iso
@@ -688,3 +693,230 @@ class TestTransitionPreparation:
             target_repository_identity_digest="sha256:repo",
         )
         assert prep.authorization_required is True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate G: Git Content Publication Tracking (X3.4 repairs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestGitContentPublicationTracking:
+    def test_content_manifest_stores_commit_sha(self) -> None:
+        manifest = ContentPublicationManifest(
+            operation_id="op-git-content",
+            bundle_content_digest="sha256:bundle",
+            target_branch="main",
+            expected_files=["index.html"],
+            published_files=["index.html"],
+            commit_sha="sha256:abc123",
+            git_publication_mode="atomic_git_commit",
+            publication_complete=True,
+        )
+        manifest.compute_digest()
+        assert manifest.commit_sha == "sha256:abc123"
+        assert manifest.git_publication_mode == "atomic_git_commit"
+        assert manifest.evidence_digest
+        assert manifest.evidence_digest.startswith("sha256:")
+
+    def test_sequential_mode_tracked(self) -> None:
+        manifest = ContentPublicationManifest(
+            operation_id="op-seq",
+            bundle_content_digest="sha256:bundle",
+            target_branch="gh-pages",
+            git_publication_mode="sequential_put_file",
+        )
+        manifest.compute_digest()
+        assert manifest.git_publication_mode == "sequential_put_file"
+        assert manifest.commit_sha == ""
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate H: Publication Transition Receipt New Fields (X3.4 repairs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPublicationTransitionReceiptNewFields:
+    def test_receipt_stores_published_commit_sha(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-commit-track",
+            operation_id="op-test",
+            transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
+            published_commit_sha="sha256:deadbeef",
+            git_publication_mode="atomic_git_commit",
+            content_published=True,
+        )
+        digest = receipt.compute_digest()
+        assert receipt.published_commit_sha == "sha256:deadbeef"
+        assert receipt.git_publication_mode == "atomic_git_commit"
+        assert digest
+        assert digest.startswith("sha256:")
+
+    def test_build_commit_fields_tracked(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-build-track",
+            operation_id="op-test",
+            transition_phase=PublicationTransitionPhase.BUILD_REQUESTED.value,
+            published_commit_sha="sha256:pub-commit",
+            build_commit_sha="sha256:build-commit",
+            build_commit_matches_published=False,
+        )
+        digest = receipt.compute_digest()
+        assert receipt.build_commit_sha == "sha256:build-commit"
+        assert receipt.build_commit_matches_published is False
+        assert digest.startswith("sha256:")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate I: Status Contract Population (X3.4 repairs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestStatusContractPopulation:
+    def _make_prep(self) -> AuthorizedPublicationTransitionPreparation:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+        return prep
+
+    def test_contract_populates_commit_fields(self) -> None:
+        prep = self._make_prep()
+        service = GitHubPagesDeploymentService()
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-contract",
+            operation_id=prep.publication_operation_id,
+            transition_preparation_digest=prep.preparation_digest,
+            preview_evidence_digest=prep.preview_evidence_digest,
+            static_bundle_digest=prep.static_bundle_digest,
+            authorization_receipt_digest="sha256:auth-digest",
+            transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
+            content_published=True,
+            published_commit_sha="sha256:pub-commit",
+            git_publication_mode="atomic_git_commit",
+            build_commit_sha="sha256:build-commit",
+            build_commit_matches_published=True,
+            pages_created=True,
+            remote_verified=False,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        contract = service.build_status_contract(receipt, prep)
+        assert isinstance(contract, PublicationStatusContract)
+        assert contract.content_publication_mode == "atomic_git_commit"
+        assert contract.published_commit_sha == "sha256:pub-commit"
+        assert contract.build_commit_sha == "sha256:build-commit"
+        assert contract.build_commit_matches_published is True
+        assert contract.available_actions
+        assert contract.evidence_digest
+
+    def test_contract_available_actions_for_phase(self) -> None:
+        prep = self._make_prep()
+        service = GitHubPagesDeploymentService()
+
+        def _receipt_at_phase(
+            phase: PublicationTransitionPhase,
+        ) -> PublicationTransitionReceipt:
+            r = PublicationTransitionReceipt(
+                receipt_id=f"r-{phase.value}",
+                operation_id=prep.publication_operation_id,
+                transition_preparation_digest=prep.preparation_digest,
+                preview_evidence_digest=prep.preview_evidence_digest,
+                static_bundle_digest=prep.static_bundle_digest,
+                transition_phase=phase.value,
+                content_published=(
+                    phase == PublicationTransitionPhase.CONTENT_PUBLISHED
+                ),
+                remote_verified=(
+                    phase == PublicationTransitionPhase.PUBLISHED_VERIFIED
+                ),
+            )
+            r.evidence_digest = r.compute_digest()
+            return r
+
+        prep_contract = service.build_status_contract(
+            _receipt_at_phase(PublicationTransitionPhase.PREPARED), prep
+        )
+        assert "authorize" in prep_contract.available_actions
+
+        content_contract = service.build_status_contract(
+            _receipt_at_phase(PublicationTransitionPhase.CONTENT_PUBLISHED), prep
+        )
+        assert "verify_publication" in content_contract.available_actions
+
+        verified_contract = service.build_status_contract(
+            _receipt_at_phase(PublicationTransitionPhase.PUBLISHED_VERIFIED), prep
+        )
+        assert verified_contract.available_actions == []
+
+        refused_contract = service.build_status_contract(
+            _receipt_at_phase(PublicationTransitionPhase.REFUSED), prep
+        )
+        assert "retry_publication" in refused_contract.available_actions
+        assert "cancel" in refused_contract.available_actions
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate J: Authorization Binding (X3.4 repairs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestAuthorizationBinding:
+    def test_git_content_publish_in_consumer_mapping(self) -> None:
+        result = operation_kind_to_action_class("git_content_publish")
+        assert result == RemoteActionClass.GITHUB_GIT_CONTENT_PUBLISH
+
+    def test_pages_configure_mapping_still_present(self) -> None:
+        result = operation_kind_to_action_class("pages_configure")
+        assert result == RemoteActionClass.GITHUB_PAGES_CONFIGURE
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate K: Verify Publication Commit Correlation (X3.4 repairs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestVerifyPublicationCommitCorrelation:
+    def test_verify_requires_matching_commits(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-commit-mismatch",
+            operation_id="op-test",
+            transition_preparation_digest="sha256:prep",
+            preview_evidence_digest="sha256:prev",
+            static_bundle_digest="sha256:bundle",
+            transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
+            published_commit_sha="sha256:content",
+            git_publication_mode="atomic_git_commit",
+            build_commit_sha="sha256:different",
+            build_commit_matches_published=False,
+            content_published=True,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        assert receipt.published_commit_sha == "sha256:content"
+        assert receipt.build_commit_sha == "sha256:different"
+        assert receipt.build_commit_matches_published is False
+
+    def test_build_status_built_without_match_is_not_verified(self) -> None:
+        receipt = PublicationTransitionReceipt(
+            receipt_id="r-built-no-match",
+            operation_id="op-test",
+            transition_preparation_digest="sha256:prep",
+            preview_evidence_digest="sha256:prev",
+            static_bundle_digest="sha256:bundle",
+            transition_phase=PublicationTransitionPhase.BUILD_PENDING.value,
+            published_commit_sha="sha256:content",
+            git_publication_mode="atomic_git_commit",
+            build_commit_sha="sha256:content",
+            build_commit_matches_published=False,
+            pages_build_status="built",
+            remote_verified=False,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        assert receipt.pages_build_status == "built"
+        assert receipt.remote_verified is False
+        assert receipt.build_commit_matches_published is False
+        digest = receipt.compute_digest()
+        assert digest

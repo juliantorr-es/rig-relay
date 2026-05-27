@@ -404,6 +404,15 @@ _OPERATION_CONTRACTS: dict[str, GitHubCapabilityContract] = {
         mutation_class="destructive",
         consumes_lane_a_authority=True,
     ),
+    "git_content_publish": GitHubCapabilityContract(
+        operation_kind="git_content_publish",
+        lane_a_action_class=RemoteActionClass.GITHUB_GIT_CONTENT_PUBLISH.value,
+        github_permission="Contents:write",
+        token_type="installation_token",
+        requires_freshness=True,
+        mutation_class="deployment",
+        consumes_lane_a_authority=True,
+    ),
 }
 
 

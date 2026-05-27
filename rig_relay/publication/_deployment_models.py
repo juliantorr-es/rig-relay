@@ -200,6 +200,8 @@ class ContentPublicationManifest(BaseModel):
     failed_files: list[dict] = Field(default_factory=list)
     publication_complete: bool = False
     publication_partial: bool = False
+    commit_sha: str = ""
+    git_publication_mode: str = "none"
     evidence_digest: str = ""
 
     def compute_digest(self) -> str:
@@ -212,6 +214,8 @@ class ContentPublicationManifest(BaseModel):
             "failed_count": len(self.failed_files),
             "complete": self.publication_complete,
             "partial": self.publication_partial,
+            "commit_sha": self.commit_sha,
+            "git_publication_mode": self.git_publication_mode,
         }
         p = json.dumps(c, sort_keys=True, separators=(",", ":"))
         self.evidence_digest = f"sha256:{hashlib.sha256(p.encode()).hexdigest()}"
@@ -237,9 +241,13 @@ class PublicationTransitionReceipt(BaseModel):
     pages_updated: bool = False
     content_publication_manifest_digest: str = ""
     content_published: bool = False
+    published_commit_sha: str = ""
+    git_publication_mode: str = "none"
     build_initiated: bool = False
     remote_verified: bool = False
     remote_verification_digest: str = ""
+    build_commit_sha: str = ""
+    build_commit_matches_published: bool = False
     refusal_code: str | None = None
     refusal_reasons: list[str] = Field(default_factory=list)
     recovery_required: bool = False
@@ -264,9 +272,13 @@ class PublicationTransitionReceipt(BaseModel):
             "pages_updated": self.pages_updated,
             "content_publication_manifest_digest": self.content_publication_manifest_digest,
             "content_published": self.content_published,
+            "published_commit_sha": self.published_commit_sha,
+            "git_publication_mode": self.git_publication_mode,
             "build_initiated": self.build_initiated,
             "remote_verified": self.remote_verified,
             "remote_verification_digest": self.remote_verification_digest,
+            "build_commit_sha": self.build_commit_sha,
+            "build_commit_matches_published": self.build_commit_matches_published,
             "refusal_code": self.refusal_code,
             "refusal_reasons": sorted(self.refusal_reasons),
             "recovery_required": self.recovery_required,
