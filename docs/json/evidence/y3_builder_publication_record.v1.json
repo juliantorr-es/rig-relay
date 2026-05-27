@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.relay.builder_publication_record.v1",
-  "generated_at": "2026-05-27T23:55:00Z",
+  "generated_at": "2026-05-27T23:31:43Z",
   "lane_id": "Y3",
   "mission_id": "mission-y3-provider-compatibility-profile-registry",
   "published_sha": "f22962fb2a75a3105ed7771bf31fa667900c1f14",
@@ -28,7 +28,7 @@
     "docs/schemas/rig.relay.profile_resolution_projection.v1.schema.json"
   ],
   "intended_released_boundary": "ProviderCompatibilityProfileRegistryBoundary",
-  "intended_consumer_purpose": "Managed fleet sessions can resolve a provider/model/role into a typed, digested compatibility profile and context envelope. Profile projection artifacts are ready for Y0 rendering (deferred integration). Profile evaluation harness is ready for Y4 effectiveness measurement (deferred integration).",
+  "intended_consumer_purpose": "Managed fleet sessions can resolve a provider/model/role into a typed, digested compatibility profile and context envelope. Profile projection artifacts are ready for Y0 rendering (deferred integration). Profile evaluation harness is ready for Y4 structural validation (deferred integration).",
   "decision_record": {
     "claim": "candidate_local: y3_provider_compatibility_profile_registry_resolves_provider_model_role_into_typed_profiles_with_context_envelope_and_evaluation_harness",
     "required_proof": [
@@ -157,7 +157,7 @@
     "Digest integrity: verify profile digests change when profile content changes",
     "Evaluation coverage: verify all roles × all providers × all profiles are tested"
   ],
-  "prepublication_review_cycle_digest": "prepublication_review_round_3_20260527",
-  "prepublication_review_round_count": 3,
+  "prepublication_review_cycle_digest": "prepublication_review_round_4_20260527",
+  "prepublication_review_round_count": 4,
   "status": "candidate_local"
 }
