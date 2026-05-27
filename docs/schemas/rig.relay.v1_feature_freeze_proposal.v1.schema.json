@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.v1_feature_freeze_proposal.v1.schema.json",
+  "title": "v1 Feature-Freeze Proposal v1",
+  "description": "Explicit public-v1 scope proposal stating what ships, what is deferred, what is hidden, and what remains blocked. Produced by Lane W2.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "lane_id",
+    "branch",
+    "head_sha",
+    "generated_at",
+    "v1_product_name",
+    "v1_release_philosophy",
+    "public_v1_scope",
+    "deferred_visible_features",
+    "hidden_or_removed_features",
+    "optional_supported_features",
+    "post_v1_features",
+    "rejected_or_replaced_features",
+    "blocked_pending_external_decisions",
+    "unresolved_external_inputs",
+    "next_wave_recommendation"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.v1_feature_freeze_proposal.v1"
+    },
+    "proposal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lane_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch": {"type": "string"},
+    "head_sha": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "v1_product_name": {"type": "string", "minLength": 1},
+    "v1_release_philosophy": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Single paragraph stating the v1 promise: what is Rig Relay v1 for, who is it for, what it is NOT."
+    },
+    "public_v1_scope": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Capabilities that ship in public v1 as production-complete."
+    },
+    "deferred_visible_features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features visible in v1 UI but deferred with defensible product reason."
+    },
+    "hidden_or_removed_features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features hidden or removed from public v1."
+    },
+    "optional_supported_features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features optionally supported at launch."
+    },
+    "post_v1_features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features explicitly post-v1."
+    },
+    "rejected_or_replaced_features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features rejected or replaced by a different design."
+    },
+    "blocked_pending_external_decisions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scoped_feature"},
+      "description": "Features blocked pending W0 or W1 publication."
+    },
+    "unresolved_external_inputs": {
+      "type": "array",
+      "items": {"type": "object", "required": ["lane", "decision", "status", "blocking_for"],
+        "properties": {
+          "lane": {"type": "string"},
+          "decision": {"type": "string"},
+          "status": {"type": "string", "enum": ["unpublished", "published", "in_flight"]},
+          "blocking_for": {"type": "string"},
+          "published_artifact": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "next_wave_recommendation": {
+      "type": "object",
+      "required": ["recommended_wave", "rationale", "prerequisites"],
+      "properties": {
+        "recommended_wave": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "prerequisites": {"type": "array", "items": {"type": "string"}},
+        "alternative_waves": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "proposed_v1_version": {"type": "string"},
+    "minimum_macos_version": {"type": "string"},
+    "minimum_python_version": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "scoped_feature": {
+      "type": "object",
+      "required": ["capability_id", "feature_name", "category", "rationale"],
+      "properties": {
+        "capability_id": {"type": "string", "minLength": 1},
+        "feature_name": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "implementation_required": {"type": "boolean"},
+        "external_dependency": {"type": "string"},
+        "launch_blocker": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "schema_version": "rig.relay.internal_release_proving_plan.v1",
+  "plan_id": "w2_internal_proving_plan_2026_05_26",
+  "lane_id": "w2",
+  "branch": "main",
+  "head_sha": "ff5fd21031f0a4255a3d528a972cfc96f163ac30",
+  "generated_at": "2026-05-26T00:00:00Z",
+  "philosophy": "No public alpha or beta releases. Rig Relay goes directly to public v1 when genuinely ready. Internal proving replaces public staging. Every proving stage must produce structured evidence artifacts (JSON/JSONL). No proving stage passes based on visual inspection alone.",
+  "proving_stages": [
+    {
+      "stage_id": "prove_stage_1_connected_studio",
+      "name": "Connected Studio Integration",
+      "order": 1,
+      "description": "Wire production backend projections to all five Gridline frontend surfaces. Remove fixture data from default path. Each surface must show real data or a truthful empty/deferred state.",
+      "required_inputs": [],
+      "gates": [
+        "Connect surface shows real provider status and identity",
+        "RepositoryEstate surface shows real repo observations (or truthful empty state)",
+        "ProjectStudio surface either hidden or shows real compilation results",
+        "InferenceStudio surface either hidden or shows real probe results",
+        "PublishPreview surface either hidden or shows real previews",
+        "No fixture data in default bundle path",
+        "Model/runtime selection UX wired end-to-end"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_1_connected_studio_projection_snapshots.v1.json",
+        ".build/rig-relay/evidence/proving/stage_1_connected_studio_playwright_runs.v1.jsonl"
+      ],
+      "estimated_duration": "2-4 weeks",
+      "dependency_on": []
+    },
+    {
+      "stage_id": "prove_stage_2_provider_parity",
+      "name": "Provider Feature Parity",
+      "order": 2,
+      "description": "Close provider gaps: Gemini tool calling, Mistral registration, cost tracking, cache-hit visibility. Resolve after W1 publishes.",
+      "required_inputs": ["W1 provider caching/privacy/cost policy"],
+      "gates": [
+        "Gemini tool calling and structured output implemented and tested",
+        "Mistral registered as first-class provider or documented as unsupported",
+        "Cost calculation from token counts × price for all providers",
+        "Cache-hit rate and savings surfaced in frontend Connect panel",
+        "Provider evidence ledger records per-invocation cost"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_2_provider_parity_adapter_tests.v1.jsonl",
+        ".build/rig-relay/evidence/proving/stage_2_provider_cost_evidence_samples.v1.jsonl"
+      ],
+      "estimated_duration": "2-3 weeks",
+      "dependency_on": ["W1"]
+    },
+    {
+      "stage_id": "prove_stage_3_ui_polish_accessibility",
+      "name": "UI Polish and Accessibility",
+      "order": 3,
+      "description": "Designer-reviewed visual polish pass. Empty/error/refusal/degraded/offline UX for all surfaces. WCAG 2.1 AA audit and remediation.",
+      "required_inputs": [],
+      "gates": [
+        "Designer sign-off on typography, spacing, color, motion",
+        "Light and dark mode both polished",
+        "Delight effects finished and not excessive",
+        "Empty states designed for all five surfaces",
+        "Error/refusal states designed with recovery paths",
+        "Offline/degraded states render gracefully",
+        "WCAG 2.1 AA audit pass",
+        "VoiceOver labels correct on all interactive elements",
+        "Full keyboard-only navigation pass",
+        "Color contrast pass (minimum 4.5:1 for text)"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_3_accessibility_audit_report.v1.json",
+        ".build/rig-relay/evidence/proving/stage_3_error_state_screenshots.json",
+        ".build/rig-relay/evidence/proving/stage_3_playwright_keyboard_nav_runs.v1.jsonl"
+      ],
+      "estimated_duration": "3-6 weeks",
+      "dependency_on": ["prove_stage_1"]
+    },
+    {
+      "stage_id": "prove_stage_4_app_packaging",
+      "name": "macOS App Packaging",
+      "order": 4,
+      "description": "Build signed and notarized .app bundle. Create DMG installer. Implement Sparkle updates. Clean install/uninstall flow.",
+      "required_inputs": ["Apple Developer Program enrollment"],
+      "gates": [
+        ".app bundle builds successfully",
+        "Double-click launch works on clean macOS",
+        "Gridline frontend loads and connects to bridge server",
+        "DMG created with drag-to-Applications",
+        "Sparkle update check succeeds against appcast",
+        "Sparkle update download and install works",
+        "Install via DMG → drag → launch → onboard → chat works end-to-end",
+        "Uninstall via Trash works (no zombie processes)",
+        "State directory documented and cleanable"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_4_app_bundle_verification.v1.json",
+        ".build/rig-relay/evidence/proving/stage_4_clean_install_proof_macos14.v1.json",
+        ".build/rig-relay/evidence/proving/stage_4_clean_install_proof_macos15.v1.json",
+        ".build/rig-relay/evidence/proving/stage_4_sparkle_update_proof.v1.json"
+      ],
+      "estimated_duration": "4-8 weeks",
+      "dependency_on": ["prove_stage_1", "prove_stage_2", "prove_stage_3"]
+    },
+    {
+      "stage_id": "prove_stage_5_signing_notarization",
+      "name": "Code Signing and Notarization",
+      "order": 5,
+      "description": "Sign .app bundle with Developer ID. Submit for notarization. Staple ticket. Verify Gatekeeper acceptance.",
+      "required_inputs": ["prove_stage_4 completed", "Developer ID Application certificate"],
+      "gates": [
+        "codesign -dvvv shows valid Developer ID signature",
+        "Hardened runtime enabled",
+        "Entitlements file correct (network client, audio input, file access)",
+        "notarytool submission succeeds",
+        "Notarization accepted by Apple",
+        "Stapler validates ticket",
+        "spctl --assess passes without warnings",
+        "Gatekeeper shows no warning on first launch (after notarization cache)"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_5_codesign_verification.v1.json",
+        ".build/rig-relay/evidence/proving/stage_5_notarization_receipt.v1.json"
+      ],
+      "estimated_duration": "1-2 weeks",
+      "dependency_on": ["prove_stage_4"]
+    },
+    {
+      "stage_id": "prove_stage_6_legal_review",
+      "name": "Legal Review",
+      "order": 6,
+      "description": "Attorney review of privacy notice, usage terms, license compliance. SBOM generation.",
+      "required_inputs": [],
+      "gates": [
+        "Privacy notice attorney-reviewed and published",
+        "Usage data license attorney-reviewed and published",
+        "GDPR/CCPA compliance assessment complete",
+        "Complete THIRD_PARTY_NOTICES.md with all dependencies",
+        "SBOM generated (CycloneDX or SPDX format)",
+        "AGPL-3.0 compliance reviewed for macOS bundled distribution",
+        "Apache 2.0 NOTICE obligations reviewed"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_6_legal_review_receipt.v1.json",
+        ".build/rig-relay/evidence/proving/stage_6_sbom.spdx.json",
+        ".build/rig-relay/evidence/proving/stage_6_license_audit_report.v1.json"
+      ],
+      "estimated_duration": "2-4 weeks (attorney-dependent)",
+      "dependency_on": []
+    },
+    {
+      "stage_id": "prove_stage_7_evidence_integrity",
+      "name": "Evidence Integrity and Recovery",
+      "order": 7,
+      "description": "Corruption injection and recovery testing across all evidence domains. Verify publication evidence exactly-once guarantees. Verify timeline reconstruction integrity.",
+      "required_inputs": ["T1.2 published", "T4.2 published"],
+      "gates": [
+        "Simulated evidence corruption detected by degradation markers",
+        "Reconstruction from canonical sources succeeds for repository estate",
+        "Reconstruction from canonical sources succeeds for investigation timeline",
+        "Publication evidence exactly-once under concurrent retry (T1.2 verified)",
+        "Timeline reconstruction integrity verified (T4.2 verified)",
+        "No silent corruption scenarios survive corruption test suite"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_7_corruption_injection_runs.v1.jsonl",
+        ".build/rig-relay/evidence/proving/stage_7_reconstruction_proof.v1.json"
+      ],
+      "estimated_duration": "1-2 weeks",
+      "dependency_on": ["T1.2", "T4.2"]
+    },
+    {
+      "stage_id": "prove_stage_8_stability_testing",
+      "name": "Long-Session Stability Testing",
+      "order": 8,
+      "description": "Multi-hour operational testing. Memory profiling. Connection recovery. Error accumulation under sustained load.",
+      "required_inputs": ["prove_stage_1"],
+      "gates": [
+        "24-hour idle stability: no memory leaks > 50MB growth",
+        "50-message sustained chat: no degradation in response time",
+        "Connection drop: bridge server recovers without restart",
+        "WebSocket reconnect: frontend reconnects and resyncs state",
+        "Concurrent agent sessions: 4 parallel sessions complete without interference",
+        "Crash recovery: evidence state intact after force-quit and relaunch"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_8_stability_24h_idle.v1.json",
+        ".build/rig-relay/evidence/proving/stage_8_stability_sustained_chat.v1.json",
+        ".build/rig-relay/evidence/proving/stage_8_stability_crash_recovery.v1.json"
+      ],
+      "estimated_duration": "1-2 weeks",
+      "dependency_on": ["prove_stage_1"]
+    },
+    {
+      "stage_id": "prove_stage_9_private_preflight_optional",
+      "name": "Optional Private Preflight Cohort",
+      "order": 9,
+      "description": "Distribute signed/notarized build to a small trusted cohort (5-10 users). Collect structured feedback. Fix critical issues before public release.",
+      "required_inputs": ["All prior stages complete"],
+      "gates": [
+        "Cohort members can install, launch, configure provider, and complete a basic coding task",
+        "No crash-on-launch or blocker-level issues reported within first week",
+        "All cohort-reported issues are triaged (fix or defer before public release)",
+        "Cohort confirms product is useful and worth releasing"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_9_preflight_cohort_feedback.v1.jsonl",
+        ".build/rig-relay/evidence/proving/stage_9_preflight_issue_triage.v1.json"
+      ],
+      "estimated_duration": "2-4 weeks",
+      "dependency_on": ["All prior stages"]
+    },
+    {
+      "stage_id": "prove_stage_10_public_launch",
+      "name": "Public v1 Launch",
+      "order": 10,
+      "description": "Publish DMG on GitHub Releases. Publish Sparkle appcast. Update website. Announce.",
+      "required_inputs": ["All prior stages complete"],
+      "gates": [
+        "DMG published on GitHub Releases with SHA256 checksum",
+        "Sparkle appcast published and accessible",
+        "Website updated with download link and documentation",
+        "Launch announcement prepared",
+        "Support channels configured (GitHub Discussions or equivalent)",
+        "Rollback plan documented (previous DMG available)"
+      ],
+      "evidence_artifacts": [
+        ".build/rig-relay/evidence/proving/stage_10_launch_manifest.v1.json"
+      ],
+      "estimated_duration": "1 week",
+      "dependency_on": ["All prior stages"]
+    }
+  ],
+  "parallelizable_stages": [
+    "Stage 3 (UI/Accessibility) can overlap with Stage 2 (Provider Parity) since they affect different subsystems",
+    "Stage 4 (Packaging) can overlap with Stages 5-6 (Signing, Legal) as dependencies permit",
+    "Stage 6 (Legal) should start early — attorney review has unpredictable timeline",
+    "Stage 7 (Evidence Integrity) can run in parallel with Stage 8 (Stability) once T1.2 and T4.2 are published"
+  ],
+  "critical_path": "Stage 1 (Connected Studio) → Stage 3 (UI/Accessibility) → Stage 4 (Packaging) → Stage 5 (Signing) → Stage 8 (Stability) → Stage 10 (Launch). Stages 2, 6, 7, and 9 are parallelizable.",
+  "estimated_total_duration": "12-22 weeks from Stage 1 start to public launch, depending on Apple Developer enrollment, attorney availability, and W0/W1 decision timing",
+  "external_dependencies": [
+    "Apple Developer Program enrollment — required for Stage 5 (no bypass for direct distribution)",
+    "W0 OMLX strategy publication — required to finalize Inference Studio scope",
+    "W1 provider caching/cost policy — required for Stage 2 cost tracking and cache visibility",
+    "T1.2 publication exactly-once closure — required for Stage 7 evidence integrity",
+    "T4.2 timeline authority closure — required for Stage 7 evidence integrity",
+    "Attorney availability for legal review — required for Stage 6"
+  ],
+  "telemetry_and_privacy_in_proving": "All proving stages produce content-light evidence only. No raw user prompts, model outputs, file contents, or secrets in any proving artifact. SHA256 hashes for all content-derived references. Proving build credentials (signing keys, notarization credentials) never appear in evidence artifacts."
+}

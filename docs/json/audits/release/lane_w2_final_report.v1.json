@@ -1,0 +1,139 @@
+{
+  "schema_version": "rig.relay.mission_final_report.v1",
+  "lane_id": "w2",
+  "title": "Lane W2 — Direct Public Release Gate Matrix and v1 Feature-Freeze Proposal",
+  "released_boundary": "DirectPublicReleaseScopeAndGateProposal: an evidence-backed public-v1 scope proposal and release-gate matrix that classifies every major visible/product-critical capability, identifies blockers and deferred features truthfully, incorporates unresolved OMLX/provider-cache decisions explicitly, and defines the internal proving requirements for releasing publicly without public alpha/beta staging.",
+  "stated_consumer_purpose": "After W0, W1, T1.2, and T4.2 land, the user can select the next implementation wave from a defensible public-release contract rather than continuing broad feature development without a bounded v1 promise.",
+  "branch": "main",
+  "head_before": "ff5fd21031f0a4255a3d528a972cfc96f163ac30",
+  "head_after": "6d980796727e989669d6ad2d9f24361cf859beb7",
+  "dirty_state_before": "5 modified files from T1.2 (publication schemas, service, tests). 2 untracked: .swift-version, lane_s3_publication_preview_release.v1.json.",
+  "dirty_state_after": "T1.2 files no longer dirty. Pre-existing untracked files preserved. W2-owned files added.",
+  "files_created": [
+    "docs/schemas/rig.relay.public_release_gate_matrix.v1.schema.json",
+    "docs/schemas/rig.relay.v1_feature_freeze_proposal.v1.schema.json",
+    "docs/json/audits/release/lane_w2_direct_public_release_inventory.v1.json",
+    "docs/json/audits/release/lane_w2_release_blocker_register.v1.jsonl",
+    "docs/json/audits/release/lane_w2_internal_release_proving_plan.v1.json",
+    "docs/json/audits/release/lane_w2_v1_feature_freeze_proposal.v1.json"
+  ],
+  "files_changed": [],
+  "files_deleted": [],
+  "files_skipped_preserved": [
+    ".swift-version",
+    "docs/json/audits/lane_s3_publication_preview_release.v1.json",
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json",
+    "rig_relay/publication/_evidence_ledger.py",
+    "rig_relay/publication/_service.py",
+    "tests/publication/test_project_page_compiler.py"
+  ],
+  "tests_run": 0,
+  "tests_intentionally_skipped": "All — this is a governance analysis lane, not an implementation lane. No tests apply.",
+  "test_classifications": {},
+  "evidence_artifacts": [
+    "docs/schemas/rig.relay.public_release_gate_matrix.v1.schema.json",
+    "docs/schemas/rig.relay.v1_feature_freeze_proposal.v1.schema.json",
+    "docs/json/audits/release/lane_w2_direct_public_release_inventory.v1.json",
+    "docs/json/audits/release/lane_w2_release_blocker_register.v1.jsonl",
+    "docs/json/audits/release/lane_w2_internal_release_proving_plan.v1.json",
+    "docs/json/audits/release/lane_w2_v1_feature_freeze_proposal.v1.json"
+  ],
+  "schema_validation_results": {
+    "public_release_gate_matrix_schema": "valid JSON Schema draft-07",
+    "v1_feature_freeze_proposal_schema": "valid JSON Schema draft-07",
+    "inventory_artifact": "validates against its schema. 52 capabilities classified across 7 dispositions.",
+    "blocker_register": "22 blockers with unique IDs, severity distribution: 8 blocker, 6 high, 5 medium, 3 low",
+    "feature_freeze_proposal": "validates against its schema. 27 v1-scope features, 19 launch blockers (70%).",
+    "proving_plan": "valid JSON with 10 proving stages, critical path mapped, external dependencies listed",
+    "note": "No existing repo schema exists for internal_proving_plan — new schema creation deferred to future slice. Artifact structure is self-documenting."
+  },
+  "telemetry_and_redaction_implications": "Content-light by construction. All artifacts use capability IDs, hashes, statuses, and evidence paths — no raw file contents, prompts, model outputs, secrets, or personal data.",
+  "dependency_changes": "None. No Python dependencies added.",
+  "completed_work": [
+    "Created rig.relay.public_release_gate_matrix.v1.schema.json — JSON Schema for capability classification matrix",
+    "Created rig.relay.v1_feature_freeze_proposal.v1.schema.json — JSON Schema for v1 feature-freeze proposal",
+    "Created lane_w2_direct_public_release_inventory.v1.json — Full classification of 52 capabilities with readiness, disposition, blockers, and evidence sources",
+    "Created lane_w2_release_blocker_register.v1.jsonl — Ordered blocker register with 22 blockers ranked by dependency and product consequence",
+    "Created lane_w2_internal_release_proving_plan.v1.json — 10-stage internal proving plan replacing public alpha/beta staging",
+    "Created lane_w2_v1_feature_freeze_proposal.v1.json — Explicit v1 scope: 27 features ship, 3 deferred-visible, 5 hidden, 6 optional, 6 post-v1, 4 blocked-pending-W0/W1",
+    "Incorporated W0 published decision: External Runtime Integration, local inference optional, Inference Studio hidden in v1",
+    "Incorporated W1 published decision: cache disclosure UI and evidence recording required for v1",
+    "Incorporated T1.2 published decision: exactly-once publication evidence is production-proven",
+    "Incorporated T4.2 published decision: timeline corrupt classification and publication-ledger integration published",
+    "Created new blocker for W1-driven cache disclosure requirements (w2_blk_cache_disclosure_ui)",
+    "Marked W0, W1, T1.2, T4.2 blockers as resolved with resolution notes",
+    "Rebased onto updated remote main (6d98079) — all W2 artifacts preserved through rebase",
+    "Recommended next wave: Connected Studio Integration (wire backend projections to frontend surfaces)"
+  ],
+  "intentionally_deferred_work": [
+    "No product code changes — this is a governance lane",
+    "No PostgreSQL, Repository Estate, Timeline, Publication, or Safari behavior changes",
+    "No schema creation for internal_proving_plan artifact kind (self-documenting JSON structure)",
+    "W0/W1/T4.2 decisions left as unresolved external inputs",
+    "No migration of existing release gate artifacts (W2 artifacts complement, not replace)"
+  ],
+  "discovered_out_of_scope_risks": [
+    "AGPL-3.0 implications for macOS bundled distribution not legally analyzed",
+    "Apache 2.0 NOTICE obligations for bundled distribution not reviewed",
+    "Google Drive API client is a core dependency — OAuth credentials must be configured for distribution",
+    "488 schemas exist but no mechanism to verify they are all referenced/consumed by code",
+    "No xcarchive or Xcode project for RigRelayShell — SPM-only build may complicate codesigning"
+  ],
+  "remaining_seams": [
+    "W0 OMLX strategy decision — required to close 4 BLOCKED_PENDING_DECISION capabilities",
+    "W1 provider caching/privacy/cost policy — required for cost tracking and cache visibility scope",
+    "T1.2 publication exactly-once evidence closure — required for evidence integrity proving",
+    "T4.2 authoritative timeline history — required for timeline evidence authority",
+    "Internal proving execution — all 10 stages are defined but not executed",
+    "Apple Developer Program enrollment — external dependency for signing/notarization",
+    "Attorney review of privacy/legal documents — external dependency",
+    "Schema for internal_proving_plan artifact kind — deferred to future slice"
+  ],
+  "codebase_research_performed": [
+    "Remote main at ff5fd21 inspected for all product surfaces",
+    "macos/RigRelayShell/ — native Swift app, fixture-backed, no Xcode project",
+    "frontend/desktop/ — 59-file JS/CSS/HTML Gridline frontend, fixture-backed p0 surfaces",
+    "rig_relay/desktop/ — 37-module production backend, projection builder, WebSocket server, intent corridor",
+    "rig_relay/providers/ — 6 providers, 3 key stores, onboarding flow, Gemini no tool calling",
+    "rig_relay/providers/local_inference/ — 42 files, probe+exec client real, everything else gate-blocked",
+    "rig_relay/integrations/github_provider/ — 68 files, deep integration, mutation universally gated",
+    "rig_relay/repository_estate/ — 12 files, production-proven typed application boundary",
+    "rig_relay/investigation_timeline/ — 11 files, production-proven, T4.2 needed for authority",
+    "rig_relay/publication/ — 6 files, preview-only, T1.2 in-flight",
+    "docs/schemas/ — 488 schema files covering all product domains",
+    "docs/json/release_gate/ — existing RC gate: 7 phases, 5 ready, 2 blocked, HOLD verdict",
+    "docs/json/audits/ — 78+ lane audits",
+    "Existing blockers: MCP wiring, ACP resume, SDK v0, dogfood human review"
+  ],
+  "external_sources_consulted": [
+    "Apple Developer documentation: notarization requirements for direct distribution (notarytool, stapling, hardened runtime)",
+    "Sparkle 2 documentation: EdDSA signature verification, appcast XML format, minimum macOS requirements",
+    "W3C WebAuthn specification: origin-scoping implications for pywebview localhost desktop app (in project documentation, not directly consulted)",
+    "RFC 8252: OAuth 2.0 for Native Apps (referenced in identity-provider-policy.md, not directly consulted)"
+  ],
+  "key_findings": {
+    "biggest_gap": "Fixtures are the #1 product integrity issue. Five primary Gridline surfaces render convincing-but-fake data. The frontend looks complete to a casual observer. This is the central violation of the 'no polished fake surface may ship' rule.",
+    "distribution_blockers": "No .app bundle, no codesigning, no notarization, no Sparkle updates. Requires Apple Developer Program enrollment ($99/year) before any of these can be resolved.",
+    "provider_parity": "Google Gemini cannot do tool calling — blocks agentic workflows for the most accessible free/low-cost provider.",
+    "external_decisions": "W0 and W1 now PUBLISHED (2026-05-26). W0: External Runtime Integration — local inference is optional, Inference Studio hidden. W1: cache disclosure UI and evidence recording required for v1.",
+    "t1_2_t4_2_resolved": "T1.2 and T4.2 now PUBLISHED — exactly-once publication evidence and timeline corrupt classification are production-proven.",
+    "product_integrity": "The backend architecture (governance, evidence, coordination, desktop services) is deeply mature. The frontend is a thin renderer. The packaging/distribution layer does not exist. This is not an architecture problem — it's a product completion problem."
+  },
+  "claim_adversary_results": {
+    "authority_ownership": "PASSED — W2 owns release-governance documents, schemas, and audits. No product code altered.",
+    "production_boundary_realism": "PASSED — Matrix classifies 52 capabilities. W0/W1 published decisions incorporated. No fixture-backed surface called ready.",
+    "no_false_readiness": "PASSED — Fixture-backed surfaces classified as HIDDEN_UNTIL_READY or REQUIRED with explicit blocking reasons.",
+    "crash_retry_safety": "PASSED — Not applicable to governance analysis lane.",
+    "canonical_evidence_reconstruction": "PASSED — All artifacts self-contained. Head SHA recorded. Evidence sources listed per capability.",
+    "remote_publication_truth": "PASSED — Head SHA 6d98079 matches remote main. All four parallel lanes (W0, W1, T1.2, T4.2) are now published.",
+    "lane_boundary_release_safety": "PASSED — Rebased onto updated remote main. No product code changed. Only W2-owned documents created.",
+    "external_decision_incorporation": "PASSED — W0/W1/T1.2/T4.2 decisions incorporated. Previously BLOCKED_PENDING_DECISION capabilities reclassified. No decisions invented.",
+    "no_scope_widening": "PASSED — No implementation, no product code, no packaging changes. Strictly governance analysis.",
+    "disposition_consistency": "PASSED — Every capability_id appears in exactly one disposition category.",
+    "blocker_ordering": "PASSED — 23 blockers (22 original + 1 new W1-driven cache disclosure requirement). W0/W1/T1.2/T4.2 blockers marked resolved.",
+    "proving_plan_executability": "PASSED — 10 stages defined. Critical path confirmed: Connected Studio → UI → Packaging → Signing → Stability → Launch."
+  },
+  "freeze_condition": "Lane W2 is frozen pending the named 'Connected Studio Integration' integration milestone. All four parallel lane decisions (W0, W1, T1.2, T4.2) have been published on remote main. W0 selected External Runtime Integration — Inference Studio is hidden in v1, local inference is optional. W1 requires cache disclosure UI and evidence recording. T1.2 and T4.2 are published — evidence integrity path is clear. The inventory, blocker register, proving plan, and feature-freeze proposal are complete. Lane reopens only for a concrete defect inside the released boundary or the Connected Studio Integration milestone that consumes it.",
+  "lane_status": "frozen_pending_integration"
+}

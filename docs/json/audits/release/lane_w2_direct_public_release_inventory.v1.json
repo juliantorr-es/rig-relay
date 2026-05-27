@@ -1,0 +1,1364 @@
+{
+  "schema_version": "rig.relay.public_release_gate_matrix.v1",
+  "matrix_id": "w2_public_v1_matrix_2026_05_26",
+  "lane_id": "w2",
+  "branch": "main",
+  "head_sha": "6d980796727e989669d6ad2d9f24361cf859beb7",
+  "generated_at": "2026-05-26T23:59:59Z",
+  "overall_assessment": "Rig Relay is a deeply engineered local-first coding-agent control plane with 488 schemas, 5 primary product surfaces, mature governance/evidence/coordination infrastructure, and a fixture-backed desktop frontend. The product is architecturally converging but not yet distribution-ready. The largest gap is the macOS packaging/signing/notarization pipeline — without it, there is no public v1. The second largest gap is that the fixture-backed Gridline frontend looks complete but is not connected to production backend data in the default code path. A direct public release requires: (1) production wiring of the Gridline frontend, (2) macOS app bundle packaging with codesigning and notarization, (3) removal or truthful deferral of fixture-backed surfaces, (4) resolution of the OMLX and provider-cache strategy decisions, (5) attorney review of legal documents, and (6) internal proving via a staged release-candidate program.",
+  "unresolved_external_inputs": [
+    {
+      "lane": "W0",
+      "decision": "OMLX / local-inference runtime strategy — External Runtime Integration (Alternative A) selected. OMLX is separately installed by user. Rig Relay connects via OpenAI-compatible API with governed adapter. Local inference is optional compatible-runtime in v1.",
+      "status": "published",
+      "impact_if_unresolved": "RESOLVED. Inference Studio is HIDDEN_UNTIL_READY. Local inference is OPTIONAL_SUPPORTED. OMLX adapter is post-v1 implementation work. OMLX requires macOS 15.0+ and Apple Silicon — v1 minimum macOS must be 15.0 if local inference is included.",
+      "published_artifact": "docs/json/audits/runtime_substrate/lane_w0_runtime_substrate_decision.v1.json"
+    },
+    {
+      "lane": "W1",
+      "decision": "Provider caching, privacy, and cost policy — disclose automatic caching, refuse explicit caching of confidential context by default. v1 requires: cache policy schema, Gemini/Vertex cachedContentTokenCount extraction, UI cache disclosure, W2 provider inclusion decision.",
+      "status": "published",
+      "impact_if_unresolved": "RESOLVED. v1 must include cache disclosure UI and cache usage evidence recording. Anthropic, OpenAI, and Local Inference have sufficient evidence for v1. Gemini/Vertex need adapter work. DeepSeek and OpenRouter need specific disclosures.",
+      "published_artifact": "docs/json/audits/provider_cache/lane_w1_provider_cache_public_v1_policy.v1.json"
+    },
+    {
+      "lane": "T1.2",
+      "decision": "Publication operation identity and concurrency-safe canonical ledger — exactly-once evidence for publication preview operations",
+      "status": "published",
+      "impact_if_unresolved": "RESOLVED. Publication evidence ledger now has file-locked deduplication, conflict detection, and nested receipt digest validation. Concurrency-safe exactly-once evidence is production-proven.",
+      "published_artifact": "docs/json/audits/lane_t1_2_publication_operation_identity_concurrency_closure.v1.json"
+    },
+    {
+      "lane": "T4.2",
+      "decision": "Authoritative timeline history — corrupt classification and final publication-ledger integration",
+      "status": "published",
+      "impact_if_unresolved": "RESOLVED. Investigation Timeline now has corrupt classification and publication-ledger integration for authoritative reconstruction.",
+      "published_artifact": "docs/json/audits/investigation_timeline/lane_t4_2_timeline_corrupt_classification.v1.json"
+    }
+  ],
+  "public_v1_disposition_rules": {
+    "definitions": {
+      "REQUIRED": "Must be production-complete in public v1. Non-negotiable.",
+      "REQUIRED_IF_VISIBLE": "Must be production-complete if this surface is visible in public v1. If not ready, must be hidden or deferred.",
+      "OPTIONAL_SUPPORTED": "May ship in public v1 if ready. Not required.",
+      "HIDDEN_UNTIL_READY": "Hidden from public v1 UI. May be wired internally. Emerges in a post-v1 release.",
+      "POST_V1": "Explicitly deferred to post-v1. Not visible and not wired internally.",
+      "REJECTED_OR_REPLACED": "The capability as described is not shipping. May be replaced by a different design.",
+      "BLOCKED_PENDING_DECISION": "Cannot be classified until W0 or W1 publishes."
+    },
+    "critical_rule": "No polished-looking fake surface may ship. Every visible surface must be production-complete or visibly unavailable/deferred with a defensible product reason.",
+    "visible_surface_rule": "For every visible surface, choose exactly one: production-complete, visibly deferred with defensible reason, or hidden from public v1."
+  },
+  "capabilities": [
+    {
+      "capability_id": "w2_cap_native_macos_boot",
+      "user_facing_name": "Native macOS Application Boot",
+      "architectural_owner": "macos/RigRelayShell (Swift 6.0, SPM), rig_relay/cli/desktop_cockpit.py (Python entry)",
+      "remotely_verified_current_status": "SwiftUI @main app exists with WKWebView host, native message bridge, Safari extension contract, and 19-state boot lifecycle. GridlineFrontend bundled as SPM resource. No Xcode project — SPM-only build. Fixture-backed (isFixture=true is default path). No production backend wiring proven.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "policy_exists_unverified",
+      "packaging_distribution_dependency": "app_bundle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No .app bundle packaging pipeline",
+        "No Developer ID code signing",
+        "No notarization pipeline",
+        "Fixture-backed; production backend wiring not proven",
+        "No provisioning profile or Xcode project"
+      ],
+      "nearest_closure_milestone": "Native macOS Application Packaging Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "macos/RigRelayShell/Sources/RigRelayShell/RigRelayApp.swift",
+        "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+        "macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift",
+        "macos/RigRelayShell/Sources/RigRelayShell/NativeBridge/NativeMessageBridge.swift",
+        "docs/json/audits/s0_native_webkit_host_boot_boundary.v1.json"
+      ],
+      "v1_proposal_detail": "v1 ships as a signed, notarized macOS .app bundle (minimum macOS 14). Gridline frontend is production-wired, not fixture-backed. Swift shell launches the Python bridge server, hosts the WKWebView, and manages the native message bridge."
+    },
+    {
+      "capability_id": "w2_cap_gridline_frontend_host",
+      "user_facing_name": "Canonical Hosted Gridline Frontend",
+      "architectural_owner": "frontend/desktop/ (59 JS/CSS/HTML files), rig_relay/desktop/bridge_server.py",
+      "remotely_verified_current_status": "Full Redux-style runtime kernel, 19-state boot orchestrator, WebSocket transport, 8 CSS files, no build/transpile step. Production-quality JS code. But: p0 surfaces (Connect, RepositoryEstate, ProjectStudio, InferenceStudio, PublishPreview) are FIXTURE-BACKED by p0-fixture-*.js. Production projection path uses isFixture=true in bridge protocol.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "app_bundle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "p0 surfaces are fixture-backed — Connect, RepositoryEstate, ProjectStudio, InferenceStudio, PublishPreview all use fixture data",
+        "No production end-to-end path proven from backend projection → frontend rendering",
+        "fixture.js files provide convincing-but-fake data that violates the 'no polished fake surface' rule"
+      ],
+      "nearest_closure_milestone": "Connected Studio Integration Wave (wire backend projections to frontend surfaces, remove fixtures from default path)",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "frontend/desktop/js/fixtures/p0-fixture-connect.js",
+        "frontend/desktop/js/fixtures/p0-fixture-repository-estate.js",
+        "frontend/desktop/js/fixtures/p0-fixture-project-studio.js",
+        "frontend/desktop/js/fixtures/p0-fixture-inference-studio.js",
+        "frontend/desktop/js/fixtures/p0-fixture-publish-preview.js",
+        "rig_relay/desktop/bridge_server.py",
+        "docs/json/audits/lane_p0_bridge_frontend_gridline_ui_final_report.v1.json"
+      ],
+      "v1_proposal_detail": "All five Gridline surfaces are production-wired: Connect shows real provider status, RepositoryEstate shows real repo observations, ProjectStudio shows real project compilation results, InferenceStudio shows real model availability, PublishPreview shows real publication previews. Fixture files removed from default bundle or gated behind development flag."
+    },
+    {
+      "capability_id": "w2_cap_frontend_backend_bridge",
+      "user_facing_name": "Live Frontend/Backend Bridge",
+      "architectural_owner": "rig_relay/desktop/bridge_server.py, rig_relay/desktop/websocket_server.py, rig_relay/desktop/projection.py",
+      "remotely_verified_current_status": "BridgeServer (single HTTPS/WSS) and WebSocketServer both fully implemented. Projection builder produces 24-patch section JSON from .build/rig-relay/ artifacts. Protocol: auth, get_projection, desktop_intent, send_chat_message, subscribe. All production code. Production projection path exists but is not exercised by default frontend path (uses fixtures).",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "production_complete",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven; needs frontend wiring",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "rig_relay/desktop/bridge_server.py",
+        "rig_relay/desktop/websocket_server.py",
+        "rig_relay/desktop/projection.py",
+        "rig_relay/desktop/bridge_state_machine.py",
+        "rig_relay/desktop/bridge_security.py"
+      ],
+      "v1_proposal_detail": "Production-proven. Frontend must consume this path instead of fixtures."
+    },
+    {
+      "capability_id": "w2_cap_connect_surface",
+      "user_facing_name": "Connect Surface (Provider & Identity Dashboard)",
+      "architectural_owner": "frontend/desktop/ (Connect widget), rig_relay/desktop/projection.py (identity/providers patches), rig_relay/providers/onboarding.py",
+      "remotely_verified_current_status": "Frontend Connect widget exists with fixture data. Backend: provider onboarding, key stores (env/file/keychain), health checks, and identity OAuth (GitHub, Google) are all production-implemented. Provider status projection is production-ready. BUT frontend Connect surface shows fixture data, not live projection.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "W0 (local inference availability), W1 (provider cost/cache policy)",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Frontend Connect widget renders fixture data, not live projection",
+        "Provider health-check network path not end-to-end proven in desktop context",
+        "Local inference provider status depends on W0 decision"
+      ],
+      "nearest_closure_milestone": "Connected Studio Integration Wave",
+      "consumer_facing_surface": "fixture_only",
+      "evidence_sources": [
+        "frontend/desktop/js/fixtures/p0-fixture-connect.js",
+        "rig_relay/providers/onboarding.py",
+        "rig_relay/providers/key_store.py",
+        "rig_relay/identity/oauth_flow.py",
+        "rig_relay/desktop/projection.py"
+      ],
+      "v1_proposal_detail": "Shows real provider status, key fingerprints, identity status, and health indicators. Provider onboarding flow works end-to-end."
+    },
+    {
+      "capability_id": "w2_cap_repository_estate_surface",
+      "user_facing_name": "Repository Estate Surface",
+      "architectural_owner": "rig_relay/repository_estate/ (12 files), frontend/desktop/",
+      "remotely_verified_current_status": "RepositoryEstateService is production-proven — typed application boundary with RegistrationAuthority, ObservationEngine, ChangeDetector, ProjectionBuilder. Content-light, append-only evidence. Frontend widget uses fixture data.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED_IF_VISIBLE",
+      "blocking_reasons": [
+        "Frontend RepositoryEstate widget renders fixture data",
+        "Need to decide if this surface is visible in v1 or hidden/deferred"
+      ],
+      "nearest_closure_milestone": "Connected Studio Integration Wave",
+      "consumer_facing_surface": "fixture_only",
+      "evidence_sources": [
+        "rig_relay/repository_estate/_service.py",
+        "rig_relay/repository_estate/_observation_engine.py",
+        "rig_relay/repository_estate/_projection_builder.py",
+        "frontend/desktop/js/fixtures/p0-fixture-repository-estate.js",
+        "docs/json/audits/lane_t3_repository_estate_service.v1.json"
+      ],
+      "v1_proposal_detail": "If Repository Estate is visible in v1, it must show real repo observations. Otherwise, hide the widget and defer to Connected Studio milestone."
+    },
+    {
+      "capability_id": "w2_cap_project_studio_surface",
+      "user_facing_name": "Project Studio Surface",
+      "architectural_owner": "rig_relay/context_engine/ (Lane L0), rig_relay/publication/, frontend/desktop/",
+      "remotely_verified_current_status": "ProjectContextAssemblyService exists (Lane L0) but consumes J0 intake fixtures and K0 investigation fixtures — not live services. ProjectPagePublicationPreviewService compiles previews but does not deploy. Frontend widget uses fixture data.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "HIDDEN_UNTIL_READY",
+      "blocking_reasons": [
+        "L0 context engine consumes J0/K0 fixtures — not live intake/investigation services",
+        "Publication preview only; no live deployment",
+        "Three-service dependency chain (J0 intake → K0 investigation → L0 context assembly) not proven end-to-end"
+      ],
+      "nearest_closure_milestone": "PostgreSQL Materialization Wave (J0/K0 live services) + Connected Studio Integration Wave (L0 live wiring)",
+      "consumer_facing_surface": "fixture_only",
+      "evidence_sources": [
+        "rig_relay/context_engine/assembler.py",
+        "rig_relay/context_engine/fixtures.py",
+        "rig_relay/publication/_service.py",
+        "frontend/desktop/js/fixtures/p0-fixture-project-studio.js",
+        "docs/json/audits/context_engine/lane_l0_promotion_audit.v1.json"
+      ],
+      "v1_proposal_detail": "HIDDEN in public v1. Internal services may operate. Emerges in Connected Studio post-v1 release."
+    },
+    {
+      "capability_id": "w2_cap_inference_studio_surface",
+      "user_facing_name": "Inference Studio Surface (Local + Cloud Model Management)",
+      "architectural_owner": "rig_relay/providers/local_inference/ (42 files), rig_relay/providers/, frontend/desktop/",
+      "remotely_verified_current_status": "W0 PUBLISHED (2026-05-26): External Runtime Integration selected. OMLX is separately installed, not bundled. Local inference is optional compatible-runtime in v1, not a required feature. OMLX requires macOS 15.0+ and Apple Silicon. Rig Relay connects via governed adapter to OMLX's OpenAI-compatible API. Frontend widget uses fixture data.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "W0 (PUBLISHED — External Runtime Integration)",
+      "public_v1_disposition": "HIDDEN_UNTIL_READY",
+      "blocking_reasons": [
+        "Local inference is optional compatible-runtime in v1 per W0 decision",
+        "Resource-intensive (macOS 15.0+, Apple Silicon, separate OMLX install)",
+        "OMLX adapter implementation is post-v1 work",
+        "Frontend widget uses fixture data — must be hidden, not showing fake data",
+        "If marketplace demand exists, can emerge in post-v1 release with OMLX adapter"
+      ],
+      "nearest_closure_milestone": "Post-v1: OMLX Adapter Implementation Wave",
+      "consumer_facing_surface": "hidden",
+      "evidence_sources": [
+        "docs/json/audits/runtime_substrate/lane_w0_runtime_substrate_decision.v1.json",
+        "rig_relay/providers/local_inference/probe.py",
+        "rig_relay/providers/local_inference/execution_client.py",
+        "frontend/desktop/js/fixtures/p0-fixture-inference-studio.js"
+      ],
+      "v1_proposal_detail": "W0 resolved. OPTIONAL_SUPPORTED but HIDDEN in default v1 UI. Local inference is an optional, separately-installed runtime. v1 ships without Inference Studio surface visible. Cloud provider selection remains in Connect surface. Users who install OMLX (macOS 15.0+, Apple Silicon) can configure it via Connect as an OpenAI-compatible endpoint. Dedicated Inference Studio surface is post-v1."
+    },
+    {
+      "capability_id": "w2_cap_publish_preview_surface",
+      "user_facing_name": "Publish Preview Surface",
+      "architectural_owner": "rig_relay/publication/ (6 files), rig_relay/integrations/github_provider/_pages_adapter.py",
+      "remotely_verified_current_status": "ProjectPagePublicationPreviewService compiles previews (Jinja2 templates → HTML), validates safety, returns structured results. PublicationSafetyReport enforces preview_only policy. Does NOT deploy to GitHub Pages. T1.2 is in-flight (exactly-once evidence). Frontend widget uses fixture data.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "T1.2 (exactly-once evidence)",
+      "public_v1_disposition": "HIDDEN_UNTIL_READY",
+      "blocking_reasons": [
+        "Live GitHub Pages deployment not implemented (preview only)",
+        "T1.2 exactly-once evidence in-flight",
+        "Portfolio generator exists but not connected to live deployment pipeline",
+        "No CI/CD Pages deployment",
+        "Frontend widget uses fixture data"
+      ],
+      "nearest_closure_milestone": "T1.2 closure + Publication Deployment Wave",
+      "consumer_facing_surface": "fixture_only",
+      "evidence_sources": [
+        "rig_relay/publication/_service.py",
+        "rig_relay/publication/_safety.py",
+        "rig_relay/integrations/github_provider/_pages_adapter.py",
+        "frontend/desktop/js/fixtures/p0-fixture-publish-preview.js",
+        "docs/json/audits/lane_s3_publication_preview_release.v1.json"
+      ],
+      "v1_proposal_detail": "HIDDEN in public v1. Preview compilation may operate internally. Live deployment is post-v1."
+    },
+    {
+      "capability_id": "w2_cap_timeline_history_surface",
+      "user_facing_name": "Evidence / Timeline History Surface",
+      "architectural_owner": "rig_relay/investigation_timeline/ (11 files), frontend/desktop/",
+      "remotely_verified_current_status": "InvestigationEvidenceTimelineService assembles content-light timelines from canonical evidence domains. Emits deterministic PostgreSQL and DuckDB projection contracts. Production-proven typed application boundary. BUT: T4.2 (authoritative timeline history) is unpublished. Frontend timeline widget behavior unclear — may use fixture data or be unstyled.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "stub_placeholder",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "T4.2 (authoritative timeline history)",
+      "public_v1_disposition": "HIDDEN_UNTIL_READY",
+      "blocking_reasons": [
+        "T4.2 authoritative timeline history unpublished",
+        "Frontend timeline surface not production-proven",
+        "Consumer path unclear — is this a developer diagnostic or user-facing feature?"
+      ],
+      "nearest_closure_milestone": "T4.2 closure + PostgreSQL Materialization Wave",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "rig_relay/investigation_timeline/_service.py",
+        "rig_relay/investigation_timeline/_models.py",
+        "docs/json/audits/investigation_timeline/lane_t4_investigation_timeline_release.v1.json"
+      ],
+      "v1_proposal_detail": "HIDDEN in public v1. Internal reconstruction may operate. Emerges post-v1 when PostgreSQL materialization lands."
+    },
+    {
+      "capability_id": "w2_cap_empty_refused_degraded_ux",
+      "user_facing_name": "Empty / Refused / Degraded / Offline UX",
+      "architectural_owner": "frontend/desktop/, macos/RigRelayShell/AppState.swift",
+      "remotely_verified_current_status": "Swift AppState has 17 host states including error and terminal states. Frontend boot orchestrator has 19 lifecycle states with error paths. But: empty-state designs, offline/degraded rendering, refusal UIs, and accessibility for error states are not proven in production. Bridge diagnostics exist but frontend fallback UX is untested.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "degraded_behavior_unproven",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No production-proven empty-state, offline, or degraded rendering in frontend",
+        "Error and refusal UIs not tested end-to-end",
+        "Accessibility behavior in degraded states not verified"
+      ],
+      "nearest_closure_milestone": "UI Polish and Accessibility Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+        "frontend/desktop/js/boot/orchestrator.js",
+        "rig_relay/desktop/bridge_diagnostics.py",
+        "rig_relay/desktop/bridge_refusals.py"
+      ],
+      "v1_proposal_detail": "All major product surfaces show intentional, well-designed empty/offline/refusal/degraded states. No raw error traces surface to users."
+    },
+    {
+      "capability_id": "w2_cap_accessibility_keyboard",
+      "user_facing_name": "Accessibility and Keyboard Navigation",
+      "architectural_owner": "frontend/desktop/js/keyboardNav.js, frontend/desktop/css/",
+      "remotely_verified_current_status": "keyboardNav.js exists with ARIA keyboard navigation support. CSS uses design tokens. BUT: no screen-reader testing, no WCAG audit, no color-contrast verification, no reduced-motion support evidence. Accessibility is designed but not proven.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "degraded_behavior_unproven",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No WCAG 2.1 AA audit performed",
+        "No screen-reader testing (VoiceOver)",
+        "No color-contrast verification",
+        "Keyboard navigation implemented but not end-to-end tested"
+      ],
+      "nearest_closure_milestone": "UI Polish and Accessibility Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "frontend/desktop/js/keyboardNav.js",
+        "frontend/desktop/css/variables.css"
+      ],
+      "v1_proposal_detail": "All surfaces pass WCAG 2.1 AA. Keyboard-only navigation works end-to-end. VoiceOver labels are correct on all interactive elements."
+    },
+    {
+      "capability_id": "w2_cap_ui_visual_polish",
+      "user_facing_name": "Final UI Visual / Material Polish",
+      "architectural_owner": "frontend/desktop/css/ (8 CSS files), frontend/desktop/js/delight.js",
+      "remotely_verified_current_status": "CSS variables, layout grids, delight effects, and widget rendering system are implemented. Design tokens defined in Swift models too. BUT: no production-proven 'final' polish — this is an engineering-quality frontend, not a designer-reviewed product. Delight effects exist but may feel incomplete. No light/dark mode toggle proven. No typography scale consistently applied.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "degraded_behavior_unproven",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No designer review pass performed",
+        "Typography, spacing, color system not finalized for launch",
+        "Light/dark mode behavior not proven",
+        "Delight/animation polish not designer-reviewed"
+      ],
+      "nearest_closure_milestone": "UI Polish and Accessibility Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "frontend/desktop/css/variables.css",
+        "frontend/desktop/css/delight.css",
+        "frontend/desktop/js/delight.js",
+        "macos/RigRelayShell/Sources/RigRelayShell/Models/DesignTokens.swift"
+      ],
+      "v1_proposal_detail": "Designer-reviewed visual polish pass. Consistent typography, spacing, color, motion. Light and dark mode both polished."
+    },
+    {
+      "capability_id": "w2_cap_postgresql_operational_plane",
+      "user_facing_name": "PostgreSQL Operational Projection Substrate",
+      "architectural_owner": "rig_relay/data_plane/ (Lane T2, T2.1)",
+      "remotely_verified_current_status": "Lane T2 foundation + T2.1 atomic ingestion and concurrent idempotency are production-proven. PostgreSQL ingestion pipeline exists with schema contracts. BUT: no install/configure/migration/rebuild story for end users. This is an internal evidence substrate, not a user-facing database.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "No end-user install/configure/migration/rebuild documentation",
+        "PostgreSQL is a heavy dependency for a desktop app",
+        "Primary projection path is file-backed (.build/rig-relay/); PostgreSQL is a secondary analytics substrate"
+      ],
+      "nearest_closure_milestone": "PostgreSQL Materialization Wave (if v1 scope expands)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/data_plane/",
+        "docs/json/audits/data_plane/lane_t2_postgresql_operational_data_plane.v1.json",
+        "docs/json/audits/data_plane/lane_t2_1_postgresql_atomic_ingestion.v1.json"
+      ],
+      "v1_proposal_detail": "PostgreSQL is an OPTIONAL analytics substrate. Not required for basic desktop use. If included, must have clean install/migrate/rebuild instructions. Default v1 path uses file-backed projections only."
+    },
+    {
+      "capability_id": "w2_cap_postgresql_install_migrate",
+      "user_facing_name": "PostgreSQL Installation / Configuration / Migration / Rebuild",
+      "architectural_owner": "rig_relay/data_plane/",
+      "remotely_verified_current_status": "No install script, no migration runner, no rebuild documentation for end-user PostgreSQL setup. Internal development docs may reference pg connection strings but no end-user setup story exists.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No migration runner or setup script exists",
+        "PostgreSQL is not a required dependency for basic operation",
+        "File-backed projections are the primary path"
+      ],
+      "nearest_closure_milestone": "PostgreSQL Materialization Wave (post-v1)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/data_plane/"
+      ],
+      "v1_proposal_detail": "Deferred to post-v1. v1 ships with file-backed projections only. PostgreSQL materialization is a post-v1 analytics upgrade."
+    },
+    {
+      "capability_id": "w2_cap_repo_identity_model",
+      "user_facing_name": "Repository Entity vs Local Workspace Identity Model",
+      "architectural_owner": "rig_relay/repository_estate/ (Lane T3, T3.1)",
+      "remotely_verified_current_status": "Lane T3.1 (Repository Identity Binding and Evidence Degradation Closure) is published and production-proven. GitIdentityBundle, RepositoryObservationChange, registered repository identity model with content-light enforcement.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "Internal service; no user-facing surface required in v1"
+      ],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/repository_estate/_models.py",
+        "docs/json/audits/lane_t3_1_repository_identity_binding.v1.json"
+      ],
+      "v1_proposal_detail": "Production-proven. Operates internally. No user-facing surface in v1 unless Repository Estate widget is wired and visible."
+    },
+    {
+      "capability_id": "w2_cap_repo_estate_persistence",
+      "user_facing_name": "Repository Estate Persistence / Materialization",
+      "architectural_owner": "rig_relay/repository_estate/",
+      "remotely_verified_current_status": "RepositoryEstateRegistryStore provides file-backed persistence. Append-only evidence. Content-light. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/repository_estate/_service.py",
+        "rig_relay/repository_estate/_registry_store.py"
+      ],
+      "v1_proposal_detail": "File-backed persistence is production-proven and adequate for v1."
+    },
+    {
+      "capability_id": "w2_cap_timeline_persistence",
+      "user_facing_name": "Investigation Timeline Persistence / Materialization",
+      "architectural_owner": "rig_relay/investigation_timeline/ (Lane T4, T4.1)",
+      "remotely_verified_current_status": "Lane T4.1 (Timeline Source Integrity and Publication Adapter Closure) is published. Timeline assembly from canonical evidence domains, PostgreSQL/DuckDB projection contracts, content-light enforcement. BUT: T4.2 (authoritative timeline history) is unpublished.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "T4.2 (authoritative timeline history)",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "T4.2 unpublished",
+        "Internal service; no user-facing surface required in v1"
+      ],
+      "nearest_closure_milestone": "T4.2 closure",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/investigation_timeline/_service.py",
+        "docs/json/audits/investigation_timeline/lane_t4_1_timeline_source_integrity.v1.json"
+      ],
+      "v1_proposal_detail": "Operates internally. T4.2 must close before timeline can be considered authoritative."
+    },
+    {
+      "capability_id": "w2_cap_evidence_corruption_recovery",
+      "user_facing_name": "Canonical Evidence Corruption / Reconstruction Behavior",
+      "architectural_owner": "rig_relay/evidence/, rig_relay/repository_estate/, rig_relay/investigation_timeline/",
+      "remotely_verified_current_status": "RepositoryEstateProjection has corruption degradation markers. Timeline assembly has TimelineDegradationMarker. Evidence receipt chain has digest verification (T1.2 in-flight). BUT: no end-to-end corruption simulation and recovery test suite. Individual components have degradation contracts; full recovery path is not proven.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "T1.2 (exactly-once evidence)",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No end-to-end corruption simulation and recovery test suite",
+        "Individual component degradation contracts not integrated into a recovery path",
+        "T1.2 evidence integrity in-flight"
+      ],
+      "nearest_closure_milestone": "Evidence Integrity and Recovery Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/repository_estate/_models.py (CorruptionEvent)",
+        "rig_relay/investigation_timeline/_models.py (TimelineDegradationMarker)",
+        "rig_relay/publication/_evidence_ledger.py"
+      ],
+      "v1_proposal_detail": "Evidence corruption is detected, degraded gracefully, logged content-light, and recoverable from canonical sources. No silent corruption."
+    },
+    {
+      "capability_id": "w2_cap_telemetry_analytics_disclosure",
+      "user_facing_name": "Telemetry and Analytics Disclosure",
+      "architectural_owner": "rig_relay/core/telemetry/, rig_relay/evidence/, docs/legal/",
+      "remotely_verified_current_status": "Usage Data Doctrine is normative. Telemetry is local-first, opt-in for remote. Content-light by construction. Consent store, 5 consent states, granular scopes. BUT: privacy notice and usage data license are marked 'Attorney review required before public release.' Desktop consent UI exists but is not end-to-end tested.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "production_complete",
+      "privacy_security_readiness": "needs_review",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Privacy notice requires attorney review",
+        "Usage data license requires attorney review",
+        "No GDPR/CCPA compliance review",
+        "Desktop consent UI not end-to-end tested"
+      ],
+      "nearest_closure_milestone": "Legal Review Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "docs/legal/privacy-notice-alpha.md",
+        "docs/legal/usage-data-license-alpha.md",
+        "docs/governance/usage-data-doctrine.md",
+        "rig_relay/identity/consent_store.py"
+      ],
+      "v1_proposal_detail": "Attorney-reviewed privacy notice and terms. Local-first telemetry with explicit opt-in for remote sharing. Clear disclosure in-app."
+    },
+    {
+      "capability_id": "w2_cap_desktop_intent_corridor",
+      "user_facing_name": "Desktop Intent Corridor (Governed Action Dispatch)",
+      "architectural_owner": "rig_relay/desktop/intents.py, rig_relay/desktop/gateway/",
+      "remotely_verified_current_status": "Intent API is production-proven. ALLOWED_INTENTS (read-only/dry-run) are live. PROTECTED_INTENTS (mutation) are explicitly refused with authorization_required=true. Gateway layer adds authority/content-light enforcement. Lane U0 (Desktop Intent Authority Extraction and Monolith Elimination) is published. Remaining handler-extraction debt documented in U0 audit.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "production_complete",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Protected mutation intents require authorization receipts (step-up auth) — implemented for dev/local but not end-to-end proven with real passkeys/biometrics",
+        "U0 handler-extraction debt remains"
+      ],
+      "nearest_closure_milestone": "U0 handler extraction completion",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "rig_relay/desktop/intents.py",
+        "rig_relay/desktop/gateway/_service.py",
+        "rig_relay/desktop/gateway/_authority.py",
+        "docs/json/audits/lane_u0_desktop_intent_authority.v1.json"
+      ],
+      "v1_proposal_detail": "Read-only intents are production-complete. Protected mutation intents show clear authorization-required states. Step-up auth for real mutations may be deferred to post-v1."
+    },
+    {
+      "capability_id": "w2_cap_governed_tool_execution",
+      "user_facing_name": "Governed Tool Execution",
+      "architectural_owner": "rig_relay/core/tool_runtime.py, rig_relay/governance/governance_engine.py, rig_relay/governance/dirty_guard.py",
+      "remotely_verified_current_status": "Governance engine evaluates intents against capability classification (MUTATION, NETWORK, etc.), provider trust tiers. Dirty file guard captures immutable snapshots and prevents overwriting parallel-agent changes. Tool execution is receipt-backed with evidence emission. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/governance/governance_engine.py",
+        "rig_relay/governance/dirty_guard.py",
+        "rig_relay/core/tool_runtime.py",
+        "rig_relay/evidence/receipt_store.py"
+      ],
+      "v1_proposal_detail": "Production-proven. Core safety guarantee of the product."
+    },
+    {
+      "capability_id": "w2_cap_checkpoint_apply_refusal",
+      "user_facing_name": "Checkpoint / Apply / Refusal Paths",
+      "architectural_owner": "rig_relay/core/tools/builtins/checkpoint.py, rig_relay/governance/",
+      "remotely_verified_current_status": "Checkpoint tool enforces dirty-file guard, path leases, and checkpoint policy. Commit/create/push gates are production-implemented. Checkpoint events emit into observability.jsonl with normalized payloads. Refusal codes are defined. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/core/tools/builtins/checkpoint.py",
+        "rig_relay/governance/checkpoint_transaction.py",
+        "docs/schemas/rig.relay.checkpoint_eval.v1.schema.json"
+      ],
+      "v1_proposal_detail": "Production-proven. Core safety guarantee."
+    },
+    {
+      "capability_id": "w2_cap_disclosure_safety",
+      "user_facing_name": "Disclosure Safety",
+      "architectural_owner": "rig_relay/governance/disclosure_authorization.py, rig_relay/governance/disclosure_transition.py",
+      "remotely_verified_current_status": "Disclosure authorization, operations reports, queries, and transitions are all implemented with content-light enforcement. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/governance/disclosure_authorization.py",
+        "rig_relay/governance/disclosure_operations_report.py"
+      ],
+      "v1_proposal_detail": "Production-proven."
+    },
+    {
+      "capability_id": "w2_cap_publication_preview_evidence",
+      "user_facing_name": "Publication Preview Evidence",
+      "architectural_owner": "rig_relay/publication/_evidence_ledger.py, rig_relay/publication/_service.py",
+      "remotely_verified_current_status": "Publication preview service compiles project pages, validates safety, produces structured results and receipts. Preview-only (does not deploy). T1.2 (exactly-once evidence) in-flight. Evidence ledger exists but concurrency safety is being repaired.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "T1.2 (exactly-once evidence)",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "T1.2 in-flight",
+        "Preview-only; no deployment"
+      ],
+      "nearest_closure_milestone": "T1.2 closure",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/publication/_evidence_ledger.py",
+        "rig_relay/publication/_service.py",
+        "docs/json/audits/lane_t1_2_publication_operation_identity_concurrency_closure.v1.json"
+      ],
+      "v1_proposal_detail": "Preview evidence is internally available. T1.2 must close before evidence is considered authoritative."
+    },
+    {
+      "capability_id": "w2_cap_public_page_deployment",
+      "user_facing_name": "Actual Public-Page Deployment (GitHub Pages)",
+      "architectural_owner": "rig_relay/integrations/github_provider/_pages_adapter.py, rig_relay/publication/",
+      "remotely_verified_current_status": "PagesAdapter reads Pages status via REST API. PortfolioGenerator creates static HTML from evidence. Publication plans exist with authorization gates. BUT: no CI/CD Pages deployment pipeline, no custom domain configured, no live deployment ever performed. All gated behind authorization receipts.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No CI/CD deployment pipeline exists",
+        "Live deployment never performed",
+        "Authorization gating not end-to-end tested"
+      ],
+      "nearest_closure_milestone": "Publication Deployment Wave (post-v1)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/integrations/github_provider/_pages_adapter.py"
+      ],
+      "v1_proposal_detail": "Deferred to post-v1. v1 does not include live GitHub Pages publication."
+    },
+    {
+      "capability_id": "w2_cap_portfolio_synthesis",
+      "user_facing_name": "Portfolio Synthesis",
+      "architectural_owner": "rig_relay/integrations/github_provider/_pages_adapter.py (PortfolioGenerator)",
+      "remotely_verified_current_status": "PortfolioGenerator class exists with PortfolioProfile, ProjectCard, and PortfolioBuildManifest models. Can produce static HTML from approved evidence. BUT: never deployed, never end-to-end tested with real evidence.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "stub_placeholder",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "Never deployed or end-to-end tested",
+        "Depends on GitHub Pages deployment (also post-v1)"
+      ],
+      "nearest_closure_milestone": "Publication Deployment Wave (post-v1)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/integrations/github_provider/_pages_adapter.py"
+      ],
+      "v1_proposal_detail": "Deferred to post-v1."
+    },
+    {
+      "capability_id": "w2_cap_local_inference_execution",
+      "user_facing_name": "Local Inference Execution",
+      "architectural_owner": "rig_relay/providers/local_inference/",
+      "remotely_verified_current_status": "W0 PUBLISHED: External Runtime Integration. OMLX runs separately, Rig Relay connects via OpenAI-compatible API through governed adapter. Probe and execution clients already support OpenAI-compatible endpoints — existing infrastructure can be configured for OMLX's default port. Implementation scope is endpoint configuration and capability classification, not new execution clients.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "W0 (PUBLISHED)",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "OMLX adapter (endpoint config + capability classification) is post-v1 implementation",
+        "Requires macOS 15.0+ and Apple Silicon (narrower than v1 minimum if set to 14.0)",
+        "Local inference is optional compatible-runtime — users who have OMLX can configure it"
+      ],
+      "nearest_closure_milestone": "Post-v1: OMLX Adapter Implementation Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "docs/json/audits/runtime_substrate/lane_w0_runtime_substrate_decision.v1.json",
+        "rig_relay/providers/local_inference/probe.py",
+        "rig_relay/providers/local_inference/execution_client.py"
+      ],
+      "v1_proposal_detail": "W0 resolved. Local inference is an optional post-install configuration. Users with OMLX can add it as an OpenAI-compatible endpoint in Connect. No dedicated local-inference setup wizard or auto-detection in v1."
+    },
+    {
+      "capability_id": "w2_cap_omlx_strategy",
+      "user_facing_name": "OMLX Strategy Dependency",
+      "architectural_owner": "W0 lane (PUBLISHED), rig_relay/providers/local_inference/",
+      "remotely_verified_current_status": "W0 PUBLISHED (2026-05-26): External Runtime Integration (Alternative A) selected. OMLX is NOT bundled or managed. User installs OMLX separately via Homebrew or pipx. Rig Relay connects via governed adapter to OMLX's OpenAI-compatible API surface. MLX_LM backend is NOT needed — OMLX is a recognized LocalRuntimeKind. Implementation scope limited to endpoint configuration, capability classification, and probe extension for OMLX-specific endpoints.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "W0 (PUBLISHED)",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "OMLX adapter implementation is post-v1 per W0 decision",
+        "OMLX requires macOS 15.0+ and Apple Silicon — incompatible with broader v1 target (macOS 14.0+)"
+      ],
+      "nearest_closure_milestone": "Post-v1: OMLX Adapter Implementation Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "docs/json/audits/runtime_substrate/lane_w0_runtime_substrate_decision.v1.json",
+        "docs/json/audits/runtime_substrate/lane_w0_omlx_comparative_architecture.v1.json"
+      ],
+      "v1_proposal_detail": "W0 resolved. OMLX strategy is settled. Implementation is post-v1. No MLX_LM backend needed. W2 recommends macOS 14.0 as v1 minimum — OMLX compatibility (macOS 15.0+) is documented but not required."
+    },
+    {
+      "capability_id": "w2_cap_cloud_provider_support",
+      "user_facing_name": "Cloud Provider Support (OpenAI, Anthropic, Google, DeepSeek, OpenRouter)",
+      "architectural_owner": "rig_relay/providers/, rig_relay/core/llm/backend/",
+      "remotely_verified_current_status": "All 5 cloud providers have LLM adapters making real HTTP calls. Registry, key stores, onboarding flow production-ready. BUT: Google Gemini has no tool-calling or structured output support (explicitly 'not yet implemented'). OpenRouter provider provenance not recorded. Mistral has adapter but not in Provider enum/registry.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "production_complete",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Google Gemini tool-calling not implemented — affects agentic workflows for free/low-cost provider",
+        "Mistral has adapter but not registered as first-class provider"
+      ],
+      "nearest_closure_milestone": "Provider Feature Parity Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "rig_relay/providers/registry.py",
+        "rig_relay/core/llm/backend/gemini.py",
+        "rig_relay/core/llm/backend/anthropic.py",
+        "rig_relay/core/llm/backend/openai_responses.py",
+        "docs/json/audits/provider/lane_c_p1_provider_capability_gemini_closure.v1.json"
+      ],
+      "v1_proposal_detail": "All 5 cloud providers support tool-calling for agentic workflows. Mistral registered as first-class provider or explicitly listed as unsupported. Provider health indicators are real, not fixture data."
+    },
+    {
+      "capability_id": "w2_cap_provider_credential_handling",
+      "user_facing_name": "Provider Credential Handling",
+      "architectural_owner": "rig_relay/providers/key_store.py",
+      "remotely_verified_current_status": "Three key store backends: env (read-only), file (chmod 0600), macOS Keychain (via keyring). SHA256 key fingerprints only — raw keys never in returns, audits, telemetry, or frontend. Production-proven and content-light by construction.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/providers/key_store.py",
+        "rig_relay/providers/onboarding.py"
+      ],
+      "v1_proposal_detail": "Production-proven. macOS Keychain is preferred backend for v1."
+    },
+    {
+      "capability_id": "w2_cap_context_cache_privacy_cost",
+      "user_facing_name": "Context Cache / Privacy / Cost Policy",
+      "architectural_owner": "W1 lane (PUBLISHED), rig_relay/context/assembler.py, rig_relay/providers/",
+      "remotely_verified_current_status": "W1 PUBLISHED (2026-05-26): Provider Context Caching Privacy/Cost/Evidence Policy. Five core principles: disclose automatic caching, refuse confidential explicit caching by default, allow public-safe explicit caching, treat local KV cache as local-runtime performance (not cloud retention), use stable prefix engineering for cache utility. v1 requirements: cache policy schema (✅), Gemini/Vertex cachedContentTokenCount extraction, UI cache disclosure, provider evidence recording. Anthropic, OpenAI, and Local Inference have sufficient evidence for v1. Gemini/Vertex need adapter work. DeepSeek and OpenRouter need specific disclosures.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "degraded_behavior_unproven",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "W1 (PUBLISHED)",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "UI cache disclosure not yet implemented (must surface cache_mode, retention_class, confidential_context_disposition)",
+        "Gemini/Vertex cachedContentTokenCount extraction not implemented (required if Gemini ships in v1)",
+        "Provider cache usage evidence recording not yet emitting ProviderCacheUsageEvidence rows",
+        "DeepSeek KV cache behavior not independently verified (required if DeepSeek ships in v1)",
+        "OpenRouter cache policy disclosure not implemented (required if OpenRouter ships in v1)"
+      ],
+      "nearest_closure_milestone": "Provider Cache Disclosure and Evidence Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "docs/json/audits/provider_cache/lane_w1_provider_cache_public_v1_policy.v1.json",
+        "docs/json/audits/provider_cache/lane_w1_provider_cache_capability_matrix.v1.json",
+        "rig_relay/context/assembler.py",
+        "rig_relay/providers/model_capabilities.py"
+      ],
+      "v1_proposal_detail": "W1 resolved. v1 must include: cache disclosure in provider selection UI, cache usage evidence recording, and provider-specific disclosures where needed (automatic caching for OpenAI, DeepSeek research, OpenRouter gateway disclosure). Anthropic prompt caching can be surfaced as a feature with appropriate evidence maturity."
+    },
+    {
+      "capability_id": "w2_cap_deterministic_context_assembly",
+      "user_facing_name": "Deterministic Context Assembly",
+      "architectural_owner": "rig_relay/context/assembler.py, rig_relay/core/context_runtime/",
+      "remotely_verified_current_status": "Context layout planner classifies blocks by stability (STABLE/SEMI_STABLE/DYNAMIC/EPHEMERAL), orders them deterministically, computes stable prefix fingerprints. ContextRuntime injects governed context packets into agent loop. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/context/assembler.py",
+        "rig_relay/core/context_runtime/__init__.py"
+      ],
+      "v1_proposal_detail": "Production-proven."
+    },
+    {
+      "capability_id": "w2_cap_compaction_cost_evidence",
+      "user_facing_name": "Compaction / Cost Evidence",
+      "architectural_owner": "rig_relay/evidence/storage_lifecycle.py",
+      "remotely_verified_current_status": "Storage lifecycle manages budget, compaction pipeline (JSONL → Parquet), GC enforcement, and fleet preflight. compute_storage_summary() feeds projection and fleet preflight. Budget schema: rig.relay.storage_budget.v1. Production-proven.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "Internal operational feature; not user-facing"
+      ],
+      "nearest_closure_milestone": "Already production-proven",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/evidence/storage_lifecycle.py",
+        "rig_relay/evidence/artifact_gc.py"
+      ],
+      "v1_proposal_detail": "Operates internally. No user-facing surface required."
+    },
+    {
+      "capability_id": "w2_cap_model_runtime_selection_ux",
+      "user_facing_name": "Model / Runtime Selection UX",
+      "architectural_owner": "frontend/desktop/, rig_relay/core/llm/backend/factory.py, rig_relay/providers/",
+      "remotely_verified_current_status": "LLM backend factory routes by provider name. Model capabilities fetcher provides live model lists. BUT: frontend provider/model selection UX is fixture-backed. No production-proven model switching UI. No runtime comparison widget.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Frontend provider/model selection UX is fixture-backed",
+        "No production-proven end-to-end model switching in desktop UI"
+      ],
+      "nearest_closure_milestone": "Connected Studio Integration Wave",
+      "consumer_facing_surface": "fixture_only",
+      "evidence_sources": [
+        "frontend/desktop/js/fixtures/p0-fixture-connect.js",
+        "rig_relay/core/llm/backend/factory.py",
+        "rig_relay/providers/model_capabilities.py"
+      ],
+      "v1_proposal_detail": "User can select provider and model from real, live-fetched model lists. Model switching works end-to-end in desktop UI."
+    },
+    {
+      "capability_id": "w2_cap_github_workspace_integration",
+      "user_facing_name": "GitHub Workspace Integration",
+      "architectural_owner": "rig_relay/integrations/github_provider/ (68 files)",
+      "remotely_verified_current_status": "Deep integration: auth (live + fake), Carte Blanche workspace connection, repository discovery/selection/intake, developer workspace (Lane J0), Pages adapter, profile README, code scanning (15-gate readiness), PR mutation (gated by default). BUT: mutation is universally gated (requires authorization). Live rehearsal is blocked by default. Workspace intake depends on J0 live service (currently fixture-backed for context engine).",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "fixture_rendered",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "Mutation paths gated behind authorization receipts",
+        "Workspace intake depends on J0 live (fixture-backed)",
+        "Code scanning alert mutation is universally deferred"
+      ],
+      "nearest_closure_milestone": "GitHub Integration and Authorization Wave",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "rig_relay/integrations/github_provider/_developer_workspace.py",
+        "rig_relay/integrations/github_provider/_live_mutation_preflight.py",
+        "rig_relay/integrations/github_provider/_code_scanning_pr_mutation_readiness.py"
+      ],
+      "v1_proposal_detail": "Read-only GitHub workspace features (repo discovery, read status, CI status) are supported. Mutation features require authorization and are gated behind clear UI. Not a v1 requirement but optionally supported if ready."
+    },
+    {
+      "capability_id": "w2_cap_safari_extension",
+      "user_facing_name": "Safari Web Extension",
+      "architectural_owner": "macos/SafariExtension/safari-web-extension/, rig_relay/extensions/safari/",
+      "remotely_verified_current_status": "MV3 extension implemented: background.js (native messaging bridge), content.js (GitHub page detection), popup UI, full Pydantic message protocol (18 page kinds, 8 message kinds). BUT: not packaged, not signed, not notarized. No Xcode project. No provisioning profile. Native messaging host references APP_ID='com.rigrelay.RigRelayShell' but no Info.plist in repo.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "fixture_backed",
+      "ui_readiness": "production_complete",
+      "privacy_security_readiness": "gates_exist_unproven",
+      "packaging_distribution_dependency": "extension_signing_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "HIDDEN_UNTIL_READY",
+      "blocking_reasons": [
+        "Not packaged, signed, or notarized",
+        "No Xcode project or provisioning profile",
+        "Native messaging host not registered in app bundle",
+        "Would delay v1 significantly to get Safari extension through App Review"
+      ],
+      "nearest_closure_milestone": "Safari Extension Packaging Wave (post-v1)",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "macos/SafariExtension/safari-web-extension/manifest.json",
+        "macos/SafariExtension/safari-web-extension/background.js",
+        "rig_relay/extensions/safari/models.py"
+      ],
+      "v1_proposal_detail": "HIDDEN from public v1. Extension code exists and may be published separately or bundled in post-v1 release. Not required for core desktop product."
+    },
+    {
+      "capability_id": "w2_cap_safari_native_messaging",
+      "user_facing_name": "Safari Native Messaging and Entitlements",
+      "architectural_owner": "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift",
+      "remotely_verified_current_status": "Swift model for Safari extension contract exists but is not wired to a real extension entitlement. No Info.plist, no entitlement file, no App Group configuration.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "missing",
+      "packaging_distribution_dependency": "extension_signing_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "Depends on Safari extension packaging (also post-v1)",
+        "No native messaging host registration"
+      ],
+      "nearest_closure_milestone": "Safari Extension Packaging Wave (post-v1)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift"
+      ],
+      "v1_proposal_detail": "Deferred with Safari extension."
+    },
+    {
+      "capability_id": "w2_cap_github_pages",
+      "user_facing_name": "GitHub Pages Publication",
+      "architectural_owner": "rig_relay/integrations/github_provider/_pages_adapter.py",
+      "remotely_verified_current_status": "PagesAdapter reads Pages status read-only. PortfolioGenerator exists. Static renderer produces HTML. BUT: no live deployment pipeline. Preview-only.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No deployment pipeline",
+        "Never performed live deployment"
+      ],
+      "nearest_closure_milestone": "Publication Deployment Wave (post-v1)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/integrations/github_provider/_pages_adapter.py"
+      ],
+      "v1_proposal_detail": "Deferred to post-v1."
+    },
+    {
+      "capability_id": "w2_cap_consult_companion_workflows",
+      "user_facing_name": "Consult / Companion Workflows (Council, multi-provider review)",
+      "architectural_owner": "rig_relay/coordination/council.py, rig_relay/coordination/council_invoker.py",
+      "remotely_verified_current_status": "Council and CouncilInvoker are implemented for multi-provider adversarial review. Production code exists. BUT: not surfaced in default frontend path. Council feature is documented in README but not end-to-end proven in desktop UI.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "deferred",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "OPTIONAL_SUPPORTED",
+      "blocking_reasons": [
+        "Frontend Council UI not production-proven",
+        "Requires multiple provider keys configured (not guaranteed)"
+      ],
+      "nearest_closure_milestone": "Connected Studio Integration Wave",
+      "consumer_facing_surface": "deferred",
+      "evidence_sources": [
+        "rig_relay/coordination/council.py",
+        "rig_relay/coordination/council_invoker.py"
+      ],
+      "v1_proposal_detail": "Optionally supported if multiple providers are configured. Not a required v1 feature."
+    },
+    {
+      "capability_id": "w2_cap_app_packaging",
+      "user_facing_name": "macOS App Packaging (.app bundle)",
+      "architectural_owner": "macos/RigRelayShell/, pyinstaller/",
+      "remotely_verified_current_status": "No .app bundle exists. Swift SPM project has no Xcode project for archiving. PyInstaller specs produce console binaries, not app bundles. package_release.py has codesign_identity=None and signing status='none' — explicitly a placeholder.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "missing",
+      "packaging_distribution_dependency": "app_bundle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No .app bundle build pipeline exists",
+        "PyInstaller produces console binary only",
+        "Swift app not archivable (no Xcode project)",
+        "GridlineFrontend bundling not production-proven",
+        "Python bridge server must be embedded or launched by Swift shell"
+      ],
+      "nearest_closure_milestone": "macOS Packaging Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "pyinstaller/RigRelay.spec",
+        "scripts/package_release.py",
+        "macos/RigRelayShell/Package.swift"
+      ],
+      "v1_proposal_detail": "v1 ships as a signed, notarized macOS .app bundle. Double-click to launch. Bundles Python runtime, bridge server, and Gridline frontend."
+    },
+    {
+      "capability_id": "w2_cap_developer_id_signing",
+      "user_facing_name": "Developer ID Code Signing",
+      "architectural_owner": "macOS distribution pipeline (not yet implemented)",
+      "remotely_verified_current_status": "No code signing exists. package_release.py records signing status as 'none'. No Developer ID certificate, no signing identity, no entitlements file. distribution_release_research.py documents the need for Apple Developer Program enrollment and Developer ID Application certificate.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "missing",
+      "packaging_distribution_dependency": "codesign_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Requires Apple Developer Program enrollment ($99/year)",
+        "Requires Developer ID Application certificate",
+        "No signing pipeline or entitlements file exists",
+        "No hardened runtime configuration"
+      ],
+      "nearest_closure_milestone": "Apple Developer Program enrollment → macOS Signing Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "scripts/package_release.py (signing: none)",
+        "scripts/rig_distribution_release_research.py"
+      ],
+      "v1_proposal_detail": "App is signed with Developer ID Application certificate and hardened runtime enabled. Entitlements file includes network client, audio input, and enhanced File Access (user-selected files only)."
+    },
+    {
+      "capability_id": "w2_cap_notarization",
+      "user_facing_name": "macOS Notarization",
+      "architectural_owner": "macOS distribution pipeline",
+      "remotely_verified_current_status": "No notarization pipeline exists. No notarytool integration, no stapling, no notarization submission script.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "missing",
+      "packaging_distribution_dependency": "notarization_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Requires Developer ID signing first",
+        "No notarization submission/stapling pipeline",
+        "Requires notarytool or altool integration"
+      ],
+      "nearest_closure_milestone": "Notarization Wave (after signing)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "scripts/package_release.py (no notarization)"
+      ],
+      "v1_proposal_detail": "App is notarized by Apple and stapled. Gatekeeper shows no warning on first launch."
+    },
+    {
+      "capability_id": "w2_cap_install_uninstall",
+      "user_facing_name": "Install / Uninstall Behavior",
+      "architectural_owner": "scripts/install.sh, macOS distribution",
+      "remotely_verified_current_status": "install.sh automates uv tool install from git. No DMG, no .pkg installer, no Homebrew cask. No uninstall script. State directory (~/.rig/relay/) is not cleaned by uninstall.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "app_bundle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No DMG or .pkg installer for drag-to-install",
+        "No clean uninstall script",
+        "State directory not cleaned on uninstall",
+        "No Homebrew cask (optional but expected by macOS power users)"
+      ],
+      "nearest_closure_milestone": "macOS Packaging Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "scripts/install.sh"
+      ],
+      "v1_proposal_detail": "v1 ships as a DMG with drag-to-Applications install. Uninstall is dragging the app to Trash. State directory is documented and cleanable. Optional: Homebrew cask."
+    },
+    {
+      "capability_id": "w2_cap_app_updates",
+      "user_facing_name": "Application Updates (Sparkle or equivalent)",
+      "architectural_owner": "macOS distribution pipeline",
+      "remotely_verified_current_status": "enable_auto_update is False (disabled). No Sparkle integration. No self-update mechanism. uv tool upgrade is the only update path (manual). distribution_release_research.py documents Sparkle as a research channel.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "sparkle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No update mechanism exists",
+        "Users would need to manually re-download each version",
+        "Security patches cannot be distributed automatically"
+      ],
+      "nearest_closure_milestone": "Sparkle Integration Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/core/config/_settings.py (enable_auto_update: False)",
+        "scripts/rig_distribution_release_research.py"
+      ],
+      "v1_proposal_detail": "Sparkle 2 integrated for in-app updates with EdDSA signature verification. Appcast hosted on rig-relay.github.io. Optional: manual download from GitHub Releases."
+    },
+    {
+      "capability_id": "w2_cap_rollback_recovery",
+      "user_facing_name": "Rollback / Recovery",
+      "architectural_owner": "none (not implemented)",
+      "remotely_verified_current_status": "No rollback mechanism exists. No previous-version download. No state backup/restore. No safe mode or reset-to-defaults.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "sparkle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No rollback infrastructure exists",
+        "Sparkle integration required first",
+        "Acceptable for v1 to ship without rollback if update mechanism is reliable"
+      ],
+      "nearest_closure_milestone": "Post-v1 operational maturity wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [],
+      "v1_proposal_detail": "Deferred to post-v1. v1 ships without automated rollback. Manual reinstall via DMG is the recovery path."
+    },
+    {
+      "capability_id": "w2_cap_versioning_release_notes",
+      "user_facing_name": "Versioning / Release Notes",
+      "architectural_owner": "CHANGELOG.md, pyproject.toml, scripts/prepare_release.py",
+      "remotely_verified_current_status": "CHANGELOG.md exists. pyproject.toml has version 0.1.0a1. prepare_release.py handles tag management and version bumping. Production-ready for alpha versioning.",
+      "evidence_authority_readiness": "production_proven",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Need to decide public v1 version number (1.0.0 or similar)",
+        "Release notes pipeline for Sparkle appcast needs wiring"
+      ],
+      "nearest_closure_milestone": "Packaging Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "CHANGELOG.md",
+        "pyproject.toml",
+        "scripts/prepare_release.py"
+      ],
+      "v1_proposal_detail": "Public v1 is version 1.0.0. Sparkle appcast includes release notes. CHANGELOG.md covers all user-facing changes."
+    },
+    {
+      "capability_id": "w2_cap_privacy_policy",
+      "user_facing_name": "Privacy Policy",
+      "architectural_owner": "docs/legal/privacy-notice-alpha.md",
+      "remotely_verified_current_status": "Draft privacy notice exists. Marked 'Attorney review required before public release.' Describes content-light collection categories, explicit consent model. Not legally binding.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "needs_review",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "Requires attorney review",
+        "GDPR/CCPA compliance not assessed",
+        "Not legally binding"
+      ],
+      "nearest_closure_milestone": "Legal Review Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "docs/legal/privacy-notice-alpha.md",
+        "docs/legal/usage-data-license-alpha.md"
+      ],
+      "v1_proposal_detail": "Attorney-reviewed privacy policy published on rig-relay.github.io. Linked from app and DMG."
+    },
+    {
+      "capability_id": "w2_cap_third_party_notices",
+      "user_facing_name": "Third-Party Notices / Licenses",
+      "architectural_owner": "THIRD_PARTY_NOTICES.md, ATTRIBUTION.md",
+      "remotely_verified_current_status": "THIRD_PARTY_NOTICES.md has single entry (Mistral Vibe, Apache 2.0). No comprehensive dependency license audit. No SBOM. ATTRIBUTION.md exists. No automated license compliance tooling.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "needs_review",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No comprehensive dependency license audit (50+ transitive deps)",
+        "No SBOM (Software Bill of Materials)",
+        "Apache 2.0 compliance (NOTICE file) may need review",
+        "AGPL-3.0 implications for bundled distribution need legal review"
+      ],
+      "nearest_closure_milestone": "Legal Review Wave",
+      "consumer_facing_surface": "yes",
+      "evidence_sources": [
+        "THIRD_PARTY_NOTICES.md",
+        "ATTRIBUTION.md",
+        "LICENSE"
+      ],
+      "v1_proposal_detail": "Complete third-party notice file listing all bundled dependencies and their licenses. SBOM available. AGPL-3.0 compliance assessed for macOS .app distribution."
+    },
+    {
+      "capability_id": "w2_cap_clean_install_proof",
+      "user_facing_name": "Clean-Install Proof",
+      "architectural_owner": "none (not implemented)",
+      "remotely_verified_current_status": "scripts/install.sh works for uv tool install. rc_installability_check.py validates uv sync, test runs, schema validation. BUT: no .app bundle for 'drag to Applications and launch' test. No DMG. No first-launch experience test.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "app_bundle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No .app bundle → cannot test drag-to-install flow",
+        "No first-launch experience defined",
+        "No clean-machine test performed"
+      ],
+      "nearest_closure_milestone": "macOS Packaging Wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "scripts/install.sh",
+        "scripts/rig_rc_installability_check.py"
+      ],
+      "v1_proposal_detail": "Clean install proven: download DMG, drag to Applications, launch, complete provider onboarding, perform basic agent task. Tested on clean macOS 14 and 15 VMs."
+    },
+    {
+      "capability_id": "w2_cap_migration_upgrade_proof",
+      "user_facing_name": "Migration / Upgrade Proof",
+      "architectural_owner": "none (not implemented)",
+      "remotely_verified_current_status": "No migration runner exists. State directory uses schema version fields but no automated migration between versions. uv tool upgrade is manual.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "missing",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "sparkle_required",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No prior public version → no migration path needed for v1 launch",
+        "First public release has no 'upgrade from' scenario",
+        "Post-v1 upgrades will need migration"
+      ],
+      "nearest_closure_milestone": "Post-v1 release",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [],
+      "v1_proposal_detail": "Not required for first public release (no prior public version). Post-v1 upgrades must include state migration."
+    },
+    {
+      "capability_id": "w2_cap_diagnostic_export",
+      "user_facing_name": "Diagnostic / Support Export Behavior",
+      "architectural_owner": "rig_relay/evidence/ (telemetry bundles), rig_relay/desktop/ (lifecycle artifacts)",
+      "remotely_verified_current_status": "Telemetry bundle creator exists but is content-light and local-first. Desktop lifecycle artifacts track boot/error state. BUT: no user-facing 'Export Diagnostic Report' button. No support export workflow. No redaction-for-support pipeline.",
+      "evidence_authority_readiness": "schema_exists_not_proven",
+      "persistence_readiness": "production_proven",
+      "ui_readiness": "stub_placeholder",
+      "privacy_security_readiness": "production_proven",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "POST_V1",
+      "blocking_reasons": [
+        "No user-facing export UI",
+        "Acceptable for v1 to ship without diagnostic export",
+        "Post-v1: add 'Export Diagnostics' button with content-light guarantee"
+      ],
+      "nearest_closure_milestone": "Post-v1 operational maturity wave",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [
+        "rig_relay/evidence/telemetry_bundle.py",
+        "rig_relay/desktop/lifecycle_artifact.py"
+      ],
+      "v1_proposal_detail": "Deferred to post-v1. Users can manually share log files if needed."
+    },
+    {
+      "capability_id": "w2_cap_long_session_stability",
+      "user_facing_name": "Long-Session Stability Testing",
+      "architectural_owner": "tests/ (no dedicated long-session suite), rig_relay/core/agent_loop.py",
+      "remotely_verified_current_status": "No long-session stability test suite exists. Agent loop, WebSocket server, and bridge server are individually tested but not under sustained multi-hour operation. Memory leak detection, connection recovery, and session lifecycle under extended load are unproven.",
+      "evidence_authority_readiness": "not_applicable",
+      "persistence_readiness": "not_applicable",
+      "ui_readiness": "not_applicable",
+      "privacy_security_readiness": "not_applicable",
+      "packaging_distribution_dependency": "none",
+      "external_decision_dependency": "none",
+      "public_v1_disposition": "REQUIRED",
+      "blocking_reasons": [
+        "No multi-hour stability test suite",
+        "Memory/connection leak detection not proven",
+        "Acceptable failure mode under extended load not defined",
+        "Internal dogfood testing recommended as minimum"
+      ],
+      "nearest_closure_milestone": "Internal Proving Phase 3 (Stability Testing)",
+      "consumer_facing_surface": "no",
+      "evidence_sources": [],
+      "v1_proposal_detail": "Minimum: 24-hour idle stability test, 50-message chat session test, error recovery under simulated connection loss. Internal dogfood before public release."
+    }
+  ]
+}

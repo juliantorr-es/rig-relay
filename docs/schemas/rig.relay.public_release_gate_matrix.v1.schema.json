@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/rig.relay.public_release_gate_matrix.v1.schema.json",
+  "title": "Direct Public Release Gate Matrix v1",
+  "description": "Evidence-backed classification of every user-visible and architecture-critical capability by public-v1 necessity, readiness, and blocking seams. Produced by Lane W2 as part of the Direct Public Release governance proposal.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "matrix_id",
+    "lane_id",
+    "branch",
+    "head_sha",
+    "generated_at",
+    "unresolved_external_inputs",
+    "public_v1_disposition_rules",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.public_release_gate_matrix.v1"
+    },
+    "matrix_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this matrix instance."
+    },
+    "lane_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Owning lane identifier (W2)."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch at generation time."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "Git HEAD SHA at generation time."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 generation timestamp."
+    },
+    "overall_assessment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Overall public-v1 readiness assessment paragraph."
+    },
+    "unresolved_external_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lane", "decision", "status", "impact_if_unresolved"],
+        "properties": {
+          "lane": {"type": "string"},
+          "decision": {"type": "string"},
+          "status": {"type": "string", "enum": ["unpublished", "published", "in_flight"]},
+          "impact_if_unresolved": {"type": "string"},
+          "published_artifact": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "description": "Required external decisions from parallel lanes (W0, W1, T1.2, T4.2)."
+    },
+    "public_v1_disposition_rules": {
+      "type": "object",
+      "required": ["definitions"],
+      "properties": {
+        "definitions": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Map of disposition codes to their definitions."
+        },
+        "critical_rule": {
+          "type": "string",
+          "description": "No polished-looking fake surface may ship."
+        },
+        "visible_surface_rule": {
+          "type": "string",
+          "description": "For every visible surface, choose exactly one: production-complete, visibly unavailable/deferred with defensible reason, or hidden/removed."
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/capability_entry"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "capability_entry": {
+      "type": "object",
+      "required": [
+        "capability_id",
+        "user_facing_name",
+        "architectural_owner",
+        "remotely_verified_current_status",
+        "evidence_authority_readiness",
+        "ui_readiness",
+        "privacy_security_readiness",
+        "packaging_distribution_dependency",
+        "external_decision_dependency",
+        "public_v1_disposition",
+        "evidence_sources"
+      ],
+      "properties": {
+        "capability_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable capability identifier."
+        },
+        "user_facing_name": {
+          "type": "string",
+          "description": "Human-readable capability name."
+        },
+        "architectural_owner": {
+          "type": "string",
+          "description": "Owning architectural boundary or package."
+        },
+        "remotely_verified_current_status": {
+          "type": "string",
+          "description": "Current implementation status verified from remote-main source code."
+        },
+        "evidence_authority_readiness": {
+          "type": "string",
+          "enum": [
+            "production_proven",
+            "schema_exists_not_proven",
+            "schema_missing",
+            "not_applicable"
+          ]
+        },
+        "persistence_readiness": {
+          "type": "string",
+          "enum": [
+            "production_proven",
+            "fixture_backed",
+            "in_memory_only",
+            "not_applicable",
+            "missing"
+          ]
+        },
+        "ui_readiness": {
+          "type": "string",
+          "enum": [
+            "production_complete",
+            "fixture_rendered",
+            "stub_placeholder",
+            "degraded_behavior_unproven",
+            "not_applicable",
+            "hidden_or_removed"
+          ]
+        },
+        "privacy_security_readiness": {
+          "type": "string",
+          "enum": [
+            "production_proven",
+            "policy_exists_unverified",
+            "gates_exist_unproven",
+            "not_applicable",
+            "needs_review"
+          ]
+        },
+        "packaging_distribution_dependency": {
+          "type": "string",
+          "enum": [
+            "none",
+            "app_bundle_required",
+            "codesign_required",
+            "notarization_required",
+            "extension_signing_required",
+            "homebrew_optional",
+            "sparkle_required",
+            "uv_tool_only",
+            "not_applicable"
+          ]
+        },
+        "external_decision_dependency": {
+          "type": "string",
+          "description": "External lane or decision this capability depends on, or 'none'."
+        },
+        "public_v1_disposition": {
+          "type": "string",
+          "enum": [
+            "REQUIRED",
+            "REQUIRED_IF_VISIBLE",
+            "OPTIONAL_SUPPORTED",
+            "HIDDEN_UNTIL_READY",
+            "POST_V1",
+            "REJECTED_OR_REPLACED",
+            "BLOCKED_PENDING_DECISION"
+          ]
+        },
+        "blocking_reasons": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Specific blocking reasons if not REQUIRED-ready."
+        },
+        "nearest_closure_milestone": {
+          "type": "string",
+          "description": "Nearest milestone that would close the readiness gap."
+        },
+        "consumer_facing_surface": {
+          "type": "string",
+          "enum": ["yes", "no", "deferred", "hidden", "fixture_only"]
+        },
+        "evidence_sources": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Paths to evidence supporting this classification."
+        },
+        "v1_proposal_detail": {
+          "type": "string",
+          "description": "Additional detail for this capability's v1 scope proposal."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
