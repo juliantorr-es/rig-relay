@@ -1,9 +1,14 @@
 """RiggedLocalRuntime — Rig-governed internal MLX-backed runtime.
 
 Typed application-service boundary for local model loading, governed
-inference, model inventory, evidence emission, and capability reporting.
-Uses mlx-lm APIs directly under Rig Relay governance — this is an
-internal runtime, not an external endpoint adapter.
+inference, model inventory, durable evidence emission, and capability
+reporting. Returns visible responses to authorized consumers while
+recording content-light evidence in append-only JSONL ledgers.
+
+Privacy model: local runtime may process private repository content
+under local-only retention controls. Only secret-bearing context
+is refused. This differs from cloud providers where confidential
+context requires explicit approval (W1 policy).
 
 Rig Relay owns: admission, privacy, task authorization, tool execution
 authority, evidence issuance, cache disclosure, UI projection.
@@ -17,19 +22,23 @@ import hashlib
 import json
 from pathlib import Path
 
+from rig_relay.core.logger import logger
 from rig_relay.local_inference.runtime._engine import (
     MlxNotAvailableError,
     ModelNotLoadedError,
     RiggedMlxEngine,
 )
 from rig_relay.local_inference.runtime._evidence import (
-    emit_execution_evidence,
-    emit_refusal_evidence,
+    build_evidence_receipt,
+    emit_execution_receipt,
+    emit_lifecycle_event,
+    emit_refusal_receipt,
 )
 from rig_relay.local_inference.runtime._inventory import scan_model_inventory
 from rig_relay.local_inference.runtime._models import (
+    CapabilityPosture,
+    ContextPrivacyClass,
     EnrichedRuntimeCapabilities,
-    ExecutionOutcome,
     ExecutionStatus,
     ModelInventoryEntry,
     RefusalReason,
@@ -41,20 +50,12 @@ from rig_relay.local_inference.runtime._models import (
     TaskAdmissionResult,
     TaskKind,
     TaskRefusal,
+    ToolCallProposal,
 )
 
 
 class RiggedLocalRuntime:
-    """Typed application-service boundary for a governed local runtime.
-
-    Loads models via mlx-lm, performs governed inference, produces
-    content-light evidence, and reports capability/health for future
-    Inference Studio consumption.
-
-    The runtime is internal — model weights are loaded in-process by
-    mlx-lm under Rig Relay governance gates. No external HTTP endpoint
-    is used for inference.
-    """
+    """Typed application-service boundary for a governed local runtime."""
 
     def __init__(self, model_dirs: list[Path] | None = None) -> None:
         self._engine: RiggedMlxEngine = RiggedMlxEngine()
@@ -76,10 +77,6 @@ class RiggedLocalRuntime:
         return self._engine
 
     async def get_runtime_info(self) -> RuntimeIdentity:
-        """Return runtime identity.
-
-        Reports whether MLX is available and the internal engine state.
-        """
         return RuntimeIdentity(
             runtime_kind="rigged_mlx",
             runtime_version=_mlx_version(),
@@ -87,16 +84,15 @@ class RiggedLocalRuntime:
             platform_class="metal" if self._engine.is_mlx_available else "unknown",
             api_protocol="python_module",
             endpoint_url="in-process (mlx-lm)",
+            configured_at=_now_iso(),
         )
 
     async def probe(self) -> RuntimeHealth:
-        """Probe runtime health: MLX availability, model inventory, engine state."""
         if not self._engine.is_mlx_available:
             self._health = RuntimeHealth(
                 state=RuntimeLifecycleState.UNCONFIGURED, warnings=["mlx_not_available"]
             )
             return self._health
-
         try:
             self._inventory = scan_model_inventory(self._model_dirs or None)
             self._health = RuntimeHealth(
@@ -113,12 +109,10 @@ class RiggedLocalRuntime:
                 warnings=["inventory_scan_failed"],
                 probed_at=_now_iso(),
             )
-
         self._last_probe_at = _now_iso()
         return self._health
 
     async def check_health(self) -> RuntimeHealth:
-        """Quick health check."""
         if not self._engine.is_mlx_available:
             return RuntimeHealth(state=RuntimeLifecycleState.UNCONFIGURED)
         return RuntimeHealth(
@@ -130,51 +124,33 @@ class RiggedLocalRuntime:
         )
 
     async def list_models(self) -> list[ModelInventoryEntry]:
-        """Return model inventory from filesystem scan and loaded models."""
         if not self._inventory:
             self._inventory = scan_model_inventory(self._model_dirs or None)
-
-        loaded: dict[str, bool] = {}
-        for lm in self._engine.list_loaded_models():
-            loaded[lm.model_id_hash] = True
-
+        loaded_hashes = {lm.model_id_hash for lm in self._engine.list_loaded_models()}
         for entry in self._inventory:
-            entry.is_loaded = entry.model_id_hash in loaded
-
+            entry.is_loaded = entry.model_id_hash in loaded_hashes
         return list(self._inventory)
 
     def get_capabilities(self) -> EnrichedRuntimeCapabilities:
-        """Return enriched capability report.
-
-        Reports MLX-backed capabilities honestly: text generation is
-        supported; streaming, tool calling, and structured output are
-        not_tested (deferred to future slices); embeddings, reranking,
-        VLM, cache metrics are unsupported (deferred).
-        """
         return EnrichedRuntimeCapabilities(
             chat_completions="supported",
             completions="supported",
             models_list="supported",
             health_endpoint="supported",
-            embeddings="unsupported",
-            reranking="unsupported",
-            anthropic_messages="unsupported",
-            api_status="unsupported",
-            streaming="not_tested",
-            tool_calling="not_tested",
-            structured_json_output="not_tested",
-            vision="unsupported",
-            cache_metrics="unsupported",
-            server_metrics="unsupported",
             runtime_version="supported",
+            embeddings=CapabilityPosture.V1_REQUIRED_PENDING,
+            reranking=CapabilityPosture.V1_REQUIRED_PENDING,
+            vision=CapabilityPosture.V1_REQUIRED_PENDING,
+            cache_metrics=CapabilityPosture.V1_REQUIRED_PENDING,
+            server_metrics=CapabilityPosture.V1_REQUIRED_PENDING,
+            streaming=CapabilityPosture.V1_REQUIRED_PENDING,
+            tool_calling=CapabilityPosture.V1_REQUIRED_PENDING,
+            structured_json_output=CapabilityPosture.V1_REQUIRED_PENDING,
+            anthropic_messages=CapabilityPosture.DEFERRED,
+            api_status=CapabilityPosture.DEFERRED,
         )
 
     def get_cache_policy(self) -> RuntimeCachePolicy:
-        """Return local cache privacy policy per W1 Principle 4.
-
-        mlx-lm.generate() uses in-process KV cache that is not persisted
-        across calls — strongest privacy guarantee.
-        """
         return RuntimeCachePolicy(
             cache_mode="local_runtime_kv",
             rig_control_level="local_manage",
@@ -188,36 +164,46 @@ class RiggedLocalRuntime:
             disclosure_required=True,
             disclosure_summary=(
                 "mlx-lm uses in-process KV cache that is not persisted "
-                "across calls or restarts. Data never leaves the machine. "
-                "No persistent cache inspection or management required."
+                "across calls or restarts. Data never leaves the machine."
             ),
         )
 
     def admit_task(
         self,
         task_kind: TaskKind,
-        context_public_safe: bool = True,
+        context_privacy_class: ContextPrivacyClass = ContextPrivacyClass.PRIVATE_LOCAL,
         tool_calling_requested: bool = False,
         structured_output_requested: bool = False,
     ) -> TaskAdmissionDecision:
         """Admit or refuse a governed inference task.
 
-        Gates through privacy, capability, and governance checks.
+        Privacy model for local runtime:
+          - PUBLIC_SAFE: always allowed
+          - PRIVATE_LOCAL: allowed under local-only retention controls
+            (data never leaves the machine; this is the point of local inference)
+          - SECRET_BEARING: refused — credential/secret content must not
+            enter the runtime context at all
         """
         if not self._engine.is_mlx_available:
             return TaskAdmissionDecision(
                 admitted=False,
                 task_kind=task_kind,
                 refusal_reason=RefusalReason.RUNTIME_NOT_CONFIGURED,
+                context_privacy_class=context_privacy_class,
                 admission_details="MLX is not available on this platform.",
             )
 
-        if not context_public_safe:
+        if context_privacy_class == ContextPrivacyClass.SECRET_BEARING:
             return TaskAdmissionDecision(
                 admitted=False,
                 task_kind=task_kind,
-                refusal_reason=RefusalReason.CONTEXT_NOT_PUBLIC_SAFE,
-                admission_details="Context not classified as public-safe.",
+                refusal_reason=RefusalReason.CONTEXT_BLOCKED_BY_POLICY,
+                context_privacy_class=context_privacy_class,
+                admission_details=(
+                    "Secret-bearing context refused. Content containing "
+                    "credentials, tokens, or private keys must not enter "
+                    "the runtime context."
+                ),
             )
 
         if tool_calling_requested:
@@ -225,7 +211,8 @@ class RiggedLocalRuntime:
                 admitted=False,
                 task_kind=task_kind,
                 refusal_reason=RefusalReason.CAPABILITY_UNSUPPORTED,
-                admission_details="Tool calling not yet supported in governed MLX runtime (deferred).",
+                context_privacy_class=context_privacy_class,
+                admission_details="Tool calling not yet supported in governed MLX runtime (v1_required_pending).",
             )
 
         if structured_output_requested:
@@ -233,18 +220,27 @@ class RiggedLocalRuntime:
                 admitted=False,
                 task_kind=task_kind,
                 refusal_reason=RefusalReason.CAPABILITY_UNSUPPORTED,
-                admission_details="Structured output not yet supported in governed MLX runtime (deferred).",
+                context_privacy_class=context_privacy_class,
+                admission_details="Structured output not yet supported (v1_required_pending).",
             )
+
+        privacy_ok = context_privacy_class in (
+            ContextPrivacyClass.PUBLIC_SAFE,
+            ContextPrivacyClass.PRIVATE_LOCAL,
+        )
 
         return TaskAdmissionDecision(
             admitted=True,
             task_kind=task_kind,
             capability_match=True,
-            privacy_safe=True,
-            context_public_safe=True,
+            privacy_approved=privacy_ok,
+            context_privacy_class=context_privacy_class,
             tool_calling_allowed=False,
             structured_output_allowed=False,
-            admission_details="Task admitted for governed local MLX execution.",
+            admission_details=(
+                "Task admitted for governed local MLX execution. "
+                "Private local context permitted under local-only retention."
+            ),
         )
 
     async def execute(
@@ -252,24 +248,23 @@ class RiggedLocalRuntime:
         messages: list[dict],
         model_id_hash: str = "",
         task_kind: TaskKind = TaskKind.CHAT,
-        context_public_safe: bool = True,
+        context_privacy_class: ContextPrivacyClass = ContextPrivacyClass.PRIVATE_LOCAL,
         max_tokens: int = 4096,
         temperature: float = 0.7,
     ) -> TaskAdmissionResult:
-        """Execute a governed inference task on the internal MLX runtime.
+        """Execute a governed inference task.
 
-        1. Admits task through governance gates.
-        2. Generates text via mlx-lm.generate().
-        3. Detects and governs tool-call output (proposal only).
-        4. Emits content-light execution evidence.
+        Returns visible response (for UI) and content-light evidence receipt
+        (for the canonical ledger). Tool-call proposals from model output are
+        parsed and routed through governance — never executed directly.
         """
         admission = self.admit_task(
-            task_kind=task_kind, context_public_safe=context_public_safe
+            task_kind=task_kind, context_privacy_class=context_privacy_class
         )
+        task_id_hash = _sha256(json.dumps(messages, sort_keys=True, default=str))
+
         result = TaskAdmissionResult(
-            task_id_hash=_sha256(json.dumps(messages, sort_keys=True, default=str)),
-            task_kind=task_kind,
-            admission=admission,
+            task_id_hash=task_id_hash, task_kind=task_kind, admission=admission
         )
 
         if not admission.admitted:
@@ -280,7 +275,7 @@ class RiggedLocalRuntime:
             )
             result.refusal = refusal
             result.status = ExecutionStatus.REFUSED
-            emit_refusal_evidence(refusal, result.task_id_hash)
+            emit_refusal_receipt(refusal, task_id_hash)
             return result
 
         if not model_id_hash and self._engine.loaded_model_count > 0:
@@ -294,11 +289,11 @@ class RiggedLocalRuntime:
             )
             result.refusal = refusal
             result.status = ExecutionStatus.REFUSED
-            emit_refusal_evidence(refusal, result.task_id_hash)
+            emit_refusal_receipt(refusal, task_id_hash)
             return result
 
         try:
-            governed = self._engine.generate(
+            response = self._engine.generate(
                 model_id_hash=model_id_hash,
                 messages=messages,
                 max_tokens=max_tokens,
@@ -312,54 +307,52 @@ class RiggedLocalRuntime:
             )
             result.refusal = refusal
             result.status = ExecutionStatus.BLOCKED
-            emit_refusal_evidence(refusal, result.task_id_hash)
+            emit_refusal_receipt(refusal, task_id_hash)
             return result
 
-        outcome = ExecutionOutcome(
-            executed=governed.executed,
-            status=ExecutionStatus.EXECUTED
-            if governed.executed
-            else ExecutionStatus.ERROR,
-            output_sha256=governed.output_sha256,
-            output_length_chars=governed.output_length_chars,
-            prompt_sha256=governed.prompt_sha256,
-            model_id_hash=governed.model_id_hash,
-            latency_ms=governed.latency_ms,
-            prompt_tokens=governed.prompt_tokens,
-            completion_tokens=governed.completion_tokens,
-            total_tokens=governed.total_tokens,
-            tool_calls_detected=False,
-            tool_calls_routed_to_governance=True,
-        )
+        prompt_sha = _sha256(json.dumps(messages, sort_keys=True, default=str))
 
-        result.executed = outcome.executed
-        result.status = outcome.status
-        result.outcome = outcome
-        result.evidence_id = emit_execution_evidence(outcome)
+        if response.tool_call_proposals:
+            _route_tool_proposals_to_governance(
+                response.tool_call_proposals, task_id_hash
+            )
+
+        receipt = build_evidence_receipt(
+            task_id_hash=task_id_hash,
+            prompt_sha256=prompt_sha,
+            response=response,
+            model_id_hash=model_id_hash,
+            latency_ms=response.latency_ms,
+            context_privacy_class=context_privacy_class,
+        )
+        response.evidence_receipt_id = receipt.receipt_id
+        emit_execution_receipt(receipt)
+
+        result.executed = True
+        result.status = ExecutionStatus.EXECUTED
+        result.response = response
+        result.evidence_receipt_id = receipt.receipt_id
 
         return result
 
     def load_model(self, model_path: str, model_id: str = "") -> str:
-        """Load a model via mlx-lm under governance.
-
-        Returns the model_id_hash for use in execute() calls.
-        """
         if not self._engine.is_mlx_available:
             raise MlxNotAvailableError("MLX not available on this platform")
-
         loaded = self._engine.load_model(model_path=model_path, model_id=model_id)
+        emit_lifecycle_event(
+            "rig.relay.runtime.model_loaded",
+            loaded.model_id_hash,
+            {"model_path_hash": _sha256(model_path)[:16]},
+        )
         return loaded.model_id_hash
 
     def unload_model(self, model_id_hash: str) -> bool:
-        """Unload a model from GPU memory."""
-        return self._engine.unload_model(model_id_hash)
+        result = self._engine.unload_model(model_id_hash)
+        if result:
+            emit_lifecycle_event("rig.relay.runtime.model_unloaded", model_id_hash)
+        return result
 
     def build_projection(self) -> dict:
-        """Build content-light projection for Inference Studio consumption.
-
-        Returns typed capability status, health, model inventory, and
-        honest deferred/unsupported reporting.
-        """
         return {
             "runtime": {
                 "kind": "rigged_mlx",
@@ -376,13 +369,16 @@ class RiggedLocalRuntime:
                 "gpu_available": self._engine.is_mlx_available,
             },
             "capabilities": {
-                "text_generation": "supported",
-                "streaming": "deferred — mlx-lm stream_generate() available but governed streaming not yet implemented",
-                "tool_calling": "deferred — mlx-lm supports tool calling but governed routing not yet implemented",
-                "structured_output": "deferred — not yet implemented in governance layer",
-                "embeddings": "deferred — requires mlx-embeddings dependency (post-v1)",
-                "reranking": "deferred — requires mlx-embeddings dependency (post-v1)",
-                "vision_vlm": "deferred — requires mlx-vlm dependency (post-v1)",
+                "text_generation": CapabilityPosture.SUPPORTED,
+                "streaming": CapabilityPosture.V1_REQUIRED_PENDING,
+                "tool_calling": CapabilityPosture.V1_REQUIRED_PENDING,
+                "structured_output": CapabilityPosture.V1_REQUIRED_PENDING,
+                "embeddings": CapabilityPosture.V1_REQUIRED_PENDING,
+                "reranking": CapabilityPosture.V1_REQUIRED_PENDING,
+                "vision_vlm": CapabilityPosture.V1_REQUIRED_PENDING,
+                "continuous_batching": CapabilityPosture.V1_REQUIRED_PENDING,
+                "kv_cache_persistence": CapabilityPosture.V1_REQUIRED_PENDING,
+                "benchmark_integration": CapabilityPosture.V1_REQUIRED_PENDING,
             },
             "cache": {
                 "mode": "local_runtime_kv",
@@ -390,25 +386,24 @@ class RiggedLocalRuntime:
                 "persistence": "none (mlx-lm in-memory only)",
                 "disclosure": self.get_cache_policy().disclosure_summary,
             },
-            "deferred": {
-                "streaming": "Governed streaming with per-token gating",
-                "tool_calling": "mlx-lm tool calling with Rig governance routing",
-                "structured_output": "JSON mode with output validation",
-                "embeddings": "mlx-embeddings integration",
-                "reranking": "mlx-embeddings reranking",
-                "vlm_ocr": "mlx-vlm integration",
-                "continuous_batching": "Scheduler engine",
-                "kv_cache_persistence": "SSD safetensors cache",
-                "benchmark_integration": "Internal runtime benchmarks",
-                "model_acquisition": "HF download pipeline",
-                "inference_studio_ui": "X0/X2 integration milestone",
+            "privacy": {
+                "model": "local_runtime_permissive",
+                "public_safe_context": "allowed",
+                "private_local_context": "allowed (local-only retention)",
+                "secret_bearing_context": "refused",
+                "data_never_leaves_machine": True,
             },
             "governance": {
                 "task_admission": "governed",
                 "privacy_classification": "enforced",
-                "tool_execution": "rig_relay_authority",
-                "evidence_emission": "content_light",
+                "tool_execution": "rig_relay_authority (proposals only)",
+                "evidence_emission": "durable_append_only_jsonl",
                 "content_light": True,
+            },
+            "evidence_ledgers": {
+                "execution": ".build/rig-relay/evidence/runtime_execution_ledger.jsonl",
+                "lifecycle": ".build/rig-relay/evidence/runtime_lifecycle_ledger.jsonl",
+                "cache": ".build/rig-relay/evidence/runtime_cache_ledger.jsonl",
             },
             "last_probe_at": self._last_probe_at,
         }
@@ -418,7 +413,6 @@ _global_runtime: RiggedLocalRuntime | None = None
 
 
 def get_runtime(model_dirs: list[Path] | None = None) -> RiggedLocalRuntime:
-    """Get or create the global RiggedLocalRuntime singleton."""
     global _global_runtime
     if _global_runtime is None:
         _global_runtime = RiggedLocalRuntime(model_dirs=model_dirs)
@@ -426,9 +420,26 @@ def get_runtime(model_dirs: list[Path] | None = None) -> RiggedLocalRuntime:
 
 
 def reset_runtime() -> None:
-    """Reset the global runtime singleton (for testing)."""
     global _global_runtime
     _global_runtime = None
+
+
+def _route_tool_proposals_to_governance(
+    proposals: list[ToolCallProposal], task_id_hash: str
+) -> None:
+    """Route parsed tool-call proposals to Rig Relay governance.
+
+    Tool calls are proposals — never executed directly. This function
+    records them in the governance log. Future implementation will
+    route through the existing governed tool execution corridor.
+    """
+    for p in proposals:
+        logger.info(
+            "runtime_tool_proposal: task=%s tool=%s call_id=%s",
+            task_id_hash[:12],
+            p.tool_name,
+            p.call_id,
+        )
 
 
 def _sha256(content: str) -> str:

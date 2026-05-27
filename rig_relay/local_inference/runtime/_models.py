@@ -1,12 +1,17 @@
 """Rig-governed local runtime models — typed application-service boundary.
 
-Content-light by construction: no raw prompts, completions, secrets, or private content.
-SHA256 hashes for all content-derived references.
+Two-layer design:
+  LocalInferenceResponse     — authorized visible content for the UI/session consumer
+  LocalInferenceEvidenceReceipt — content-light evidence for the canonical ledger
+
+Content-light evidence uses SHA256 hashes for all content-derived references
+and NEVER contains raw prompts, completions, secrets, or private content.
 
 OMLX-informed patterns (Apache 2.0 attribution):
   - CacheEvidenceMetrics rolling window structure informed by OMLX CacheRateTracker
   - ModelTypeClass taxonomy informed by OMLX model_discovery.py model_type detection
   - EnrichedRuntimeCapabilities probe targets informed by OMLX server.py endpoint layout
+  - ToolCallProposal format informed by OMLX api/tool_calling.py multi-family parsing
 """
 
 from __future__ import annotations
@@ -35,6 +40,14 @@ class ModelTypeClass(StrEnum):
     UNKNOWN = "unknown"
 
 
+class CapabilityPosture(StrEnum):
+    """Honest posture for v1 capability reporting — no false 'post-v1' labels."""
+
+    SUPPORTED = "supported"
+    V1_REQUIRED_PENDING = "v1_required_pending_implementation"
+    DEFERRED = "deferred"
+
+
 class TaskKind(StrEnum):
     CHAT = "chat"
     TOOL_PROPOSAL = "tool_proposal"
@@ -57,9 +70,17 @@ class RefusalReason(StrEnum):
     CAPABILITY_UNSUPPORTED = "capability_unsupported"
     PRIVACY_CLASSIFICATION_DENIED = "privacy_classification_denied"
     TASK_NOT_ADMITTED = "task_not_admitted"
-    CONTEXT_NOT_PUBLIC_SAFE = "context_not_public_safe"
+    CONTEXT_BLOCKED_BY_POLICY = "context_blocked_by_policy"
     TOOL_CALL_DETECTED = "tool_call_detected"
     OUTPUT_VALIDATION_FAILED = "output_validation_failed"
+
+
+class ContextPrivacyClass(StrEnum):
+    """Privacy classification of the context being submitted to the runtime."""
+
+    PUBLIC_SAFE = "public_safe"
+    PRIVATE_LOCAL = "private_local"
+    SECRET_BEARING = "secret_bearing"
 
 
 class CachePrivacyClass(StrEnum):
@@ -70,9 +91,80 @@ class CachePrivacyClass(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
-class RuntimeIdentity(BaseModel):
-    """Runtime kind, version, and platform identity. Content-light."""
+class FinishReason(StrEnum):
+    STOP = "stop"
+    LENGTH = "length"
+    TOOL_CALLS = "tool_calls"
+    CONTENT_FILTER = "content_filter"
+    ERROR = "error"
 
+
+class ToolCallProposal(BaseModel):
+    """Parsed tool call from model output — proposal only, never executed directly."""
+
+    model_config = ConfigDict(extra="forbid")
+    call_id: str = ""
+    tool_name: str = ""
+    arguments: str = ""
+    rationale: str = ""
+
+
+class LocalInferenceResponse(BaseModel):
+    """Authorized visible response for UI/session consumer.
+
+    Contains the actual model output text and parsed tool-call proposals.
+    This is transient — consumer receives it, evidence ledger does not.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    content: str = ""
+    finish_reason: FinishReason = FinishReason.STOP
+    tool_call_proposals: list[ToolCallProposal] = Field(default_factory=list)
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    latency_ms: int = 0
+    time_to_first_token_ms: int | None = None
+    model_id_hash: str = ""
+    cache_hit: bool = False
+    evidence_receipt_id: str = ""
+
+
+class LocalInferenceEvidenceReceipt(BaseModel):
+    """Content-light evidence receipt for the canonical ledger.
+
+    SHA256 hashes only. Never contains raw prompts, completions, or model output.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    schema_version: str = Field(
+        default="rig.relay.local_inference_evidence_receipt.v1", frozen=True
+    )
+    receipt_id: str = ""
+    session_id: str = ""
+    task_id_hash: str = ""
+    status: ExecutionStatus = ExecutionStatus.BLOCKED
+    refusal_reason: RefusalReason | None = None
+    prompt_sha256: str = ""
+    output_sha256: str = ""
+    output_length_chars: int = 0
+    model_id_hash: str = ""
+    latency_ms: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    time_to_first_token_ms: int | None = None
+    finish_reason: FinishReason | None = None
+    cache_hit: bool = False
+    tool_call_count: int = 0
+    tool_call_ids: list[str] = Field(default_factory=list)
+    tool_proposals_routed_to_governance: bool = False
+    context_privacy_class: ContextPrivacyClass = ContextPrivacyClass.PRIVATE_LOCAL
+    content_light: bool = True
+    created_at: str = ""
+
+
+class RuntimeIdentity(BaseModel):
     model_config = ConfigDict(extra="forbid")
     runtime_kind: str = "unknown"
     runtime_version: str = ""
@@ -85,8 +177,6 @@ class RuntimeIdentity(BaseModel):
 
 
 class RuntimeHealth(BaseModel):
-    """Runtime liveness, reachability, and enriched status. Content-light."""
-
     model_config = ConfigDict(extra="forbid")
     state: RuntimeLifecycleState = RuntimeLifecycleState.UNCONFIGURED
     reachable: bool = False
@@ -101,12 +191,6 @@ class RuntimeHealth(BaseModel):
 
 
 class ModelInventoryEntry(BaseModel):
-    """Safe model identifier and capability class. Never exposes raw paths.
-
-    OMLX-informed: model_type taxonomy (llm, vlm, embedding, reranker, audio)
-    adapted from OMLX model_discovery.py model_type detection patterns.
-    """
-
     model_config = ConfigDict(extra="forbid")
     model_id_hash: str = ""
     model_type: ModelTypeClass = ModelTypeClass.UNKNOWN
@@ -120,37 +204,25 @@ class ModelInventoryEntry(BaseModel):
 
 
 class EnrichedRuntimeCapabilities(BaseModel):
-    """Enriched capability probe beyond basic OpenAI-compatible minimum.
-
-    OMLX-informed: endpoint targets (embeddings, rerank, anthropic_messages,
-    api_status, cache_metrics) adapted from OMLX server.py route layout.
-    """
-
     model_config = ConfigDict(extra="forbid")
     chat_completions: str = "not_tested"
     completions: str = "not_tested"
-    embeddings: str = "not_tested"
-    reranking: str = "not_tested"
-    anthropic_messages: str = "not_tested"
+    embeddings: str = "v1_required_pending_implementation"
+    reranking: str = "v1_required_pending_implementation"
+    anthropic_messages: str = "deferred"
     models_list: str = "not_tested"
     health_endpoint: str = "not_tested"
     api_status: str = "not_tested"
-    streaming: str = "not_tested"
-    tool_calling: str = "not_tested"
-    structured_json_output: str = "not_tested"
-    vision: str = "not_tested"
-    cache_metrics: str = "not_tested"
-    server_metrics: str = "not_tested"
+    streaming: str = "v1_required_pending_implementation"
+    tool_calling: str = "v1_required_pending_implementation"
+    structured_json_output: str = "v1_required_pending_implementation"
+    vision: str = "v1_required_pending_implementation"
+    cache_metrics: str = "v1_required_pending_implementation"
+    server_metrics: str = "v1_required_pending_implementation"
     runtime_version: str = "not_tested"
 
 
 class RuntimeCachePolicy(BaseModel):
-    """Local cache privacy classification per W1 Principle 4.
-
-    Local KV cache is not cloud retention. Still requires disclosure
-    because it persists derived context locally (GPU + optional SSD).
-    """
-
     model_config = ConfigDict(extra="forbid")
     cache_mode: str = "local_runtime_kv"
     privacy_class: CachePrivacyClass = CachePrivacyClass.LOCAL_KV_CACHE
@@ -167,12 +239,6 @@ class RuntimeCachePolicy(BaseModel):
 
 
 class CacheEvidenceMetrics(BaseModel):
-    """Content-light local cache performance evidence.
-
-    OMLX-informed: rolling window structure (recent/medium/aggregate windows)
-    adapted from OMLX server_metrics.py CacheRateTracker pattern.
-    """
-
     model_config = ConfigDict(extra="forbid")
     schema_version: str = Field(
         default="rig.relay.local_cache_evidence.v1", frozen=True
@@ -191,23 +257,19 @@ class CacheEvidenceMetrics(BaseModel):
 
 
 class TaskAdmissionDecision(BaseModel):
-    """Whether a task is admitted for governed local execution."""
-
     model_config = ConfigDict(extra="forbid")
     admitted: bool = False
     task_kind: TaskKind = TaskKind.CHAT
     refusal_reason: RefusalReason | None = None
     capability_match: bool = False
-    privacy_safe: bool = False
-    context_public_safe: bool = False
+    privacy_approved: bool = False
+    context_privacy_class: ContextPrivacyClass = ContextPrivacyClass.PRIVATE_LOCAL
     tool_calling_allowed: bool = False
     structured_output_allowed: bool = False
     admission_details: str = ""
 
 
 class TaskAdmissionResult(BaseModel):
-    """Result of admitting and executing a governed task."""
-
     model_config = ConfigDict(extra="forbid")
     task_id_hash: str = ""
     task_kind: TaskKind = TaskKind.CHAT
@@ -215,39 +277,12 @@ class TaskAdmissionResult(BaseModel):
     executed: bool = False
     status: ExecutionStatus = ExecutionStatus.BLOCKED
     refusal: TaskRefusal | None = None
-    outcome: ExecutionOutcome | None = None
-    evidence_id: str = ""
+    response: LocalInferenceResponse | None = None
+    evidence_receipt_id: str = ""
 
 
 class TaskRefusal(BaseModel):
-    """Typed refusal when a task is blocked."""
-
     model_config = ConfigDict(extra="forbid")
     reason: RefusalReason = RefusalReason.RUNTIME_NOT_CONFIGURED
     detail: str = ""
     timestamp: str = ""
-
-
-class ExecutionOutcome(BaseModel):
-    """Content-light execution outcome with hashes, never raw output."""
-
-    model_config = ConfigDict(extra="forbid")
-    executed: bool = False
-    status: ExecutionStatus = ExecutionStatus.BLOCKED
-    output_sha256: str = ""
-    output_length_chars: int = 0
-    prompt_sha256: str = ""
-    model_id_hash: str = ""
-    latency_ms: int = 0
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
-    cache_hit: bool = False
-    cache_read_tokens: int = 0
-    streaming: bool = False
-    time_to_first_token_ms: int | None = None
-    tool_calls_detected: bool = False
-    tool_calls_routed_to_governance: bool = False
-    structured_output_valid: bool | None = None
-    error_message_safe: str = ""
-    content_light: bool = True

@@ -5,7 +5,7 @@
   "summary": "Implemented the first real internal Rig-governed local inference runtime. Uses mlx-lm Python APIs directly under Rig Relay governance — not an external endpoint adapter. The RiggedLocalRuntimeBoundary provides typed application-service APIs for MLX-backed model loading, governed inference, model inventory, content-light evidence, cache privacy policy, honest capability reporting, and tool-call output governance. OMLX was studied as an Apache-2.0 reference implementation; architectural patterns (model classification taxonomy, cache evidence metrics schema, capability probe structure, MLX thread safety) were adapted with attribution. Nine production dependencies added under justified Apache 2.0 compatibility. All dependencies are permissively licensed (MIT, Apache 2.0, BSD). No OMLX source code was directly copied. No OMLX engine, scheduler, cache, or server code was ported. Continuous batching, KV cache persistence, embeddings, reranking, VLM/OCR, and streaming governance are explicitly deferred.",
   "branch": "main",
   "head_before": "c6838598d",
-  "head_after": "pending_checkpoint",
+  "head_after": "2da76502b",
   "dirty_state_before": "6 modified files (frontend/desktop, macos/RigRelayShell, pyproject.toml, rig_relay/data_plane/postgres, rig_relay/publication), 15 untracked files (other lanes)",
   "dirty_state_after": "11 modified (added: THIRD_PARTY_NOTICES.md, pyproject.toml deps, rig_relay/providers/local_inference/models.py, uv.lock), 18 untracked (added: X2 architecture decision, X2 runtime package, X2 tests)",
   "files_changed": [

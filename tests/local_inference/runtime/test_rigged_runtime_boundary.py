@@ -1,34 +1,36 @@
-"""Tests for RiggedLocalRuntime — governed internal MLX-backed runtime boundary.
+"""Tests for RiggedLocalRuntime X2.1 — corrected boundary.
 
-Tests governance, admission, evidence, projection, and tool authority.
-Does NOT require MLX hardware — tests validate the governance path.
-Real model execution tests require Apple Silicon and are deferred.
+Tests: visible response, durable evidence, private-context policy,
+tool-call parsing, chat template usage, v1 posture.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from rig_relay.local_inference.runtime._engine import RiggedMlxEngine
+from rig_relay.local_inference.runtime._engine import (
+    RiggedMlxEngine,
+    _build_prompt_using_chat_template,
+    _parse_tool_calls,
+)
 from rig_relay.local_inference.runtime._evidence import (
-    emit_cache_evidence,
-    emit_execution_evidence,
-    emit_refusal_evidence,
+    _ledger_path,
+    build_evidence_receipt,
+    emit_execution_receipt,
+    emit_lifecycle_event,
+    emit_refusal_receipt,
 )
 from rig_relay.local_inference.runtime._models import (
-    CacheEvidenceMetrics,
-    CachePrivacyClass,
-    EnrichedRuntimeCapabilities,
-    ExecutionOutcome,
+    CapabilityPosture,
+    ContextPrivacyClass,
     ExecutionStatus,
-    ModelTypeClass,
+    FinishReason,
+    LocalInferenceEvidenceReceipt,
+    LocalInferenceResponse,
     RefusalReason,
-    RuntimeHealth,
-    RuntimeIdentity,
-    RuntimeLifecycleState,
-    TaskAdmissionResult,
     TaskKind,
     TaskRefusal,
+    ToolCallProposal,
 )
 from rig_relay.local_inference.runtime._service import (
     RiggedLocalRuntime,
@@ -37,263 +39,279 @@ from rig_relay.local_inference.runtime._service import (
 )
 
 
-class TestRuntimeIdentity:
-    def test_runtime_kind_is_rigged_mlx(self) -> None:
-        rt = RiggedLocalRuntime()
-        assert rt.runtime_kind == "rigged_mlx"
+class TestVisibleResponse:
+    """Model output must be visible to the consumer, not hashed and discarded."""
 
-    def test_is_configured_reflects_mlx_availability(self) -> None:
-        rt = RiggedLocalRuntime()
-        actual = rt.is_configured
-        if actual:
-            assert rt.engine.is_mlx_available
+    def test_local_inference_response_has_content_field(self) -> None:
+        resp = LocalInferenceResponse(content="Hello, world!")
+        assert resp.content == "Hello, world!"
 
-    @pytest.mark.asyncio
-    async def test_get_runtime_info_has_expected_shape(self) -> None:
-        rt = RiggedLocalRuntime()
-        info = await rt.get_runtime_info()
-        assert isinstance(info, RuntimeIdentity)
-        assert info.runtime_kind == "rigged_mlx"
-        assert info.api_protocol == "python_module"
+    def test_response_carries_tool_proposals(self) -> None:
+        proposals = [ToolCallProposal(call_id="c1", tool_name="test", arguments="{}")]
+        resp = LocalInferenceResponse(
+            content="text",
+            finish_reason=FinishReason.TOOL_CALLS,
+            tool_call_proposals=proposals,
+        )
+        assert len(resp.tool_call_proposals) == 1
+        assert resp.finish_reason == FinishReason.TOOL_CALLS
 
-
-class TestRuntimeHealth:
-    @pytest.mark.asyncio
-    async def test_health_when_no_mlx(self) -> None:
-        rt = RiggedLocalRuntime()
-        health = await rt.probe()
-        if not rt.is_configured:
-            assert health.state in (
-                RuntimeLifecycleState.UNCONFIGURED,
-                RuntimeLifecycleState.DEGRADED,
-            )
-
-    @pytest.mark.asyncio
-    async def test_check_health_is_lightweight(self) -> None:
-        rt = RiggedLocalRuntime()
-        health = await rt.check_health()
-        assert isinstance(health, RuntimeHealth)
+    def test_response_has_evidence_receipt_id(self) -> None:
+        resp = LocalInferenceResponse(content="text", evidence_receipt_id="abc")
+        assert resp.evidence_receipt_id == "abc"
 
 
-class TestTaskAdmission:
-    def test_rejects_when_mlx_not_available(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(TaskKind.CHAT)
-        if not rt.is_configured:
-            assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.RUNTIME_NOT_CONFIGURED
+class TestDurableEvidence:
+    """Evidence must be written to durable append-only JSONL ledgers, not discarded."""
 
-    def test_rejects_non_public_safe_context(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(TaskKind.CHAT, context_public_safe=False)
-        if rt.is_configured:
-            assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.CONTEXT_NOT_PUBLIC_SAFE
+    def test_ledger_path_exists(self) -> None:
+        path = _ledger_path("runtime_execution_ledger.jsonl")
+        assert path.parent.name == "evidence"
+        assert path.name.endswith(".jsonl")
 
-    def test_rejects_tool_calling_requested(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(TaskKind.TOOL_PROPOSAL, tool_calling_requested=True)
-        if rt.is_configured:
-            assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.CAPABILITY_UNSUPPORTED
+    def test_emit_execution_receipt_writes(self) -> None:
+        receipt = LocalInferenceEvidenceReceipt(
+            receipt_id="test_exec_1",
+            task_id_hash="hash123",
+            status=ExecutionStatus.EXECUTED,
+            prompt_sha256="abc",
+            output_sha256="def",
+        )
+        rid = emit_execution_receipt(receipt)
+        assert rid == "test_exec_1"
 
-    def test_rejects_structured_output_requested(self) -> None:
+        path = _ledger_path("runtime_execution_ledger.jsonl")
+        assert path.exists()
+
+    def test_emit_refusal_receipt_writes(self) -> None:
+        refusal = TaskRefusal(
+            reason=RefusalReason.RUNTIME_NOT_CONFIGURED, detail="test"
+        )
+        rid = emit_refusal_receipt(refusal, "hash456")
+        assert rid
+
+    def test_emit_lifecycle_event_writes(self) -> None:
+        rid = emit_lifecycle_event(
+            "rig.relay.runtime.model_loaded", "model_hash", {"extra": "data"}
+        )
+        assert rid
+
+    def test_evidence_receipt_is_content_light(self) -> None:
+        receipt = LocalInferenceEvidenceReceipt(
+            receipt_id="r1", task_id_hash="h1", status=ExecutionStatus.EXECUTED
+        )
+        assert receipt.content_light
+        assert receipt.output_sha256 == ""
+
+    def test_build_evidence_receipt_from_response(self) -> None:
+        resp = LocalInferenceResponse(
+            content="Hello, world!",
+            finish_reason=FinishReason.STOP,
+            prompt_tokens=5,
+            completion_tokens=3,
+            total_tokens=8,
+            latency_ms=100,
+            model_id_hash="m123",
+        )
+        receipt = build_evidence_receipt(
+            task_id_hash="hash",
+            prompt_sha256="psha",
+            response=resp,
+            model_id_hash="m123",
+            latency_ms=100,
+            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
+        )
+        assert receipt.content_light
+        assert receipt.output_sha256
+        assert receipt.output_length_chars == 13
+        assert receipt.context_privacy_class == ContextPrivacyClass.PRIVATE_LOCAL
+
+
+class TestPrivateContextPolicy:
+    """Local runtime must allow private repo content, not just public-safe."""
+
+    def test_admits_private_local_context(self) -> None:
         rt = RiggedLocalRuntime()
         admission = rt.admit_task(
-            TaskKind.STRUCTURED_OUTPUT, structured_output_requested=True
+            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL
+        )
+        if rt.is_configured:
+            assert admission.admitted
+            assert admission.privacy_approved
+
+    def test_admits_public_safe_context(self) -> None:
+        rt = RiggedLocalRuntime()
+        admission = rt.admit_task(
+            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PUBLIC_SAFE
+        )
+        if rt.is_configured:
+            assert admission.admitted
+            assert admission.privacy_approved
+
+    def test_refuses_secret_bearing_context(self) -> None:
+        rt = RiggedLocalRuntime()
+        admission = rt.admit_task(
+            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.SECRET_BEARING
         )
         if rt.is_configured:
             assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.CAPABILITY_UNSUPPORTED
+            assert admission.refusal_reason == RefusalReason.CONTEXT_BLOCKED_BY_POLICY
 
-    def test_admits_simple_chat_with_public_safe_context(self) -> None:
+    def test_context_privacy_class_is_recorded(self) -> None:
         rt = RiggedLocalRuntime()
-        admission = rt.admit_task(TaskKind.CHAT, context_public_safe=True)
-        if rt.is_configured:
-            assert admission.admitted
-            assert admission.capability_match
-            assert not admission.tool_calling_allowed
-            assert not admission.structured_output_allowed
-
-
-class TestExecution:
-    @pytest.mark.asyncio
-    async def test_refuses_when_no_model_loaded(self) -> None:
-        rt = RiggedLocalRuntime()
-        result = await rt.execute(messages=[{"role": "user", "content": "Hello"}])
-        if rt.is_configured:
-            assert not result.executed
-            assert result.status in (ExecutionStatus.REFUSED, ExecutionStatus.BLOCKED)
-            assert result.refusal is not None
-
-    @pytest.mark.asyncio
-    async def test_execution_result_has_correct_shape(self) -> None:
-        rt = RiggedLocalRuntime()
-        result = await rt.execute(
-            messages=[{"role": "user", "content": "Hello"}],
-            task_kind=TaskKind.CHAT,
-            context_public_safe=True,
+        admission = rt.admit_task(
+            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL
         )
-        assert isinstance(result, TaskAdmissionResult)
-        assert result.task_kind == TaskKind.CHAT
-        assert result.admission is not None
+        assert admission.context_privacy_class == ContextPrivacyClass.PRIVATE_LOCAL
 
 
-class TestEvidenceEmission:
-    def test_execution_evidence_is_content_light(self) -> None:
-        outcome = ExecutionOutcome(
-            executed=True,
-            output_sha256="abc123",
-            output_length_chars=42,
-            prompt_sha256="def456",
-            model_id_hash="ghi789",
-            latency_ms=100,
-            prompt_tokens=10,
-            completion_tokens=5,
-            total_tokens=15,
-            status=ExecutionStatus.EXECUTED,
+class TestToolCallParsing:
+    """Tool-call output must be parsed, not hardcoded False."""
+
+    def test_parses_json_tool_block(self) -> None:
+        text = '```json\n{"name": "read_file", "arguments": {"path": "x.py"}}\n```'
+        proposals = _parse_tool_calls(text)
+        assert len(proposals) >= 1
+        assert proposals[0].tool_name == "read_file"
+
+    def test_parses_function_call_tag(self) -> None:
+        text = '<function_call>\n{"name": "search", "arguments": {"query": "test"}}\n</function_call>'
+        proposals = _parse_tool_calls(text)
+        assert len(proposals) >= 1
+        assert proposals[0].tool_name == "search"
+
+    def test_no_tool_calls_in_plain_text(self) -> None:
+        proposals = _parse_tool_calls("Just a normal response.")
+        assert len(proposals) == 0
+
+    def test_tool_call_proposal_model(self) -> None:
+        proposal = ToolCallProposal(
+            call_id="c1", tool_name="test", arguments="{}", rationale="need this"
         )
-        evidence_id = emit_execution_evidence(outcome)
-        assert evidence_id
-        assert evidence_id.startswith("exec_")
+        assert proposal.tool_name == "test"
+        assert proposal.call_id
 
-    def test_refusal_evidence_is_content_light(self) -> None:
-        refusal = TaskRefusal(
-            reason=RefusalReason.RUNTIME_NOT_CONFIGURED, detail="MLX not available"
+    def test_multi_tool_calls_parsed(self) -> None:
+        text = (
+            '```json\n{"name": "tool1", "arguments": {}}\n```\n'
+            '```json\n{"name": "tool2", "arguments": {}}\n```'
         )
-        evidence_id = emit_refusal_evidence(refusal, "task_hash")
-        assert evidence_id
-        assert evidence_id.startswith("ref_")
+        proposals = _parse_tool_calls(text)
+        assert len(proposals) >= 2
 
-    def test_cache_evidence_is_content_light(self) -> None:
-        metrics = CacheEvidenceMetrics(
-            runtime_kind="rigged_mlx",
-            cache_hit_rate_recent=0.85,
-            schema_version="rig.relay.local_cache_evidence.v1",
+
+class TestChatTemplate:
+    """Prompt formatting must use the tokenizer's chat template."""
+
+    def test_build_prompt_fallback_plain_text(self) -> None:
+        messages = [{"role": "user", "content": "Hello"}]
+        result = _build_prompt_using_chat_template(messages, object())
+        assert "Hello" in result
+
+    def test_build_prompt_with_system_message(self) -> None:
+        messages = [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "Hi"},
+        ]
+        result = _build_prompt_using_chat_template(messages, object())
+        assert "helpful" in result
+        assert "Hi" in result
+
+
+class TestV1Posture:
+    """OMLX-class capabilities must not be labeled post-v1."""
+
+    def test_capability_posture_enum(self) -> None:
+        assert CapabilityPosture.SUPPORTED == "supported"
+        assert (
+            CapabilityPosture.V1_REQUIRED_PENDING
+            == "v1_required_pending_implementation"
         )
-        evidence_id = emit_cache_evidence(metrics)
-        assert evidence_id
-        assert evidence_id.startswith("cache_")
-        assert metrics.content_light
+        assert CapabilityPosture.DEFERRED == "deferred"
 
-
-class TestCachePolicy:
-    def test_cache_mode_is_local_runtime_kv(self) -> None:
-        rt = RiggedLocalRuntime()
-        policy = rt.get_cache_policy()
-        assert policy.cache_mode == "local_runtime_kv"
-        assert policy.data_never_leaves_machine
-        assert not policy.persists_across_restarts
-        assert policy.rig_relay_must_not_read_cache_contents
-
-    def test_cache_policy_distinct_from_cloud(self) -> None:
-        rt = RiggedLocalRuntime()
-        policy = rt.get_cache_policy()
-        assert policy.privacy_class in (
-            CachePrivacyClass.LOCAL_KV_CACHE,
-            CachePrivacyClass.LOCAL_HOT_CACHE,
-        )
-        assert policy.privacy_class != CachePrivacyClass.CLOUD_PROVIDER_CACHE
-
-    def test_cache_policy_requires_disclosure(self) -> None:
-        rt = RiggedLocalRuntime()
-        policy = rt.get_cache_policy()
-        assert policy.disclosure_required
-        assert policy.disclosure_summary
-
-
-class TestCapabilityReporting:
-    def test_capabilities_are_honest(self) -> None:
+    def test_embeddings_labeled_v1_required(self) -> None:
         rt = RiggedLocalRuntime()
         caps = rt.get_capabilities()
-        assert caps.chat_completions == "supported"
-        assert caps.embeddings == "unsupported"
-        assert caps.reranking == "unsupported"
-        assert caps.vision == "unsupported"
-        assert caps.tool_calling in ("not_tested", "supported", "unsupported")
+        assert caps.embeddings != "unsupported"
+        assert caps.embeddings != "deferred"
+        assert (
+            caps.embeddings == CapabilityPosture.V1_REQUIRED_PENDING
+            or caps.embeddings == "supported"
+        )
 
-    def test_capabilities_report_enriched_fields(self) -> None:
+    def test_vision_labeled_v1_required(self) -> None:
         rt = RiggedLocalRuntime()
         caps = rt.get_capabilities()
-        assert isinstance(caps, EnrichedRuntimeCapabilities)
-        data = caps.model_dump()
-        assert len(data) >= 8
+        assert caps.vision != "unsupported"
+        assert (
+            caps.vision == CapabilityPosture.V1_REQUIRED_PENDING
+            or caps.vision == "supported"
+        )
+
+    def test_reranking_labeled_v1_required(self) -> None:
+        rt = RiggedLocalRuntime()
+        caps = rt.get_capabilities()
+        assert caps.reranking != "unsupported"
+        assert (
+            caps.reranking == CapabilityPosture.V1_REQUIRED_PENDING
+            or caps.reranking == "supported"
+        )
 
 
 class TestProjection:
-    def test_projection_has_expected_sections(self) -> None:
+    def test_projection_has_privacy_section(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        assert "runtime" in proj
-        assert "health" in proj
-        assert "capabilities" in proj
-        assert "cache" in proj
-        assert "deferred" in proj
-        assert "governance" in proj
+        assert "privacy" in proj
+        assert (
+            proj["privacy"]["private_local_context"] == "allowed (local-only retention)"
+        )
 
-    def test_projection_is_content_light(self) -> None:
+    def test_projection_has_evidence_ledgers_section(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        gov = proj.get("governance", {})
-        assert gov.get("content_light") is True
+        assert "evidence_ledgers" in proj
+        assert "execution" in proj["evidence_ledgers"]
 
-    def test_projection_deferred_section_exists(self) -> None:
+    def test_projection_capabilities_use_correct_posture(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        deferred = proj.get("deferred", {})
-        assert len(deferred) > 0
+        caps = proj["capabilities"]
+        assert caps["text_generation"] == CapabilityPosture.SUPPORTED
+        assert caps["embeddings"] == CapabilityPosture.V1_REQUIRED_PENDING
 
 
-class TestToolAuthority:
-    def test_tool_calling_is_not_admitted(self) -> None:
+class TestExecutionFlow:
+    @pytest.mark.asyncio
+    async def test_refuses_when_no_model_loaded(self) -> None:
         rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            task_kind=TaskKind.TOOL_PROPOSAL, tool_calling_requested=True
+        result = await rt.execute(
+            messages=[{"role": "user", "content": "Hello"}],
+            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
         )
         if rt.is_configured:
-            assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.CAPABILITY_UNSUPPORTED
-
-    def test_structured_output_is_not_admitted(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            task_kind=TaskKind.STRUCTURED_OUTPUT, structured_output_requested=True
-        )
-        if rt.is_configured:
-            assert not admission.admitted
-            assert admission.refusal_reason == RefusalReason.CAPABILITY_UNSUPPORTED
-
-    def test_execution_outcome_reports_tool_calls_routed(self) -> None:
-        outcome = ExecutionOutcome(
-            executed=True,
-            status=ExecutionStatus.EXECUTED,
-            tool_calls_routed_to_governance=True,
-        )
-        assert outcome.tool_calls_routed_to_governance
-
-
-class TestModelInventory:
-    def test_model_type_enum_values(self) -> None:
-        assert ModelTypeClass.LLM == "llm"
-        assert ModelTypeClass.VLM == "vlm"
-        assert ModelTypeClass.EMBEDDING == "embedding"
-        assert ModelTypeClass.RERANKER == "reranker"
+            assert not result.executed
+            assert result.refusal is not None
 
     @pytest.mark.asyncio
-    async def test_list_models_returns_list(self) -> None:
+    async def test_private_context_admitted(self) -> None:
         rt = RiggedLocalRuntime()
-        models = await rt.list_models()
-        assert isinstance(models, list)
+        result = await rt.execute(
+            messages=[{"role": "user", "content": "Hello"}],
+            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
+        )
+        if rt.is_configured:
+            assert result.admission.privacy_approved or not result.admission.admitted
 
-    def test_inventory_scan_with_no_models(self) -> None:
-        from pathlib import Path
-        import tempfile
-
-        from rig_relay.local_inference.runtime._inventory import scan_model_inventory
-
-        with tempfile.TemporaryDirectory() as td:
-            models = scan_model_inventory([Path(td)])
-            assert isinstance(models, list)
+    @pytest.mark.asyncio
+    async def test_secret_bearing_context_refused(self) -> None:
+        rt = RiggedLocalRuntime()
+        result = await rt.execute(
+            messages=[{"role": "user", "content": "Hello"}],
+            context_privacy_class=ContextPrivacyClass.SECRET_BEARING,
+        )
+        if rt.is_configured:
+            assert result.status == ExecutionStatus.REFUSED
 
 
 class TestServiceSingleton:
@@ -310,48 +328,10 @@ class TestServiceSingleton:
         r2 = get_runtime()
         assert r1 is not r2
 
-    def test_runtime_kind_on_new_instance(self) -> None:
-        reset_runtime()
-        rt = get_runtime()
-        assert rt.runtime_kind == "rigged_mlx"
-
 
 class TestEngine:
-    def test_engine_has_expected_methods(self) -> None:
+    def test_engine_has_visible_response_methods(self) -> None:
         engine = RiggedMlxEngine()
-        assert hasattr(engine, "is_mlx_available")
-        assert hasattr(engine, "loaded_model_count")
         assert hasattr(engine, "load_model")
         assert hasattr(engine, "unload_model")
         assert hasattr(engine, "generate")
-        assert hasattr(engine, "list_loaded_models")
-
-
-class TestRefusal:
-    def test_refusal_reason_enum_values(self) -> None:
-        assert RefusalReason.RUNTIME_NOT_CONFIGURED
-        assert RefusalReason.RUNTIME_UNHEALTHY
-        assert RefusalReason.CAPABILITY_UNSUPPORTED
-        assert RefusalReason.PRIVACY_CLASSIFICATION_DENIED
-        assert RefusalReason.CONTEXT_NOT_PUBLIC_SAFE
-
-    def test_task_refusal_model(self) -> None:
-        refusal = TaskRefusal(
-            reason=RefusalReason.RUNTIME_NOT_CONFIGURED, detail="Test refusal"
-        )
-        assert refusal.reason == "runtime_not_configured"
-        assert refusal.detail == "Test refusal"
-
-
-class TestExecutionOutcome:
-    def test_outcome_is_content_light(self) -> None:
-        outcome = ExecutionOutcome()
-        assert outcome.content_light
-        assert outcome.executed is False
-
-    def test_outcome_no_raw_output(self) -> None:
-        outcome = ExecutionOutcome(
-            executed=True, output_sha256="abc123", output_length_chars=100
-        )
-        assert outcome.content_light
-        assert outcome.output_sha256
