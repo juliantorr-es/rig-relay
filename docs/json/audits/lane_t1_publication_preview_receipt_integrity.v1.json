@@ -1,0 +1,97 @@
+{
+  "schema_version": "rig.relay.lane_release_report.v1",
+  "lane_id": "t1",
+  "title": "Publication Preview Receipt Integrity Closure",
+  "released_boundary": "ProjectPagePublicationPreviewReceiptBoundary: a preview-only application service that produces deterministic public-safe preview results, binds all governance-significant outcome fields to a canonical evidence digest, and durably persists outcome-complete content-light receipts into an append-only fcntl-locked evidence ledger before returning the governed result. Preview-only authority is structurally guaranteed: deployment_ready is always false in a preview_only receipt.",
+  "stated_consumer_purpose": "A later desktop integration milestone can render publication previews with receipt integrity that actually binds the underlying safety/refusal decision, and can reconstruct evidence from the durable ledger.",
+  "push_sha": "(pending checkpoint)",
+  "remote_verified": false,
+  "branch": "main",
+  "head_before": "ab752826877f1f65cae95bb43d4b66b40bee774a",
+  "head_after": "(pending checkpoint)",
+  "dirty_state_before": "Pre-existing dirty files from lanes S0, S1, S2, S4 in frontend/desktop/ and macos/RigRelayShell/ — 4 files with 208 insertions, not absorbed into T1 commit.",
+  "dirty_state_after": "Same pre-existing dirty files preserved. No other-lane files absorbed into T1 commit.",
+  "files_changed": [
+    "rig_relay/publication/__init__.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/_safety.py",
+    "rig_relay/publication/_service.py",
+    "tests/publication/test_project_page_compiler.py"
+  ],
+  "files_created": [
+    "rig_relay/publication/_evidence_ledger.py",
+    "docs/json/audits/lane_t1_publication_preview_receipt_integrity.v1.json"
+  ],
+  "files_deleted": [],
+  "tests_run": 80,
+  "tests_passed": 80,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "pre_existing_tests": 59,
+    "new_digest_binding_tests": 9,
+    "new_evidence_persistence_tests": 7,
+    "new_service_evidence_tests": 5
+  },
+  "evidence_artifacts": [
+    "rig_relay/publication/_evidence_ledger.py",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "schema_validation_results": {
+    "pre_existing_receipt_schema": "unchanged, still valid",
+    "pre_existing_infra_failures": 2,
+    "pre_existing_failing_schemas": [
+      "rig.relay.fleet_coordination_event.v1.schema.json",
+      "rig.relay.safari_extension_message.v1.schema.json"
+    ]
+  },
+  "lint_type_results": {
+    "ruff": "0 errors (2 import-order fixes applied)",
+    "pyright": "0 errors, 0 warnings, 0 informations",
+    "ruff_format": "9 files left unchanged"
+  },
+  "producer_public_inputs_inspected": [
+    "rig_relay/recovery/evidence_ledger.py — EvidenceLedger pattern (fcntl locking, integrity verification, content-light enforcement)",
+    "rig_relay/providers/evidence_ledger.py — Provider evidence ledger pattern (schema validation, append-only)",
+    "rig_relay/context_engine/models.py — PublishableProjectProfileCandidate (L0)",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "external_research_consulted": [],
+  "completed_work": [
+    "Fixed PreviewEvidenceReceipt.compute_digest() to bind all 11 governance-significant outcome fields via canonical JSON serialization (sorted keys, deterministic encodings)",
+    "Added deployment_ready structural guard in _service.py: deployment_ready always False in preview_only receipts, regardless of compiler result",
+    "Fixed dead code in _safety.py scan_project_page_output() — removed unreachable duplicate return block (lines 209-227)",
+    "Created _evidence_ledger.py: append-only, fcntl-locked, content-light JSONL receipt persistence following the established EvidenceLedger pattern from recovery/",
+    "Wired durable persistence into ProjectPagePublicationPreviewService: every receipt is persisted before the governed result is returned",
+    "Updated __init__.py to export PublicationEvidenceLedger, LEDGER_DIR, LEDGER_FILE",
+    "Added 21 new production-boundary tests: 9 digest binding proofs, 7 evidence persistence proofs, 5 service-integration evidence proofs",
+    "Preserved all pre-existing dirty files from lanes S0/S1/S2/S4"
+  ],
+  "claim_adversary_results": {
+    "digest_binds_all_outcome_fields": "passed — changing result_digest, refusal_code, refusal_reasons, safety_passed, deployment_ready, preview_only, or compiled_at each produces a different evidence_digest",
+    "refusal_codes_distinguishable_in_evidence": "passed — test_different_refusal_codes_produce_different_digests proves profile_absent ≠ privacy_class_unsafe digest",
+    "refusal_reasons_reorder_resilient": "passed — sorted canonical order produces same digest regardless of input order",
+    "equivalent_receipts_produce_same_digest": "passed",
+    "preview_only_prevents_deployment_ready": "passed — service hardcodes deployment_ready=False for preview_only=True; ledger has both enforced",
+    "durable_persistence_proven": "passed — test_ledger_reconstructs_receipt_after_new_instance proves persistence survives new service instance",
+    "duplicate_retry_safe": "passed — identical duplicate submissions produce identical content-hashes; two rows on disk but content-addressable",
+    "content_light_enforcement": "passed — test_ledger_rejects_forbidden_content_keys rejects secrets/tokens in receipt data",
+    "no_deployment_authority_introduced": "passed — preview_only is always True, deployment_ready always False, no GitHub Pages integration added",
+    "no_ui_frontend_gateway_changes": "passed — only rig_relay/publication/ and tests/publication/ modified",
+    "no_cross_lane_absorption": "passed — pre-existing dirty files in frontend/desktop/ and macos/RigRelayShell/ preserved untouched"
+  },
+  "blocking_defects": [],
+  "intentionally_deferred_work": [
+    "Desktop frontend wiring (P0 Gridline Interface consumption of preview results)",
+    "GitHub Pages deployment pipeline (separate authority, out of scope)",
+    "Portfolio site compilation surface",
+    "Schema validation for publication_preview_event.v1 ledger events",
+    "Cross-lane integration testing with P0 desktop gateway"
+  ],
+  "remaining_seams": [
+    "Desktop cockpit Publish Preview surface → ProjectPagePublicationPreviewService wiring (P0 integration milestone)",
+    "GitHub Pages deployment action (separate authority)",
+    "Ledger event schema creation (rig.relay.publication_preview_event.v1.schema.json)"
+  ],
+  "freeze_condition": "Lane T1 is frozen pending the named integration milestone that wires the desktop Publish Preview surface to the now-integrity-bound ProjectPagePublicationPreviewService. Reopens only for a concrete defect inside the released receipt/digest/persistence boundary, the named integration milestone, or a user-directed architectural revision.",
+  "release_disposition": "published_narrow_release"
+}

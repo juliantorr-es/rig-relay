@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
 from rig_relay.publication._models import (
     PreviewEvidenceReceipt,
     PreviewRefusalCode,
@@ -51,8 +52,9 @@ class ProjectPagePublicationPreviewService:
     Does NOT bypass developer approval. Strictly preview-only.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, ledger: PublicationEvidenceLedger | None = None) -> None:
         self._compiler = ProjectPagePublicationCompiler()
+        self._ledger = ledger or PublicationEvidenceLedger()
 
     def compile_preview(
         self,
@@ -92,17 +94,19 @@ class ProjectPagePublicationPreviewService:
             publication_policy=publication_policy,
         )
         if refusal is not None:
+            receipt = refusal.receipt or PreviewEvidenceReceipt(
+                receipt_id=_digest_sha256(f"refusal:{_now_iso()}")[:22],
+                compiled_at=_now_iso(),
+                compilation_successful=False,
+                profile_candidate_digest=_profile_digest(profile),
+                refusal_code=refusal.refusal_code.value,
+                refusal_reasons=refusal.reasons,
+            )
+            receipt.evidence_digest = receipt.compute_digest()
+            self._ledger.append_receipt(receipt.model_dump())
             return PublicationPreviewResult(
                 compiler_result=self._empty_result(),
-                receipt=refusal.receipt
-                or PreviewEvidenceReceipt(
-                    receipt_id=_digest_sha256(f"refusal:{_now_iso()}")[:22],
-                    compiled_at=_now_iso(),
-                    compilation_successful=False,
-                    profile_candidate_digest=_profile_digest(profile),
-                    refusal_code=refusal.refusal_code.value,
-                    refusal_reasons=refusal.reasons,
-                ),
+                receipt=receipt,
                 refused=refusal.refusal_code,
             )
 
@@ -142,7 +146,7 @@ class ProjectPagePublicationPreviewService:
             profile_candidate_digest=_profile_digest(profile),
             result_digest=compiler_result.compute_result_digest(),
             safety_passed=compiler_result.safety_report.passed,
-            deployment_ready=compiler_result.deployment_ready,
+            deployment_ready=False,
             preview_only=True,
         )
         receipt.evidence_digest = receipt.compute_digest()
@@ -150,6 +154,11 @@ class ProjectPagePublicationPreviewService:
         refused = None
         if not compiler_result.compilation_successful:
             refused = PreviewRefusalCode.SAFETY_SCAN_FAILED
+            receipt.refusal_code = refused.value
+            receipt.refusal_reasons = compiler_result.warnings
+            receipt.evidence_digest = receipt.compute_digest()
+
+        self._ledger.append_receipt(receipt.model_dump())
 
         return PublicationPreviewResult(
             compiler_result=compiler_result, receipt=receipt, refused=refused

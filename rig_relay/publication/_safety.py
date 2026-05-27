@@ -206,26 +206,6 @@ def scan_project_page_output(
         warnings=warnings,
     )
 
-    total_checked = len(html_content.splitlines()) + len(projection) + 5
-
-    if forbidden:
-        warnings.append(f"Safety scan found {len(forbidden)} issues")
-
-    passed = not forbidden
-
-    return PublicationSafetyReport(
-        passed=passed,
-        scan_id=scan_id,
-        scanned_at=now,
-        total_fields_checked=total_checked,
-        forbidden_content_found=forbidden,
-        secrets_detected=secrets_detected,
-        raw_paths_detected=raw_paths_detected,
-        private_content_detected=private_content_detected,
-        proposed_marked_as_approved=proposed_as_approved,
-        warnings=warnings,
-    )
-
 
 def validate_publication_policy(policy: str) -> bool:
     """Validate that the publication policy is recognized and safe."""

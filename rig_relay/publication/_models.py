@@ -53,11 +53,23 @@ class PreviewEvidenceReceipt(BaseModel):
     evidence_digest: str = ""
 
     def compute_digest(self) -> str:
-        raw = (
-            f"{self.schema_version}:{self.receipt_id}:{self.profile_candidate_digest}:"
-            f"{self.compilation_successful}"
-        )
-        return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
+        from json import dumps
+
+        canonical = {
+            "schema_version": self.schema_version,
+            "receipt_id": self.receipt_id,
+            "compiled_at": self.compiled_at,
+            "compilation_successful": self.compilation_successful,
+            "profile_candidate_digest": self.profile_candidate_digest,
+            "result_digest": self.result_digest,
+            "refusal_code": self.refusal_code,
+            "refusal_reasons": sorted(self.refusal_reasons),
+            "safety_passed": self.safety_passed,
+            "deployment_ready": self.deployment_ready,
+            "preview_only": self.preview_only,
+        }
+        payload = dumps(canonical, sort_keys=True, separators=(",", ":"))
+        return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 
 
 class PublicationPreviewRefusal(BaseModel):

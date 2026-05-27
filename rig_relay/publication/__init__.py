@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from rig_relay.publication._evidence_ledger import (
+    LEDGER_DIR,
+    LEDGER_FILE,
+    PublicationEvidenceLedger,
+)
 from rig_relay.publication._models import (
     PreviewEvidenceReceipt,
     PreviewRefusalCode,
@@ -20,6 +25,8 @@ from rig_relay.publication._service import ProjectPagePublicationPreviewService
 from rig_relay.publication.project_page_compiler import ProjectPagePublicationCompiler
 
 __all__ = [
+    "LEDGER_DIR",
+    "LEDGER_FILE",
     "PreviewEvidenceReceipt",
     "PreviewRefusalCode",
     "ProjectPageCompilerInput",
@@ -28,6 +35,7 @@ __all__ = [
     "ProjectPagePublicationCompiler",
     "ProjectPagePublicationPreviewService",
     "ProjectPagePublicationProjection",
+    "PublicationEvidenceLedger",
     "PublicationPreviewRefusal",
     "PublicationPreviewResult",
     "PublicationSafetyReport",

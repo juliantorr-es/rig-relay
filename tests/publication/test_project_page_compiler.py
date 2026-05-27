@@ -982,3 +982,314 @@ class TestSafetyEnhancedChecks:
                 "deployment_overclaim" in f
                 for f in result.safety_report.forbidden_content_found
             )
+
+
+class TestEvidenceReceiptDigestBinding:
+    def _make_receipt(self, **overrides: object) -> PreviewEvidenceReceipt:
+        defaults: dict[str, object] = {
+            "receipt_id": "r-test",
+            "compiled_at": "2026-05-26T00:00:00Z",
+            "compilation_successful": True,
+            "profile_candidate_digest": "sha256:abc123",
+            "result_digest": "sha256:result111",
+            "refusal_code": None,
+            "refusal_reasons": [],
+            "safety_passed": True,
+            "deployment_ready": False,
+            "preview_only": True,
+        }
+        defaults.update(overrides)
+        receipt = PreviewEvidenceReceipt(**defaults)  # type: ignore[arg-type]
+        receipt.evidence_digest = receipt.compute_digest()
+        return receipt
+
+    def test_digest_changes_when_result_digest_changes(self) -> None:
+        r1 = self._make_receipt(result_digest="sha256:aaa")
+        r2 = self._make_receipt(result_digest="sha256:bbb")
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_refusal_code_changes(self) -> None:
+        r1 = self._make_receipt(compilation_successful=False, result_digest=None)
+        r2 = self._make_receipt(
+            compilation_successful=False,
+            result_digest=None,
+            refusal_code="profile_absent",
+        )
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_refusal_reasons_change(self) -> None:
+        r1 = self._make_receipt(
+            compilation_successful=False,
+            result_digest=None,
+            refusal_code="profile_absent",
+            refusal_reasons=["reason A"],
+        )
+        r2 = self._make_receipt(
+            compilation_successful=False,
+            result_digest=None,
+            refusal_code="profile_absent",
+            refusal_reasons=["reason B"],
+        )
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_safety_passed_changes(self) -> None:
+        r1 = self._make_receipt(safety_passed=True)
+        r2 = self._make_receipt(safety_passed=False)
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_deployment_ready_changes(self) -> None:
+        r1 = self._make_receipt(deployment_ready=False, preview_only=False)
+        r2 = self._make_receipt(deployment_ready=True, preview_only=False)
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_preview_only_changes(self) -> None:
+        r1 = self._make_receipt(preview_only=True)
+        r2 = self._make_receipt(preview_only=False, deployment_ready=True)
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_compiled_at_changes(self) -> None:
+        r1 = self._make_receipt(compiled_at="2026-05-26T00:00:00Z")
+        r2 = self._make_receipt(compiled_at="2026-05-27T00:00:00Z")
+        assert r1.evidence_digest != r2.evidence_digest
+
+    def test_digest_changes_when_refusal_reasons_reordered(self) -> None:
+        r1 = self._make_receipt(
+            compilation_successful=False,
+            refusal_code="profile_invalid",
+            refusal_reasons=["reason A", "reason B"],
+        )
+        r2 = self._make_receipt(
+            compilation_successful=False,
+            refusal_code="profile_invalid",
+            refusal_reasons=["reason B", "reason A"],
+        )
+        assert r1.evidence_digest == r2.evidence_digest
+
+    def test_equivalent_receipts_produce_same_digest(self) -> None:
+        r1 = self._make_receipt()
+        r2 = self._make_receipt()
+        assert r1.evidence_digest == r2.evidence_digest
+
+    def test_digest_is_sha256_prefixed(self) -> None:
+        r = self._make_receipt()
+        assert r.evidence_digest.startswith("sha256:")
+        assert len(r.evidence_digest) == 71
+
+
+class TestEvidenceReceiptPersistence:
+    def test_ledger_persists_receipt_and_can_reload(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "evidence.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        receipt = PreviewEvidenceReceipt(
+            receipt_id="r-persist",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+            result_digest="sha256:xyz",
+            safety_passed=True,
+            deployment_ready=False,
+            preview_only=True,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+
+        row_digest = ledger.append_receipt(receipt.model_dump())
+        assert row_digest.startswith("sha256:")
+
+        loaded = ledger.load_receipts()
+        assert len(loaded) == 1
+        assert loaded[0]["receipt_id"] == "r-persist"
+        assert loaded[0]["evidence_digest"] == receipt.evidence_digest
+        assert loaded[0]["compilation_successful"] is True
+
+    def test_ledger_persists_refusal_receipt(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "refusal.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        receipt = PreviewEvidenceReceipt(
+            receipt_id="r-refusal",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=False,
+            profile_candidate_digest="sha256:abc",
+            refusal_code="profile_absent",
+            refusal_reasons=["No profile provided"],
+            safety_passed=False,
+            deployment_ready=False,
+            preview_only=True,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+
+        ledger.append_receipt(receipt.model_dump())
+        loaded = ledger.load_receipts()
+        assert loaded[0]["refusal_code"] == "profile_absent"
+        assert loaded[0]["refusal_reasons"] == ["No profile provided"]
+
+    def test_ledger_rejects_forbidden_content_keys(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "bad.jsonl")
+
+        with pytest.raises(ValueError, match="forbidden content key"):
+            ledger.append_receipt({
+                "receipt_id": "r-bad",
+                "secret": "should-not-be-here",
+            })
+
+    def test_ledger_count_is_accurate(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "count.jsonl")
+
+        assert ledger.count_receipts() == 0
+
+        for i in range(3):
+            receipt = PreviewEvidenceReceipt(
+                receipt_id=f"r-{i}",
+                compiled_at="2026-05-26T00:00:00Z",
+                compilation_successful=True,
+                profile_candidate_digest=f"sha256:{i}",
+            )
+            receipt.evidence_digest = receipt.compute_digest()
+            ledger.append_receipt(receipt.model_dump())
+
+        assert ledger.count_receipts() == 3
+
+    def test_ledger_reconstructs_receipt_after_new_instance(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "reconstruct.jsonl"
+
+        receipt = PreviewEvidenceReceipt(
+            receipt_id="r-recon",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+            result_digest="sha256:xyz",
+            safety_passed=True,
+            deployment_ready=False,
+            preview_only=True,
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+
+        ledger1 = PublicationEvidenceLedger(ledger_path=ledger_path)
+        ledger1.append_receipt(receipt.model_dump())
+
+        ledger2 = PublicationEvidenceLedger(ledger_path=ledger_path)
+        loaded = ledger2.load_receipts()
+
+        assert len(loaded) == 1
+        assert loaded[0]["receipt_id"] == "r-recon"
+        assert loaded[0]["evidence_digest"] == receipt.evidence_digest
+
+    def test_ledger_duplicate_retry_produces_same_hash_when_content_identical(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "dupe.jsonl")
+
+        r1 = PreviewEvidenceReceipt(
+            receipt_id="r-dupe",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        r1.evidence_digest = r1.compute_digest()
+
+        r2 = PreviewEvidenceReceipt(
+            receipt_id="r-dupe",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        r2.evidence_digest = r2.compute_digest()
+
+        digest1 = ledger.append_receipt(r1.model_dump())
+        digest2 = ledger.append_receipt(r2.model_dump())
+
+        assert digest1 == digest2
+        assert ledger.count_receipts() == 2
+
+
+class TestServiceEvidencePersistence:
+    def test_service_persists_success_receipt(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "service_success.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        service = ProjectPagePublicationPreviewService(ledger=ledger)
+        profile = _make_valid_profile()
+        result = service.compile_preview(profile)
+
+        assert result.success
+        assert ledger.count_receipts() == 1
+        loaded = ledger.load_receipts()
+        assert loaded[0]["compilation_successful"] is True
+        assert loaded[0]["preview_only"] is True
+        assert loaded[0]["deployment_ready"] is False
+        assert loaded[0]["evidence_digest"] == result.receipt.evidence_digest
+
+    def test_service_persists_refusal_receipt(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "service_refusal.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        service = ProjectPagePublicationPreviewService(ledger=ledger)
+        result = service.compile_preview(None)  # type: ignore[arg-type]
+
+        assert not result.success
+        assert ledger.count_receipts() == 1
+        loaded = ledger.load_receipts()
+        assert loaded[0]["refusal_code"] == "profile_absent"
+        assert loaded[0]["compilation_successful"] is False
+
+    def test_different_refusal_codes_produce_different_digests(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger1 = PublicationEvidenceLedger(ledger_path=tmp_path / "refusal1.jsonl")
+        ledger2 = PublicationEvidenceLedger(ledger_path=tmp_path / "refusal2.jsonl")
+
+        service1 = ProjectPagePublicationPreviewService(ledger=ledger1)
+        result1 = service1.compile_preview(None)  # type: ignore[arg-type]
+
+        service2 = ProjectPagePublicationPreviewService(ledger=ledger2)
+        profile = _make_valid_profile()
+        profile.privacy_class = PrivacyDisposition.INTERNAL_ONLY
+        result2 = service2.compile_preview(profile)
+
+        assert result1.receipt.refusal_code != result2.receipt.refusal_code
+        assert result1.receipt.evidence_digest != result2.receipt.evidence_digest
+
+    def test_service_default_ledger_uses_standard_path(self) -> None:
+        service = ProjectPagePublicationPreviewService()
+        assert service._ledger is not None
+
+    def test_preview_only_always_true_and_deployment_ready_false(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "guard.jsonl")
+        service = ProjectPagePublicationPreviewService(ledger=ledger)
+        profile = _make_valid_profile()
+
+        result = service.compile_preview(
+            profile, publication_policy="developer_approved"
+        )
+
+        assert result.receipt.preview_only is True
+        assert result.receipt.deployment_ready is False
+
+        loaded = ledger.load_receipts()
+        assert loaded[0]["preview_only"] is True
+        assert loaded[0]["deployment_ready"] is False
