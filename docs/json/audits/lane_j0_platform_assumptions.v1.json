@@ -1,0 +1,82 @@
+{
+  "schema_version": "rig.relay.audit.platform_assumptions.v1",
+  "audit_id": "lane_j0_platform_assumptions_v1",
+  "lane": "J0",
+  "title": "Lane J0 — GitHub Platform Assumptions Verified for Developer Workspace Implementation",
+  "generated_at": "2026-05-26T00:00:00Z",
+  "verified_platform_facts": {
+    "repository_discovery": {
+      "endpoint": "GET /installation/repositories",
+      "doc_url": "https://docs.github.com/en/rest/apps/installations#list-repositories-accessible-to-the-app-installation",
+      "auth_method": "Installation access token (Bearer)",
+      "pagination": "per_page max 100, page",
+      "key_response_fields": ["total_count", "repositories", "repository_selection"],
+      "verified_2026_05": true
+    },
+    "installation_token": {
+      "endpoint": "POST /app/installations/{installation_id}/access_tokens",
+      "doc_url": "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation",
+      "expiry": "1 hour",
+      "rate_limit": "5,000 requests per hour (base)",
+      "auth_format": "Bearer token",
+      "scoping": "Can be scoped to specific repositories and reduced permissions",
+      "verified_2026_05": true
+    },
+    "http_git_clone": {
+      "format": "https://github.com/owner/repo.git (anonymous URL only — no token in command)",
+      "doc_url": "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation#using-the-installation-access-token-to-authenticate-as-an-installation",
+      "auth_method": "GIT_ASKPASS — one-shot askpass bridge transfers token via stdout to child Git process; token never in argv, process listings, or durable storage",
+      "remote_sanitation": "Remote URL set to anonymous HTTPS URL immediately after clone/fetch via git remote set-url",
+      "required_permission": "contents:read",
+      "verified_2026_05": true
+    },
+    "github_pages": {
+      "get_status_endpoint": "GET /repos/{owner}/{repo}/pages",
+      "configure_endpoint": "PUT /repos/{owner}/{repo}/pages",
+      "doc_url": "https://docs.github.com/en/rest/pages/pages",
+      "required_permissions_for_read": "pages:read or administration:read",
+      "required_permissions_for_configure": "pages:write or administration:write",
+      "key_status_fields": ["status", "html_url", "cname", "source", "https_enforced", "public"],
+      "verified_2026_05": true
+    },
+    "repository_permissions": {
+      "endpoint": "GET /repos/{owner}/{repo}",
+      "permissions_field": "permissions object in response",
+      "key_permissions": ["contents", "pages", "administration", "metadata"],
+      "metadata_implicit": "All GitHub Apps receive metadata:read implicitly",
+      "verified_2026_05": true
+    },
+    "api_version": {
+      "accept_header": "application/vnd.github+json",
+      "api_version_header": "X-GitHub-Api-Version",
+      "current_version": "2022-11-28",
+      "verified_2026_05": true
+    }
+  },
+  "token_secrecy_design": {
+    "token_lifetime": "55-minute cache TTL (rotates before GitHub 60-min expiry)",
+    "token_storage": "In-memory only; never written to disk, logs, evidence, or projections",
+    "git_auth_method": "GIT_ASKPASS — one-shot temporary askpass script transfers token via stdout to child Git process; token never appears in argv, process listings (ps), or remote URLs. Askpass script created with 0o700 permissions in system temp directory and deleted in finally block immediately after subprocess completes.",
+    "clone_token_sanitation": "Remote URL set to anonymous HTTPS URL via git remote set-url immediately after clone. Synchronization follows the same GIT_ASKPASS path and sanitation.",
+    "content_light_guarantee": "All models use SHA256 hashes for identifiers; no raw tokens, keys, secrets, file contents, or prompts",
+    "environment_scrubbing": "Subprocess environment strips RIG_GITHUB_* vars and other GitHub token vars before git operations",
+    "no_token_in_argv": "Token never placed in subprocess command arguments. All git authentication routes through _run_git_with_token (GIT_ASKPASS bridge)."
+  },
+  "deferred_seams": [
+    "Durable selection persistence (currently in-memory per session)",
+    "Real installation approval flow (currently reads env config only)",
+    "Repository analysis integration with digestion pipeline",
+    "Pages publication execution (preparation only in J0)",
+    "Portfolio site target wiring (modeled but not generated)",
+    "Worktree isolation for cloned repos",
+    "GitHub App webhook event handling (installation.created, installation.deleted)"
+  ],
+  "references": [
+    "docs/schemas/rig.relay.developer_github_workspace.v1.schema.json",
+    "rig_relay/integrations/github_provider/_developer_workspace.py",
+    "rig_relay/integrations/github_provider/_workspace_models.py",
+    "tests/integrations/test_developer_github_workspace.py",
+    "docs/governance/identity-provider-policy.md",
+    "docs/governance/step-up-authorization.md"
+  ]
+}

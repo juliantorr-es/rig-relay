@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.developer_github_workspace.v1.schema.json",
+  "title": "Developer GitHub Workspace Projection v1",
+  "description": "Content-light projection of the developer GitHub workspace. Reflects installation identity, repository discovery/intake lifecycle, and publication readiness. No raw installation tokens, file contents, prompts, private code, or secrets. Safe for Gridline frontend consumption, WebSocket streaming, and evidence capture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.developer_github_workspace.v1",
+      "description": "Schema version identifier for this projection shape."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the projection was generated."
+    },
+    "connection": {
+      "type": ["object", "null"],
+      "description": "Content-light installation identity and auth state. No raw installation tokens or secrets. Null when no GitHub App installation is connected.",
+      "additionalProperties": false,
+      "properties": {
+        "installation_id_hash": {
+          "type": "string",
+          "description": "SHA256 hash of the GitHub App installation ID."
+        },
+        "app_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GitHub App numeric application ID."
+        },
+        "connection_state": {
+          "type": "string",
+          "enum": ["disconnected", "connecting", "connected", "token_expired", "error"],
+          "description": "Current state of the GitHub App installation connection."
+        },
+        "token_available": {
+          "type": "boolean",
+          "description": "Whether an installation access token is currently available."
+        },
+        "token_expires_in_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds until the installation access token expires, if available."
+        },
+        "repository_selection": {
+          "type": "string",
+          "description": "Repository selection mode — e.g. 'all' or 'selected'."
+        },
+        "accessible_repository_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of repositories accessible to this installation."
+        },
+        "permissions_summary": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Map of permission name to permission level (e.g. read, write) for this installation."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Installation-level error messages encountered during connection."
+        }
+      }
+    },
+    "repositories": {
+      "type": "array",
+      "description": "Repository descriptors discovered from the GitHub App installation. Contains public metadata only — clone URLs are anonymous (never tokenized).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository_id": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "GitHub numeric repository identifier."
+          },
+          "repository_hash": {
+            "type": "string",
+            "description": "Content-light SHA256 identity digest computed from owner/name."
+          },
+          "owner": {
+            "type": "string",
+            "description": "Repository owner (user or organization login)."
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name (without owner prefix)."
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Full repository slug in owner/name format."
+          },
+          "description_hash": {
+            "type": ["string", "null"],
+            "description": "SHA256 hash of the repository description, or null if no description."
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private", "internal"],
+            "description": "Repository visibility as reported by GitHub."
+          },
+          "default_branch": {
+            "type": "string",
+            "description": "Repository default branch name."
+          },
+          "has_pages": {
+            "type": "boolean",
+            "description": "Whether GitHub Pages is available for this repository."
+          },
+          "clone_url": {
+            "type": "string",
+            "description": "Anonymous HTTPS clone URL. Never tokenized."
+          },
+          "html_url": {
+            "type": "string",
+            "description": "Public GitHub repository URL."
+          },
+          "intake_state": {
+            "type": "string",
+            "enum": ["unknown", "discovered", "available", "selected", "importing", "imported", "synced", "stale", "failed", "analyzing", "analyzed"],
+            "description": "Intake lifecycle state for local workspace import."
+          },
+          "selected": {
+            "type": "boolean",
+            "description": "Whether the developer has selected this repository for local intake."
+          },
+          "analyzable": {
+            "type": "boolean",
+            "description": "Whether this repository is eligible for code analysis."
+          },
+          "private": {
+            "type": "boolean",
+            "description": "Whether this repository is private."
+          },
+          "pushed_at": {
+            "type": ["string", "null"],
+            "description": "ISO 8601 timestamp of the most recent push to the repository, or null if unknown."
+          }
+        }
+      }
+    },
+    "total_discovered": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of repositories discovered from the installation."
+    },
+    "selected_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repositories currently selected for local intake."
+    },
+    "imported_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repositories successfully imported into the local workspace."
+    },
+    "analyzed_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repositories that have completed code analysis."
+    },
+    "publishable_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of repositories eligible for GitHub Pages publication."
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Workspace-level error messages (non-installation, non-repository specific)."
+    }
+  }
+}
