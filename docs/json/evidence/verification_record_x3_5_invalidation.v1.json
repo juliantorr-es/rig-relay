@@ -1,0 +1,100 @@
+{
+  "schema_version": "rig.relay.verification_record.v1",
+  "generated_at": "2026-05-27T10:00:00Z",
+  "subject_sha": "ec1954dcef4d598a88b7b2c3230061823aa9ede5",
+  "builder_record_digest": "sha256:prepublication_review_cycle_x3_5.v1.json — admitted boundary GovernedPagesCommitCorrelatedPublicationAndPortfolioBoundary with candidate_digest placeholder sha256:x35_candidate",
+  "prepublication_review_cycle_digest": "sha256:prepublication_review_cycle_x3_5.v1.json at ec1954dc — created in same published commit as reviewed code; candidate_digest field is placeholder sha256:x35_candidate, not a real checkpoint SHA",
+  "prepublication_review_round_count": 1,
+  "policy_applied": "Prepublication Falsifier Contract (docs/governance/prepublication-falsifier-contract.md), Lane Status Vocabulary (AGENTS.md §Lane Status Vocabulary), Project Instruction Bundle (PROJECT.md §Builder Publication and Review)",
+  "consumer_purpose": "A later X0 integration lane may render project-page publication state only from evidence-backed X3 application-service projections that distinguish preparation, authorization, content publication, Pages configuration, build correlation, verification, conflict, recovery, and external-acceptance status truthfully. Portfolio synthesis is explicitly unclaimed.",
+  "files_inspected": [
+    "docs/json/evidence/prepublication_review_cycle_x3_5.v1.json",
+    "rig_relay/publication/_deployment_service.py",
+    "rig_relay/publication/_deployment_models.py",
+    "rig_relay/publication/_deployment_evidence.py",
+    "rig_relay/integrations/github_provider/_real_github_boundary.py",
+    "rig_relay/integrations/github_provider/_authorization_consumer.py",
+    "tests/publication/test_deployment_service.py",
+    "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.prepublication_review_cycle.v1.schema.json",
+    "docs/governance/prepublication-falsifier-contract.md"
+  ],
+  "production_paths_exercised": [
+    "uv run pytest tests/publication/ -v: 131 passed, 0 failed",
+    "git log --oneline origin/main: ec1954dc confirmed at position 3",
+    "git show ec1954dc --stat: 8 files, 468 insertions, 145 deletions",
+    "Inspection of prepublication_review_cycle_x3_5.v1.json: candidate_digest is placeholder sha256:x35_candidate",
+    "Inspection of prepublication_review_cycle_x3_5.v1.json: intended_boundary contains 'Portfolio'",
+    "Inspection of prepublication_review_cycle_x3_5.v1.json: unclaimed_capabilities includes 'Multi-project portfolio evidence chains'"
+  ],
+  "falsifier_log": [
+    {
+      "assertion": "Prepublication review record existed independently before publication",
+      "attempt": "Verify that prepublication_review_cycle_x3_5.v1.json was committed in a separate, prior commit — not the same published commit as the reviewed code",
+      "result": "succeeded",
+      "evidence": "The review cycle record (docs/json/evidence/prepublication_review_cycle_x3_5.v1.json) was created in commit ec1954dc — the same published commit that contains all 7 implementation files being reviewed. The prepublication review record did not exist before publication; it was born in the publication. This violates the Prepublication Falsifier Contract invariant: the prepublication packet must be immutable during review and must contain a real candidate_checkpoint_sha that predates publication. The candidate_digest field is 'sha256:x35_candidate' — a placeholder, not a real checkpoint SHA corresponding to any prior commit."
+    },
+    {
+      "assertion": "Boundary name GovernedPagesCommitCorrelatedPublicationAndPortfolioBoundary accurately reflects proven capability",
+      "attempt": "Verify that multi-project portfolio evidence chains exist and are proven in the published slice",
+      "result": "succeeded",
+      "evidence": "The boundary name contains 'Portfolio' but the same review cycle record lists 'Multi-project portfolio evidence chains' in unclaimed_capabilities. The consumer purpose mentions 'portfolio publication state' but no multi-project portfolio capability was implemented or tested. The PortfolioSynthesisService, PortfolioSynthesisResult, and related models exist in the codebase but are not exercised by any publication deployment test. The project page template footer declares 'This is a project page, not a developer portfolio. Portfolio synthesis requires multiple approved project profiles.' The boundary name overclaims capability."
+    },
+    {
+      "assertion": "Dual typed authorization separation (git_content_publish vs pages_configure) was proven",
+      "attempt": "Verify separate authorization paths for content (Contents:write) and Pages configuration (Pages:write + Administration:write)",
+      "result": "defeated",
+      "evidence": "_authorize_content_publication() → git_content_publish, _authorize_pages_configuration() → pages_configure. Content auth consumed before content publication, Pages auth consumed before Pages mutation. Capability contracts correct. Proven at lines 258-265 and 388-415 of _deployment_service.py."
+    },
+    {
+      "assertion": "Tree-preserving atomic Git publication was proven",
+      "attempt": "Verify base_tree SHA resolved from current branch commit tree, preserving unrelated branch content",
+      "result": "defeated",
+      "evidence": "get_base_ref() resolves current_sha → get_commit_tree(current_sha) → create_tree(tree_entries, base_tree=base_tree_sha). Falls through gracefully when branch doesn't exist. Proven."
+    },
+    {
+      "assertion": "Effect-accurate ref failure/orphaned commit reporting was proven",
+      "attempt": "Verify ContentPublicationManifest distinguishes blobs_created from published_files, and records orphaned_commit_sha on ref failure",
+      "result": "defeated",
+      "evidence": "ContentPublicationManifest has distinct fields: blobs_created, tree_created, commit_created, ref_updated, published_files (only after ref success), orphaned_commit_sha (on ref failure). CONTENT_COMMIT_CREATED_REF_NOT_UPDATED phase handled. Proven at lines 1034-1035 and manifest model."
+    },
+    {
+      "assertion": "X0 projection_digest versus terminal_receipt_digest separation was proven",
+      "attempt": "Verify PublicationStatusContract uses projection_digest (not evidence_digest) and terminal_receipt_digest",
+      "result": "defeated",
+      "evidence": "PublicationStatusContract has projection_digest (partial status) and terminal_receipt_digest (links to durable receipt). Old evidence_digest field removed. Proven."
+    }
+  ],
+  "untested_claims": [
+    "Live GitHub Pages external acceptance against a real named repository",
+    "Desktop frontend wiring (X0 Gridline Interface consumption)",
+    "Branch bootstrap for atomic publication to empty branches",
+    "Multi-project portfolio evidence chains",
+    "Pages build polling with retry policy and timeout"
+  ],
+  "verified_boundary": "GovernedPagesCommitCorrelatedPublicationAndPortfolioBoundary — code capability is substantially sound but the publication claim is invalidated by two blocking publication-truth defects",
+  "downgraded_claims": [
+    "prepublication_admitted: the prepublication review cycle record was created in the same published commit (ec1954dc) and did not exist before publication. Its candidate_digest field contains the placeholder sha256:x35_candidate, not a real checkpoint SHA that predates publication. This violates valid prepublication chronology.",
+    "published_candidate_boundary: the boundary name contains 'Portfolio' but multi-project portfolio capability is expressly unclaimed. The boundary identifier overclaims capability."
+  ],
+  "consumer_admission": {
+    "allowed_for": [
+      "Reference of the X3.5 production code as a sound implementation substrate for a corrected narrow-boundary supersession candidate"
+    ],
+    "allowed_only_as_pending_status_for": [
+      "X0 Gridline Interface consumption (deferred, not yet wired)",
+      "Live external GitHub Pages acceptance (deferred, not yet proven)"
+    ],
+    "prohibited_for": [
+      "Direct consumption as a verified release by any downstream lane",
+      "Claim of multi-project portfolio capability",
+      "Claim of valid prepublication chronology"
+    ]
+  },
+  "resulting_status": "downgraded_candidate_repair_required",
+  "freeze_decision": {
+    "freeze_status": "not_frozen",
+    "reason": "Publication invalidated due to two blocking publication-truth defects: (1) false prepublication chronology — review record created in same published commit with placeholder candidate_digest; (2) overclaimed Portfolio boundary atom in boundary name. Code capability is substantially sound; invalidation requires a truthfully named supersession candidate with valid prepublication evidence."
+  }
+}
