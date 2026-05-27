@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.managed_workspace.v1.schema.json",
+  "title": "Managed Workspace v1",
+  "description": "Managed workspace lifecycle model for Rig Relay workspace management.",
+  "type": "object",
+  "properties": {
+    "identity": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "string"
+        },
+        "project_identity": {
+          "type": "string"
+        },
+        "mission_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "agent_profile_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "implementer",
+            "tester",
+            "reviewer",
+            "documenter",
+            "orchestrator"
+          ]
+        }
+      },
+      "required": [
+        "workspace_id",
+        "project_identity"
+      ],
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "requested",
+        "reserved",
+        "worktree_created",
+        "bootstrapping",
+        "ready",
+        "active",
+        "validating",
+        "under_review",
+        "checkpointed",
+        "released_for_integration",
+        "integrated",
+        "published",
+        "retired"
+      ]
+    },
+    "recovery_state": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "reservation_refused",
+            "bootstrap_failed",
+            "stale_base",
+            "session_detached",
+            "recovery_required",
+            "recovered",
+            "integration_conflict",
+            "reset_refused",
+            "removal_refused",
+            "quarantined"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "worktree_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "branch_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_branch": {
+      "type": "string"
+    },
+    "base_commit_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "managed_branch_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "head_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "changed_files_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "checkpoint_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updated_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "identity",
+    "state"
+  ],
+  "additionalProperties": false
+}

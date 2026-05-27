@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+  "title": "Fleet Workspace Projection v1",
+  "description": "Y0 consumer projection for fleet-wide workspace state in Rig Relay.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.fleet_workspace_projection.v1"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "project_identity": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "implementer",
+              "tester",
+              "reviewer",
+              "documenter",
+              "orchestrator"
+            ]
+          },
+          "branch_summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lifecycle_status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "reserved",
+              "worktree_created",
+              "bootstrapping",
+              "ready",
+              "active",
+              "validating",
+              "under_review",
+              "checkpointed",
+              "released_for_integration",
+              "integrated",
+              "published",
+              "retired"
+            ]
+          },
+          "recovery_required": {
+            "type": "boolean"
+          },
+          "changed_files_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checkpoint_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "claim_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "safe_available_actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "base_sha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "head_sha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "workspace_id",
+          "project_identity",
+          "lifecycle_status",
+          "recovery_required",
+          "changed_files_count",
+          "safe_available_actions"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "workspaces"
+  ],
+  "additionalProperties": false
+}

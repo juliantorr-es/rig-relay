@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json",
+  "title": "Workspace Lifecycle Event v1",
+  "description": "Lifecycle event model for managed workspace state transitions in Rig Relay.",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "workspace_id": {
+      "type": "string"
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "workspace_requested",
+        "workspace_reserved",
+        "worktree_created",
+        "bootstrap_started",
+        "bootstrap_completed",
+        "workspace_ready",
+        "workspace_activated",
+        "validation_started",
+        "validation_completed",
+        "review_started",
+        "review_completed",
+        "workspace_checkpointed",
+        "released_for_integration",
+        "integrated",
+        "published",
+        "workspace_retired",
+        "reservation_refused",
+        "bootstrap_failed",
+        "stale_base_detected",
+        "session_detached",
+        "recovery_required",
+        "recovered",
+        "integration_conflict",
+        "reset_refused",
+        "removal_refused",
+        "quarantined",
+        "worktree_locked",
+        "worktree_unlocked",
+        "worktree_repaired",
+        "worktree_pruned"
+      ]
+    },
+    "state_before": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "requested",
+            "reserved",
+            "worktree_created",
+            "bootstrapping",
+            "ready",
+            "active",
+            "validating",
+            "under_review",
+            "checkpointed",
+            "released_for_integration",
+            "integrated",
+            "published",
+            "retired"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state_after": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "requested",
+            "reserved",
+            "worktree_created",
+            "bootstrapping",
+            "ready",
+            "active",
+            "validating",
+            "under_review",
+            "checkpointed",
+            "released_for_integration",
+            "integrated",
+            "published",
+            "retired"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recovery_before": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "reservation_refused",
+            "bootstrap_failed",
+            "stale_base",
+            "session_detached",
+            "recovery_required",
+            "recovered",
+            "integration_conflict",
+            "reset_refused",
+            "removal_refused",
+            "quarantined"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recovery_after": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "reservation_refused",
+            "bootstrap_failed",
+            "stale_base",
+            "session_detached",
+            "recovery_required",
+            "recovered",
+            "integration_conflict",
+            "reset_refused",
+            "removal_refused",
+            "quarantined"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "worktree_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "branch_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_commit_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "head_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "changed_files_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "checkpoint_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "prior_event_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "workspace_id",
+    "event_kind",
+    "created_at"
+  ],
+  "additionalProperties": false
+}
