@@ -57,6 +57,7 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "site_editor",
     "operating_picture",
     "operational",
+    "developer_studio",
 })
 
 
@@ -986,6 +987,20 @@ def _build_operational() -> dict[str, Any]:
         return {"available": False, "reason": "snapshot_generation_failed"}
 
 
+def _build_developer_studio() -> dict[str, Any]:
+    """Build developer studio projection from Lane O0 gateway."""
+    try:
+        from rig_relay.desktop.gateway._intents import get_gateway_service
+
+        gw = get_gateway_service()
+        proj = gw.build_projection()
+        result = proj.model_dump(mode="json")
+        result["available"] = True
+        return result
+    except Exception:
+        return {"available": False, "reason": "gateway_projection_failed"}
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -1154,6 +1169,7 @@ def build_projection(
     site_editor = _build_site_editor_projection()
     operating_picture = _build_operating_picture()
     operational = _build_operational()
+    developer_studio = _build_developer_studio()
 
     source_status = {
         "current_state": current_state["available"],
@@ -1177,6 +1193,7 @@ def build_projection(
         "carte_blanche_dashboard": carte_blanche_dashboard["available"],
         "operating_picture": operating_picture["available"],
         "operational": operational["available"],
+        "developer_studio": developer_studio["available"],
     }
 
     warnings: list[str] = []
@@ -1223,6 +1240,7 @@ def build_projection(
         "site_editor": site_editor,
         "operating_picture": operating_picture,
         "operational": operational,
+        "developer_studio": developer_studio,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

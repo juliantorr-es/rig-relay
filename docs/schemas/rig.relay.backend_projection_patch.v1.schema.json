@@ -71,7 +71,8 @@
           "resources",
           "spiderweb_topology",
           "security_lifecycle_program",
-          "live_mutation_readiness"
+          "live_mutation_readiness",
+          "developer_studio"
         ]
       },
       "minItems": 1,

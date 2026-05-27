@@ -38,7 +38,86 @@ ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
         "description": "Rebuild the content-light projection from available artifacts.",
         "affects_projection": True,
         "parameters": {},
-    }
+    },
+    # ── Lane O0: Developer Studio Gateway intents ───────────────────
+    "get_developer_studio_projection": {
+        "description": "Build the aggregate developer studio projection from J0/K0/L0/M0 services.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_connect_workspace": {
+        "description": "Establish GitHub App workspace connection through J0.",
+        "affects_projection": True,
+        "parameters": {},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_discover_repositories": {
+        "description": "Discover repositories available to the GitHub App installation through J0.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_select_repository": {
+        "description": "Select a repository for local intake through J0.",
+        "affects_projection": True,
+        "parameters": {"repository_hash": "string"},
+    },
+    "studio_import_repository": {
+        "description": "Import a selected repository into the local workspace through J0.",
+        "affects_projection": True,
+        "parameters": {
+            "repository_hash": "string",
+            "owner": "string",
+            "repo": "string",
+        },
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_inspect_publication_readiness": {
+        "description": "Inspect GitHub Pages publication readiness through J0.",
+        "affects_projection": True,
+        "parameters": {"owner": "string", "repo": "string"},
+    },
+    "studio_prepare_pages_action": {
+        "description": "Prepare a GitHub Pages publication action through J0 (never executes).",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_start_investigation": {
+        "description": "Start a repository operator investigation session through K0.",
+        "affects_projection": True,
+        "parameters": {"repository_label": "string", "purpose": "string"},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_get_investigation": {
+        "description": "Get the projection of an active investigation session through K0.",
+        "affects_projection": False,
+        "parameters": {"session_id": "string"},
+    },
+    "studio_close_investigation": {
+        "description": "Close an investigation session through K0.",
+        "affects_projection": True,
+        "parameters": {"session_id": "string"},
+    },
+    "studio_assemble_project_profile": {
+        "description": "Assemble a project understanding and profile candidate through L0.",
+        "affects_projection": True,
+        "parameters": {"project_name": "string"},
+    },
+    "studio_assemble_context_packet": {
+        "description": "Assemble a sanitized context packet through L0.",
+        "affects_projection": True,
+        "parameters": {"project_name": "string"},
+    },
+    "studio_request_local_assistance": {
+        "description": "Request local model assistance through M0.",
+        "affects_projection": True,
+        "parameters": {"task_kind": "string"},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_get_local_draft": {
+        "description": "Retrieve a review-required local assistance draft through M0.",
+        "affects_projection": False,
+        "parameters": {"draft_sha256": "string"},
+    },
 }
 
 

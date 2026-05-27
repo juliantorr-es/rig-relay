@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.developer_studio_projection.v1.schema.json",
+  "title": "Developer Studio Projection v1",
+  "description": "Aggregate frontend-safe projection aggregating J0/K0/L0/M0 service state into a single coherent developer-studio envelope. Content-light: hashes, counts, statuses, and SHA256 digests only. Never contains raw file contents, secrets, tokens, unrestricted paths, raw model payloads, or private identifying data. Generated text is always proposed/review-required, never implicitly approved or public.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "projection_id",
+    "generated_at",
+    "workspace",
+    "operator",
+    "context",
+    "inference",
+    "service_health",
+    "provenance_summary",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.developer_studio_projection.v1"
+    },
+    "projection_id": {
+      "type": "string",
+      "description": "Unique identifier for this projection instance."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of projection generation."
+    },
+    "workspace": {
+      "type": "object",
+      "description": "J0 GitHub workspace projection — connection state, repository inventory, intake/sync state, and publication readiness.",
+      "required": ["provenance", "available", "connection", "repositories"],
+      "properties": {
+        "provenance": { "type": "string", "enum": ["derived_projection"] },
+        "available": { "type": "boolean" },
+        "connection": {
+          "type": "object",
+          "required": ["provenance", "trust_state", "connection_state"],
+          "properties": {
+            "provenance": { "type": "string", "enum": ["canonical_fact", "controlled_boundary_proof"] },
+            "trust_state": { "type": "string", "enum": ["trusted_live", "controlled_boundary", "fixture", "deferred", "refused", "corrupt"] },
+            "connection_state": { "type": "string" },
+            "installation_id_hash": { "type": "string" },
+            "token_available": { "type": "boolean" },
+            "accessible_repository_count": { "type": "integer" },
+            "live_installation_verified": { "type": "boolean" },
+            "errors": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "repositories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provenance", "repository_hash", "owner", "name", "full_name"],
+            "properties": {
+              "provenance": { "type": "string", "enum": ["derived_projection"] },
+              "repository_hash": { "type": "string" },
+              "owner": { "type": "string" },
+              "name": { "type": "string" },
+              "full_name": { "type": "string" },
+              "description_hash": { "type": ["string", "null"] },
+              "visibility": { "type": "string" },
+              "default_branch": { "type": "string" },
+              "has_pages": { "type": "boolean" },
+              "intake_state": { "type": "string" },
+              "selected": { "type": "boolean" },
+              "import_state": { "type": "string" },
+              "local_path_digest": { "type": "string" },
+              "head_sha": { "type": "string" },
+              "branch": { "type": "string" },
+              "publication_readiness_state": { "type": "string" },
+              "pages_action_state": { "type": "string" },
+              "pages_action_requires_approval": { "type": "boolean" },
+              "error_kind": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "selected_count": { "type": "integer" },
+        "imported_count": { "type": "integer" },
+        "publishable_count": { "type": "integer" },
+        "total_discovered": { "type": "integer" }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "description": "K0 operator sessions projection — investigation sessions, tool activity, and proposal/refusal dispositions.",
+      "required": ["provenance", "available", "active_sessions"],
+      "properties": {
+        "provenance": { "type": "string", "enum": ["derived_projection"] },
+        "available": { "type": "boolean" },
+        "active_sessions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provenance", "session_id", "repository_label", "status"],
+            "properties": {
+              "provenance": { "type": "string", "enum": ["derived_projection"] },
+              "session_id": { "type": "string" },
+              "repository_label": { "type": "string" },
+              "purpose": { "type": "string" },
+              "status": { "type": "string" },
+              "phase": { "type": "string" },
+              "agent_profile_name": { "type": "string" },
+              "tool_call_count": { "type": "integer" },
+              "tool_success_count": { "type": "integer" },
+              "tool_refusal_count": { "type": "integer" },
+              "tool_failure_count": { "type": "integer" },
+              "proposal_count": { "type": "integer" },
+              "refusal_count": { "type": "integer" },
+              "pending_decisions": { "type": "array", "items": { "type": "string" } },
+              "blocked_capabilities": { "type": "array", "items": { "type": "string" } },
+              "error_message": { "type": ["string", "null"] },
+              "created_at": { "type": "string" },
+              "updated_at": { "type": "string" }
+            }
+          }
+        },
+        "total_sessions": { "type": "integer" },
+        "active_session_count": { "type": "integer" },
+        "refused_session_count": { "type": "integer" },
+        "proposal_pending_count": { "type": "integer" },
+        "deferred_integrations": { "type": "array", "items": { "type": "string" } },
+        "recovery_materialization_available": { "type": "boolean" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "L0 project context projection — study status, intake dependency status, and redaction engine readiness.",
+      "required": ["provenance", "available", "intake_dependency_status"],
+      "properties": {
+        "provenance": { "type": "string", "enum": ["derived_projection"] },
+        "available": { "type": "boolean" },
+        "studies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provenance", "study_status", "project_name"],
+            "properties": {
+              "provenance": { "type": "string", "enum": ["derived_projection"] },
+              "study_status": { "type": "string" },
+              "project_name": { "type": "string" },
+              "head_sha": { "type": "string" },
+              "branch": { "type": "string" },
+              "facts_discovered": { "type": "integer" },
+              "facts_with_provenance": { "type": "integer" },
+              "languages_detected": { "type": "array", "items": { "type": "string" } },
+              "frameworks_detected": { "type": "array", "items": { "type": "string" } },
+              "public_ready_assets": { "type": "array", "items": { "type": "string" } },
+              "public_ready_asset_count": { "type": "integer" },
+              "withheld_material_count": { "type": "integer" },
+              "withheld_reasons": { "type": "array", "items": { "type": "string" } },
+              "draft_narrative_count": { "type": "integer" },
+              "draft_narrative_awaiting_approval": { "type": "integer" },
+              "bootstrap_gaps": { "type": "array", "items": { "type": "string" } },
+              "context_packet_ready": { "type": "boolean" },
+              "context_packet_digest": { "type": "string" },
+              "profile_candidate_ready": { "type": "boolean" },
+              "profile_candidate_digest": { "type": "string" },
+              "portfolio_eligibility": { "type": "string" },
+              "approval_status": { "type": "string" },
+              "recommendation": { "type": "string" }
+            }
+          }
+        },
+        "intake_dependency_status": {
+          "type": "object",
+          "required": ["provenance", "j0_intake_boundary", "k0_investigation_boundary"],
+          "properties": {
+            "provenance": { "type": "string", "enum": ["derived_projection"] },
+            "j0_intake_boundary": { "type": "string" },
+            "k0_investigation_boundary": { "type": "string" },
+            "j0_intake_available": { "type": "boolean" },
+            "k0_investigation_available": { "type": "boolean" }
+          }
+        },
+        "redaction_engine_available": { "type": "boolean" }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "description": "M0 local inference projection — runtime availability, task suitability, review-required drafts, and refusals.",
+      "required": ["provenance", "available", "runtime_available", "runtime_configured", "drafts_awaiting_review"],
+      "properties": {
+        "provenance": { "type": "string", "enum": ["derived_projection"] },
+        "available": { "type": "boolean" },
+        "runtime_available": { "type": "boolean" },
+        "runtime_configured": { "type": "boolean" },
+        "runtime_kind": { "type": "string" },
+        "platform_class": { "type": "string" },
+        "task_suitability": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["task_kind", "suitable", "enforcement_class_required"],
+            "properties": {
+              "task_kind": { "type": "string" },
+              "suitable": { "type": "boolean" },
+              "requires_runtime": { "type": "boolean" },
+              "enforcement_class_required": { "type": "string" },
+              "publication_applicability": { "type": "string" },
+              "refusal_reason": { "type": "string" }
+            }
+          }
+        },
+        "total_results": { "type": "integer" },
+        "total_executed": { "type": "integer" },
+        "total_refused": { "type": "integer" },
+        "drafts_awaiting_review": { "type": "integer" },
+        "drafts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provenance", "result_id", "draft_sha256", "requires_approval"],
+            "properties": {
+              "provenance": { "type": "string", "enum": ["review_required_draft"] },
+              "result_id": { "type": "string" },
+              "task_id": { "type": "string" },
+              "task_kind": { "type": "string" },
+              "draft_sha256": { "type": "string" },
+              "draft_byte_count": { "type": "integer" },
+              "output_disposition": { "type": "string" },
+              "publication_applicability": { "type": "string" },
+              "requires_approval": { "type": "boolean" },
+              "created_at": { "type": "string" }
+            }
+          }
+        },
+        "refusals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provenance", "result_id", "refusal_code"],
+            "properties": {
+              "provenance": { "type": "string", "enum": ["refused"] },
+              "result_id": { "type": "string" },
+              "task_id": { "type": "string" },
+              "task_kind": { "type": "string" },
+              "refusal_code": { "type": "string" },
+              "refusal_reason": { "type": "string" },
+              "created_at": { "type": "string" }
+            }
+          }
+        },
+        "native_schema_capability_claimed": { "type": "boolean" },
+        "native_schema_capability_proven": { "type": "boolean" },
+        "grammar_capability_claimed": { "type": "boolean" },
+        "grammar_capability_proven": { "type": "boolean" }
+      }
+    },
+    "service_health": {
+      "type": "object",
+      "required": ["j0_workspace", "k0_operator", "l0_context", "m0_inference"],
+      "properties": {
+        "j0_workspace": { "type": "string" },
+        "k0_operator": { "type": "string" },
+        "l0_context": { "type": "string" },
+        "m0_inference": { "type": "string" }
+      }
+    },
+    "provenance_summary": {
+      "type": "object",
+      "required": ["canonical_facts", "derived_projections", "generated_proposals", "review_required_drafts", "approved_contents", "controlled_boundary_proofs", "fixture_deferred", "refused", "corrupt_untrusted"],
+      "properties": {
+        "canonical_facts": { "type": "integer" },
+        "derived_projections": { "type": "integer" },
+        "generated_proposals": { "type": "integer" },
+        "review_required_drafts": { "type": "integer" },
+        "approved_contents": { "type": "integer" },
+        "controlled_boundary_proofs": { "type": "integer" },
+        "fixture_deferred": { "type": "integer" },
+        "refused": { "type": "integer" },
+        "corrupt_untrusted": { "type": "integer" }
+      }
+    },
+    "content_light": { "type": "boolean", "const": true },
+    "projection_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA256 digest of the deterministic canonical JSON of the projection payload."
+    }
+  },
+  "additionalProperties": false
+}

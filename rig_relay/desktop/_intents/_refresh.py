@@ -48,6 +48,36 @@ def execute_desktop_intent(
     # Emit received event
     emit_received(request)
 
+    # ── Lane O0: Gateway intents routed to DeveloperStudioGatewayService ──
+    from rig_relay.desktop.gateway._intents import is_gateway_intent as _is_gw
+
+    if _is_gw(intent_name):
+        from rig_relay.desktop.gateway._intents import (
+            execute_gateway_intent as _exec_gw,
+        )
+
+        params = request.get("parameters", {})
+        gw_result = _exec_gw(intent_name, params)
+        _gw_status = gw_result.get("status", "failed")
+        _event_type = (
+            "intent_completed" if _gw_status == "completed" else "intent_dispatched"
+        )
+        gw_result["_bridge_lifecycle_event"] = build_accepted_intent_lifecycle_event(
+            event_type=_event_type,
+            intent_name=intent_name,
+            intent_id=intent_id,
+            trace_id=trace_id or request.get("trace_id", ""),
+            inbound_message_id=request.get("parent_message_id", ""),
+            safe_summary_hash=hashlib.sha256(
+                gw_result.get("error_message", gw_result.get("status", "")).encode()
+            ).hexdigest()[:16],
+        )
+        gw_result.setdefault("intent_id", intent_id)
+        gw_result.setdefault("created_at", request.get("created_at", ""))
+        gw_result.setdefault("projection_refresh_recommended", True)
+        gw_result.setdefault("dry_run", request.get("dry_run", True))
+        return gw_result
+
     # Helper to emit progress event if emitter is available
     _emit_seq = 0
 
