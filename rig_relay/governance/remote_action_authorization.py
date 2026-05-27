@@ -53,6 +53,9 @@ class RemoteActionClass(StrEnum):
     GITHUB_PAGES_PUBLISH = auto()
     GITHUB_PAGES_CANCEL_DEPLOYMENT = auto()
 
+    # GitHub Git Content Publication (X3.3)
+    GITHUB_GIT_CONTENT_PUBLISH = auto()
+
 
 # All known valid action classes — used for unsupported-action refusal.
 # Consumers add new classes by registering here.
@@ -68,6 +71,7 @@ FRESHNESS_REQUIRED_ACTIONS: frozenset[str] = frozenset({
     RemoteActionClass.GITHUB_PAGES_CONFIGURE.value,
     RemoteActionClass.GITHUB_PAGES_PUBLISH.value,
     RemoteActionClass.GITHUB_PAGES_CANCEL_DEPLOYMENT.value,
+    RemoteActionClass.GITHUB_GIT_CONTENT_PUBLISH.value,
     RemoteActionClass.GITHUB_ACTIONS_RERUN.value,
     RemoteActionClass.GITHUB_ACTIONS_DISPATCH.value,
 })

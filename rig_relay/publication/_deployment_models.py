@@ -37,6 +37,7 @@ class DeploymentRefusalCode(StrEnum):
     PAGES_CONFIG_FAILED = "pages_config_failed"
     PAGES_CREATE_FAILED = "pages_create_failed"
     PAGES_UPDATE_FAILED = "pages_update_failed"
+    PAGES_INSPECT_FAILED = "pages_inspect_failed"
     CONTENT_PUSH_FAILED = "content_push_failed"
     CONTENT_PUSH_PARTIAL = "content_push_partial"
     REPO_NOT_FOUND = "repo_not_found"
@@ -350,6 +351,8 @@ class PortfolioSynthesisResult(BaseModel):
 
 
 class PublicationStatusContract(BaseModel):
+    """X3.3 Gate G — X0-consumable typed publication surface state."""
+
     model_config = ConfigDict(extra="forbid")
     schema_version: str = "rig.relay.publication_status.v1"
     publication_operation_id: str
@@ -360,11 +363,17 @@ class PublicationStatusContract(BaseModel):
     authorization_status: str = "pending"
     pages_configured: bool = False
     content_published: bool = False
+    content_publication_mode: str = "none"
+    published_commit_sha: str = ""
     build_status: str = ""
+    build_commit_sha: str = ""
+    build_commit_matches_published: bool = False
     published_verified: bool = False
     refusal_code: str | None = None
     recovery_required: bool = False
     status_message: str = ""
+    available_actions: list[str] = Field(default_factory=list)
+    evidence_digest: str = ""
 
 
 def _now_iso() -> str:

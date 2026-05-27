@@ -43,6 +43,7 @@ _LANE_B_TO_LANE_A_ACTION: dict[str, RemoteActionClass] = {
     "pages_configure": RemoteActionClass.GITHUB_PAGES_CONFIGURE,
     "pages_publish": RemoteActionClass.GITHUB_PAGES_PUBLISH,
     "pages_cancel": RemoteActionClass.GITHUB_PAGES_CANCEL_DEPLOYMENT,
+    "git_content_publish": RemoteActionClass.GITHUB_GIT_CONTENT_PUBLISH,
 }
 
 

@@ -745,6 +745,249 @@ class RealGitHubBoundary:
         )
         return r["status_code"], {"number": r.get("pr_number")} if r["success"] else {}
 
+    # ── Git Data API (X3.3 atomic publication) ──────────────────────
+
+    async def create_blob(
+        self, content: str, encoding: str = "utf-8"
+    ) -> dict[str, Any]:
+        import httpx
+
+        route = "git/blobs"
+        if not self._token_valid:
+            return self._record(
+                "create_blob", "POST", route, 0, {"error": "token_missing"}
+            )
+        import base64 as _base64
+
+        b64 = _base64.b64encode(content.encode(encoding)).decode("ascii")
+        body = {"content": b64, "encoding": "base64"}
+        body_hash = _sha256_text(json.dumps(body, sort_keys=True))
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    json=body,
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                blob_sha = resp.json().get("sha", "") if resp.status_code == 201 else ""
+                return self._record(
+                    "create_blob",
+                    "POST",
+                    route,
+                    resp.status_code,
+                    {
+                        "request_body_hash": body_hash,
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "blob_sha": blob_sha if blob_sha else None,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "create_blob",
+                    "POST",
+                    route,
+                    0,
+                    {"error": str(e)[:100], "request_body_hash": body_hash},
+                )
+
+    async def create_tree(
+        self, tree_entries: list[dict[str, Any]], base_tree: str | None = None
+    ) -> dict[str, Any]:
+        import httpx
+
+        route = "git/trees"
+        if not self._token_valid:
+            return self._record(
+                "create_tree", "POST", route, 0, {"error": "token_missing"}
+            )
+        body: dict[str, Any] = {"tree": tree_entries}
+        if base_tree:
+            body["base_tree"] = base_tree
+        body_hash = _sha256_text(json.dumps(body, sort_keys=True))
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    json=body,
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                tree_sha = resp.json().get("sha", "") if resp.status_code == 201 else ""
+                return self._record(
+                    "create_tree",
+                    "POST",
+                    route,
+                    resp.status_code,
+                    {
+                        "request_body_hash": body_hash,
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "tree_sha": tree_sha if tree_sha else None,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "create_tree",
+                    "POST",
+                    route,
+                    0,
+                    {"error": str(e)[:100], "request_body_hash": body_hash},
+                )
+
+    async def create_commit(
+        self, message: str, tree_sha: str, parents: list[str] | None = None
+    ) -> dict[str, Any]:
+        import httpx
+
+        route = "git/commits"
+        if not self._token_valid:
+            return self._record(
+                "create_commit", "POST", route, 0, {"error": "token_missing"}
+            )
+        body: dict[str, Any] = {"message": message, "tree": tree_sha}
+        if parents:
+            body["parents"] = parents
+        body_hash = _sha256_text(json.dumps(body, sort_keys=True))
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    json=body,
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                commit_sha = (
+                    resp.json().get("sha", "") if resp.status_code == 201 else ""
+                )
+                return self._record(
+                    "create_commit",
+                    "POST",
+                    route,
+                    resp.status_code,
+                    {
+                        "request_body_hash": body_hash,
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "commit_sha": commit_sha if commit_sha else None,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "create_commit",
+                    "POST",
+                    route,
+                    0,
+                    {"error": str(e)[:100], "request_body_hash": body_hash},
+                )
+
+    async def update_ref(
+        self, ref: str, sha: str, force: bool = False
+    ) -> dict[str, Any]:
+        import httpx
+
+        route = f"git/{ref}"
+        if not self._token_valid:
+            return self._record(
+                "update_ref", "PATCH", route, 0, {"error": "token_missing"}
+            )
+        body = {"sha": sha, "force": force}
+        body_hash = _sha256_text(json.dumps(body, sort_keys=True))
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.patch(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                    json=body,
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                ref_object = (
+                    resp.json().get("object", {}) if resp.status_code == 200 else {}
+                )
+                ref_sha = ref_object.get("sha", "")
+                return self._record(
+                    "update_ref",
+                    "PATCH",
+                    route,
+                    resp.status_code,
+                    {
+                        "request_body_hash": body_hash,
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "ref_sha": ref_sha if ref_sha else None,
+                        "force": force,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "update_ref",
+                    "PATCH",
+                    route,
+                    0,
+                    {"error": str(e)[:100], "request_body_hash": body_hash},
+                )
+
+    async def get_pages_builds_latest(self) -> dict[str, Any]:
+        import httpx
+
+        route = "pages/builds/latest"
+        if not self._token_valid:
+            return self._record(
+                "get_pages_builds_latest", "GET", route, 0, {"error": "token_missing"}
+            )
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.get(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                data = resp.json() if resp.status_code == 200 else {}
+                build_commit = data.get("commit", "")
+                build_status = data.get("status", "")
+                return self._record(
+                    "get_pages_builds_latest",
+                    "GET",
+                    route,
+                    resp.status_code,
+                    {
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "build_commit": build_commit if build_commit else None,
+                        "build_status": build_status if build_status else None,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "get_pages_builds_latest", "GET", route, 0, {"error": str(e)[:100]}
+                )
+
 
 def create_real_boundary(
     owner: str = "OWNER", repo: str = "REPO"

@@ -134,7 +134,9 @@ class GitHubPagesDeploymentService:
 
         stored_digest = receipt.evidence_digest
         computed_digest = receipt.compute_digest()
-        if stored_digest and stored_digest != computed_digest:
+        if not stored_digest:
+            reasons.append("Receipt missing evidence_digest — not yet sealed")
+        elif stored_digest != computed_digest:
             reasons.append(
                 f"Receipt evidence_digest mismatch: stored={stored_digest[:20]}..., "
                 f"computed={computed_digest[:20]}..."
@@ -288,7 +290,7 @@ class GitHubPagesDeploymentService:
                 op_id=op_id,
                 prep=transition_prep,
                 phase=PublicationTransitionPhase.REFUSED,
-                refusal=DeploymentRefusalCode.PAGES_NOT_CONFIGURED,
+                refusal=DeploymentRefusalCode.PAGES_INSPECT_FAILED,
                 reasons=[pages_state["error"]],
                 now=now,
                 auth_digest=auth_digest,
@@ -726,7 +728,7 @@ class GitHubPagesDeploymentService:
         except Exception as e:
             return {"success": False, "error": str(e)[:200]}
 
-    # ── Private: Content publication ───────────────────────────────────
+    # ── Private: Content publication (X3.3 atomic pipeline) ─────────────
 
     async def _publish_bundle(
         self,
@@ -738,7 +740,11 @@ class GitHubPagesDeploymentService:
         operation_id: str,
         auth_digest: str,
     ) -> ContentPublicationManifest:
-        """Gate B: Publish each file with manifest tracking and recovery."""
+        """X3.3 Gate B: Atomic git commit/reference publication.
+
+        Pipeline: blobs → tree → commit → ref update.
+        Falls back to per-file sequential push only if Git Data API unavailable.
+        """
         expected = sorted(bundle_obj.files.keys())
         manifest = ContentPublicationManifest(
             operation_id=operation_id,
@@ -747,23 +753,170 @@ class GitHubPagesDeploymentService:
             expected_files=list(expected),
         )
 
-        if self._git_boundary is None:
+        gb = self._git_boundary
+        if gb is None:
             manifest.publication_partial = True
             for f in expected:
                 manifest.failed_files.append({"path": f, "error": "No git boundary"})
             manifest.compute_digest()
             return manifest
 
+        has_atomic = all(
+            hasattr(gb, m)
+            for m in ("create_blob", "create_tree", "create_commit", "update_ref")
+        )
+
+        if has_atomic:
+            return await self._publish_atomic(
+                bundle_obj, branch, expected, manifest, gb
+            )
+
+        return await self._publish_sequential(
+            bundle_obj, branch, expected, manifest, gb
+        )
+
+    async def _publish_atomic(
+        self,
+        bundle_obj: ApprovedStaticPublicationBundle,
+        branch: str,
+        expected: list[str],
+        manifest: ContentPublicationManifest,
+        gb: object,
+    ) -> ContentPublicationManifest:
+        """X3.3: Atomic publication via Git Data API (blob→tree→commit→ref)."""
+        published: list[str] = []
+        failed: list[dict] = []
+        blob_shas: dict[str, str] = {}
+
+        # Step 1: Create blobs for all files
+        for file_path in expected:
+            content = bundle_obj.files[file_path]
+            try:
+                result = await gb.create_blob(content, "utf-8")
+                sha = result.get("blob_sha", "")
+                if sha:
+                    blob_shas[file_path] = sha
+                    published.append(file_path)
+                else:
+                    failed.append({
+                        "path": file_path,
+                        "error": result.get("error", "no sha returned"),
+                    })
+            except Exception as e:
+                failed.append({"path": file_path, "error": str(e)[:200]})
+
+        if not blob_shas:
+            manifest.failed_files = failed
+            manifest.compute_digest()
+            return manifest
+
+        # Step 2: Get current ref SHA for base_tree and parent commit
+        current_sha = ""
+        base_tree_sha = ""
+        try:
+            ref_resp = await gb.get_base_ref(f"heads/{branch}")
+            current_sha = ref_resp.get("ref_sha", "")
+        except Exception:
+            pass
+
+        # Step 3: Create tree with base_tree for preservation
+        tree_entries = [
+            {"path": fp, "mode": "100644", "type": "blob", "sha": sha}
+            for fp, sha in blob_shas.items()
+        ]
+        try:
+            tree_result = await gb.create_tree(
+                tree_entries, base_tree=base_tree_sha if base_tree_sha else None
+            )
+            tree_sha = tree_result.get("tree_sha", "")
+            if not tree_sha:
+                manifest.failed_files = failed
+                manifest.compute_digest()
+                return manifest
+        except Exception as e:
+            for fp in blob_shas:
+                failed.append({"path": fp, "error": f"tree creation: {e}"})
+            manifest.failed_files = failed
+            manifest.compute_digest()
+            return manifest
+
+        # Step 4: Create commit
+        parents = [current_sha] if current_sha else None
+        try:
+            commit_result = await gb.create_commit(
+                message="Publish site bundle via Rig Relay",
+                tree_sha=tree_sha,
+                parents=parents,
+            )
+            commit_sha = commit_result.get("commit_sha", "")
+            if not commit_sha:
+                manifest.failed_files = [
+                    {"path": "__commit__", "error": "commit creation failed"}
+                ]
+                manifest.published_files = published
+                manifest.publication_partial = len(published) > 0
+                manifest.compute_digest()
+                return manifest
+        except Exception as e:
+            manifest.failed_files = [{"path": "__commit__", "error": str(e)[:200]}]
+            manifest.published_files = published
+            manifest.publication_partial = len(published) > 0
+            manifest.compute_digest()
+            return manifest
+
+        # Step 5: Update ref (compare-and-swap via force=false)
+        try:
+            ref_result = await gb.update_ref(f"heads/{branch}", commit_sha, force=False)
+            if ref_result.get("success", False):
+                manifest.published_files = published
+                manifest.publication_complete = True
+            else:
+                status = ref_result.get("status_code", 0)
+                if status == 409:
+                    manifest.failed_files = [
+                        {
+                            "path": "__ref__",
+                            "error": "ref conflict — branch advanced since preparation",
+                        }
+                    ]
+                    manifest.published_files = published
+                    manifest.publication_partial = True
+                else:
+                    manifest.failed_files = [
+                        {
+                            "path": "__ref__",
+                            "error": ref_result.get("error", "ref update failed"),
+                        }
+                    ]
+                    manifest.published_files = published
+                    manifest.publication_partial = True
+        except Exception as e:
+            manifest.failed_files = [{"path": "__ref__", "error": str(e)[:200]}]
+            manifest.published_files = published
+            manifest.publication_partial = True
+
+        manifest.compute_digest()
+        return manifest
+
+    async def _publish_sequential(
+        self,
+        bundle_obj: ApprovedStaticPublicationBundle,
+        branch: str,
+        expected: list[str],
+        manifest: ContentPublicationManifest,
+        gb: object,
+    ) -> ContentPublicationManifest:
+        """Fallback: sequential per-file push via Contents API."""
         published: list[str] = []
         failed: list[dict] = []
 
         for file_path in expected:
             content = bundle_obj.files[file_path]
             try:
-                result = await self._git_boundary.put_file_contents(
+                result = await gb.put_file_contents(
                     path=file_path,
                     branch=branch,
-                    message=f"Deploy {file_path} via Rig Relay X3.2",
+                    message=f"Deploy {file_path} via Rig Relay",
                     content=content,
                 )
                 if result.get("success", False):

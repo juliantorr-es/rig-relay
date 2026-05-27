@@ -103,6 +103,9 @@ def _compute_governance_digest(receipt: dict[str, Any]) -> str:
     """Governance-scoped digest for conflict detection — only outcome fields."""
     canonical = {
         "transition_phase": receipt.get("transition_phase", ""),
+        "transition_preparation_digest": receipt.get(
+            "transition_preparation_digest", ""
+        ),
         "pages_created": receipt.get("pages_created", False),
         "pages_updated": receipt.get("pages_updated", False),
         "content_published": receipt.get("content_published", False),
