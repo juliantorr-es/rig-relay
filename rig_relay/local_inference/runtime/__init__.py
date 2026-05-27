@@ -25,11 +25,14 @@ from rig_relay.local_inference.runtime._engine import (
     RiggedMlxEngine,
 )
 from rig_relay.local_inference.runtime._evidence import (
+    EvidenceLedger,
     build_evidence_receipt,
     emit_cache_evidence,
     emit_execution_receipt,
     emit_lifecycle_event,
     emit_refusal_receipt,
+    emit_tool_proposal_evidence,
+    reconstruct_ledgers,
 )
 from rig_relay.local_inference.runtime._inventory import scan_model_inventory
 from rig_relay.local_inference.runtime._models import (
@@ -60,6 +63,7 @@ from rig_relay.local_inference.runtime._probe import (
     probe_runtime_health,
     probe_runtime_models,
 )
+from rig_relay.local_inference.runtime._secrets import scan_messages_for_secrets
 from rig_relay.local_inference.runtime._service import (
     RiggedLocalRuntime,
     get_runtime,
@@ -72,6 +76,7 @@ __all__: list[str] = [
     "CapabilityPosture",
     "ContextPrivacyClass",
     "EnrichedRuntimeCapabilities",
+    "EvidenceLedger",
     "ExecutionStatus",
     "FinishReason",
     "LoadedModel",
@@ -99,9 +104,12 @@ __all__: list[str] = [
     "emit_execution_receipt",
     "emit_lifecycle_event",
     "emit_refusal_receipt",
+    "emit_tool_proposal_evidence",
     "get_runtime",
     "probe_runtime_health",
     "probe_runtime_models",
+    "reconstruct_ledgers",
     "reset_runtime",
+    "scan_messages_for_secrets",
     "scan_model_inventory",
 ]

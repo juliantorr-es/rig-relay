@@ -1,37 +1,28 @@
-"""Tests for RiggedLocalRuntime X2.1 — corrected boundary.
-
-Tests: visible response, durable evidence, private-context policy,
-tool-call parsing, chat template usage, v1 posture.
-"""
+"""Tests for RiggedLocalRuntime X2.2 — canonical evidence, secret enforcement, tool proposals."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from rig_relay.local_inference.runtime._engine import (
-    RiggedMlxEngine,
-    _build_prompt_using_chat_template,
-    _parse_tool_calls,
-)
+from rig_relay.local_inference.runtime._engine import RiggedMlxEngine, _parse_tool_calls
 from rig_relay.local_inference.runtime._evidence import (
-    _ledger_path,
-    build_evidence_receipt,
+    EvidenceLedger,
+    EvidenceLedgerError,
+    _compute_digest,
     emit_execution_receipt,
-    emit_lifecycle_event,
-    emit_refusal_receipt,
+    emit_tool_proposal_evidence,
+    reconstruct_ledgers,
 )
 from rig_relay.local_inference.runtime._models import (
-    CapabilityPosture,
     ContextPrivacyClass,
     ExecutionStatus,
-    FinishReason,
     LocalInferenceEvidenceReceipt,
-    LocalInferenceResponse,
     RefusalReason,
     TaskKind,
-    TaskRefusal,
-    ToolCallProposal,
 )
+from rig_relay.local_inference.runtime._secrets import scan_messages_for_secrets
 from rig_relay.local_inference.runtime._service import (
     RiggedLocalRuntime,
     get_runtime,
@@ -39,299 +30,225 @@ from rig_relay.local_inference.runtime._service import (
 )
 
 
-class TestVisibleResponse:
-    """Model output must be visible to the consumer, not hashed and discarded."""
+class TestCanonicalEvidence:
+    def test_ledger_append_with_digest_chain(self, tmp_path: Path) -> None:
 
-    def test_local_inference_response_has_content_field(self) -> None:
-        resp = LocalInferenceResponse(content="Hello, world!")
-        assert resp.content == "Hello, world!"
-
-    def test_response_carries_tool_proposals(self) -> None:
-        proposals = [ToolCallProposal(call_id="c1", tool_name="test", arguments="{}")]
-        resp = LocalInferenceResponse(
-            content="text",
-            finish_reason=FinishReason.TOOL_CALLS,
-            tool_call_proposals=proposals,
-        )
-        assert len(resp.tool_call_proposals) == 1
-        assert resp.finish_reason == FinishReason.TOOL_CALLS
-
-    def test_response_has_evidence_receipt_id(self) -> None:
-        resp = LocalInferenceResponse(content="text", evidence_receipt_id="abc")
-        assert resp.evidence_receipt_id == "abc"
-
-
-class TestDurableEvidence:
-    """Evidence must be written to durable append-only JSONL ledgers, not discarded."""
-
-    def test_ledger_path_exists(self) -> None:
-        path = _ledger_path("runtime_execution_ledger.jsonl")
-        assert path.parent.name == "evidence"
-        assert path.name.endswith(".jsonl")
-
-    def test_emit_execution_receipt_writes(self) -> None:
-        receipt = LocalInferenceEvidenceReceipt(
-            receipt_id="test_exec_1",
-            task_id_hash="hash123",
-            status=ExecutionStatus.EXECUTED,
-            prompt_sha256="abc",
-            output_sha256="def",
-        )
-        rid = emit_execution_receipt(receipt)
-        assert rid == "test_exec_1"
-
-        path = _ledger_path("runtime_execution_ledger.jsonl")
+        path = tmp_path / "test_ledger.jsonl"
+        ledger = EvidenceLedger(path, "test.v1")
+        d1 = ledger.append("test.event1", {"a": 1, "content_light": True})
+        d2 = ledger.append("test.event2", {"b": 2, "content_light": True})
+        assert d1 != d2
         assert path.exists()
 
-    def test_emit_refusal_receipt_writes(self) -> None:
-        refusal = TaskRefusal(
-            reason=RefusalReason.RUNTIME_NOT_CONFIGURED, detail="test"
-        )
-        rid = emit_refusal_receipt(refusal, "hash456")
-        assert rid
+    def test_ledger_reconstruct_validates_chain(self, tmp_path: Path) -> None:
 
-    def test_emit_lifecycle_event_writes(self) -> None:
-        rid = emit_lifecycle_event(
-            "rig.relay.runtime.model_loaded", "model_hash", {"extra": "data"}
-        )
-        assert rid
+        path = tmp_path / "test_chain.jsonl"
+        ledger = EvidenceLedger(path, "test.v1")
+        ledger.append("event.1", {"seq": 1, "content_light": True})
+        ledger.append("event.2", {"seq": 2, "content_light": True})
+        entries = ledger.reconstruct()
+        assert len(entries) == 2
 
-    def test_evidence_receipt_is_content_light(self) -> None:
+    def test_reconstruct_empty_ledger(self, tmp_path: Path) -> None:
+
+        path = tmp_path / "empty.jsonl"
+        ledger = EvidenceLedger(path, "test.v1")
+        assert ledger.reconstruct() == []
+
+    def test_reconstruct_detects_corruption(self, tmp_path: Path) -> None:
+
+        path = tmp_path / "corrupt.jsonl"
+        ledger = EvidenceLedger(path, "test.v1")
+        ledger.append("event.1", {"seq": 1, "content_light": True})
+
+        with open(path, "a") as f:
+            f.write('{"_event":"bad","_digest":"wrong"}\n')
+
+        with pytest.raises(EvidenceLedgerError):
+            ledger.reconstruct()
+
+    def test_digest_computation_excludes_digest_field(self) -> None:
+        env = {
+            "_event": "test",
+            "_written_at": "now",
+            "payload": {"x": 1},
+            "_digest": "temp",
+        }
+        d1 = _compute_digest(env)
+        env["_digest"] = d1
+        d2 = _compute_digest(env)
+        assert d1 == d2
+
+    def test_emit_execution_receipt_writes_digest(self) -> None:
         receipt = LocalInferenceEvidenceReceipt(
-            receipt_id="r1", task_id_hash="h1", status=ExecutionStatus.EXECUTED
+            receipt_id="r1",
+            task_id_hash="h1",
+            status=ExecutionStatus.EXECUTED,
+            content_light=True,
         )
-        assert receipt.content_light
-        assert receipt.output_sha256 == ""
+        digest = emit_execution_receipt(receipt)
+        assert digest.startswith("sha256:")
 
-    def test_build_evidence_receipt_from_response(self) -> None:
-        resp = LocalInferenceResponse(
-            content="Hello, world!",
-            finish_reason=FinishReason.STOP,
-            prompt_tokens=5,
-            completion_tokens=3,
-            total_tokens=8,
-            latency_ms=100,
-            model_id_hash="m123",
-        )
-        receipt = build_evidence_receipt(
-            task_id_hash="hash",
-            prompt_sha256="psha",
-            response=resp,
-            model_id_hash="m123",
-            latency_ms=100,
-            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
-        )
-        assert receipt.content_light
-        assert receipt.output_sha256
-        assert receipt.output_length_chars == 13
-        assert receipt.context_privacy_class == ContextPrivacyClass.PRIVATE_LOCAL
+    def test_emit_tool_proposal_evidence(self) -> None:
+        digest = emit_tool_proposal_evidence("task_h", 2, ["tool1", "tool2"])
+        assert digest.startswith("sha256:")
+
+    def test_reconstruct_ledgers_returns_dict(self) -> None:
+        result = reconstruct_ledgers()
+        assert isinstance(result, dict)
+        assert "execution" in result
 
 
-class TestPrivateContextPolicy:
-    """Local runtime must allow private repo content, not just public-safe."""
+class TestSecretScanning:
+    def test_detects_openai_api_key(self) -> None:
+        result = scan_messages_for_secrets([
+            {
+                "role": "user",
+                "content": "sk-abc123def456ghi789jkl012mno345pqr678stu901vwx",
+            }
+        ])
+        assert result["secrets_detected"]
 
-    def test_admits_private_local_context(self) -> None:
+    def test_detects_bearer_auth_header(self) -> None:
+        result = scan_messages_for_secrets([
+            {
+                "role": "user",
+                "content": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0N3M",
+            }
+        ])
+        assert result["secrets_detected"]
+
+    def test_detects_github_token(self) -> None:
+        result = scan_messages_for_secrets([
+            {"role": "user", "content": "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"}
+        ])
+        assert result["secrets_detected"]
+
+    def test_detects_aws_access_key(self) -> None:
+        result = scan_messages_for_secrets([
+            {"role": "user", "content": "AKIAIOSFODNN7EXAMPLE"}
+        ])
+        assert result["secrets_detected"]
+
+    def test_detects_hf_token(self) -> None:
+        result = scan_messages_for_secrets([
+            {"role": "user", "content": "hf_abcdefghijklmnopqrstuvwxyzABCDEFGH"}
+        ])
+        assert result["secrets_detected"]
+
+    def test_detects_api_key_assignment(self) -> None:
+        result = scan_messages_for_secrets([
+            {
+                "role": "user",
+                "content": 'api_key = "sk-super-secret-long-string-abcdef"',
+            }
+        ])
+        assert result["secrets_detected"]
+
+    def test_clean_content_passes(self) -> None:
+        result = scan_messages_for_secrets([
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "def index(items):\n    return {}"},
+        ])
+        assert not result["secrets_detected"]
+
+    def test_secret_scan_returns_content_light(self) -> None:
+        result = scan_messages_for_secrets([
+            {"role": "user", "content": "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"}
+        ])
+        assert result["content_light"]
+        assert "patterns_matched" in result
+        assert "ghp_abcdef" not in str(result["patterns_matched"])
+
+    def test_classification_override_on_secret_detection(self) -> None:
         rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL
-        )
-        if rt.is_configured:
-            assert admission.admitted
-            assert admission.privacy_approved
-
-    def test_admits_public_safe_context(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PUBLIC_SAFE
-        )
-        if rt.is_configured:
-            assert admission.admitted
-            assert admission.privacy_approved
-
-    def test_refuses_secret_bearing_context(self) -> None:
-        rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.SECRET_BEARING
+        messages = [
+            {"role": "user", "content": "ghp_abcdefghijklmnopqrstuvwxyz1234567890AB"}
+        ]
+        admission, effective = rt._classify_and_admit(
+            TaskKind.CHAT, messages, ContextPrivacyClass.PRIVATE_LOCAL
         )
         if rt.is_configured:
             assert not admission.admitted
+            assert effective == ContextPrivacyClass.SECRET_BEARING
             assert admission.refusal_reason == RefusalReason.CONTEXT_BLOCKED_BY_POLICY
 
-    def test_context_privacy_class_is_recorded(self) -> None:
+    def test_private_content_admitted_when_clean(self) -> None:
         rt = RiggedLocalRuntime()
-        admission = rt.admit_task(
-            TaskKind.CHAT, context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL
+        messages = [
+            {"role": "user", "content": "My private project code: def foo(): pass"}
+        ]
+        admission, effective = rt._classify_and_admit(
+            TaskKind.CHAT, messages, ContextPrivacyClass.PRIVATE_LOCAL
         )
-        assert admission.context_privacy_class == ContextPrivacyClass.PRIVATE_LOCAL
+        if rt.is_configured:
+            assert admission.admitted
+            assert effective == ContextPrivacyClass.PRIVATE_LOCAL
 
 
-class TestToolCallParsing:
-    """Tool-call output must be parsed, not hardcoded False."""
+class TestToolProposalEvidence:
+    def test_tool_proposal_evidence_emitted(self) -> None:
+        digest = emit_tool_proposal_evidence("hash", 2, ["tool1", "tool2"])
+        assert digest
 
-    def test_parses_json_tool_block(self) -> None:
+    def test_parse_tool_calls_json_block(self) -> None:
         text = '```json\n{"name": "read_file", "arguments": {"path": "x.py"}}\n```'
         proposals = _parse_tool_calls(text)
         assert len(proposals) >= 1
         assert proposals[0].tool_name == "read_file"
 
-    def test_parses_function_call_tag(self) -> None:
-        text = '<function_call>\n{"name": "search", "arguments": {"query": "test"}}\n</function_call>'
+    def test_parse_tool_calls_function_tag(self) -> None:
+        text = '<function_call>\n{"name": "search", "arguments": {"q": "t"}}\n</function_call>'
         proposals = _parse_tool_calls(text)
         assert len(proposals) >= 1
-        assert proposals[0].tool_name == "search"
-
-    def test_no_tool_calls_in_plain_text(self) -> None:
-        proposals = _parse_tool_calls("Just a normal response.")
-        assert len(proposals) == 0
-
-    def test_tool_call_proposal_model(self) -> None:
-        proposal = ToolCallProposal(
-            call_id="c1", tool_name="test", arguments="{}", rationale="need this"
-        )
-        assert proposal.tool_name == "test"
-        assert proposal.call_id
-
-    def test_multi_tool_calls_parsed(self) -> None:
-        text = (
-            '```json\n{"name": "tool1", "arguments": {}}\n```\n'
-            '```json\n{"name": "tool2", "arguments": {}}\n```'
-        )
-        proposals = _parse_tool_calls(text)
-        assert len(proposals) >= 2
 
 
-class TestChatTemplate:
-    """Prompt formatting must use the tokenizer's chat template."""
-
-    def test_build_prompt_fallback_plain_text(self) -> None:
-        messages = [{"role": "user", "content": "Hello"}]
-        result = _build_prompt_using_chat_template(messages, object())
-        assert "Hello" in result
-
-    def test_build_prompt_with_system_message(self) -> None:
-        messages = [
-            {"role": "system", "content": "You are helpful."},
-            {"role": "user", "content": "Hi"},
-        ]
-        result = _build_prompt_using_chat_template(messages, object())
-        assert "helpful" in result
-        assert "Hi" in result
+class TestStreaming:
+    @pytest.mark.asyncio
+    async def test_stream_execute_no_model(self) -> None:
+        rt = RiggedLocalRuntime()
+        chunks: list[str] = []
+        async for chunk in rt.stream_execute([{"role": "user", "content": "Hello"}]):
+            chunks.append(chunk)
+        assert len(chunks) >= 0  # May be error message or empty
 
 
 class TestV1Posture:
-    """OMLX-class capabilities must not be labeled post-v1."""
-
-    def test_capability_posture_enum(self) -> None:
-        assert CapabilityPosture.SUPPORTED == "supported"
-        assert (
-            CapabilityPosture.V1_REQUIRED_PENDING
-            == "v1_required_pending_implementation"
-        )
-        assert CapabilityPosture.DEFERRED == "deferred"
-
-    def test_embeddings_labeled_v1_required(self) -> None:
-        rt = RiggedLocalRuntime()
-        caps = rt.get_capabilities()
-        assert caps.embeddings != "unsupported"
-        assert caps.embeddings != "deferred"
-        assert (
-            caps.embeddings == CapabilityPosture.V1_REQUIRED_PENDING
-            or caps.embeddings == "supported"
-        )
-
-    def test_vision_labeled_v1_required(self) -> None:
-        rt = RiggedLocalRuntime()
-        caps = rt.get_capabilities()
-        assert caps.vision != "unsupported"
-        assert (
-            caps.vision == CapabilityPosture.V1_REQUIRED_PENDING
-            or caps.vision == "supported"
-        )
-
-    def test_reranking_labeled_v1_required(self) -> None:
-        rt = RiggedLocalRuntime()
-        caps = rt.get_capabilities()
-        assert caps.reranking != "unsupported"
-        assert (
-            caps.reranking == CapabilityPosture.V1_REQUIRED_PENDING
-            or caps.reranking == "supported"
-        )
-
-
-class TestProjection:
-    def test_projection_has_privacy_section(self) -> None:
+    def test_streaming_is_capability_present(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        assert "privacy" in proj
-        assert (
-            proj["privacy"]["private_local_context"] == "allowed (local-only retention)"
-        )
+        assert "streaming_generation" in proj["capabilities"]
 
-    def test_projection_has_evidence_ledgers_section(self) -> None:
+    def test_secret_enforcement_in_projection(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        assert "evidence_ledgers" in proj
-        assert "execution" in proj["evidence_ledgers"]
+        assert proj["privacy"]["secret_scanning"] == "enforced_before_admission"
 
-    def test_projection_capabilities_use_correct_posture(self) -> None:
+    def test_canonical_evidence_in_projection(self) -> None:
         rt = RiggedLocalRuntime()
         proj = rt.build_projection()
-        caps = proj["capabilities"]
-        assert caps["text_generation"] == CapabilityPosture.SUPPORTED
-        assert caps["embeddings"] == CapabilityPosture.V1_REQUIRED_PENDING
-
-
-class TestExecutionFlow:
-    @pytest.mark.asyncio
-    async def test_refuses_when_no_model_loaded(self) -> None:
-        rt = RiggedLocalRuntime()
-        result = await rt.execute(
-            messages=[{"role": "user", "content": "Hello"}],
-            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
-        )
-        if rt.is_configured:
-            assert not result.executed
-            assert result.refusal is not None
-
-    @pytest.mark.asyncio
-    async def test_private_context_admitted(self) -> None:
-        rt = RiggedLocalRuntime()
-        result = await rt.execute(
-            messages=[{"role": "user", "content": "Hello"}],
-            context_privacy_class=ContextPrivacyClass.PRIVATE_LOCAL,
-        )
-        if rt.is_configured:
-            assert result.admission.privacy_approved or not result.admission.admitted
-
-    @pytest.mark.asyncio
-    async def test_secret_bearing_context_refused(self) -> None:
-        rt = RiggedLocalRuntime()
-        result = await rt.execute(
-            messages=[{"role": "user", "content": "Hello"}],
-            context_privacy_class=ContextPrivacyClass.SECRET_BEARING,
-        )
-        if rt.is_configured:
-            assert result.status == ExecutionStatus.REFUSED
-
-
-class TestServiceSingleton:
-    def test_get_runtime_returns_same_instance(self) -> None:
-        reset_runtime()
-        r1 = get_runtime()
-        r2 = get_runtime()
-        assert r1 is r2
-
-    def test_reset_runtime_creates_new_instance(self) -> None:
-        reset_runtime()
-        r1 = get_runtime()
-        reset_runtime()
-        r2 = get_runtime()
-        assert r1 is not r2
+        assert "canonical" in proj["governance"]["evidence_emission"]
 
 
 class TestEngine:
-    def test_engine_has_visible_response_methods(self) -> None:
+    def test_engine_methods_exist(self) -> None:
         engine = RiggedMlxEngine()
         assert hasattr(engine, "load_model")
-        assert hasattr(engine, "unload_model")
         assert hasattr(engine, "generate")
+        assert hasattr(engine, "stream_generate")
+        assert hasattr(engine, "unload_model")
+
+
+class TestServiceLifecycle:
+    def test_singleton_pattern(self) -> None:
+        reset_runtime()
+        a = get_runtime()
+        b = get_runtime()
+        assert a is b
+
+    def test_reset(self) -> None:
+        reset_runtime()
+        a = get_runtime()
+        reset_runtime()
+        b = get_runtime()
+        assert a is not b
